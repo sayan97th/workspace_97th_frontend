@@ -227,7 +227,7 @@ const AppSidebar: React.FC = () => {
   return (
     <>
       {is_rail_collapsed && (
-        <aside className="hidden h-screen w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-900 pt-[22px] lg:flex">
+        <aside className="hidden h-screen w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-900 pt-[22px] text-gray-300 lg:flex">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -377,9 +377,9 @@ const AppSidebar: React.FC = () => {
               tag="button"
               baseClassName=""
               onItemClick={closeRowMenu}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-semibold text-brand-300 hover:bg-brand-500/[0.14]"
+              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-semibold text-brand-200 hover:bg-brand-500/[0.14]"
             >
-              <span className="flex w-4 flex-none text-brand-300">
+              <span className="flex w-4 flex-none text-brand-200">
                 <DeleteIcon />
               </span>
               Delete

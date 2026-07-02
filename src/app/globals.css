@@ -1,1 +1,197 @@
 @import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  /* Brand typeface is Manrope (loaded via next/font in the root layout).
+     `font-outfit` is kept as the base-body token name for compatibility with
+     the shared component library, but it now resolves to Manrope. */
+  --font-*: initial;
+  --font-outfit: var(--font-manrope), ui-sans-serif, sans-serif;
+  --font-mono-accent: var(--font-roboto-mono), ui-monospace, monospace;
+
+  --text-title-2xl: 72px;
+  --text-title-2xl--line-height: 90px;
+  --text-title-md: 36px;
+  --text-title-md--line-height: 44px;
+  --text-title-sm: 30px;
+  --text-title-sm--line-height: 38px;
+  --text-theme-xl: 20px;
+  --text-theme-xl--line-height: 30px;
+  --text-theme-sm: 14px;
+  --text-theme-sm--line-height: 20px;
+  --text-theme-xs: 12px;
+  --text-theme-xs--line-height: 18px;
+
+  --color-current: currentColor;
+  --color-transparent: transparent;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  /* Primary — Red (97th Floor Design System 2026) */
+  --color-brand-25: #fff4f3;
+  --color-brand-50: #ffe3e1;
+  --color-brand-100: #ffc9c3;
+  --color-brand-200: #ff7569;
+  --color-brand-300: #f66355;
+  --color-brand-400: #ee5042;
+  --color-brand-500: #e53e2e;
+  --color-brand-600: #b72d24;
+  --color-brand-700: #8a1c1b;
+  --color-brand-800: #5c0b11;
+  --color-brand-900: #2e0609;
+  --color-brand-950: #170304;
+
+  /* Secondary — Sunset (data / accents) */
+  --color-sunset-50: #fff7e0;
+  --color-sunset-100: #fdecc0;
+  --color-sunset-200: #ecaa17;
+  --color-sunset-300: #e29703;
+  --color-sunset-400: #dc7906;
+  --color-sunset-500: #d55b08;
+  --color-sunset-600: #ab350d;
+  --color-sunset-700: #800f12;
+  --color-sunset-800: #c73628;
+  --color-sunset-900: #4a0c0e;
+  --color-sunset-950: #2e0708;
+
+  /* Neutrals (97th Floor Design System 2026) */
+  --color-gray-25: #fdfdfb;
+  --color-gray-50: #fafaf5;
+  --color-gray-100: #f0f0ef;
+  --color-gray-200: #d1d4d1;
+  --color-gray-300: #a7aead;
+  --color-gray-400: #7e8889;
+  --color-gray-500: #546264;
+  --color-gray-600: #2b3c40;
+  --color-gray-700: #0a1717;
+  --color-gray-800: #050d0d;
+  --color-gray-900: #000000;
+  --color-gray-950: #000000;
+  --color-gray-dark: #0a1717;
+
+  --color-blue-light-50: #f0f9ff;
+  --color-blue-light-500: #0ba5ec;
+
+  --color-orange-100: #ffead5;
+  --color-orange-400: #fd853a;
+  --color-orange-600: #ec4a0a;
+
+  --color-success-50: #ecfdf3;
+  --color-success-300: #6ce9a6;
+  --color-success-400: #32d583;
+  --color-success-500: #12b76a;
+  --color-success-600: #039855;
+
+  --color-error-50: #fef3f2;
+  --color-error-100: #fee4e2;
+  --color-error-200: #fecdca;
+  --color-error-300: #fda29b;
+  --color-error-400: #f97066;
+  --color-error-500: #f04438;
+  --color-error-600: #d92d20;
+  --color-error-700: #b42318;
+  --color-error-800: #912018;
+
+  --color-warning-50: #fffaeb;
+  --color-warning-500: #f79009;
+  --color-warning-600: #dc6803;
+
+  --shadow-theme-xs: 0px 1px 2px 0px rgba(10, 23, 23, 0.05);
+  --shadow-theme-sm:
+    0px 1px 3px 0px rgba(10, 23, 23, 0.1),
+    0px 1px 2px 0px rgba(10, 23, 23, 0.06);
+  --shadow-theme-md:
+    0px 4px 8px -2px rgba(10, 23, 23, 0.1),
+    0px 2px 4px -2px rgba(10, 23, 23, 0.06);
+  --shadow-theme-lg:
+    0px 12px 16px -4px rgba(10, 23, 23, 0.08),
+    0px 4px 6px -2px rgba(10, 23, 23, 0.03);
+  --shadow-theme-xl:
+    0px 20px 24px -4px rgba(10, 23, 23, 0.08),
+    0px 8px 8px -4px rgba(10, 23, 23, 0.03);
+  --shadow-focus-ring: 0px 0px 0px 4px rgba(229, 62, 46, 0.12);
+
+  --z-index-1: 1;
+  --z-index-2: 2;
+  --z-index-9: 9;
+  --z-index-99: 99;
+  --z-index-999: 999;
+  --z-index-9999: 9999;
+  --z-index-99999: 99999;
+  --z-index-999999: 999999;
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  body {
+    @apply relative font-normal font-outfit z-1 bg-gray-50;
+  }
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    @apply size-1.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    @apply rounded-full;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    @apply bg-gray-200 rounded-full dark:bg-gray-700;
+  }
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #2b3c40;
+}
+
+/* Dark workspace shell (sidebar + dropdown menus) scrollbar and controls */
+@utility shell-scrollbar {
+  &::-webkit-scrollbar {
+    @apply w-2.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
+@utility shell-icon-button {
+  @apply flex items-center justify-center rounded-[7px] transition-colors duration-150 hover:bg-white/[0.08];
+}
+
+@utility shell-nav-item-active {
+  @apply bg-brand-500;
+}
