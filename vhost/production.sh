@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# =============================================================================
+# Vhost deployment script — Workspace 97th Frontend (Production)
+# Domain  : workspace97th.97dev.com
+#
+# Usage:
+#   bash vhost/production.sh
+#
+# Deploys the Nginx virtual host for the production environment.
+# Target server: Ubuntu / Debian
+# =============================================================================
+
+set -euo pipefail
+
+conf_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/conf"
+domain="workspace97th.97dev.com"
+
+deployNginx() {
+    local src="${conf_dir}/nginx/production.conf"
+    local dst="/etc/nginx/sites-available/${domain}.conf"
+
+    echo "[workspace_97th_frontend] Copying Nginx config to ${dst} ..."
+    sudo cp -f "${src}" "${dst}"
+
+    echo "[workspace_97th_frontend] Enabling site ..."
+    sudo ln -sf "${dst}" "/etc/nginx/sites-enabled/${domain}.conf"
+
+    echo "[workspace_97th_frontend] Testing Nginx configuration ..."
+    sudo nginx -t
+
+    echo "[workspace_97th_frontend] Reloading Nginx ..."
+    sudo systemctl reload nginx
+
+    echo "[workspace_97th_frontend] Nginx site enabled: ${domain}"
+}
+
+deployNginx
