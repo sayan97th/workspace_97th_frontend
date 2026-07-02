@@ -140,13 +140,12 @@ const TreeRow: React.FC<TreeRowProps> = ({
         )}
       </span>
       <span
-        className={`relative z-1 flex-1 truncate text-sm ${
-          is_group_style
-            ? "font-semibold"
-            : node.favorite
-              ? "font-normal"
-              : "font-normal"
-        } ${is_active ? "text-white" : "text-gray-100"}`}
+        className={`relative z-1 flex-1 truncate text-sm ${is_group_style
+          ? "font-semibold"
+          : node.favorite
+            ? "font-normal"
+            : "font-normal"
+          } ${is_active ? "text-white" : "text-gray-100"}`}
       >
         {node.label}
       </span>
@@ -227,7 +226,7 @@ const AppSidebar: React.FC = () => {
   return (
     <>
       {is_rail_collapsed && (
-        <aside className="hidden h-screen w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-900 pt-[22px] text-gray-300 lg:flex">
+        <aside className="hidden h-screen w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-700 pt-[22px] text-gray-300 lg:flex">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -240,11 +239,10 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`shell-scrollbar fixed inset-y-0 left-0 z-50 flex h-screen w-80 flex-none flex-col overflow-y-auto border-r border-white/[0.06] bg-gray-900 text-gray-200 transition-transform duration-300 ease-in-out ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full"
-        } ${is_rail_collapsed ? "lg:hidden" : "lg:static lg:flex lg:translate-x-0"}`}
+        className={`shell-scrollbar fixed inset-y-0 left-0 z-50 flex h-screen w-80 flex-none flex-col overflow-y-auto border-r border-white/[0.06] bg-gray-700 text-gray-200 transition-transform duration-300 ease-in-out ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          } ${is_rail_collapsed ? "lg:hidden" : "lg:static lg:flex lg:translate-x-0"}`}
       >
-        <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-gray-900 px-4 pb-2.5 pt-5">
+        <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-gray-700 px-4 pb-2.5 pt-5">
           <div className="flex items-center justify-between">
             <span className="text-base font-semibold tracking-[-0.01em] text-gray-50">
               Workspace

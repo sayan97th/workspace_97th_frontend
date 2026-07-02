@@ -151,11 +151,10 @@ const AppHeader: React.FC = () => {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${
-                  is_active
+                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${is_active
                     ? "border-brand-500 font-semibold text-brand-500"
                     : "border-transparent font-medium text-gray-400 hover:text-gray-900"
-                }`}
+                  }`}
               >
                 <Icon />
                 {label}
