@@ -221,6 +221,33 @@ export const FilterIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/** Crown glyph — marks the "Owner" membership tab in the browse modal. */
+export const CrownIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2.5 5 L5.5 8 L8 3.5 L10.5 8 L13.5 5 L12.5 12 H3.5 Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Single-person glyph used for the "Member" membership tab. */
+export const MemberIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="5.5" r="2.6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M3 13 c0-2.8 2.2-4.3 5-4.3 s5 1.5 5 4.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Close (X) glyph used by modal/dialog dismiss controls. */
+export const CloseIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M4 4 L12 12 M12 4 L4 12" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);
+
 export const InfoIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />

@@ -10,6 +10,7 @@ import {
   type WorkspaceTreeNode,
 } from "./workspace-nav-data";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import {
   ArchiveIcon,
   ChevronRightIcon,
@@ -195,6 +196,7 @@ const AppSidebar: React.FC = () => {
     y: 0,
     label: "",
   });
+  const [is_browse_open, setIsBrowseOpen] = useState(false);
 
   const toggleGroup = (id: string) => {
     setExpandedGroupIds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -275,7 +277,10 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
 
-          <WorkspaceSwitcher />
+          <WorkspaceSwitcher
+            onAddWorkspace={() => setIsBrowseOpen(true)}
+            onBrowseAll={() => setIsBrowseOpen(true)}
+          />
         </div>
 
         <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
@@ -380,6 +385,11 @@ const AppSidebar: React.FC = () => {
           </div>
         </>
       )}
+
+      <BrowseWorkspacesModal
+        is_open={is_browse_open}
+        onClose={() => setIsBrowseOpen(false)}
+      />
     </>
   );
 };
