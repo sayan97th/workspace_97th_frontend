@@ -366,6 +366,18 @@ export const BellIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
   </svg>
 );
 
+export const SunIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="2.2" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M8 1.8 v2 M8 12.2 v2 M1.8 8 h2 M12.2 8 h2 M3.6 3.6 l1.4 1.4 M11 11 l1.4 1.4 M12.4 3.6 l-1.4 1.4 M5 11 l-1.4 1.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 export const FeedIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

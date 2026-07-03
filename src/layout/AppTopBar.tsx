@@ -7,6 +7,7 @@ import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
+import NotificationsPanel from "./NotificationsPanel";
 import {
   AppsGridIcon,
   BellIcon,
@@ -28,6 +29,10 @@ const AppTopBar: React.FC = () => {
   const { logout } = useAuth();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
+  const [is_notifications_open, setIsNotificationsOpen] = useState(false);
+
+  const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
+  const closeNotifications = () => setIsNotificationsOpen(false);
 
   const openRequestAccess = () => setIsRequestAccessOpen(true);
   const closeRequestAccess = () => setIsRequestAccessOpen(false);
@@ -100,7 +105,14 @@ const AppTopBar: React.FC = () => {
 
       {/* Right cluster */}
       <div className="flex flex-none items-center gap-0.5">
-        <button type="button" className={icon_button_class} aria-label="Notifications">
+        <button
+          type="button"
+          onClick={toggleNotifications}
+          className={`${icon_button_class} ${is_notifications_open ? "bg-white/[0.10]" : ""}`}
+          aria-label="Notifications"
+          aria-haspopup="dialog"
+          aria-expanded={is_notifications_open}
+        >
           <BellIcon size={17} />
           <span className="absolute right-2 top-[7px] h-[7px] w-[7px] rounded-full border-[1.5px] border-gray-700 bg-brand-500" />
         </button>
@@ -182,6 +194,11 @@ const AppTopBar: React.FC = () => {
         is_open={is_request_access_open}
         onClose={closeRequestAccess}
         onSubmit={handleRequestAccessSubmit}
+      />
+
+      <NotificationsPanel
+        is_open={is_notifications_open}
+        onClose={closeNotifications}
       />
     </>
   );
