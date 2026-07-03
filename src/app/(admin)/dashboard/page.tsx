@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import WorkspaceHome from "./_components/WorkspaceHome";
+import ClientHubBoard from "./_components/ClientHubBoard";
 
 export const metadata: Metadata = {
-  title: "Dashboard | Workspace 97th",
-  description: "Home for Workspace 97th Dashboard",
+  title: "Client Hub | Workspace 97th",
+  description: "Client Hub board for Workspace 97th",
 };
 
 export default function Dashboard() {
-  return <WorkspaceHome />;
+  return <ClientHubBoard />;
 }

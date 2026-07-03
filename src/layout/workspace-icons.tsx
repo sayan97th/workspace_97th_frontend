@@ -1,9 +1,12 @@
 import React from "react";
 
-type IconProps = {
+export type IconProps = {
   className?: string;
   size?: number;
 };
+
+/** Shared type for the SVG icon components exported from this module. */
+export type IconComponent = React.FC<IconProps>;
 
 export const MoreDotsIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16">
