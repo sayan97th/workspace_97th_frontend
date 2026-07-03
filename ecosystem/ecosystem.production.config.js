@@ -1,7 +1,7 @@
 // =============================================================================
 // PM2 Ecosystem — Workspace 97th Frontend (PRODUCTION)
-// Domain  : workspace97th.com   (API: api.workspace97th.com)
-// App path: /var/www/workspace97th.com
+// Domain  : workspace97th.97dev.com   (API: api.workspace97th.97dev.com)
+// App path: /var/www/workspace97th.97dev.com
 //
 // Start:   yarn run pm2:production
 //          pm2 start ecosystem/ecosystem.production.config.js
@@ -15,7 +15,7 @@ module.exports = {
       name: "workspace-97th-frontend",
       script: "node_modules/.bin/next",
       args: "start",
-      cwd: "/var/www/workspace97th.com",
+      cwd: "/var/www/workspace97th.97dev.com",
       instances: 1,
       exec_mode: "fork",
       env: {

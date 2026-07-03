@@ -7,7 +7,7 @@ It is the frontend companion of the **Workspace 97th API** (Laravel + JWT). Each
 | Environment | Frontend domain | API domain |
 |---|---|---|
 | Testing | `workspace97th.97dev.com` | `api.workspace97th.97dev.com` |
-| Production | `workspace97th.com` | `api.workspace97th.com` |
+| Production | `workspace97th.97dev.com` | `api.workspace97th.97dev.com` |
 
 ---
 
@@ -18,7 +18,7 @@ Each environment has its own dedicated ecosystem configuration file located in t
 | File | Environment | Server Path |
 |---|---|---|
 | `ecosystem/ecosystem.testing.config.js` | Testing | `/var/www/workspace97th.97dev.com` |
-| `ecosystem/ecosystem.production.config.js` | Production | `/var/www/workspace97th.com` |
+| `ecosystem/ecosystem.production.config.js` | Production | `/var/www/workspace97th.97dev.com` |
 | `ecosystem/ecosystem.local.config.js` | Local (Arch Linux) | `/mnt/linux-storage/projects/97thfloor/monday_projects/workspace_97th_frontend` |
 
 > The root `ecosystem.config.js` file is the default entry point and re-exports the **production** config.
@@ -54,7 +54,7 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
 ```
 
 Point this at the matching API domain per environment, e.g.
-`https://api.workspace97th.97dev.com` (testing) or `https://api.workspace97th.com` (production).
+`https://api.workspace97th.97dev.com` (testing) or `https://api.workspace97th.97dev.com` (production).
 
 ---
 
@@ -155,7 +155,7 @@ Because PM2 serves the app on port `3800`, an Nginx virtual host proxies the pub
 | File | Environment |
 |---|---|
 | `vhost/conf/nginx/testing.conf` | Testing (`workspace97th.97dev.com`) |
-| `vhost/conf/nginx/production.conf` | Production (`workspace97th.com`) |
+| `vhost/conf/nginx/production.conf` | Production (`workspace97th.97dev.com`) |
 
 Deploy with:
 
