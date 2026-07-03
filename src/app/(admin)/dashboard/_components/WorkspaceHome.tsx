@@ -54,7 +54,6 @@ const WorkspaceHome: React.FC = () => {
       <div className="relative h-[170px] w-full overflow-hidden bg-[linear-gradient(115deg,#0A1717_0%,#1C2B2E_38%,#3A4A4D_60%,#D8DCDB_100%)]">
         <div className="absolute inset-0 bg-[repeating-linear-gradient(108deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_22px)]" />
         <div className="absolute right-10 top-[18px] font-mono-accent text-[11px] tracking-[0.14em] text-white/45">
-          [ workspace cover ]
         </div>
       </div>
 
@@ -124,11 +123,10 @@ const WorkspaceHome: React.FC = () => {
                 key={id}
                 type="button"
                 onClick={() => setActiveTab(id)}
-                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${
-                  is_active
+                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${is_active
                     ? "border-brand-500 font-semibold text-brand-500"
                     : "border-transparent font-medium text-gray-400 hover:text-gray-700"
-                }`}
+                  }`}
               >
                 <Icon />
                 {label}
@@ -143,9 +141,8 @@ const WorkspaceHome: React.FC = () => {
             {recent_items.map((item, index) => (
               <div
                 key={item.id}
-                className={`flex cursor-pointer items-center gap-3.5 rounded-lg px-2 py-[15px] hover:bg-[#F4F4F2] ${
-                  index < recent_items.length - 1 ? "border-b border-[#ECECEA]" : ""
-                }`}
+                className={`flex cursor-pointer items-center gap-3.5 rounded-lg px-2 py-[15px] hover:bg-[#F4F4F2] ${index < recent_items.length - 1 ? "border-b border-[#ECECEA]" : ""
+                  }`}
               >
                 <span className="flex flex-none text-gray-400">
                   {item.kind === "file" ? <FileIcon /> : <FolderIcon size={17} />}
