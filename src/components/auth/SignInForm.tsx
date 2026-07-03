@@ -3,7 +3,17 @@ import Checkbox from "@/components/form/input/Checkbox";
 import Input from "@/components/form/input/InputField";
 import Label from "@/components/form/Label";
 import Button from "@/components/ui/button/Button";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  Eye,
+  EyeOff,
+  Loader2,
+  Lock,
+  Mail,
+  ShieldAlert,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { useState, useRef } from "react";
@@ -69,7 +79,7 @@ const OtpInput = ({ value, onChange, error }: OtpInputProps) => {
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className={`h-14 w-12 rounded-xl border text-center text-xl font-semibold transition-all focus:outline-none focus:ring-2 ${
+          className={`font-mono-accent h-14 w-12 rounded-xl border text-center text-xl font-semibold transition-all focus:outline-none focus:ring-2 ${
             error
               ? "border-error-400 bg-error-50 text-error-700 focus:border-error-500 focus:ring-error-200 dark:border-error-500 dark:bg-error-500/10 dark:text-error-400"
               : "border-gray-300 bg-white text-gray-900 focus:border-brand-500 focus:ring-brand-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-brand-500 dark:focus:ring-brand-500/20"
@@ -189,8 +199,8 @@ export default function SignInForm() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col flex-1 lg:w-1/2 w-full">
-      <div className="w-full max-w-md sm:pt-10 mx-auto mb-5">
+    <div className="no-scrollbar flex w-full flex-col overflow-y-auto lg:w-1/2 lg:flex-1">
+      <div className="mx-auto mb-5 w-full max-w-md sm:pt-10">
         <Link
           href="/"
           className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
@@ -200,89 +210,94 @@ export default function SignInForm() {
         </Link>
       </div>
 
-      <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         {/* ── Credentials step ─────────────────────────────────────────────── */}
         {view === "credentials" && (
-          <div>
-            <div className="mb-5 sm:mb-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+            <div className="mb-6 sm:mb-8">
               <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
                 Sign In
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Enter your email and password to sign in!
+                Enter your email and password to sign in.
               </p>
             </div>
 
             <div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-1 sm:gap-5">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={isGoogleLoading}
-                  className="inline-flex items-center justify-center gap-3 py-3 text-sm font-normal text-gray-700 transition-colors bg-gray-100 rounded-lg px-7 hover:bg-gray-200 hover:text-gray-800 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {isGoogleLoading ? (
-                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-gray-400 border-t-gray-700 dark:border-white/20 dark:border-t-white" />
-                  ) : (
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M18.7511 10.1944C18.7511 9.47495 18.6915 8.94995 18.5626 8.40552H10.1797V11.6527H15.1003C15.0011 12.4597 14.4654 13.675 13.2749 14.4916L13.2582 14.6003L15.9087 16.6126L16.0924 16.6305C17.7788 15.1041 18.7511 12.8583 18.7511 10.1944Z"
-                        fill="#4285F4"
-                      />
-                      <path
-                        d="M10.1788 18.75C12.5895 18.75 14.6133 17.9722 16.0915 16.6305L13.274 14.4916C12.5201 15.0068 11.5081 15.3666 10.1788 15.3666C7.81773 15.3666 5.81379 13.8402 5.09944 11.7305L4.99473 11.7392L2.23868 13.8295L2.20264 13.9277C3.67087 16.786 6.68674 18.75 10.1788 18.75Z"
-                        fill="#34A853"
-                      />
-                      <path
-                        d="M5.10014 11.7305C4.91165 11.186 4.80257 10.6027 4.80257 9.99992C4.80257 9.3971 4.91165 8.81379 5.09022 8.26935L5.08523 8.1534L2.29464 6.02954L2.20333 6.0721C1.5982 7.25823 1.25098 8.5902 1.25098 9.99992C1.25098 11.4096 1.5982 12.7415 2.20333 13.9277L5.10014 11.7305Z"
-                        fill="#FBBC05"
-                      />
-                      <path
-                        d="M10.1789 4.63331C11.8554 4.63331 12.9864 5.34303 13.6312 5.93612L16.1511 3.525C14.6035 2.11528 12.5895 1.25 10.1789 1.25C6.68676 1.25 3.67088 3.21387 2.20264 6.07218L5.08953 8.26943C5.81381 6.15972 7.81776 4.63331 10.1789 4.63331Z"
-                        fill="#EB4335"
-                      />
-                    </svg>
-                  )}
-                  {isGoogleLoading ? "Redirecting…" : "Sign in with Google"}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
+              >
+                {isGoogleLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path
+                      d="M18.7511 10.1944C18.7511 9.47495 18.6915 8.94995 18.5626 8.40552H10.1797V11.6527H15.1003C15.0011 12.4597 14.4654 13.675 13.2749 14.4916L13.2582 14.6003L15.9087 16.6126L16.0924 16.6305C17.7788 15.1041 18.7511 12.8583 18.7511 10.1944Z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M10.1788 18.75C12.5895 18.75 14.6133 17.9722 16.0915 16.6305L13.274 14.4916C12.5201 15.0068 11.5081 15.3666 10.1788 15.3666C7.81773 15.3666 5.81379 13.8402 5.09944 11.7305L4.99473 11.7392L2.23868 13.8295L2.20264 13.9277C3.67087 16.786 6.68674 18.75 10.1788 18.75Z"
+                      fill="#34A853"
+                    />
+                    <path
+                      d="M5.10014 11.7305C4.91165 11.186 4.80257 10.6027 4.80257 9.99992C4.80257 9.3971 4.91165 8.81379 5.09022 8.26935L5.08523 8.1534L2.29464 6.02954L2.20333 6.0721C1.5982 7.25823 1.25098 8.5902 1.25098 9.99992C1.25098 11.4096 1.5982 12.7415 2.20333 13.9277L5.10014 11.7305Z"
+                      fill="#FBBC05"
+                    />
+                    <path
+                      d="M10.1789 4.63331C11.8554 4.63331 12.9864 5.34303 13.6312 5.93612L16.1511 3.525C14.6035 2.11528 12.5895 1.25 10.1789 1.25C6.68676 1.25 3.67088 3.21387 2.20264 6.07218L5.08953 8.26943C5.81381 6.15972 7.81776 4.63331 10.1789 4.63331Z"
+                      fill="#EB4335"
+                    />
+                  </svg>
+                )}
+                {isGoogleLoading ? "Redirecting…" : "Sign in with Google"}
+              </button>
 
               <div className="relative py-3 sm:py-5">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200 dark:border-gray-800" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="p-2 text-gray-400 bg-white dark:bg-gray-900 sm:px-5 sm:py-2">Or</span>
+                  <span className="bg-white p-2 text-gray-400 dark:bg-gray-900 sm:px-5 sm:py-2">Or</span>
                 </div>
               </div>
 
               {error && (
-                <div className="mb-4 rounded-lg bg-error-50 p-3 text-sm text-error-600 dark:bg-error-500/10 dark:text-error-400">
-                  {error}
+                <div className="mb-4 flex items-start gap-2 rounded-xl border border-error-200 bg-error-50 p-3 text-sm text-error-600 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400">
+                  <AlertCircle className="h-4 w-4 flex-none translate-y-0.5" />
+                  <span>{error}</span>
                 </div>
               )}
 
               <form onSubmit={handleCredentialsSubmit}>
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div>
                     <Label>
                       Email <span className="text-error-500">*</span>{" "}
                     </Label>
-                    <Input
-                      placeholder="info@gmail.com"
-                      type="email"
-                      defaultValue={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      error={!!fieldErrors.email}
-                      hint={fieldErrors.email?.[0]}
-                    />
+                    <div className="relative">
+                      <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <Input
+                        className="pl-11"
+                        placeholder="info@gmail.com"
+                        type="email"
+                        defaultValue={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        error={!!fieldErrors.email}
+                        hint={fieldErrors.email?.[0]}
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>
                       Password <span className="text-error-500">*</span>{" "}
                     </Label>
                     <div className="relative">
+                      <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
                       <Input
+                        className="pl-11"
                         type={showPassword ? "text" : "password"}
                         placeholder="Enter your password"
                         defaultValue={password}
@@ -290,22 +305,25 @@ export default function SignInForm() {
                         error={!!fieldErrors.password}
                         hint={fieldErrors.password?.[0]}
                       />
-                      <span
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute z-30 -translate-y-1/2 cursor-pointer right-4 top-1/2"
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => setShowPassword((v) => !v)}
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        className="absolute top-1/2 right-3.5 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
                       >
                         {showPassword ? (
-                          <Eye className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          <EyeOff className="h-5 w-5" />
                         ) : (
-                          <EyeOff className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          <Eye className="h-5 w-5" />
                         )}
-                      </span>
+                      </button>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Checkbox checked={isChecked} onChange={setIsChecked} />
-                      <span className="block font-normal text-gray-700 text-theme-sm dark:text-gray-400">
+                      <span className="block text-sm font-normal text-gray-700 dark:text-gray-400">
                         Keep me logged in
                       </span>
                     </div>
@@ -318,16 +336,23 @@ export default function SignInForm() {
                   </div>
                   <div>
                     <Button className="w-full" size="sm" disabled={isSubmitting}>
-                      {isSubmitting ? "Signing in…" : "Sign in"}
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Signing in…
+                        </>
+                      ) : (
+                        "Sign in"
+                      )}
                     </Button>
                   </div>
                 </div>
               </form>
 
-              <div className="mt-5">
-                <p className="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start">
+              <div className="mt-6">
+                <p className="text-center text-sm font-normal text-gray-700 dark:text-gray-400">
                   Don&apos;t have an account?{" "}
-                  <Link href="/signup" className="text-brand-500 hover:text-brand-600 dark:text-brand-400">
+                  <Link href="/signup" className="font-medium text-brand-500 hover:text-brand-600 dark:text-brand-400">
                     Sign Up
                   </Link>
                 </p>
@@ -338,22 +363,10 @@ export default function SignInForm() {
 
         {/* ── Account disabled step ────────────────────────────────────────── */}
         {view === "account_disabled" && (
-          <div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
             <div className="mb-8 flex flex-col items-center text-center">
-              <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-error-100 dark:bg-error-500/15">
-                <svg
-                  className="h-10 w-10 text-error-500 dark:text-error-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636"
-                  />
-                </svg>
+              <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-error-100 dark:bg-error-500/15">
+                <ShieldAlert className="h-8 w-8 text-error-500 dark:text-error-400" />
               </div>
               <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
                 Account Disabled
@@ -365,21 +378,7 @@ export default function SignInForm() {
 
             <div className="mb-6 rounded-xl border border-error-200 bg-error-50 p-4 dark:border-error-500/20 dark:bg-error-500/10">
               <div className="flex gap-3">
-                <div className="shrink-0">
-                  <svg
-                    className="h-5 w-5 text-error-500 dark:text-error-400"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
-                    />
-                  </svg>
-                </div>
+                <AlertCircle className="h-5 w-5 flex-none text-error-500 dark:text-error-400" />
                 <div className="space-y-1 text-sm text-error-700 dark:text-error-300">
                   <p className="font-medium">Why was my account disabled?</p>
                   <ul className="space-y-0.5 text-error-600 dark:text-error-400">
@@ -391,7 +390,7 @@ export default function SignInForm() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-white/3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-white/3">
               <p className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Think this is a mistake?
               </p>
@@ -401,15 +400,9 @@ export default function SignInForm() {
               </p>
               <a
                 href="mailto:support@97thfloor.com"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
-                  />
-                </svg>
+                <Mail className="h-4 w-4" />
                 Contact Support
               </a>
             </div>
@@ -418,9 +411,10 @@ export default function SignInForm() {
               <button
                 type="button"
                 onClick={() => setView("credentials")}
-                className="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
-                ← Use a different account
+                <ChevronLeft className="h-4 w-4" />
+                Use a different account
               </button>
             </div>
           </div>
@@ -428,22 +422,10 @@ export default function SignInForm() {
 
         {/* ── Two-factor step ───────────────────────────────────────────────── */}
         {view === "two_factor" && (
-          <div>
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
             <div className="mb-8 flex flex-col items-center text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-500/10">
-                <svg
-                  className="h-8 w-8 text-brand-600 dark:text-brand-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"
-                  />
-                </svg>
+                <ShieldCheck className="h-8 w-8 text-brand-600 dark:text-brand-400" />
               </div>
               <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
                 Two-Factor Authentication
@@ -459,13 +441,7 @@ export default function SignInForm() {
                   <OtpInput value={otpCode} onChange={setOtpCode} error={!!otpError} />
                   {otpError && (
                     <p className="flex items-center justify-center gap-1.5 text-sm text-error-600 dark:text-error-400">
-                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"
-                        />
-                      </svg>
+                      <AlertCircle className="h-4 w-4 flex-none" />
                       {otpError}
                     </p>
                   )}
@@ -480,10 +456,10 @@ export default function SignInForm() {
                   disabled={isVerifying || otpCode.replace(/\s/g, "").length < 6}
                 >
                   {isVerifying ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
                       Verifying…
-                    </span>
+                    </>
                   ) : (
                     "Verify & Sign In"
                   )}
@@ -491,13 +467,14 @@ export default function SignInForm() {
               </div>
             </form>
 
-            <div className="mt-6 space-y-3 text-center">
+            <div className="mt-6 text-center">
               <button
                 type="button"
                 onClick={handleBackToCredentials}
-                className="text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                className="inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
               >
-                ← Use a different account
+                <ChevronLeft className="h-4 w-4" />
+                Use a different account
               </button>
             </div>
           </div>
