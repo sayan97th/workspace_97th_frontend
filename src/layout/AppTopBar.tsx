@@ -7,6 +7,9 @@ import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
+import InviteMembersModal, {
+  type InviteMembersSubmission,
+} from "./InviteMembersModal";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import {
@@ -30,6 +33,7 @@ const AppTopBar: React.FC = () => {
   const { logout } = useAuth();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
+  const [is_invite_open, setIsInviteOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
   const [is_feed_open, setIsFeedOpen] = useState(false);
 
@@ -42,9 +46,17 @@ const AppTopBar: React.FC = () => {
   const openRequestAccess = () => setIsRequestAccessOpen(true);
   const closeRequestAccess = () => setIsRequestAccessOpen(false);
 
+  const openInvite = () => setIsInviteOpen(true);
+  const closeInvite = () => setIsInviteOpen(false);
+
   const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
     // No backend wiring yet — surface the payload for the future API hook.
     console.log("Request edit access submitted", submission);
+  };
+
+  const handleInviteSubmit = (submission: InviteMembersSubmission) => {
+    // No backend wiring yet — surface the payload for the future API hook.
+    console.log("Invite members submitted", submission);
   };
 
   const toggleAccount = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -136,7 +148,14 @@ const AppTopBar: React.FC = () => {
           </span>
         </button>
 
-        <button type="button" className={icon_button_class} aria-label="Invite members">
+        <button
+          type="button"
+          onClick={openInvite}
+          className={`${icon_button_class} ${is_invite_open ? "bg-white/[0.10]" : ""}`}
+          aria-label="Invite members"
+          aria-haspopup="dialog"
+          aria-expanded={is_invite_open}
+        >
           <InviteIcon size={17} />
         </button>
 
@@ -206,6 +225,12 @@ const AppTopBar: React.FC = () => {
         is_open={is_request_access_open}
         onClose={closeRequestAccess}
         onSubmit={handleRequestAccessSubmit}
+      />
+
+      <InviteMembersModal
+        is_open={is_invite_open}
+        onClose={closeInvite}
+        onSubmit={handleInviteSubmit}
       />
 
       <NotificationsPanel

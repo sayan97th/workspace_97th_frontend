@@ -260,6 +260,18 @@ export const MemberIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/** Chain-link glyph used by "Copy invite link" style controls. */
+export const LinkIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M6.5 9.5 L9.5 6.5 M7 5 l1.6-1.6 a2.4 2.4 0 0 1 3.4 3.4 L10.4 8.4 M9 11 l-1.6 1.6 a2.4 2.4 0 0 1-3.4-3.4 L5.6 7.6"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
 /** Close (X) glyph used by modal/dialog dismiss controls. */
 export const CloseIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
