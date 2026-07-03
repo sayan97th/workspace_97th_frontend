@@ -226,7 +226,7 @@ const AppSidebar: React.FC = () => {
   return (
     <>
       {is_rail_collapsed && (
-        <aside className="hidden h-screen w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-700 pt-[22px] text-gray-300 lg:flex">
+        <aside className="hidden h-full w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-700 pt-[22px] text-gray-300 lg:flex">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -239,7 +239,7 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`shell-scrollbar fixed inset-y-0 left-0 z-50 flex h-screen w-80 flex-none flex-col overflow-y-auto border-r border-white/[0.06] bg-gray-700 text-gray-200 transition-transform duration-300 ease-in-out ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`shell-scrollbar fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] w-80 flex-none flex-col overflow-y-auto border-r border-white/[0.06] bg-gray-700 text-gray-200 transition-transform duration-300 ease-in-out lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
           } ${is_rail_collapsed ? "lg:hidden" : "lg:static lg:flex lg:translate-x-0"}`}
       >
         <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-gray-700 px-4 pb-2.5 pt-5">

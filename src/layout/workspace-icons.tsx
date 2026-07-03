@@ -207,6 +207,80 @@ export const DeleteIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/* ------------------------------------------------------------------ *
+ * Top application bar icons (full-width dark header)
+ * ------------------------------------------------------------------ */
+
+export const EyeIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16">
+    <path
+      d="M1.5 8 C3 4.8 5.3 3.2 8 3.2 S13 4.8 14.5 8 C13 11.2 10.7 12.8 8 12.8 S3 11.2 1.5 8Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+    />
+    <circle cx="8" cy="8" r="2" fill="currentColor" />
+  </svg>
+);
+
+export const BellIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2 C5.8 2 4.3 3.6 4.3 5.8 V8.5 L3 11 H13 L11.7 8.5 V5.8 C11.7 3.6 10.2 2 8 2Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    <path d="M6.5 12.5 a1.6 1.6 0 0 0 3 0" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+export const FeedIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2 4.5 A1.5 1.5 0 0 1 3.5 3 H12.5 A1.5 1.5 0 0 1 14 4.5 V11.5 A1.5 1.5 0 0 1 12.5 13 H3.5 A1.5 1.5 0 0 1 2 11.5 Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+    />
+    <path d="M2 9 H5 L6.2 10.6 H9.8 L11 9 H14" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+  </svg>
+);
+
+export const InviteIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="6" cy="5.2" r="2.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M1.8 13 c0-2.6 1.9-4 4.2-4 s4.2 1.4 4.2 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M12.5 5.5 V9.5 M10.5 7.5 H14.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const HelpIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M6.3 6.2 a1.8 1.8 0 0 1 3.4 .8 c0 1.2 -1.7 1.4 -1.7 2.6"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <circle cx="8" cy="11.4" r="0.7" fill="currentColor" />
+  </svg>
+);
+
+export const AppsGridIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
+    <circle cx="4" cy="4" r="1.25" />
+    <circle cx="8" cy="4" r="1.25" />
+    <circle cx="12" cy="4" r="1.25" />
+    <circle cx="4" cy="8" r="1.25" />
+    <circle cx="8" cy="8" r="1.25" />
+    <circle cx="12" cy="8" r="1.25" />
+    <circle cx="4" cy="12" r="1.25" />
+    <circle cx="8" cy="12" r="1.25" />
+    <circle cx="12" cy="12" r="1.25" />
+  </svg>
+);
+
 export const HamburgerIcon: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 12" fill="none">
     <path

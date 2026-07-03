@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import AppHeader from "@/layout/AppHeader";
 import AppSidebar from "@/layout/AppSidebar";
+import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -24,20 +24,22 @@ export default function AdminLayout({
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <AppSidebar />
-      <Backdrop />
-      <main className="custom-scrollbar h-full flex-1 overflow-y-auto bg-gray-50">
-        <AppHeader />
-        {children}
-      </main>
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-gray-50">
+      <AppTopBar />
+      <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+        <AppSidebar />
+        <Backdrop />
+        <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-gray-50">
+          {children}
+        </main>
+      </div>
     </div>
   );
 }
