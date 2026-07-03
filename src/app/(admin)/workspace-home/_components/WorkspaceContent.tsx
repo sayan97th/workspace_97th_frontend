@@ -4,7 +4,7 @@ import { ContentTable, ContentToolbar } from "@/components/content";
 import {
   WORKSPACE_CONTENT_ASSETS,
   WORKSPACE_CREATORS,
-} from "../_data/workspace-content-data";
+} from "@/data/workspace-content-data";
 
 /**
  * The Workspace home "Content" tab: a searchable, spreadsheet-style table of

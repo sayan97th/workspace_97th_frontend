@@ -12,7 +12,7 @@ import {
   my_workspaces as default_my_workspaces,
   recent_workspaces as default_recent_workspaces,
   type WorkspaceSummary,
-} from "./workspace-switcher-data";
+} from "@/data/workspace-switcher-data";
 
 type WorkspaceSwitcherProps = {
   active_workspace?: WorkspaceSummary;

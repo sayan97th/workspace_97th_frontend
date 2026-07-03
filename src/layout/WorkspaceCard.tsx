@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import WorkspaceBadge from "./WorkspaceBadge";
-import type { BrowseWorkspace } from "./workspace-browse-data";
+import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 
 /** Surface color of a browse card — the home-glyph notch blends into it. */
 const CARD_SURFACE = "#0e1d1d";

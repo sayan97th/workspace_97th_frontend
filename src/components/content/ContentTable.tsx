@@ -15,7 +15,7 @@ import type {
   ContentAsset,
   Creator,
   CreatorKey,
-} from "@/app/(admin)/workspace-home/_data/workspace-content-data";
+} from "@/data/workspace-content-data";
 
 export type ContentTableProps = {
   assets: ContentAsset[];

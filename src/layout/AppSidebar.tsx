@@ -8,7 +8,7 @@ import {
   all_group_ids,
   workspace_nav_tree,
   type WorkspaceTreeNode,
-} from "./workspace-nav-data";
+} from "@/data/workspace-nav-data";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import {

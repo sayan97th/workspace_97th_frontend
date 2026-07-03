@@ -21,7 +21,7 @@ import {
   filterBrowseWorkspaces,
   type BrowseWorkspace,
   type WorkspaceBrowseTab,
-} from "./workspace-browse-data";
+} from "@/data/workspace-browse-data";
 
 type BrowseWorkspacesModalProps = {
   is_open: boolean;

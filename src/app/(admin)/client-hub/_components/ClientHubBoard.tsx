@@ -17,7 +17,7 @@ import {
   CLIENT_HUB_VIEWS,
   CLIENT_STATUS,
   type ClientRow,
-} from "../_data/client-hub-data";
+} from "@/data/client-hub-data";
 
 /** Renders one Client Hub cell for the given column. */
 const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode => {

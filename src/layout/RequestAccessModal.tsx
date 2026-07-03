@@ -6,7 +6,7 @@ import {
   request_access_members as default_members,
   request_access_message_placeholder,
   type RequestAccessMember,
-} from "./request-access-data";
+} from "@/data/request-access-data";
 
 export type RequestAccessSubmission = {
   member_ids: string[];

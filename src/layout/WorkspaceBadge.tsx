@@ -1,6 +1,6 @@
 import React from "react";
 import { WorkspaceHomeGlyphIcon } from "./workspace-icons";
-import { default_workspace_color, type WorkspaceSummary } from "./workspace-switcher-data";
+import { default_workspace_color, type WorkspaceSummary } from "@/data/workspace-switcher-data";
 
 type WorkspaceBadgeProps = {
   workspace: Pick<WorkspaceSummary, "mono" | "color" | "is_home">;

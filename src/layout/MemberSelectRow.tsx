@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import { CheckCircleIcon } from "./workspace-icons";
-import type { RequestAccessMember } from "./request-access-data";
+import type { RequestAccessMember } from "@/data/request-access-data";
 
 type MemberSelectRowProps = {
   member: RequestAccessMember;
