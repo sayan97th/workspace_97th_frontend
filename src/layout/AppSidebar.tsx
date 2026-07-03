@@ -9,9 +9,9 @@ import {
   workspace_nav_tree,
   type WorkspaceTreeNode,
 } from "./workspace-nav-data";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import {
   ArchiveIcon,
-  ChevronDownIcon,
   ChevronRightIcon,
   CollapseSidebarIcon,
   DeleteIcon,
@@ -23,7 +23,6 @@ import {
   MoreDotsIcon,
   MoveToIcon,
   OpenInNewTabIcon,
-  PlusIcon,
   RenameIcon,
   SearchIcon,
   StarIcon,
@@ -276,22 +275,7 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <div className="flex flex-1 cursor-pointer items-center gap-2.5 rounded-[10px] border border-white/10 bg-gray-800 px-3 py-2.5 transition-colors hover:border-brand-500/60">
-              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-brand-500 font-outfit text-xs font-bold text-white">
-                97
-              </span>
-              <span className="flex-1 text-sm font-semibold text-gray-50">Fulfillment</span>
-              <ChevronDownIcon size={12} className="flex-none text-gray-400" />
-            </div>
-            <button
-              type="button"
-              className="flex w-[42px] flex-none items-center justify-center rounded-[10px] border border-white/10 bg-gray-800 text-gray-100 transition-colors hover:border-brand-500/60"
-              aria-label="New workspace item"
-            >
-              <PlusIcon />
-            </button>
-          </div>
+          <WorkspaceSwitcher />
         </div>
 
         <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">

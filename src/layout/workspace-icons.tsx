@@ -334,6 +334,27 @@ export const AppsGridIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   </svg>
 );
 
+/** 2x2 grid glyph used by the "Browse all" workspace-switcher footer action. */
+export const BrowseAllIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="9" y="9" width="4.5" height="4.5" rx="1" stroke="currentColor" strokeWidth="1.4" />
+  </svg>
+);
+
+/**
+ * Small house glyph used as the "home workspace" corner badge overlaid on a
+ * WorkspaceBadge. Drawn on a 12x12 grid so it reads well at ~8px.
+ */
+export const WorkspaceHomeGlyphIcon: React.FC<IconProps> = ({ className, size = 8 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 12 12" fill="none">
+    <path d="M2 6 L6 2.4 L10 6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M3 5.4 V9.6 H9 V5.4" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+  </svg>
+);
+
 export const HamburgerIcon: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 12" fill="none">
     <path
