@@ -7,7 +7,7 @@ type IconProps = {
 
 /**
  * Board-specific icons for the Client Hub (and future) board views.
- * Generic workspace-shell icons live in `@/layout/workspace-icons`; these are
+ * Generic workspace-shell icons live in `@/icons/workspace-icons`; these are
  * only the extra glyphs the board header, toolbar and rows need.
  */
 

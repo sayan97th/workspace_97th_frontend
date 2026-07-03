@@ -1,5 +1,5 @@
 import React from "react";
-import { CheckIcon, MinusIcon } from "@/layout/workspace-icons";
+import { CheckIcon, MinusIcon } from "@/icons/workspace-icons";
 
 export type CheckboxProps = {
   checked: boolean;

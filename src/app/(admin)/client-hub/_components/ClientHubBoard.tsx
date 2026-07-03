@@ -9,8 +9,8 @@ import {
   TeamAvatars,
   type BoardColumn,
 } from "@/components/board";
-import { RowChatIcon } from "@/components/board/board-icons";
-import { ChevronRightIcon, StarIcon } from "@/layout/workspace-icons";
+import { RowChatIcon } from "@/icons/board-icons";
+import { ChevronRightIcon, StarIcon } from "@/icons/workspace-icons";
 import {
   CLIENT_HUB_COLUMNS,
   CLIENT_HUB_GROUPS,

@@ -6,7 +6,7 @@ import {
   ChevronDownIcon,
   PlusIcon,
   SearchIcon,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   active_workspace as default_active_workspace,
   my_workspaces as default_my_workspaces,

@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
-import { ChevronDownIcon, MoreDotsIcon, PlusIcon } from "@/layout/workspace-icons";
-import { TableViewIcon } from "./board-icons";
+import { ChevronDownIcon, MoreDotsIcon, PlusIcon } from "@/icons/workspace-icons";
+import { TableViewIcon } from "@/icons/board-icons";
 
 export type BoardViewTabsProps = {
   /** Label of the primary (active) table view. */

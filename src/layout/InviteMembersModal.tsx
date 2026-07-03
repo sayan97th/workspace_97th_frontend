@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import RoleSelect from "./RoleSelect";
-import { CheckIcon, CloseIcon, LinkIcon } from "./workspace-icons";
+import { CheckIcon, CloseIcon, LinkIcon } from "@/icons/workspace-icons";
 import {
   invite_default_role,
   invite_email_placeholder,

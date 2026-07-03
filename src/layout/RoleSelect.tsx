@@ -7,7 +7,7 @@ import {
   EyeIcon,
   MemberIcon,
   type IconComponent,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   invite_roles as default_roles,
   type InviteRole,

@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import SlideOverDrawer from "./SlideOverDrawer";
 import NotificationItem from "./NotificationItem";
-import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "./workspace-icons";
+import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
 import {
   notification_group_label,
   notification_mute_hint,

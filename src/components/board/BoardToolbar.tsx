@@ -6,14 +6,14 @@ import {
   PersonIcon,
   SearchIcon,
   type IconComponent,
-} from "@/layout/workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   CollapseTableIcon,
   FilterIcon,
   GroupByIcon,
   HideIcon,
   SortIcon,
-} from "./board-icons";
+} from "@/icons/board-icons";
 
 export type BoardToolbarItem = {
   id: string;

@@ -8,7 +8,7 @@ import {
   InfoIcon,
   LockBadgeIcon,
   StarIcon,
-} from "@/layout/workspace-icons";
+} from "@/icons/workspace-icons";
 import CreatorAvatar from "./CreatorAvatar";
 import Checkbox from "./Checkbox";
 import type {

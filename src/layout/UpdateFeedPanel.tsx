@@ -11,7 +11,7 @@ import {
   CloseIcon,
   FeedSettingsIcon,
   MentionIcon,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   feed_board_filters,
   feed_default_board_filter,

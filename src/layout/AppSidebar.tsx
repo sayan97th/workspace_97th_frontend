@@ -27,7 +27,7 @@ import {
   RenameIcon,
   SearchIcon,
   StarIcon,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 
 type RowMenuState = {
   is_open: boolean;

@@ -13,7 +13,7 @@ import {
   PermissionsIcon,
   PersonIcon,
   StarIcon,
-} from "@/layout/workspace-icons";
+} from "@/icons/workspace-icons";
 import WorkspaceContent from "./WorkspaceContent";
 
 type TabId = "recents" | "content" | "collaborators" | "permissions";

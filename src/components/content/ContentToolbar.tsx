@@ -1,5 +1,5 @@
 import React from "react";
-import { FilterIcon, SearchIcon } from "@/layout/workspace-icons";
+import { FilterIcon, SearchIcon } from "@/icons/workspace-icons";
 
 export type ContentToolbarProps = {
   search_value: string;

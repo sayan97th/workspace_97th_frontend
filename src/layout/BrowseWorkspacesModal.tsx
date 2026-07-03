@@ -13,7 +13,7 @@ import {
   PlusIcon,
   SearchIcon,
   type IconComponent,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   browse_tab_empty_titles,
   browse_tab_titles,

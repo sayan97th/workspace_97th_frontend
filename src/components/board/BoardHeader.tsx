@@ -1,13 +1,13 @@
 "use client";
 import React from "react";
-import { ChevronDownIcon, InviteIcon, MoreDotsIcon, StarIcon } from "@/layout/workspace-icons";
+import { ChevronDownIcon, InviteIcon, MoreDotsIcon, StarIcon } from "@/icons/workspace-icons";
 import {
   AgentsIcon,
   AutomateIcon,
   CommentIcon,
   IntegrateIcon,
   LinkIcon,
-} from "./board-icons";
+} from "@/icons/board-icons";
 
 export type BoardHeaderProps = {
   title: string;

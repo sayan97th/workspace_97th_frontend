@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import MemberSelectRow from "./MemberSelectRow";
-import { CloseIcon } from "./workspace-icons";
+import { CloseIcon } from "@/icons/workspace-icons";
 import {
   request_access_members as default_members,
   request_access_message_placeholder,

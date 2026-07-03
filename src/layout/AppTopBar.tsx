@@ -22,7 +22,7 @@ import {
   InviteIcon,
   PersonIcon,
   SearchIcon,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 
 /**
  * Full-width dark application bar that sits above the sidebar and main content.

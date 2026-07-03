@@ -6,7 +6,7 @@ import {
   ReplyIcon,
   ThumbsUpIcon,
   ViewsIcon,
-} from "./workspace-icons";
+} from "@/icons/workspace-icons";
 import {
   feed_reply_avatar_gradient,
   feed_reply_placeholder,
