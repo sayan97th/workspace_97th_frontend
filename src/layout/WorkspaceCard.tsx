@@ -30,8 +30,8 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({ workspace, onSelect }) =>
       <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-400">
         <span className="flex gap-0.5">
           <span className="h-[5px] w-[5px] rounded-full bg-brand-500" />
-          <span className="h-[5px] w-[5px] rounded-full bg-sunset-200" />
-          <span className="h-[5px] w-[5px] rounded-full bg-success-500" />
+          <span className="h-[5px] w-[5px] rounded-full bg-brand-500" />
+          <span className="h-[5px] w-[5px] rounded-full bg-brand-500" />
         </span>
         {workspace.product}
       </div>

@@ -31,7 +31,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     mono: "97",
     color: default_workspace_color,
     is_home: true,
-    product: "monday",
+    product: "Workspace 97th",
     role: "Member",
     memberships: ["recent", "member"],
   },
@@ -40,7 +40,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "BASE",
     mono: "B",
     color: "#2f6fed",
-    product: "monday",
+    product: "Workspace 97th",
     memberships: [],
   },
   {
@@ -56,7 +56,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Decision Priority Matrix",
     mono: "D",
     color: "#6b7280",
-    product: "monday",
+    product: "Workspace 97th",
     memberships: [],
   },
   {
@@ -64,7 +64,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Highrise",
     mono: "H",
     color: "#26312f",
-    product: "monday",
+    product: "Workspace 97th",
     memberships: [],
   },
   {
@@ -72,7 +72,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Partnerships",
     mono: "P",
     color: "#2f9e68",
-    product: "monday",
+    product: "Workspace 97th",
     memberships: [],
   },
   {
@@ -80,7 +80,7 @@ export const browse_workspaces: BrowseWorkspace[] = [
     name: "Personal",
     mono: "P",
     color: "#e8a317",
-    product: "monday",
+    product: "Workspace 97th",
     memberships: [],
   },
 ];
