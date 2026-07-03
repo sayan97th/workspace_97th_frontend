@@ -10,6 +10,7 @@ import {
   StarIcon,
 } from "@/layout/workspace-icons";
 import CreatorAvatar from "./CreatorAvatar";
+import Checkbox from "./Checkbox";
 import type {
   ContentAsset,
   Creator,
@@ -19,6 +20,12 @@ import type {
 export type ContentTableProps = {
   assets: ContentAsset[];
   creators: Record<CreatorKey, Creator>;
+  /** Ids of the currently selected rows. */
+  selected_ids: Set<string>;
+  /** Toggle selection for a single row. */
+  onToggleRow: (id: string) => void;
+  /** Toggle selection for every visible row (select all / clear). */
+  onToggleAll: (select_all: boolean) => void;
   /** Copy shown when there are no rows (e.g. after a search). */
   empty_title?: string;
   empty_hint?: string;
@@ -43,13 +50,31 @@ const AssetTypeIcon: React.FC<{ asset: ContentAsset }> = ({ asset }) => (
 const ContentTable: React.FC<ContentTableProps> = ({
   assets,
   creators,
+  selected_ids,
+  onToggleRow,
+  onToggleAll,
   empty_title = "No assets match your filters",
   empty_hint = "Try a different search or clear the filters.",
-}) => (
+}) => {
+  const selected_count = assets.reduce(
+    (total, asset) => (selected_ids.has(asset.id) ? total + 1 : total),
+    0
+  );
+  const all_selected = assets.length > 0 && selected_count === assets.length;
+  const some_selected = selected_count > 0 && !all_selected;
+
+  return (
   <div className="overflow-hidden rounded-xl border border-[#e6e6e1] bg-white">
     {/* Header */}
     <div className="flex h-[46px] items-center border-b border-[#eaeae5] bg-[#fbfbf8] px-[18px] text-[13px] font-semibold text-[#6b7677]">
-      <div className="w-8 flex-none" />
+      <div className="flex w-8 flex-none items-center">
+        <Checkbox
+          checked={all_selected}
+          indeterminate={some_selected}
+          onChange={(checked) => onToggleAll(checked)}
+          aria_label="Select all assets"
+        />
+      </div>
       <div className="min-w-0 flex-1">Asset name</div>
       <div className="flex w-[110px] flex-none items-center gap-1.5">
         AI summary
@@ -66,13 +91,21 @@ const ContentTable: React.FC<ContentTableProps> = ({
     {/* Rows */}
     {assets.map((asset) => {
       const creator = creators[asset.creator];
+      const is_selected = selected_ids.has(asset.id);
       return (
         <div
           key={asset.id}
-          className="flex h-[53px] cursor-pointer items-center border-b border-[#eeeee9] bg-white px-[18px] last:border-b-0 hover:bg-[#f5f5f1]"
+          onClick={() => onToggleRow(asset.id)}
+          className={`flex h-[53px] cursor-pointer items-center border-b border-[#eeeee9] px-[18px] last:border-b-0 ${
+            is_selected ? "bg-brand-25 hover:bg-brand-50" : "bg-white hover:bg-[#f5f5f1]"
+          }`}
         >
-          <div className="w-8 flex-none">
-            <span className="block h-[18px] w-[18px] rounded-[5px] border-[1.5px] border-[#c6c9c3] bg-white" />
+          <div className="flex w-8 flex-none items-center">
+            <Checkbox
+              checked={is_selected}
+              onChange={() => onToggleRow(asset.id)}
+              aria_label={`Select ${asset.name}`}
+            />
           </div>
 
           <div className="flex min-w-0 flex-1 items-center gap-[11px]">
@@ -90,6 +123,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
           <div className="w-[110px] flex-none">
             <button
               type="button"
+              onClick={(event) => event.stopPropagation()}
               className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-[#7e8889] transition-colors hover:bg-[#f0f0ec] hover:text-brand-500"
               aria-label={`Generate AI summary for ${asset.name}`}
             >
@@ -140,6 +174,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
       </div>
     )}
   </div>
-);
+  );
+};
 
 export default ContentTable;

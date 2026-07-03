@@ -210,6 +210,25 @@ export const DeleteIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+export const CheckIcon: React.FC<IconProps> = ({ className, size = 12 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M3.5 8.5 L6.5 11.5 L12.5 4.5"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Indeterminate (partial-selection) dash for a "select all" checkbox. */
+export const MinusIcon: React.FC<IconProps> = ({ className, size = 12 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 export const FilterIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path
