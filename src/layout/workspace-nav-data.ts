@@ -21,7 +21,7 @@ export type WorkspaceTreeNode = WorkspaceLeafNode | WorkspaceGroupNode;
 
 export const workspace_nav_tree: WorkspaceTreeNode[] = [
   { type: "leaf", id: "home", label: "Workspace home", href: "/workspace-home" },
-  { type: "leaf", id: "clienthub", label: "Client Hub", favorite: true, href: "/dashboard" },
+  { type: "leaf", id: "clienthub", label: "Client Hub", favorite: true, href: "/client-hub" },
   {
     type: "group",
     id: "dev",

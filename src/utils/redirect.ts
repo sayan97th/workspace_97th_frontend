@@ -1,4 +1,4 @@
-const DEFAULT_REDIRECT = "/dashboard";
+const DEFAULT_REDIRECT = "/client-hub";
 const AUTH_ROUTES = ["/signin", "/signup"];
 
 /**

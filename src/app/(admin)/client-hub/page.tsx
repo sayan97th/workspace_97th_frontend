@@ -6,6 +6,6 @@ export const metadata: Metadata = {
   description: "Client Hub board for Workspace 97th",
 };
 
-export default function Dashboard() {
+export default function ClientHubPage() {
   return <ClientHubBoard />;
 }

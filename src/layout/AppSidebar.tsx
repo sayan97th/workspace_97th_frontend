@@ -180,7 +180,7 @@ const AppSidebar: React.FC = () => {
 
   // Route-driven active highlight for navigable leaves; click-driven for the
   // rest, so refreshing the page keeps the correct item highlighted.
-  const route_active_id = pathname?.startsWith("/dashboard")
+  const route_active_id = pathname?.startsWith("/client-hub")
     ? "clienthub"
     : pathname?.startsWith("/workspace-home")
       ? "home"
