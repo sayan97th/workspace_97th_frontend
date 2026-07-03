@@ -248,6 +248,38 @@ export const CloseIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   </svg>
 );
 
+/**
+ * Selection check used by the "Request to become a member" list. When
+ * `selected` is true it renders the filled brand circle with a white tick;
+ * otherwise it renders an empty outlined circle so rows read as toggleable.
+ */
+export const CheckCircleIcon: React.FC<IconProps & { selected?: boolean }> = ({
+  className,
+  size = 20,
+  selected = false,
+}) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <circle
+      cx="10"
+      cy="10"
+      r="9"
+      fill={selected ? "var(--color-brand-500)" : "none"}
+      stroke={selected ? "none" : "currentColor"}
+      strokeWidth="1.5"
+    />
+    {selected && (
+      <path
+        d="M6 10.5 L9 13 L14 7"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    )}
+  </svg>
+);
+
 export const InfoIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />

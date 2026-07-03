@@ -4,6 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import RequestAccessModal, {
+  type RequestAccessSubmission,
+} from "./RequestAccessModal";
 import {
   AppsGridIcon,
   BellIcon,
@@ -24,6 +27,15 @@ const AppTopBar: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
   const { logout } = useAuth();
   const [is_account_open, setIsAccountOpen] = useState(false);
+  const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
+
+  const openRequestAccess = () => setIsRequestAccessOpen(true);
+  const closeRequestAccess = () => setIsRequestAccessOpen(false);
+
+  const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
+    // No backend wiring yet — surface the payload for the future API hook.
+    console.log("Request edit access submitted", submission);
+  };
 
   const toggleAccount = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
@@ -44,6 +56,7 @@ const AppTopBar: React.FC = () => {
     "relative flex h-[34px] w-[34px] items-center justify-center rounded-lg text-[#C2CACB] transition-colors hover:bg-white/[0.08]";
 
   return (
+    <>
     <header className="relative z-[60] flex h-[52px] flex-none items-center gap-3.5 border-b border-white/[0.06] bg-gray-700 px-3.5 text-[#E9EDED]">
       {/* Left cluster */}
       <div className="flex flex-none items-center gap-2.5">
@@ -67,6 +80,7 @@ const AppTopBar: React.FC = () => {
 
         <button
           type="button"
+          onClick={openRequestAccess}
           className="hidden rounded-lg border border-white/[0.14] px-[13px] py-1.5 text-[13px] font-semibold text-[#E9EDED] transition-colors hover:border-brand-500 hover:text-white md:block"
         >
           Request edit access
@@ -163,6 +177,13 @@ const AppTopBar: React.FC = () => {
         </div>
       </div>
     </header>
+
+      <RequestAccessModal
+        is_open={is_request_access_open}
+        onClose={closeRequestAccess}
+        onSubmit={handleRequestAccessSubmit}
+      />
+    </>
   );
 };
 
