@@ -6,6 +6,8 @@ export type WorkspaceLeafNode = {
   favorite?: boolean;
   /** Only "program" renders with group-header styling despite having no children. */
   display_style?: "group";
+  /** Route this leaf navigates to when clicked (leaves without it are static). */
+  href?: string;
 };
 
 export type WorkspaceGroupNode = {
@@ -18,8 +20,8 @@ export type WorkspaceGroupNode = {
 export type WorkspaceTreeNode = WorkspaceLeafNode | WorkspaceGroupNode;
 
 export const workspace_nav_tree: WorkspaceTreeNode[] = [
-  { type: "leaf", id: "home", label: "Workspace home" },
-  { type: "leaf", id: "clienthub", label: "Client Hub", favorite: true },
+  { type: "leaf", id: "home", label: "Workspace home", href: "/workspace-home" },
+  { type: "leaf", id: "clienthub", label: "Client Hub", favorite: true, href: "/dashboard" },
   {
     type: "group",
     id: "dev",

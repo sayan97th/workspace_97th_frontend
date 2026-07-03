@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import {
@@ -175,6 +176,16 @@ const AppSidebar: React.FC = () => {
     active_item_id,
     setActiveItem,
   } = useSidebar();
+  const pathname = usePathname();
+
+  // Route-driven active highlight for navigable leaves; click-driven for the
+  // rest, so refreshing the page keeps the correct item highlighted.
+  const route_active_id = pathname?.startsWith("/dashboard")
+    ? "clienthub"
+    : pathname?.startsWith("/workspace-home")
+      ? "home"
+      : null;
+  const effective_active_id = route_active_id ?? active_item_id;
 
   const [expanded_group_ids, setExpandedGroupIds] = useState<Record<string, boolean>>(
     initialExpandedGroups
@@ -296,13 +307,13 @@ const AppSidebar: React.FC = () => {
           </div>
 
           {workspace_nav_tree.map((node) =>
-            node.id === "home" ? (
-              <Link key={node.id} href="/" className="contents">
+            node.type === "leaf" && node.href ? (
+              <Link key={node.id} href={node.href} className="contents">
                 <TreeRow
                   node={node}
                   depth={0}
                   expanded_group_ids={expanded_group_ids}
-                  active_item_id={active_item_id}
+                  active_item_id={effective_active_id}
                   onToggleGroup={toggleGroup}
                   onSelectLeaf={selectLeaf}
                   onOpenRowMenu={openRowMenu}
@@ -314,7 +325,7 @@ const AppSidebar: React.FC = () => {
                 node={node}
                 depth={0}
                 expanded_group_ids={expanded_group_ids}
-                active_item_id={active_item_id}
+                active_item_id={effective_active_id}
                 onToggleGroup={toggleGroup}
                 onSelectLeaf={selectLeaf}
                 onOpenRowMenu={openRowMenu}

@@ -10,7 +10,7 @@ export default function Home() {
 
   useEffect(() => {
     if (isLoading) return;
-    router.replace(isAuthenticated ? "/dashboard" : "/signin");
+    router.replace(isAuthenticated ? "/workspace-home" : "/signin");
   }, [isAuthenticated, isLoading, router]);
 
   return (
