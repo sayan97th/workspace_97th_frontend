@@ -445,6 +445,90 @@ export const WorkspaceHomeGlyphIcon: React.FC<IconProps> = ({ className, size = 
   </svg>
 );
 
+/* ------------------------------------------------------------------ *
+ * Update feed drawer icons
+ * ------------------------------------------------------------------ */
+
+/** "@" mention glyph used by the "I was mentioned" feed tab. */
+export const MentionIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M8 5.5 v3.2 M9.8 6.5 a2.4 2.4 0 1 0 0 3"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** Ribbon/bookmark glyph used by the "Bookmarked" feed tab. */
+export const BookmarkIcon: React.FC<IconProps & { filled?: boolean }> = ({
+  className,
+  size = 13,
+  filled = false,
+}) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M4 2.5 h8 v11 l-4 -2.6 -4 2.6 z"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Gear glyph used by the "Feed settings" link in the feed sidebar. */
+export const FeedSettingsIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M8 1.8 v2 M8 12.2 v2 M1.8 8 h2 M12.2 8 h2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** Thumbs-up glyph used by the feed "Like" action. */
+export const ThumbsUpIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M4 7 h2 v6 H4 z M6 7 l3-5 c1.5 0 2 1 1.6 2.2 L10 7 h3.2 c1 0 1.4 .8 1.2 1.6 l-1 4 c-.2 .8-.8 1.2-1.6 1.2 H6"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Reply/curved-arrow glyph used by the feed "Reply" action. */
+export const ReplyIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M6 4 L2.5 7.5 L6 11 M3 7.5 H10 a3.5 3.5 0 0 1 3.5 3.5 V13"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Eye glyph used for the feed update read/view count. */
+export const ViewsIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 3 C4 3 1.6 6 1.6 8 S4 13 8 13 s6.4-3 6.4-5 S12 3 8 3Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+    />
+    <circle cx="8" cy="8" r="1.8" fill="currentColor" />
+  </svg>
+);
+
 export const HamburgerIcon: React.FC<IconProps> = ({ className, size = 20 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 12" fill="none">
     <path

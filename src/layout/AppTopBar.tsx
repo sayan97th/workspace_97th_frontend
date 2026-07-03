@@ -8,6 +8,7 @@ import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
 import NotificationsPanel from "./NotificationsPanel";
+import UpdateFeedPanel from "./UpdateFeedPanel";
 import {
   AppsGridIcon,
   BellIcon,
@@ -30,9 +31,13 @@ const AppTopBar: React.FC = () => {
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
+  const [is_feed_open, setIsFeedOpen] = useState(false);
 
   const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
   const closeNotifications = () => setIsNotificationsOpen(false);
+
+  const toggleFeed = () => setIsFeedOpen((previous) => !previous);
+  const closeFeed = () => setIsFeedOpen(false);
 
   const openRequestAccess = () => setIsRequestAccessOpen(true);
   const closeRequestAccess = () => setIsRequestAccessOpen(false);
@@ -117,7 +122,14 @@ const AppTopBar: React.FC = () => {
           <span className="absolute right-2 top-[7px] h-[7px] w-[7px] rounded-full border-[1.5px] border-gray-700 bg-brand-500" />
         </button>
 
-        <button type="button" className={icon_button_class} aria-label="Update feed">
+        <button
+          type="button"
+          onClick={toggleFeed}
+          className={`${icon_button_class} ${is_feed_open ? "bg-white/[0.10]" : ""}`}
+          aria-label="Update feed"
+          aria-haspopup="dialog"
+          aria-expanded={is_feed_open}
+        >
           <FeedIcon size={17} />
           <span className="absolute right-0.5 top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-lg border-[1.5px] border-gray-700 bg-brand-500 px-[3px] text-[9.5px] font-bold text-white">
             8
@@ -200,6 +212,8 @@ const AppTopBar: React.FC = () => {
         is_open={is_notifications_open}
         onClose={closeNotifications}
       />
+
+      <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
     </>
   );
 };

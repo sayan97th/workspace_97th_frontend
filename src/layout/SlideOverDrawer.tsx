@@ -8,6 +8,12 @@ type SlideOverDrawerProps = {
   aria_label: string;
   /** Panel width in px; capped to the viewport. Design default is 392. */
   width?: number;
+  /**
+   * Layout of the drawer body. `"vertical"` (default) stacks children in a
+   * column — used by the notifications drawer. `"horizontal"` lays them out in a
+   * row — used by the update feed (sidebar + content).
+   */
+  orientation?: "vertical" | "horizontal";
   children: React.ReactNode;
 };
 
@@ -22,6 +28,7 @@ const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
   onClose,
   aria_label,
   width = 392,
+  orientation = "vertical",
   children,
 }) => {
   // Close on Escape and lock body scroll only while the drawer is open.
@@ -55,9 +62,9 @@ const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
         aria-modal="true"
         aria-label={aria_label}
         style={{ width: `min(${width}px, 100vw)` }}
-        className={`shell-scrollbar absolute right-0 top-0 flex h-screen flex-col overflow-hidden border-l border-white/[0.08] bg-[#0a1717] text-[#e9eded] shadow-[-18px_0_46px_rgba(0,0,0,0.42)] transition-transform duration-300 ease-out ${
-          is_open ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`shell-scrollbar absolute right-0 top-0 flex h-screen overflow-hidden border-l border-white/[0.08] bg-[#0a1717] text-[#e9eded] shadow-[-18px_0_46px_rgba(0,0,0,0.42)] transition-transform duration-300 ease-out ${
+          orientation === "horizontal" ? "flex-row" : "flex-col"
+        } ${is_open ? "translate-x-0" : "translate-x-full"}`}
       >
         {children}
       </aside>
