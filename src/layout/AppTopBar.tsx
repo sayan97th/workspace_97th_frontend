@@ -2,8 +2,8 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
-import { Dropdown } from "@/components/ui/dropdown/Dropdown";
-import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import UserAvatar from "@/components/common/UserAvatar";
+import AccountMenu from "./AccountMenu";
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
@@ -20,7 +20,6 @@ import {
   HamburgerIcon,
   HelpIcon,
   InviteIcon,
-  PersonIcon,
   SearchIcon,
 } from "@/icons/workspace-icons";
 
@@ -30,7 +29,7 @@ import {
  */
 const AppTopBar: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
-  const { logout } = useAuth();
+  const { user } = useAuth();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -65,14 +64,6 @@ const AppTopBar: React.FC = () => {
   };
 
   const closeAccount = () => setIsAccountOpen(false);
-
-  const handleSignOut = async () => {
-    try {
-      await logout();
-    } finally {
-      closeAccount();
-    }
-  };
 
   const icon_button_class =
     "relative flex h-[34px] w-[34px] items-center justify-center rounded-lg text-[#C2CACB] transition-colors hover:bg-white/[0.08]";
@@ -167,57 +158,16 @@ const AppTopBar: React.FC = () => {
           <AppsGridIcon size={16} />
         </button>
 
-        <div className="relative ml-1.5">
-          <button
-            type="button"
-            onClick={toggleAccount}
-            className="dropdown-toggle flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full border-2 border-transparent bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[11px] font-bold text-white transition-colors hover:border-white/35"
-            aria-label="Account"
-          >
-            JM
-          </button>
-          <Dropdown
-            isOpen={is_account_open}
-            onClose={closeAccount}
-            className="w-[180px] !border-white/10 !bg-[#0F1C1C] p-1.5 shadow-theme-lg"
-          >
-            <DropdownItem
-              tag="a"
-              href="/profile"
-              baseClassName=""
-              onItemClick={closeAccount}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-sm font-medium !text-gray-100 hover:bg-white/[0.08]"
-            >
-              <PersonIcon size={16} />
-              View profile
-            </DropdownItem>
-            <DropdownItem
-              tag="button"
-              baseClassName=""
-              onItemClick={handleSignOut}
-              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-theme-sm font-medium !text-gray-100 hover:bg-white/[0.08]"
-            >
-              <span className="flex h-4 w-4 items-center justify-center">
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M15 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H15M10 17L15 12M15 12L10 7M15 12H3"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </span>
-              Sign out
-            </DropdownItem>
-          </Dropdown>
-        </div>
+        <button
+          type="button"
+          onClick={toggleAccount}
+          className="dropdown-toggle ml-1.5 flex flex-none rounded-full border-2 border-transparent transition-colors hover:border-white/35 aria-expanded:border-white/35"
+          aria-label="Account"
+          aria-haspopup="menu"
+          aria-expanded={is_account_open}
+        >
+          <UserAvatar user={user} size={30} font_size={11} />
+        </button>
       </div>
     </header>
 
@@ -239,6 +189,12 @@ const AppTopBar: React.FC = () => {
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
+
+      <AccountMenu
+        is_open={is_account_open}
+        onClose={closeAccount}
+        onInviteMembers={openInvite}
+      />
     </>
   );
 };
