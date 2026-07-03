@@ -210,6 +210,56 @@ export const DeleteIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+export const FilterIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2 3.5 H14 L9.5 8.5 V12.5 L6.5 14 V8.5 Z"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const InfoIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M8 7 V11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <circle cx="8" cy="5" r="0.7" fill="currentColor" />
+  </svg>
+);
+
+/** Per-row "generate AI summary" glyph (document with a small sparkle). */
+export const AiSummaryIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M3 3.5 h7 v9 h-7 z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    <line x1="4.6" y1="6" x2="8.4" y2="6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <line x1="4.6" y1="8" x2="8.4" y2="8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <line x1="4.6" y1="10" x2="7" y2="10" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M11.5 8.5 V13 M9.3 10.7 H13.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Folder glyph used in the "Folder" column (open-folder shape). */
+export const FolderPathIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2 4 A1.2 1.2 0 0 1 3.2 2.8 H6 L7.4 4.3 H12.8 A1.2 1.2 0 0 1 14 5.5 V11.5 A1.2 1.2 0 0 1 12.8 12.7 H3.2 A1.2 1.2 0 0 1 2 11.5 Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Small locked-badge glyph, overlaid on a locked asset's type icon. */
+export const LockBadgeIcon: React.FC<IconProps> = ({ className, size = 9 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16">
+    <rect x="3.5" y="7" width="9" height="6.5" rx="1.4" fill="currentColor" />
+    <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" fill="none" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+);
+
 /* ------------------------------------------------------------------ *
  * Top application bar icons (full-width dark header)
  * ------------------------------------------------------------------ */

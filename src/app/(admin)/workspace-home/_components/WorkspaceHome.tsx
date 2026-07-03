@@ -14,6 +14,7 @@ import {
   PersonIcon,
   StarIcon,
 } from "@/layout/workspace-icons";
+import WorkspaceContent from "./WorkspaceContent";
 
 type TabId = "recents" | "content" | "collaborators" | "permissions";
 
@@ -135,8 +136,8 @@ const WorkspaceHome: React.FC = () => {
           })}
         </div>
 
-        {/* Recents list */}
-        {active_tab === "recents" ? (
+        {/* Tab panels */}
+        {active_tab === "recents" && (
           <div className="mt-2.5 pb-[60px]">
             {recent_items.map((item, index) => (
               <div
@@ -156,7 +157,11 @@ const WorkspaceHome: React.FC = () => {
               </div>
             ))}
           </div>
-        ) : (
+        )}
+
+        {active_tab === "content" && <WorkspaceContent />}
+
+        {(active_tab === "collaborators" || active_tab === "permissions") && (
           <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-gray-400">
             [ no {active_tab} yet ]
           </div>
