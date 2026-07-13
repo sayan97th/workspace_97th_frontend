@@ -110,3 +110,32 @@ export const GroupByIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
     <rect x="4.5" y="9" width="9" height="3.4" rx="1" stroke="currentColor" strokeWidth="1.3" />
   </svg>
 );
+
+export const TuneIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <line x1="3" y1="4" x2="13" y2="4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <line x1="3" y1="8" x2="13" y2="8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <line x1="3" y1="12" x2="13" y2="12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <circle cx="6.5" cy="4" r="1.4" fill="#152726" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="10" cy="8" r="1.4" fill="#152726" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="5.5" cy="12" r="1.4" fill="#152726" stroke="currentColor" strokeWidth="1.2" />
+  </svg>
+);
+
+export const CheckIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 12 12" fill="none">
+    <path d="M2.5 6.2 5 8.7 9.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const CloseIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 14 14" fill="none">
+    <path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
+export const PlusIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 14 14" fill="none">
+    <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
+);

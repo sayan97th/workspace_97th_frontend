@@ -1,0 +1,103 @@
+"use client";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+
+export type BoardPopoverProps = {
+  anchor_el: HTMLElement | null;
+  is_open: boolean;
+  onClose: () => void;
+  /** Popover width in pixels. Defaults to 300. */
+  width?: number;
+  children: React.ReactNode;
+};
+
+const VIEWPORT_MARGIN = 8;
+const ANCHOR_GAP = 6;
+
+/**
+ * Shared anchored popover for the board toolbar controls (Person/Sort/Hide/Group by/"...").
+ * Portals to document.body and floats over the table (unlike the Filter panel, which is
+ * rendered inline by BoardToolbar and pushes the table down instead).
+ */
+const BoardPopover: React.FC<BoardPopoverProps> = ({
+  anchor_el,
+  is_open,
+  onClose,
+  width = 300,
+  children,
+}) => {
+  const popover_ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!is_open || !anchor_el) {
+      setPosition(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const anchor_rect = anchor_el.getBoundingClientRect();
+      const popover_height = popover_ref.current?.offsetHeight ?? 0;
+
+      let top = anchor_rect.bottom + ANCHOR_GAP;
+      if (top + popover_height > window.innerHeight - VIEWPORT_MARGIN) {
+        top = Math.max(VIEWPORT_MARGIN, anchor_rect.top - popover_height - ANCHOR_GAP);
+      }
+
+      let left = anchor_rect.right - width;
+      left = Math.min(left, window.innerWidth - width - VIEWPORT_MARGIN);
+      left = Math.max(left, VIEWPORT_MARGIN);
+
+      setPosition({ top, left });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [is_open, anchor_el, width]);
+
+  useLayoutEffect(() => {
+    if (!is_open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (popover_ref.current?.contains(target)) return;
+      if (anchor_el?.contains(target)) return;
+      onClose();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [is_open, anchor_el, onClose]);
+
+  if (!is_open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      ref={popover_ref}
+      className="fixed z-[1000] rounded-xl border border-white/[0.08] bg-[#152726] text-[#e9eded] shadow-2xl shadow-black/40"
+      style={{
+        width,
+        top: position?.top ?? -9999,
+        left: position?.left ?? -9999,
+        visibility: position ? "visible" : "hidden",
+      }}
+    >
+      {children}
+    </div>,
+    document.body
+  );
+};
+
+export default BoardPopover;

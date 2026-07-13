@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import type { BoardColumn, BoardTableProps } from "./types";
+import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
 /** Left-most checkbox column width (kept out of the column config). */
 const CHECKBOX_WIDTH = 44;
@@ -44,8 +44,10 @@ function BoardTable<TRow>({
   getRowId,
   renderCell,
   minWidth = 1450,
+  rowHeight = "medium",
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
+  const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
 
   const toggleGroup = (id: string) => {
     setCollapsedGroupIds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -113,8 +115,8 @@ function BoardTable<TRow>({
                 {/* Empty state */}
                 {is_empty && (
                   <div
-                    className="flex h-[42px] items-center border-t border-white/[0.05] bg-[#0c1b1a]"
-                    style={{ borderLeft: `4px solid ${group.accent_color}` }}
+                    className="flex items-center border-t border-white/[0.05] bg-[#0c1b1a]"
+                    style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
                   >
                     <div
                       className="flex flex-none items-center justify-center"
@@ -142,10 +144,10 @@ function BoardTable<TRow>({
                     {columns.map((column) => (
                       <div
                         key={column.id}
-                        className={`flex h-[42px] flex-none items-center border-r border-white/[0.04] ${
+                        className={`flex flex-none items-center border-r border-white/[0.04] ${
                           column.align === "center" ? "justify-center" : "justify-start"
                         } ${column.bleed ? "" : "px-3"}`}
-                        style={{ width: column.width }}
+                        style={{ width: column.width, height: row_height_px }}
                       >
                         {renderCell(row, column)}
                       </div>

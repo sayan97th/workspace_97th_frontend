@@ -188,6 +188,24 @@
   }
 }
 
+/* Horizontal scrollbar for the Filter panel's quick-filter facet columns */
+@utility board-filter-scroll {
+  &::-webkit-scrollbar {
+    @apply h-2.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+  }
+}
+
 @utility shell-icon-button {
   @apply flex items-center justify-center rounded-[7px] transition-colors duration-150 hover:bg-white/[0.08];
 }

@@ -2,12 +2,12 @@
 import React from "react";
 import BoardHeader, { type BoardHeaderProps } from "./BoardHeader";
 import BoardViewTabs, { type BoardViewTabsProps } from "./BoardViewTabs";
-import BoardToolbar, { type BoardToolbarProps } from "./BoardToolbar";
 
 export type BoardShellProps = {
   header: BoardHeaderProps;
   tabs: BoardViewTabsProps;
-  toolbar?: BoardToolbarProps;
+  /** Typically a <BoardToolbar toolbar={...} />; kept as a node so BoardShell itself stays non-generic. */
+  toolbar?: React.ReactNode;
   /** The board table (or any scrollable board body). */
   children: React.ReactNode;
 };
@@ -26,7 +26,7 @@ const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, children
     </div>
 
     <div className="flex-none px-6 py-3">
-      <BoardToolbar {...toolbar} />
+      {toolbar}
     </div>
 
     <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-6 pb-20 pt-0.5">

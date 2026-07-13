@@ -1,4 +1,10 @@
 import type { BoardColumn, BoardGroup } from "@/components/board";
+import type {
+  BoardGroupByOption,
+  BoardPersonOption,
+  BoardQuickFilterFacet,
+  BoardSortOption,
+} from "@/components/board/toolbar/types";
 
 export type ClientStatusKey = "active" | "renewal" | "expired";
 
@@ -34,11 +40,26 @@ export type ClientRow = {
   has_partner?: boolean;
   start?: string;
   end?: string;
+  /** Real person identities for the toolbar's Person filter; does not affect TeamAvatars' rendering. */
+  assigned_person_ids: string[];
+  /** The group this row was authored into, so "Group by: Default" can be reconstructed after regrouping. */
+  default_group_id: string;
 };
+
+/** Shared roster backing the toolbar's Person filter, reusing names already used as view tabs. */
+export const CLIENT_HUB_TEAM_ROSTER: BoardPersonOption[] = [
+  { id: "blake", name: "Blake", initials: "B", avatar_seed: 0 },
+  { id: "sam", name: "Sam", initials: "S", avatar_seed: 1 },
+  { id: "jon", name: "Jon", initials: "J", avatar_seed: 2 },
+  { id: "danny", name: "Danny", initials: "D", avatar_seed: 3 },
+  { id: "brandon", name: "Brandon", initials: "BS", avatar_seed: 4 },
+  { id: "mike", name: "Mike", initials: "M", avatar_seed: 5 },
+  { id: "jasmin", name: "Jasmin", initials: "JM", avatar_seed: 6 },
+];
 
 /** Fixed column layout for the Client Hub "Main table" view. */
 export const CLIENT_HUB_COLUMNS: BoardColumn[] = [
-  { id: "item", label: "Item", width: 252 },
+  { id: "item", label: "Item", width: 252, hideable: false },
   { id: "chat", label: "", width: 56, align: "center" },
   { id: "client", label: "Client ...", width: 70 },
   { id: "team", label: "Team", width: 118 },
@@ -51,7 +72,7 @@ export const CLIENT_HUB_COLUMNS: BoardColumn[] = [
 ];
 
 /** Raw row shape used to author the seed data compactly. */
-type RawRow = Omit<ClientRow, "id" | "team_seed">;
+type RawRow = Omit<ClientRow, "id" | "team_seed" | "assigned_person_ids" | "default_group_id">;
 
 const buildGroup = (
   id: string,
@@ -65,6 +86,12 @@ const buildGroup = (
     ...row,
     id: `${id}-${index}`,
     team_seed: index,
+    default_group_id: id,
+    assigned_person_ids: Array.from(
+      { length: row.team_count },
+      (_, member_index) =>
+        CLIENT_HUB_TEAM_ROSTER[(index + member_index) % CLIENT_HUB_TEAM_ROSTER.length].id
+    ),
   })),
 });
 
@@ -118,4 +145,145 @@ export const CLIENT_HUB_VIEWS = [
   "Mike",
   "Blake",
   "Jasmin",
+];
+
+const CLIENT_HUB_ALL_ROWS = CLIENT_HUB_GROUPS.flatMap((group) => group.rows);
+
+const uniqueValues = (values: string[]): string[] => Array.from(new Set(values));
+
+const findRosterMember = (person_id: string) =>
+  CLIENT_HUB_TEAM_ROSTER.find((member) => member.id === person_id);
+
+/** Renders a row's value for a given column id — powers Advanced Filters and column-scoped search. */
+export const getClientColumnText = (row: ClientRow, column_id: string): string => {
+  switch (column_id) {
+    case "item":
+      return row.name;
+    case "chat":
+      return String(row.chat_count);
+    case "client":
+      return row.client_tag ?? "";
+    case "team":
+      return row.assigned_person_ids
+        .map((person_id) => findRosterMember(person_id)?.name ?? "")
+        .join(", ");
+    case "products":
+      return row.products.join(", ");
+    case "kpi":
+      return row.kpi ?? "";
+    case "status":
+      return CLIENT_STATUS[row.status].label;
+    case "partner":
+      return row.has_partner ? "Referral" : "";
+    case "start":
+      return row.start ?? "";
+    case "end":
+      return row.end ?? "";
+    default:
+      return "";
+  }
+};
+
+export const CLIENT_HUB_SORT_OPTIONS: BoardSortOption<ClientRow>[] = [
+  { id: "item", label: "Item", getValue: (row) => row.name },
+  { id: "chat", label: "Updates", getValue: (row) => row.chat_count },
+  { id: "team", label: "Team size", getValue: (row) => row.team_count },
+  { id: "kpi", label: "KPI", getValue: (row) => row.kpi ?? "" },
+  {
+    id: "status",
+    label: "Status",
+    getValue: (row) => ({ active: 0, renewal: 1, expired: 2 }[row.status]),
+  },
+  { id: "start", label: "Start of Current Contract", getValue: (row) => row.start ?? "" },
+  { id: "end", label: "End of Contract", getValue: (row) => row.end ?? "" },
+];
+
+const GROUP_BY_FALLBACK_COLOR = "#8fb4c9";
+
+export const CLIENT_HUB_GROUP_BY_OPTIONS: BoardGroupByOption<ClientRow>[] = [
+  { id: "default", label: "Default" },
+  {
+    id: "status",
+    label: "Status",
+    getGroupKey: (row) => row.status,
+    getGroupLabel: (key) => CLIENT_STATUS[key as ClientStatusKey]?.label ?? key,
+    getGroupColor: (key) => CLIENT_STATUS[key as ClientStatusKey]?.bg ?? GROUP_BY_FALLBACK_COLOR,
+  },
+  {
+    id: "team",
+    label: "Team",
+    getGroupKey: (row) => row.assigned_person_ids[0] ?? "unassigned",
+    getGroupLabel: (key) => findRosterMember(key)?.name ?? "Unassigned",
+    getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+  },
+  {
+    id: "product",
+    label: "Product(s)",
+    getGroupKey: (row) => row.products[0] ?? "none",
+    getGroupLabel: (key) => (key === "none" ? "No product" : key),
+    getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+  },
+  {
+    id: "kpi",
+    label: "KPI",
+    getGroupKey: (row) => row.kpi ?? "blank",
+    getGroupLabel: (key) => (key === "blank" ? "Blank" : key),
+    getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+  },
+];
+
+export const CLIENT_HUB_QUICK_FILTER_FACETS: BoardQuickFilterFacet<ClientRow>[] = [
+  {
+    id: "group",
+    label: "Group",
+    options: CLIENT_HUB_GROUPS.map((group) => ({ id: group.id, label: group.name })),
+    getOptionIds: (row) => [row.default_group_id],
+  },
+  {
+    id: "client_relationship",
+    label: "Client Relationship",
+    options: uniqueValues(CLIENT_HUB_ALL_ROWS.map((row) => row.client_tag ?? "blank")).map((tag) => ({
+      id: tag,
+      label: tag === "blank" ? "Blank" : tag,
+    })),
+    getOptionIds: (row) => [row.client_tag ?? "blank"],
+  },
+  {
+    id: "team",
+    label: "Team",
+    options: CLIENT_HUB_TEAM_ROSTER.map((member) => ({
+      id: member.id,
+      label: member.name,
+      person_id: member.id,
+    })),
+    getOptionIds: (row) => row.assigned_person_ids,
+  },
+  {
+    id: "products",
+    label: "Product(s)",
+    options: uniqueValues(CLIENT_HUB_ALL_ROWS.flatMap((row) => row.products)).map((product) => ({
+      id: product,
+      label: product,
+    })),
+    getOptionIds: (row) => row.products,
+  },
+  {
+    id: "kpi",
+    label: "KPI",
+    options: uniqueValues(CLIENT_HUB_ALL_ROWS.map((row) => row.kpi ?? "blank")).map((kpi) => ({
+      id: kpi,
+      label: kpi === "blank" ? "Blank" : kpi,
+    })),
+    getOptionIds: (row) => [row.kpi ?? "blank"],
+  },
+  {
+    id: "status",
+    label: "Status",
+    options: (Object.keys(CLIENT_STATUS) as ClientStatusKey[]).map((key) => ({
+      id: key,
+      label: CLIENT_STATUS[key].label,
+      dot_color: CLIENT_STATUS[key].bg,
+    })),
+    getOptionIds: (row) => [row.status],
+  },
 ];

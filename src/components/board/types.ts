@@ -12,6 +12,8 @@ export type BoardColumn = {
    * full-bleed coloured cells such as Status and Partner Program.
    */
   bleed?: boolean;
+  /** Whether this column can be hidden via the toolbar's Hide control. Defaults to true. */
+  hideable?: boolean;
 };
 
 /** A collapsible group of rows (e.g. "Active Contracts"). */
@@ -23,6 +25,15 @@ export type BoardGroup<TRow> = {
   rows: TRow[];
 };
 
+/** Row height presets toggled from the toolbar's overflow menu. */
+export type BoardRowHeight = "small" | "medium" | "large";
+
+export const BOARD_ROW_HEIGHT_PX: Record<BoardRowHeight, number> = {
+  small: 34,
+  medium: 42,
+  large: 54,
+};
+
 /** Props shared by every board view built on top of {@link BoardTable}. */
 export type BoardTableProps<TRow> = {
   columns: BoardColumn[];
@@ -31,4 +42,6 @@ export type BoardTableProps<TRow> = {
   renderCell: (row: TRow, column: BoardColumn) => ReactNode;
   /** Minimum table width so columns keep their size and scroll horizontally. */
   minWidth?: number;
+  /** Row height preset. Defaults to "medium" (today's fixed 42px rows). */
+  rowHeight?: BoardRowHeight;
 };

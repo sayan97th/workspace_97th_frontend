@@ -1,21 +1,29 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import {
   BoardShell,
   BoardTable,
+  BoardToolbar,
   OverflowBadge,
   ProductTag,
   StatusPill,
   TeamAvatars,
+  useBoardToolbar,
   type BoardColumn,
+  type BoardToolbarConfig,
 } from "@/components/board";
 import { RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, StarIcon } from "@/icons/workspace-icons";
 import {
   CLIENT_HUB_COLUMNS,
+  CLIENT_HUB_GROUP_BY_OPTIONS,
   CLIENT_HUB_GROUPS,
+  CLIENT_HUB_QUICK_FILTER_FACETS,
+  CLIENT_HUB_SORT_OPTIONS,
+  CLIENT_HUB_TEAM_ROSTER,
   CLIENT_HUB_VIEWS,
   CLIENT_STATUS,
+  getClientColumnText,
   type ClientRow,
 } from "@/data/client-hub-data";
 
@@ -113,18 +121,39 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
  * The Client Hub board view. Composes the reusable board shell + table with the
  * Client Hub column schema, seed data and cell renderers.
  */
-const ClientHubBoard: React.FC = () => (
-  <BoardShell
-    header={{ title: "Client Hub", is_favorite: true, invite_count: 18 }}
-    tabs={{ primary_label: "Main table", views: CLIENT_HUB_VIEWS }}
-  >
-    <BoardTable<ClientRow>
-      columns={CLIENT_HUB_COLUMNS}
-      groups={CLIENT_HUB_GROUPS}
-      getRowId={(row) => row.id}
-      renderCell={renderClientCell}
-    />
-  </BoardShell>
-);
+const ClientHubBoard: React.FC = () => {
+  const toolbar_config: BoardToolbarConfig<ClientRow> = useMemo(
+    () => ({
+      columns: CLIENT_HUB_COLUMNS,
+      default_groups: CLIENT_HUB_GROUPS,
+      getRowId: (row) => row.id,
+      getColumnText: getClientColumnText,
+      persons: CLIENT_HUB_TEAM_ROSTER,
+      getPersonIds: (row) => row.assigned_person_ids,
+      sort_options: CLIENT_HUB_SORT_OPTIONS,
+      group_by_options: CLIENT_HUB_GROUP_BY_OPTIONS,
+      quick_filter_facets: CLIENT_HUB_QUICK_FILTER_FACETS,
+    }),
+    []
+  );
+
+  const toolbar = useBoardToolbar(toolbar_config);
+
+  return (
+    <BoardShell
+      header={{ title: "Client Hub", is_favorite: true, invite_count: 18 }}
+      tabs={{ primary_label: "Main table", views: CLIENT_HUB_VIEWS }}
+      toolbar={<BoardToolbar toolbar={toolbar} />}
+    >
+      <BoardTable<ClientRow>
+        columns={toolbar.visible_columns}
+        groups={toolbar.groups}
+        getRowId={(row) => row.id}
+        renderCell={renderClientCell}
+        rowHeight={toolbar.row_height}
+      />
+    </BoardShell>
+  );
+};
 
 export default ClientHubBoard;
