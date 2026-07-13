@@ -6,6 +6,8 @@ export type BoardPersonOption = {
   initials: string;
   /** Index into TeamAvatars' AVATAR_GRADIENTS palette, so chips match the row avatars. */
   avatar_seed: number;
+  /** Renders a small guest badge on the person's avatar in picker popovers. */
+  is_guest?: boolean;
 };
 
 export type BoardSortDirection = "asc" | "desc";

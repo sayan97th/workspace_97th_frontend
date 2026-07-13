@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo } from "react";
-import { AVATAR_GRADIENTS } from "../TeamAvatars";
+import PersonAvatar from "../PersonAvatar";
 import type { BoardQuickFilterFacetOption, BoardToolbarApi } from "./types";
 
 export type FilterPanelQuickProps<TRow> = {
@@ -50,14 +50,7 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
                           style={{ background: option.dot_color }}
                         />
                       ) : null}
-                      {person ? (
-                        <span
-                          className="flex h-5 w-5 flex-none items-center justify-center rounded-full text-[9.5px] font-bold text-white"
-                          style={{ background: AVATAR_GRADIENTS[person.avatar_seed % AVATAR_GRADIENTS.length] }}
-                        >
-                          {person.initials}
-                        </span>
-                      ) : null}
+                      {person ? <PersonAvatar person={person} size={20} /> : null}
                       <span className="truncate text-[13px] font-medium text-[#e2e6f4]">
                         {option.label}
                       </span>

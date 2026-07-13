@@ -1,23 +1,34 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { PersonIcon } from "@/icons/workspace-icons";
-import { AVATAR_GRADIENTS } from "../TeamAvatars";
+import { CloseIcon } from "@/icons/board-icons";
+import { InfoIcon, PersonIcon, SearchIcon } from "@/icons/workspace-icons";
 import type { BoardToolbarApi } from "./types";
 import BoardPopover from "./BoardPopover";
+import SelectablePersonAvatar from "./SelectablePersonAvatar";
 import ToolbarButton from "./ToolbarButton";
 
 export type PersonControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
+const POPOVER_WIDTH = 360;
+
 function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const [query, setQuery] = useState("");
+  const [is_search_focused, setSearchFocused] = useState(false);
   const is_open = toolbar.active_panel === "person";
+  const trimmed_query = query.trim();
+  const selected_count = toolbar.selected_person_ids.length;
 
   const filtered_persons = toolbar.persons.filter((person) =>
-    person.name.toLowerCase().includes(query.toLowerCase())
+    person.name.toLowerCase().includes(trimmed_query.toLowerCase())
   );
+
+  const handleClose = () => {
+    toolbar.closePanel();
+    setQuery("");
+  };
 
   return (
     <>
@@ -26,51 +37,87 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
         label="Person"
         Icon={PersonIcon}
         is_open={is_open}
-        has_selection={toolbar.selected_person_ids.length > 0}
-        badge_count={toolbar.selected_person_ids.length || undefined}
+        has_selection={selected_count > 0}
+        badge_count={selected_count || undefined}
         onClick={() => toolbar.togglePanel("person")}
       />
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={toolbar.closePanel} width={320}>
-        <div className="flex items-center justify-between gap-2 border-b border-white/[0.07] px-4 pb-3 pt-3.5">
-          <span className="text-[14px] font-bold text-[#f2f4fb]">Filter this board by person</span>
+      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={handleClose} width={POPOVER_WIDTH}>
+        <div className="flex items-center gap-2 px-[18px] pb-3 pt-4">
+          <span className="text-[15px] font-bold text-[#eef2f2]">Filter this board by person</span>
+          <span className="flex flex-none items-center text-[#6e7b7d]" title="People with access to this board">
+            <InfoIcon size={15} />
+          </span>
+          <div className="flex-1" />
+          <span className="flex h-[30px] flex-none cursor-default items-center rounded-lg border border-white/[0.14] px-3 text-[12.5px] font-semibold text-[#8a9495]">
+            Save as new view
+          </span>
         </div>
-        <div className="p-3">
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search"
-            className="mb-3 w-full rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[13px] text-[#e9eded] placeholder:text-[#7f88ac] focus:outline-none"
-          />
-          <div className="grid grid-cols-5 gap-2.5">
-            {filtered_persons.map((person) => {
-              const is_selected = toolbar.selected_person_ids.includes(person.id);
-              return (
-                <button
-                  key={person.id}
-                  type="button"
-                  title={person.name}
-                  onClick={() => toolbar.togglePersonId(person.id)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full text-[11px] font-bold text-white transition-shadow"
-                  style={{
-                    background: AVATAR_GRADIENTS[person.avatar_seed % AVATAR_GRADIENTS.length],
-                    boxShadow: is_selected ? "0 0 0 2px #e53e2e" : "none",
-                  }}
-                >
-                  {person.initials}
-                </button>
-              );
-            })}
+
+        <div className="px-[18px] pb-3.5">
+          <div
+            className="flex h-[38px] items-center gap-[9px] rounded-[9px] border bg-black/20 px-3 transition-colors"
+            style={{ borderColor: is_search_focused ? "var(--color-brand-500)" : "rgba(255,255,255,0.10)" }}
+          >
+            <span className="flex flex-none items-center text-[#7e8889]">
+              <SearchIcon size={15} />
+            </span>
+            <input
+              type="text"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Search"
+              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-[#e9eded] placeholder:text-[#7e8889] focus:outline-none"
+            />
+            {trimmed_query ? (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="flex flex-none items-center text-[#7e8889] hover:text-[#e9eded]"
+              >
+                <CloseIcon size={13} />
+              </button>
+            ) : null}
           </div>
-          {toolbar.selected_person_ids.length > 0 && (
+        </div>
+
+        <div className="shell-scrollbar max-h-[288px] overflow-y-auto px-4 pb-1.5">
+          {filtered_persons.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {filtered_persons.map((person) => (
+                <SelectablePersonAvatar
+                  key={person.id}
+                  person={person}
+                  is_selected={toolbar.selected_person_ids.includes(person.id)}
+                  onToggle={() => toolbar.togglePersonId(person.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 px-5 py-6 text-center">
+              <span className="flex-none text-[#4e5b5b]">
+                <PersonIcon size={24} />
+              </span>
+              <span className="text-[13px] text-[#8a9495]">No people match &ldquo;{trimmed_query}&rdquo;</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-between rounded-b-xl border-t border-white/[0.08] bg-black/[0.14] px-[18px] py-[11px]">
+          <span className="text-[12.5px] text-[#8a9495]">
+            {selected_count === 0 ? `${toolbar.persons.length} people` : `${selected_count} selected`}
+          </span>
+          {selected_count > 0 ? (
             <button
               type="button"
               onClick={toolbar.clearPersonFilter}
-              className="mt-3 text-[13px] font-medium text-[#9aa2c4] hover:text-white"
+              className="text-[13px] font-semibold text-[#c7d0d0] hover:text-white"
             >
               Clear
             </button>
-          )}
+          ) : null}
         </div>
       </BoardPopover>
     </>
