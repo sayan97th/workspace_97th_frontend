@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
@@ -9,8 +9,13 @@ import {
   workspace_nav_tree,
   type WorkspaceTreeNode,
 } from "@/data/workspace-nav-data";
+import {
+  browse_workspaces as default_browse_workspaces,
+  type BrowseWorkspace,
+} from "@/data/workspace-browse-data";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
+import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import {
   ArchiveIcon,
   ChevronRightIcon,
@@ -197,6 +202,38 @@ const AppSidebar: React.FC = () => {
     label: "",
   });
   const [is_browse_open, setIsBrowseOpen] = useState(false);
+  const [is_create_open, setIsCreateOpen] = useState(false);
+  const [workspaces, setWorkspaces] = useState<BrowseWorkspace[]>(default_browse_workspaces);
+  const [active_workspace_id, setActiveWorkspaceId] = useState<string>(
+    () => default_browse_workspaces.find((workspace) => workspace.is_home)?.id ??
+      default_browse_workspaces[0].id
+  );
+
+  const active_workspace = useMemo(
+    () => workspaces.find((workspace) => workspace.id === active_workspace_id) ?? workspaces[0],
+    [workspaces, active_workspace_id]
+  );
+  const recent_workspaces = useMemo(
+    () => workspaces.filter((workspace) => workspace.memberships.includes("recent")),
+    [workspaces]
+  );
+  const my_workspaces = useMemo(
+    () =>
+      workspaces.filter(
+        (workspace) =>
+          workspace.memberships.includes("owner") || workspace.memberships.includes("member")
+      ),
+    [workspaces]
+  );
+
+  const handleSelectWorkspace = (workspace: { id: string }) => {
+    setActiveWorkspaceId(workspace.id);
+  };
+
+  const handleCreateWorkspace = (workspace: BrowseWorkspace) => {
+    setWorkspaces((prev) => [...prev, workspace]);
+    setActiveWorkspaceId(workspace.id);
+  };
 
   const toggleGroup = (id: string) => {
     setExpandedGroupIds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -278,7 +315,11 @@ const AppSidebar: React.FC = () => {
           </div>
 
           <WorkspaceSwitcher
-            onAddWorkspace={() => setIsBrowseOpen(true)}
+            active_workspace={active_workspace}
+            recent_workspaces={recent_workspaces}
+            my_workspaces={my_workspaces}
+            onSelectWorkspace={handleSelectWorkspace}
+            onAddWorkspace={() => setIsCreateOpen(true)}
             onBrowseAll={() => setIsBrowseOpen(true)}
           />
         </div>
@@ -389,6 +430,15 @@ const AppSidebar: React.FC = () => {
       <BrowseWorkspacesModal
         is_open={is_browse_open}
         onClose={() => setIsBrowseOpen(false)}
+        workspaces={workspaces}
+        onSelectWorkspace={handleSelectWorkspace}
+        onCreateWorkspace={() => setIsCreateOpen(true)}
+      />
+
+      <CreateWorkspaceModal
+        is_open={is_create_open}
+        onClose={() => setIsCreateOpen(false)}
+        onCreate={handleCreateWorkspace}
       />
     </>
   );

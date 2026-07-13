@@ -8,6 +8,7 @@
  */
 import type { WorkspaceSummary } from "./workspace-switcher-data";
 import { default_workspace_color } from "./workspace-switcher-data";
+import type { WorkspacePrivacy } from "./workspace-create-data";
 
 /** Membership buckets a workspace can belong to (drives the left-nav tabs). */
 export type WorkspaceMembership = "recent" | "owner" | "member" | "collaborator";
@@ -22,6 +23,8 @@ export type BrowseWorkspace = WorkspaceSummary & {
   role?: string;
   /** Which membership buckets this workspace appears under. */
   memberships: WorkspaceMembership[];
+  /** Set for workspaces created via the "Add new workspace" dialog. */
+  privacy?: WorkspacePrivacy;
 };
 
 export const browse_workspaces: BrowseWorkspace[] = [
