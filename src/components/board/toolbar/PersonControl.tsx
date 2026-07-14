@@ -11,7 +11,7 @@ export type PersonControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
-const POPOVER_WIDTH = 360;
+const POPOVER_WIDTH = 430;
 
 function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);

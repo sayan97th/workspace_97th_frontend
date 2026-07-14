@@ -46,15 +46,27 @@ export type ClientRow = {
   default_group_id: string;
 };
 
-/** Shared roster backing the toolbar's Person filter, reusing names already used as view tabs. */
+/** Shared roster backing the toolbar's Person filter, matching the approved Client Hub design's account people list. */
 export const CLIENT_HUB_TEAM_ROSTER: BoardPersonOption[] = [
-  { id: "blake", name: "Blake", initials: "B", avatar_seed: 0 },
-  { id: "sam", name: "Sam", initials: "S", avatar_seed: 1 },
-  { id: "jon", name: "Jon", initials: "J", avatar_seed: 2 },
-  { id: "danny", name: "Danny", initials: "D", avatar_seed: 3 },
-  { id: "brandon", name: "Brandon", initials: "BS", avatar_seed: 4 },
-  { id: "mike", name: "Mike", initials: "M", avatar_seed: 5 },
-  { id: "jasmin", name: "Jasmin", initials: "JM", avatar_seed: 6 },
+  { id: "josh", name: "Josh Moody", initials: "JM", avatar_seed: 0 },
+  { id: "blake", name: "Blake Denton", initials: "BD", avatar_seed: 1 },
+  { id: "brandon", name: "Brandon Stewart", initials: "BS", avatar_seed: 2 },
+  { id: "rachel", name: "Rachel Tonkovich", initials: "RT", avatar_seed: 3 },
+  { id: "paxton", name: "Paxton Gray", initials: "PG", avatar_seed: 4 },
+  { id: "hayley", name: "Hayley Robinson", initials: "HR", avatar_seed: 5 },
+  { id: "sam", name: "Sam Rivera", initials: "SR", avatar_seed: 6 },
+  { id: "haley", name: "Haley Brooks", initials: "HB", avatar_seed: 7 },
+  { id: "jon", name: "Jon Mattingly", initials: "JM", avatar_seed: 8 },
+  { id: "danny", name: "Danny Olsen", initials: "DO", avatar_seed: 9 },
+  { id: "mike", name: "Mike Powell", initials: "MP", avatar_seed: 10 },
+  { id: "jasmin", name: "Jasmin Cole", initials: "JC", avatar_seed: 11, is_guest: true },
+  { id: "kate", name: "Kate Sherwood", initials: "KS", avatar_seed: 12 },
+  { id: "devin", name: "Devin Marsh", initials: "DM", avatar_seed: 13 },
+  { id: "nora", name: "Nora Fields", initials: "NF", avatar_seed: 14 },
+  { id: "owen", name: "Owen Hart", initials: "OH", avatar_seed: 15 },
+  { id: "priya", name: "Priya Nair", initials: "PN", avatar_seed: 16, is_guest: true },
+  { id: "liam", name: "Liam Foster", initials: "LF", avatar_seed: 17 },
+  { id: "maya", name: "Maya Ortiz", initials: "MO", avatar_seed: 18 },
 ];
 
 /** Fixed column layout for the Client Hub "Main table" view. */

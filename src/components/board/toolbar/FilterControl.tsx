@@ -7,7 +7,7 @@ export type FilterControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
-/** Button only — the Filter panel itself is rendered inline (full width) by BoardToolbar, not as a popover. */
+/** Button only — the (wide) Filter panel itself floats below the toolbar row, positioned by BoardToolbar rather than BoardPopover since it spans the full toolbar width instead of anchoring to this button. */
 function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
   const is_open = toolbar.active_panel === "filter";
   return (

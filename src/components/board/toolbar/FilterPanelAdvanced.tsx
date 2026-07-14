@@ -8,7 +8,7 @@ export type FilterPanelAdvancedProps<TRow> = {
 };
 
 const select_class =
-  "h-[38px] rounded-lg border border-white/[0.12] bg-white/[0.05] px-3 text-[13.5px] text-[#e9eded] focus:outline-none";
+  "h-[38px] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-[13.5px] text-[#e9eded] transition-colors hover:border-white/[0.28] focus:outline-none";
 
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
   return (
@@ -17,7 +17,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
         const is_value_disabled = row.condition === "is_empty" || row.condition === "is_not_empty";
         return (
           <div key={row.id} className="mb-2.5 flex items-center gap-3">
-            <span className="w-11 flex-none text-[13.5px] font-semibold text-[#c3cae6]">
+            <span className="w-11 flex-none text-[13.5px] font-semibold text-[#c7d0d0]">
               {index === 0 ? "Where" : "And"}
             </span>
             <select
@@ -61,7 +61,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
             <button
               type="button"
               onClick={() => toolbar.removeAdvancedFilterRow(row.id)}
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-[#8b93b8] hover:bg-white/[0.08] hover:text-white"
+              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-[#8a9495] hover:bg-white/[0.08] hover:text-[#e9eded]"
               aria-label="Remove filter"
             >
               <CloseIcon size={12} />
@@ -73,7 +73,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
       <button
         type="button"
         onClick={toolbar.addAdvancedFilterRow}
-        className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-brand-500 hover:text-brand-400"
+        className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-[#7fb2ff] hover:text-[#a4c9ff]"
       >
         <PlusIcon size={12} />
         New filter

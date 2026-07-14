@@ -22,13 +22,13 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
 
   return (
     <div>
-      <div className="px-5 pb-2.5 text-[13.5px] font-semibold text-[#c3cae6]">All columns</div>
+      <div className="px-5 pb-2.5 text-[13.5px] font-semibold text-[#c7d0d0]">All columns</div>
       <div className="board-filter-scroll flex gap-6 overflow-x-auto px-5 pb-4">
         {toolbar.quick_filter_facets.map((facet) => {
           const selected = toolbar.quick_filter_selections[facet.id] ?? [];
           return (
             <div key={facet.id} className="flex w-[172px] flex-none flex-col gap-2">
-              <div className="pb-0.5 text-[13px] font-medium text-[#8b93b8]">{facet.label}</div>
+              <div className="pb-0.5 text-[13px] font-medium text-[#8a9495]">{facet.label}</div>
               {facet.options.map((option) => {
                 const is_selected = selected.includes(option.id);
                 const person = option.person_id ? findPerson(option.person_id) : undefined;
@@ -40,7 +40,7 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
                     className={`flex h-[34px] items-center justify-between gap-2 rounded-[7px] border px-[11px] transition-colors ${
                       is_selected
                         ? "border-brand-500 bg-brand-500/10"
-                        : "border-white/[0.05] bg-white/[0.05] hover:border-white/[0.14] hover:bg-white/[0.1]"
+                        : "border-white/[0.05] bg-white/[0.04] hover:border-white/[0.14] hover:bg-white/[0.09]"
                     }`}
                   >
                     <span className="flex min-w-0 items-center gap-2">
@@ -51,11 +51,11 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
                         />
                       ) : null}
                       {person ? <PersonAvatar person={person} size={20} /> : null}
-                      <span className="truncate text-[13px] font-medium text-[#e2e6f4]">
+                      <span className="truncate text-[13px] font-medium text-[#e4e9e9]">
                         {option.label}
                       </span>
                     </span>
-                    <span className="flex-none text-[12.5px] font-medium text-[#868eaf]">
+                    <span className="flex-none text-[12.5px] font-medium text-[#7e8889]">
                       {countOption(facet.id, option)}
                     </span>
                   </button>
