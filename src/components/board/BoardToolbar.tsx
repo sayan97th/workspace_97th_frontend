@@ -11,6 +11,7 @@ import SortControl from "./toolbar/SortControl";
 import HideColumnsControl from "./toolbar/HideColumnsControl";
 import GroupByControl from "./toolbar/GroupByControl";
 import OverflowControl from "./toolbar/OverflowControl";
+import ConditionalColoringPanel from "./toolbar/ConditionalColoringPanel";
 
 export type BoardToolbarProps<TRow> = {
   new_item_label?: string;
@@ -20,15 +21,17 @@ export type BoardToolbarProps<TRow> = {
 /** Board toolbar: the red "New item" split button plus the filter/sort/group controls. */
 function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
+  const is_color_open = toolbar.active_panel === "color";
+  const is_inline_panel_open = is_filter_open || is_color_open;
 
   useEffect(() => {
-    if (!is_filter_open) return;
+    if (!is_inline_panel_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") toolbar.closePanel();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [is_filter_open, toolbar]);
+  }, [is_inline_panel_open, toolbar]);
 
   return (
     <div className="relative flex items-center gap-1">
@@ -63,12 +66,13 @@ function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolb
         <CollapseTableIcon />
       </button>
 
-      {is_filter_open && (
+      {is_inline_panel_open && (
         <>
           {/* Backdrop: dismisses the panel on outside click, matching the other toolbar popovers. */}
           <div className="fixed inset-0 z-40" onClick={toolbar.closePanel} />
           <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full max-w-[832px]">
-            <FilterPanel toolbar={toolbar} />
+            {is_filter_open && <FilterPanel toolbar={toolbar} />}
+            {is_color_open && <ConditionalColoringPanel toolbar={toolbar} />}
           </div>
         </>
       )}

@@ -152,6 +152,8 @@ const ClientHubBoard: React.FC = () => {
         renderCell={renderClientCell}
         rowHeight={toolbar.row_height}
         pinnedColumnIds={toolbar.pinned_column_ids}
+        rowColors={toolbar.row_colors}
+        cellColors={toolbar.cell_colors}
       />
     </BoardShell>
   );

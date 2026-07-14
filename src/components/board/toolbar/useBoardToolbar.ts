@@ -3,8 +3,10 @@ import { useMemo, useState } from "react";
 import type { BoardRowHeight } from "../types";
 import { deriveBoardRows } from "./deriveBoardRows";
 import {
+  BOARD_CONDITIONAL_COLOR_PALETTE,
   BOARD_DEFAULT_GROUP_BY_ID,
   type BoardAdvancedFilterRow,
+  type BoardConditionalColorRule,
   type BoardSortDirection,
   type BoardSortRule,
   type BoardToolbarApi,
@@ -42,6 +44,8 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const [show_empty_groups, setShowEmptyGroups] = useState(false);
 
   const [row_height, setRowHeight] = useState<BoardRowHeight>("medium");
+
+  const [conditional_color_rules, setConditionalColorRules] = useState<BoardConditionalColorRule[]>([]);
 
   const openPanel = (id: BoardToolbarPanelId) => setActivePanel(id);
   const closePanel = () => setActivePanel(null);
@@ -123,6 +127,26 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       config.columns.filter((column) => column.hideable !== false).map((column) => column.id)
     );
 
+  const addConditionalColorRule = () =>
+    setConditionalColorRules((current) => [
+      ...current,
+      {
+        id: createId(),
+        color: BOARD_CONDITIONAL_COLOR_PALETTE[current.length % BOARD_CONDITIONAL_COLOR_PALETTE.length],
+        scope: "row",
+        column_id: null,
+        condition: null,
+        value: "",
+      },
+    ]);
+  const removeConditionalColorRule = (id: string) =>
+    setConditionalColorRules((current) => current.filter((rule) => rule.id !== id));
+  const updateConditionalColorRule = (id: string, patch: Partial<BoardConditionalColorRule>) =>
+    setConditionalColorRules((current) =>
+      current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule))
+    );
+  const clearConditionalColorRules = () => setConditionalColorRules([]);
+
   const togglePinnedColumn = (id: string) =>
     setPinnedColumnIds((current) =>
       current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id]
@@ -142,6 +166,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
         group_by_option_id,
         group_order_direction,
         show_empty_groups,
+        conditional_color_rules,
       }),
     [
       config,
@@ -155,6 +180,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       group_by_option_id,
       group_order_direction,
       show_empty_groups,
+      conditional_color_rules,
     ]
   );
 
@@ -218,6 +244,12 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
 
     row_height,
     setRowHeight,
+
+    conditional_color_rules,
+    addConditionalColorRule,
+    removeConditionalColorRule,
+    updateConditionalColorRule,
+    clearConditionalColorRules,
 
     ...derived,
   };

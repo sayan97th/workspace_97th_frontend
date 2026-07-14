@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef } from "react";
-import { CheckIcon, PinIcon } from "@/icons/board-icons";
+import { CheckIcon, ColorFillIcon, EditPencilIcon, PinIcon } from "@/icons/board-icons";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import type { BoardRowHeight } from "../types";
 import type { BoardToolbarApi } from "./types";
@@ -18,13 +18,12 @@ const ROW_HEIGHT_OPTIONS: { id: BoardRowHeight; label: string }[] = [
   { id: "large", label: "Large" },
 ];
 
-/** Decorative items matching the design's overflow menu (Conditional coloring, Duplicate view) — inert, same convention as BoardHeader's Integrate/Automate buttons. */
-const DECORATIVE_ITEMS = ["Conditional coloring", "Duplicate view"];
-
 function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const is_menu_open = toolbar.active_panel === "overflow";
   const is_pin_open = toolbar.active_panel === "pin";
+  const is_color_open = toolbar.active_panel === "color";
+  const has_color_rules = toolbar.conditional_color_rules.length > 0;
 
   return (
     <>
@@ -33,7 +32,7 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
         label=""
         aria_label="More toolbar actions"
         Icon={MoreDotsIcon}
-        is_open={is_menu_open || is_pin_open}
+        is_open={is_menu_open || is_pin_open || is_color_open}
         has_selection={toolbar.pinned_column_ids.length > 0}
         onClick={() => toolbar.togglePanel("overflow")}
       />
@@ -71,16 +70,32 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
             </button>
           ))}
           <div className="my-1 h-px bg-white/[0.08]" />
-          {DECORATIVE_ITEMS.map((label) => (
-            <button
-              key={label}
-              type="button"
-              onClick={toolbar.closePanel}
-              className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#c7d0d0] hover:bg-white/[0.08]"
-            >
-              {label}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => toolbar.openPanel("color")}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#e9eded] hover:bg-white/[0.08]"
+          >
+            <span className="flex flex-none text-[#9aa4a5]">
+              <ColorFillIcon size={15} />
+            </span>
+            Conditional coloring
+            {has_color_rules && (
+              <span className="ml-auto flex-none text-[12.5px] font-medium text-[#7e8889]">
+                {toolbar.conditional_color_rules.length}
+              </span>
+            )}
+          </button>
+          {/* Decorative, matching the design's disabled "Default item values" entry — same convention as BoardHeader's Integrate/Automate buttons. */}
+          <button
+            type="button"
+            disabled
+            className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#5a6667]"
+          >
+            <span className="flex flex-none text-[#4e5b5b]">
+              <EditPencilIcon size={15} />
+            </span>
+            Default item values
+          </button>
         </div>
       </BoardPopover>
       <PinColumnsControl toolbar={toolbar} anchor_el={button_ref.current} is_open={is_pin_open} />

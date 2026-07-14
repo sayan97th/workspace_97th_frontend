@@ -60,4 +60,8 @@ export type BoardTableProps<TRow> = {
   rowHeight?: BoardRowHeight;
   /** Column ids frozen to the left edge of the table via the toolbar's Pin columns control. */
   pinnedColumnIds?: string[];
+  /** Row-id → background color, from the toolbar's Conditional coloring rules (scope "row"). */
+  rowColors?: Record<string, string>;
+  /** Row-id → column-id → background color, from the toolbar's Conditional coloring rules (scope "cell"). */
+  cellColors?: Record<string, Record<string, string>>;
 };

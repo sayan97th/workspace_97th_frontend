@@ -3,6 +3,7 @@ import {
   BOARD_DEFAULT_GROUP_BY_ID,
   type BoardAdvancedFilterCondition,
   type BoardAdvancedFilterRow,
+  type BoardConditionalColorRule,
   type BoardSortDirection,
   type BoardSortRule,
   type BoardToolbarConfig,
@@ -19,6 +20,7 @@ export type BoardDerivationState = {
   group_by_option_id: string;
   group_order_direction: BoardSortDirection;
   show_empty_groups: boolean;
+  conditional_color_rules: BoardConditionalColorRule[];
 };
 
 export type BoardDerivedRows<TRow> = {
@@ -27,9 +29,12 @@ export type BoardDerivedRows<TRow> = {
   total_row_count: number;
   visible_row_count: number;
   active_filter_count: number;
+  row_colors: Record<string, string>;
+  cell_colors: Record<string, Record<string, string>>;
 };
 
-const evaluateCondition = (
+/** Shared by Advanced Filters and Conditional Coloring, both of which match a column's display text against a condition. */
+export const evaluateCondition = (
   text: string,
   condition: BoardAdvancedFilterCondition,
   value: string
@@ -165,11 +170,44 @@ export function deriveBoardRows<TRow>(
     active_advanced_filter_rows.length +
     Object.values(state.quick_filter_selections).reduce((sum, ids) => sum + ids.length, 0);
 
+  const active_color_rules = state.conditional_color_rules.filter(
+    (rule) => rule.column_id && rule.condition
+  );
+  const row_colors: Record<string, string> = {};
+  const cell_colors: Record<string, Record<string, string>> = {};
+  if (active_color_rules.length) {
+    for (const row of flattened_rows) {
+      const row_id = config.getRowId(row);
+      let row_color: string | undefined;
+      let row_cell_colors: Record<string, string> | undefined;
+
+      for (const rule of active_color_rules) {
+        const matches = evaluateCondition(
+          config.getColumnText(row, rule.column_id!),
+          rule.condition!,
+          rule.value
+        );
+        if (!matches) continue;
+
+        if (rule.scope === "row") {
+          if (!row_color) row_color = rule.color;
+        } else if (!row_cell_colors?.[rule.column_id!]) {
+          row_cell_colors = { ...row_cell_colors, [rule.column_id!]: rule.color };
+        }
+      }
+
+      if (row_color) row_colors[row_id] = row_color;
+      if (row_cell_colors) cell_colors[row_id] = row_cell_colors;
+    }
+  }
+
   return {
     groups,
     visible_columns,
     total_row_count: flattened_rows.length,
     visible_row_count,
     active_filter_count,
+    row_colors,
+    cell_colors,
   };
 }

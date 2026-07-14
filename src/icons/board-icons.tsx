@@ -164,6 +164,30 @@ export const DragHandleIcon: React.FC<IconProps> = ({ className, size = 10 }) =>
   </svg>
 );
 
+/** Paint-drop glyph for the "Conditional coloring" overflow-menu entry. */
+export const ColorFillIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2.4c2.6 2.9 4.2 4.9 4.2 6.9a4.2 4.2 0 0 1-8.4 0c0-2 1.6-4 4.2-6.9Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Pencil glyph for the (disabled) "Default item values" overflow-menu entry. */
+export const EditPencilIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M10.6 2.6 13.4 5.4 5.4 13.4 2.6 13.4 2.6 10.6 10.6 2.6Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const SortAscendingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

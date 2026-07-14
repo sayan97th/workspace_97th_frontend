@@ -52,6 +52,8 @@ function BoardTable<TRow>({
   minWidth = 1450,
   rowHeight = "medium",
   pinnedColumnIds = [],
+  rowColors = {},
+  cellColors = {},
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
@@ -181,39 +183,59 @@ function BoardTable<TRow>({
                 )}
 
                 {/* Rows */}
-                {group.rows.map((row) => (
-                  <div
-                    key={getRowId(row)}
-                    className="flex items-stretch border-t border-white/[0.05] bg-[#0c1b1a] transition-colors hover:bg-[#112423]"
-                    style={{ borderLeft: `4px solid ${group.accent_color}` }}
-                  >
+                {group.rows.map((row) => {
+                  const row_id = getRowId(row);
+                  const row_background = rowColors[row_id];
+                  const row_cell_colors = cellColors[row_id];
+                  return (
                     <div
-                      className="flex flex-none items-center justify-center border-r border-white/[0.04]"
+                      key={row_id}
+                      className={`flex items-stretch border-t border-white/[0.05] transition-colors ${
+                        row_background ? "" : "bg-[#0c1b1a] hover:bg-[#112423]"
+                      }`}
                       style={{
-                        width: CHECKBOX_WIDTH,
-                        ...checkboxPinStyle,
-                        ...(checkboxPinStyle ? { background: ROW_STICKY_BG } : {}),
+                        borderLeft: `4px solid ${group.accent_color}`,
+                        ...(row_background ? { background: row_background } : {}),
                       }}
                     >
-                      <BoardCheckbox />
-                    </div>
-                    {columns.map((column) => (
                       <div
-                        key={column.id}
-                        className={`flex flex-none items-center border-r border-white/[0.04] ${
-                          column.align === "center" ? "justify-center" : "justify-start"
-                        } ${column.bleed ? "" : "px-3"}`}
+                        className="flex flex-none items-center justify-center border-r border-white/[0.04]"
                         style={{
-                          width: column.width,
-                          height: row_height_px,
-                          ...getColumnPinStyle(column, ROW_STICKY_BG),
+                          width: CHECKBOX_WIDTH,
+                          ...checkboxPinStyle,
+                          ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
                         }}
                       >
-                        {renderCell(row, column)}
+                        <BoardCheckbox />
                       </div>
-                    ))}
-                  </div>
-                ))}
+                      {columns.map((column) => {
+                        const cell_background = row_cell_colors?.[column.id];
+                        const pin_style = getColumnPinStyle(
+                          column,
+                          cell_background ?? row_background ?? ROW_STICKY_BG
+                        );
+                        return (
+                          <div
+                            key={column.id}
+                            className={`flex flex-none items-center border-r border-white/[0.04] ${
+                              column.align === "center" ? "justify-center" : "justify-start"
+                            } ${column.bleed ? "" : "px-3"}`}
+                            style={{
+                              width: column.width,
+                              height: row_height_px,
+                              ...(!column.bleed && !pin_style && cell_background
+                                ? { background: cell_background }
+                                : {}),
+                              ...pin_style,
+                            }}
+                          >
+                            {renderCell(row, column)}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
 
                 {/* Add-item footer */}
                 {!is_empty && (

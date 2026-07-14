@@ -28,4 +28,8 @@ export { default as PinColumnsControl } from "./toolbar/PinColumnsControl";
 export type { PinColumnsControlProps } from "./toolbar/PinColumnsControl";
 export { default as InlineFieldMenu } from "./toolbar/InlineFieldMenu";
 export type { InlineFieldMenuProps } from "./toolbar/InlineFieldMenu";
+export { default as ColorSwatchPicker } from "./toolbar/ColorSwatchPicker";
+export type { ColorSwatchPickerProps } from "./toolbar/ColorSwatchPicker";
+export { default as ConditionalColoringPanel } from "./toolbar/ConditionalColoringPanel";
+export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColoringPanel";
 export * from "./toolbar/types";

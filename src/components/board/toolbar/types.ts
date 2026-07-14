@@ -83,7 +83,35 @@ export type BoardToolbarPanelId =
   | "hide"
   | "pin"
   | "group"
-  | "overflow";
+  | "overflow"
+  | "color";
+
+/** Where a matching conditional-coloring rule paints its color: the whole row, or just the matched column's cell. */
+export type BoardConditionalColorScope = "row" | "cell";
+
+export const BOARD_CONDITIONAL_COLOR_SCOPES: { id: BoardConditionalColorScope; label: string }[] = [
+  { id: "row", label: "Row" },
+  { id: "cell", label: "Cell" },
+];
+
+/** Monday-style swatch grid offered by the conditional-coloring color picker. */
+export const BOARD_CONDITIONAL_COLOR_PALETTE: string[] = [
+  "#7f5347", "#037f4c", "#00c875", "#9cd326", "#cab641", "#e2a200",
+  "#b25e03", "#a25ddc", "#784bd1", "#5559df", "#0086c0", "#579bfc",
+  "#66ccff", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d",
+  "#ffcb00", "#333333", "#808080", "#c4c4c4", "#66cccc", "#4eccc6",
+  "#bb3354", "#401694", "#0f5d97", "#225091", "#175a63", "#563e3e",
+];
+
+/** One "paint this row/cell when a column matches a condition" rule, evaluated top to bottom. */
+export type BoardConditionalColorRule = {
+  id: string;
+  color: string;
+  scope: BoardConditionalColorScope;
+  column_id: string | null;
+  condition: BoardAdvancedFilterCondition | null;
+  value: string;
+};
 
 export type BoardFilterMode = "quick" | "advanced";
 
@@ -164,10 +192,20 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   row_height: BoardRowHeight;
   setRowHeight: (height: BoardRowHeight) => void;
 
+  conditional_color_rules: BoardConditionalColorRule[];
+  addConditionalColorRule: () => void;
+  removeConditionalColorRule: (id: string) => void;
+  updateConditionalColorRule: (id: string, patch: Partial<BoardConditionalColorRule>) => void;
+  clearConditionalColorRules: () => void;
+
   // derived (memoized)
   visible_columns: BoardColumn[];
   groups: BoardGroup<TRow>[];
   total_row_count: number;
   visible_row_count: number;
   active_filter_count: number;
+  /** Row-id → color, for rules scoped to "row" (first match wins). */
+  row_colors: Record<string, string>;
+  /** Row-id → column-id → color, for rules scoped to "cell" (first match per column wins). */
+  cell_colors: Record<string, Record<string, string>>;
 };
