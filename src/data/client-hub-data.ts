@@ -251,6 +251,7 @@ export const CLIENT_HUB_GROUP_BY_OPTIONS: BoardGroupByOption<ClientRow>[] = [
     getGroupKey: (row) => row.status,
     getGroupLabel: (key) => CLIENT_STATUS[key as ClientStatusKey]?.label ?? key,
     getGroupColor: (key) => CLIENT_STATUS[key as ClientStatusKey]?.bg ?? GROUP_BY_FALLBACK_COLOR,
+    swatch: { accent_color: "#00c875", glyph: "St" },
   },
   {
     id: "team",
@@ -258,6 +259,7 @@ export const CLIENT_HUB_GROUP_BY_OPTIONS: BoardGroupByOption<ClientRow>[] = [
     getGroupKey: (row) => row.assigned_person_ids[0] ?? "unassigned",
     getGroupLabel: (key) => findRosterMember(key)?.name ?? "Unassigned",
     getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+    swatch: { accent_color: "#579bfc", glyph: "Te" },
   },
   {
     id: "product",
@@ -265,6 +267,7 @@ export const CLIENT_HUB_GROUP_BY_OPTIONS: BoardGroupByOption<ClientRow>[] = [
     getGroupKey: (row) => row.products[0] ?? "none",
     getGroupLabel: (key) => (key === "none" ? "No product" : key),
     getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+    swatch: { accent_color: "#00c875", glyph: "Pr" },
   },
   {
     id: "kpi",
@@ -272,6 +275,7 @@ export const CLIENT_HUB_GROUP_BY_OPTIONS: BoardGroupByOption<ClientRow>[] = [
     getGroupKey: (row) => row.kpi ?? "blank",
     getGroupLabel: (key) => (key === "blank" ? "Blank" : key),
     getGroupColor: () => GROUP_BY_FALLBACK_COLOR,
+    swatch: { accent_color: "#2b76e5", glyph: "K" },
   },
 ];
 

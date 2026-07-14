@@ -44,6 +44,8 @@ export type BoardGroupByOption<TRow> = {
   getGroupKey?: (row: TRow) => string;
   getGroupLabel?: (key: string) => string;
   getGroupColor?: (key: string) => string;
+  /** Column badge shown next to the option in the Group-by column picker. Omit for the "default" option. */
+  swatch?: BoardColumnSwatch;
 };
 
 export const BOARD_DEFAULT_GROUP_BY_ID = "default";
