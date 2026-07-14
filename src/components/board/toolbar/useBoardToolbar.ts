@@ -43,7 +43,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const [group_order_direction, setGroupOrderDirection] = useState<BoardSortDirection>("asc");
   const [show_empty_groups, setShowEmptyGroups] = useState(false);
 
-  const [row_height, setRowHeight] = useState<BoardRowHeight>("medium");
+  const [row_height, setRowHeight] = useState<BoardRowHeight>("single");
 
   const [conditional_color_rules, setConditionalColorRules] = useState<BoardConditionalColorRule[]>([]);
 

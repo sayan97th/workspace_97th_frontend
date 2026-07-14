@@ -188,6 +188,38 @@ export const EditPencilIcon: React.FC<IconProps> = ({ className, size = 16 }) =>
   </svg>
 );
 
+/** Vertical ruler glyph for the "Item height" overflow-menu entry. */
+export const ItemHeightIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2.2v11.6 M8 2.2 6 4.4 M8 2.2 10 4.4 M8 13.8 6 11.6 M8 13.8 10 11.6 M2.8 5h1.6 M11.6 5h1.6 M2.8 11h1.6 M11.6 11h1.6"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Ruler + `lines` text-bar glyph identifying a row-height preset (Single/Double/Triple) in the Item height submenu. */
+export const RowHeightIcon: React.FC<IconProps & { lines?: 1 | 2 | 3 }> = ({ className, size = 16, lines = 1 }) => {
+  const bar_ys = lines === 1 ? [8] : lines === 2 ? [5.5, 10.5] : [4, 8, 12];
+  return (
+    <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <path
+        d="M3 2.4v11.2 M3 2.4 1.6 4 M3 2.4 4.4 4 M3 13.6 1.6 12 M3 13.6 4.4 12"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {bar_ys.map((y) => (
+        <line key={y} x1="7" y1={y} x2="14" y2={y} stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+      ))}
+    </svg>
+  );
+};
+
 export const SortAscendingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

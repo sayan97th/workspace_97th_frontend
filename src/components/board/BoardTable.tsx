@@ -50,7 +50,7 @@ function BoardTable<TRow>({
   getRowId,
   renderCell,
   minWidth = 1450,
-  rowHeight = "medium",
+  rowHeight = "single",
   pinnedColumnIds = [],
   rowColors = {},
   cellColors = {},

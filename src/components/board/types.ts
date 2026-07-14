@@ -39,13 +39,13 @@ export type BoardGroup<TRow> = {
   rows: TRow[];
 };
 
-/** Row height presets toggled from the toolbar's overflow menu. */
-export type BoardRowHeight = "small" | "medium" | "large";
+/** Row height presets toggled from the toolbar's overflow menu ("Item height" submenu). */
+export type BoardRowHeight = "single" | "double" | "triple";
 
 export const BOARD_ROW_HEIGHT_PX: Record<BoardRowHeight, number> = {
-  small: 34,
-  medium: 42,
-  large: 54,
+  single: 42,
+  double: 68,
+  triple: 94,
 };
 
 /** Props shared by every board view built on top of {@link BoardTable}. */

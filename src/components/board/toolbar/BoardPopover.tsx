@@ -76,6 +76,10 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
       const target = event.target as Node;
       if (popover_ref.current?.contains(target)) return;
       if (anchor_el?.contains(target)) return;
+      // A nested MenuFlyout (e.g. the "Item height" submenu) portals to document.body as a
+      // sibling, so it isn't a DOM descendant of this popover. Treat clicks inside any such
+      // flyout as "inside" so opening a submenu doesn't dismiss its parent menu.
+      if (target instanceof Element && target.closest("[data-board-menu-flyout]")) return;
       onClose();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
