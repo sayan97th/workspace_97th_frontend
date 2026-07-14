@@ -178,6 +178,8 @@ export type AccountMenuProps = {
   onClose: () => void;
   /** Opens the invite-members flow owned by the top bar. */
   onInviteMembers?: () => void;
+  /** Opens the Teams directory owned by the top bar. */
+  onOpenTeams?: () => void;
   /** Organization / workspace name shown in the panel header. */
   organization_name?: string;
 };
@@ -191,6 +193,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   is_open,
   onClose,
   onInviteMembers,
+  onOpenTeams,
   organization_name = "97th Floor",
 }) => {
   const router = useRouter();
@@ -229,13 +232,18 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onInviteMembers?.();
   };
 
+  const handleOpenTeams = () => {
+    onClose();
+    onOpenTeams?.();
+  };
+
   const account_items: MenuItem[] = [
     { label: "My profile", icon: <ProfileGlyph />, onSelect: goTo("/profile") },
     { label: "Developers", icon: <DevelopersGlyph />, onSelect: onClose },
     { label: "Trash", icon: <TrashGlyph />, onSelect: onClose },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: onClose },
     { label: "Administration", icon: <AdministrationGlyph />, onSelect: onClose },
-    { label: "Teams", icon: <TeamsGlyph />, onSelect: onClose },
+    { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
     { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },
   ];
 

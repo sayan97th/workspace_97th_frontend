@@ -551,3 +551,25 @@ export const HamburgerIcon: React.FC<IconProps> = ({ className, size = 20 }) => 
     />
   </svg>
 );
+
+/** Two-person "Teams" glyph — matches the approved 97 Workspace Menu design's Teams entries. */
+export const TeamsIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="5.5" cy="6" r="2" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="10.5" cy="6" r="2" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M2 12.5 c0-2 1.5-3 3.5-3 s3.5 1 3.5 3 M8.5 12.5 c.2-2 1.7-3 3.5-3 s2 1 2 3"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** Single-team folder glyph used for individual team rows (vs. the two-person {@link TeamsIcon}). */
+export const TeamFolderIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="3.2" width="12" height="9.6" rx="1.8" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M2 6 H14" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);

@@ -12,6 +12,7 @@ import InviteMembersModal, {
 } from "./InviteMembersModal";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
+import { TeamsModal } from "@/components/teams";
 import {
   AppsGridIcon,
   BellIcon,
@@ -35,6 +36,7 @@ const AppTopBar: React.FC = () => {
   const [is_invite_open, setIsInviteOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
   const [is_feed_open, setIsFeedOpen] = useState(false);
+  const [is_teams_open, setIsTeamsOpen] = useState(false);
 
   const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
   const closeNotifications = () => setIsNotificationsOpen(false);
@@ -47,6 +49,9 @@ const AppTopBar: React.FC = () => {
 
   const openInvite = () => setIsInviteOpen(true);
   const closeInvite = () => setIsInviteOpen(false);
+
+  const openTeams = () => setIsTeamsOpen(true);
+  const closeTeams = () => setIsTeamsOpen(false);
 
   const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
     // No backend wiring yet — surface the payload for the future API hook.
@@ -190,10 +195,13 @@ const AppTopBar: React.FC = () => {
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
 
+      <TeamsModal is_open={is_teams_open} onClose={closeTeams} />
+
       <AccountMenu
         is_open={is_account_open}
         onClose={closeAccount}
         onInviteMembers={openInvite}
+        onOpenTeams={openTeams}
       />
     </>
   );
