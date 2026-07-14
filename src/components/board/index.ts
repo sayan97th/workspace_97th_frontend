@@ -18,4 +18,8 @@ export { BOARD_ROW_HEIGHT_PX } from "./types";
 export { default as useBoardToolbar } from "./toolbar/useBoardToolbar";
 export { default as SelectablePersonAvatar } from "./toolbar/SelectablePersonAvatar";
 export type { SelectablePersonAvatarProps } from "./toolbar/SelectablePersonAvatar";
+export { default as ColumnSwatchBadge } from "./toolbar/ColumnSwatchBadge";
+export type { ColumnSwatchBadgeProps } from "./toolbar/ColumnSwatchBadge";
+export { default as InlineFieldMenu } from "./toolbar/InlineFieldMenu";
+export type { InlineFieldMenuProps } from "./toolbar/InlineFieldMenu";
 export * from "./toolbar/types";

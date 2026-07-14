@@ -103,7 +103,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const addSortRule = () =>
     setSortRules((current) => [
       ...current,
-      { id: createId(), sort_option_id: null, direction: "asc" },
+      { id: createId(), sort_option_id: null, direction: "asc", join_operator: "and" },
     ]);
   const removeSortRule = (id: string) =>
     setSortRules((current) => current.filter((rule) => rule.id !== id));

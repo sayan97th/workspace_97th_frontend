@@ -12,16 +12,29 @@ export type BoardPersonOption = {
 
 export type BoardSortDirection = "asc" | "desc";
 
+/** Colour + glyph shown on a column's badge in the Sort/Group-by column pickers. */
+export type BoardColumnSwatch = {
+  accent_color: string;
+  glyph: string;
+  /** Defaults to white; pale accent colours (e.g. yellow) need a dark glyph colour. */
+  glyph_text_color?: string;
+};
+
 export type BoardSortOption<TRow> = {
   id: string;
   label: string;
   getValue: (row: TRow) => string | number;
+  swatch?: BoardColumnSwatch;
 };
+
+/** How a sort rule combines with the rule above it. Cosmetic only — rules always apply as sequential tie-breakers. */
+export type BoardSortJoinOperator = "and" | "or";
 
 export type BoardSortRule = {
   id: string;
   sort_option_id: string | null;
   direction: BoardSortDirection;
+  join_operator: BoardSortJoinOperator;
 };
 
 export type BoardGroupByOption<TRow> = {

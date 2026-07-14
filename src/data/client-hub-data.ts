@@ -197,17 +197,48 @@ export const getClientColumnText = (row: ClientRow, column_id: string): string =
 };
 
 export const CLIENT_HUB_SORT_OPTIONS: BoardSortOption<ClientRow>[] = [
-  { id: "item", label: "Item", getValue: (row) => row.name },
-  { id: "chat", label: "Updates", getValue: (row) => row.chat_count },
-  { id: "team", label: "Team size", getValue: (row) => row.team_count },
-  { id: "kpi", label: "KPI", getValue: (row) => row.kpi ?? "" },
+  {
+    id: "item",
+    label: "Item",
+    getValue: (row) => row.name,
+    swatch: { accent_color: "#7e5bef", glyph: "Tt" },
+  },
+  {
+    id: "chat",
+    label: "Updates",
+    getValue: (row) => row.chat_count,
+    swatch: { accent_color: "#fdab3d", glyph: "Up" },
+  },
+  {
+    id: "team",
+    label: "Team size",
+    getValue: (row) => row.team_count,
+    swatch: { accent_color: "#579bfc", glyph: "Te" },
+  },
+  {
+    id: "kpi",
+    label: "KPI",
+    getValue: (row) => row.kpi ?? "",
+    swatch: { accent_color: "#2b76e5", glyph: "K" },
+  },
   {
     id: "status",
     label: "Status",
     getValue: (row) => ({ active: 0, renewal: 1, expired: 2 }[row.status]),
+    swatch: { accent_color: "#00c875", glyph: "St" },
   },
-  { id: "start", label: "Start of Current Contract", getValue: (row) => row.start ?? "" },
-  { id: "end", label: "End of Contract", getValue: (row) => row.end ?? "" },
+  {
+    id: "start",
+    label: "Start of Current Contract",
+    getValue: (row) => row.start ?? "",
+    swatch: { accent_color: "#17a2b8", glyph: "Sc" },
+  },
+  {
+    id: "end",
+    label: "End of Contract",
+    getValue: (row) => row.end ?? "",
+    swatch: { accent_color: "#d14fa0", glyph: "Ec" },
+  },
 ];
 
 const GROUP_BY_FALLBACK_COLOR = "#8fb4c9";

@@ -139,3 +139,41 @@ export const PlusIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
     <path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
   </svg>
 );
+
+/** 6-dot grip used as the drag affordance on reorderable rows (e.g. Sort rules). */
+export const DragHandleIcon: React.FC<IconProps> = ({ className, size = 10 }) => (
+  <svg className={className} width={size} height={size * 1.6} viewBox="0 0 10 16" fill="currentColor">
+    <circle cx="3" cy="4" r="1.1" />
+    <circle cx="7" cy="4" r="1.1" />
+    <circle cx="3" cy="8" r="1.1" />
+    <circle cx="7" cy="8" r="1.1" />
+    <circle cx="3" cy="12" r="1.1" />
+    <circle cx="7" cy="12" r="1.1" />
+  </svg>
+);
+
+export const SortAscendingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2.5 4.5h8M2.5 8h5.5M2.5 11.5h3M13 3.5v9M13 12.5l-1.8-1.8M13 12.5l1.8-1.8"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const SortDescendingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2.5 4.5h3M2.5 8h5.5M2.5 11.5h8M13 12.5v-9M13 3.5l-1.8 1.8M13 3.5l1.8 1.8"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
