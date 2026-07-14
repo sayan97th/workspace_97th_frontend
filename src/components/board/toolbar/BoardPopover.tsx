@@ -8,6 +8,14 @@ export type BoardPopoverProps = {
   onClose: () => void;
   /** Popover width in pixels. Defaults to 300. */
   width?: number;
+  /**
+   * Horizontal anchor edge: "end" (default) aligns the popover's right edge with the
+   * anchor's right edge, growing leftward — used by controls near the right side of the
+   * toolbar (Sort/Hide/Group by/"..."). "start" aligns the popover's left edge with the
+   * anchor's left edge, growing rightward — matches the Person filter design, which opens
+   * flush against the left side of the Person button instead of covering Search/New item.
+   */
+  align?: "start" | "end";
   children: React.ReactNode;
 };
 
@@ -24,6 +32,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   is_open,
   onClose,
   width = 300,
+  align = "end",
   children,
 }) => {
   const popover_ref = useRef<HTMLDivElement>(null);
@@ -44,7 +53,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
         top = Math.max(VIEWPORT_MARGIN, anchor_rect.top - popover_height - ANCHOR_GAP);
       }
 
-      let left = anchor_rect.right - width;
+      let left = align === "start" ? anchor_rect.left : anchor_rect.right - width;
       left = Math.min(left, window.innerWidth - width - VIEWPORT_MARGIN);
       left = Math.max(left, VIEWPORT_MARGIN);
 
@@ -58,7 +67,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [is_open, anchor_el, width]);
+  }, [is_open, anchor_el, width, align]);
 
   useLayoutEffect(() => {
     if (!is_open) return;

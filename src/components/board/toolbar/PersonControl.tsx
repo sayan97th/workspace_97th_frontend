@@ -41,7 +41,13 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
         badge_count={selected_count || undefined}
         onClick={() => toolbar.togglePanel("person")}
       />
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={handleClose} width={POPOVER_WIDTH}>
+      <BoardPopover
+        anchor_el={button_ref.current}
+        is_open={is_open}
+        onClose={handleClose}
+        width={POPOVER_WIDTH}
+        align="start"
+      >
         <div className="flex items-center gap-2 px-[18px] pb-3 pt-4">
           <span className="text-[15px] font-bold text-[#eef2f2]">Filter this board by person</span>
           <span className="flex flex-none items-center text-[#6e7b7d]" title="People with access to this board">
