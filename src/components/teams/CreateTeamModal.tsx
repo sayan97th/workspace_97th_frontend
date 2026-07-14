@@ -80,6 +80,7 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
                 teams.members.find((member) => member.id === person.id)?.email
               }
               placeholder="Search people by name or email"
+              default_open
             />
           </div>
         </div>

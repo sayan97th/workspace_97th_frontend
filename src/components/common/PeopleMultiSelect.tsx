@@ -12,6 +12,8 @@ export type PeopleMultiSelectProps = {
   getSubtitle?: (person: BoardPersonOption) => string | undefined;
   placeholder?: string;
   className?: string;
+  /** Show the full candidate list right away instead of waiting for the field to be focused. */
+  default_open?: boolean;
 };
 
 /**
@@ -33,19 +35,27 @@ const PeopleMultiSelect: React.FC<PeopleMultiSelectProps> = ({
   getSubtitle,
   placeholder = "Search people by name",
   className = "",
+  default_open = false,
 }) => {
   const [query, setQuery] = useState("");
-  const [is_open, setIsOpen] = useState(false);
+  const [is_open, setIsOpen] = useState(default_open);
   const container_ref = useRef<HTMLDivElement>(null);
   const input_ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!is_open) return;
-    const handlePointerDown = (event: MouseEvent) => {
+    // Close on "click", not "mousedown": the list renders in-flow, so collapsing it
+    // shifts whatever sits below it (e.g. a dialog's Cancel/Create buttons). Closing on
+    // mousedown collapsed it *before* that same click's mouseup/click phase landed,
+    // so the button had already moved out from under the pointer — the click missed
+    // entirely. Closing on "click" lets the target's own click handler run first
+    // (React's delegated listener fires before this document-level one), then closes
+    // the list, so there's nothing left to react to the reflow.
+    const handleOutsideClick = (event: MouseEvent) => {
       if (!container_ref.current?.contains(event.target as Node)) setIsOpen(false);
     };
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
+    document.addEventListener("click", handleOutsideClick);
+    return () => document.removeEventListener("click", handleOutsideClick);
   }, [is_open]);
 
   const selected_people = selected_ids
