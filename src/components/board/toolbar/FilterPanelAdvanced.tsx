@@ -10,6 +10,9 @@ export type FilterPanelAdvancedProps<TRow> = {
 const select_class =
   "h-[38px] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-[13.5px] text-[#e9eded] transition-colors hover:border-white/[0.28] focus:outline-none";
 
+/** Native <option> popups ignore the <select>'s Tailwind background, so it must be set explicitly here or the options render invisible (light text on the browser's default white dropdown). */
+const option_class = "bg-[#122221] text-[#e9eded]";
+
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
   return (
     <div className="px-5 pb-4 pt-0.5">
@@ -27,9 +30,9 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
               }
               className={`${select_class} w-[170px]`}
             >
-              <option value="">Column</option>
+              <option value="" className={option_class}>Column</option>
               {toolbar.columns.map((column) => (
-                <option key={column.id} value={column.id}>
+                <option key={column.id} value={column.id} className={option_class}>
                   {column.label || column.id}
                 </option>
               ))}
@@ -43,9 +46,9 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
               }
               className={`${select_class} w-[150px]`}
             >
-              <option value="">Condition</option>
+              <option value="" className={option_class}>Condition</option>
               {BOARD_ADVANCED_FILTER_CONDITIONS.map((condition) => (
-                <option key={condition.id} value={condition.id}>
+                <option key={condition.id} value={condition.id} className={option_class}>
                   {condition.label}
                 </option>
               ))}
