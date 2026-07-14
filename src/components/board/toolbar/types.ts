@@ -81,6 +81,7 @@ export type BoardToolbarPanelId =
   | "filter"
   | "sort"
   | "hide"
+  | "pin"
   | "group"
   | "overflow";
 
@@ -148,6 +149,10 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   toggleColumnHidden: (id: string) => void;
   showAllColumns: () => void;
   hideAllColumns: () => void;
+
+  pinned_column_ids: string[];
+  togglePinnedColumn: (id: string) => void;
+  unpinAllColumns: () => void;
 
   group_by_option_id: string;
   setGroupByOptionId: (id: string) => void;

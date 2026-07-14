@@ -151,6 +151,7 @@ const ClientHubBoard: React.FC = () => {
         getRowId={(row) => row.id}
         renderCell={renderClientCell}
         rowHeight={toolbar.row_height}
+        pinnedColumnIds={toolbar.pinned_column_ids}
       />
     </BoardShell>
   );

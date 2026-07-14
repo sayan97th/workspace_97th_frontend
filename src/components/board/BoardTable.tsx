@@ -1,9 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
 /** Left-most checkbox column width (kept out of the column config). */
 const CHECKBOX_WIDTH = 44;
+
+/** Row backgrounds pinned cells must paint explicitly so they stay opaque over columns scrolling underneath. */
+const HEADER_STICKY_BG = "#132322";
+const ROW_STICKY_BG = "#0c1b1a";
+const STICKY_BOX_SHADOW = "1px 0 0 rgba(255,255,255,0.05)";
 
 const BoardCheckbox: React.FC<{ borderColor?: string }> = ({ borderColor = "#3b4746" }) => (
   <span
@@ -16,9 +21,10 @@ type ColumnCellProps = {
   column: BoardColumn;
   children?: React.ReactNode;
   isHeader?: boolean;
+  pinStyle?: React.CSSProperties;
 };
 
-const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader }) => {
+const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pinStyle }) => {
   const alignment = column.align === "center" ? "justify-center" : "justify-start";
   const padding = column.bleed ? "" : "px-3";
   return (
@@ -26,7 +32,7 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader }) =
       className={`flex flex-none items-center ${alignment} ${padding} border-r ${
         isHeader ? "border-white/[0.05]" : "border-white/[0.04]"
       }`}
-      style={{ width: column.width }}
+      style={{ width: column.width, ...pinStyle }}
     >
       {children}
     </div>
@@ -45,12 +51,43 @@ function BoardTable<TRow>({
   renderCell,
   minWidth = 1450,
   rowHeight = "medium",
+  pinnedColumnIds = [],
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
+  const has_pinned_columns = pinnedColumnIds.length > 0;
 
   const toggleGroup = (id: string) => {
     setCollapsedGroupIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  /** Left offset of each pinned column, accumulated in table order among pinned columns only. */
+  const pinned_lefts = useMemo(() => {
+    const lefts: Record<string, number> = {};
+    let left = has_pinned_columns ? CHECKBOX_WIDTH : 0;
+    columns.forEach((column) => {
+      if (!pinnedColumnIds.includes(column.id)) return;
+      lefts[column.id] = left;
+      left += column.width;
+    });
+    return lefts;
+  }, [columns, pinnedColumnIds, has_pinned_columns]);
+
+  const checkboxPinStyle: React.CSSProperties | undefined = has_pinned_columns
+    ? { position: "sticky", left: 0, zIndex: 6, boxShadow: STICKY_BOX_SHADOW }
+    : undefined;
+
+  /** Sticky style for a data column cell, or undefined when it isn't pinned. Bleed columns (Status/Partner) skip the background so their own full-bleed colour keeps showing. */
+  const getColumnPinStyle = (column: BoardColumn, background: string): React.CSSProperties | undefined => {
+    const left = pinned_lefts[column.id];
+    if (left === undefined) return undefined;
+    return {
+      position: "sticky",
+      left,
+      zIndex: 5,
+      boxShadow: STICKY_BOX_SHADOW,
+      ...(column.bleed ? {} : { background }),
+    };
   };
 
   return (
@@ -93,20 +130,35 @@ function BoardTable<TRow>({
             </div>
 
             {is_expanded && (
-              <div className="overflow-hidden rounded-t-[7px]">
+              <div>
+                {/*
+                  No overflow-hidden here: it would create its own scroll container and break
+                  position:sticky for pinned columns below, which must track BoardShell's real
+                  horizontally-scrolling ancestor. Corner rounding is applied directly to the
+                  header row's own background/border instead (works without clipping).
+                */}
                 {/* Column header row */}
                 <div
-                  className="flex items-stretch border-t border-white/[0.07] bg-[#132322] text-[12.5px] font-semibold text-[#8a9495]"
+                  className="flex items-stretch rounded-t-[7px] border-t border-white/[0.07] bg-[#132322] text-[12.5px] font-semibold text-[#8a9495]"
                   style={{ borderLeft: `4px solid ${group.accent_color}` }}
                 >
                   <div
-                    className="flex flex-none items-center justify-center border-r border-white/[0.05] py-[11px]"
-                    style={{ width: CHECKBOX_WIDTH }}
+                    className="flex flex-none items-center justify-center rounded-tl-[7px] border-r border-white/[0.05] py-[11px]"
+                    style={{
+                      width: CHECKBOX_WIDTH,
+                      ...checkboxPinStyle,
+                      ...(checkboxPinStyle ? { background: HEADER_STICKY_BG } : {}),
+                    }}
                   >
                     <BoardCheckbox borderColor="#4a5658" />
                   </div>
                   {columns.map((column) => (
-                    <ColumnCell key={column.id} column={column} isHeader>
+                    <ColumnCell
+                      key={column.id}
+                      column={column}
+                      isHeader
+                      pinStyle={getColumnPinStyle(column, HEADER_STICKY_BG)}
+                    >
                       <span className="truncate py-[11px]">{column.label}</span>
                     </ColumnCell>
                   ))}
@@ -137,7 +189,11 @@ function BoardTable<TRow>({
                   >
                     <div
                       className="flex flex-none items-center justify-center border-r border-white/[0.04]"
-                      style={{ width: CHECKBOX_WIDTH }}
+                      style={{
+                        width: CHECKBOX_WIDTH,
+                        ...checkboxPinStyle,
+                        ...(checkboxPinStyle ? { background: ROW_STICKY_BG } : {}),
+                      }}
                     >
                       <BoardCheckbox />
                     </div>
@@ -147,7 +203,11 @@ function BoardTable<TRow>({
                         className={`flex flex-none items-center border-r border-white/[0.04] ${
                           column.align === "center" ? "justify-center" : "justify-start"
                         } ${column.bleed ? "" : "px-3"}`}
-                        style={{ width: column.width, height: row_height_px }}
+                        style={{
+                          width: column.width,
+                          height: row_height_px,
+                          ...getColumnPinStyle(column, ROW_STICKY_BG),
+                        }}
                       >
                         {renderCell(row, column)}
                       </div>

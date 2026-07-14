@@ -22,6 +22,8 @@ export type BoardColumn = {
   bleed?: boolean;
   /** Whether this column can be hidden via the toolbar's Hide control. Defaults to true. */
   hideable?: boolean;
+  /** Whether this column can be frozen via the toolbar's Pin columns control. Defaults to true. */
+  pinnable?: boolean;
   /** Colour + glyph badge shown next to this column in the Hide-columns picker. */
   swatch?: BoardColumnSwatch;
   /** Full descriptive label for pickers with more room than the in-table header (which may truncate, e.g. "Client ..."). Defaults to `label`. */
@@ -56,4 +58,6 @@ export type BoardTableProps<TRow> = {
   minWidth?: number;
   /** Row height preset. Defaults to "medium" (today's fixed 42px rows). */
   rowHeight?: BoardRowHeight;
+  /** Column ids frozen to the left edge of the table via the toolbar's Pin columns control. */
+  pinnedColumnIds?: string[];
 };

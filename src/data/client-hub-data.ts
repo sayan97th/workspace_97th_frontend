@@ -71,8 +71,15 @@ export const CLIENT_HUB_TEAM_ROSTER: BoardPersonOption[] = [
 
 /** Fixed column layout for the Client Hub "Main table" view. */
 export const CLIENT_HUB_COLUMNS: BoardColumn[] = [
-  { id: "item", label: "Item", width: 252, hideable: false },
-  { id: "chat", label: "", width: 56, align: "center", hideable: false },
+  {
+    id: "item",
+    label: "Item",
+    width: 252,
+    hideable: false,
+    full_label: "Name",
+    swatch: { accent_color: "#7e5bef", glyph: "Tt" },
+  },
+  { id: "chat", label: "", width: 56, align: "center", hideable: false, pinnable: false },
   {
     id: "client",
     label: "Client ...",

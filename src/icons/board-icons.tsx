@@ -104,6 +104,18 @@ export const HideIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+export const PinIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M9.5 1.8 14.2 6.5 M11.2 4.7 8.1 5.5 4.9 8.7 7.3 11.1 10.5 7.9 11.3 4.8 M6.1 9.9 2.6 13.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const GroupByIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <rect x="2.5" y="2.8" width="11" height="3.4" rx="1" stroke="currentColor" strokeWidth="1.3" />

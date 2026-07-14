@@ -35,6 +35,8 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
 
   const [hidden_column_ids, setHiddenColumnIds] = useState<string[]>([]);
 
+  const [pinned_column_ids, setPinnedColumnIds] = useState<string[]>([]);
+
   const [group_by_option_id, setGroupByOptionId] = useState(BOARD_DEFAULT_GROUP_BY_ID);
   const [group_order_direction, setGroupOrderDirection] = useState<BoardSortDirection>("asc");
   const [show_empty_groups, setShowEmptyGroups] = useState(false);
@@ -121,6 +123,12 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       config.columns.filter((column) => column.hideable !== false).map((column) => column.id)
     );
 
+  const togglePinnedColumn = (id: string) =>
+    setPinnedColumnIds((current) =>
+      current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id]
+    );
+  const unpinAllColumns = () => setPinnedColumnIds([]);
+
   const derived = useMemo(
     () =>
       deriveBoardRows(config, {
@@ -196,6 +204,10 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     toggleColumnHidden,
     showAllColumns,
     hideAllColumns,
+
+    pinned_column_ids,
+    togglePinnedColumn,
+    unpinAllColumns,
 
     group_by_option_id,
     setGroupByOptionId,
