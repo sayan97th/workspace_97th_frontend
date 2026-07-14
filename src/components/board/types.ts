@@ -66,4 +66,6 @@ export type BoardTableProps<TRow> = {
   cellColors?: Record<string, Record<string, string>>;
   /** Opens a row's detail (e.g. a {@link BoardItemDrawer}) when the row body is clicked. */
   onRowClick?: (row: TRow) => void;
+  /** Row-id of the row whose detail is currently open (e.g. in a {@link BoardItemDrawer}); it's painted with a highlight background and a checked checkbox. */
+  selectedRowId?: string | null;
 };

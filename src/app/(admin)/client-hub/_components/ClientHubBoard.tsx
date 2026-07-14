@@ -179,6 +179,7 @@ const ClientHubBoard: React.FC = () => {
         rowColors={toolbar.row_colors}
         cellColors={toolbar.cell_colors}
         onRowClick={drawer.openRow}
+        selectedRowId={drawer.open_row_id}
       />
       <BoardItemDrawer drawer={drawer} />
     </BoardShell>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import { CheckIcon } from "@/icons/board-icons";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
 /** Left-most checkbox column width (kept out of the column config). */
@@ -9,12 +10,16 @@ const CHECKBOX_WIDTH = 44;
 const HEADER_STICKY_BG = "#132322";
 const ROW_STICKY_BG = "#0c1b1a";
 const STICKY_BOX_SHADOW = "1px 0 0 rgba(255,255,255,0.05)";
+/** Background of the row whose detail drawer is open — a lighter, green-tinted shade of the default row background. */
+const SELECTED_ROW_BG = "#16302c";
 
-const BoardCheckbox: React.FC<{ borderColor?: string }> = ({ borderColor = "#3b4746" }) => (
+const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean }> = ({ borderColor = "#3b4746", checked }) => (
   <span
-    className="h-[15px] w-[15px] flex-none cursor-pointer rounded"
-    style={{ border: `1.5px solid ${borderColor}` }}
-  />
+    className="flex h-[15px] w-[15px] flex-none cursor-pointer items-center justify-center rounded"
+    style={checked ? { background: "#0073ea" } : { border: `1.5px solid ${borderColor}` }}
+  >
+    {checked && <CheckIcon size={10} className="text-white" />}
+  </span>
 );
 
 type ColumnCellProps = {
@@ -55,6 +60,7 @@ function BoardTable<TRow>({
   rowColors = {},
   cellColors = {},
   onRowClick,
+  selectedRowId = null,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
@@ -186,7 +192,8 @@ function BoardTable<TRow>({
                 {/* Rows */}
                 {group.rows.map((row) => {
                   const row_id = getRowId(row);
-                  const row_background = rowColors[row_id];
+                  const is_selected = selectedRowId === row_id;
+                  const row_background = rowColors[row_id] ?? (is_selected ? SELECTED_ROW_BG : undefined);
                   const row_cell_colors = cellColors[row_id];
                   return (
                     <div
@@ -208,7 +215,7 @@ function BoardTable<TRow>({
                           ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
                         }}
                       >
-                        <BoardCheckbox />
+                        <BoardCheckbox checked={is_selected} />
                       </div>
                       {columns.map((column) => {
                         const cell_background = row_cell_colors?.[column.id];
