@@ -67,7 +67,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className={`w-full resize-none rounded-[11px] border border-white/[0.12] bg-[#132524] px-[13px] py-[11px] font-sans text-[13.5px] leading-relaxed text-[#e9eded] outline-none transition-[height] duration-100 placeholder:text-[#6e7b7d] focus:border-[#00c875] ${
+          className={`w-full resize-none overflow-hidden rounded-[11px] border border-white/[0.12] bg-[#132524] px-[13px] py-[11px] font-sans text-[13.5px] leading-relaxed text-[#e9eded] outline-none transition-[height] duration-100 placeholder:text-[#6e7b7d] focus:border-[#00c875] ${
             is_update ? "h-16" : has_draft ? "h-[52px]" : "h-10"
           }`}
         />
