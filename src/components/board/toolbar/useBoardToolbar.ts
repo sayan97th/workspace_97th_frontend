@@ -18,6 +18,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const [active_panel, setActivePanel] = useState<BoardToolbarPanelId | null>(null);
 
   const [is_search_open, setIsSearchOpen] = useState(false);
+  const [is_search_focused, setIsSearchFocused] = useState(false);
   const [search_query, setSearchQuery] = useState("");
   const [search_column_ids, setSearchColumnIds] = useState<string[]>(() =>
     config.columns.map((column) => column.id)
@@ -48,9 +49,13 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const openSearch = () => setIsSearchOpen(true);
   const closeSearch = () => {
     setIsSearchOpen(false);
+    setIsSearchFocused(false);
     setSearchQuery("");
     if (active_panel === "search_columns") closePanel();
   };
+
+  const focusSearch = () => setIsSearchFocused(true);
+  const blurSearch = () => setIsSearchFocused(false);
 
   const toggleSearchColumnId = (column_id: string) =>
     setSearchColumnIds((current) =>
@@ -151,6 +156,9 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     is_search_open,
     openSearch,
     closeSearch,
+    is_search_focused,
+    focusSearch,
+    blurSearch,
     search_query,
     setSearchQuery,
     search_column_ids,

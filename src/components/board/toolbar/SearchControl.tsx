@@ -10,10 +10,15 @@ export type SearchControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
+/** Compact width when idle; expands while focused or the search-columns panel is open. Matches the Client Hub design spec. */
+const SEARCH_WIDTH_COLLAPSED = "w-[230px]";
+const SEARCH_WIDTH_EXPANDED = "w-[360px]";
+
 function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
   const tune_button_ref = useRef<HTMLButtonElement>(null);
   const is_columns_panel_open = toolbar.active_panel === "search_columns";
   const all_selected = toolbar.search_column_ids.length === toolbar.columns.length;
+  const is_expanded = toolbar.is_search_focused || is_columns_panel_open;
 
   if (!toolbar.is_search_open) {
     return (
@@ -26,7 +31,11 @@ function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
   }
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg bg-white/[0.07] px-3 py-1.5">
+    <div
+      className={`flex h-[34px] flex-none items-center gap-2 rounded-lg border px-3 transition-[width,border-color] duration-200 ease-out ${
+        is_expanded ? "border-white/25 bg-white/[0.1]" : "border-white/10 bg-white/[0.07]"
+      } ${is_expanded ? SEARCH_WIDTH_EXPANDED : SEARCH_WIDTH_COLLAPSED}`}
+    >
       <span className="flex flex-none text-[#8a9495]">
         <SearchIcon />
       </span>
@@ -35,6 +44,8 @@ function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
         type="text"
         value={toolbar.search_query}
         onChange={(event) => toolbar.setSearchQuery(event.target.value)}
+        onFocus={toolbar.focusSearch}
+        onBlur={toolbar.blurSearch}
         onKeyDown={(event) => {
           if (event.key === "Escape") toolbar.closeSearch();
         }}

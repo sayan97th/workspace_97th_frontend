@@ -53,7 +53,7 @@ function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolb
       <GroupByControl toolbar={toolbar} />
       <OverflowControl toolbar={toolbar} />
 
-      {!toolbar.is_search_open && <div className="flex-1" />}
+      <div className="flex-1" />
 
       <button
         type="button"

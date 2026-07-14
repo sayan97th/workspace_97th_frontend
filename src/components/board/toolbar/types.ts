@@ -102,6 +102,10 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   is_search_open: boolean;
   openSearch: () => void;
   closeSearch: () => void;
+  /** Whether the search input currently has focus; drives the compact/expanded input width. */
+  is_search_focused: boolean;
+  focusSearch: () => void;
+  blurSearch: () => void;
   search_query: string;
   setSearchQuery: (value: string) => void;
   search_column_ids: string[];
