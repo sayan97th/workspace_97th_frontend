@@ -1,5 +1,13 @@
 import type { ReactNode } from "react";
 
+/** Colour + glyph identifying a column's data type across the Sort/Group-by/Hide pickers. */
+export type BoardColumnSwatch = {
+  accent_color: string;
+  glyph: string;
+  /** Defaults to white; pale accent colours (e.g. yellow) need a dark glyph colour. */
+  glyph_text_color?: string;
+};
+
 /** A single column definition for a {@link BoardTable}. */
 export type BoardColumn = {
   id: string;
@@ -14,6 +22,10 @@ export type BoardColumn = {
   bleed?: boolean;
   /** Whether this column can be hidden via the toolbar's Hide control. Defaults to true. */
   hideable?: boolean;
+  /** Colour + glyph badge shown next to this column in the Hide-columns picker. */
+  swatch?: BoardColumnSwatch;
+  /** Full descriptive label for pickers with more room than the in-table header (which may truncate, e.g. "Client ..."). Defaults to `label`. */
+  full_label?: string;
 };
 
 /** A collapsible group of rows (e.g. "Active Contracts"). */

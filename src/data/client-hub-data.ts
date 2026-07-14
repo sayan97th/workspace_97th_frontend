@@ -72,15 +72,60 @@ export const CLIENT_HUB_TEAM_ROSTER: BoardPersonOption[] = [
 /** Fixed column layout for the Client Hub "Main table" view. */
 export const CLIENT_HUB_COLUMNS: BoardColumn[] = [
   { id: "item", label: "Item", width: 252, hideable: false },
-  { id: "chat", label: "", width: 56, align: "center" },
-  { id: "client", label: "Client ...", width: 70 },
-  { id: "team", label: "Team", width: 118 },
-  { id: "products", label: "Product(s)", width: 152 },
-  { id: "kpi", label: "KPI", width: 150 },
-  { id: "status", label: "Status", width: 128, align: "center", bleed: true },
-  { id: "partner", label: "Partner Program", width: 150, align: "center", bleed: true },
-  { id: "start", label: "Start of Current Contract", width: 180 },
-  { id: "end", label: "End of Contract", width: 150 },
+  { id: "chat", label: "", width: 56, align: "center", hideable: false },
+  {
+    id: "client",
+    label: "Client ...",
+    width: 70,
+    full_label: "Client Relationship",
+    swatch: { accent_color: "#fdab3d", glyph: "Cr", glyph_text_color: "#3a2a00" },
+  },
+  {
+    id: "team",
+    label: "Team",
+    width: 118,
+    swatch: { accent_color: "#579bfc", glyph: "Te" },
+  },
+  {
+    id: "products",
+    label: "Product(s)",
+    width: 152,
+    swatch: { accent_color: "#00c875", glyph: "Pr" },
+  },
+  {
+    id: "kpi",
+    label: "KPI",
+    width: 150,
+    swatch: { accent_color: "#2b76e5", glyph: "K" },
+  },
+  {
+    id: "status",
+    label: "Status",
+    width: 128,
+    align: "center",
+    bleed: true,
+    swatch: { accent_color: "#00c875", glyph: "St" },
+  },
+  {
+    id: "partner",
+    label: "Partner Program",
+    width: 150,
+    align: "center",
+    bleed: true,
+    swatch: { accent_color: "#a358df", glyph: "Pp" },
+  },
+  {
+    id: "start",
+    label: "Start of Current Contract",
+    width: 180,
+    swatch: { accent_color: "#17a2b8", glyph: "Sc" },
+  },
+  {
+    id: "end",
+    label: "End of Contract",
+    width: 150,
+    swatch: { accent_color: "#d14fa0", glyph: "Ec" },
+  },
 ];
 
 /** Raw row shape used to author the seed data compactly. */

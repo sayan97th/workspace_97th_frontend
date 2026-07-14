@@ -1,4 +1,6 @@
-import type { BoardColumn, BoardGroup, BoardRowHeight } from "../types";
+import type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardRowHeight } from "../types";
+
+export type { BoardColumnSwatch };
 
 export type BoardPersonOption = {
   id: string;
@@ -11,14 +13,6 @@ export type BoardPersonOption = {
 };
 
 export type BoardSortDirection = "asc" | "desc";
-
-/** Colour + glyph shown on a column's badge in the Sort/Group-by column pickers. */
-export type BoardColumnSwatch = {
-  accent_color: string;
-  glyph: string;
-  /** Defaults to white; pale accent colours (e.g. yellow) need a dark glyph colour. */
-  glyph_text_color?: string;
-};
 
 export type BoardSortOption<TRow> = {
   id: string;
@@ -153,6 +147,7 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   hidden_column_ids: string[];
   toggleColumnHidden: (id: string) => void;
   showAllColumns: () => void;
+  hideAllColumns: () => void;
 
   group_by_option_id: string;
   setGroupByOptionId: (id: string) => void;

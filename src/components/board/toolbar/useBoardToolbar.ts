@@ -116,6 +116,10 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id]
     );
   const showAllColumns = () => setHiddenColumnIds([]);
+  const hideAllColumns = () =>
+    setHiddenColumnIds(
+      config.columns.filter((column) => column.hideable !== false).map((column) => column.id)
+    );
 
   const derived = useMemo(
     () =>
@@ -191,6 +195,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     hidden_column_ids,
     toggleColumnHidden,
     showAllColumns,
+    hideAllColumns,
 
     group_by_option_id,
     setGroupByOptionId,
