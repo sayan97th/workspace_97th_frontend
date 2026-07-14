@@ -5,6 +5,7 @@ import type {
   BoardQuickFilterFacet,
   BoardSortOption,
 } from "@/components/board/toolbar/types";
+import type { DrawerActivityEntry, DrawerComment, DrawerInfoBox } from "@/components/board/drawer/types";
 
 export type ClientStatusKey = "active" | "renewal" | "expired";
 
@@ -386,3 +387,171 @@ export const CLIENT_HUB_QUICK_FILTER_FACETS: BoardQuickFilterFacet<ClientRow>[] 
     getOptionIds: (row) => [row.status],
   },
 ];
+
+// ---------------------------------------------------------------------------
+// Item detail drawer seed data
+// ---------------------------------------------------------------------------
+
+/** The signed-in user for the drawer's composer avatar and posted comments. */
+export const CLIENT_HUB_CURRENT_USER: BoardPersonOption = CLIENT_HUB_TEAM_ROSTER[2]; // Brandon Stewart
+
+/** Everyone selectable from the `@mention` picker in the drawer's composer/reply boxes. */
+export const CLIENT_HUB_MENTIONABLE_PEOPLE: BoardPersonOption[] = CLIENT_HUB_TEAM_ROSTER;
+
+const brandon = CLIENT_HUB_CURRENT_USER;
+const mike = CLIENT_HUB_TEAM_ROSTER[10]; // Mike Powell
+
+/** Hand-authored thread for the FranklinCovey AUS/NZ row, matching the approved Client Hub design. */
+const FRANKLINCOVEY_AUNZ_COMMENTS: DrawerComment[] = [
+  {
+    id: "active-3-c1",
+    author: mike,
+    posted_at: "Aug 2025",
+    body: '@Brandon Stewart I had a productive meeting with Kayleigh about au/nz "leadership" ranking. The leadership blog post on the separate language/region pages have no hreflang tags and are exactly the same. We talked about escalating the hreflang issue with their dev team and potentially diversifying the article on leadership.',
+    view_count: 5,
+    liked_by_me: false,
+    like_count: 0,
+    seen: true,
+    attachments: [],
+    reactions: [],
+    replies: [
+      {
+        id: "active-3-c1-r1",
+        author: brandon,
+        posted_at: "Aug 2025",
+        body: "@Mike Powell thanks for looking into this. Would we need to diversify if the hreflang tags are set up properly? Or is the diversifying a precaution in case the hreflang tags are not all implemented correctly?",
+        view_count: 5,
+        liked_by_me: false,
+        like_count: 0,
+        reactions: [],
+      },
+      {
+        id: "active-3-c1-r2",
+        author: mike,
+        posted_at: "Aug 2025",
+        body: "No need to diversify if the hreflang tags are set up correctly! Diversifying the content was a plan B as Kayleigh mentioned you guys have had trouble getting the dev team to prioritize those language tags.",
+        view_count: 5,
+        liked_by_me: false,
+        like_count: 0,
+        reactions: [],
+      },
+    ],
+  },
+  {
+    id: "active-3-c2",
+    author: brandon,
+    posted_at: "22d",
+    body: "They have reached out to us and let us know that they will be opting out at the end of June. The team has greatly appreciated working with us, but their management is being very cautious with their spend.\n\nWe've gotten great results for them over the past year.",
+    view_count: 1,
+    liked_by_me: false,
+    like_count: 0,
+    seen: false,
+    attachments: [],
+    reactions: [],
+    replies: [],
+  },
+  {
+    id: "active-3-c3",
+    author: brandon,
+    posted_at: "May 8",
+    body: "Things are going well. We're still trying to get them to sign the new SOW because their procurement department keeps pushing back that there's an existing SOW, but it's for the corporate site. All is going well, and we've sent them an update on metrics over the last 12 months showing the continual growth they've had.",
+    view_count: 3,
+    liked_by_me: true,
+    like_count: 2,
+    seen: true,
+    attachments: [],
+    reactions: [],
+    replies: [],
+  },
+];
+
+const CLIENT_HUB_SEEDED_COMMENTS: Record<string, DrawerComment[]> = {
+  "active-3": FRANKLINCOVEY_AUNZ_COMMENTS,
+};
+
+/** Seeds a row's comment thread the first time its drawer opens: the hand-authored FranklinCovey thread, or a generic starter comment for every other row. */
+export const getClientHubInitialComments = (row: ClientRow): DrawerComment[] => {
+  const seeded = CLIENT_HUB_SEEDED_COMMENTS[row.id];
+  if (seeded) return seeded;
+  return [
+    {
+      id: `${row.id}-c1`,
+      author: CLIENT_HUB_CURRENT_USER,
+      posted_at: "3d",
+      body: `Kicking off the update thread for ${row.name}. Drop status notes, blockers, and @mention teammates here to keep everyone in the loop.`,
+      view_count: 2,
+      liked_by_me: false,
+      like_count: 0,
+      seen: false,
+      attachments: [],
+      reactions: [],
+      replies: [],
+    },
+  ];
+};
+
+/** Read-only Contract / Key Dates / Products summary cards for the drawer's "Info Boxes" tab. */
+export const getClientHubInfoBoxes = (row: ClientRow): DrawerInfoBox[] => {
+  const owner = findRosterMember(row.assigned_person_ids[0])?.name ?? "Unassigned";
+  return [
+    {
+      id: "contract",
+      label: "CONTRACT",
+      accent_color: CLIENT_STATUS[row.status].bg,
+      rows: [
+        { label: "Item", value: row.name },
+        { label: "Status", value: CLIENT_STATUS[row.status].label },
+        { label: "KPI", value: row.kpi ?? "Not set" },
+        { label: "Owner", value: owner },
+      ],
+    },
+    {
+      id: "key_dates",
+      label: "KEY DATES",
+      accent_color: "#579bfc",
+      rows: [
+        { label: "Start date", value: row.start ?? "Not set" },
+        { label: "End date", value: row.end ?? "Not set" },
+      ],
+    },
+    {
+      id: "products",
+      label: "PRODUCTS",
+      accent_color: "#a358df",
+      rows: [
+        { label: "Services", value: row.products.join(", ") },
+        { label: "Partner program", value: row.has_partner ? "Referral" : "None" },
+      ],
+    },
+  ];
+};
+
+/** Generic created/status/update activity entries for the drawer's "Activity Log" tab. */
+export const getClientHubActivityLog = (row: ClientRow): DrawerActivityEntry[] => {
+  const owner = findRosterMember(row.assigned_person_ids[0]) ?? CLIENT_HUB_CURRENT_USER;
+  const collaborator =
+    findRosterMember(row.assigned_person_ids[1] ?? row.assigned_person_ids[0]) ?? CLIENT_HUB_CURRENT_USER;
+  return [
+    {
+      id: `${row.id}-a1`,
+      actor: owner,
+      verb: "created this item",
+      occurred_at: "Aug 12, 2025 · 9:14 AM",
+      accent_color: "#00c875",
+    },
+    {
+      id: `${row.id}-a2`,
+      actor: collaborator,
+      verb: `changed Status to ${CLIENT_STATUS[row.status].label}`,
+      occurred_at: "Aug 14, 2025 · 2:03 PM",
+      accent_color: "#579bfc",
+    },
+    {
+      id: `${row.id}-a3`,
+      actor: owner,
+      verb: "added an update",
+      occurred_at: "Sep 2, 2025 · 11:20 AM",
+      accent_color: "#a358df",
+    },
+  ];
+};

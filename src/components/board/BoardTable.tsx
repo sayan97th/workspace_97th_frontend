@@ -54,6 +54,7 @@ function BoardTable<TRow>({
   pinnedColumnIds = [],
   rowColors = {},
   cellColors = {},
+  onRowClick,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
@@ -190,9 +191,10 @@ function BoardTable<TRow>({
                   return (
                     <div
                       key={row_id}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
                       className={`flex items-stretch border-t border-white/[0.05] transition-colors ${
                         row_background ? "" : "bg-[#0c1b1a] hover:bg-[#112423]"
-                      }`}
+                      } ${onRowClick ? "cursor-pointer" : ""}`}
                       style={{
                         borderLeft: `4px solid ${group.accent_color}`,
                         ...(row_background ? { background: row_background } : {}),

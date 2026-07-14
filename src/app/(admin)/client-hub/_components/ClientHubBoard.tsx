@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo } from "react";
 import {
+  BoardItemDrawer,
   BoardShell,
   BoardTable,
   BoardToolbar,
@@ -8,22 +9,29 @@ import {
   ProductTag,
   StatusPill,
   TeamAvatars,
+  useBoardItemDrawer,
   useBoardToolbar,
   type BoardColumn,
+  type BoardItemDrawerConfig,
   type BoardToolbarConfig,
 } from "@/components/board";
 import { RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, StarIcon } from "@/icons/workspace-icons";
 import {
   CLIENT_HUB_COLUMNS,
+  CLIENT_HUB_CURRENT_USER,
   CLIENT_HUB_GROUP_BY_OPTIONS,
   CLIENT_HUB_GROUPS,
+  CLIENT_HUB_MENTIONABLE_PEOPLE,
   CLIENT_HUB_QUICK_FILTER_FACETS,
   CLIENT_HUB_SORT_OPTIONS,
   CLIENT_HUB_TEAM_ROSTER,
   CLIENT_HUB_VIEWS,
   CLIENT_STATUS,
   getClientColumnText,
+  getClientHubActivityLog,
+  getClientHubInfoBoxes,
+  getClientHubInitialComments,
   type ClientRow,
 } from "@/data/client-hub-data";
 
@@ -139,6 +147,22 @@ const ClientHubBoard: React.FC = () => {
 
   const toolbar = useBoardToolbar(toolbar_config);
 
+  const drawer_config: BoardItemDrawerConfig<ClientRow> = useMemo(
+    () => ({
+      getRowId: (row) => row.id,
+      getRowTitle: (row) => row.name,
+      eyebrow_label: "Client Hub · Item",
+      current_user: CLIENT_HUB_CURRENT_USER,
+      mentionable_people: CLIENT_HUB_MENTIONABLE_PEOPLE,
+      getInitialComments: getClientHubInitialComments,
+      getInfoBoxes: getClientHubInfoBoxes,
+      getActivityLog: getClientHubActivityLog,
+    }),
+    []
+  );
+
+  const drawer = useBoardItemDrawer(drawer_config);
+
   return (
     <BoardShell
       header={{ title: "Client Hub", is_favorite: true, invite_count: 18 }}
@@ -154,7 +178,9 @@ const ClientHubBoard: React.FC = () => {
         pinnedColumnIds={toolbar.pinned_column_ids}
         rowColors={toolbar.row_colors}
         cellColors={toolbar.cell_colors}
+        onRowClick={drawer.openRow}
       />
+      <BoardItemDrawer drawer={drawer} />
     </BoardShell>
   );
 };

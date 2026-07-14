@@ -1,0 +1,125 @@
+import type { BoardPersonOption } from "../toolbar/types";
+
+/** A single emoji reaction pill on a comment or reply, with its live tally. */
+export type DrawerReaction = {
+  emoji: string;
+  count: number;
+  reacted_by_me: boolean;
+};
+
+export type DrawerAttachmentTag = "PDF" | "DOC" | "XLS" | "IMG" | "PPT" | "FILE";
+
+export type DrawerAttachment = {
+  id: string;
+  file_name: string;
+  tag: DrawerAttachmentTag;
+  tag_color: string;
+};
+
+/** A reply nested under a top-level comment. */
+export type DrawerReply = {
+  id: string;
+  author: BoardPersonOption;
+  posted_at: string;
+  body: string;
+  view_count: number;
+  liked_by_me: boolean;
+  like_count: number;
+  reactions: DrawerReaction[];
+};
+
+/** A top-level comment ("update"), which additionally tracks seen state, attachments and replies. */
+export type DrawerComment = DrawerReply & {
+  seen: boolean;
+  attachments: DrawerAttachment[];
+  replies: DrawerReply[];
+};
+
+export type DrawerActivityEntry = {
+  id: string;
+  actor: BoardPersonOption;
+  verb: string;
+  occurred_at: string;
+  accent_color: string;
+};
+
+export type DrawerInfoBoxRow = {
+  label: string;
+  value: string;
+};
+
+export type DrawerInfoBox = {
+  id: string;
+  label: string;
+  accent_color: string;
+  rows: DrawerInfoBoxRow[];
+};
+
+export type DrawerTabId = "updates" | "files" | "activity" | "info_boxes";
+
+/** Which composer a `@mention` picker or emoji palette is currently open for: the top-level composer, or a reply box keyed by its parent comment id. */
+export type DrawerComposerTarget = "composer" | string;
+
+/** Board-specific configuration a caller supplies to {@link useBoardItemDrawer}. Generic over the row type so any board view can reuse it. */
+export type BoardItemDrawerConfig<TRow> = {
+  getRowId: (row: TRow) => string;
+  getRowTitle: (row: TRow) => string;
+  /** Breadcrumb-style label shown above the item title, e.g. "Client Hub · Item". */
+  eyebrow_label: string;
+  /** Accent stripe + active-tab underline colour. Defaults to "#00c875". */
+  accent_color?: string;
+  current_user: BoardPersonOption;
+  mentionable_people: BoardPersonOption[];
+  /** Seeds a row's comment thread the first time its drawer is opened. */
+  getInitialComments: (row: TRow) => DrawerComment[];
+  getInfoBoxes?: (row: TRow) => DrawerInfoBox[];
+  getActivityLog?: (row: TRow) => DrawerActivityEntry[];
+};
+
+/** Full live state + actions returned by {@link useBoardItemDrawer}. */
+export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
+  is_open: boolean;
+  open_row_id: string | null;
+  open_row_title: string;
+  active_tab: DrawerTabId;
+
+  openRow: (row: TRow) => void;
+  close: () => void;
+  setActiveTab: (tab: DrawerTabId) => void;
+
+  comments: DrawerComment[];
+  info_boxes: DrawerInfoBox[];
+  activity_log: DrawerActivityEntry[];
+
+  composer_text: string;
+  composer_attachments: DrawerAttachment[];
+  onComposerTextChange: (value: string) => void;
+  postComment: () => void;
+  addComposerAttachments: (files: File[]) => void;
+  removeComposerAttachment: (attachment_id: string) => void;
+
+  reply_text_by_comment: Record<string, string>;
+  onReplyTextChange: (comment_id: string, value: string) => void;
+  postReply: (comment_id: string) => void;
+
+  mention_target: DrawerComposerTarget | null;
+  mention_matches: BoardPersonOption[];
+  pickMention: (person: BoardPersonOption) => void;
+
+  emoji_palette_target: DrawerComposerTarget | null;
+  toggleEmojiPalette: (target: DrawerComposerTarget) => void;
+  closeEmojiPalette: () => void;
+  insertEmoji: (emoji: string) => void;
+
+  reaction_palette_id: string | null;
+  toggleReactionPalette: (id: string) => void;
+  toggleReaction: (comment_id: string, reply_id: string | null, emoji: string) => void;
+
+  toggleLike: (comment_id: string, reply_id?: string) => void;
+  toggleSeen: (comment_id: string) => void;
+};
+
+/** Emoji options offered by every insert/react palette in the drawer. */
+export const DRAWER_EMOJI_OPTIONS: string[] = [
+  "👍", "❤️", "😄", "🎉", "😍", "😂", "🙏", "🔥", "👀", "✅", "💯", "🚀",
+];

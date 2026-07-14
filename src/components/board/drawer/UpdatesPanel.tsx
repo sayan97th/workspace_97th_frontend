@@ -1,0 +1,64 @@
+"use client";
+import React from "react";
+import CommentComposer from "./CommentComposer";
+import CommentThread from "./CommentThread";
+import type { BoardItemDrawerApi } from "./types";
+
+export type UpdatesPanelProps<TRow> = {
+  drawer: BoardItemDrawerApi<TRow>;
+};
+
+/** The drawer's default "Updates" tab: the new-update composer plus every comment thread. */
+function UpdatesPanel<TRow>({ drawer }: UpdatesPanelProps<TRow>) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex-none border-b border-white/[0.06] px-5 pb-3.5 pt-4">
+        <CommentComposer
+          target="composer"
+          avatar_person={drawer.current_user}
+          value={drawer.composer_text}
+          onChange={drawer.onComposerTextChange}
+          onSubmit={drawer.postComment}
+          placeholder="Write an update... use @ to mention a teammate"
+          submit_label="Update"
+          variant="update"
+          mention_target={drawer.mention_target}
+          mention_matches={drawer.mention_matches}
+          onPickMention={drawer.pickMention}
+          emoji_palette_target={drawer.emoji_palette_target}
+          onToggleEmojiPalette={drawer.toggleEmojiPalette}
+          onInsertEmoji={drawer.insertEmoji}
+          attachments={drawer.composer_attachments}
+          onAddFiles={drawer.addComposerAttachments}
+          onRemoveAttachment={drawer.removeComposerAttachment}
+        />
+      </div>
+
+      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+        {drawer.comments.map((comment) => (
+          <CommentThread
+            key={comment.id}
+            comment={comment}
+            current_user={drawer.current_user}
+            onToggleLike={drawer.toggleLike}
+            onToggleSeen={drawer.toggleSeen}
+            reaction_palette_id={drawer.reaction_palette_id}
+            onToggleReactionPalette={drawer.toggleReactionPalette}
+            onToggleReaction={drawer.toggleReaction}
+            reply_value={drawer.reply_text_by_comment[comment.id] ?? ""}
+            onReplyChange={(value) => drawer.onReplyTextChange(comment.id, value)}
+            onPostReply={() => drawer.postReply(comment.id)}
+            mention_target={drawer.mention_target}
+            mention_matches={drawer.mention_matches}
+            onPickMention={drawer.pickMention}
+            emoji_palette_target={drawer.emoji_palette_target}
+            onToggleEmojiPalette={drawer.toggleEmojiPalette}
+            onInsertEmoji={drawer.insertEmoji}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default UpdatesPanel;

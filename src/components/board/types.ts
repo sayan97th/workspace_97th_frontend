@@ -64,4 +64,6 @@ export type BoardTableProps<TRow> = {
   rowColors?: Record<string, string>;
   /** Row-id → column-id → background color, from the toolbar's Conditional coloring rules (scope "cell"). */
   cellColors?: Record<string, Record<string, string>>;
+  /** Opens a row's detail (e.g. a {@link BoardItemDrawer}) when the row body is clicked. */
+  onRowClick?: (row: TRow) => void;
 };

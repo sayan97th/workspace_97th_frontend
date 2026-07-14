@@ -35,3 +35,4 @@ export type { ColorSwatchPickerProps } from "./toolbar/ColorSwatchPicker";
 export { default as ConditionalColoringPanel } from "./toolbar/ConditionalColoringPanel";
 export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColoringPanel";
 export * from "./toolbar/types";
+export * from "./drawer";
