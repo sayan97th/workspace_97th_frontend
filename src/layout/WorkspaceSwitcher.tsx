@@ -83,18 +83,23 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const filtered_recent = useMemo(
-    () => filterWorkspaces(recent_workspaces, query),
-    [recent_workspaces, query]
-  );
-  const filtered_mine = useMemo(
-    () => filterWorkspaces(my_workspaces, query),
-    [my_workspaces, query]
+  // Recent and mine overlap heavily, so merge them into a single de-duplicated
+  // list to keep the dropdown compact.
+  const merged_workspaces = useMemo(() => {
+    const seen = new Set<string>();
+    return [...recent_workspaces, ...my_workspaces].filter((workspace) => {
+      if (seen.has(workspace.id)) return false;
+      seen.add(workspace.id);
+      return true;
+    });
+  }, [recent_workspaces, my_workspaces]);
+
+  const filtered_workspaces = useMemo(
+    () => filterWorkspaces(merged_workspaces, query),
+    [merged_workspaces, query]
   );
   const has_no_results =
-    query.trim().length > 0 &&
-    filtered_recent.length === 0 &&
-    filtered_mine.length === 0;
+    query.trim().length > 0 && filtered_workspaces.length === 0;
 
   const closeDropdown = () => {
     setIsOpen(false);
@@ -177,26 +182,12 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               />
             </div>
 
-            {filtered_recent.length > 0 && (
-              <>
-                <SectionLabel>Recent workspaces</SectionLabel>
-                {filtered_recent.map((workspace) => (
-                  <WorkspaceRow
-                    key={`recent-${workspace.id}`}
-                    workspace={workspace}
-                    is_active={workspace.id === active_workspace.id}
-                    onSelect={handleSelect}
-                  />
-                ))}
-              </>
-            )}
-
-            {filtered_mine.length > 0 && (
+            {filtered_workspaces.length > 0 && (
               <>
                 <SectionLabel>My workspaces</SectionLabel>
-                {filtered_mine.map((workspace) => (
+                {filtered_workspaces.map((workspace) => (
                   <WorkspaceRow
-                    key={`mine-${workspace.id}`}
+                    key={workspace.id}
                     workspace={workspace}
                     is_active={workspace.id === active_workspace.id}
                     onSelect={handleSelect}
@@ -211,21 +202,21 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
               </div>
             )}
 
-            <div className="mt-2.5 flex items-center gap-2 border-t border-shell-border pt-2.5">
+            <div className="mt-2.5 grid grid-cols-2 gap-1.5 border-t border-shell-border pt-2.5">
               <button
                 type="button"
                 onClick={handleAddWorkspace}
-                className="flex flex-1 items-center justify-center gap-2 rounded-[9px] px-2.5 py-2.5 text-sm font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[9px] px-2 py-2.5 text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
               >
-                <PlusIcon size={14} />
+                <PlusIcon size={14} className="flex-none" />
                 Add workspace
               </button>
               <button
                 type="button"
                 onClick={handleBrowseAll}
-                className="flex flex-1 items-center justify-center gap-2 rounded-[9px] px-2.5 py-2.5 text-sm font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                className="flex items-center justify-center gap-1.5 whitespace-nowrap rounded-[9px] px-2 py-2.5 text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
               >
-                <BrowseAllIcon size={14} />
+                <BrowseAllIcon size={14} className="flex-none" />
                 Browse all
               </button>
             </div>

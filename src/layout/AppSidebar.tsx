@@ -9,7 +9,6 @@ import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 import {
-  ChevronRightIcon,
   CollapseSidebarIcon,
   ExpandSidebarIcon,
   MoreDotsIcon,
@@ -107,11 +106,6 @@ const AppSidebar: React.FC = () => {
         </div>
 
         <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
-          <div className="flex cursor-pointer items-center gap-1.5 px-2.5 pb-1 pt-2.5 text-xs font-semibold tracking-[0.04em] text-shell-text-muted">
-            My workspace agents
-            <ChevronRightIcon />
-          </div>
-
           {active_workspace_slug ? (
             <NavTree nav={nav} workspace_slug={active_workspace_slug} />
           ) : (
