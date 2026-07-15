@@ -9,7 +9,9 @@ import {
   CollaboratorsIcon,
   ContentTabIcon,
   FileIcon,
+  BoardGridIcon,
   FolderIcon,
+  MemberIcon,
   MoreDotsIcon,
   PermissionsIcon,
   PersonIcon,
@@ -22,6 +24,7 @@ import {
   WorkspaceOptionsMenu,
 } from "@/components/workspace-nav";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
 import WorkspaceContent from "./WorkspaceContent";
 import WorkspacePermissions from "./WorkspacePermissions";
 
@@ -63,8 +66,10 @@ const WorkspaceHome: React.FC = () => {
   const workspaces = useWorkspaces();
   const [active_tab, setActiveTab] = useState<TabId>("recents");
   const [is_options_open, setIsOptionsOpen] = useState(false);
+  const [is_info_open, setIsInfoOpen] = useState(false);
   const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);
   const options_button_ref = useRef<HTMLButtonElement>(null);
+  const info_button_ref = useRef<HTMLButtonElement>(null);
 
   const active_workspace = workspaces.active_workspace;
   const workspace_name = active_workspace?.name ?? "Fulfillment";
@@ -123,9 +128,64 @@ const WorkspaceHome: React.FC = () => {
                 <h1 className="m-0 text-[34px] font-light tracking-[-0.01em] text-shell-text">
                   {workspace_name}
                 </h1>
-                <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-shell-text-secondary hover:bg-shell-hover">
-                  <ChevronDownIcon size={18} />
-                </span>
+                <button
+                  ref={info_button_ref}
+                  type="button"
+                  onClick={() => setIsInfoOpen((open) => !open)}
+                  aria-label="Workspace info"
+                  aria-expanded={is_info_open}
+                  className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-shell-text-secondary hover:bg-shell-hover ${
+                    is_info_open ? "bg-shell-hover" : ""
+                  }`}
+                >
+                  <ChevronDownIcon size={18} className={is_info_open ? "rotate-180" : ""} />
+                </button>
+                <InfoDropdown
+                  anchor_el={info_button_ref.current}
+                  is_open={is_info_open}
+                  onClose={() => setIsInfoOpen(false)}
+                  title={workspace_name}
+                  section_label="Workspace info"
+                  rows={[
+                    {
+                      key: "type",
+                      label: "Workspace type",
+                      value: (
+                        <>
+                          <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
+                          <span className="flex-1">
+                            {active_workspace?.privacy === "closed"
+                              ? "Closed workspace"
+                              : "Open workspace"}
+                          </span>
+                          {can_manage_workspace && (
+                            <ChevronDownIcon size={13} className="flex-none -rotate-90 text-shell-text-faint" />
+                          )}
+                        </>
+                      ),
+                      onClick: can_manage_workspace
+                        ? () => {
+                            setIsInfoOpen(false);
+                            setOpenDialog("change-type");
+                          }
+                        : undefined,
+                    },
+                    {
+                      key: "members",
+                      label: "Members",
+                      value: (
+                        <>
+                          <MemberIcon size={15} className="flex-none text-shell-text-muted" />
+                          <span className="flex-1">
+                            {active_workspace?.privacy === "closed"
+                              ? "Invite-only — managed from Permissions"
+                              : "All members in monday"}
+                          </span>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
               </div>
               <div className="mt-1 font-mono-accent text-xs tracking-[0.02em] text-shell-text-muted">
                 {workspace_name}&nbsp;&nbsp;/&nbsp;&nbsp;

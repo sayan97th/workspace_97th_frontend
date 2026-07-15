@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { BoardShell } from "@/components/board";
+import { BoardShell, type BoardHeaderInfo } from "@/components/board";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import type { WorkspaceNavNode } from "@/types/workspace";
 
@@ -12,6 +12,29 @@ export type WorkspaceViewProps = {
   workspace_slug: string;
 };
 
+const DISPLAY_STYLE_LABELS: Record<string, string> = {
+  table: "Table view",
+  kanban: "Kanban view",
+  list: "List view",
+  calendar: "Calendar view",
+};
+
+/** Resolves a node into the "Board info" popover content shown from its header chevron. */
+const buildBoardInfo = (node: WorkspaceNavNode): BoardHeaderInfo => ({
+  description: node.description,
+  view_type: (node.display_style && DISPLAY_STYLE_LABELS[node.display_style]) || "Table view",
+  owners: "No owners assigned",
+  created_by: node.creator?.full_name ?? null,
+  created_at: node.created_at
+    ? new Date(node.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null,
+  notifications: "Everything",
+});
+
 /**
  * Fallback view for any leaf that doesn't yet have a bespoke component in the
  * view registry. Renders inside the shared board shell so newly-seeded or
@@ -19,7 +42,12 @@ export type WorkspaceViewProps = {
  */
 const GenericBoardView: React.FC<WorkspaceViewProps> = ({ node, breadcrumb }) => (
   <BoardShell
-    header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0 }}
+    header={{
+      title: node.label,
+      is_favorite: node.is_favorite,
+      invite_count: 0,
+      info: buildBoardInfo(node),
+    }}
     tabs={{ primary_label: "Main table", views: [] }}
   >
     <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">

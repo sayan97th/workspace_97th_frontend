@@ -1,7 +1,7 @@
 export { default as BoardShell } from "./BoardShell";
 export type { BoardShellProps } from "./BoardShell";
 export { default as BoardHeader } from "./BoardHeader";
-export type { BoardHeaderProps } from "./BoardHeader";
+export type { BoardHeaderProps, BoardHeaderInfo } from "./BoardHeader";
 export { default as BoardViewTabs } from "./BoardViewTabs";
 export type { BoardViewTabsProps } from "./BoardViewTabs";
 export { default as BoardToolbar } from "./BoardToolbar";

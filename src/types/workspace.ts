@@ -10,12 +10,20 @@
 
 export type WorkspaceNavNodeType = "group" | "leaf";
 
+/** Minimal creator profile embedded on a {@link WorkspaceNavNode}, shown in its info popover. */
+export type WorkspaceNavNodeCreator = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+};
+
 export type WorkspaceNavNode = {
   id: number;
   workspace_id: number;
   parent_id: number | null;
   type: WorkspaceNavNodeType;
   label: string;
+  description: string | null;
   slug: string;
   icon: string | null;
   view_key: string | null;
@@ -23,6 +31,8 @@ export type WorkspaceNavNode = {
   display_style: string | null;
   is_favorite: boolean;
   position: number;
+  created_at: string | null;
+  creator: WorkspaceNavNodeCreator | null;
   children: WorkspaceNavNode[];
 };
 

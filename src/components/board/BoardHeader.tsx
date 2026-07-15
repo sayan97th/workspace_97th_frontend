@@ -1,6 +1,14 @@
 "use client";
-import React from "react";
-import { ChevronDownIcon, InviteIcon, MoreDotsIcon, StarIcon } from "@/icons/workspace-icons";
+import React, { useRef, useState } from "react";
+import {
+  BellIcon,
+  BoardGridIcon,
+  ChevronDownIcon,
+  CrownIcon,
+  InviteIcon,
+  MoreDotsIcon,
+  StarIcon,
+} from "@/icons/workspace-icons";
 import {
   AgentsIcon,
   AutomateIcon,
@@ -8,12 +16,30 @@ import {
   IntegrateIcon,
   LinkIcon,
 } from "@/icons/board-icons";
+import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
+
+/** Pre-formatted "Board info" popover content — the caller resolves raw data (a nav node, seed data, …) into display strings. */
+export type BoardHeaderInfo = {
+  description?: string | null;
+  /** e.g. "Table view", "Kanban view". */
+  view_type: string;
+  /** e.g. "No owners assigned" or a name list. */
+  owners: string;
+  /** Creator's display name, or null when unknown. */
+  created_by: string | null;
+  /** Pre-formatted creation date, e.g. "Jul 15, 2026". */
+  created_at: string | null;
+  /** e.g. "Everything". */
+  notifications: string;
+};
 
 export type BoardHeaderProps = {
   title: string;
   is_favorite?: boolean;
   invite_count?: number;
   user_initials?: string;
+  /** Board info popover content; the chevron next to the title stays inert when omitted. */
+  info?: BoardHeaderInfo;
 };
 
 const action_button_class =
@@ -31,7 +57,12 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   is_favorite = false,
   invite_count = 18,
   user_initials = "JM",
-}) => (
+  info,
+}) => {
+  const [is_info_open, setIsInfoOpen] = useState(false);
+  const info_button_ref = useRef<HTMLButtonElement>(null);
+
+  return (
   <div className="flex items-center gap-[9px]">
     <span className="text-[23px] font-extrabold tracking-[-0.015em] text-shell-text">
       {title}
@@ -42,12 +73,81 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       </span>
     )}
     <button
+      ref={info_button_ref}
       type="button"
-      className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover"
-      aria-label="Board options"
+      onClick={() => info && setIsInfoOpen((open) => !open)}
+      className={`flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover ${
+        is_info_open ? "bg-shell-hover" : ""
+      }`}
+      aria-label="Board info"
+      aria-expanded={is_info_open}
     >
-      <ChevronDownIcon size={13} />
+      <ChevronDownIcon size={13} className={is_info_open ? "rotate-180" : ""} />
     </button>
+    {info && (
+      <InfoDropdown
+        anchor_el={info_button_ref.current}
+        is_open={is_info_open}
+        onClose={() => setIsInfoOpen(false)}
+        title={title}
+        section_label="Board info"
+        description={info.description}
+        rows={[
+          {
+            key: "view_type",
+            label: "View type",
+            value: (
+              <>
+                <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
+                <span className="flex-1">{info.view_type}</span>
+              </>
+            ),
+          },
+          {
+            key: "owners",
+            label: "Owners",
+            value: (
+              <>
+                <CrownIcon size={15} className="flex-none text-shell-text-muted" />
+                <span className="flex-1">{info.owners}</span>
+              </>
+            ),
+          },
+          {
+            key: "created_by",
+            label: "Created by",
+            value: info.created_by ? (
+              <>
+                <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[9px] font-bold text-white">
+                  {info.created_by
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
+                <span className="flex-1">
+                  {info.created_by}
+                  {info.created_at ? ` · ${info.created_at}` : ""}
+                </span>
+              </>
+            ) : (
+              <span className="flex-1 text-shell-text-faint">Unknown</span>
+            ),
+          },
+          {
+            key: "notifications",
+            label: "Notifications",
+            value: (
+              <>
+                <BellIcon size={14} className="flex-none text-shell-text-muted" />
+                <span className="flex-1">{info.notifications}</span>
+              </>
+            ),
+          },
+        ]}
+      />
+    )}
 
     <div className="flex-1" />
 
@@ -98,6 +198,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       </button>
     </div>
   </div>
-);
+  );
+};
 
 export default BoardHeader;
