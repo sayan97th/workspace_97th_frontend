@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
-import Input from "@/components/form/input/InputField";
-import Label from "@/components/form/Label";
-import Button from "@/components/ui/button/Button";
+import ProfileCard from "@/components/profile/ProfileCard";
+import ProfileSectionHeader from "@/components/profile/ProfileSectionHeader";
+import ProfileBanner from "@/components/profile/ProfileBanner";
+import ProfileFieldError from "@/components/profile/ProfileFieldError";
+import { inputClass, labelClass, primaryButtonClass, outlineButtonClass } from "@/components/profile/profileStyles";
+import { PermissionsIcon, EyeIcon, EyeOffIcon, CheckIcon, PlusIcon } from "@/icons/workspace-icons";
 import { profileService } from "@/services/profile.service";
 import type { ApiError } from "@/types/auth";
 
@@ -31,10 +34,10 @@ function evaluateStrength(password: string): PasswordStrength {
 
   const levels: PasswordStrength[] = [
     { score: 0, label: "", color: "", bar_color: "" },
-    { score: 1, label: "Weak", color: "text-error-600 dark:text-error-400", bar_color: "bg-error-500" },
-    { score: 2, label: "Fair", color: "text-warning-600 dark:text-warning-400", bar_color: "bg-warning-500" },
-    { score: 3, label: "Good", color: "text-blue-600 dark:text-blue-400", bar_color: "bg-blue-500" },
-    { score: 4, label: "Strong", color: "text-success-600 dark:text-success-400", bar_color: "bg-success-500" },
+    { score: 1, label: "Weak", color: "text-error-600", bar_color: "bg-error-500" },
+    { score: 2, label: "Fair", color: "text-warning-600", bar_color: "bg-warning-500" },
+    { score: 3, label: "Good", color: "text-blue-600", bar_color: "bg-blue-500" },
+    { score: 4, label: "Strong", color: "text-success-600", bar_color: "bg-success-500" },
   ];
 
   return levels[score];
@@ -65,35 +68,11 @@ const EyeButton = ({ visible, onToggle }: EyeButtonProps) => (
   <button
     type="button"
     onClick={onToggle}
-    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+    className="absolute right-3 top-1/2 -translate-y-1/2 text-shell-text-faint transition-colors hover:text-shell-text-secondary"
     tabIndex={-1}
   >
-    {visible ? (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-      </svg>
-    ) : (
-      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      </svg>
-    )}
+    {visible ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
   </button>
-);
-
-// ── Field error helper ────────────────────────────────────────────────────────
-
-interface FieldErrorProps {
-  message: string;
-}
-
-const FieldError = ({ message }: FieldErrorProps) => (
-  <p className="mt-1.5 flex items-center gap-1 text-xs text-error-600 dark:text-error-400">
-    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-    </svg>
-    {message}
-  </p>
 );
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -175,55 +154,32 @@ export default function ChangePasswordSection() {
   const has_any_input = current_password || new_password || confirm_password;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-      {/* Header */}
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/10">
-              <svg className="h-4 w-4 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            </div>
-            <h2 className="text-base font-semibold text-gray-900 dark:text-white">Change Password</h2>
-          </div>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            Choose a strong password to keep your account secure.
-          </p>
-        </div>
-      </div>
+    <ProfileCard>
+      <ProfileSectionHeader
+        icon={<PermissionsIcon size={16} />}
+        title="Change Password"
+        description="Choose a strong password to keep your account secure."
+      />
 
-      {/* Success banner */}
       {success_message && (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-success-200 bg-success-50 px-4 py-3 dark:border-success-500/20 dark:bg-success-500/10">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-success-500 text-white">
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          </span>
-          <p className="text-sm font-medium text-success-700 dark:text-success-400">{success_message}</p>
-        </div>
+        <ProfileBanner tone="success" className="mb-5">
+          {success_message}
+        </ProfileBanner>
       )}
 
-      {/* API error */}
       {api_error && (
-        <div className="mb-5 flex items-center gap-3 rounded-xl border border-error-200 bg-error-50 px-4 py-3 dark:border-error-500/20 dark:bg-error-500/10">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-error-100 dark:bg-error-500/20">
-            <svg className="h-4 w-4 text-error-600 dark:text-error-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-            </svg>
-          </span>
-          <p className="text-sm text-error-600 dark:text-error-400">{api_error}</p>
-        </div>
+        <ProfileBanner tone="error" className="mb-5">
+          {api_error}
+        </ProfileBanner>
       )}
 
       <form onSubmit={handleSubmit} noValidate>
         <div className="space-y-5">
           {/* Current Password */}
           <div>
-            <Label htmlFor="current_password">Current Password</Label>
+            <label className={labelClass} htmlFor="current_password">Current Password</label>
             <div className="relative">
-              <Input
+              <input
                 id="current_password"
                 name="current_password"
                 type={show_current ? "text" : "password"}
@@ -233,19 +189,20 @@ export default function ChangePasswordSection() {
                   setCurrentPassword(e.target.value);
                   if (field_errors.current_password) setFieldErrors((p) => ({ ...p, current_password: "" }));
                 }}
+                className={`${inputClass(!!field_errors.current_password)} pr-11`}
               />
               <EyeButton visible={show_current} onToggle={() => setShowCurrent((v) => !v)} />
             </div>
-            {field_errors.current_password && <FieldError message={field_errors.current_password} />}
+            {field_errors.current_password && <ProfileFieldError message={field_errors.current_password} />}
           </div>
 
           {/* Divider */}
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-100 dark:border-gray-800" />
+              <div className="w-full border-t border-shell-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-3 text-xs text-gray-400 dark:bg-gray-900 dark:text-gray-500">
+              <span className="bg-shell-panel-alt px-3 text-xs text-shell-text-faint">
                 New password
               </span>
             </div>
@@ -253,9 +210,9 @@ export default function ChangePasswordSection() {
 
           {/* New Password */}
           <div>
-            <Label htmlFor="new_password">New Password</Label>
+            <label className={labelClass} htmlFor="new_password">New Password</label>
             <div className="relative">
-              <Input
+              <input
                 id="new_password"
                 name="new_password"
                 type={show_new ? "text" : "password"}
@@ -265,10 +222,11 @@ export default function ChangePasswordSection() {
                   setNewPassword(e.target.value);
                   if (field_errors.password) setFieldErrors((p) => ({ ...p, password: "" }));
                 }}
+                className={`${inputClass(!!field_errors.password)} pr-11`}
               />
               <EyeButton visible={show_new} onToggle={() => setShowNew((v) => !v)} />
             </div>
-            {field_errors.password && <FieldError message={field_errors.password} />}
+            {field_errors.password && <ProfileFieldError message={field_errors.password} />}
 
             {/* Strength meter */}
             {new_password && (
@@ -279,9 +237,7 @@ export default function ChangePasswordSection() {
                       <div
                         key={level}
                         className={`h-1.5 w-10 rounded-full transition-all duration-300 ${
-                          strength.score >= level
-                            ? strength.bar_color
-                            : "bg-gray-200 dark:bg-gray-700"
+                          strength.score >= level ? strength.bar_color : "bg-shell-hover-strong"
                         }`}
                       />
                     ))}
@@ -298,15 +254,11 @@ export default function ChangePasswordSection() {
                   {requirements.map((req) => (
                     <div key={req.label} className="flex items-center gap-1.5">
                       {req.met ? (
-                        <svg className="h-3.5 w-3.5 shrink-0 text-success-500" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
+                        <CheckIcon size={13} className="flex-none text-success-500" />
                       ) : (
-                        <svg className="h-3.5 w-3.5 shrink-0 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
+                        <PlusIcon size={13} className="flex-none text-shell-text-faint" />
                       )}
-                      <span className={`text-xs ${req.met ? "text-gray-600 dark:text-gray-300" : "text-gray-400 dark:text-gray-500"}`}>
+                      <span className={`text-xs ${req.met ? "text-shell-text-secondary" : "text-shell-text-muted"}`}>
                         {req.label}
                       </span>
                     </div>
@@ -318,9 +270,9 @@ export default function ChangePasswordSection() {
 
           {/* Confirm Password */}
           <div>
-            <Label htmlFor="confirm_password">Confirm New Password</Label>
+            <label className={labelClass} htmlFor="confirm_password">Confirm New Password</label>
             <div className="relative">
-              <Input
+              <input
                 id="confirm_password"
                 name="confirm_password"
                 type={show_confirm ? "text" : "password"}
@@ -331,49 +283,39 @@ export default function ChangePasswordSection() {
                   if (field_errors.password_confirmation)
                     setFieldErrors((p) => ({ ...p, password_confirmation: "" }));
                 }}
+                className={`${inputClass(!!field_errors.password_confirmation)} pr-11`}
               />
               <EyeButton visible={show_confirm} onToggle={() => setShowConfirm((v) => !v)} />
             </div>
 
             {/* Match indicator */}
             {passwords_match && (
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-success-600 dark:text-success-400">
-                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
+              <p className="mt-1.5 flex items-center gap-1 text-xs text-success-600">
+                <CheckIcon size={13} className="flex-none" />
                 Passwords match
               </p>
             )}
             {passwords_mismatch && !field_errors.password_confirmation && (
-              <p className="mt-1.5 flex items-center gap-1 text-xs text-error-600 dark:text-error-400">
-                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Passwords do not match
-              </p>
+              <p className="mt-1.5 text-xs text-[#ff8a94]">Passwords do not match</p>
             )}
             {field_errors.password_confirmation && (
-              <FieldError message={field_errors.password_confirmation} />
+              <ProfileFieldError message={field_errors.password_confirmation} />
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="mt-6 flex items-center justify-between gap-4 border-t border-gray-100 pt-5 dark:border-gray-800">
-          <p className="text-xs text-gray-400 dark:text-gray-500">
+        <div className="mt-6 flex items-center justify-between gap-4 border-t border-shell-border pt-5">
+          <p className="text-xs text-shell-text-faint">
             You will remain signed in after changing your password.
           </p>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             {has_any_input && !is_saving && (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-white/[0.03] dark:text-gray-400 dark:hover:bg-white/5"
-              >
+              <button type="button" onClick={resetForm} className={outlineButtonClass}>
                 Clear
               </button>
             )}
-            <Button size="sm" variant="primary" disabled={is_saving}>
+            <button type="submit" disabled={is_saving} className={primaryButtonClass}>
               {is_saving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -382,10 +324,10 @@ export default function ChangePasswordSection() {
               ) : (
                 "Update Password"
               )}
-            </Button>
+            </button>
           </div>
         </div>
       </form>
-    </div>
+    </ProfileCard>
   );
 }

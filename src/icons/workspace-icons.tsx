@@ -573,3 +573,113 @@ export const TeamFolderIcon: React.FC<IconProps> = ({ className, size = 15 }) =>
     <path d="M2 6 H14" stroke="currentColor" strokeWidth="1.3" />
   </svg>
 );
+
+/* ------------------------------------------------------------------ *
+ * My Profile (Personal info / Password) icons
+ * ------------------------------------------------------------------ */
+
+/** "Hidden password" companion to {@link EyeIcon} — eye with a strike-through. */
+export const EyeOffIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2 8 C3.5 4.8 5.7 3.2 8 3.2 c1 0 2 .3 2.9 .8 M12.7 5.2 C13.5 6 14.1 7 14.5 8 C13 11.2 10.7 12.8 8 12.8 c-1.1 0-2.2-.3-3.2-.8"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <path d="M6.3 9.7 A2 2 0 0 1 9.5 6.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <line x1="2" y1="2.5" x2="14" y2="13.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** 2FA shield glyph — plain outline, or with an inner checkmark when `checked`. */
+export const ShieldIcon: React.FC<IconProps & { checked?: boolean }> = ({
+  className,
+  size = 15,
+  checked = false,
+}) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 1.8 L13 3.6 V7.6 C13 10.9 10.9 13.2 8 14.2 C5.1 13.2 3 10.9 3 7.6 V3.6 Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    {checked && (
+      <path d="M5.6 8 L7.2 9.6 L10.4 6.2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    )}
+  </svg>
+);
+
+/** Filled exclamation circle — field-level and general API error messaging. */
+export const AlertCircleIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.3" />
+    <line x1="8" y1="5.3" x2="8" y2="8.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <circle cx="8" cy="11" r="0.85" fill="currentColor" />
+  </svg>
+);
+
+/** Exclamation triangle — recovery-codes and destructive-action warning banners. */
+export const WarningTriangleIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2.3 L14.2 12.7 A1 1 0 0 1 13.3 14.2 H2.7 A1 1 0 0 1 1.8 12.7 Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    <line x1="8" y1="6.2" x2="8" y2="9.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    <circle cx="8" cy="11.7" r="0.85" fill="currentColor" />
+  </svg>
+);
+
+/** Small key glyph — 2FA "unique per-login codes" benefit tile. */
+export const KeyIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="5.2" cy="10.8" r="2.6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M7.1 8.9 L12.8 3.2 M11 5 L12.8 3.2 M12.8 3.2 L14.3 4.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Camera glyph — avatar hover-to-change overlay. */
+export const CameraIcon: React.FC<IconProps> = ({ className, size = 18 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <path
+      d="M6.8 6.2 A2.3 2.3 0 0 1 5.2 7.2 c-.4 .05-.75 .1-1.1 .17 C3 7.6 2.25 8.5 2.25 9.6 V18 A2.25 2.25 0 0 0 4.5 20.25 h15 A2.25 2.25 0 0 0 21.75 18 V9.6 c0-1.1-.75-2-1.8-2.17 c-.37-.06-.75-.12-1.13-.17 a2.3 2.3 0 0 1-1.64-1.05 l-.82-1.32 a2.2 2.2 0 0 0-1.74-1 a48.8 48.8 0 0 0-5.23 0 a2.2 2.2 0 0 0-1.74 1z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M16.5 12.75 a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0z" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+);
+
+/** Upload (arrow into tray) glyph — avatar "Upload" action. */
+export const UploadIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M3 11.5 V13 A1 1 0 0 0 4 14 H12 A1 1 0 0 0 13 13 V11.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M8 10 V2.5 M8 2.5 L5 5.5 M8 2.5 L11 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Envelope glyph — "Contact Details" section header. */
+export const MailIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="3.5" width="12" height="9" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M2.4 4.2 L8 8.4 L13.6 4.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Phone handset glyph — identity card contact row. */
+export const PhoneIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M3.2 2.6 L5.6 2.2 L6.6 4.8 L5.2 6.2 C5.7 7.7 6.8 8.8 8.3 9.3 L9.7 7.9 L12.3 8.9 L11.9 11.3 C11.8 11.9 11.3 12.3 10.7 12.2 C6.4 11.6 3 8.2 2.3 3.9 C2.2 3.3 2.6 2.7 3.2 2.6Z"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+  </svg>
+);

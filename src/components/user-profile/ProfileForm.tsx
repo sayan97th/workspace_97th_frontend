@@ -2,10 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
-import Input from "@/components/form/input/InputField";
-import Label from "@/components/form/Label";
-import Select from "@/components/form/Select";
-import Button from "@/components/ui/button/Button";
+import { SettingsDropdown } from "@/components/administration";
+import ProfileCard from "@/components/profile/ProfileCard";
+import ProfileSectionHeader from "@/components/profile/ProfileSectionHeader";
+import ProfileBanner from "@/components/profile/ProfileBanner";
+import ProfileFieldError from "@/components/profile/ProfileFieldError";
+import { inputClass, labelClass, primaryButtonClass } from "@/components/profile/profileStyles";
+import {
+  PersonIcon,
+  MailIcon,
+  PhoneIcon,
+  ClockIcon,
+  CameraIcon,
+  UploadIcon,
+  DeleteIcon,
+} from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { profileService } from "@/services/profile.service";
 import type { ProfileData, ApiError } from "@/types/auth";
@@ -78,30 +89,6 @@ function isValidUrl(url: string | null | undefined): url is string {
     return false;
   }
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
-
-interface SectionHeaderProps {
-  icon?: React.ReactNode;
-  title: string;
-  description?: string;
-}
-
-const SectionHeader = ({ icon, title, description }: SectionHeaderProps) => (
-  <div className="mb-5">
-    <div className="flex items-center gap-2.5">
-      {icon && (
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 dark:bg-brand-500/10">
-          {icon}
-        </div>
-      )}
-      <h2 className="text-base font-semibold text-gray-900 dark:text-white">{title}</h2>
-    </div>
-    {description && (
-      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p>
-    )}
-  </div>
-);
 
 // ── Avatar Upload ─────────────────────────────────────────────────────────────
 
@@ -191,18 +178,18 @@ const AvatarUpload = ({
       />
 
       {upload_error && (
-        <div className="mb-3 rounded-lg border border-error-300 bg-error-50 px-4 py-2 text-xs text-error-600 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">
+        <ProfileBanner tone="error" className="mb-3">
           {upload_error}
-        </div>
+        </ProfileBanner>
       )}
 
       <div className="flex items-center gap-5">
         {/* Avatar */}
-        <div className="relative shrink-0 group">
-          <div className="h-20 w-20 overflow-hidden rounded-2xl ring-4 ring-white shadow-md dark:ring-gray-800">
+        <div className="group relative shrink-0">
+          <div className="h-20 w-20 overflow-hidden rounded-2xl ring-4 ring-shell-panel">
             {is_uploading ? (
-              <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" />
+              <div className="flex h-full w-full items-center justify-center bg-shell-hover">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-shell-border-strong border-t-brand-500" />
               </div>
             ) : displayed_photo ? (
               <Image
@@ -226,20 +213,17 @@ const AvatarUpload = ({
               onClick={() => file_input_ref.current?.click()}
               className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100"
             >
-              <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-              </svg>
+              <CameraIcon size={20} className="text-white" />
             </button>
           )}
         </div>
 
         {/* Upload controls */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-800 dark:text-white/90">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-shell-text">
             {is_uploading ? "Uploading…" : full_name || "Your Profile"}
           </p>
-          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+          <p className="mt-0.5 text-xs text-shell-text-muted">
             PNG, JPG, GIF or WebP · max 2 MB
           </p>
           <div className="mt-3 flex items-center gap-2">
@@ -247,11 +231,9 @@ const AvatarUpload = ({
               type="button"
               onClick={() => file_input_ref.current?.click()}
               disabled={is_uploading || is_deleting}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-shell-border-strong bg-shell-panel-alt px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-              </svg>
+              <UploadIcon size={13} />
               Upload
             </button>
             {displayed_photo && (
@@ -259,14 +241,12 @@ const AvatarUpload = ({
                 type="button"
                 onClick={handleDeletePhoto}
                 disabled={is_uploading || is_deleting}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-error-200 bg-white px-3 py-1.5 text-xs font-medium text-error-600 shadow-sm transition-colors hover:bg-error-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-error-500/30 dark:bg-gray-800 dark:text-error-400 dark:hover:bg-error-500/10"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-[#e2445c]/30 bg-shell-panel-alt px-3 py-1.5 text-xs font-medium text-[#ff8a94] transition-colors hover:bg-[#e2445c]/[0.14] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {is_deleting ? (
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-error-200 border-t-error-500" />
+                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#e2445c]/30 border-t-[#e2445c]" />
                 ) : (
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                  </svg>
+                  <DeleteIcon size={13} />
                 )}
                 {is_deleting ? "Removing…" : "Remove"}
               </button>
@@ -365,7 +345,7 @@ export default function ProfileForm() {
   if (is_loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-200 border-t-brand-500" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-shell-border-strong border-t-brand-500" />
       </div>
     );
   }
@@ -374,28 +354,28 @@ export default function ProfileForm() {
     <div>
       {/* Alerts */}
       {error_message && (
-        <div className="mb-6 rounded-lg border border-error-300 bg-error-50 px-4 py-3 text-sm text-error-600 dark:border-error-500/40 dark:bg-error-500/10 dark:text-error-400">
+        <ProfileBanner tone="error" className="mb-6">
           {error_message}
-        </div>
+        </ProfileBanner>
       )}
       {success_message && (
-        <div className="mb-6 rounded-lg border border-success-300 bg-success-50 px-4 py-3 text-sm text-success-600 dark:border-success-500/40 dark:bg-success-500/10 dark:text-success-400">
+        <ProfileBanner tone="success" className="mb-6">
           {success_message}
-        </div>
+        </ProfileBanner>
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         {/* ── Left: Identity Card ──────────────────────────────────────── */}
         <div className="lg:col-span-1">
           <div className="sticky top-6">
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
+            <div className="overflow-hidden rounded-2xl border border-shell-border bg-shell-panel-alt">
               {/* Cover gradient */}
               <div className="h-20 bg-gradient-to-r from-brand-500 to-brand-700" />
 
               {/* Avatar + info */}
               <div className="px-5 pb-5">
                 <div className="-mt-10 mb-4">
-                  <div className="inline-block rounded-2xl ring-4 ring-white shadow-md dark:ring-gray-900">
+                  <div className="inline-block rounded-2xl ring-4 ring-shell-panel-alt">
                     <div className="h-[72px] w-[72px] overflow-hidden rounded-2xl">
                       {isValidUrl(profile_photo_url) ? (
                         <Image
@@ -415,39 +395,35 @@ export default function ProfileForm() {
                   </div>
                 </div>
 
-                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                <h3 className="text-base font-semibold text-shell-text">
                   {form_data.first_name || form_data.last_name
                     ? `${form_data.first_name} ${form_data.last_name}`.trim()
                     : user?.email ?? "User"}
                 </h3>
-                <p className="mt-0.5 text-sm text-gray-500 dark:text-gray-400">
+                <p className="mt-0.5 text-sm text-shell-text-muted">
                   {form_data.email || user?.email}
                 </p>
 
                 {form_data.phone && (
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                    </svg>
+                  <div className="mt-3 flex items-center gap-1.5 text-xs text-shell-text-muted">
+                    <PhoneIcon size={13} className="flex-none" />
                     {form_data.phone}
                   </div>
                 )}
 
                 {form_data.timezone && (
-                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="mt-1.5 flex items-center gap-1.5 text-xs text-shell-text-muted">
+                    <ClockIcon size={13} className="flex-none" />
                     {form_data.timezone}
                   </div>
                 )}
               </div>
 
               {member_since && (
-                <div className="border-t border-gray-100 px-5 py-3 dark:border-gray-800">
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                <div className="border-t border-shell-border px-5 py-3">
+                  <p className="text-xs text-shell-text-muted">
                     Member since{" "}
-                    <span className="font-medium text-gray-600 dark:text-gray-300">
+                    <span className="font-medium text-shell-text-secondary">
                       {member_since}
                     </span>
                   </p>
@@ -461,19 +437,15 @@ export default function ProfileForm() {
         <div className="space-y-6 lg:col-span-2">
 
           {/* Personal Information */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-            <SectionHeader
-              icon={
-                <svg className="h-4 w-4 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                </svg>
-              }
+          <ProfileCard>
+            <ProfileSectionHeader
+              icon={<PersonIcon size={16} />}
               title="Personal Information"
               description="Update your name and profile photo."
             />
 
             <div className="mb-6">
-              <Label className="mb-3">Profile Photo</Label>
+              <label className={labelClass}>Profile Photo</label>
               <AvatarUpload
                 first_name={form_data.first_name}
                 last_name={form_data.last_name}
@@ -485,96 +457,91 @@ export default function ProfileForm() {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="first_name">First Name</Label>
-                <Input
+                <label className={labelClass} htmlFor="first_name">First Name</label>
+                <input
                   id="first_name"
                   name="first_name"
                   type="text"
                   defaultValue={form_data.first_name}
                   placeholder="First name"
-                  error={!!field_errors.first_name}
-                  hint={field_errors.first_name}
                   onChange={(e) => handleFieldChange("first_name", e.target.value)}
+                  className={inputClass(!!field_errors.first_name)}
                 />
+                {field_errors.first_name && <ProfileFieldError message={field_errors.first_name} />}
               </div>
               <div>
-                <Label htmlFor="last_name">Last Name</Label>
-                <Input
+                <label className={labelClass} htmlFor="last_name">Last Name</label>
+                <input
                   id="last_name"
                   name="last_name"
                   type="text"
                   defaultValue={form_data.last_name}
                   placeholder="Last name"
-                  error={!!field_errors.last_name}
-                  hint={field_errors.last_name}
                   onChange={(e) => handleFieldChange("last_name", e.target.value)}
+                  className={inputClass(!!field_errors.last_name)}
                 />
+                {field_errors.last_name && <ProfileFieldError message={field_errors.last_name} />}
               </div>
             </div>
-          </div>
+          </ProfileCard>
 
           {/* Contact & Preferences */}
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-white/[0.03]">
-            <SectionHeader
-              icon={
-                <svg className="h-4 w-4 text-brand-600 dark:text-brand-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                </svg>
-              }
+          <ProfileCard>
+            <ProfileSectionHeader
+              icon={<MailIcon size={16} />}
               title="Contact Details"
               description="Your email, phone number, and timezone."
             />
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="email">Email Address</Label>
-                <Input
+                <label className={labelClass} htmlFor="email">Email Address</label>
+                <input
                   id="email"
                   name="email"
                   type="email"
                   defaultValue={form_data.email}
                   placeholder="you@example.com"
-                  error={!!field_errors.email}
-                  hint={field_errors.email}
                   onChange={(e) => handleFieldChange("email", e.target.value)}
+                  className={inputClass(!!field_errors.email)}
                 />
+                {field_errors.email && <ProfileFieldError message={field_errors.email} />}
               </div>
 
               <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
+                <label className={labelClass} htmlFor="phone">Phone Number</label>
+                <input
                   id="phone"
                   name="phone"
                   type="text"
                   defaultValue={form_data.phone ?? ""}
                   placeholder="+1 (555) 000-0000"
-                  error={!!field_errors.phone}
-                  hint={field_errors.phone}
                   onChange={(e) => handleFieldChange("phone", e.target.value)}
+                  className={inputClass(!!field_errors.phone)}
                 />
+                {field_errors.phone && <ProfileFieldError message={field_errors.phone} />}
               </div>
 
               <div>
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select
-                  options={timezone_options}
-                  defaultValue={form_data.timezone ?? ""}
-                  onChange={(value) => handleFieldChange("timezone", value)}
+                <label className={labelClass}>Timezone</label>
+                <SettingsDropdown
+                  value={form_data.timezone || null}
+                  options={timezone_options.map((option) => ({ id: option.value, label: option.label }))}
+                  onChange={(id) => handleFieldChange("timezone", id)}
                   placeholder="Select your timezone"
+                  className="w-full"
                 />
-                {field_errors.timezone && (
-                  <p className="mt-1.5 text-xs text-error-500">{field_errors.timezone}</p>
-                )}
+                {field_errors.timezone && <ProfileFieldError message={field_errors.timezone} />}
               </div>
             </div>
-          </div>
+          </ProfileCard>
 
           {/* Save profile button */}
           <div className="flex items-center justify-end gap-3">
-            <p className="text-xs text-gray-400 dark:text-gray-500">
+            <p className="text-xs text-shell-text-faint">
               Changes will be applied immediately.
             </p>
-            <Button size="md" variant="primary" disabled={is_saving} onClick={handleSubmit}>
+            <button type="button" disabled={is_saving} onClick={handleSubmit} className={primaryButtonClass}>
               {is_saving ? (
                 <span className="flex items-center gap-2">
                   <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
@@ -583,7 +550,7 @@ export default function ProfileForm() {
               ) : (
                 "Save Changes"
               )}
-            </Button>
+            </button>
           </div>
 
         </div>
