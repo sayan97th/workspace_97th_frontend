@@ -87,7 +87,7 @@ export default function WorkspaceViewPage({
 
   const View = getViewComponent(node.view_key);
 
-  return <View node={node} breadcrumb={breadcrumb} workspace_slug={workspace} />;
+  return <View key={node.id} node={node} breadcrumb={breadcrumb} workspace_slug={workspace} />;
 }
 
 const CenteredMessage: React.FC<{ title: string; detail: string }> = ({ title, detail }) => (

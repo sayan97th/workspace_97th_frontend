@@ -18,6 +18,7 @@ import {
 import { RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, StarIcon } from "@/icons/workspace-icons";
 import {
+  CLIENT_HUB_BOARD_INFO,
   CLIENT_HUB_COLUMNS,
   CLIENT_HUB_CURRENT_USER,
   CLIENT_HUB_GROUP_BY_OPTIONS,
@@ -165,7 +166,12 @@ const ClientHubBoard: React.FC = () => {
 
   return (
     <BoardShell
-      header={{ title: "Client Hub", is_favorite: true, invite_count: 18 }}
+      header={{
+        title: "Client Hub",
+        is_favorite: true,
+        invite_count: 18,
+        info: CLIENT_HUB_BOARD_INFO,
+      }}
       tabs={{ primary_label: "Main table", views: CLIENT_HUB_VIEWS }}
       toolbar={<BoardToolbar toolbar={toolbar} />}
     >

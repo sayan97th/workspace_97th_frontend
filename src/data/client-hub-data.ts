@@ -1,4 +1,4 @@
-import type { BoardColumn, BoardGroup } from "@/components/board";
+import type { BoardColumn, BoardGroup, BoardHeaderInfo } from "@/components/board";
 import type {
   BoardGroupByOption,
   BoardPersonOption,
@@ -397,6 +397,26 @@ export const CLIENT_HUB_CURRENT_USER: BoardPersonOption = CLIENT_HUB_TEAM_ROSTER
 
 /** Everyone selectable from the `@mention` picker in the drawer's composer/reply boxes. */
 export const CLIENT_HUB_MENTIONABLE_PEOPLE: BoardPersonOption[] = CLIENT_HUB_TEAM_ROSTER;
+
+/**
+ * "Board info" popover content for the title chevron. Client Hub is a hand-authored
+ * board seeded straight into the frontend (it has no backing `workspace_navigation_items`
+ * row), so its board type isn't editable here the way a real, API-backed board's is.
+ */
+export const CLIENT_HUB_BOARD_INFO: BoardHeaderInfo = {
+  description:
+    "Adjust Client Relationship Status with EMOJI: (the emojis are in the drop down in the column) ✅: Good - we're hitting their goals, ⚠️: Caution - yellow flags are flying, 🚩: Alert - things are bad!!!, 🚀: Opportunity - possibility for upsell or new service",
+  board_type: "private",
+  owners: [
+    { id: "josh", full_name: "Josh Moody" },
+    { id: "blake", full_name: "Blake Denton" },
+    { id: "brandon", full_name: "Brandon Stewart" },
+    { id: "rachel", full_name: "Rachel Tonkovich" },
+  ],
+  created_by: "Josh Moody",
+  created_at: "Dec 2, 2019",
+  notifications: "Everything",
+};
 
 const brandon = CLIENT_HUB_CURRENT_USER;
 const mike = CLIENT_HUB_TEAM_ROSTER[10]; // Mike Powell

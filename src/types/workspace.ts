@@ -10,8 +10,23 @@
 
 export type WorkspaceNavNodeType = "group" | "leaf";
 
+/**
+ * A board's privacy level, shown as "Board type" in its info popover.
+ * "main" — visible to every workspace member (the default).
+ * "private" — only visible to people explicitly added to the board.
+ * "shareable" — visible to workspace members and can also be shared externally.
+ */
+export type BoardType = "main" | "private" | "shareable";
+
 /** Minimal creator profile embedded on a {@link WorkspaceNavNode}, shown in its info popover. */
 export type WorkspaceNavNodeCreator = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+};
+
+/** Minimal owner profile embedded on a {@link WorkspaceNavNode}, shown in its info popover. */
+export type WorkspaceNavNodeOwner = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
@@ -29,10 +44,13 @@ export type WorkspaceNavNode = {
   view_key: string | null;
   href: string | null;
   display_style: string | null;
+  board_type: BoardType;
   is_favorite: boolean;
   position: number;
   created_at: string | null;
   creator: WorkspaceNavNodeCreator | null;
+  /** Boards don't have their own owner list, so they inherit the workspace's owners. */
+  owners: WorkspaceNavNodeOwner[];
   children: WorkspaceNavNode[];
 };
 
@@ -66,15 +84,17 @@ export type CreateNavItemPayload = {
   view_key?: string | null;
   href?: string | null;
   display_style?: string | null;
+  board_type?: BoardType;
 };
 
-/** Payload for updating a navigation item (rename / favorite / edit). */
+/** Payload for updating a navigation item (rename / favorite / edit / change board type). */
 export type UpdateNavItemPayload = {
   label?: string;
   icon?: string | null;
   view_key?: string | null;
   href?: string | null;
   display_style?: string | null;
+  board_type?: BoardType;
   is_favorite?: boolean;
 };
 

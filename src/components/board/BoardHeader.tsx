@@ -2,12 +2,12 @@
 import React, { useRef, useState } from "react";
 import {
   BellIcon,
-  BoardGridIcon,
   ChevronDownIcon,
   CrownIcon,
   InviteIcon,
   MoreDotsIcon,
   StarIcon,
+  WorkspaceTypeIcon,
 } from "@/icons/workspace-icons";
 import {
   AgentsIcon,
@@ -17,14 +17,18 @@ import {
   LinkIcon,
 } from "@/icons/board-icons";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
+import type { BoardType } from "@/types/workspace";
+import { BOARD_TYPE_OPTIONS } from "./BoardTypePicker";
+import PersonAvatarStack, { type PersonAvatarStackPerson } from "./PersonAvatarStack";
 
 /** Pre-formatted "Board info" popover content — the caller resolves raw data (a nav node, seed data, …) into display strings. */
 export type BoardHeaderInfo = {
   description?: string | null;
-  /** e.g. "Table view", "Kanban view". */
-  view_type: string;
-  /** e.g. "No owners assigned" or a name list. */
-  owners: string;
+  board_type: BoardType;
+  /** Shows the edit chevron and makes the "Board type" row clickable. */
+  can_change_board_type?: boolean;
+  onChangeBoardType?: () => void;
+  owners: PersonAvatarStackPerson[];
   /** Creator's display name, or null when unknown. */
   created_by: string | null;
   /** Pre-formatted creation date, e.g. "Jul 15, 2026". */
@@ -94,14 +98,26 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         description={info.description}
         rows={[
           {
-            key: "view_type",
-            label: "View type",
+            key: "board_type",
+            label: "Board type",
             value: (
               <>
-                <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
-                <span className="flex-1">{info.view_type}</span>
+                <WorkspaceTypeIcon size={15} className="flex-none text-shell-text-muted" />
+                <span className="flex-1">
+                  {BOARD_TYPE_OPTIONS.find((option) => option.value === info.board_type)?.label ??
+                    "Main"}
+                </span>
+                {info.can_change_board_type && (
+                  <ChevronDownIcon size={13} className="flex-none -rotate-90 text-shell-text-faint" />
+                )}
               </>
             ),
+            onClick: info.can_change_board_type
+              ? () => {
+                  setIsInfoOpen(false);
+                  info.onChangeBoardType?.();
+                }
+              : undefined,
           },
           {
             key: "owners",
@@ -109,7 +125,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             value: (
               <>
                 <CrownIcon size={15} className="flex-none text-shell-text-muted" />
-                <span className="flex-1">{info.owners}</span>
+                <span className="flex-1">
+                  <PersonAvatarStack people={info.owners} />
+                </span>
               </>
             ),
           },
