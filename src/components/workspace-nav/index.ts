@@ -10,6 +10,12 @@ export { default as MoveNavItemModal } from "./MoveNavItemModal";
 export type { MoveNavItemModalProps } from "./MoveNavItemModal";
 export { default as GenericBoardView } from "./GenericBoardView";
 export type { WorkspaceViewProps } from "./GenericBoardView";
+export { default as WorkspaceOptionsMenu } from "./WorkspaceOptionsMenu";
+export type { WorkspaceOptionsMenuProps } from "./WorkspaceOptionsMenu";
+export { default as ChangeWorkspaceTypeModal } from "./ChangeWorkspaceTypeModal";
+export type { ChangeWorkspaceTypeModalProps } from "./ChangeWorkspaceTypeModal";
+export { default as WorkspacePrivacyPicker } from "./WorkspacePrivacyPicker";
+export type { WorkspacePrivacyPickerProps } from "./WorkspacePrivacyPicker";
 
 export { default as useWorkspaceNav } from "./useWorkspaceNav";
 export type { WorkspaceNavApi } from "./useWorkspaceNav";

@@ -4,6 +4,7 @@ import type {
   CreateWorkspacePayload,
   MoveNavItemPayload,
   UpdateNavItemPayload,
+  UpdateWorkspacePayload,
   Workspace,
   WorkspaceNavNode,
 } from "@/types/workspace";
@@ -26,6 +27,28 @@ export const workspaceService = {
       payload
     );
     return response.workspace;
+  },
+
+  /** PATCH /api/workspaces/{slug} — rename or change type/appearance (owner only). */
+  async updateWorkspace(
+    workspace_slug: string,
+    payload: UpdateWorkspacePayload
+  ): Promise<Workspace> {
+    const response = await apiClient.patch<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}`,
+      payload
+    );
+    return response.workspace;
+  },
+
+  /** DELETE /api/workspaces/{slug} — soft-delete the workspace (owner only). */
+  async deleteWorkspace(workspace_slug: string): Promise<void> {
+    await apiClient.delete(`/api/workspaces/${workspace_slug}`);
+  },
+
+  /** POST /api/workspaces/{slug}/leave — remove the current user from the workspace. */
+  async leaveWorkspace(workspace_slug: string): Promise<void> {
+    await apiClient.post(`/api/workspaces/${workspace_slug}/leave`);
   },
 
   /** GET /api/workspaces/{slug}/navigation — the full navigation tree. */

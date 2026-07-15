@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
-import type { CreateWorkspacePayload } from "@/types/workspace";
+import type { CreateWorkspacePayload, UpdateWorkspacePayload } from "@/types/workspace";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 import { mapWorkspaceToBrowse } from "./helpers";
 
@@ -15,6 +15,15 @@ export type WorkspacesApi = {
   error: string | null;
   selectWorkspace: (workspace: { id: string }) => void;
   createWorkspace: (payload: CreateWorkspacePayload) => Promise<BrowseWorkspace>;
+  /** PATCH a workspace's own fields (rename / change type) — used by the "…" options menu. */
+  updateWorkspace: (
+    workspace_slug: string,
+    payload: UpdateWorkspacePayload
+  ) => Promise<BrowseWorkspace>;
+  /** Remove the current user from a workspace; drops it from local state on success. */
+  leaveWorkspace: (workspace_slug: string) => Promise<void>;
+  /** Soft-delete a workspace; drops it from local state on success. */
+  deleteWorkspace: (workspace_slug: string) => Promise<void>;
   reload: () => Promise<void>;
 };
 
@@ -89,6 +98,49 @@ export function useWorkspaces(): WorkspacesApi {
     []
   );
 
+  const updateWorkspace = useCallback(
+    async (workspace_slug: string, payload: UpdateWorkspacePayload) => {
+      const updated = mapWorkspaceToBrowse(
+        await workspaceService.updateWorkspace(workspace_slug, payload)
+      );
+      setWorkspaces((prev) =>
+        prev.map((workspace) => (workspace.id === workspace_slug ? updated : workspace))
+      );
+      // Renaming can change the slug (the backend derives it from the name), so the
+      // active id must follow — otherwise `active_workspace` silently orphans itself.
+      setActiveWorkspaceId((current) => (current === workspace_slug ? updated.id : current));
+      return updated;
+    },
+    []
+  );
+
+  /** Drops a workspace from local state, falling back active selection to the home
+   * workspace (or the first remaining one) when the removed workspace was active. */
+  const dropWorkspaceFromState = useCallback((workspace_slug: string) => {
+    setWorkspaces((prev) => prev.filter((workspace) => workspace.id !== workspace_slug));
+    setActiveWorkspaceId((current) => {
+      if (current !== workspace_slug) return current;
+      const remaining = workspaces.filter((workspace) => workspace.id !== workspace_slug);
+      return (remaining.find((workspace) => workspace.is_home) ?? remaining[0])?.id;
+    });
+  }, [workspaces]);
+
+  const leaveWorkspace = useCallback(
+    async (workspace_slug: string) => {
+      await workspaceService.leaveWorkspace(workspace_slug);
+      dropWorkspaceFromState(workspace_slug);
+    },
+    [dropWorkspaceFromState]
+  );
+
+  const deleteWorkspace = useCallback(
+    async (workspace_slug: string) => {
+      await workspaceService.deleteWorkspace(workspace_slug);
+      dropWorkspaceFromState(workspace_slug);
+    },
+    [dropWorkspaceFromState]
+  );
+
   return {
     workspaces,
     active_workspace,
@@ -99,6 +151,9 @@ export function useWorkspaces(): WorkspacesApi {
     error,
     selectWorkspace,
     createWorkspace,
+    updateWorkspace,
+    leaveWorkspace,
+    deleteWorkspace,
     reload: load,
   };
 }

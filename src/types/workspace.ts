@@ -36,6 +36,8 @@ export type Workspace = {
   color: string;
   /** Product/source label shown under the name in the browse modal. */
   product: string;
+  /** "open" — any account member can join; "closed" — invite-only. */
+  privacy: "open" | "closed";
   is_home: boolean;
   description: string | null;
   position: number;
@@ -75,6 +77,16 @@ export type MoveNavItemPayload = {
 /** Payload for creating a workspace from the "Add new workspace" dialog. */
 export type CreateWorkspacePayload = {
   name: string;
+  description?: string | null;
+  mono?: string | null;
+  color?: string | null;
+  product?: string | null;
+  privacy?: "open" | "closed";
+};
+
+/** Payload for updating a workspace's own fields (rename / change type / etc). */
+export type UpdateWorkspacePayload = {
+  name?: string;
   description?: string | null;
   mono?: string | null;
   color?: string | null;

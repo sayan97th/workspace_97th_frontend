@@ -210,6 +210,25 @@ export const DeleteIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+export const LeaveWorkspaceIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M10 2.5 H12.5 A1 1 0 0 1 13.5 3.5 V12.5 A1 1 0 0 1 12.5 13.5 H10 M9 8 H2.5 M5 5.5 L2.5 8 L5 10.5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const WorkspaceTypeIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="3.5" y="7" width="9" height="6.5" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
 export const CheckIcon: React.FC<IconProps> = ({ className, size = 12 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

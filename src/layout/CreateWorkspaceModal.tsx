@@ -6,40 +6,16 @@ import {
   default_new_workspace_name,
   hashWorkspaceColor,
   workspace_create_accent_color,
-  workspace_privacy_hints,
   type WorkspacePrivacy,
 } from "@/data/workspace-create-data";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
+import WorkspacePrivacyPicker from "@/components/workspace-nav/WorkspacePrivacyPicker";
 
 type CreateWorkspaceModalProps = {
   is_open: boolean;
   onClose: () => void;
   onCreate: (workspace: BrowseWorkspace) => void;
 };
-
-type PrivacyOptionProps = {
-  value: WorkspacePrivacy;
-  label: string;
-  is_selected: boolean;
-  onSelect: (value: WorkspacePrivacy) => void;
-};
-
-const PrivacyOption: React.FC<PrivacyOptionProps> = ({ value, label, is_selected, onSelect }) => (
-  <button
-    type="button"
-    onClick={() => onSelect(value)}
-    className="flex items-center gap-2 text-left"
-  >
-    <span
-      className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${
-        is_selected ? "border-[#2B76E5]" : "border-shell-border-strong"
-      }`}
-    >
-      {is_selected && <span className="h-2 w-2 rounded-full bg-[#2B76E5]" />}
-    </span>
-    <span className="text-[13.5px] font-medium text-shell-text">{label}</span>
-  </button>
-);
 
 /**
  * "Add new workspace" dialog reachable from the sidebar workspace switcher
@@ -148,26 +124,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
 
         {/* Privacy */}
         <div className="px-[22px] pb-6 pt-5">
-          <div className="mb-[9px] text-[12.5px] font-semibold text-gray-400">
-            Privacy
-          </div>
-          <div className="flex items-center gap-[22px]">
-            <PrivacyOption
-              value="open"
-              label="Open"
-              is_selected={privacy === "open"}
-              onSelect={setPrivacy}
-            />
-            <PrivacyOption
-              value="closed"
-              label="Closed"
-              is_selected={privacy === "closed"}
-              onSelect={setPrivacy}
-            />
-          </div>
-          <div className="mt-[9px] text-xs text-gray-400">
-            {workspace_privacy_hints[privacy]}
-          </div>
+          <WorkspacePrivacyPicker value={privacy} onChange={setPrivacy} />
         </div>
 
         {/* Footer */}

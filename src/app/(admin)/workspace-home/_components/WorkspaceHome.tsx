@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSidebar } from "@/context/SidebarContext";
 import {
   ChatBubbleIcon,
@@ -14,6 +15,13 @@ import {
   PersonIcon,
   StarIcon,
 } from "@/icons/workspace-icons";
+import {
+  ChangeWorkspaceTypeModal,
+  NavItemFormModal,
+  useWorkspaces,
+  WorkspaceOptionsMenu,
+} from "@/components/workspace-nav";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import WorkspaceContent from "./WorkspaceContent";
 import WorkspacePermissions from "./WorkspacePermissions";
 
@@ -30,6 +38,9 @@ type RecentItem = {
   label: string;
   kind: "file" | "folder";
 };
+
+/** Which single-field/confirm dialog the "…" menu currently has open. */
+type OptionsDialog = "rename" | "change-type" | "leave" | "delete" | null;
 
 const workspace_tabs: TabDefinition[] = [
   { id: "recents", label: "Recents", Icon: ClockIcon },
@@ -48,7 +59,42 @@ const recent_items: RecentItem[] = [
 
 const WorkspaceHome: React.FC = () => {
   const { active_item_label } = useSidebar();
+  const router = useRouter();
+  const workspaces = useWorkspaces();
   const [active_tab, setActiveTab] = useState<TabId>("recents");
+  const [is_options_open, setIsOptionsOpen] = useState(false);
+  const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);
+  const options_button_ref = useRef<HTMLButtonElement>(null);
+
+  const active_workspace = workspaces.active_workspace;
+  const workspace_name = active_workspace?.name ?? "Fulfillment";
+  const workspace_mono = active_workspace?.mono ?? "97";
+  const workspace_color = active_workspace?.color;
+  const can_manage_workspace = active_workspace?.role?.toLowerCase() === "owner";
+
+  const closeDialog = () => setOpenDialog(null);
+
+  const handleRename = async (name: string) => {
+    if (!active_workspace) return;
+    await workspaces.updateWorkspace(active_workspace.id, { name });
+  };
+
+  const handleChangeType = async (privacy: "open" | "closed") => {
+    if (!active_workspace) return;
+    await workspaces.updateWorkspace(active_workspace.id, { privacy });
+  };
+
+  const handleLeave = async () => {
+    if (!active_workspace) return;
+    await workspaces.leaveWorkspace(active_workspace.id);
+    router.push("/");
+  };
+
+  const handleDelete = async () => {
+    if (!active_workspace) return;
+    await workspaces.deleteWorkspace(active_workspace.id);
+    router.push("/");
+  };
 
   return (
     <div className="min-h-full bg-shell-bg">
@@ -62,9 +108,12 @@ const WorkspaceHome: React.FC = () => {
       <div className="px-10">
         {/* Workspace header block */}
         <div className="relative flex items-start gap-[18px]">
-          <div className="-mt-11 flex h-[88px] w-[88px] flex-none items-center justify-center rounded-[18px] border-[3px] border-shell-bg bg-brand-500 shadow-[0_10px_30px_rgba(10,23,23,0.28)]">
+          <div
+            className="-mt-11 flex h-[88px] w-[88px] flex-none items-center justify-center rounded-[18px] border-[3px] border-shell-bg bg-brand-500 shadow-[0_10px_30px_rgba(10,23,23,0.28)]"
+            style={workspace_color ? { backgroundColor: workspace_color } : undefined}
+          >
             <span className="font-outfit text-[38px] font-bold tracking-[-0.03em] text-white">
-              97
+              {workspace_mono}
             </span>
           </div>
 
@@ -72,14 +121,14 @@ const WorkspaceHome: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="m-0 text-[34px] font-light tracking-[-0.01em] text-shell-text">
-                  Fulfillment
+                  {workspace_name}
                 </h1>
                 <span className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-shell-text-secondary hover:bg-shell-hover">
                   <ChevronDownIcon size={18} />
                 </span>
               </div>
               <div className="mt-1 font-mono-accent text-xs tracking-[0.02em] text-shell-text-muted">
-                Fulfillment&nbsp;&nbsp;/&nbsp;&nbsp;
+                {workspace_name}&nbsp;&nbsp;/&nbsp;&nbsp;
                 <span className="font-medium text-brand-500">{active_item_label}</span>
               </div>
             </div>
@@ -106,12 +155,24 @@ const WorkspaceHome: React.FC = () => {
                 Members
               </button>
               <button
+                ref={options_button_ref}
                 type="button"
+                onClick={() => setIsOptionsOpen((open) => !open)}
                 className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-shell-border text-shell-text-secondary hover:bg-shell-hover"
-                aria-label="Workspace options"
+                aria-label="More workspace actions"
               >
                 <MoreDotsIcon size={16} />
               </button>
+              <WorkspaceOptionsMenu
+                anchor_el={options_button_ref.current}
+                is_open={is_options_open}
+                onClose={() => setIsOptionsOpen(false)}
+                can_manage={can_manage_workspace}
+                onRename={() => setOpenDialog("rename")}
+                onChangeType={() => setOpenDialog("change-type")}
+                onLeave={() => setOpenDialog("leave")}
+                onDelete={() => setOpenDialog("delete")}
+              />
             </div>
           </div>
         </div>
@@ -170,6 +231,42 @@ const WorkspaceHome: React.FC = () => {
           </div>
         )}
       </div>
+
+      <NavItemFormModal
+        is_open={open_dialog === "rename"}
+        title="Rename workspace"
+        submit_label="Rename"
+        initial_label={workspace_name}
+        placeholder="Workspace name"
+        onSubmit={handleRename}
+        onClose={closeDialog}
+      />
+
+      <ChangeWorkspaceTypeModal
+        is_open={open_dialog === "change-type"}
+        initial_privacy={active_workspace?.privacy ?? "open"}
+        onSubmit={handleChangeType}
+        onClose={closeDialog}
+      />
+
+      <ConfirmActionModal
+        is_open={open_dialog === "leave"}
+        title="Leave workspace"
+        description={`You'll lose access to "${workspace_name}" and everything in it until someone invites you back.`}
+        confirm_label="Leave workspace"
+        onConfirm={handleLeave}
+        onClose={closeDialog}
+      />
+
+      <ConfirmActionModal
+        is_open={open_dialog === "delete"}
+        title="Delete workspace"
+        description={`"${workspace_name}" and everything in it will be moved to trash. This can be undone from Trash within 30 days.`}
+        confirm_label="Delete workspace"
+        danger
+        onConfirm={handleDelete}
+        onClose={closeDialog}
+      />
     </div>
   );
 };
