@@ -16,6 +16,8 @@ export type { PersonAvatarProps } from "./PersonAvatar";
 export type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardRowHeight, BoardTableProps } from "./types";
 export { BOARD_ROW_HEIGHT_PX } from "./types";
 export { default as useBoardToolbar } from "./toolbar/useBoardToolbar";
+export { default as BoardPopover } from "./toolbar/BoardPopover";
+export type { BoardPopoverProps } from "./toolbar/BoardPopover";
 export { default as SelectablePersonAvatar } from "./toolbar/SelectablePersonAvatar";
 export type { SelectablePersonAvatarProps } from "./toolbar/SelectablePersonAvatar";
 export { default as ColumnSwatchBadge } from "./toolbar/ColumnSwatchBadge";

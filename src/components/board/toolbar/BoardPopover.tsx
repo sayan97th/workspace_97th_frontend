@@ -83,7 +83,12 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
       onClose();
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      // Stop the Escape key here so a parent dialog's own window-level Escape
+      // handler (e.g. TrashModal, TeamsModal) doesn't also close on the same
+      // keypress — this popover should be the topmost layer to dismiss.
+      event.stopPropagation();
+      onClose();
     };
 
     document.addEventListener("mousedown", handlePointerDown);
