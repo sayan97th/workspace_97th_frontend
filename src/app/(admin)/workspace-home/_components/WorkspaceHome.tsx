@@ -15,6 +15,7 @@ import {
   StarIcon,
 } from "@/icons/workspace-icons";
 import WorkspaceContent from "./WorkspaceContent";
+import WorkspacePermissions from "./WorkspacePermissions";
 
 type TabId = "recents" | "content" | "collaborators" | "permissions";
 
@@ -161,7 +162,9 @@ const WorkspaceHome: React.FC = () => {
 
         {active_tab === "content" && <WorkspaceContent />}
 
-        {(active_tab === "collaborators" || active_tab === "permissions") && (
+        {active_tab === "permissions" && <WorkspacePermissions />}
+
+        {active_tab === "collaborators" && (
           <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
             [ no {active_tab} yet ]
           </div>
