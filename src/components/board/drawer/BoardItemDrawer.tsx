@@ -37,12 +37,12 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   return (
     <>
       <div onClick={drawer.close} className="fixed inset-0 z-[400] bg-[rgba(4,12,12,0.42)]" />
-      <div className="fixed bottom-0 right-0 top-0 z-[401] flex w-[640px] max-w-[94vw] flex-col border-l border-white/[0.09] bg-[#0e1c1b] text-[#e9eded] shadow-[-24px_0_60px_rgba(0,0,0,0.5)]">
+      <div className="fixed bottom-0 right-0 top-0 z-[401] flex w-[640px] max-w-[94vw] flex-col border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]">
         {/* Header */}
-        <div className="flex flex-none items-start gap-3 border-b border-white/[0.07] px-[22px] pb-4 pt-5">
+        <div className="flex flex-none items-start gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
           <span className="w-[5px] flex-none self-stretch rounded-[3px]" style={{ background: drawer.accent_color }} />
           <div className="min-w-0 flex-1">
-            <div className="mb-[5px] flex items-center gap-[9px] text-[11.5px] font-semibold text-[#6e7b7d]">
+            <div className="mb-[5px] flex items-center gap-[9px] text-[11.5px] font-semibold text-shell-text-faint">
               <svg width="13" height="13" viewBox="0 0 16 16" style={{ color: drawer.accent_color }}>
                 <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
                 <line x1="2.5" y1="6.5" x2="13.5" y2="6.5" stroke="currentColor" strokeWidth="1.3" />
@@ -57,14 +57,14 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
             type="button"
             onClick={drawer.close}
             aria-label="Close item drawer"
-            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-[#8a9495] hover:bg-white/[0.08] hover:text-white"
+            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
           >
             <CloseIcon size={16} />
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-none items-center gap-0.5 border-b border-white/[0.07] px-[18px]">
+        <div className="flex flex-none items-center gap-0.5 border-b border-shell-border px-[18px]">
           {tabs.map((tab) => {
             const is_active = drawer.active_tab === tab.id;
             return (
@@ -72,13 +72,14 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
                 key={tab.id}
                 type="button"
                 onClick={() => drawer.setActiveTab(tab.id)}
-                className="relative flex items-center gap-[7px] px-[13px] py-3 text-[13.5px] font-semibold"
-                style={{ color: is_active ? "#edf1f1" : "#8a9495" }}
+                className={`relative flex items-center gap-[7px] px-[13px] py-3 text-[13.5px] font-semibold ${
+                  is_active ? "text-shell-text" : "text-shell-text-muted"
+                }`}
               >
                 {tab.icon}
                 {tab.label}
                 {tab.count !== undefined && (
-                  <span className="rounded-[20px] bg-white/10 px-[7px] py-px text-[11px] font-bold text-[#c7d0d0]">
+                  <span className="rounded-[20px] bg-shell-hover-strong px-[7px] py-px text-[11px] font-bold text-shell-text-secondary">
                     {tab.count}
                   </span>
                 )}

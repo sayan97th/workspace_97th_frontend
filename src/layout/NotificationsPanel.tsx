@@ -71,7 +71,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   );
 
   const header_icon_button =
-    "flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-[#9aa4a5] transition-colors hover:bg-white/[0.08]";
+    "flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover";
 
   return (
     <SlideOverDrawer is_open={is_open} onClose={onClose} aria_label="Notifications">
@@ -103,7 +103,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="mt-4 flex gap-[22px] border-b border-white/[0.08]">
+        <div className="mt-4 flex gap-[22px] border-b border-shell-border">
           {notification_tabs.map((tab) => {
             const is_active = tab.id === active_tab;
             return (
@@ -113,8 +113,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`-mb-px cursor-pointer border-b-2 pb-[11px] text-sm transition-colors ${
                   is_active
-                    ? "border-brand-500 font-semibold text-[#e9eded]"
-                    : "border-transparent font-medium text-[#8a9495] hover:text-[#e9eded]"
+                    ? "border-brand-500 font-semibold text-shell-text"
+                    : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
                 }`}
               >
                 {tab.label}
@@ -125,14 +125,14 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
         {/* Search + unread toggle */}
         <div className="mt-4 flex items-center gap-3">
-          <div className="flex flex-1 items-center gap-[9px] rounded-[9px] border border-white/[0.08] bg-[#142020] px-3 py-[9px] text-[#8a9495] focus-within:border-brand-500">
+          <div className="flex flex-1 items-center gap-[9px] rounded-[9px] border border-shell-border bg-shell-panel-alt px-3 py-[9px] text-shell-text-muted focus-within:border-brand-500">
             <SearchIcon size={14} />
             <input
               type="text"
               value={search_query}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={notification_search_placeholder}
-              className="w-full bg-transparent text-[12.5px] text-[#e9eded] placeholder:text-[#8a9495] focus:outline-none"
+              className="w-full bg-transparent text-[12.5px] text-shell-text placeholder:text-shell-text-muted focus:outline-none"
             />
           </div>
           <button
@@ -140,16 +140,16 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
             role="switch"
             aria-checked={unread_only}
             onClick={() => setUnreadOnly((previous) => !previous)}
-            className="flex flex-none items-center gap-2 text-[12.5px] font-medium text-[#b4bcbd]"
+            className="flex flex-none items-center gap-2 text-[12.5px] font-medium text-shell-text-secondary"
           >
             <span
               className={`relative h-[19px] w-[34px] flex-none rounded-full transition-colors ${
-                unread_only ? "bg-brand-500" : "bg-white/[0.14]"
+                unread_only ? "bg-brand-500" : "bg-shell-hover-strong"
               }`}
             >
               <span
                 className={`absolute top-[2px] h-[15px] w-[15px] rounded-full transition-all ${
-                  unread_only ? "left-[17px] bg-white" : "left-[2px] bg-[#8a9495]"
+                  unread_only ? "left-[17px] bg-white" : "left-[2px] bg-shell-text-muted"
                 }`}
               />
             </span>
@@ -159,22 +159,22 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
         {/* Dismissible board-mute hint */}
         {is_hint_visible && (
-          <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-[#142020] p-3">
+          <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-shell-border bg-shell-panel-alt p-3">
             <span
-              className="h-[38px] w-[44px] flex-none rounded-[7px] border border-white/[0.08]"
+              className="h-[38px] w-[44px] flex-none rounded-[7px] border border-shell-border"
               style={{
                 backgroundImage:
                   "repeating-linear-gradient(120deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 10px)",
               }}
               aria-hidden="true"
             />
-            <span className="flex-1 text-[12.5px] leading-[1.5] text-[#b4bcbd]">
+            <span className="flex-1 text-[12.5px] leading-[1.5] text-shell-text-secondary">
               {notification_mute_hint}
             </span>
             <button
               type="button"
               onClick={() => setIsHintVisible(false)}
-              className="flex-none text-[#8a9495] transition-colors hover:text-[#e9eded]"
+              className="flex-none text-shell-text-muted transition-colors hover:text-shell-text"
               aria-label="Dismiss hint"
             >
               <CloseIcon size={14} />
@@ -185,11 +185,11 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
       {/* Scrollable list */}
       <div className="shell-scrollbar flex-1 overflow-y-auto px-5 pb-6 pt-[18px]">
-        <div className="mb-3 text-[12.5px] font-semibold text-[#8a9495]">
+        <div className="mb-3 text-[12.5px] font-semibold text-shell-text-muted">
           {notification_group_label}
         </div>
         {visible_notifications.length === 0 ? (
-          <p className="pt-6 text-center text-[13px] text-[#8a9495]">
+          <p className="pt-6 text-center text-[13px] text-shell-text-muted">
             You&apos;re all caught up.
           </p>
         ) : (

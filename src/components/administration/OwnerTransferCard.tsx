@@ -40,7 +40,7 @@ const OwnerTransferCard: React.FC<OwnerTransferCardProps> = ({
         className={`grid gap-[14px] ${show_arrow ? "grid-cols-[1fr_auto_1fr] items-end" : "grid-cols-2"}`}
       >
         <div>
-          <div className="mb-[7px] text-[12.5px] font-semibold text-[#9aa4a5]">Current owner</div>
+          <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Current owner</div>
           <SettingsDropdown
             value={current_owner_id}
             options={options}
@@ -50,7 +50,7 @@ const OwnerTransferCard: React.FC<OwnerTransferCardProps> = ({
         </div>
 
         {show_arrow ? (
-          <span className="pb-[11px] text-[#7e8889]">
+          <span className="pb-[11px] text-shell-text-faint">
             <svg width="14" height="14" viewBox="0 0 16 16">
               <path
                 d="M2 8h11M9 4l4 4-4 4"
@@ -65,7 +65,7 @@ const OwnerTransferCard: React.FC<OwnerTransferCardProps> = ({
         ) : null}
 
         <div>
-          <div className="mb-[7px] text-[12.5px] font-semibold text-[#9aa4a5]">New owner</div>
+          <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">New owner</div>
           <SettingsDropdown
             value={new_owner_id}
             options={options}

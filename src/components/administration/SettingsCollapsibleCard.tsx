@@ -26,16 +26,16 @@ const SettingsCollapsibleCard: React.FC<SettingsCollapsibleCardProps> = ({
   const [is_open, setIsOpen] = useState(default_open);
 
   return (
-    <div className={`overflow-hidden rounded-xl border border-white/[0.08] bg-[#0b1616] ${className}`}>
+    <div className={`overflow-hidden rounded-xl border border-shell-border bg-shell-panel-alt ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center gap-[10px] px-[18px] py-[15px] text-left transition-colors hover:bg-white/[0.03]"
+        className="flex w-full items-center gap-[10px] px-[18px] py-[15px] text-left transition-colors hover:bg-shell-hover"
       >
-        {icon ? <span className="flex-none text-[#8a9495]">{icon}</span> : null}
-        <span className="flex-1 text-[14px] font-bold text-[#edf1f1]">{title}</span>
+        {icon ? <span className="flex-none text-shell-text-muted">{icon}</span> : null}
+        <span className="flex-1 text-[14px] font-bold text-shell-text">{title}</span>
         <span
-          className="flex flex-none text-[#8a9495] transition-transform duration-150"
+          className="flex flex-none text-shell-text-muted transition-transform duration-150"
           style={{ transform: is_open ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           <svg width="10" height="10" viewBox="0 0 12 12">
@@ -52,7 +52,7 @@ const SettingsCollapsibleCard: React.FC<SettingsCollapsibleCardProps> = ({
       </button>
 
       {is_open ? (
-        <div className="flex flex-col gap-[18px] border-t border-white/[0.06] px-[18px] pb-5 pt-[14px]">
+        <div className="flex flex-col gap-[18px] border-t border-shell-border px-[18px] pb-5 pt-[14px]">
           {children}
         </div>
       ) : null}

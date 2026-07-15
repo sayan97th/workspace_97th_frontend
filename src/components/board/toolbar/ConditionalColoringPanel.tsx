@@ -28,24 +28,24 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
     // dropdowns are InlineFieldMenu popups that float outside the panel's own
     // bounds, whereas FilterPanel's dropdowns are native <select> elements the
     // browser always renders above the page regardless of parent overflow.
-    <div className="rounded-xl border border-white/[0.10] bg-[#122221] shadow-2xl shadow-black/40">
+    <div className="rounded-xl border border-shell-border-strong bg-shell-panel shadow-2xl shadow-black/40">
       <div className="flex items-center gap-[10px] px-5 pb-3.5 pt-4">
-        <span className="text-[16px] font-bold text-[#eef2f2]">Conditional coloring</span>
+        <span className="text-[16px] font-bold text-shell-text">Conditional coloring</span>
         <span
-          className="flex flex-none items-center text-[#6e7b7d]"
+          className="flex flex-none items-center text-shell-text-faint"
           title="Paints a row or cell's background when its column matches a condition"
         >
           <InfoIcon size={15} />
         </span>
         <div className="flex-1" />
-        <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-white/[0.12] px-3.5 text-[13px] font-semibold text-[#71807f]">
+        <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-shell-border-strong px-3.5 text-[13px] font-semibold text-shell-text-faint">
           Save as new view
         </div>
       </div>
 
       <div className="flex flex-col gap-3 px-5 pb-1.5 pt-0.5">
         {toolbar.conditional_color_rules.length === 0 && (
-          <p className="pb-2 text-[13px] text-[#8a9495]">No coloring rules yet.</p>
+          <p className="pb-2 text-[13px] text-shell-text-muted">No coloring rules yet.</p>
         )}
         {toolbar.conditional_color_rules.map((rule) => {
           const selected_column = colorable_columns.find((column) => column.id === rule.column_id);
@@ -56,7 +56,7 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
 
           return (
             <div key={rule.id} className="flex items-center gap-[10px]">
-              <span className="flex flex-none cursor-grab text-[#5b6869]">
+              <span className="flex flex-none cursor-grab text-shell-text-faint">
                 <DragHandleIcon />
               </span>
 

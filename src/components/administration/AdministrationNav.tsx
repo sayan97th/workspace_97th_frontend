@@ -10,9 +10,9 @@ export type AdministrationNavProps = {
 const rowClass = (is_active: boolean, indent: boolean) =>
   `flex cursor-pointer items-center gap-[6px] rounded-lg py-2 text-[13.5px] transition-colors ${
     indent ? "pl-[30px] pr-[10px]" : "px-[10px]"
-  } ${is_active ? "font-bold text-brand-200" : "font-medium text-[#b7c0c0] hover:bg-white/[0.06]"}`;
+  } ${is_active ? "font-bold text-brand-200" : "font-medium text-shell-text-secondary hover:bg-shell-hover"}`;
 
-const groupHeaderClass = "mb-1.5 px-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#7e8889]";
+const groupHeaderClass = "mb-1.5 px-2 text-[11px] font-bold uppercase tracking-[0.06em] text-shell-text-faint";
 
 const NavRow: React.FC<{ label: string; is_active: boolean; onSelect: () => void; indent?: boolean }> = ({
   label,
@@ -33,7 +33,7 @@ const NavGroupToggle: React.FC<{
 }> = ({ label, is_expanded, is_active, onToggle }) => (
   <div onClick={onToggle} className={rowClass(is_active, false)}>
     <span
-      className="flex flex-none items-center justify-center text-[#8a9495] transition-transform duration-150"
+      className="flex flex-none items-center justify-center text-shell-text-muted transition-transform duration-150"
       style={{ width: 14, height: 14, transform: is_expanded ? "rotate(90deg)" : "rotate(0deg)" }}
     >
       <svg width="10" height="10" viewBox="0 0 12 12">
@@ -60,12 +60,12 @@ const AdministrationNav: React.FC<AdministrationNavProps> = ({ admin }) => {
   const isActive = (id: AdminSectionId) => admin.active_section === id;
 
   return (
-    <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-white/[0.07] bg-[#0b1616] px-[14px] py-5">
+    <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-panel-alt px-[14px] py-5">
       <div className="mb-[22px] flex items-center gap-[10px] px-2">
         <span className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-[7px] bg-brand-500 text-[11px] font-bold text-white">
           97
         </span>
-        <span className="text-[15px] font-bold text-[#e9eded]">Administration</span>
+        <span className="text-[15px] font-bold text-shell-text">Administration</span>
       </div>
 
       <div className={groupHeaderClass}>General</div>

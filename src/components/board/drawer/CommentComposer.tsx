@@ -67,7 +67,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className={`w-full resize-none overflow-hidden rounded-[11px] border border-white/[0.12] bg-[#132524] px-[13px] py-[11px] font-sans text-[13.5px] leading-relaxed text-[#e9eded] outline-none transition-[height] duration-100 placeholder:text-[#6e7b7d] focus:border-[#00c875] ${
+          className={`w-full resize-none overflow-hidden rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[11px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-[height] duration-100 placeholder:text-shell-text-faint focus:border-[#00c875] ${
             is_update ? "h-16" : has_draft ? "h-[52px]" : "h-10"
           }`}
         />
@@ -81,7 +81,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                 <button
                   type="button"
                   onClick={() => onToggleEmojiPalette(target)}
-                  className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-[#8a9495] hover:bg-white/[0.08] hover:text-white"
+                  className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                 >
                   <ReactSmileyIcon size={is_update ? 17 : 16} />
                 </button>
@@ -92,7 +92,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                   <button
                     type="button"
                     onClick={() => file_input_ref.current?.click()}
-                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-[#8a9495] hover:bg-white/[0.08] hover:text-white"
+                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                   >
                     <AttachIcon />
                   </button>
@@ -110,7 +110,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
               )}
             </div>
             <div className="flex items-center gap-2.5">
-              {is_update && <span className="text-xs text-[#6e7b7d]">Shift + Enter for a new line</span>}
+              {is_update && <span className="text-xs text-shell-text-faint">Shift + Enter for a new line</span>}
               <button
                 type="button"
                 onClick={onSubmit}

@@ -53,7 +53,7 @@ const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
     >
       <div
         onClick={onClose}
-        className={`absolute inset-0 bg-[#060e0e]/40 transition-opacity duration-300 ${
+        className={`absolute inset-0 bg-black/40 transition-opacity duration-300 ${
           is_open ? "opacity-100" : "opacity-0"
         }`}
       />
@@ -62,7 +62,7 @@ const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
         aria-modal="true"
         aria-label={aria_label}
         style={{ width: `min(${width}px, 100vw)` }}
-        className={`shell-scrollbar absolute right-0 top-0 flex h-screen overflow-hidden border-l border-white/[0.08] bg-[#0a1717] text-[#e9eded] transition-transform duration-300 ease-out ${
+        className={`shell-scrollbar absolute right-0 top-0 flex h-screen overflow-hidden border-l border-shell-border bg-shell-panel text-shell-text transition-transform duration-300 ease-out ${
           orientation === "horizontal" ? "flex-row" : "flex-col"
         } ${
           is_open

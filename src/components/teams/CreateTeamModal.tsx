@@ -38,8 +38,8 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
         aria-hidden="true"
       />
 
-      <div className="relative z-[421] flex max-h-[90vh] w-[480px] max-w-full flex-col overflow-hidden rounded-2xl border border-white/[0.10] bg-[#132424] text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-[22px] py-5">
+      <div className="relative z-[421] flex max-h-[90vh] w-[480px] max-w-full flex-col overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="flex items-center justify-between border-b border-shell-border px-[22px] py-5">
           <div className="flex items-center gap-3">
             <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-brand-500/[0.16] text-brand-200">
               <TeamsIcon size={18} />
@@ -50,7 +50,7 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
             type="button"
             onClick={teams.closeCreateTeam}
             aria-label="Close"
-            className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-[#9aa4a5] transition-colors hover:bg-white/[0.08]"
+            className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
           >
             <CloseIcon size={14} />
           </button>
@@ -60,18 +60,18 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
             the member picker's candidate list (rendered in-flow, not floated) opens. */}
         <div className="shell-scrollbar flex min-h-0 flex-1 flex-col gap-[18px] overflow-y-auto px-[22px] py-5">
           <div>
-            <div className="mb-[7px] text-[12.5px] font-semibold text-[#9aa4a5]">Team name</div>
+            <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Team name</div>
             <input
               type="text"
               value={teams.new_team_name}
               onChange={(event) => teams.setNewTeamName(event.target.value)}
               placeholder="Enter team name"
-              className="w-full rounded-[9px] border border-white/[0.14] bg-[#0F1C1C] px-[13px] py-[11px] text-[14px] text-[#e9eded] placeholder:text-[#7e8889] focus:border-brand-500 focus:outline-none"
+              className="w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text placeholder:text-shell-text-faint focus:border-brand-500 focus:outline-none"
             />
           </div>
 
           <div>
-            <div className="mb-[7px] text-[12.5px] font-semibold text-[#9aa4a5]">Team members</div>
+            <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Team members</div>
             <PeopleMultiSelect
               people={teams.members}
               selected_ids={teams.new_team_member_ids}

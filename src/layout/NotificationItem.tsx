@@ -23,7 +23,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <button
       type="button"
       onClick={() => onSelect?.(id)}
-      className="flex w-full gap-3 rounded-[11px] border border-white/[0.06] bg-[#142020] p-[13px] text-left transition-colors hover:border-white/[0.14]"
+      className="flex w-full gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt p-[13px] text-left transition-colors hover:border-shell-border-strong"
     >
       <span
         className={`h-[30px] w-[30px] flex-none rounded-full bg-gradient-to-br ${actor.avatar_gradient}`}
@@ -31,11 +31,11 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       />
 
       <span className="min-w-0 flex-1">
-        <span className="block text-[13px] leading-[1.5] text-[#d7dcdc]">
-          <strong className="font-bold text-[#f2f5f5]">{actor.name}</strong>{" "}
+        <span className="block text-[13px] leading-[1.5] text-shell-text-secondary">
+          <strong className="font-bold text-shell-text">{actor.name}</strong>{" "}
           <span className="text-[#7fb2ff]">{action_label}</span> {action_target}
         </span>
-        <span className="mt-2 flex items-center gap-[7px] text-xs text-[#9aa4a5]">
+        <span className="mt-2 flex items-center gap-[7px] text-xs text-shell-text-muted">
           <span
             className="h-[15px] w-[15px] flex-none rounded"
             style={{ backgroundColor: board.color }}
@@ -46,7 +46,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       </span>
 
       <span className="flex flex-none flex-col items-end gap-2">
-        <span className="text-[11.5px] text-[#7e8889]">{time_label}</span>
+        <span className="text-[11.5px] text-shell-text-faint">{time_label}</span>
         {is_unread && (
           <span
             className="h-2 w-2 rounded-full bg-[#3b82f6]"

@@ -100,12 +100,12 @@ const AdministrationModal: React.FC<AdministrationModalProps> = ({ is_open, onCl
     <div role="dialog" aria-modal="true" aria-label="Administration" className="fixed inset-0 z-[300] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1180px] max-w-full overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#0f1c1c] font-outfit text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1180px] max-w-full overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel font-outfit text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-[18px] top-4 z-[2] flex h-[30px] w-[30px] items-center justify-center rounded-lg text-[#9aa4a5] transition-colors hover:bg-white/[0.08]"
+          className="absolute right-[18px] top-4 z-[2] flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
         >
           <CloseIcon size={15} />
         </button>

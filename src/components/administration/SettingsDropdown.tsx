@@ -44,12 +44,12 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
         type="button"
         ref={setAnchorEl}
         onClick={() => setIsOpen((current) => !current)}
-        className={`flex items-center justify-between gap-2 rounded-lg border border-white/[0.12] bg-[#142020] px-[10px] py-2 text-[12.5px] font-medium transition-colors hover:border-white/20 ${
-          selected_label && !is_muted ? "text-[#d7dcdc]" : "text-[#8a9495]"
+        className={`flex items-center justify-between gap-2 rounded-lg border border-shell-border-strong bg-shell-hover-strong px-[10px] py-2 text-[12.5px] font-medium transition-colors hover:border-shell-text-muted ${
+          selected_label && !is_muted ? "text-shell-text-secondary" : "text-shell-text-muted"
         } ${className}`}
       >
         <span className="truncate">{selected_label ?? placeholder}</span>
-        <svg width="9" height="9" viewBox="0 0 12 12" className="flex-none text-[#8a9495]">
+        <svg width="9" height="9" viewBox="0 0 12 12" className="flex-none text-shell-text-muted">
           <path
             d="M3 4.5 L6 7.5 L9 4.5"
             fill="none"
@@ -76,7 +76,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
                 onChange(option.id);
                 setIsOpen(false);
               }}
-              className="cursor-pointer rounded-md px-[9px] py-2 text-[12.5px] font-medium text-[#d7dcdc] hover:bg-white/[0.07]"
+              className="cursor-pointer rounded-md px-[9px] py-2 text-[12.5px] font-medium text-shell-text-secondary hover:bg-shell-hover"
             >
               {option.label}
             </div>

@@ -24,9 +24,9 @@ const SettingsToggleRow: React.FC<SettingsToggleRowProps> = ({
 }) => (
   <div className={`flex items-start justify-between gap-4 ${className}`}>
     <div>
-      <div className="mb-[3px] text-[13.5px] font-semibold text-[#d7dcdc]">{label}</div>
+      <div className="mb-[3px] text-[13.5px] font-semibold text-shell-text-secondary">{label}</div>
       {description ? (
-        <div className="max-w-[420px] text-[12.5px] leading-relaxed text-[#8a9495]">{description}</div>
+        <div className="max-w-[420px] text-[12.5px] leading-relaxed text-shell-text-muted">{description}</div>
       ) : null}
     </div>
     <button

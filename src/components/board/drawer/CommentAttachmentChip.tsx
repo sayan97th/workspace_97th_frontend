@@ -12,7 +12,7 @@ export type CommentAttachmentChipProps = {
 /** File chip shown both in the composer's pending-attachment tray and on a posted comment. */
 const CommentAttachmentChip: React.FC<CommentAttachmentChipProps> = ({ attachment, onRemove }) => (
   <div
-    className={`flex items-center gap-2 rounded-[10px] border border-white/10 bg-[#132524] ${
+    className={`flex items-center gap-2 rounded-[10px] border border-shell-border-strong bg-shell-panel ${
       onRemove ? "py-1.5 pl-1.5 pr-2" : "cursor-pointer py-2 pl-1.5 pr-3 hover:border-[#00c875]"
     }`}
   >
@@ -22,19 +22,19 @@ const CommentAttachmentChip: React.FC<CommentAttachmentChipProps> = ({ attachmen
     >
       {attachment.tag}
     </span>
-    <span className="max-w-[150px] truncate text-[12.5px] font-medium text-[#d7dcdc]">
+    <span className="max-w-[150px] truncate text-[12.5px] font-medium text-shell-text-secondary">
       {attachment.file_name}
     </span>
     {onRemove ? (
       <button
         type="button"
         onClick={() => onRemove(attachment.id)}
-        className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded text-[#8a9495] hover:bg-white/10 hover:text-white"
+        className="flex h-[18px] w-[18px] flex-none items-center justify-center rounded text-shell-text-muted hover:bg-shell-hover-strong hover:text-shell-text"
       >
         <CloseIcon size={11} />
       </button>
     ) : (
-      <DownloadFileIcon className="flex-none text-[#8a9495]" />
+      <DownloadFileIcon className="flex-none text-shell-text-muted" />
     )}
   </div>
 );
