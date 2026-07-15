@@ -16,7 +16,7 @@ import NavTreeRow from "./NavTreeRow";
 import NavRowMenu, { type NavMenuItem } from "./NavRowMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
-import { findSlugPathById, getLeafHref } from "./helpers";
+import { getLeafHref } from "./helpers";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
 
 export type NavTreeProps = {
@@ -79,8 +79,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   const closeMenu = () => setMenu(CLOSED_MENU);
 
   const openInNewTab = (node: WorkspaceNavNode) => {
-    const slug_path = findSlugPathById(nav.tree, node.id) ?? [node.slug];
-    window.open(getLeafHref(workspace_slug, node, slug_path), "_blank", "noopener");
+    window.open(getLeafHref(node), "_blank", "noopener");
   };
 
   const handleDelete = (node: WorkspaceNavNode) => {
@@ -230,8 +229,6 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
             key={node.id}
             node={node}
             depth={0}
-            slug_path={[node.slug]}
-            workspace_slug={workspace_slug}
             pathname={pathname}
             expanded_group_ids={nav.expanded_group_ids}
             onToggleGroup={nav.toggleGroup}

@@ -54,6 +54,30 @@ export type WorkspaceNavNode = {
   children: WorkspaceNavNode[];
 };
 
+/** One ancestor entry in a {@link BoardDetail}'s breadcrumb. */
+export type BoardBreadcrumbItem = {
+  id: number;
+  label: string;
+  slug: string;
+};
+
+/** Minimal workspace context embedded on a {@link BoardDetail}. */
+export type BoardWorkspaceSummary = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
+/**
+ * A single navigation item resolved by id alone (via `GET /api/boards/{id}`),
+ * for the `/boards/{id}` route — which never carries a workspace slug, so the
+ * owning workspace and the ancestor trail come back on the payload itself.
+ */
+export type BoardDetail = WorkspaceNavNode & {
+  workspace: BoardWorkspaceSummary;
+  breadcrumb: BoardBreadcrumbItem[];
+};
+
 export type Workspace = {
   id: number;
   name: string;

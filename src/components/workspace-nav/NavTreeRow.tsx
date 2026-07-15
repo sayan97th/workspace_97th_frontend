@@ -14,9 +14,6 @@ import { getLeafHref } from "./helpers";
 export type NavTreeRowProps = {
   node: WorkspaceNavNode;
   depth: number;
-  /** Slugs from the workspace root down to and including this node. */
-  slug_path: string[];
-  workspace_slug: string;
   pathname: string;
   expanded_group_ids: Record<string, boolean>;
   onToggleGroup: (group_id: string) => void;
@@ -37,8 +34,6 @@ const isLeafActive = (pathname: string, href: string): boolean =>
 const NavTreeRow: React.FC<NavTreeRowProps> = ({
   node,
   depth,
-  slug_path,
-  workspace_slug,
   pathname,
   expanded_group_ids,
   onToggleGroup,
@@ -87,8 +82,6 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
               key={child.id}
               node={child}
               depth={depth + 1}
-              slug_path={[...slug_path, child.slug]}
-              workspace_slug={workspace_slug}
               pathname={pathname}
               expanded_group_ids={expanded_group_ids}
               onToggleGroup={onToggleGroup}
@@ -100,7 +93,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
   }
 
   const is_group_style = node.display_style === "group";
-  const href = getLeafHref(workspace_slug, node, slug_path);
+  const href = getLeafHref(node);
   const is_active = isLeafActive(pathname, href);
   const row_height = is_group_style ? "h-[34px]" : "h-9";
 

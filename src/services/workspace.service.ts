@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
+  BoardDetail,
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
@@ -49,6 +50,15 @@ export const workspaceService = {
   /** POST /api/workspaces/{slug}/leave — remove the current user from the workspace. */
   async leaveWorkspace(workspace_slug: string): Promise<void> {
     await apiClient.post(`/api/workspaces/${workspace_slug}/leave`);
+  },
+
+  /**
+   * GET /api/boards/{id} — resolve a single navigation item by its
+   * globally-unique id, with its owning workspace and ancestor breadcrumb.
+   * This is what the `/boards/{id}` route resolves against.
+   */
+  async getBoard(item_id: number): Promise<BoardDetail> {
+    return apiClient.get<BoardDetail>(`/api/boards/${item_id}`);
   },
 
   /** GET /api/workspaces/{slug}/navigation — the full navigation tree. */

@@ -26,11 +26,9 @@ export type { WorkspacesApi } from "./useWorkspaces";
 
 export { VIEW_REGISTRY, getViewComponent } from "./view-registry";
 export {
-  buildWorkspacePath,
+  buildBoardPath,
   getLeafHref,
   collectGroupIds,
-  findNodeByPath,
-  findSlugPathById,
   mapWorkspaceToBrowse,
-  WORKSPACE_ROUTE_BASE,
+  BOARD_ROUTE_BASE,
 } from "./helpers";
