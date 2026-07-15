@@ -176,6 +176,8 @@ const sectionLabelClass =
 export type AccountMenuProps = {
   is_open: boolean;
   onClose: () => void;
+  /** Opens the My Profile dialog owned by the top bar. */
+  onOpenProfile?: () => void;
   /** Opens the invite-members flow owned by the top bar. */
   onInviteMembers?: () => void;
   /** Opens the Teams directory owned by the top bar. */
@@ -198,6 +200,7 @@ export type AccountMenuProps = {
 const AccountMenu: React.FC<AccountMenuProps> = ({
   is_open,
   onClose,
+  onOpenProfile,
   onInviteMembers,
   onOpenTeams,
   onOpenTrash,
@@ -222,9 +225,9 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
 
   if (!is_open) return null;
 
-  const goTo = (href: string) => () => {
+  const handleOpenProfile = () => {
     onClose();
-    router.push(href);
+    onOpenProfile?.();
   };
 
   const handleSignOut = async () => {
@@ -262,7 +265,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   };
 
   const account_items: MenuItem[] = [
-    { label: "My profile", icon: <ProfileGlyph />, onSelect: goTo("/profile") },
+    { label: "My profile", icon: <ProfileGlyph />, onSelect: handleOpenProfile },
     { label: "Developers", icon: <DevelopersGlyph />, onSelect: onClose },
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },

@@ -16,6 +16,7 @@ import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TeamsModal } from "@/components/teams";
 import { TrashModal, type TrashTabId } from "@/components/trash";
 import { AdministrationModal } from "@/components/administration";
+import { ProfileModal } from "@/components/profile";
 import {
   AppsGridIcon,
   BellIcon,
@@ -36,6 +37,7 @@ const AppTopBar: React.FC = () => {
   const { user } = useAuth();
   const { logo_url } = useBranding();
   const [is_account_open, setIsAccountOpen] = useState(false);
+  const [is_profile_open, setIsProfileOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
@@ -56,6 +58,9 @@ const AppTopBar: React.FC = () => {
 
   const openInvite = () => setIsInviteOpen(true);
   const closeInvite = () => setIsInviteOpen(false);
+
+  const openProfile = () => setIsProfileOpen(true);
+  const closeProfile = () => setIsProfileOpen(false);
 
   const openTeams = () => setIsTeamsOpen(true);
   const closeTeams = () => setIsTeamsOpen(false);
@@ -226,9 +231,12 @@ const AppTopBar: React.FC = () => {
 
       <AdministrationModal is_open={is_administration_open} onClose={closeAdministration} />
 
+      <ProfileModal is_open={is_profile_open} onClose={closeProfile} onOpenTeams={openTeams} />
+
       <AccountMenu
         is_open={is_account_open}
         onClose={closeAccount}
+        onOpenProfile={openProfile}
         onInviteMembers={openInvite}
         onOpenTeams={openTeams}
         onOpenTrash={openTrash}

@@ -9,8 +9,6 @@ import Button from "@/components/ui/button/Button";
 import { useAuth } from "@/context/AuthContext";
 import { profileService } from "@/services/profile.service";
 import type { ProfileData, ApiError } from "@/types/auth";
-import ChangePasswordSection from "@/components/admin/profile/ChangePasswordSection";
-import TwoFactorSection from "./TwoFactorSection";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -587,12 +585,6 @@ export default function ProfileForm() {
               )}
             </Button>
           </div>
-
-          {/* Change Password */}
-          <ChangePasswordSection />
-
-          {/* Security */}
-          <TwoFactorSection />
 
         </div>
       </div>
