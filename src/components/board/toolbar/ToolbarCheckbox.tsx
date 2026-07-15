@@ -16,7 +16,7 @@ export type ToolbarCheckboxProps = {
 const ToolbarCheckbox: React.FC<ToolbarCheckboxProps> = ({ state, size = 16 }) => (
   <span
     className={`flex flex-none items-center justify-center rounded border ${
-      state === "unchecked" ? "border-white/25" : "border-brand-500 bg-brand-500"
+      state === "unchecked" ? "border-shell-border-strong" : "border-brand-500 bg-brand-500"
     }`}
     style={{ width: size, height: size }}
   >

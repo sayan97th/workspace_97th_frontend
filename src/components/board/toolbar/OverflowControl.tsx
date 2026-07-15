@@ -51,14 +51,14 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
           <button
             type="button"
             onClick={() => toolbar.openPanel("pin")}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#e9eded] hover:bg-white/[0.08]"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-shell-text hover:bg-shell-hover"
           >
-            <span className="flex flex-none text-[#9aa4a5]">
+            <span className="flex flex-none text-shell-text-muted">
               <PinIcon size={15} />
             </span>
             Pin columns
             {toolbar.pinned_column_ids.length > 0 && (
-              <span className="ml-auto flex-none text-[12.5px] font-medium text-[#7e8889]">
+              <span className="ml-auto flex-none text-[12.5px] font-medium text-shell-text-faint">
                 {toolbar.pinned_column_ids.length}
               </span>
             )}
@@ -69,34 +69,34 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
             type="button"
             onClick={() => setIsHeightSubOpen((current) => !current)}
             className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] transition-colors ${
-              is_height_sub_shown ? "" : "hover:bg-white/[0.08]"
+              is_height_sub_shown ? "" : "hover:bg-shell-hover"
             }`}
             style={{
-              color: is_height_sub_shown ? "#fff" : "#e9eded",
+              color: is_height_sub_shown ? "#fff" : "var(--color-shell-text)",
               background: is_height_sub_shown ? MENU_ACTIVE_BG : "transparent",
             }}
           >
-            <span className="flex flex-none" style={{ color: is_height_sub_shown ? "#fff" : "#9aa4a5" }}>
+            <span className="flex flex-none" style={{ color: is_height_sub_shown ? "#fff" : "var(--color-shell-text-muted)" }}>
               <ItemHeightIcon size={15} />
             </span>
             Item height
-            <span className="ml-auto flex flex-none rotate-180" style={{ color: is_height_sub_shown ? "#fff" : "#9aa4a5" }}>
+            <span className="ml-auto flex flex-none rotate-180" style={{ color: is_height_sub_shown ? "#fff" : "var(--color-shell-text-muted)" }}>
               <ChevronRightIcon size={11} />
             </span>
           </button>
 
-          <div className="my-1 h-px bg-white/[0.08]" />
+          <div className="my-1 h-px bg-shell-border" />
           <button
             type="button"
             onClick={() => toolbar.openPanel("color")}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#e9eded] hover:bg-white/[0.08]"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-shell-text hover:bg-shell-hover"
           >
-            <span className="flex flex-none text-[#9aa4a5]">
+            <span className="flex flex-none text-shell-text-muted">
               <ColorFillIcon size={15} />
             </span>
             Conditional coloring
             {has_color_rules && (
-              <span className="ml-auto flex-none text-[12.5px] font-medium text-[#7e8889]">
+              <span className="ml-auto flex-none text-[12.5px] font-medium text-shell-text-faint">
                 {toolbar.conditional_color_rules.length}
               </span>
             )}
@@ -105,9 +105,9 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
           <button
             type="button"
             disabled
-            className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-[#5a6667]"
+            className="flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-shell-text-faint"
           >
-            <span className="flex flex-none text-[#4e5b5b]">
+            <span className="flex flex-none text-shell-text-faint">
               <EditPencilIcon size={15} />
             </span>
             Default item values
@@ -135,14 +135,14 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
                   setIsHeightSubOpen(false);
                 }}
                 className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-1.5 text-[13.5px] font-medium transition-colors ${
-                  is_selected ? "" : "hover:bg-white/[0.08]"
+                  is_selected ? "" : "hover:bg-shell-hover"
                 }`}
                 style={{
-                  color: is_selected ? "#fff" : "#e4e9e9",
+                  color: is_selected ? "#fff" : "var(--color-shell-text)",
                   background: is_selected ? MENU_ACTIVE_BG : "transparent",
                 }}
               >
-                <span className="flex flex-none" style={{ color: is_selected ? "#fff" : "#9aa4a5" }}>
+                <span className="flex flex-none" style={{ color: is_selected ? "#fff" : "var(--color-shell-text-muted)" }}>
                   <RowHeightIcon size={16} lines={option.lines} />
                 </span>
                 {option.label}

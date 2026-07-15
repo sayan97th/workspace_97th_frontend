@@ -15,14 +15,14 @@ const AutomationsOwnershipSection: React.FC<AutomationsOwnershipSectionProps> = 
 
   return (
     <div className="max-w-[640px]">
-      <p className="mb-7 text-[13px] leading-relaxed text-[#9aa4a5]">
+      <p className="mb-7 text-[13px] leading-relaxed text-shell-text-muted">
         All the settings below apply to automations, integrations and workflows.
       </p>
 
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">
         Transfer ownership from one person to another
       </div>
-      <p className="mb-[18px] text-[13px] leading-relaxed text-[#9aa4a5]">
+      <p className="mb-[18px] text-[13px] leading-relaxed text-shell-text-muted">
         This is a one-time transfer of existing automations.
       </p>
 
@@ -41,7 +41,7 @@ const AutomationsOwnershipSection: React.FC<AutomationsOwnershipSectionProps> = 
         <div className="mt-3 text-[12.5px] font-medium text-[#8fe3b8]">{admin.auto_transfer_notice}</div>
       ) : null}
 
-      <div className="my-7 h-px bg-white/[0.07]" />
+      <div className="my-7 h-px bg-shell-hover" />
 
       <SettingsToggleRow
         label="Keep automations running when users are deactivated"
@@ -53,7 +53,7 @@ const AutomationsOwnershipSection: React.FC<AutomationsOwnershipSectionProps> = 
 
       {admin.keep_automations_running ? (
         <div className="max-w-[280px]">
-          <div className="mb-[7px] text-[12.5px] font-semibold text-[#9aa4a5]">Default owner</div>
+          <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Default owner</div>
           <SettingsDropdown
             value={admin.auto_default_owner_id}
             options={owner_options}

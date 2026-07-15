@@ -11,21 +11,21 @@ export type NotificationsSectionProps = {
 /** My Profile > Notifications — per-category in-app / email notification preferences. */
 const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) => (
   <div>
-    <div className="mb-1 text-[24px] font-extrabold tracking-[-0.01em] text-[#e9eded]">Notifications</div>
-    <p className="mb-6 text-[13.5px] text-[#9aa4a5]">Manage your notification preferences</p>
+    <div className="mb-1 text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">Notifications</div>
+    <p className="mb-6 text-[13.5px] text-shell-text-muted">Manage your notification preferences</p>
 
     {!profile.is_desktop_banner_dismissed ? (
-      <div className="mb-6 flex items-center gap-[14px] rounded-xl border border-white/[0.08] bg-white/[0.03] px-[18px] py-4">
+      <div className="mb-6 flex items-center gap-[14px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-bold text-[#e9eded]">Desktop notifications</div>
-          <div className="mt-[1px] text-[12.5px] text-[#9aa4a5]">
+          <div className="text-[13.5px] font-bold text-shell-text">Desktop notifications</div>
+          <div className="mt-[1px] text-[12.5px] text-shell-text-muted">
             Receive notifications directly on this computer
           </div>
         </div>
         <button
           type="button"
           onClick={profile.dismissDesktopBanner}
-          className="flex-none text-[12.5px] font-semibold text-[#9aa4a5] transition-colors hover:text-[#d7dcdc]"
+          className="flex-none text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text-secondary"
         >
           Dismiss
         </button>
@@ -39,27 +39,27 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
       </div>
     ) : null}
 
-    <div className="mb-2 text-[13px] font-bold text-[#d7dcdc]">System Notifications</div>
-    <div className="mb-[6px] grid grid-cols-[1fr_74px_74px] items-center border-b border-white/[0.08] px-1 pb-[10px]">
+    <div className="mb-2 text-[13px] font-bold text-shell-text-secondary">System Notifications</div>
+    <div className="mb-[6px] grid grid-cols-[1fr_74px_74px] items-center border-b border-shell-border px-1 pb-[10px]">
       <span />
-      <span className="text-center text-[11.5px] font-bold uppercase tracking-[0.03em] text-[#7e8889]">In app</span>
-      <span className="text-center text-[11.5px] font-bold uppercase tracking-[0.03em] text-[#7e8889]">Email</span>
+      <span className="text-center text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint">In app</span>
+      <span className="text-center text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint">Email</span>
     </div>
 
     {profile.notification_rows.map((row) => (
       <React.Fragment key={row.key}>
         {row.show_header ? (
           <div
-            className="mb-1 ml-1 text-[12px] font-bold uppercase tracking-[0.03em] text-[#7e8889]"
+            className="mb-1 ml-1 text-[12px] font-bold uppercase tracking-[0.03em] text-shell-text-faint"
             style={{ marginTop: row.category === "Communication" ? 0 : 14 }}
           >
             {row.category}
           </div>
         ) : null}
-        <div className="grid grid-cols-[1fr_74px_74px] items-center border-b border-white/[0.045] px-1 py-3">
+        <div className="grid grid-cols-[1fr_74px_74px] items-center border-b border-shell-border px-1 py-3">
           <div>
-            <div className="text-[13.5px] font-semibold text-[#e9eded]">{row.label}</div>
-            <div className="mt-[1px] text-[12px] text-[#7e8889]">{row.sub}</div>
+            <div className="text-[13.5px] font-semibold text-shell-text">{row.label}</div>
+            <div className="mt-[1px] text-[12px] text-shell-text-faint">{row.sub}</div>
           </div>
           <div className="flex justify-center">
             <ProfileCheckbox
@@ -79,7 +79,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
       </React.Fragment>
     ))}
 
-    <div className="mt-[22px] rounded-xl border border-white/[0.08] bg-white/[0.03] px-[18px] py-4">
+    <div className="mt-[22px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
       <SettingsToggleRow
         label="Desktop notifications"
         description="Receive notifications directly on this computer"
@@ -88,17 +88,17 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
       />
     </div>
 
-    <div className="mt-[14px] overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03]">
+    <div className="mt-[14px] overflow-hidden rounded-xl border border-shell-border bg-shell-hover">
       <div
         onClick={profile.toggleMutedBoardsExpanded}
         className="flex cursor-pointer items-center gap-[14px] px-[18px] py-4"
       >
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-bold text-[#e9eded]">Muted boards</div>
-          <div className="mt-[1px] text-[12.5px] text-[#9aa4a5]">These are boards you muted for yourself</div>
+          <div className="text-[13.5px] font-bold text-shell-text">Muted boards</div>
+          <div className="mt-[1px] text-[12.5px] text-shell-text-muted">These are boards you muted for yourself</div>
         </div>
         <span
-          className="flex-none text-[#9aa4a5] transition-transform duration-150"
+          className="flex-none text-shell-text-muted transition-transform duration-150"
           style={{ transform: profile.is_muted_boards_expanded ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           <svg width="12" height="12" viewBox="0 0 16 16">
@@ -107,7 +107,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
         </span>
       </div>
       {profile.is_muted_boards_expanded ? (
-        <div className="border-t border-white/[0.06] px-[18px] py-4 text-[13px] text-[#7e8889]">
+        <div className="border-t border-shell-border px-[18px] py-4 text-[13px] text-shell-text-faint">
           You haven&apos;t muted any boards yet.
         </div>
       ) : null}

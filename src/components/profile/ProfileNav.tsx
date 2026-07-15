@@ -68,8 +68,8 @@ const NAV_ITEMS: { id: ProfileSectionId; label: string; icon: React.ReactNode }[
  * same way as {@link AdministrationNav} but without nested groups.
  */
 const ProfileNav: React.FC<ProfileNavProps> = ({ profile }) => (
-  <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-white/[0.07] bg-[#0b1616] px-[14px] py-5">
-    <div className="mb-[22px] px-2 text-[22px] font-extrabold tracking-[-0.01em] text-[#e9eded]">Profile</div>
+  <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-panel-alt px-[14px] py-5">
+    <div className="mb-[22px] px-2 text-[22px] font-extrabold tracking-[-0.01em] text-shell-text">Profile</div>
 
     {NAV_ITEMS.map((item) => {
       const is_active = profile.active_section === item.id;
@@ -78,10 +78,10 @@ const ProfileNav: React.FC<ProfileNavProps> = ({ profile }) => (
           key={item.id}
           onClick={() => profile.selectSection(item.id)}
           className={`mb-[2px] flex cursor-pointer items-center gap-[11px] rounded-lg px-[10px] py-[9px] text-[13.5px] transition-colors ${
-            is_active ? "bg-brand-500/[0.12] font-bold text-brand-200" : "font-medium text-[#d7dcdc] hover:bg-white/[0.06]"
+            is_active ? "bg-brand-500/[0.12] font-bold text-brand-200" : "font-medium text-shell-text-secondary hover:bg-shell-hover"
           }`}
         >
-          <span className={`flex flex-none ${is_active ? "text-brand-200" : "text-[#9aa4a5]"}`}>{item.icon}</span>
+          <span className={`flex flex-none ${is_active ? "text-brand-200" : "text-shell-text-muted"}`}>{item.icon}</span>
           {item.label}
         </div>
       );

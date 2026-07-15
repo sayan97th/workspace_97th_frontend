@@ -9,7 +9,7 @@ export type DepartmentsSectionProps = {
 /** Administration > Directory > Departments — organize the account's licenses by department. */
 const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ admin }) => (
   <div>
-    <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-[#9aa4a5]">
+    <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
       Organize your account by location, business unit or cost center, then assign each user in the{" "}
       <button type="button" onClick={() => admin.selectSection("users")} className="text-brand-200 hover:underline">
         Users
@@ -41,34 +41,34 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ admin }) => (
       </button>
     </div>
 
-    <div className="grid grid-cols-[minmax(160px,1fr)_130px_130px_130px_34px] gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-[#7e8889]">
+    <div className="grid grid-cols-[minmax(160px,1fr)_130px_130px_130px_34px] gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint">
       <span>Name</span>
       <span>Reserved</span>
       <span>Assigned</span>
       <span>Available</span>
       <span />
     </div>
-    <div className="h-px bg-white/[0.07]" />
+    <div className="h-px bg-shell-hover" />
 
     {admin.department_rows.map((department) => (
       <div
         key={department.id}
-        className="grid grid-cols-[minmax(160px,1fr)_130px_130px_130px_34px] items-center gap-3.5 border-b border-white/[0.045] px-2.5 py-[9px]"
+        className="grid grid-cols-[minmax(160px,1fr)_130px_130px_130px_34px] items-center gap-3.5 border-b border-shell-border px-2.5 py-[9px]"
       >
         <input
           type="text"
           value={department.name}
           onChange={(event) => admin.renameDepartment(department.id, event.target.value)}
-          className="w-full rounded-[7px] border border-transparent bg-transparent px-2 py-[7px] text-[13.5px] font-semibold text-[#edf1f1] outline-none hover:border-white/[0.12] hover:bg-[#142020] focus:border-white/[0.12] focus:bg-[#142020]"
+          className="w-full rounded-[7px] border border-transparent bg-transparent px-2 py-[7px] text-[13.5px] font-semibold text-shell-text outline-none hover:border-shell-border-strong hover:bg-shell-panel-alt focus:border-shell-border-strong focus:bg-shell-panel-alt"
         />
-        <span className="text-[13px] text-[#b7c0c0]">{department.reserved}</span>
-        <span className="text-[13px] text-[#b7c0c0]">{department.assigned}</span>
-        <span className="text-[13px] text-[#b7c0c0]">{department.available}</span>
+        <span className="text-[13px] text-shell-text-secondary">{department.reserved}</span>
+        <span className="text-[13px] text-shell-text-secondary">{department.assigned}</span>
+        <span className="text-[13px] text-shell-text-secondary">{department.available}</span>
         <button
           type="button"
           onClick={() => admin.removeDepartment(department.id)}
           aria-label={`Remove ${department.name}`}
-          className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-[#9aa4a5] hover:bg-[#e2445c]/10 hover:text-[#e2445c]"
+          className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-[#e2445c]/10 hover:text-[#e2445c]"
         >
           <svg width="13" height="13" viewBox="0 0 16 16">
             <path

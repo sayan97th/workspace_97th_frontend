@@ -26,10 +26,10 @@ const SearchField: React.FC<SearchFieldProps> = ({
 
   return (
     <div
-      className={`flex h-[36px] items-center gap-2 rounded-[9px] border bg-[#142020] px-[11px] transition-colors ${className}`}
-      style={{ borderColor: is_focused ? "var(--color-brand-500)" : "rgba(255,255,255,0.10)" }}
+      className={`flex h-[36px] items-center gap-2 rounded-[9px] border bg-shell-hover px-[11px] transition-colors ${className}`}
+      style={{ borderColor: is_focused ? "var(--color-brand-500)" : "var(--color-shell-border-strong)" }}
     >
-      <span className="flex flex-none items-center text-[#7e8889]">
+      <span className="flex flex-none items-center text-shell-text-faint">
         <SearchIcon size={14} />
       </span>
       <input
@@ -40,14 +40,14 @@ const SearchField: React.FC<SearchFieldProps> = ({
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="min-w-0 flex-1 bg-transparent text-[13px] text-[#e9eded] placeholder:text-[#7e8889] focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-[13px] text-shell-text placeholder:text-shell-text-faint focus:outline-none"
       />
       {value ? (
         <button
           type="button"
           onClick={() => onChange("")}
           aria-label="Clear search"
-          className="flex flex-none items-center text-[#7e8889] hover:text-[#e9eded]"
+          className="flex flex-none items-center text-shell-text-faint hover:text-shell-text"
         >
           <CloseIcon size={12} />
         </button>

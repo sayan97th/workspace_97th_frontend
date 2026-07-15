@@ -21,7 +21,7 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
     const active_class =
       variant === "accent"
         ? "bg-brand-500 text-white"
-        : "bg-white/[0.12] text-[#e9eded]";
+        : "bg-shell-hover-strong text-shell-text";
 
     return (
       <button
@@ -30,13 +30,13 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         onClick={onClick}
         aria-label={aria_label ?? label}
         className={`flex items-center gap-[7px] rounded-lg px-[11px] py-2 text-[13px] font-medium transition-colors ${
-          is_active ? active_class : "text-[#c7d0d0] hover:bg-white/[0.07]"
+          is_active ? active_class : "text-shell-text-secondary hover:bg-shell-hover"
         }`}
       >
         <Icon />
         {label}
         {badge_count ? (
-          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#0a1717] px-1 text-[11px] font-semibold text-white">
+          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gray-800 px-1 text-[11px] font-semibold text-white">
             {badge_count}
           </span>
         ) : null}

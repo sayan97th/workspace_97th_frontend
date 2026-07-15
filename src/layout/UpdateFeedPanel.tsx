@@ -101,7 +101,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
       width={960}
     >
       {/* Feed sidebar: title, board filters */}
-      <aside className="hidden w-[262px] flex-none flex-col gap-[26px] border-r border-white/[0.07] px-[22px] py-[26px] sm:flex">
+      <aside className="hidden w-[262px] flex-none flex-col gap-[26px] border-r border-shell-border px-[22px] py-[26px] sm:flex">
         <div>
           <div className="flex items-center gap-[9px]">
             <h2 className="text-[23px] font-extrabold tracking-[-0.01em]">
@@ -109,7 +109,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
             </h2>
             <ChatBubbleIcon size={18} className="text-[#7fb2ff]" />
           </div>
-          <p className="mt-1.5 text-[12.5px] text-[#8a9495]">
+          <p className="mt-1.5 text-[12.5px] text-shell-text-muted">
             {feed_helper_prompt}{" "}
             <button
               type="button"
@@ -125,7 +125,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
             <span className="text-[15px] font-bold">Filter by Board</span>
             <button
               type="button"
-              className="flex items-center gap-[5px] text-[11.5px] text-[#8a9495] transition-colors hover:text-[#e9eded]"
+              className="flex items-center gap-[5px] text-[11.5px] text-shell-text-muted transition-colors hover:text-shell-text"
             >
               <FeedSettingsIcon size={13} />
               Feed settings
@@ -141,12 +141,12 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
                 onClick={() => setActiveBoard(board.id)}
                 className={`mb-1.5 flex w-full items-center justify-between rounded-[9px] px-3 py-2.5 text-[13.5px] transition-colors ${
                   is_active
-                    ? "border border-white/[0.08] bg-[#182828] font-semibold text-[#e9eded]"
-                    : "font-medium text-[#c7d0d0] hover:bg-white/[0.05]"
+                    ? "border border-shell-border-strong bg-shell-hover-strong font-semibold text-shell-text"
+                    : "font-medium text-shell-text-secondary hover:bg-shell-hover"
                 }`}
               >
                 <span>{board.name}</span>
-                <span className="text-[#8a9495]">{board.count}</span>
+                <span className="text-shell-text-muted">{board.count}</span>
               </button>
             );
           })}
@@ -156,7 +156,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
       {/* Feed content: tabs, read filter, list */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Tabs + close */}
-        <div className="relative flex flex-none items-center gap-[26px] overflow-x-auto border-b border-white/[0.08] px-6 pt-[18px]">
+        <div className="relative flex flex-none items-center gap-[26px] overflow-x-auto border-b border-shell-border px-6 pt-[18px]">
           {update_feed_tabs.map((tab) => {
             const is_active = tab.id === active_tab;
             const icon = renderTabIcon(tab);
@@ -167,8 +167,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
                 onClick={() => setActiveTab(tab.id)}
                 className={`-mb-px flex flex-none items-center gap-1.5 whitespace-nowrap border-b-2 pb-3.5 text-[13.5px] transition-colors ${
                   is_active
-                    ? "border-brand-500 font-semibold text-[#e9eded]"
-                    : "border-transparent font-medium text-[#8a9495] hover:text-[#e9eded]"
+                    ? "border-brand-500 font-semibold text-shell-text"
+                    : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
                 }`}
               >
                 {icon}
@@ -185,7 +185,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto mb-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[#8a9495] transition-colors hover:bg-white/[0.08] hover:text-[#e9eded]"
+            className="ml-auto mb-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
             aria-label="Close update feed"
           >
             <CloseIcon size={16} />
@@ -195,12 +195,12 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
         {/* Scrollable list */}
         <div className="shell-scrollbar flex-1 overflow-y-auto px-6 pb-8 pt-5">
           {/* Read-state filter */}
-          <div className="relative mb-[18px] inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#b4bcbd]">
+          <div className="relative mb-[18px] inline-flex items-center gap-1.5 text-[13px] font-semibold text-shell-text-secondary">
             Show
             <button
               type="button"
               onClick={() => setIsFilterOpen((previous) => !previous)}
-              className="dropdown-toggle flex items-center gap-1.5 text-[#e9eded]"
+              className="dropdown-toggle flex items-center gap-1.5 text-shell-text"
               aria-haspopup="menu"
               aria-expanded={is_filter_open}
             >
@@ -210,7 +210,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
             <Dropdown
               isOpen={is_filter_open}
               onClose={() => setIsFilterOpen(false)}
-              className="!left-9 !right-auto mt-1 w-[168px] !border-white/10 !bg-[#0f1c1c] p-1.5"
+              className="!left-9 !right-auto mt-1 w-[168px] !border-shell-border-strong !bg-shell-panel p-1.5"
             >
               {(Object.keys(read_filter_labels) as FeedReadFilter[]).map(
                 (value) => (
@@ -219,8 +219,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
                     tag="button"
                     baseClassName=""
                     onItemClick={() => selectReadFilter(value)}
-                    className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-theme-sm font-medium hover:bg-white/[0.08] ${
-                      read_filter === value ? "!text-white" : "!text-gray-100"
+                    className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-theme-sm font-medium hover:bg-shell-hover ${
+                      read_filter === value ? "!text-shell-text" : "!text-shell-text-secondary"
                     }`}
                   >
                     {read_filter_labels[value]}
@@ -231,7 +231,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
           </div>
 
           {visible_updates.length === 0 ? (
-            <p className="pt-6 text-center text-[13px] text-[#8a9495]">
+            <p className="pt-6 text-center text-[13px] text-shell-text-muted">
               You&apos;re all caught up.
             </p>
           ) : (

@@ -33,10 +33,10 @@ export type ContentTableProps = {
 
 /** Type icon for an asset (board vs. document), with an optional lock badge. */
 const AssetTypeIcon: React.FC<{ asset: ContentAsset }> = ({ asset }) => (
-  <span className="relative flex flex-none text-[#6e7877]">
+  <span className="relative flex flex-none text-shell-text-faint">
     {asset.type === "doc" ? <FileIcon size={17} /> : <FolderIcon size={17} />}
     {asset.is_locked && (
-      <span className="absolute -bottom-[3px] -right-1 flex h-[11px] w-[11px] items-center justify-center rounded-[3px] bg-gray-50 text-gray-400">
+      <span className="absolute -bottom-[3px] -right-1 flex h-[11px] w-[11px] items-center justify-center rounded-[3px] bg-shell-bg text-shell-text-muted">
         <LockBadgeIcon />
       </span>
     )}
@@ -66,7 +66,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
   return (
   <div className="overflow-hidden rounded-xl border border-[#e6e6e1] bg-white">
     {/* Header */}
-    <div className="flex h-[46px] items-center border-b border-[#eaeae5] bg-[#fbfbf8] px-[18px] text-[13px] font-semibold text-[#6b7677]">
+    <div className="flex h-[46px] items-center border-b border-shell-border bg-shell-panel-alt px-[18px] text-[13px] font-semibold text-shell-text-faint">
       <div className="flex w-8 flex-none items-center">
         <Checkbox
           checked={all_selected}
@@ -78,7 +78,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
       <div className="min-w-0 flex-1">Asset name</div>
       <div className="flex w-[110px] flex-none items-center gap-1.5">
         AI summary
-        <span className="flex text-[#a6adad]">
+        <span className="flex text-shell-text-faint">
           <InfoIcon />
         </span>
       </div>
@@ -97,7 +97,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
           key={asset.id}
           onClick={() => onToggleRow(asset.id)}
           className={`flex h-[53px] cursor-pointer items-center border-b border-[#eeeee9] px-[18px] last:border-b-0 ${
-            is_selected ? "bg-brand-25 hover:bg-brand-50" : "bg-white hover:bg-[#f5f5f1]"
+            is_selected ? "bg-brand-25 hover:bg-brand-50" : "bg-shell-panel hover:bg-shell-hover"
           }`}
         >
           <div className="flex w-8 flex-none items-center">
@@ -110,7 +110,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
 
           <div className="flex min-w-0 flex-1 items-center gap-[11px]">
             <AssetTypeIcon asset={asset} />
-            <span className="truncate text-[14.5px] font-medium text-[#0a1717]">
+            <span className="truncate text-[14.5px] font-medium text-shell-text">
               {asset.name}
             </span>
             {asset.is_favorite && (
@@ -124,7 +124,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
             <button
               type="button"
               onClick={(event) => event.stopPropagation()}
-              className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-[#7e8889] transition-colors hover:bg-[#f0f0ec] hover:text-brand-500"
+              className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-brand-500"
               aria-label={`Generate AI summary for ${asset.name}`}
             >
               <AiSummaryIcon />
@@ -142,21 +142,21 @@ const ContentTable: React.FC<ContentTableProps> = ({
             )}
           </div>
 
-          <div className="w-[120px] flex-none text-[13.5px] text-[#57605f]">
+          <div className="w-[120px] flex-none text-[13.5px] text-shell-text-secondary">
             {asset.created_date}
           </div>
-          <div className="w-[120px] flex-none text-[13.5px] text-[#57605f]">
+          <div className="w-[120px] flex-none text-[13.5px] text-shell-text-secondary">
             {asset.modified_date}
           </div>
 
-          <div className="flex w-[230px] flex-none items-center gap-1.5 text-[13.5px] text-[#3a4443]">
-            <span className="flex flex-none text-[#8a9495]">
+          <div className="flex w-[230px] flex-none items-center gap-1.5 text-[13.5px] text-shell-text-secondary">
+            <span className="flex flex-none text-shell-text-muted">
               <FolderPathIcon />
             </span>
             <span className="truncate">{asset.folder}</span>
             {asset.sub_folder && (
               <>
-                <span className="flex flex-none text-[#a6adad]">
+                <span className="flex flex-none text-shell-text-faint">
                   <ChevronRightIcon size={12} />
                 </span>
                 <span className="truncate">{asset.sub_folder}</span>
@@ -169,8 +169,8 @@ const ContentTable: React.FC<ContentTableProps> = ({
 
     {assets.length === 0 && (
       <div className="px-5 py-[54px] text-center">
-        <div className="text-[14.5px] font-semibold text-[#0a1717]">{empty_title}</div>
-        <div className="mt-1.5 text-[13px] text-[#7e8889]">{empty_hint}</div>
+        <div className="text-[14.5px] font-semibold text-shell-text">{empty_title}</div>
+        <div className="mt-1.5 text-[13px] text-shell-text-faint">{empty_hint}</div>
       </div>
     )}
   </div>

@@ -60,7 +60,7 @@ function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolb
 
       <button
         type="button"
-        className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[#8a9495] transition-colors hover:bg-white/[0.07]"
+        className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover"
         aria-label="Collapse all groups"
       >
         <CollapseTableIcon />

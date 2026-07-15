@@ -29,8 +29,8 @@ export type TrashTypeBadgeProps = {
 const TrashTypeBadge: React.FC<TrashTypeBadgeProps> = ({ type, size = 13 }) => {
   const { label, Icon } = TRASH_TYPE_META[type];
   return (
-    <span className="flex items-center gap-[7px] text-[12.5px] text-[#b4bcbd]">
-      <span className="flex flex-none text-[#8a9495]">
+    <span className="flex items-center gap-[7px] text-[12.5px] text-shell-text-secondary">
+      <span className="flex flex-none text-shell-text-muted">
         <Icon size={size} />
       </span>
       {label}

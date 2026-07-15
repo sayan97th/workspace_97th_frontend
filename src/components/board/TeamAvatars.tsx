@@ -43,7 +43,7 @@ const TeamAvatars: React.FC<TeamAvatarsProps> = ({
   count,
   extra,
   seed = 0,
-  ringColor = "#0c1b1a",
+  ringColor = "var(--color-shell-bg)",
 }) => (
   <div className="flex items-center gap-[3px]">
     {Array.from({ length: count }).map((_, index) => (
@@ -57,7 +57,7 @@ const TeamAvatars: React.FC<TeamAvatarsProps> = ({
       />
     ))}
     {extra ? (
-      <span className="flex h-[27px] w-[27px] flex-none items-center justify-center rounded-full bg-[#233433] text-[10px] font-semibold text-[#c7d0d0]">
+      <span className="flex h-[27px] w-[27px] flex-none items-center justify-center rounded-full bg-shell-panel-alt text-[10px] font-semibold text-shell-text-secondary">
         +{extra}
       </span>
     ) : null}

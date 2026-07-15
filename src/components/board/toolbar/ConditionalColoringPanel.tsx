@@ -72,14 +72,14 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
                 isSelected={(option) => option.id === rule.scope}
                 onSelect={(option) => toolbar.updateConditionalColorRule(rule.id, { scope: option.id })}
                 renderValue={() => (
-                  <span className="truncate text-[13.5px] font-medium text-[#e4e9e9]">
+                  <span className="truncate text-[13.5px] font-medium text-shell-text">
                     {BOARD_CONDITIONAL_COLOR_SCOPES.find((option) => option.id === rule.scope)?.label}
                   </span>
                 )}
                 renderOption={(option) => <span>{option.label}</span>}
               />
 
-              <span className="flex-none text-[13.5px] text-[#9aa4a5]">When</span>
+              <span className="flex-none text-[13.5px] text-shell-text-muted">When</span>
 
               <InlineFieldMenu
                 menu_heading="Item columns"
@@ -92,12 +92,12 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
                   selected_column ? (
                     <>
                       {selected_column.swatch && <ColumnSwatchBadge swatch={selected_column.swatch} />}
-                      <span className="truncate text-[13.5px] font-medium text-[#e4e9e9]">
+                      <span className="truncate text-[13.5px] font-medium text-shell-text">
                         {selected_column.full_label ?? selected_column.label}
                       </span>
                     </>
                   ) : (
-                    <span className="truncate text-[13.5px] text-[#7e8a8a]">Column</span>
+                    <span className="truncate text-[13.5px] text-shell-text-faint">Column</span>
                   )
                 }
                 renderOption={(column) => (
@@ -115,7 +115,7 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
                 isSelected={(option) => option.id === rule.condition}
                 onSelect={(option) => toolbar.updateConditionalColorRule(rule.id, { condition: option.id })}
                 renderValue={() => (
-                  <span className="truncate text-[13.5px] font-medium text-[#e4e9e9]">
+                  <span className="truncate text-[13.5px] font-medium text-shell-text">
                     {selected_condition?.label ?? "Condition"}
                   </span>
                 )}
@@ -130,13 +130,13 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
                   toolbar.updateConditionalColorRule(rule.id, { value: event.target.value })
                 }
                 placeholder="Value"
-                className="h-[38px] w-[170px] flex-none rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-[13.5px] font-medium text-[#e4e9e9] outline-none transition-colors placeholder:text-[#7e8a8a] hover:border-white/[0.28] focus:outline-none disabled:opacity-40"
+                className="h-[38px] w-[170px] flex-none rounded-lg border border-shell-border-strong bg-shell-hover px-3 text-[13.5px] font-medium text-shell-text outline-none transition-colors placeholder:text-shell-text-faint hover:border-shell-text-faint focus:outline-none disabled:opacity-40"
               />
 
               <button
                 type="button"
                 onClick={() => toolbar.removeConditionalColorRule(rule.id)}
-                className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-[#7e8889] hover:bg-white/[0.08] hover:text-[#e4e9e9]"
+                className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-faint hover:bg-shell-hover hover:text-shell-text"
                 aria-label="Remove condition"
               >
                 <CloseIcon size={13} />
@@ -159,7 +159,7 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
           <button
             type="button"
             onClick={toolbar.clearConditionalColorRules}
-            className="text-[13.5px] font-medium text-[#9aa4a5] hover:text-[#e9eded]"
+            className="text-[13.5px] font-medium text-shell-text-muted hover:text-shell-text"
           >
             Clear all
           </button>

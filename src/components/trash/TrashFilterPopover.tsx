@@ -38,7 +38,7 @@ const TrashFilterPopover: React.FC<TrashFilterPopoverProps> = ({
         className={`flex h-[36px] items-center gap-[7px] rounded-[9px] border px-3 text-[13px] font-medium transition-colors ${
           has_active_filters
             ? "border-brand-500 text-brand-200"
-            : "border-white/10 text-[#c7d0d0] hover:bg-white/[0.06]"
+            : "border-shell-border-strong text-shell-text-secondary hover:bg-shell-hover"
         }`}
       >
         <FilterIcon size={14} />
@@ -52,18 +52,18 @@ const TrashFilterPopover: React.FC<TrashFilterPopoverProps> = ({
 
       <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={220} align="start">
         <div className="p-1.5">
-          <div className="px-2.5 pb-1 pt-1 text-[11.5px] font-semibold tracking-[0.04em] text-[#7e8889]">
+          <div className="px-2.5 pb-1 pt-1 text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint">
             Filter by type
           </div>
           {available_types.length === 0 ? (
-            <div className="px-2.5 py-2 text-[12.5px] text-[#7e8889]">Nothing to filter yet.</div>
+            <div className="px-2.5 py-2 text-[12.5px] text-shell-text-faint">Nothing to filter yet.</div>
           ) : (
             available_types.map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => onToggleType(type)}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-white/[0.08]"
+                className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
               >
                 <ToolbarCheckbox state={active_type_filters.includes(type) ? "checked" : "unchecked"} size={15} />
                 <TrashTypeBadge type={type} />
@@ -71,11 +71,11 @@ const TrashFilterPopover: React.FC<TrashFilterPopoverProps> = ({
             ))
           )}
           {has_active_filters ? (
-            <div className="mt-1 border-t border-white/[0.07] pt-1.5">
+            <div className="mt-1 border-t border-shell-border pt-1.5">
               <button
                 type="button"
                 onClick={onClear}
-                className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium text-[#8a9495] transition-colors hover:bg-white/[0.08] hover:text-[#e9eded]"
+                className="flex w-full items-center rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
               >
                 Clear filters
               </button>

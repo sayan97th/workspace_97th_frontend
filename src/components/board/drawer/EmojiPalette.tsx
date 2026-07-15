@@ -15,7 +15,7 @@ export type EmojiPaletteProps = {
 const EmojiPalette: React.FC<EmojiPaletteProps> = ({ onPick, placement = "above" }) => (
   <div
     onClick={(event) => event.stopPropagation()}
-    className={`absolute left-0 z-[6] flex w-[236px] flex-wrap gap-[3px] rounded-xl border border-white/[0.12] bg-[#0f1c1c] p-2 shadow-[0_18px_44px_rgba(0,0,0,0.5)] ${
+    className={`absolute left-0 z-[6] flex w-[236px] flex-wrap gap-[3px] rounded-xl border border-shell-border-strong bg-shell-panel p-2 shadow-[0_18px_44px_rgba(0,0,0,0.5)] ${
       placement === "above" ? "bottom-[36px]" : "top-[38px]"
     }`}
   >
@@ -24,7 +24,7 @@ const EmojiPalette: React.FC<EmojiPaletteProps> = ({ onPick, placement = "above"
         key={emoji}
         type="button"
         onClick={() => onPick(emoji)}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-[19px] hover:bg-white/10"
+        className="flex h-8 w-8 items-center justify-center rounded-md text-[19px] hover:bg-shell-hover-strong"
       >
         {emoji}
       </button>

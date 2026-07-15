@@ -56,7 +56,7 @@ const WorkspaceContent: React.FC = () => {
         />
       </div>
 
-      <div className="mt-3 font-mono-accent text-[12.5px] tracking-[0.02em] text-gray-400">
+      <div className="mt-3 font-mono-accent text-[12.5px] tracking-[0.02em] text-shell-text-muted">
         {selected_count > 0
           ? `${selected_count} selected`
           : `${filtered_assets.length} of ${WORKSPACE_CONTENT_ASSETS.length} assets`}

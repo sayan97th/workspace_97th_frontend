@@ -9,7 +9,7 @@ export type TeamsRailProps = {
 
 const railRowClass = (is_selected: boolean) =>
   `flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-left transition-colors ${
-    is_selected ? "bg-white/[0.08]" : "hover:bg-white/[0.06]"
+    is_selected ? "bg-shell-hover-strong" : "hover:bg-shell-hover"
   }`;
 
 /**
@@ -17,11 +17,11 @@ const railRowClass = (is_selected: boolean) =>
  * Fully driven by {@link useTeamsManager}'s output so it stays presentational.
  */
 const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
-  <div className="flex w-[280px] flex-none flex-col border-r border-white/[0.07] bg-[#0F1C1C]">
+  <div className="flex w-[280px] flex-none flex-col border-r border-shell-border bg-shell-panel-alt">
     <div className="flex items-center justify-between gap-2.5 px-[18px] pb-3.5 pt-[22px]">
       <div>
-        <div className="text-[18px] font-extrabold tracking-[-0.01em] text-[#e9eded]">Teams</div>
-        <div className="mt-0.5 text-[12.5px] text-[#8a9495]">
+        <div className="text-[18px] font-extrabold tracking-[-0.01em] text-shell-text">Teams</div>
+        <div className="mt-0.5 text-[12.5px] text-shell-text-muted">
           {teams.total_team_count} teams in this account
         </div>
       </div>
@@ -46,36 +46,36 @@ const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
         </span>
         <span
           className={`flex-1 truncate text-[13.5px] font-semibold ${
-            teams.is_all_selected ? "text-[#f2f5f5]" : "text-[#d7dcdc]"
+            teams.is_all_selected ? "text-shell-text" : "text-shell-text-secondary"
           }`}
         >
           All teams
         </span>
-        <span className="text-[12px] text-[#7e8889]">{teams.total_team_count}</span>
+        <span className="text-[12px] text-shell-text-faint">{teams.total_team_count}</span>
       </button>
 
       {teams.team_rows.map((row) => (
         <button key={row.id} type="button" onClick={row.select} className={railRowClass(row.is_selected)}>
-          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-white/[0.06] text-[#8a9495]">
+          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-shell-hover text-shell-text-muted">
             <TeamFolderIcon size={14} />
           </span>
           <span
             className={`min-w-0 flex-1 truncate text-[13.5px] font-medium ${
-              row.is_selected ? "text-[#f2f5f5]" : "text-[#d7dcdc]"
+              row.is_selected ? "text-shell-text" : "text-shell-text-secondary"
             }`}
           >
             {row.name}
           </span>
-          <span className="text-[12px] text-[#7e8889]">{row.member_count}</span>
+          <span className="text-[12px] text-shell-text-faint">{row.member_count}</span>
         </button>
       ))}
     </div>
 
-    <div className="border-t border-white/[0.07] px-4 py-3">
+    <div className="border-t border-shell-border px-4 py-3">
       <button
         type="button"
         onClick={teams.openCreateTeam}
-        className="flex items-center gap-2 text-[12.5px] font-semibold text-[#9aa4a5] transition-colors hover:text-[#d7dcdc]"
+        className="flex items-center gap-2 text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text-secondary"
       >
         <PlusIcon size={12} />
         New team

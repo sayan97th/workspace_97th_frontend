@@ -14,10 +14,10 @@ const max_duration_options = ADMIN_SESSION_MAX_OPTIONS.map((value) => ({ id: val
 /** Administration > Security > Advanced — panic mode and session-duration policy. */
 const AdvancedSection: React.FC<AdvancedSectionProps> = ({ admin }) => (
   <div className="max-w-[620px]">
-    <div className="mb-7 flex items-start justify-between gap-5 rounded-xl border border-[#e2445c]/25 bg-[#0b1616] p-5">
+    <div className="mb-7 flex items-start justify-between gap-5 rounded-xl border border-[#e2445c]/25 bg-shell-panel-alt p-5">
       <div>
-        <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Panic mode</div>
-        <p className="max-w-[400px] text-[13px] leading-relaxed text-[#9aa4a5]">
+        <div className="mb-1.5 text-[15px] font-bold text-shell-text">Panic mode</div>
+        <p className="max-w-[400px] text-[13px] leading-relaxed text-shell-text-muted">
           If your team&apos;s login credentials are compromised, lock the account until the threat is
           resolved.
         </p>
@@ -38,7 +38,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ admin }) => (
           <button
             type="button"
             onClick={admin.cancelPanicConfirm}
-            className="rounded-[9px] border border-white/[0.12] bg-[#142020] px-3.5 py-[10px] text-[13px] font-semibold text-[#d7dcdc] hover:bg-white/[0.08]"
+            className="rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[10px] text-[13px] font-semibold text-shell-text-secondary hover:bg-shell-hover"
           >
             Cancel
           </button>
@@ -60,7 +60,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ admin }) => (
           <button
             type="button"
             onClick={admin.deactivatePanic}
-            className="rounded-[9px] border border-white/[0.12] bg-[#142020] px-3.5 py-[10px] text-[13px] font-semibold text-[#d7dcdc] hover:bg-white/[0.08]"
+            className="rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[10px] text-[13px] font-semibold text-shell-text-secondary hover:bg-shell-hover"
           >
             Deactivate
           </button>
@@ -68,14 +68,14 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ admin }) => (
       ) : null}
     </div>
 
-    <div className="rounded-xl border border-white/[0.08] bg-[#0b1616] p-5">
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Session duration</div>
-      <p className="mb-[18px] max-w-[460px] text-[13px] leading-relaxed text-[#9aa4a5]">
+    <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-5">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Session duration</div>
+      <p className="mb-[18px] max-w-[460px] text-[13px] leading-relaxed text-shell-text-muted">
         Shorter sessions require users to log in more often, but are more secure.
       </p>
 
-      <div className="flex items-center justify-between gap-4 border-b border-white/[0.06] py-3.5">
-        <span className="text-[13.5px] text-[#d7dcdc]">Log out users after they&apos;ve been inactive for</span>
+      <div className="flex items-center justify-between gap-4 border-b border-shell-border py-3.5">
+        <span className="text-[13.5px] text-shell-text-secondary">Log out users after they&apos;ve been inactive for</span>
         <SettingsDropdown
           value={admin.session_inactivity}
           options={inactivity_options}
@@ -85,7 +85,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ admin }) => (
       </div>
 
       <div className="flex items-center justify-between gap-4 py-3.5">
-        <span className="text-[13.5px] text-[#d7dcdc]">End session and log out users automatically after</span>
+        <span className="text-[13.5px] text-shell-text-secondary">End session and log out users automatically after</span>
         <SettingsDropdown
           value={admin.session_max_duration}
           options={max_duration_options}

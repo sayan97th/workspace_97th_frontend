@@ -8,10 +8,10 @@ export type FilterPanelAdvancedProps<TRow> = {
 };
 
 const select_class =
-  "h-[38px] rounded-lg border border-white/[0.12] bg-white/[0.04] px-3 text-[13.5px] text-[#e9eded] transition-colors hover:border-white/[0.28] focus:outline-none";
+  "h-[38px] rounded-lg border border-shell-border-strong bg-shell-hover px-3 text-[13.5px] text-shell-text transition-colors hover:border-shell-text-faint focus:outline-none";
 
 /** Native <option> popups ignore the <select>'s Tailwind background, so it must be set explicitly here or the options render invisible (light text on the browser's default white dropdown). */
-const option_class = "bg-[#122221] text-[#e9eded]";
+const option_class = "bg-shell-panel text-shell-text";
 
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
   return (
@@ -20,7 +20,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
         const is_value_disabled = row.condition === "is_empty" || row.condition === "is_not_empty";
         return (
           <div key={row.id} className="mb-2.5 flex items-center gap-3">
-            <span className="w-11 flex-none text-[13.5px] font-semibold text-[#c7d0d0]">
+            <span className="w-11 flex-none text-[13.5px] font-semibold text-shell-text-secondary">
               {index === 0 ? "Where" : "And"}
             </span>
             <select
@@ -64,7 +64,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
             <button
               type="button"
               onClick={() => toolbar.removeAdvancedFilterRow(row.id)}
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-[#8a9495] hover:bg-white/[0.08] hover:text-[#e9eded]"
+              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
               aria-label="Remove filter"
             >
               <CloseIcon size={12} />

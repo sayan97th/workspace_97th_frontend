@@ -19,7 +19,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ onOpenTeams }
     <ProfileForm />
 
     {onOpenTeams ? (
-      <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-gray-800 bg-white/[0.03] p-6 text-center">
+      <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-gray-800 bg-shell-hover p-6 text-center">
         <div className="text-[15px] font-semibold text-white">Create and join teams</div>
         <p className="max-w-[360px] text-[13px] leading-relaxed text-gray-400">
           Collaborate better with teammates and keep track of projects you&apos;re interested in.
@@ -27,7 +27,7 @@ const PersonalInfoSection: React.FC<PersonalInfoSectionProps> = ({ onOpenTeams }
         <button
           type="button"
           onClick={onOpenTeams}
-          className="rounded-lg bg-white/[0.08] px-[18px] py-[9px] text-[13px] font-bold text-gray-200 transition-colors hover:bg-white/[0.14]"
+          className="rounded-lg bg-shell-hover-strong px-[18px] py-[9px] text-[13px] font-bold text-gray-200 transition-colors hover:bg-shell-hover-strong"
         >
           Explore teams
         </button>

@@ -61,7 +61,7 @@ const NavItem: React.FC<NavItemProps> = ({ tab, is_active, onSelect }) => {
       className={`flex items-center gap-[11px] rounded-[9px] px-3 py-2.5 text-left text-[13.5px] font-medium transition-colors ${
         is_active
           ? "bg-brand-500 text-white"
-          : "text-gray-200 hover:bg-white/[0.06]"
+          : "text-gray-200 hover:bg-shell-hover"
       }`}
     >
       <Icon size={15} />
@@ -138,14 +138,14 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
         aria-hidden="true"
       />
 
-      <div className="absolute inset-3.5 z-[401] flex flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#142424] text-[#e9eded] shadow-[0_34px_80px_rgba(0,0,0,0.55)]">
+      <div className="absolute inset-3.5 z-[401] flex flex-col overflow-hidden rounded-2xl border border-shell-border bg-shell-panel-alt text-shell-text shadow-[0_34px_80px_rgba(0,0,0,0.55)]">
         {/* Header bar */}
-        <div className="flex h-[66px] flex-none items-center gap-5 border-b border-white/[0.07] px-[22px]">
+        <div className="flex h-[66px] flex-none items-center gap-5 border-b border-shell-border px-[22px]">
           <span className="whitespace-nowrap text-[19px] font-bold tracking-[-0.01em]">
             Browse all workspaces
           </span>
           <div className="flex flex-1 justify-center">
-            <div className="flex w-full max-w-[420px] items-center gap-2.5 rounded-[9px] border border-white/10 bg-[#0e1d1d] px-3.5 py-2.5">
+            <div className="flex w-full max-w-[420px] items-center gap-2.5 rounded-[9px] border border-shell-border-strong bg-shell-bg px-3.5 py-2.5">
               <SearchIcon size={14} className="flex-none text-gray-400" />
               <input
                 type="text"
@@ -159,7 +159,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
           </div>
           <button
             type="button"
-            className="flex items-center gap-[7px] rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-gray-200 transition-colors hover:bg-white/[0.07]"
+            className="flex items-center gap-[7px] rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-gray-200 transition-colors hover:bg-shell-hover"
           >
             <FilterIcon size={15} />
             Filter
@@ -167,7 +167,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/[0.08] hover:text-gray-100"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-shell-hover hover:text-gray-100"
             aria-label="Close"
           >
             <CloseIcon size={16} />
@@ -177,7 +177,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
         {/* Body */}
         <div className="flex min-h-0 flex-1">
           {/* Left nav */}
-          <div className="flex w-[238px] flex-none flex-col gap-[3px] border-r border-white/[0.07] p-[18px_14px]">
+          <div className="flex w-[238px] flex-none flex-col gap-[3px] border-r border-shell-border p-[18px_14px]">
             {PRIMARY_TABS.map((tab) => (
               <NavItem
                 key={tab.key}
@@ -203,7 +203,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
             <button
               type="button"
               onClick={handleCreate}
-              className="mt-3.5 flex items-center gap-2.5 rounded-[9px] bg-white/[0.04] px-3 py-2.5 text-[13px] font-medium text-gray-400 transition-colors hover:bg-white/[0.08] hover:text-gray-200"
+              className="mt-3.5 flex items-center gap-2.5 rounded-[9px] bg-shell-hover px-3 py-2.5 text-[13px] font-medium text-gray-400 transition-colors hover:bg-shell-hover hover:text-gray-200"
             >
               <PlusIcon size={15} />
               Create workspace

@@ -12,7 +12,7 @@ export type TrashRowMenuProps = {
 };
 
 const menu_row_class =
-  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-[#e9eded] transition-colors hover:bg-white/[0.08]";
+  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-shell-text transition-colors hover:bg-shell-hover";
 
 /**
  * Per-row "..." menu (Restore / Delete permanently) for a trash/archive entry. Anchors a
@@ -34,8 +34,8 @@ const TrashRowMenu: React.FC<TrashRowMenuProps> = ({ entry_name, onRestore, onDe
         aria-label={`Actions for ${entry_name}`}
         aria-haspopup="menu"
         aria-expanded={is_open}
-        className={`flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-[#8a9495] transition-colors hover:bg-white/[0.08] hover:text-[#e9eded] ${
-          is_open ? "bg-white/[0.08] text-[#e9eded]" : ""
+        className={`flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text ${
+          is_open ? "bg-shell-hover text-shell-text" : ""
         }`}
       >
         <MoreDotsIcon size={15} />
@@ -51,7 +51,7 @@ const TrashRowMenu: React.FC<TrashRowMenuProps> = ({ entry_name, onRestore, onDe
             }}
             className={menu_row_class}
           >
-            <span className="flex flex-none text-[#9aa4a5]">
+            <span className="flex flex-none text-shell-text-muted">
               <RestoreIcon size={14} />
             </span>
             Restore

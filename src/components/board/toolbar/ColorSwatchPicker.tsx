@@ -41,13 +41,13 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
         onClick={() => setIsOpen((current) => !current)}
         aria-label="Choose color"
         className={`h-[30px] w-[30px] rounded-[7px] border transition-colors ${
-          is_open ? "border-white/40" : "border-white/[0.14] hover:border-white/40"
+          is_open ? "border-shell-text-muted" : "border-shell-border-strong hover:border-shell-text-muted"
         }`}
         style={{ background: color }}
       />
 
       {is_open && (
-        <div className="absolute left-0 top-[38px] z-[211] grid w-[222px] grid-cols-6 gap-2 rounded-xl border border-white/[0.12] bg-[#122221] p-3 shadow-2xl shadow-black/50">
+        <div className="absolute left-0 top-[38px] z-[211] grid w-[222px] grid-cols-6 gap-2 rounded-xl border border-shell-border-strong bg-shell-panel p-3 shadow-2xl shadow-black/50">
           {BOARD_CONDITIONAL_COLOR_PALETTE.map((hex) => {
             const is_selected = hex.toLowerCase() === color.toLowerCase();
             return (
@@ -62,7 +62,9 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
                 className="h-[26px] w-[26px] rounded-md"
                 style={{
                   background: hex,
-                  boxShadow: is_selected ? "0 0 0 2px #122221, 0 0 0 4px #ffffff" : "none",
+                  boxShadow: is_selected
+                    ? "0 0 0 2px var(--color-shell-panel), 0 0 0 4px var(--color-shell-text)"
+                    : "none",
                 }}
               />
             );

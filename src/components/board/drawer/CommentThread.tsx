@@ -41,10 +41,10 @@ const ReactionPills: React.FC<ReactionPillsProps> = ({ reactions, onToggle }) =>
           key={reaction.emoji}
           type="button"
           onClick={() => onToggle(reaction.emoji)}
-          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold text-[#d7dcdc]"
+          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold text-shell-text-secondary"
           style={{
-            background: reaction.reacted_by_me ? "rgba(87,155,252,0.18)" : "rgba(255,255,255,0.06)",
-            borderColor: reaction.reacted_by_me ? "#579bfc" : "rgba(255,255,255,0.10)",
+            background: reaction.reacted_by_me ? "rgba(87,155,252,0.18)" : "var(--color-shell-hover)",
+            borderColor: reaction.reacted_by_me ? "#579bfc" : "var(--color-shell-border-strong)",
           }}
         >
           <span className="text-sm">{reaction.emoji}</span>
@@ -75,17 +75,17 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
     <PersonAvatar person={reply.author} size={27} />
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
-        <span className="text-[12.5px] font-bold text-[#edf1f1]">{reply.author.name}</span>
-        <span className="text-[11px] text-[#6e7b7d]">{reply.posted_at}</span>
+        <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
+        <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
       </div>
-      <div className="mt-1 text-[13px] leading-[1.55] text-[#cdd5d5]">{renderMentionText(reply.body)}</div>
+      <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
       <ReactionPills reactions={reply.reactions} onToggle={onToggleReaction} />
       <div className="mt-[7px] flex items-center gap-3.5">
         <button
           type="button"
           onClick={onLike}
           className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
-          style={{ color: reply.liked_by_me ? "#579bfc" : "#8a9495" }}
+          style={{ color: reply.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
         >
           <LikeIcon size={13} filled={reply.liked_by_me} />
           Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
@@ -94,7 +94,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
           <button
             type="button"
             onClick={() => onToggleReactionPalette(reaction_palette_key)}
-            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-[#8a9495] hover:text-[#c7d0d0]"
+            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
           >
             <ReactSmileyIcon size={13} />
             React
@@ -132,21 +132,21 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const focusReplyComposer = () => reply_composer_ref.current?.querySelector("textarea")?.focus();
 
   return (
-    <div className="mt-4 overflow-hidden rounded-[14px] border border-white/[0.06] bg-[#122322]">
+    <div className="mt-4 overflow-hidden rounded-[14px] border border-shell-border bg-shell-panel-alt">
       <div className="px-4 pb-[13px] pt-[15px]">
         <div className="flex items-center gap-2.5">
           <PersonAvatar person={comment.author} size={32} />
           <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-bold text-[#edf1f1]">{comment.author.name}</div>
-            <div className="text-[11.5px] text-[#6e7b7d]">{comment.posted_at}</div>
+            <div className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</div>
+            <div className="text-[11.5px] text-shell-text-faint">{comment.posted_at}</div>
           </div>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-[#6e7b7d]">
+          <span className="flex items-center gap-1.5 text-[11.5px] text-shell-text-faint">
             <ViewsIcon />
             {comment.view_count}
           </span>
         </div>
 
-        <div className="mt-2.5 text-[13.5px] leading-relaxed text-[#d4dbdb]">{renderMentionText(comment.body)}</div>
+        <div className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary">{renderMentionText(comment.body)}</div>
 
         {comment.attachments.length > 0 && (
           <div className="mt-[11px] flex flex-wrap gap-2">
@@ -163,7 +163,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             type="button"
             onClick={() => onToggleLike(comment.id)}
             className="flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: comment.liked_by_me ? "#579bfc" : "#8a9495" }}
+            style={{ color: comment.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
           >
             <LikeIcon filled={comment.liked_by_me} />
             Like{comment.like_count > 0 ? ` · ${comment.like_count}` : ""}
@@ -172,7 +172,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <button
               type="button"
               onClick={() => onToggleReactionPalette(comment.id)}
-              className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#8a9495] hover:text-[#c7d0d0]"
+              className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
             >
               <ReactSmileyIcon />
               React
@@ -184,7 +184,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           <button
             type="button"
             onClick={focusReplyComposer}
-            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-[#8a9495] hover:text-[#c7d0d0]"
+            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
           >
             <ReplyIcon />
             Reply
@@ -193,7 +193,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             type="button"
             onClick={() => onToggleSeen(comment.id)}
             className="ml-auto flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: comment.seen ? "#00c875" : "#8a9495" }}
+            style={{ color: comment.seen ? "#00c875" : "var(--color-shell-text-muted)" }}
           >
             <SeenIcon />
             {comment.seen ? "Seen" : "Mark as seen"}
@@ -202,7 +202,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       </div>
 
       {comment.replies.length > 0 && (
-        <div className="border-t border-white/[0.06] bg-black/[0.16] py-1">
+        <div className="border-t border-shell-border bg-shell-hover py-1">
           {comment.replies.map((reply) => (
             <ReplyRow
               key={reply.id}
@@ -217,7 +217,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         </div>
       )}
 
-      <div ref={reply_composer_ref} className="border-t border-white/[0.06] py-3 pl-5 pr-4">
+      <div ref={reply_composer_ref} className="border-t border-shell-border py-3 pl-5 pr-4">
         <CommentComposer
           target={comment.id}
           avatar_person={current_user}

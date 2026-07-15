@@ -105,7 +105,7 @@ const MenuFlyout: React.FC<MenuFlyoutProps> = ({
     <div
       ref={flyout_ref}
       data-board-menu-flyout
-      className="fixed z-[1001] rounded-xl border border-white/[0.08] bg-[#122221] text-[#e9eded] shadow-2xl shadow-black/40"
+      className="fixed z-[1001] rounded-xl border border-shell-border bg-shell-panel text-shell-text shadow-2xl shadow-black/40"
       style={{
         width,
         top: position?.top ?? -9999,

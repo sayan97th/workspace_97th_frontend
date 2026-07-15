@@ -32,12 +32,12 @@ const PrivacyOption: React.FC<PrivacyOptionProps> = ({ value, label, is_selected
   >
     <span
       className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${
-        is_selected ? "border-[#2B76E5]" : "border-white/[0.28]"
+        is_selected ? "border-[#2B76E5]" : "border-shell-border-strong"
       }`}
     >
       {is_selected && <span className="h-2 w-2 rounded-full bg-[#2B76E5]" />}
     </span>
-    <span className="text-[13.5px] font-medium text-[#e9eded]">{label}</span>
+    <span className="text-[13.5px] font-medium text-shell-text">{label}</span>
   </button>
 );
 
@@ -105,9 +105,9 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
         aria-hidden="true"
       />
 
-      <div className="relative z-[421] w-[420px] max-w-full overflow-hidden rounded-2xl border border-white/10 bg-[#132424] text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+      <div className="relative z-[421] w-[420px] max-w-full overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.07] px-[22px] py-5">
+        <div className="flex items-center justify-between border-b border-shell-border px-[22px] py-5">
           <span className="text-lg font-extrabold tracking-[-0.01em]">
             Add new workspace
           </span>
@@ -115,7 +115,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+            className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-shell-hover hover:text-white"
           >
             <CloseIcon size={14} />
           </button>
@@ -142,7 +142,7 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
             onChange={(event) => setName(event.target.value)}
             placeholder={default_new_workspace_name}
             autoFocus
-            className="w-full rounded-[9px] border border-white/[0.14] bg-[#0f1c1c] px-[13px] py-[11px] text-sm text-[#e9eded] outline-none focus:border-[#2B76E5]"
+            className="w-full rounded-[9px] border border-shell-border-strong bg-shell-panel px-[13px] py-[11px] text-sm text-shell-text outline-none focus:border-[#2B76E5]"
           />
         </div>
 
@@ -171,11 +171,11 @@ const CreateWorkspaceModal: React.FC<CreateWorkspaceModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2.5 border-t border-white/[0.07] px-[22px] py-4">
+        <div className="flex items-center justify-end gap-2.5 border-t border-shell-border px-[22px] py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold text-gray-300 transition-colors hover:bg-white/[0.06]"
+            className="rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold text-gray-300 transition-colors hover:bg-shell-hover"
           >
             Cancel
           </button>

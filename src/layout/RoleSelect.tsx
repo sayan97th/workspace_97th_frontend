@@ -60,11 +60,11 @@ const RoleSelect: React.FC<RoleSelectProps> = ({
         onClick={() => setIsOpen((previous) => !previous)}
         aria-haspopup="listbox"
         aria-expanded={is_open}
-        className="flex items-center gap-2 rounded-[9px] border border-white/[0.10] bg-[#142020] px-3 py-[9px] text-[13px] font-medium text-[#C7D0D0] transition-colors hover:border-brand-500/60"
+        className="flex items-center gap-2 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3 py-[9px] text-[13px] font-medium text-shell-text-secondary transition-colors hover:border-brand-500/60"
       >
-        <ActiveIcon size={14} className="text-gray-400" />
+        <ActiveIcon size={14} className="text-shell-text-muted" />
         {active_role.label}
-        <ChevronDownIcon size={12} className="text-gray-400" />
+        <ChevronDownIcon size={12} className="text-shell-text-muted" />
       </button>
 
       {is_open && (
@@ -76,7 +76,7 @@ const RoleSelect: React.FC<RoleSelectProps> = ({
           />
           <div
             role="listbox"
-            className={`absolute top-[calc(100%+6px)] z-[411] w-[260px] rounded-xl border border-white/[0.12] bg-[#0F1C1C] p-1.5 shadow-[0_22px_52px_rgba(0,0,0,0.55)] ${
+            className={`absolute top-[calc(100%+6px)] z-[411] w-[260px] rounded-xl border border-shell-border-strong bg-shell-panel p-1.5 shadow-[0_22px_52px_rgba(0,0,0,0.55)] ${
               align === "right" ? "right-0" : "left-0"
             }`}
           >
@@ -90,19 +90,19 @@ const RoleSelect: React.FC<RoleSelectProps> = ({
                   role="option"
                   aria-selected={is_selected}
                   onClick={() => handleSelect(role.id)}
-                  className="flex w-full items-start gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-white/[0.06]"
+                  className="flex w-full items-start gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-shell-hover"
                 >
-                  <span className="mt-0.5 flex-none text-gray-400">
+                  <span className="mt-0.5 flex-none text-shell-text-muted">
                     <RoleIcon size={15} />
                   </span>
                   <span className="flex-1">
-                    <span className="flex items-center gap-2 text-[13.5px] font-semibold text-[#E9EDED]">
+                    <span className="flex items-center gap-2 text-[13.5px] font-semibold text-shell-text">
                       {role.label}
                       {is_selected && (
                         <CheckIcon size={12} className="text-brand-400" />
                       )}
                     </span>
-                    <span className="mt-0.5 block text-[12px] leading-[1.45] text-gray-400">
+                    <span className="mt-0.5 block text-[12px] leading-[1.45] text-shell-text-muted">
                       {role.description}
                     </span>
                   </span>

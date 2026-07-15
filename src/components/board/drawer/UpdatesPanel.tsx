@@ -12,7 +12,7 @@ export type UpdatesPanelProps<TRow> = {
 function UpdatesPanel<TRow>({ drawer }: UpdatesPanelProps<TRow>) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-none border-b border-white/[0.06] px-5 pb-3.5 pt-4">
+      <div className="flex-none border-b border-shell-border px-5 pb-3.5 pt-4">
         <CommentComposer
           target="composer"
           avatar_person={drawer.current_user}

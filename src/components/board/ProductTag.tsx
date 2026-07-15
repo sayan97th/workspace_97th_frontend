@@ -13,7 +13,7 @@ const ProductTag: React.FC<ProductTagProps> = ({ label }) => (
 
 /** Neutral "+N" overflow badge shown after a truncated tag/avatar list. */
 export const OverflowBadge: React.FC<{ label: string }> = ({ label }) => (
-  <span className="rounded-md bg-white/[0.07] px-1.5 py-0.5 text-[11px] font-semibold text-[#9aa4a5]">
+  <span className="rounded-md bg-shell-hover px-1.5 py-0.5 text-[11px] font-semibold text-shell-text-muted">
     {label}
   </span>
 );

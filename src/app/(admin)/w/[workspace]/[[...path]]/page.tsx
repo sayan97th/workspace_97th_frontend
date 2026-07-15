@@ -66,7 +66,7 @@ export default function WorkspaceViewPage({
 
   if (!tree) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#0e1d1d]">
+      <div className="flex h-full items-center justify-center bg-shell-bg">
         <div className="h-9 w-9 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
     );
@@ -91,8 +91,8 @@ export default function WorkspaceViewPage({
 }
 
 const CenteredMessage: React.FC<{ title: string; detail: string }> = ({ title, detail }) => (
-  <div className="flex h-full flex-col items-center justify-center gap-2 bg-[#0e1d1d] px-6 text-center">
-    <h2 className="text-lg font-semibold text-[#e9eded]">{title}</h2>
-    <p className="max-w-sm text-[13.5px] text-[#8a9495]">{detail}</p>
+  <div className="flex h-full flex-col items-center justify-center gap-2 bg-shell-bg px-6 text-center">
+    <h2 className="text-lg font-semibold text-shell-text">{title}</h2>
+    <p className="max-w-sm text-[13.5px] text-shell-text-muted">{detail}</p>
   </div>
 );

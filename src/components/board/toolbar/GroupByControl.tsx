@@ -41,8 +41,8 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
       />
       <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={toolbar.closePanel} width={540}>
         <div className="flex items-center gap-[9px] px-5 pb-3.5 pt-4">
-          <span className="text-[16px] font-bold text-[#eef2f2]">Group items by</span>
-          <span className="flex items-center text-[#6e7b7d]" title="Groups rows by the selected column">
+          <span className="text-[16px] font-bold text-shell-text">Group items by</span>
+          <span className="flex items-center text-shell-text-faint" title="Groups rows by the selected column">
             <InfoIcon size={15} />
           </span>
           <div className="flex-1" />
@@ -50,12 +50,12 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
             <button
               type="button"
               onClick={() => toolbar.setGroupByOptionId(BOARD_DEFAULT_GROUP_BY_ID)}
-              className="mr-1 text-[13.5px] font-medium text-[#9aa4a5] hover:text-[#e9eded]"
+              className="mr-1 text-[13.5px] font-medium text-shell-text-muted hover:text-shell-text"
             >
               Clear
             </button>
           )}
-          <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-white/[0.12] px-3.5 text-[13px] font-semibold text-[#71807f]">
+          <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-shell-border-strong px-3.5 text-[13px] font-semibold text-shell-text-faint">
             Save as new view
           </div>
         </div>
@@ -72,10 +72,10 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
               selected_option ? (
                 <>
                   {selected_option.swatch && <ColumnSwatchBadge swatch={selected_option.swatch} />}
-                  <span className="truncate text-[13.5px] text-[#e4e9e9]">{selected_option.label}</span>
+                  <span className="truncate text-[13.5px] text-shell-text">{selected_option.label}</span>
                 </>
               ) : (
-                <span className="truncate text-[13.5px] text-[#8a9495]">Select or search column name</span>
+                <span className="truncate text-[13.5px] text-shell-text-muted">Select or search column name</span>
               )
             }
             renderOption={(option) => (
@@ -94,13 +94,13 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
             onSelect={(option) => toolbar.setGroupOrderDirection(option.id)}
             renderValue={() => (
               <>
-                <selected_direction.Icon size={15} className="flex-none text-[#9aa4a5]" />
-                <span className="truncate text-[13.5px] text-[#d3dada]">{selected_direction.label}</span>
+                <selected_direction.Icon size={15} className="flex-none text-shell-text-muted" />
+                <span className="truncate text-[13.5px] text-shell-text-secondary">{selected_direction.label}</span>
               </>
             )}
             renderOption={(option) => (
               <>
-                <option.Icon size={15} className="flex-none text-[#9aa4a5]" />
+                <option.Icon size={15} className="flex-none text-shell-text-muted" />
                 <span>{option.label}</span>
               </>
             )}
@@ -111,11 +111,11 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
           <button
             type="button"
             onClick={() => toolbar.setShowEmptyGroups(!toolbar.show_empty_groups)}
-            className="flex items-center gap-[9px] text-[13.5px] font-medium text-[#c7d0d0] hover:text-[#e9eded]"
+            className="flex items-center gap-[9px] text-[13.5px] font-medium text-shell-text-secondary hover:text-shell-text"
           >
             <span
               className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${
-                toolbar.show_empty_groups ? "border-brand-500 bg-brand-500" : "border-white/25"
+                toolbar.show_empty_groups ? "border-brand-500 bg-brand-500" : "border-shell-border-strong"
               }`}
             >
               {toolbar.show_empty_groups && <CheckIcon size={10} className="text-white" />}
@@ -124,8 +124,8 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
           </button>
         </div>
 
-        <div className="mt-1.5 flex items-center border-t border-white/[0.08] px-5 pb-4 pt-3">
-          <span className="flex items-center gap-2 text-[13px] font-medium text-[#9aa4a5]">
+        <div className="mt-1.5 flex items-center border-t border-shell-border px-5 pb-4 pt-3">
+          <span className="flex items-center gap-2 text-[13px] font-medium text-shell-text-muted">
             <CommentIcon size={15} />
             Give feedback
           </span>

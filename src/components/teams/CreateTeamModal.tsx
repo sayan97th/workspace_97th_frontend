@@ -85,11 +85,11 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
           </div>
         </div>
 
-        <div className="flex flex-none items-center justify-end gap-2.5 border-t border-white/[0.07] px-[22px] py-4">
+        <div className="flex flex-none items-center justify-end gap-2.5 border-t border-shell-border px-[22px] py-4">
           <button
             type="button"
             onClick={teams.closeCreateTeam}
-            className="rounded-lg px-3.5 py-[10px] text-[13.5px] font-semibold text-[#c7d0d0] transition-colors hover:bg-white/[0.06]"
+            className="rounded-lg px-3.5 py-[10px] text-[13.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
           >
             Cancel
           </button>

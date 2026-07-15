@@ -23,7 +23,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ is_on, size = "md" }) => {
   return (
     <span
       className="relative flex-none rounded-full transition-colors duration-150"
-      style={{ width, height, background: is_on ? "#00c875" : "rgba(255,255,255,0.16)" }}
+      style={{ width, height, background: is_on ? "#00c875" : "var(--color-shell-hover-strong)" }}
     >
       <span
         className="absolute rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.35)] transition-[left] duration-150"

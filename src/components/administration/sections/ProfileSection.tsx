@@ -7,17 +7,17 @@ export type ProfileSectionProps = {
 };
 
 const inputClass =
-  "w-full rounded-[9px] border border-white/[0.12] bg-[#142020] px-[13px] py-[11px] text-[14px] text-[#e9eded] outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text outline-none focus:border-brand-500";
 
 /** Administration > Profile — the account's display name and its URL slug. */
 const ProfileSection: React.FC<ProfileSectionProps> = ({ admin }) => (
   <div className="max-w-[480px]">
-    <p className="mb-7 text-[13px] leading-relaxed text-[#9aa4a5]">
+    <p className="mb-7 text-[13px] leading-relaxed text-shell-text-muted">
       Change the account name and URL.
     </p>
 
     <div className="mb-5">
-      <div className="mb-2 text-[13px] font-semibold text-[#d7dcdc]">Account name</div>
+      <div className="mb-2 text-[13px] font-semibold text-shell-text-secondary">Account name</div>
       <input
         type="text"
         value={admin.account_name}
@@ -27,7 +27,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ admin }) => (
     </div>
 
     <div>
-      <div className="mb-2 text-[13px] font-semibold text-[#d7dcdc]">Account URL (web address)</div>
+      <div className="mb-2 text-[13px] font-semibold text-shell-text-secondary">Account URL (web address)</div>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -35,7 +35,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = ({ admin }) => (
           onChange={(event) => admin.setAccountUrl(event.target.value)}
           className={inputClass}
         />
-        <span className="whitespace-nowrap text-[13.5px] text-[#8a9495]">.97thfloor.app</span>
+        <span className="whitespace-nowrap text-[13.5px] text-shell-text-muted">.97thfloor.app</span>
       </div>
     </div>
 

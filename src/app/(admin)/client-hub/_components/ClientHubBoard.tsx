@@ -42,11 +42,11 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
       return (
         <div className="flex w-full items-center gap-[7px]">
           {row.sub_items_count ? (
-            <span className="flex flex-none text-[#7e8889]">
+            <span className="flex flex-none text-shell-text-faint">
               <ChevronRightIcon size={11} />
             </span>
           ) : null}
-          <span className="min-w-0 truncate text-[13.5px] font-medium text-[#e4e9e9]">
+          <span className="min-w-0 truncate text-[13.5px] font-medium text-shell-text">
             {row.name}
           </span>
           {row.has_star ? (
@@ -56,7 +56,7 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
           ) : null}
           <span className="flex-1" />
           {row.sub_items_count ? (
-            <span className="flex-none rounded-[5px] bg-white/[0.06] px-1.5 py-px text-[11px] font-semibold text-[#9aa4a5]">
+            <span className="flex-none rounded-[5px] bg-shell-hover px-1.5 py-px text-[11px] font-semibold text-shell-text-muted">
               {row.sub_items_count}
             </span>
           ) : null}
@@ -65,7 +65,7 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
 
     case "chat":
       return (
-        <span className="flex items-center gap-[3px] text-[11px] font-semibold text-[#8a9495]">
+        <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-muted">
           <RowChatIcon />
           {row.chat_count}
         </span>
@@ -93,7 +93,7 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
 
     case "kpi":
       return row.kpi ? (
-        <span className="w-full truncate text-[12.5px] text-[#b4bcbd]">{row.kpi}</span>
+        <span className="w-full truncate text-[12.5px] text-shell-text-secondary">{row.kpi}</span>
       ) : null;
 
     case "status": {
@@ -107,17 +107,17 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
           Referral
         </div>
       ) : (
-        <div className="h-full w-full bg-[#101f1e]" />
+        <div className="h-full w-full bg-shell-panel-alt" />
       );
 
     case "start":
       return row.start ? (
-        <span className="text-[12.5px] text-[#b4bcbd]">{row.start}</span>
+        <span className="text-[12.5px] text-shell-text-secondary">{row.start}</span>
       ) : null;
 
     case "end":
       return row.end ? (
-        <span className="text-[12.5px] text-[#b4bcbd]">{row.end}</span>
+        <span className="text-[12.5px] text-shell-text-secondary">{row.end}</span>
       ) : null;
 
     default:

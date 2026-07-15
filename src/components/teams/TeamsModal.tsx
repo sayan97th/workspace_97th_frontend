@@ -20,7 +20,7 @@ export type TeamsModalProps = {
 
 const tabButtonClass = (is_active: boolean) =>
   `border-b-2 pb-[11px] text-[13.5px] font-semibold transition-colors ${
-    is_active ? "border-brand-500 text-[#f2f5f5]" : "border-transparent text-[#8a9495] hover:text-[#c7d0d0]"
+    is_active ? "border-brand-500 text-shell-text" : "border-transparent text-shell-text-muted hover:text-shell-text-secondary"
   }`;
 
 /**
@@ -65,12 +65,12 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
     >
       <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1240px] max-w-full overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#132424] text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1240px] max-w-full overflow-hidden rounded-[18px] border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <button
           type="button"
           onClick={onClose}
           aria-label="Close"
-          className="absolute right-4 top-4 z-10 flex h-[30px] w-[30px] items-center justify-center rounded-lg text-[#9aa4a5] transition-colors hover:bg-white/[0.08]"
+          className="absolute right-4 top-4 z-10 flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
         >
           <CloseIcon size={15} />
         </button>
@@ -80,8 +80,8 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex-none px-[26px] pt-[22px]">
             <div className="text-[20px] font-extrabold tracking-[-0.01em]">{teams.panel_title}</div>
-            <div className="mt-[3px] text-[12.5px] text-[#8a9495]">{teams.panel_subtitle}</div>
-            <div className="mt-[18px] flex gap-[22px] border-b border-white/[0.07]">
+            <div className="mt-[3px] text-[12.5px] text-shell-text-muted">{teams.panel_subtitle}</div>
+            <div className="mt-[18px] flex gap-[22px] border-b border-shell-border">
               <button type="button" onClick={() => teams.setActiveTab("users")} className={tabButtonClass(teams.active_tab === "users")}>
                 Users
               </button>
@@ -106,8 +106,8 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 text-[#7e8889]">
-              <span className="flex-none text-[#4a5657]">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2.5 text-shell-text-faint">
+              <span className="flex-none text-shell-text-faint">
                 <svg width="34" height="34" viewBox="0 0 16 16" fill="none">
                   <rect x="2.5" y="2.5" width="11" height="11" rx="2" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M2.5 6 H13.5" stroke="currentColor" strokeWidth="1.2" />

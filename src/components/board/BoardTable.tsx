@@ -7,13 +7,13 @@ import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./t
 const CHECKBOX_WIDTH = 44;
 
 /** Row backgrounds pinned cells must paint explicitly so they stay opaque over columns scrolling underneath. */
-const HEADER_STICKY_BG = "#132322";
-const ROW_STICKY_BG = "#0c1b1a";
-const STICKY_BOX_SHADOW = "1px 0 0 rgba(255,255,255,0.05)";
-/** Background of the row whose detail drawer is open — a lighter, green-tinted shade of the default row background. */
-const SELECTED_ROW_BG = "#16302c";
+const HEADER_STICKY_BG = "var(--color-shell-panel-alt)";
+const ROW_STICKY_BG = "var(--color-shell-bg)";
+const STICKY_BOX_SHADOW = "1px 0 0 var(--color-shell-border-strong)";
+/** Background of the row whose detail drawer is open — a green-tinted mix over the row surface, reactive to the active theme. */
+const SELECTED_ROW_BG = "color-mix(in srgb, var(--color-shell-panel-alt) 78%, var(--color-success-500) 22%)";
 
-const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean }> = ({ borderColor = "#3b4746", checked }) => (
+const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean }> = ({ borderColor = "var(--color-shell-border-strong)", checked }) => (
   <span
     className="flex h-[15px] w-[15px] flex-none cursor-pointer items-center justify-center rounded"
     style={checked ? { background: "#0073ea" } : { border: `1.5px solid ${borderColor}` }}
@@ -34,9 +34,7 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pin
   const padding = column.bleed ? "" : "px-3";
   return (
     <div
-      className={`flex flex-none items-center ${alignment} ${padding} border-r ${
-        isHeader ? "border-white/[0.05]" : "border-white/[0.04]"
-      }`}
+      className={`flex flex-none items-center ${alignment} ${padding} border-r border-shell-border`}
       style={{ width: column.width, ...pinStyle }}
     >
       {children}
@@ -135,7 +133,7 @@ function BoardTable<TRow>({
               >
                 {group.name}
               </span>
-              <span className="text-xs font-medium text-[#6e7b7d]">{group.rows.length}</span>
+              <span className="text-xs font-medium text-shell-text-faint">{group.rows.length}</span>
             </div>
 
             {is_expanded && (
@@ -148,18 +146,18 @@ function BoardTable<TRow>({
                 */}
                 {/* Column header row */}
                 <div
-                  className="flex items-stretch rounded-t-[7px] border-t border-white/[0.07] bg-[#132322] text-[12.5px] font-semibold text-[#8a9495]"
+                  className="flex items-stretch rounded-t-[7px] border-t border-shell-border bg-shell-panel-alt text-[12.5px] font-semibold text-shell-text-muted"
                   style={{ borderLeft: `4px solid ${group.accent_color}` }}
                 >
                   <div
-                    className="flex flex-none items-center justify-center rounded-tl-[7px] border-r border-white/[0.05] py-[11px]"
+                    className="flex flex-none items-center justify-center rounded-tl-[7px] border-r border-shell-border py-[11px]"
                     style={{
                       width: CHECKBOX_WIDTH,
                       ...checkboxPinStyle,
                       ...(checkboxPinStyle ? { background: HEADER_STICKY_BG } : {}),
                     }}
                   >
-                    <BoardCheckbox borderColor="#4a5658" />
+                    <BoardCheckbox borderColor="var(--color-shell-border-strong)" />
                   </div>
                   {columns.map((column) => (
                     <ColumnCell
@@ -176,16 +174,16 @@ function BoardTable<TRow>({
                 {/* Empty state */}
                 {is_empty && (
                   <div
-                    className="flex items-center border-t border-white/[0.05] bg-[#0c1b1a]"
+                    className="flex items-center border-t border-shell-border bg-shell-bg"
                     style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
                   >
                     <div
                       className="flex flex-none items-center justify-center"
                       style={{ width: CHECKBOX_WIDTH }}
                     >
-                      <BoardCheckbox borderColor="#35413f" />
+                      <BoardCheckbox borderColor="var(--color-shell-border)" />
                     </div>
-                    <div className="px-3 text-[13px] text-[#5e6b6c]">+ Add item</div>
+                    <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
                   </div>
                 )}
 
@@ -199,8 +197,8 @@ function BoardTable<TRow>({
                     <div
                       key={row_id}
                       onClick={onRowClick ? () => onRowClick(row) : undefined}
-                      className={`flex items-stretch border-t border-white/[0.05] transition-colors ${
-                        row_background ? "" : "bg-[#0c1b1a] hover:bg-[#112423]"
+                      className={`flex items-stretch border-t border-shell-border transition-colors ${
+                        row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
                       } ${onRowClick ? "cursor-pointer" : ""}`}
                       style={{
                         borderLeft: `4px solid ${group.accent_color}`,
@@ -208,7 +206,7 @@ function BoardTable<TRow>({
                       }}
                     >
                       <div
-                        className="flex flex-none items-center justify-center border-r border-white/[0.04]"
+                        className="flex flex-none items-center justify-center border-r border-shell-border"
                         style={{
                           width: CHECKBOX_WIDTH,
                           ...checkboxPinStyle,
@@ -226,7 +224,7 @@ function BoardTable<TRow>({
                         return (
                           <div
                             key={column.id}
-                            className={`flex flex-none items-center border-r border-white/[0.04] ${
+                            className={`flex flex-none items-center border-r border-shell-border ${
                               column.align === "center" ? "justify-center" : "justify-start"
                             } ${column.bleed ? "" : "px-3"}`}
                             style={{
@@ -249,16 +247,16 @@ function BoardTable<TRow>({
                 {/* Add-item footer */}
                 {!is_empty && (
                   <div
-                    className="flex h-10 items-center border-t border-white/[0.05] bg-[#0c1b1a]"
+                    className="flex h-10 items-center border-t border-shell-border bg-shell-bg"
                     style={{ borderLeft: `4px solid ${group.accent_color}` }}
                   >
                     <div
                       className="flex flex-none items-center justify-center"
                       style={{ width: CHECKBOX_WIDTH }}
                     >
-                      <BoardCheckbox borderColor="#35413f" />
+                      <BoardCheckbox borderColor="var(--color-shell-border)" />
                     </div>
-                    <div className="px-3 text-[13px] text-[#5e6b6c]">+ Add item</div>
+                    <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
                   </div>
                 )}
               </div>

@@ -9,8 +9,8 @@ export type AccountSectionProps = {
 
 const Heading: React.FC<{ title: string; description: string }> = ({ title, description }) => (
   <>
-    <div className="mb-2 text-[15px] font-bold text-[#edf1f1]">{title}</div>
-    <p className="mb-4 text-[13px] leading-relaxed text-[#9aa4a5]">{description}</p>
+    <div className="mb-2 text-[15px] font-bold text-shell-text">{title}</div>
+    <p className="mb-4 text-[13px] leading-relaxed text-shell-text-muted">{description}</p>
   </>
 );
 

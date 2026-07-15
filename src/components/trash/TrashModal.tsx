@@ -36,7 +36,7 @@ const TAB_COPY: Record<"trash" | "archive", { title: string; description: string
 
 const tabButtonClass = (is_active: boolean) =>
   `flex items-center gap-[7px] rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-    is_active ? "bg-white/[0.09] text-[#f2f5f5]" : "text-[#8a9495] hover:text-[#c7d0d0]"
+    is_active ? "bg-shell-hover-strong text-shell-text" : "text-shell-text-muted hover:text-shell-text-secondary"
   }`;
 
 /**
@@ -84,9 +84,9 @@ const TrashModal: React.FC<TrashModalProps> = ({
     <div role="dialog" aria-modal="true" aria-label="Trash" className="fixed inset-0 z-[300] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1180px] max-w-full flex-col overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#132424] text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="flex flex-none items-center justify-between border-b border-white/[0.07] px-[26px] pt-[18px] pb-[14px]">
-          <div className="flex items-center gap-1 rounded-xl bg-black/[0.18] p-1">
+      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1180px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+        <div className="flex flex-none items-center justify-between border-b border-shell-border px-[26px] pt-[18px] pb-[14px]">
+          <div className="flex items-center gap-1 rounded-xl bg-shell-hover p-1">
             <button type="button" onClick={() => trash.setActiveTab("trash")} className={tabButtonClass(trash.active_tab === "trash")}>
               <DeleteIcon size={14} />
               Trash
@@ -105,7 +105,7 @@ const TrashModal: React.FC<TrashModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-[#9aa4a5] transition-colors hover:bg-white/[0.08]"
+            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
           >
             <CloseIcon size={15} />
           </button>
@@ -113,7 +113,7 @@ const TrashModal: React.FC<TrashModalProps> = ({
 
         <div className="flex-none px-[26px] pt-5">
           <h2 className="text-[22px] font-extrabold tracking-[-0.01em]">{copy.title}</h2>
-          <p className="mt-[6px] max-w-[760px] text-[13px] leading-relaxed text-[#8a9495]">{copy.description}</p>
+          <p className="mt-[6px] max-w-[760px] text-[13px] leading-relaxed text-shell-text-muted">{copy.description}</p>
         </div>
 
         <div className="flex flex-none items-center gap-2.5 px-[26px] pt-4">
@@ -127,13 +127,13 @@ const TrashModal: React.FC<TrashModalProps> = ({
 
           {selected_count > 0 ? (
             <div className="ml-auto flex items-center gap-2.5">
-              <span className="text-[12.5px] font-medium text-[#8a9495]">
+              <span className="text-[12.5px] font-medium text-shell-text-muted">
                 {selected_count} selected
               </span>
               <button
                 type="button"
                 onClick={trash.restoreSelected}
-                className="flex items-center gap-[7px] rounded-[9px] border border-white/10 px-3 py-1.5 text-[13px] font-medium text-[#c7d0d0] transition-colors hover:bg-white/[0.06]"
+                className="flex items-center gap-[7px] rounded-[9px] border border-shell-border-strong px-3 py-1.5 text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
               >
                 <RestoreIcon size={14} />
                 Restore

@@ -14,8 +14,8 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ admin }) 
 
   return (
     <div className="max-w-[640px]">
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Reassign a board&apos;s owner</div>
-      <p className="mb-5 text-[13px] leading-relaxed text-[#9aa4a5]">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Reassign a board&apos;s owner</div>
+      <p className="mb-5 text-[13px] leading-relaxed text-shell-text-muted">
         Did someone leave the account? Move their boards — including private and shareable ones — to a new
         owner.
       </p>
@@ -34,10 +34,10 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ admin }) 
         <div className="mt-3 text-[12.5px] font-medium text-[#8fe3b8]">{admin.board_transfer_notice}</div>
       ) : null}
 
-      <div className="my-7 h-px bg-white/[0.07]" />
+      <div className="my-7 h-px bg-shell-hover" />
 
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Boards without an owner</div>
-      <p className="mb-4 text-[13px] leading-relaxed text-[#9aa4a5]">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Boards without an owner</div>
+      <p className="mb-4 text-[13px] leading-relaxed text-shell-text-muted">
         {admin.orphan_board_rows.length > 0
           ? "Assign an owner so these boards stay covered by an account admin."
           : "Every board in this account currently has an owner."}
@@ -46,9 +46,9 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ admin }) 
       {admin.orphan_board_rows.map((board) => (
         <div
           key={board.id}
-          className="mb-2.5 flex items-center gap-[14px] rounded-[11px] border border-white/[0.08] bg-[#0b1616] px-[14px] py-3"
+          className="mb-2.5 flex items-center gap-[14px] rounded-[11px] border border-shell-border bg-shell-panel-alt px-[14px] py-3"
         >
-          <span className="flex-1 text-[13.5px] font-semibold text-[#edf1f1]">{board.name}</span>
+          <span className="flex-1 text-[13.5px] font-semibold text-shell-text">{board.name}</span>
           <SettingsDropdown
             value={board.owner_id}
             options={owner_options}

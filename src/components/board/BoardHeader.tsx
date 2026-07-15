@@ -17,10 +17,10 @@ export type BoardHeaderProps = {
 };
 
 const action_button_class =
-  "flex items-center gap-[7px] rounded-lg px-[11px] py-[7px] text-[13px] font-medium text-[#c7d0d0] transition-colors hover:bg-white/[0.07]";
+  "flex items-center gap-[7px] rounded-lg px-[11px] py-[7px] text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover";
 
 const icon_button_class =
-  "flex h-[34px] w-[34px] items-center justify-center rounded-lg text-[#c2cacb] transition-colors hover:bg-white/[0.08]";
+  "flex h-[34px] w-[34px] items-center justify-center rounded-lg text-shell-text-secondary transition-colors hover:bg-shell-hover";
 
 /**
  * Board title row: the board name (with favourite star + view switcher) on the
@@ -33,7 +33,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   user_initials = "JM",
 }) => (
   <div className="flex items-center gap-[9px]">
-    <span className="text-[23px] font-extrabold tracking-[-0.015em] text-[#e9eded]">
+    <span className="text-[23px] font-extrabold tracking-[-0.015em] text-shell-text">
       {title}
     </span>
     {is_favorite && (
@@ -43,7 +43,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     )}
     <button
       type="button"
-      className="flex h-6 w-6 items-center justify-center rounded-md text-[#8a9495] transition-colors hover:bg-white/[0.08]"
+      className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover"
       aria-label="Board options"
     >
       <ChevronDownIcon size={13} />
@@ -53,26 +53,26 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
     <div className="flex items-center gap-0.5">
       <button type="button" className={`${action_button_class} hidden md:flex`}>
-        <span className="text-[#9aa4a5]">
+        <span className="text-shell-text-muted">
           <IntegrateIcon />
         </span>
         Integrate
       </button>
       <button type="button" className={`${action_button_class} hidden md:flex`}>
-        <span className="text-[#9aa4a5]">
+        <span className="text-shell-text-muted">
           <AutomateIcon />
         </span>
         Automate
       </button>
       <button type="button" className={`${action_button_class} relative hidden md:flex`}>
-        <span className="text-[#9aa4a5]">
+        <span className="text-shell-text-muted">
           <AgentsIcon />
         </span>
         Agents
         <span className="absolute right-[6px] top-1 h-1.5 w-1.5 rounded-full bg-[#4c7cf3]" />
       </button>
 
-      <span className="mx-1.5 hidden h-5 w-px bg-white/10 md:block" />
+      <span className="mx-1.5 hidden h-5 w-px bg-shell-border-strong md:block" />
 
       <button type="button" className={icon_button_class} aria-label="Board updates">
         <CommentIcon />
@@ -84,7 +84,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
       <button
         type="button"
-        className="flex items-center gap-[7px] rounded-lg border border-white/[0.16] px-[13px] py-[7px] text-[13px] font-semibold text-[#e9eded] transition-colors hover:border-brand-500"
+        className="flex items-center gap-[7px] rounded-lg border border-shell-border-strong px-[13px] py-[7px] text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500"
       >
         <InviteIcon size={14} />
         Invite / {invite_count}

@@ -113,7 +113,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
         aria-hidden="true"
       />
 
-      <div className="relative z-[401] flex max-h-[92vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#132424] text-[#e9eded] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+      <div className="relative z-[401] flex max-h-[92vh] w-[560px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         {/* Header */}
         <div className="flex items-start justify-between px-8 pt-7">
           <div>
@@ -128,7 +128,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+            className="-mr-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-shell-hover hover:text-white"
           >
             <CloseIcon size={16} />
           </button>
@@ -136,18 +136,18 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
 
         <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-8 pb-2 pt-6">
           {/* Invite with link */}
-          <label className="mb-2 block text-[12.5px] font-semibold text-[#C7D0D0]">
+          <label className="mb-2 block text-[12.5px] font-semibold text-shell-text-secondary">
             Invite with link
           </label>
           <div className="flex gap-2.5">
-            <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-white/[0.10] bg-[#0e1d1d] px-3.5 py-[11px] text-[13px] text-gray-300">
+            <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13px] text-gray-300">
               <LinkIcon size={14} className="flex-none text-gray-400" />
               <span className="truncate">{invite_link}</span>
             </div>
             <button
               type="button"
               onClick={handleCopyLink}
-              className="flex flex-none items-center gap-2 rounded-[10px] border border-white/[0.12] px-4 text-[13px] font-semibold text-[#E9EDED] transition-colors hover:border-brand-500 hover:text-white"
+              className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white"
             >
               {is_link_copied ? (
                 <>
@@ -160,11 +160,11 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             </button>
           </div>
 
-          <div className="my-6 h-px bg-white/[0.09]" />
+          <div className="my-6 h-px bg-shell-hover-strong" />
 
           {/* Invite with email */}
           <div className="mb-2 flex items-center justify-between">
-            <label className="text-[12.5px] font-semibold text-[#C7D0D0]">
+            <label className="text-[12.5px] font-semibold text-shell-text-secondary">
               Invite with email
             </label>
             <RoleSelect value={role} onChange={setRole} />
@@ -174,11 +174,11 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             onChange={(event) => setEmails(event.target.value)}
             placeholder={invite_email_placeholder}
             rows={3}
-            className="w-full resize-none rounded-[11px] border border-white/[0.12] bg-[#0e1d1d] px-3.5 py-3 text-[13.5px] text-[#e9eded] placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
+            className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
           />
 
           {/* Optional message */}
-          <label className="mb-2 mt-5 block text-[12.5px] font-semibold text-[#C7D0D0]">
+          <label className="mb-2 mt-5 block text-[12.5px] font-semibold text-shell-text-secondary">
             Write a message{" "}
             <span className="font-normal text-gray-400">(optional)</span>
           </label>
@@ -187,12 +187,12 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             onChange={(event) => setMessage(event.target.value)}
             placeholder={invite_message_placeholder}
             rows={3}
-            className="w-full resize-none rounded-[11px] border border-white/[0.12] bg-[#0e1d1d] px-3.5 py-3 text-[13.5px] text-[#e9eded] placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
+            className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
           />
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-white/[0.08] px-8 py-5">
+        <div className="flex items-center justify-end gap-3 border-t border-shell-border px-8 py-5">
           <button
             type="button"
             onClick={onClose}

@@ -101,18 +101,18 @@ const RequestAccessModal: React.FC<RequestAccessModalProps> = ({
         aria-hidden="true"
       />
 
-      <div className="relative z-[401] flex max-h-[92vh] w-[840px] max-w-full overflow-hidden rounded-[18px] border border-white/[0.08] bg-[#132424] shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+      <div className="relative z-[401] flex max-h-[92vh] w-[840px] max-w-full overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         {/* Form side */}
-        <div className="flex flex-1 flex-col p-[34px_34px_28px] text-[#e9eded]">
+        <div className="flex flex-1 flex-col p-[34px_34px_28px] text-shell-text">
           <h2 className="text-2xl font-extrabold tracking-[-0.01em]">
             Request to become a member
           </h2>
-          <p className="mt-2.5 text-[13.5px] leading-[1.55] text-gray-400">
+          <p className="mt-2.5 text-[13.5px] leading-[1.55] text-shell-text-muted">
             Request full collaboration rights from the account admin to create
             your own boards, add items and write updates.
           </p>
 
-          <div className="my-5 mb-1 h-px bg-white/[0.09]" />
+          <div className="my-5 mb-1 h-px bg-shell-hover-strong" />
 
           <div className="shell-scrollbar -mx-1.5 max-h-[260px] min-h-0 flex-1 overflow-y-auto px-1.5">
             {members.map((member) => (
@@ -129,7 +129,7 @@ const RequestAccessModal: React.FC<RequestAccessModalProps> = ({
             value={message}
             onChange={(event) => setMessage(event.target.value)}
             placeholder={request_access_message_placeholder}
-            className="mt-3.5 h-[70px] w-full resize-none rounded-[11px] border border-white/[0.12] bg-[#0e1d1d] px-3.5 py-3 text-[13.5px] text-[#e9eded] placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
+            className="mt-3.5 h-[70px] w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-shell-text-muted focus:border-brand-500 focus:outline-none"
           />
 
           <button

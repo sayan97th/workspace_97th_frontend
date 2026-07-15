@@ -23,12 +23,12 @@ const GenericBoardView: React.FC<WorkspaceViewProps> = ({ node, breadcrumb }) =>
     tabs={{ primary_label: "Main table", views: [] }}
   >
     <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05] text-[#8a9495]">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
         <FolderIcon size={26} />
       </span>
-      <h2 className="text-lg font-semibold text-[#e9eded]">{node.label}</h2>
+      <h2 className="text-lg font-semibold text-shell-text">{node.label}</h2>
       {breadcrumb.length > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-1 text-[12.5px] text-[#8a9495]">
+        <div className="flex flex-wrap items-center justify-center gap-1 text-[12.5px] text-shell-text-muted">
           {breadcrumb.map((crumb, index) => (
             <span key={`${crumb}-${index}`} className="flex items-center gap-1">
               {index > 0 && <ChevronRightIcon size={10} />}
@@ -37,7 +37,7 @@ const GenericBoardView: React.FC<WorkspaceViewProps> = ({ node, breadcrumb }) =>
           ))}
         </div>
       )}
-      <p className="text-[13.5px] text-[#8a9495]">
+      <p className="text-[13.5px] text-shell-text-muted">
         This view doesn&rsquo;t have any content yet. It&rsquo;s wired to the
         workspace navigation and ready to be built out.
       </p>

@@ -30,16 +30,16 @@ const REGION_TIMEZONE_OPTIONS = [
 ];
 
 const selectClass =
-  "w-full rounded-[9px] border border-white/[0.12] bg-[#142020] px-[13px] py-[11px] text-[14px] text-[#e9eded] outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text outline-none focus:border-brand-500";
 
 const FieldLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`mb-2 text-[13px] font-semibold text-[#d7dcdc] ${className}`}>{children}</div>
+  <div className={`mb-2 text-[13px] font-semibold text-shell-text-secondary ${className}`}>{children}</div>
 );
 
 /** My Profile > Language & region — locale, timezone, and date/time display preferences. */
 const LanguageRegionSection: React.FC<LanguageRegionSectionProps> = ({ profile }) => (
   <div className="max-w-[460px]">
-    <div className="mb-[26px] text-[24px] font-extrabold tracking-[-0.01em] text-[#e9eded]">Language &amp; region</div>
+    <div className="mb-[26px] text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">Language &amp; region</div>
 
     <div className="mb-[22px]">
       <FieldLabel>Language</FieldLabel>

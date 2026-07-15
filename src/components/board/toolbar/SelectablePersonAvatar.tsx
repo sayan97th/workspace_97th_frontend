@@ -25,7 +25,7 @@ const SelectablePersonAvatar: React.FC<SelectablePersonAvatarProps> = ({
   is_selected,
   onToggle,
   size = 44,
-  ring_color = "#152726",
+  ring_color = "var(--color-shell-panel)",
 }) => (
   <button
     type="button"

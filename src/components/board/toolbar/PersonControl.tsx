@@ -49,22 +49,22 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
         align="start"
       >
         <div className="flex items-center gap-2 px-[18px] pb-3 pt-4">
-          <span className="text-[15px] font-bold text-[#eef2f2]">Filter this board by person</span>
-          <span className="flex flex-none items-center text-[#6e7b7d]" title="People with access to this board">
+          <span className="text-[15px] font-bold text-shell-text">Filter this board by person</span>
+          <span className="flex flex-none items-center text-shell-text-faint" title="People with access to this board">
             <InfoIcon size={15} />
           </span>
           <div className="flex-1" />
-          <span className="flex h-[30px] flex-none cursor-default items-center rounded-lg border border-white/[0.14] px-3 text-[12.5px] font-semibold text-[#8a9495]">
+          <span className="flex h-[30px] flex-none cursor-default items-center rounded-lg border border-shell-border-strong px-3 text-[12.5px] font-semibold text-shell-text-muted">
             Save as new view
           </span>
         </div>
 
         <div className="px-[18px] pb-3.5">
           <div
-            className="flex h-[38px] items-center gap-[9px] rounded-[9px] border bg-black/20 px-3 transition-colors"
-            style={{ borderColor: is_search_focused ? "var(--color-brand-500)" : "rgba(255,255,255,0.10)" }}
+            className="flex h-[38px] items-center gap-[9px] rounded-[9px] border bg-shell-hover-strong px-3 transition-colors"
+            style={{ borderColor: is_search_focused ? "var(--color-brand-500)" : "var(--color-shell-border-strong)" }}
           >
-            <span className="flex flex-none items-center text-[#7e8889]">
+            <span className="flex flex-none items-center text-shell-text-faint">
               <SearchIcon size={15} />
             </span>
             <input
@@ -74,14 +74,14 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
               placeholder="Search"
-              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-[#e9eded] placeholder:text-[#7e8889] focus:outline-none"
+              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-shell-text placeholder:text-shell-text-faint focus:outline-none"
             />
             {trimmed_query ? (
               <button
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="flex flex-none items-center text-[#7e8889] hover:text-[#e9eded]"
+                className="flex flex-none items-center text-shell-text-faint hover:text-shell-text"
               >
                 <CloseIcon size={13} />
               </button>
@@ -103,23 +103,23 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
             </div>
           ) : (
             <div className="flex flex-col items-center gap-2 px-5 py-6 text-center">
-              <span className="flex-none text-[#4e5b5b]">
+              <span className="flex-none text-shell-text-faint">
                 <PersonIcon size={24} />
               </span>
-              <span className="text-[13px] text-[#8a9495]">No people match &ldquo;{trimmed_query}&rdquo;</span>
+              <span className="text-[13px] text-shell-text-muted">No people match &ldquo;{trimmed_query}&rdquo;</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center justify-between rounded-b-xl border-t border-white/[0.08] bg-black/[0.14] px-[18px] py-[11px]">
-          <span className="text-[12.5px] text-[#8a9495]">
+        <div className="flex items-center justify-between rounded-b-xl border-t border-shell-border bg-shell-hover px-[18px] py-[11px]">
+          <span className="text-[12.5px] text-shell-text-muted">
             {selected_count === 0 ? `${toolbar.persons.length} people` : `${selected_count} selected`}
           </span>
           {selected_count > 0 ? (
             <button
               type="button"
               onClick={toolbar.clearPersonFilter}
-              className="text-[13px] font-semibold text-[#c7d0d0] hover:text-white"
+              className="text-[13px] font-semibold text-shell-text-secondary hover:text-shell-text"
             >
               Clear
             </button>

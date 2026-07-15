@@ -30,9 +30,9 @@ function PinColumnsControl<TRow>({ toolbar, anchor_el, is_open }: PinColumnsCont
         <span className="flex flex-none text-[#00c875]">
           <PinIcon size={16} />
         </span>
-        <span className="text-[15px] font-bold text-[#eef2f2]">Choose columns to pin</span>
+        <span className="text-[15px] font-bold text-shell-text">Choose columns to pin</span>
       </div>
-      <div className="px-[18px] pb-2.5 text-xs leading-relaxed text-[#8a9495]">
+      <div className="px-[18px] pb-2.5 text-xs leading-relaxed text-shell-text-muted">
         Pinned columns stay fixed on the left while you scroll the table sideways.
       </div>
 
@@ -45,11 +45,11 @@ function PinColumnsControl<TRow>({ toolbar, anchor_el, is_open }: PinColumnsCont
               type="button"
               onClick={() => toolbar.togglePinnedColumn(column.id)}
               className={`flex h-[42px] w-full items-center gap-[11px] rounded-lg px-2.5 transition-colors ${
-                is_pinned ? "bg-[#00c875]/[0.08]" : "hover:bg-white/[0.06]"
+                is_pinned ? "bg-[#00c875]/[0.08]" : "hover:bg-shell-hover"
               }`}
             >
               {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={23} />}
-              <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium text-[#e4e9e9]">
+              <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium text-shell-text">
                 {column.full_label ?? column.label ?? column.id}
               </span>
               <ToggleSwitch is_on={is_pinned} />
@@ -58,15 +58,15 @@ function PinColumnsControl<TRow>({ toolbar, anchor_el, is_open }: PinColumnsCont
         })}
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/[0.08] bg-black/[0.14] px-[18px] py-[11px]">
-        <span className="text-[12.5px] font-semibold text-[#8a9495]">
+      <div className="flex items-center justify-between border-t border-shell-border bg-shell-hover px-[18px] py-[11px]">
+        <span className="text-[12.5px] font-semibold text-shell-text-muted">
           {pin_count === 1 ? "1 pinned" : `${pin_count} pinned`}
         </span>
         {has_pins && (
           <button
             type="button"
             onClick={toolbar.unpinAllColumns}
-            className="text-[13px] font-semibold text-[#c7d0d0] hover:text-white"
+            className="text-[13px] font-semibold text-shell-text-secondary hover:text-shell-text"
           >
             Unpin all
           </button>

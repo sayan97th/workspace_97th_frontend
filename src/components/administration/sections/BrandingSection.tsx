@@ -75,7 +75,7 @@ const Dropzone: React.FC<DropzoneProps> = ({
       />
 
       <div
-        className={`flex flex-none items-center justify-center overflow-hidden border border-white/10 bg-[#142020] ${
+        className={`flex flex-none items-center justify-center overflow-hidden border border-shell-border-strong bg-shell-panel-alt ${
           preview_shape === "rounded" ? "rounded-xl" : "rounded-lg"
         }`}
         style={{ width: preview_size.width, height: preview_size.height }}
@@ -84,16 +84,16 @@ const Dropzone: React.FC<DropzoneProps> = ({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={preview_url} alt={label} className="h-full w-full object-contain" />
         ) : (
-          <span className="text-[11px] text-[#7e8889]">{label}</span>
+          <span className="text-[11px] text-shell-text-faint">{label}</span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="mb-[3px] flex items-center gap-2 text-[13.5px] font-bold text-[#e9eded]">
+        <div className="mb-[3px] flex items-center gap-2 text-[13.5px] font-bold text-shell-text">
           <UploadGlyph />
           Upload a new {label.toLowerCase()}
         </div>
-        <div className="text-[12px] leading-relaxed text-[#9aa4a5]">{hint}</div>
+        <div className="text-[12px] leading-relaxed text-shell-text-muted">{hint}</div>
         {preview_url ? (
           <button
             type="button"
@@ -124,15 +124,15 @@ const BrandingSection: React.FC = () => {
 
   return (
     <div className="max-w-[620px]">
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Main menu logo</div>
-      <p className="mb-[18px] text-[13px] leading-relaxed text-[#9aa4a5]">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Main menu logo</div>
+      <p className="mb-[18px] text-[13px] leading-relaxed text-shell-text-muted">
         This appears in the top-left of the main menu across the account. Recommended: 40×40px PNG with a
         transparent background.
       </p>
 
-      <div className="mb-9 flex items-stretch gap-5 rounded-2xl border border-white/[0.08] bg-[#0b1616] p-[22px]">
+      <div className="mb-9 flex items-stretch gap-5 rounded-2xl border border-shell-border bg-shell-panel-alt p-[22px]">
         <div className="flex flex-none flex-col items-center gap-2">
-          <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[#142020]">
+          <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel-alt">
             {branding.logo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={branding.logo_url} alt="Current logo" className="h-full w-full object-contain" />
@@ -142,10 +142,10 @@ const BrandingSection: React.FC = () => {
               </span>
             )}
           </div>
-          <span className="text-[11px] text-[#7e8889]">Current</span>
+          <span className="text-[11px] text-shell-text-faint">Current</span>
         </div>
 
-        <div className="w-px bg-white/[0.08]" />
+        <div className="w-px bg-shell-hover-strong" />
 
         <div className="min-w-0 flex-1">
           <Dropzone
@@ -158,12 +158,12 @@ const BrandingSection: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Email header</div>
-      <p className="mb-[18px] text-[13px] leading-relaxed text-[#9aa4a5]">
+      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Email header</div>
+      <p className="mb-[18px] text-[13px] leading-relaxed text-shell-text-muted">
         Shown at the top of account notification emails. Recommended resolution 580×80px.
       </p>
 
-      <div className="rounded-2xl border border-white/[0.08] bg-[#0b1616] p-[22px]">
+      <div className="rounded-2xl border border-shell-border bg-shell-panel-alt p-[22px]">
         <Dropzone
           label="Email header"
           hint="Drag & drop, or click to browse — 580×80px"

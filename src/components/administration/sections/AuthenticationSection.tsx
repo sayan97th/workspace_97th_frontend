@@ -11,14 +11,14 @@ export type AuthenticationSectionProps = {
 };
 
 const textAreaClass =
-  "w-full rounded-[9px] border border-white/[0.12] bg-[#142020] px-[13px] py-[11px] text-[13px] text-[#e9eded] outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[13px] text-shell-text outline-none focus:border-brand-500";
 
 const default_product_options = ADMIN_DEFAULT_PRODUCT_OPTIONS.map((product) => ({ id: product, label: product }));
 
 /** Administration > Security > Authentication — sign-in policies, SCIM, guest approval and IP restriction. */
 const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ admin }) => (
   <div className="max-w-[700px]">
-    <p className="mb-6 text-[13px] leading-relaxed text-[#9aa4a5]">
+    <p className="mb-6 text-[13px] leading-relaxed text-shell-text-muted">
       Control how people sign up for and log into this account.
     </p>
 
@@ -53,17 +53,17 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ admin }) 
         />
         {admin.scim_enabled ? (
           <div>
-            <div className="mb-1.5 text-[12px] font-semibold text-[#9aa4a5]">API token</div>
+            <div className="mb-1.5 text-[12px] font-semibold text-shell-text-muted">API token</div>
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
                 value="scim_live_9f2c1a7bd8e4"
-                className="flex-1 rounded-[9px] border border-white/[0.12] bg-[#142020] px-[13px] py-[10px] font-mono text-[12.5px] text-[#b7c0c0] outline-none"
+                className="flex-1 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[10px] font-mono text-[12.5px] text-shell-text-secondary outline-none"
               />
               <button
                 type="button"
-                className="flex-none rounded-[9px] border border-white/[0.12] bg-[#142020] px-3.5 py-[9px] text-[12.5px] font-semibold text-[#d7dcdc] hover:bg-white/[0.08]"
+                className="flex-none rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[9px] text-[12.5px] font-semibold text-shell-text-secondary hover:bg-shell-hover"
               >
                 Copy
               </button>
@@ -80,7 +80,7 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ admin }) 
           onToggle={admin.toggleGuestApproval}
         />
         <div>
-          <div className="mb-1.5 text-[12px] font-semibold text-[#9aa4a5]">Approved domains</div>
+          <div className="mb-1.5 text-[12px] font-semibold text-shell-text-muted">Approved domains</div>
           <input
             type="text"
             value={admin.approved_domains}
@@ -99,7 +99,7 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ admin }) 
           onToggle={admin.toggleIpRestriction}
         />
         <div>
-          <div className="mb-1.5 text-[12px] font-semibold text-[#9aa4a5]">Allowed IP ranges</div>
+          <div className="mb-1.5 text-[12px] font-semibold text-shell-text-muted">Allowed IP ranges</div>
           <textarea
             value={admin.ip_ranges}
             onChange={(event) => admin.setIpRanges(event.target.value)}
@@ -111,10 +111,10 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ admin }) 
       </SettingsCollapsibleCard>
     </div>
 
-    <div className="my-6 h-px bg-white/[0.07]" />
+    <div className="my-6 h-px bg-shell-hover" />
 
-    <div className="mb-1.5 text-[15px] font-bold text-[#edf1f1]">Default product for new users</div>
-    <p className="mb-4 max-w-[460px] text-[13px] leading-relaxed text-[#9aa4a5]">
+    <div className="mb-1.5 text-[15px] font-bold text-shell-text">Default product for new users</div>
+    <p className="mb-4 max-w-[460px] text-[13px] leading-relaxed text-shell-text-muted">
       Users who aren&apos;t directly assigned to a product will automatically be added to this one.
     </p>
     <SettingsDropdown

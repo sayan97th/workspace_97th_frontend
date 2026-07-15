@@ -24,17 +24,17 @@ const MemberSelectRow: React.FC<MemberSelectRowProps> = ({
     role="checkbox"
     aria-checked={is_selected}
     onClick={() => onToggle(member.id)}
-    className="flex w-full items-center gap-3 rounded-[10px] px-1 py-[11px] text-left transition-colors hover:bg-white/[0.05]"
+    className="flex w-full items-center gap-3 rounded-[10px] px-1 py-[11px] text-left transition-colors hover:bg-shell-hover"
   >
     <span
       className={`h-8 w-8 flex-none rounded-full bg-gradient-to-br ${member.avatar_gradient}`}
       aria-hidden="true"
     />
-    <span className="flex-1 text-sm font-medium text-[#e9eded]">{member.name}</span>
+    <span className="flex-1 text-sm font-medium text-shell-text">{member.name}</span>
     <CheckCircleIcon
       size={20}
       selected={is_selected}
-      className={is_selected ? "" : "text-gray-500"}
+      className={is_selected ? "" : "text-shell-text-muted"}
     />
   </button>
 );

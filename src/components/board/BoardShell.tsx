@@ -17,7 +17,7 @@ export type BoardShellProps = {
  * scrollable body region. Reused by every board view (Client Hub and beyond).
  */
 const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, children }) => (
-  <div className="flex h-full min-w-0 flex-col overflow-hidden bg-[#0e1d1d] text-[#e9eded]">
+  <div className="flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
     <div className="flex-none px-6 pt-4">
       <BoardHeader {...header} />
       <div className="mt-3.5">

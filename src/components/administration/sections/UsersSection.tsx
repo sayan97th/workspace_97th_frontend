@@ -22,7 +22,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ admin }) => {
 
   return (
     <div>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-[#9aa4a5]">
+      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
         Manage everyone on this account — see who&apos;s an admin, deactivate a user, or assign people to
         departments.
       </p>
@@ -45,36 +45,36 @@ const UsersSection: React.FC<UsersSectionProps> = ({ admin }) => {
         </button>
       </div>
 
-      <div className="mb-2.5 text-[12.5px] text-[#7e8889]">
+      <div className="mb-2.5 text-[12.5px] text-shell-text-faint">
         Showing {admin.user_rows.length} of {admin.user_total} users
       </div>
 
-      <div className="grid grid-cols-[minmax(180px,1fr)_150px_190px_34px] gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-[#7e8889]">
+      <div className="grid grid-cols-[minmax(180px,1fr)_150px_190px_34px] gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint">
         <span>Name</span>
         <span>User role</span>
         <span>Department</span>
         <span />
       </div>
-      <div className="h-px bg-white/[0.07]" />
+      <div className="h-px bg-shell-hover" />
 
       {admin.user_rows.map((row) => {
         const is_deactivated = admin.deactivated_user_ids.includes(row.person.id);
         return (
           <div
             key={row.person.id}
-            className="grid grid-cols-[minmax(180px,1fr)_150px_190px_34px] items-center gap-3.5 border-b border-white/[0.045] px-2.5 py-[11px]"
+            className="grid grid-cols-[minmax(180px,1fr)_150px_190px_34px] items-center gap-3.5 border-b border-shell-border px-2.5 py-[11px]"
           >
             <span className="flex min-w-0 items-center gap-2.5">
               <PersonAvatar person={row.person} size={28} />
               <span className="min-w-0">
                 <div
                   className={`truncate text-[13.5px] font-semibold ${
-                    is_deactivated ? "text-[#7e8889] line-through" : "text-[#edf1f1]"
+                    is_deactivated ? "text-shell-text-faint line-through" : "text-shell-text"
                   }`}
                 >
                   {row.person.name}
                 </div>
-                <div className="truncate text-[12px] text-[#8a9495]">{row.email}</div>
+                <div className="truncate text-[12px] text-shell-text-muted">{row.email}</div>
               </span>
             </span>
 
@@ -96,7 +96,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ admin }) => {
               <button
                 type="button"
                 onClick={() => setOpenMenuId((current) => (current === row.person.id ? null : row.person.id))}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-[#9aa4a5] hover:bg-white/[0.08]"
+                className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover"
               >
                 <svg width="14" height="14" viewBox="0 0 16 16">
                   <circle cx="4" cy="8" r="1.3" fill="currentColor" />
@@ -105,7 +105,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ admin }) => {
                 </svg>
               </button>
               {open_menu_id === row.person.id ? (
-                <div className="absolute right-0 top-[30px] z-10 w-[170px] rounded-[10px] border border-white/[0.12] bg-[#1c2e2c] p-1.5 shadow-2xl shadow-black/40">
+                <div className="absolute right-0 top-[30px] z-10 w-[170px] rounded-[10px] border border-shell-border-strong bg-shell-panel p-1.5 shadow-2xl shadow-black/40">
                   <div
                     onClick={() => {
                       admin.toggleUserActive(row.person.id);

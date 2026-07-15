@@ -91,7 +91,7 @@ const PeopleMultiSelect: React.FC<PeopleMultiSelectProps> = ({
           setIsOpen(true);
           input_ref.current?.focus();
         }}
-        className="flex min-h-[44px] w-full flex-wrap items-center gap-1.5 rounded-[9px] border border-white/[0.14] bg-[#0F1C1C] px-[9px] py-[6px] focus-within:border-brand-500"
+        className="flex min-h-[44px] w-full flex-wrap items-center gap-1.5 rounded-[9px] border border-shell-border-strong bg-shell-panel px-[9px] py-[6px] focus-within:border-brand-500"
       >
         {selected_people.map((person) => (
           <span
@@ -99,12 +99,12 @@ const PeopleMultiSelect: React.FC<PeopleMultiSelectProps> = ({
             className="flex items-center gap-1.5 rounded-2xl bg-brand-500/[0.16] py-1 pl-1 pr-2"
           >
             <PersonAvatar person={person} size={20} />
-            <span className="text-[12.5px] font-medium text-[#ffd9d5]">{person.name}</span>
+            <span className="text-[12.5px] font-medium text-brand-600">{person.name}</span>
             <button
               type="button"
               onClick={() => removePerson(person.id)}
               aria-label={`Remove ${person.name}`}
-              className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-[#ffb3ac] hover:bg-white/[0.14]"
+              className="flex h-4 w-4 flex-none items-center justify-center rounded-full text-brand-500 hover:bg-brand-500/[0.24]"
             >
               <CloseIcon size={9} />
             </button>
@@ -120,26 +120,26 @@ const PeopleMultiSelect: React.FC<PeopleMultiSelectProps> = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={selected_people.length ? "" : placeholder}
-          className="min-w-[120px] flex-1 bg-transparent px-0.5 py-1 text-[13px] text-[#e9eded] placeholder:text-[#7e8889] focus:outline-none"
+          className="min-w-[120px] flex-1 bg-transparent px-0.5 py-1 text-[13px] text-shell-text placeholder:text-shell-text-faint focus:outline-none"
         />
       </div>
 
       {is_open ? (
-        <div className="shell-scrollbar mt-1.5 max-h-[220px] overflow-y-auto rounded-[11px] border border-white/[0.14] bg-[#0F1C1C] p-1.5">
+        <div className="shell-scrollbar mt-1.5 max-h-[220px] overflow-y-auto rounded-[11px] border border-shell-border-strong bg-shell-panel p-1.5">
           {candidates.length > 0 ? (
             candidates.map((person) => (
               <div
                 key={person.id}
                 onClick={() => selectPerson(person.id)}
-                className="flex cursor-pointer items-center gap-[10px] rounded-lg px-[9px] py-2 hover:bg-white/[0.06]"
+                className="flex cursor-pointer items-center gap-[10px] rounded-lg px-[9px] py-2 hover:bg-shell-hover"
               >
                 <PersonAvatar person={person} size={26} />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-medium text-[#e9eded]">
+                  <span className="block truncate text-[13px] font-medium text-shell-text">
                     {person.name}
                   </span>
                   {getSubtitle?.(person) ? (
-                    <span className="block truncate text-[11.5px] text-[#7e8889]">
+                    <span className="block truncate text-[11.5px] text-shell-text-faint">
                       {getSubtitle(person)}
                     </span>
                   ) : null}
@@ -147,7 +147,7 @@ const PeopleMultiSelect: React.FC<PeopleMultiSelectProps> = ({
               </div>
             ))
           ) : (
-            <div className="px-[10px] py-4 text-center text-[12.5px] text-[#7e8889]">
+            <div className="px-[10px] py-4 text-center text-[12.5px] text-shell-text-faint">
               No matching people.
             </div>
           )}

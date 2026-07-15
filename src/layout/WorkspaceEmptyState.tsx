@@ -24,8 +24,8 @@ const WorkspaceEmptyState: React.FC<WorkspaceEmptyStateProps> = ({
       <span className="absolute left-10 top-0 h-10 w-10 rounded-full border-[5px] border-[#5b6fe8] bg-gray-50" />
       <span className="absolute left-[74px] top-[34px] h-5 w-[5px] -rotate-[42deg] rounded-[3px] bg-[#5b6fe8]" />
     </div>
-    <div className="text-xl font-semibold text-gray-50">{title}</div>
-    <div className="mt-2 text-[13.5px] text-gray-400">{description}</div>
+    <div className="text-xl font-semibold text-shell-text">{title}</div>
+    <div className="mt-2 text-[13.5px] text-shell-text-muted">{description}</div>
   </div>
 );
 

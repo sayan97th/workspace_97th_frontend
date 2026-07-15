@@ -28,7 +28,7 @@ const ProfileCheckbox: React.FC<ProfileCheckboxProps> = ({
     onClick={onToggle}
     aria-pressed={is_checked}
     aria-label={aria_label}
-    className={`flex items-center text-left text-[13.5px] text-[#d7dcdc] ${label ? "gap-[10px]" : ""} ${className}`}
+    className={`flex items-center text-left text-[13.5px] text-shell-text-secondary ${label ? "gap-[10px]" : ""} ${className}`}
   >
     <span
       className={`flex h-[17px] w-[17px] flex-none items-center justify-center rounded-[5px] border-[1.5px] transition-colors ${
