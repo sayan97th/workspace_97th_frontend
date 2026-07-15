@@ -184,6 +184,8 @@ export type AccountMenuProps = {
   onOpenTrash?: () => void;
   /** Opens the account Trash dialog owned by the top bar, defaulted to the Archive tab. */
   onOpenArchive?: () => void;
+  /** Opens the account Administration dialog owned by the top bar. */
+  onOpenAdministration?: () => void;
   /** Organization / workspace name shown in the panel header. */
   organization_name?: string;
 };
@@ -200,6 +202,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onOpenTeams,
   onOpenTrash,
   onOpenArchive,
+  onOpenAdministration,
   organization_name = "97th Floor",
 }) => {
   const router = useRouter();
@@ -253,12 +256,17 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onOpenArchive?.();
   };
 
+  const handleOpenAdministration = () => {
+    onClose();
+    onOpenAdministration?.();
+  };
+
   const account_items: MenuItem[] = [
     { label: "My profile", icon: <ProfileGlyph />, onSelect: goTo("/profile") },
     { label: "Developers", icon: <DevelopersGlyph />, onSelect: onClose },
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
-    { label: "Administration", icon: <AdministrationGlyph />, onSelect: onClose },
+    { label: "Administration", icon: <AdministrationGlyph />, onSelect: handleOpenAdministration },
     { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
     { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },
   ];

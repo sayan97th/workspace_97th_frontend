@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
+import { useBranding } from "@/context/BrandingContext";
 import UserAvatar from "@/components/common/UserAvatar";
 import AccountMenu from "./AccountMenu";
 import RequestAccessModal, {
@@ -14,6 +15,7 @@ import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TeamsModal } from "@/components/teams";
 import { TrashModal, type TrashTabId } from "@/components/trash";
+import { AdministrationModal } from "@/components/administration";
 import {
   AppsGridIcon,
   BellIcon,
@@ -32,6 +34,7 @@ import {
 const AppTopBar: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
+  const { logo_url } = useBranding();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -40,6 +43,7 @@ const AppTopBar: React.FC = () => {
   const [is_teams_open, setIsTeamsOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [trash_initial_tab, setTrashInitialTab] = useState<TrashTabId>("trash");
+  const [is_administration_open, setIsAdministrationOpen] = useState(false);
 
   const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
   const closeNotifications = () => setIsNotificationsOpen(false);
@@ -65,6 +69,9 @@ const AppTopBar: React.FC = () => {
     setIsTrashOpen(true);
   };
   const closeTrash = () => setIsTrashOpen(false);
+
+  const openAdministration = () => setIsAdministrationOpen(true);
+  const closeAdministration = () => setIsAdministrationOpen(false);
 
   const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
     // No backend wiring yet — surface the payload for the future API hook.
@@ -100,8 +107,13 @@ const AppTopBar: React.FC = () => {
           <HamburgerIcon size={18} />
         </button>
 
-        <span className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg bg-brand-500 text-[13px] font-bold tracking-[-0.02em] text-white">
-          97
+        <span className="flex h-[30px] w-[30px] flex-none items-center justify-center overflow-hidden rounded-lg bg-brand-500 text-[13px] font-bold tracking-[-0.02em] text-white">
+          {logo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logo_url} alt="Workspace logo" className="h-full w-full object-contain" />
+          ) : (
+            "97"
+          )}
         </span>
 
         <span className="hidden items-center gap-1.5 rounded-lg bg-white/[0.08] px-[11px] py-1.5 text-[13px] font-semibold text-[#C7D0D0] sm:flex">
@@ -212,6 +224,8 @@ const AppTopBar: React.FC = () => {
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 
+      <AdministrationModal is_open={is_administration_open} onClose={closeAdministration} />
+
       <AccountMenu
         is_open={is_account_open}
         onClose={closeAccount}
@@ -219,6 +233,7 @@ const AppTopBar: React.FC = () => {
         onOpenTeams={openTeams}
         onOpenTrash={openTrash}
         onOpenArchive={openArchive}
+        onOpenAdministration={openAdministration}
       />
     </>
   );

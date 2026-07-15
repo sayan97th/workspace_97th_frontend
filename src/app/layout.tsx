@@ -4,6 +4,7 @@ import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { BrandingProvider } from '@/context/BrandingContext';
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -26,7 +27,9 @@ export default function RootLayout({
       <body className={`${manrope.variable} ${robotoMono.variable} ${manrope.className} antialiased dark:bg-gray-900`}>
         <ThemeProvider>
           <AuthProvider>
-            <SidebarProvider>{children}</SidebarProvider>
+            <BrandingProvider>
+              <SidebarProvider>{children}</SidebarProvider>
+            </BrandingProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
