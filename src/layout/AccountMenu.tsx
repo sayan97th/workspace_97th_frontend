@@ -180,8 +180,10 @@ export type AccountMenuProps = {
   onInviteMembers?: () => void;
   /** Opens the Teams directory owned by the top bar. */
   onOpenTeams?: () => void;
-  /** Opens the account Trash dialog owned by the top bar. */
+  /** Opens the account Trash dialog owned by the top bar, defaulted to the Trash tab. */
   onOpenTrash?: () => void;
+  /** Opens the account Trash dialog owned by the top bar, defaulted to the Archive tab. */
+  onOpenArchive?: () => void;
   /** Organization / workspace name shown in the panel header. */
   organization_name?: string;
 };
@@ -197,6 +199,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onInviteMembers,
   onOpenTeams,
   onOpenTrash,
+  onOpenArchive,
   organization_name = "97th Floor",
 }) => {
   const router = useRouter();
@@ -245,11 +248,16 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onOpenTrash?.();
   };
 
+  const handleOpenArchive = () => {
+    onClose();
+    onOpenArchive?.();
+  };
+
   const account_items: MenuItem[] = [
     { label: "My profile", icon: <ProfileGlyph />, onSelect: goTo("/profile") },
     { label: "Developers", icon: <DevelopersGlyph />, onSelect: onClose },
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
-    { label: "Archive", icon: <ArchiveGlyph />, onSelect: onClose },
+    { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
     { label: "Administration", icon: <AdministrationGlyph />, onSelect: onClose },
     { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
     { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },

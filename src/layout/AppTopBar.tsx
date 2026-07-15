@@ -13,7 +13,7 @@ import InviteMembersModal, {
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TeamsModal } from "@/components/teams";
-import { TrashModal } from "@/components/trash";
+import { TrashModal, type TrashTabId } from "@/components/trash";
 import {
   AppsGridIcon,
   BellIcon,
@@ -39,6 +39,7 @@ const AppTopBar: React.FC = () => {
   const [is_feed_open, setIsFeedOpen] = useState(false);
   const [is_teams_open, setIsTeamsOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
+  const [trash_initial_tab, setTrashInitialTab] = useState<TrashTabId>("trash");
 
   const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
   const closeNotifications = () => setIsNotificationsOpen(false);
@@ -55,7 +56,14 @@ const AppTopBar: React.FC = () => {
   const openTeams = () => setIsTeamsOpen(true);
   const closeTeams = () => setIsTeamsOpen(false);
 
-  const openTrash = () => setIsTrashOpen(true);
+  const openTrash = () => {
+    setTrashInitialTab("trash");
+    setIsTrashOpen(true);
+  };
+  const openArchive = () => {
+    setTrashInitialTab("archive");
+    setIsTrashOpen(true);
+  };
   const closeTrash = () => setIsTrashOpen(false);
 
   const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
@@ -202,7 +210,7 @@ const AppTopBar: React.FC = () => {
 
       <TeamsModal is_open={is_teams_open} onClose={closeTeams} />
 
-      <TrashModal is_open={is_trash_open} onClose={closeTrash} />
+      <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 
       <AccountMenu
         is_open={is_account_open}
@@ -210,6 +218,7 @@ const AppTopBar: React.FC = () => {
         onInviteMembers={openInvite}
         onOpenTeams={openTeams}
         onOpenTrash={openTrash}
+        onOpenArchive={openArchive}
       />
     </>
   );

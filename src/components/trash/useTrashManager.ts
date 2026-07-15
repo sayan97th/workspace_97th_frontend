@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ToolbarCheckboxState } from "@/components/board";
 import type { BoardPersonOption, TrashEntry, TrashItemType, TrashTabId } from "./types";
 
@@ -73,10 +73,10 @@ export function useTrashManager({ trash_entries, archive_entries, members }: Tra
   const active_type_filters = type_filters[active_tab];
   const selected_ids = selected_ids_by_tab[active_tab];
 
-  const setActiveTab = (tab: TrashTabId) => {
+  const setActiveTab = useCallback((tab: TrashTabId) => {
     setActiveTabState(tab);
     setQuery("");
-  };
+  }, []);
 
   const available_types = useMemo(
     () => TYPE_ORDER.filter((type) => entries.some((entry) => entry.type === type)),

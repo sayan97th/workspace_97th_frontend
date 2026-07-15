@@ -7,7 +7,7 @@ import { ArchiveIcon, CloseIcon, DeleteIcon } from "@/icons/workspace-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
 import TrashFilterPopover from "./TrashFilterPopover";
 import TrashTable from "./TrashTable";
-import type { TrashEntry } from "./types";
+import type { TrashEntry, TrashTabId } from "./types";
 import { useTrashManager } from "./useTrashManager";
 
 export type TrashModalProps = {
@@ -17,6 +17,8 @@ export type TrashModalProps = {
   trash_entries?: TrashEntry[];
   /** Seed rows for the Archive tab. Defaults to the account's archived-items log. */
   archive_entries?: TrashEntry[];
+  /** Tab selected each time the dialog opens. Defaults to "trash". */
+  initial_tab?: TrashTabId;
 };
 
 const TAB_COPY: Record<"trash" | "archive", { title: string; description: string }> = {
@@ -49,10 +51,18 @@ const TrashModal: React.FC<TrashModalProps> = ({
   onClose,
   trash_entries = TRASH_ENTRIES,
   archive_entries = ARCHIVE_ENTRIES,
+  initial_tab = "trash",
 }) => {
   const trash = useTrashManager({ trash_entries, archive_entries, members: TEAMS_ROSTER });
   const copy = TAB_COPY[trash.active_tab];
   const selected_count = trash.selected_ids.length;
+  const { setActiveTab } = trash;
+
+  // The dialog stays mounted (rendering null while closed), so re-sync the active
+  // tab to whichever entry point opened it every time it becomes visible.
+  useEffect(() => {
+    if (is_open) setActiveTab(initial_tab);
+  }, [is_open, initial_tab, setActiveTab]);
 
   useEffect(() => {
     if (!is_open) return;
