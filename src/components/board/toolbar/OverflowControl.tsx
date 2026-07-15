@@ -5,7 +5,7 @@ import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import type { BoardRowHeight } from "../types";
 import type { BoardToolbarApi } from "./types";
 import BoardPopover from "./BoardPopover";
-import MenuFlyout from "./MenuFlyout";
+import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import PinColumnsControl from "./PinColumnsControl";
 import ToolbarButton from "./ToolbarButton";
 

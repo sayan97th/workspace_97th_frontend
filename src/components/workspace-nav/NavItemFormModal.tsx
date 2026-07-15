@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CloseIcon } from "@/icons/workspace-icons";
 
 export type NavItemFormModalProps = {
@@ -44,7 +45,7 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [is_open, onClose]);
 
-  if (!is_open) return null;
+  if (!is_open || typeof document === "undefined") return null;
 
   const trimmed = label.trim();
   const can_submit = trimmed.length > 0 && !is_saving;
@@ -60,7 +61,7 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -114,7 +115,8 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

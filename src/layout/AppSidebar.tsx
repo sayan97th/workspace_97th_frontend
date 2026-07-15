@@ -99,6 +99,7 @@ const AppSidebar: React.FC = () => {
             active_workspace={active_workspace}
             recent_workspaces={recent_workspaces}
             my_workspaces={my_workspaces}
+            nav={nav}
             onSelectWorkspace={selectWorkspace}
             onAddWorkspace={() => setIsCreateOpen(true)}
             onBrowseAll={() => setIsBrowseOpen(true)}

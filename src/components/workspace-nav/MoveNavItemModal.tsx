@@ -1,5 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import type { WorkspaceNavNode } from "@/types/workspace";
 import { CloseIcon, FolderIcon, HomeIcon } from "@/icons/workspace-icons";
 
@@ -50,7 +51,7 @@ const MoveNavItemModal: React.FC<MoveNavItemModalProps> = ({
     [tree, moving_node]
   );
 
-  if (!is_open || !moving_node) return null;
+  if (!is_open || !moving_node || typeof document === "undefined") return null;
 
   const handleSelect = async (parent_id: number | null) => {
     if (parent_id === moving_node.parent_id) {
@@ -66,7 +67,7 @@ const MoveNavItemModal: React.FC<MoveNavItemModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -108,7 +109,8 @@ const MoveNavItemModal: React.FC<MoveNavItemModalProps> = ({
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -702,3 +702,64 @@ export const PhoneIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
     />
   </svg>
 );
+
+/** 2x2 grid glyph — the "Board" row in the "Add new" content menu. */
+export const BoardGridIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.3" y="2.3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="8.7" y="2.3" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="2.3" y="8.7" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="8.7" y="8.7" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+/** Ascending bar-chart glyph — the "Dashboard" row in the "Add new" content menu. */
+export const DashboardIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="3" y="8.4" width="2.4" height="4.6" rx="0.6" fill="currentColor" />
+    <rect x="6.8" y="5.4" width="2.4" height="7.6" rx="0.6" fill="currentColor" />
+    <rect x="10.6" y="2.8" width="2.4" height="10.2" rx="0.6" fill="currentColor" />
+  </svg>
+);
+
+/** Three linked nodes glyph — the "Workflow" row in the "Add new" content menu. */
+export const WorkflowIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="4" cy="4" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="12" cy="4" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="8" cy="12" r="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M4 5.6 V8 A2 2 0 0 0 6 10 H6.5 M12 5.6 V8 A2 2 0 0 1 10 10 H9.5" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+/** Partial-ring glyph — the "Project management" row in the "Add new" content menu. */
+export const ProjectManagementIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M8 2.5 A5.5 5.5 0 0 1 13.5 8" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+/** Plain rounded-square glyph — the "Portfolio" sub-option under Project management. */
+export const PortfolioIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.5" y="2.5" width="11" height="11" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+/** Rounded-square-with-plus glyph — the "Start with template" sub-options. */
+export const TemplateIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.5" y="2.5" width="11" height="11" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5 8 H11 M8 5 V11" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Stacked rows glyph — the "New multi-level board" sub-option under Board. */
+export const MultiLevelBoardIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.5" y="2.5" width="11" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="2.5" y="9" width="5.2" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="9" y="9" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);

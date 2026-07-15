@@ -3,17 +3,16 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 export type MenuFlyoutProps = {
-  /** The menu row that opens this flyout (e.g. the "Item height" button inside the "..." menu). */
+  /** The menu row that opens this flyout (e.g. a "New Board" row nested under "Board"). */
   anchor_el: HTMLElement | null;
   is_open: boolean;
   onClose: () => void;
   /** Flyout width in pixels. Defaults to 196. */
   width?: number;
   /**
-   * Which side of the anchor row the flyout opens on. Defaults to "left" — the Client Hub
-   * "Item height" submenu opens toward the left so it doesn't spill past the right edge of
-   * the viewport when the "..." menu sits near the toolbar's right side. Flips automatically
-   * if there isn't enough room on the requested side.
+   * Which side of the anchor row the flyout opens on. Defaults to "left" so it doesn't
+   * spill past the right edge of the viewport when the parent menu sits near the right
+   * side of the screen. Flips automatically if there isn't enough room on the requested side.
    */
   side?: "left" | "right";
   children: React.ReactNode;
@@ -24,11 +23,11 @@ const ANCHOR_GAP = 6;
 
 /**
  * Side-opening nested submenu anchored to a single row inside an already-open menu (as
- * opposed to {@link BoardPopover}, which anchors to a toolbar button). Portals to
- * document.body so it can float above the table; tags its root with
+ * opposed to {@link BoardPopover}, which anchors to a trigger button). Portals to
+ * document.body so it can float above the page; tags its root with
  * `data-board-menu-flyout` so a parent `BoardPopover` can tell its own outside-click
- * detection to treat clicks inside this flyout as "inside". Reusable for any future
- * flyout-style submenu (e.g. a "Change theme" submenu nested in another menu).
+ * detection to treat clicks inside this flyout as "inside". Shared by the Client Hub
+ * toolbar's "Item height" submenu and the sidebar's "Add new" content-type submenus.
  */
 const MenuFlyout: React.FC<MenuFlyoutProps> = ({
   anchor_el,

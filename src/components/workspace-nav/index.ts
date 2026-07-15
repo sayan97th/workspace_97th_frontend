@@ -6,6 +6,8 @@ export { default as NavRowMenu } from "./NavRowMenu";
 export type { NavMenuItem, NavRowMenuProps } from "./NavRowMenu";
 export { default as NavItemFormModal } from "./NavItemFormModal";
 export type { NavItemFormModalProps } from "./NavItemFormModal";
+export { default as AddNewContentMenu } from "./AddNewContentMenu";
+export type { AddNewContentMenuProps } from "./AddNewContentMenu";
 export { default as MoveNavItemModal } from "./MoveNavItemModal";
 export type { MoveNavItemModalProps } from "./MoveNavItemModal";
 export { default as GenericBoardView } from "./GenericBoardView";

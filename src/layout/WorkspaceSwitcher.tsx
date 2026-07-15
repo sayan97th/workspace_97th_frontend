@@ -1,6 +1,8 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import WorkspaceBadge from "./WorkspaceBadge";
+import AddNewContentMenu from "@/components/workspace-nav/AddNewContentMenu";
+import type { WorkspaceNavApi } from "@/components/workspace-nav/useWorkspaceNav";
 import {
   BrowseAllIcon,
   ChevronDownIcon,
@@ -18,6 +20,8 @@ type WorkspaceSwitcherProps = {
   active_workspace?: WorkspaceSummary;
   recent_workspaces?: WorkspaceSummary[];
   my_workspaces?: WorkspaceSummary[];
+  /** Active workspace's nav api — backs the "+" button's "Add new" content menu. */
+  nav?: WorkspaceNavApi;
   onSelectWorkspace?: (workspace: WorkspaceSummary) => void;
   onAddWorkspace?: () => void;
   onBrowseAll?: () => void;
@@ -76,12 +80,15 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   active_workspace = default_active_workspace,
   recent_workspaces = default_recent_workspaces,
   my_workspaces = default_my_workspaces,
+  nav,
   onSelectWorkspace,
   onAddWorkspace,
   onBrowseAll,
 }) => {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [is_add_new_open, setIsAddNewOpen] = useState(false);
+  const add_new_button_ref = useRef<HTMLButtonElement>(null);
 
   // Recent and mine overlap heavily, so merge them into a single de-duplicated
   // list to keep the dropdown compact.
@@ -154,14 +161,26 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           />
         </button>
         <button
+          ref={add_new_button_ref}
           type="button"
-          onClick={handleAddWorkspace}
+          onClick={() => setIsAddNewOpen((prev) => !prev)}
           className="flex w-[42px] flex-none items-center justify-center rounded-[10px] border border-shell-border-strong bg-shell-panel-alt text-shell-text transition-colors hover:border-brand-500/60"
-          aria-label="New workspace"
+          aria-label="Add new"
+          aria-haspopup="menu"
+          aria-expanded={is_add_new_open}
         >
           <PlusIcon />
         </button>
       </div>
+
+      {nav && (
+        <AddNewContentMenu
+          anchor_el={add_new_button_ref.current}
+          is_open={is_add_new_open}
+          onClose={() => setIsAddNewOpen(false)}
+          nav={nav}
+        />
+      )}
 
       {is_open && (
         <>
