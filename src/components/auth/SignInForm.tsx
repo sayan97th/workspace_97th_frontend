@@ -82,7 +82,7 @@ const OtpInput = ({ value, onChange, error }: OtpInputProps) => {
           className={`font-mono-accent h-14 w-12 rounded-xl border text-center text-xl font-semibold transition-all focus:outline-none focus:ring-2 ${
             error
               ? "border-error-400 bg-error-50 text-error-700 focus:border-error-500 focus:ring-error-200 dark:border-error-500 dark:bg-error-500/10 dark:text-error-400"
-              : "border-gray-300 bg-white text-gray-900 focus:border-brand-500 focus:ring-brand-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:focus:border-brand-500 dark:focus:ring-brand-500/20"
+              : "border-gray-300 bg-white text-gray-900 focus:border-brand-500 focus:ring-brand-200 dark:border-shell-border-strong dark:bg-shell-bg dark:text-shell-text dark:focus:border-brand-500 dark:focus:ring-brand-500/20"
           }`}
         />
       ))}
@@ -213,7 +213,7 @@ export default function SignInForm() {
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
         {/* ── Credentials step ─────────────────────────────────────────────── */}
         {view === "credentials" && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
             <div className="mb-6 sm:mb-8">
               <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
                 Sign In
@@ -228,10 +228,10 @@ export default function SignInForm() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isGoogleLoading}
-                className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
+                className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-shell-border-strong dark:bg-shell-bg dark:text-shell-text dark:hover:bg-shell-hover"
               >
                 {isGoogleLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  <Loader2 className="h-5 w-5 animate-spin text-gray-400 dark:text-shell-text-muted" />
                 ) : (
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path
@@ -257,10 +257,10 @@ export default function SignInForm() {
 
               <div className="relative py-3 sm:py-5">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200 dark:border-gray-800" />
+                  <div className="w-full border-t border-gray-200 dark:border-shell-border" />
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="bg-white p-2 text-gray-400 dark:bg-gray-900 sm:px-5 sm:py-2">Or</span>
+                  <span className="bg-white p-2 text-gray-400 dark:bg-shell-panel dark:text-shell-text-muted sm:px-5 sm:py-2">Or</span>
                 </div>
               </div>
 
@@ -278,7 +278,7 @@ export default function SignInForm() {
                       Email <span className="text-error-500">*</span>{" "}
                     </Label>
                     <div className="relative">
-                      <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <Mail className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                       <Input
                         className="pl-11"
                         placeholder="info@gmail.com"
@@ -295,7 +295,7 @@ export default function SignInForm() {
                       Password <span className="text-error-500">*</span>{" "}
                     </Label>
                     <div className="relative">
-                      <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <Lock className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                       <Input
                         className="pl-11"
                         type={showPassword ? "text" : "password"}
@@ -310,7 +310,7 @@ export default function SignInForm() {
                         tabIndex={-1}
                         onClick={() => setShowPassword((v) => !v)}
                         aria-label={showPassword ? "Hide password" : "Show password"}
-                        className="absolute top-1/2 right-3.5 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+                        className="absolute top-1/2 right-3.5 z-10 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:text-shell-text-muted dark:hover:text-shell-text-secondary"
                       >
                         {showPassword ? (
                           <EyeOff className="h-5 w-5" />
@@ -363,7 +363,7 @@ export default function SignInForm() {
 
         {/* ── Account disabled step ────────────────────────────────────────── */}
         {view === "account_disabled" && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
             <div className="mb-8 flex flex-col items-center text-center">
               <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-error-100 dark:bg-error-500/15">
                 <ShieldAlert className="h-8 w-8 text-error-500 dark:text-error-400" />
@@ -390,7 +390,7 @@ export default function SignInForm() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-white/3">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-shell-border dark:bg-shell-bg">
               <p className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Think this is a mistake?
               </p>
@@ -422,7 +422,7 @@ export default function SignInForm() {
 
         {/* ── Two-factor step ───────────────────────────────────────────────── */}
         {view === "two_factor" && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
             <div className="mb-8 flex flex-col items-center text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 dark:bg-brand-500/10">
                 <ShieldCheck className="h-8 w-8 text-brand-600 dark:text-brand-400" />

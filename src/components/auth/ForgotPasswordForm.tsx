@@ -47,7 +47,7 @@ export default function ForgotPasswordForm() {
           </Link>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/10">
               <MailCheck className="h-7 w-7 text-success-500" />
             </div>
@@ -95,7 +95,7 @@ export default function ForgotPasswordForm() {
         </Link>
       </div>
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Forgot your password?
@@ -119,7 +119,7 @@ export default function ForgotPasswordForm() {
                   Email <span className="text-error-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <Mail className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                   <Input
                     className="pl-11"
                     type="email"

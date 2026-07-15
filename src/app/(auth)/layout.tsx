@@ -28,9 +28,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative z-1 bg-white p-6 dark:bg-gray-900 sm:p-0">
+    <div className="relative z-1 bg-white p-6 dark:bg-shell-bg sm:p-0">
       <ThemeProvider>
-        <div className="relative flex h-screen w-full flex-col justify-center dark:bg-gray-900 lg:flex-row lg:justify-start">
+        <div className="relative flex h-screen w-full flex-col justify-center dark:bg-shell-bg lg:flex-row lg:justify-start">
           {/* Mobile brand mark — the brand panel below is hidden under lg, so this keeps it visible on small screens. */}
           <div className="mx-auto mb-6 w-full max-w-md lg:hidden">
             <Link href="/" className="inline-flex items-center gap-2.5">

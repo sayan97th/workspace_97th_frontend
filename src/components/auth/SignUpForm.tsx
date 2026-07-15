@@ -80,7 +80,7 @@ export default function SignUpForm() {
         </Link>
       </div>
       <div className="mx-auto w-full max-w-md pb-10">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Sign Up
@@ -93,7 +93,7 @@ export default function SignUpForm() {
             <button
               type="button"
               onClick={handleGoogleSignUp}
-              className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
+              className="inline-flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-theme-xs transition-colors hover:bg-gray-50 dark:border-shell-border-strong dark:bg-shell-bg dark:text-shell-text dark:hover:bg-shell-hover"
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path
@@ -117,10 +117,10 @@ export default function SignUpForm() {
             </button>
             <div className="relative py-3 sm:py-5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200 dark:border-gray-800"></div>
+                <div className="w-full border-t border-gray-200 dark:border-shell-border"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="bg-white p-2 text-gray-400 dark:bg-gray-900 sm:px-5 sm:py-2">
+                <span className="bg-white p-2 text-gray-400 dark:bg-shell-panel dark:text-shell-text-muted sm:px-5 sm:py-2">
                   Or
                 </span>
               </div>
@@ -142,7 +142,7 @@ export default function SignUpForm() {
                       First Name<span className="text-error-500">*</span>
                     </Label>
                     <div className="relative">
-                      <User className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <User className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                       <Input
                         className="pl-11"
                         type="text"
@@ -161,7 +161,7 @@ export default function SignUpForm() {
                       Last Name<span className="text-error-500">*</span>
                     </Label>
                     <div className="relative">
-                      <User className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                      <User className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                       <Input
                         className="pl-11"
                         type="text"
@@ -182,7 +182,7 @@ export default function SignUpForm() {
                     Email<span className="text-error-500">*</span>
                   </Label>
                   <div className="relative">
-                    <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <Mail className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                     <Input
                       className="pl-11"
                       type="email"
@@ -202,7 +202,7 @@ export default function SignUpForm() {
                     Password<span className="text-error-500">*</span>
                   </Label>
                   <div className="relative">
-                    <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <Lock className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                     <Input
                       className="pl-11"
                       placeholder="Enter your password"
@@ -217,7 +217,7 @@ export default function SignUpForm() {
                       tabIndex={-1}
                       onClick={() => setShowPassword((v) => !v)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="absolute top-1/2 right-3.5 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+                      className="absolute top-1/2 right-3.5 z-10 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:text-shell-text-muted dark:hover:text-shell-text-secondary"
                     >
                       {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
@@ -229,7 +229,7 @@ export default function SignUpForm() {
                     Confirm Password<span className="text-error-500">*</span>
                   </Label>
                   <div className="relative">
-                    <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                    <Lock className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                     <Input
                       className="pl-11"
                       placeholder="Repeat your password"

@@ -72,7 +72,7 @@ export default function ResetPasswordForm({ token }: Props) {
     return (
       <div className="flex w-full flex-col lg:w-1/2 lg:flex-1">
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
-          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+          <div className="rounded-2xl border border-gray-200 bg-white p-6 text-center shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
             <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-success-50 dark:bg-success-500/10">
               <CheckCircle className="h-7 w-7 text-success-500" />
             </div>
@@ -107,7 +107,7 @@ export default function ResetPasswordForm({ token }: Props) {
         </Link>
       </div>
       <div className="mx-auto w-full max-w-md pb-10">
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-gray-800 dark:bg-white/[0.03] sm:p-8">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
           <div className="mb-6 sm:mb-8">
             <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md">
               Set new password
@@ -131,7 +131,7 @@ export default function ResetPasswordForm({ token }: Props) {
                   Email <span className="text-error-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Mail className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <Mail className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                   <Input
                     className="pl-11"
                     type="email"
@@ -149,7 +149,7 @@ export default function ResetPasswordForm({ token }: Props) {
                   New Password <span className="text-error-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <Lock className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                   <Input
                     className="pl-11"
                     type={showPassword ? "text" : "password"}
@@ -164,7 +164,7 @@ export default function ResetPasswordForm({ token }: Props) {
                     tabIndex={-1}
                     onClick={() => setShowPassword((v) => !v)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute top-1/2 right-3.5 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute top-1/2 right-3.5 z-10 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:text-shell-text-muted dark:hover:text-shell-text-secondary"
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
@@ -176,7 +176,7 @@ export default function ResetPasswordForm({ token }: Props) {
                   Confirm Password <span className="text-error-500">*</span>
                 </Label>
                 <div className="relative">
-                  <Lock className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                  <Lock className="pointer-events-none absolute top-1/2 left-3.5 z-10 h-5 w-5 -translate-y-1/2 text-gray-400 dark:text-shell-text-muted" />
                   <Input
                     className="pl-11"
                     type={showConfirmPassword ? "text" : "password"}
@@ -191,7 +191,7 @@ export default function ResetPasswordForm({ token }: Props) {
                     tabIndex={-1}
                     onClick={() => setShowConfirmPassword((v) => !v)}
                     aria-label={showConfirmPassword ? "Hide password" : "Show password"}
-                    className="absolute top-1/2 right-3.5 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:hover:text-gray-300"
+                    className="absolute top-1/2 right-3.5 z-10 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 dark:text-shell-text-muted dark:hover:text-shell-text-secondary"
                   >
                     {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
