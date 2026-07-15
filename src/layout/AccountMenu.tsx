@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useTheme } from "@/context/ThemeContext";
 import UserAvatar from "@/components/common/UserAvatar";
+import ThemeMenu from "@/components/common/ThemeMenu";
 import { getUserDisplayName } from "@/lib/user";
 
 /* ------------------------------------------------------------------ *
@@ -157,21 +157,21 @@ type MenuItem = {
 };
 
 const rowClass =
-  "flex w-full items-center gap-[11px] rounded-lg px-2 py-2 text-left text-[13.5px] font-medium text-[#D7DCDC] transition-colors hover:bg-white/[0.07]";
+  "flex w-full items-center gap-[11px] rounded-lg px-2 py-2 text-left text-[13.5px] font-medium text-shell-text transition-colors hover:bg-shell-hover";
 
 const MenuRow: React.FC<{ item: MenuItem; trailing?: React.ReactNode }> = ({
   item,
   trailing,
 }) => (
   <button type="button" onClick={item.onSelect} className={rowClass}>
-    <span className="flex w-4 flex-none justify-center text-[#9AA4A5]">{item.icon}</span>
+    <span className="flex w-4 flex-none justify-center text-shell-text-muted">{item.icon}</span>
     {item.label}
-    {trailing ? <span className="ml-auto flex text-[#8A9495]">{trailing}</span> : null}
+    {trailing ? <span className="ml-auto flex text-shell-text-muted">{trailing}</span> : null}
   </button>
 );
 
 const sectionLabelClass =
-  "mb-2 text-[11.5px] font-semibold tracking-[0.04em] text-[#7E8889]";
+  "mb-2 text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint";
 
 export type AccountMenuProps = {
   is_open: boolean;
@@ -210,7 +210,6 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
 }) => {
   const router = useRouter();
   const { user, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const [do_not_disturb, setDoNotDisturb] = useState(false);
 
   // Close on Escape while the panel is open.
@@ -291,16 +290,16 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
       <div
         role="menu"
         aria-label="Account menu"
-        className="fixed right-3 top-[58px] z-[201] w-[448px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[14px] border border-white/10 bg-[#0F1C1C] font-outfit text-[#E9EDED] shadow-[0_22px_54px_rgba(0,0,0,0.5)]"
+        className="fixed right-3 top-[58px] z-[201] w-[448px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[14px] border border-shell-border bg-shell-panel font-outfit text-shell-text shadow-[0_22px_54px_rgba(0,0,0,0.5)]"
       >
         {/* Header — current user + organization */}
-        <div className="flex items-center gap-[11px] border-b border-white/[0.07] px-[18px] py-4">
+        <div className="flex items-center gap-[11px] border-b border-shell-border px-[18px] py-4">
           <UserAvatar user={user} size={30} className="!rounded-[7px]" />
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-[15px] font-bold leading-tight">
               {display_name}
             </span>
-            <span className="truncate text-[12px] font-medium text-[#8A9495]">
+            <span className="truncate text-[12px] font-medium text-shell-text-muted">
               {organization_name}
             </span>
           </div>
@@ -328,27 +327,19 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
             item={{ label: "Invite members", icon: <InviteGlyph />, onSelect: handleInvite }}
           />
           <MenuRow item={{ label: "Get help", icon: <HelpGlyph />, onSelect: onClose }} />
-          <MenuRow
-            item={{ label: "Change theme", icon: <ThemeGlyph />, onSelect: toggleTheme }}
-            trailing={
-              <span className="flex items-center gap-2 text-[12px] capitalize">
-                {theme}
-                <ChevronGlyph />
-              </span>
-            }
-          />
+          <ThemeMenu trigger_icon={<ThemeGlyph />} />
         </div>
 
         {/* Working status */}
-        <div className="border-t border-white/[0.07] bg-[#0B1616] px-[18px] py-3.5">
-          <div className="mb-[11px] text-[11.5px] font-semibold tracking-[0.04em] text-[#7E8889]">
+        <div className="border-t border-shell-border bg-shell-panel-alt px-[18px] py-3.5">
+          <div className="mb-[11px] text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint">
             Working status
           </div>
           <div className="flex items-center gap-[11px]">
-            <span className="text-[#9AA4A5]">
+            <span className="text-shell-text-muted">
               <DoNotDisturbGlyph />
             </span>
-            <span className="flex-1 text-[13.5px] font-medium text-[#D7DCDC]">
+            <span className="flex-1 text-[13.5px] font-medium text-shell-text">
               Do not disturb
             </span>
             <DndOption
@@ -364,7 +355,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="ml-1.5 flex items-center gap-[3px] text-[12.5px] text-[#8A9495] transition-colors hover:text-[#E9EDED]"
+              className="ml-1.5 flex items-center gap-[3px] text-[12.5px] text-shell-text-muted transition-colors hover:text-shell-text"
             >
               More
               <ChevronGlyph />
@@ -385,12 +376,12 @@ const DndOption: React.FC<{
     type="button"
     onClick={onSelect}
     className={`flex items-center gap-1.5 text-[13px] transition-colors ${
-      is_active ? "text-brand-200" : "text-[#8A9495]"
+      is_active ? "text-brand-200" : "text-shell-text-muted"
     }`}
   >
     <span
       className={`flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 ${
-        is_active ? "border-brand-200" : "border-[#8A9495]"
+        is_active ? "border-brand-200" : "border-shell-text-muted"
       }`}
     >
       {is_active && <span className="h-[7px] w-[7px] rounded-full bg-brand-200" />}

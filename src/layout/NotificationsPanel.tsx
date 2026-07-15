@@ -53,7 +53,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onClose,
   notifications = workspace_notifications,
 }) => {
-  const { theme, toggleTheme } = useTheme();
+  const { resolved_theme, toggleTheme } = useTheme();
   const [active_tab, setActiveTab] = useState<NotificationTabId>("all");
   const [search_query, setSearchQuery] = useState("");
   const [unread_only, setUnreadOnly] = useState(false);
@@ -84,7 +84,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
               type="button"
               onClick={toggleTheme}
               className={header_icon_button}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={resolved_theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
             >
               <SunIcon size={16} />
             </button>

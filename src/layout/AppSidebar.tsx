@@ -73,16 +73,16 @@ const TreeRow: React.FC<TreeRowProps> = ({
     return (
       <>
         <div
-          className={`group flex h-[34px] cursor-pointer items-center gap-[7px] ${padding_left} rounded-[9px] pr-2 hover:bg-white/[0.06]`}
+          className={`group flex h-[34px] cursor-pointer items-center gap-[7px] ${padding_left} rounded-[9px] pr-2 hover:bg-shell-hover`}
           onClick={() => onToggleGroup(node.id)}
         >
           <span
-            className="flex flex-none text-gray-400 transition-transform duration-150"
+            className="flex flex-none text-shell-text-muted transition-transform duration-150"
             style={{ transform: is_expanded ? "rotate(90deg)" : "rotate(0deg)" }}
           >
             <GroupToggleIcon />
           </span>
-          <span className="flex-1 truncate text-sm font-semibold text-gray-50">
+          <span className="flex-1 truncate text-sm font-semibold text-shell-text">
             {node.label}
           </span>
           <button
@@ -91,7 +91,7 @@ const TreeRow: React.FC<TreeRowProps> = ({
               event.stopPropagation();
               onOpenRowMenu(event, node.label);
             }}
-            className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/[0.16] hover:text-gray-50"
+            className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
             aria-label={`${node.label} options`}
           >
             <MoreDotsIcon />
@@ -128,14 +128,14 @@ const TreeRow: React.FC<TreeRowProps> = ({
 
   return (
     <div
-      className={`group relative flex ${row_height} cursor-pointer items-center gap-[11px] ${padding_left} rounded-[9px] pr-2 hover:bg-white/[0.06]`}
+      className={`group relative flex ${row_height} cursor-pointer items-center gap-[11px] ${padding_left} rounded-[9px] pr-2 hover:bg-shell-hover`}
       onClick={handleSelect}
     >
       {is_active && (
         <div className="shell-nav-item-active absolute inset-0 rounded-[9px]" />
       )}
       <span
-        className={`relative z-1 flex flex-none ${is_active ? "text-white" : "text-gray-300"}`}
+        className={`relative z-1 flex flex-none ${is_active ? "text-white" : "text-shell-text-secondary"}`}
       >
         {is_group_style ? (
           <GroupToggleIcon />
@@ -151,7 +151,7 @@ const TreeRow: React.FC<TreeRowProps> = ({
           : node.favorite
             ? "font-normal"
             : "font-normal"
-          } ${is_active ? "text-white" : "text-gray-100"}`}
+          } ${is_active ? "text-white" : "text-shell-text"}`}
       >
         {node.label}
       </span>
@@ -163,7 +163,7 @@ const TreeRow: React.FC<TreeRowProps> = ({
       <button
         type="button"
         onClick={handleKebabClick}
-        className="relative z-2 ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-white/[0.16] hover:text-gray-50"
+        className="relative z-2 ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
         aria-label={`${node.label} options`}
       >
         <MoreDotsIcon />
@@ -270,12 +270,12 @@ const AppSidebar: React.FC = () => {
 
   const is_rail_collapsed = !isExpanded;
   const menu_item_class =
-    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-gray-100 hover:bg-white/[0.08] w-full";
+    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-shell-text hover:bg-shell-hover-strong w-full";
 
   return (
     <>
       {is_rail_collapsed && (
-        <aside className="hidden h-full w-12 flex-none flex-col items-center border-r border-white/[0.06] bg-gray-700 pt-[22px] text-gray-300 lg:flex">
+        <aside className="hidden h-full w-12 flex-none flex-col items-center border-r border-shell-border bg-shell-surface pt-[22px] text-shell-text-secondary lg:flex">
           <button
             type="button"
             onClick={toggleSidebar}
@@ -288,15 +288,15 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`shell-scrollbar fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] w-80 flex-none flex-col overflow-y-auto border-r border-white/[0.06] bg-gray-700 text-gray-200 transition-transform duration-300 ease-in-out lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+        className={`shell-scrollbar fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] w-80 flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-surface text-shell-text-secondary transition-transform duration-300 ease-in-out lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
           } ${is_rail_collapsed ? "lg:hidden" : "lg:static lg:flex lg:translate-x-0"}`}
       >
-        <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-gray-700 px-4 pb-2.5 pt-5">
+        <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-shell-surface px-4 pb-2.5 pt-5">
           <div className="flex items-center justify-between">
-            <span className="text-base font-semibold tracking-[-0.01em] text-gray-50">
+            <span className="text-base font-semibold tracking-[-0.01em] text-shell-text">
               Workspace
             </span>
-            <div className="flex items-center gap-1.5 text-gray-400">
+            <div className="flex items-center gap-1.5 text-shell-text-muted">
               <button type="button" className="shell-icon-button h-7 w-7" aria-label="Workspace options">
                 <MoreDotsIcon size={16} />
               </button>
@@ -325,11 +325,11 @@ const AppSidebar: React.FC = () => {
         </div>
 
         <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
-          <div className="flex cursor-pointer items-center gap-1.5 px-2.5 pb-1 pt-2.5 text-xs font-semibold tracking-[0.04em] text-gray-400">
+          <div className="flex cursor-pointer items-center gap-1.5 px-2.5 pb-1 pt-2.5 text-xs font-semibold tracking-[0.04em] text-shell-text-muted">
             My workspace agents
             <ChevronRightIcon />
           </div>
-          <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-2 text-xs font-semibold tracking-[0.04em] text-gray-400">
+          <div className="flex items-center gap-1.5 px-2.5 pb-1.5 pt-2 text-xs font-semibold tracking-[0.04em] text-shell-text-muted">
             Content
             <span className="rotate-90">
               <GroupToggleIcon />
@@ -369,26 +369,26 @@ const AppSidebar: React.FC = () => {
         <>
           <div className="fixed inset-0 z-[999]" onClick={closeRowMenu} />
           <div
-            className="fixed z-[1000] w-[214px] rounded-xl border border-white/10 bg-[#0F1C1C] p-1.5 shadow-2xl"
+            className="fixed z-[1000] w-[214px] rounded-xl border border-shell-border bg-shell-panel p-1.5 shadow-2xl"
             style={{ left: row_menu.x, top: row_menu.y }}
           >
-            <div className="mb-1 truncate border-b border-white/[0.07] px-2.5 pb-2 pt-1.5 font-mono-accent text-[11px] tracking-[0.05em] text-gray-400">
+            <div className="mb-1 truncate border-b border-shell-border px-2.5 pb-2 pt-1.5 font-mono-accent text-[11px] tracking-[0.05em] text-shell-text-muted">
               {row_menu.label}
             </div>
             <DropdownItem tag="button" baseClassName="" onItemClick={closeRowMenu} className={menu_item_class}>
-              <span className="flex w-4 flex-none text-gray-400">
+              <span className="flex w-4 flex-none text-shell-text-muted">
                 <OpenInNewTabIcon />
               </span>
               Open in new tab
             </DropdownItem>
             <DropdownItem tag="button" baseClassName="" onItemClick={closeRowMenu} className={menu_item_class}>
-              <span className="flex w-4 flex-none text-gray-400">
+              <span className="flex w-4 flex-none text-shell-text-muted">
                 <RenameIcon />
               </span>
               Rename
             </DropdownItem>
             <DropdownItem tag="button" baseClassName="" onItemClick={closeRowMenu} className={menu_item_class}>
-              <span className="flex w-4 flex-none text-gray-400">
+              <span className="flex w-4 flex-none text-shell-text-muted">
                 <MoveToIcon />
               </span>
               Move to
@@ -400,14 +400,14 @@ const AppSidebar: React.FC = () => {
               Add to favorites
             </DropdownItem>
             <DropdownItem tag="button" baseClassName="" onItemClick={closeRowMenu} className={menu_item_class}>
-              <span className="flex w-4 flex-none text-gray-400">
+              <span className="flex w-4 flex-none text-shell-text-muted">
                 <DuplicateIcon />
               </span>
               Duplicate
             </DropdownItem>
-            <div className="my-1 h-px bg-white/[0.08]" />
+            <div className="my-1 h-px bg-shell-border" />
             <DropdownItem tag="button" baseClassName="" onItemClick={closeRowMenu} className={menu_item_class}>
-              <span className="flex w-4 flex-none text-gray-400">
+              <span className="flex w-4 flex-none text-shell-text-muted">
                 <ArchiveIcon />
               </span>
               Archive

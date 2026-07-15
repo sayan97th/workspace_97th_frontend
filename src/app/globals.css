@@ -112,6 +112,22 @@
     0px 8px 8px -4px rgba(10, 23, 23, 0.03);
   --shadow-focus-ring: 0px 0px 0px 4px rgba(229, 62, 46, 0.12);
 
+  /* Workspace shell chrome (top bar, sidebar, account menu). Light values are
+     the defaults here; `.dark` below overrides them so every `bg-shell-*`,
+     `text-shell-*` and `border-shell-*` utility repaints automatically when
+     ThemeContext toggles the `dark` class on <html>. */
+  --color-shell-bg: var(--color-gray-50);
+  --color-shell-surface: #ffffff;
+  --color-shell-panel: #ffffff;
+  --color-shell-panel-alt: var(--color-gray-25);
+  --color-shell-border: rgba(10, 23, 23, 0.08);
+  --color-shell-hover: rgba(10, 23, 23, 0.045);
+  --color-shell-hover-strong: rgba(10, 23, 23, 0.08);
+  --color-shell-text: var(--color-gray-700);
+  --color-shell-text-secondary: var(--color-gray-500);
+  --color-shell-text-muted: var(--color-gray-400);
+  --color-shell-text-faint: var(--color-gray-300);
+
   --z-index-1: 1;
   --z-index-2: 2;
   --z-index-9: 9;
@@ -168,6 +184,21 @@
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #2b3c40;
+}
+
+/* Dark values for the shell chrome tokens declared in @theme above. */
+.dark {
+  --color-shell-bg: #0a1717;
+  --color-shell-surface: #0a1717;
+  --color-shell-panel: #0f1c1c;
+  --color-shell-panel-alt: #0b1616;
+  --color-shell-border: rgba(255, 255, 255, 0.06);
+  --color-shell-hover: rgba(255, 255, 255, 0.07);
+  --color-shell-hover-strong: rgba(255, 255, 255, 0.1);
+  --color-shell-text: #e9eded;
+  --color-shell-text-secondary: #c2cacb;
+  --color-shell-text-muted: #9aa4a5;
+  --color-shell-text-faint: #7e8889;
 }
 
 /* Dark workspace shell (sidebar + dropdown menus) scrollbar and controls */

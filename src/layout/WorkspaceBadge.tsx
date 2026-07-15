@@ -23,7 +23,7 @@ type WorkspaceBadgeProps = {
 const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
   workspace,
   size = 24,
-  notchColor = "#0a1717",
+  notchColor = "var(--color-shell-surface)",
   className = "",
 }) => {
   const glyph_size = Math.round(size * 0.5);
@@ -41,7 +41,7 @@ const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
       {workspace.mono}
       {workspace.is_home && (
         <span
-          className="absolute -bottom-[3px] -right-[3px] flex items-center justify-center rounded text-gray-100"
+          className="absolute -bottom-[3px] -right-[3px] flex items-center justify-center rounded text-shell-text"
           style={{ width: glyph_size, height: glyph_size, backgroundColor: notchColor }}
         >
           <WorkspaceHomeGlyphIcon size={Math.round(glyph_size * 0.62)} />
