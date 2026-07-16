@@ -15,11 +15,13 @@ import ConditionalColoringPanel from "./toolbar/ConditionalColoringPanel";
 
 export type BoardToolbarProps<TRow> = {
   new_item_label?: string;
+  /** Wires the "New item" button to create a row. Omit to keep it display-only. */
+  onNewItem?: () => void;
   toolbar: BoardToolbarApi<TRow>;
 };
 
 /** Board toolbar: the red "New item" split button plus the filter/sort/group controls. */
-function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolbarProps<TRow>) {
+function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar }: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
   const is_color_open = toolbar.active_panel === "color";
   const is_inline_panel_open = is_filter_open || is_color_open;
@@ -36,7 +38,7 @@ function BoardToolbar<TRow>({ new_item_label = "New item", toolbar }: BoardToolb
   return (
     <div className="relative flex items-center gap-1">
       <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-brand-500">
-        <button type="button" className="px-3.5 py-2 text-[13px] font-semibold text-white">
+        <button type="button" onClick={onNewItem} className="px-3.5 py-2 text-[13px] font-semibold text-white">
           {new_item_label}
         </button>
         <button

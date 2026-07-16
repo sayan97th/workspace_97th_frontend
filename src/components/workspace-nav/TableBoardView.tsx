@@ -700,6 +700,32 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const handleCancelAddItem = () => setAddingItemGroupId(null);
 
+  // ── "New item" toolbar button — always inserts at the very top of the first table ──
+  const handleNewItemAtTop = async () => {
+    const target_group = groups[0];
+    if (!target_group) return;
+
+    // `position` is an unsigned column, so making room at the front means
+    // shifting every existing sibling down by one before inserting at 0 —
+    // otherwise repeated clicks would all tie at the same position.
+    const siblings = items.filter((item) => item.group_id === target_group.id);
+    await Promise.all(
+      siblings.map((item) => boardContentService.updateItem(board_id, item.id, { position: item.position + 1 }))
+    );
+    const created = await boardContentService.createItem(board_id, {
+      name: "New item",
+      group_id: target_group.id,
+      position: 0,
+    });
+
+    setItems((current) => [
+      created,
+      ...current.map((item) =>
+        item.group_id === target_group.id ? { ...item, position: item.position + 1 } : item
+      ),
+    ]);
+  };
+
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
       return (
@@ -765,7 +791,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     <BoardShell
       header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }}
       tabs={{ tabs, active_view_id, onSelectView: handleSelectView, onAddView: handleAddView }}
-      toolbar={<BoardToolbar toolbar={toolbar} />}
+      toolbar={<BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />}
     >
       <div className="mb-3 flex items-center gap-2">
         <button
