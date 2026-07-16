@@ -79,11 +79,17 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
  * instead of `{}` — an empty PHP array json-encodes as a list, not an object,
  * so an empty map round-trips through the API as `[]`. Normalize it back to an
  * object so it doesn't perpetually read as "different from the toolbar's `{}`".
+ *
+ * `search_query` can likewise come back as `null` — views saved before the
+ * search box was ever touched store the column as `null` rather than `""`.
+ * `deriveBoardRows` calls `.trim()` on it unconditionally, so it must be
+ * coerced to a string here rather than downstream.
  */
 const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilterState => {
   const base = filter_state ?? EMPTY_FILTER_STATE;
   return {
     ...base,
+    search_query: base.search_query ?? "",
     quick_filter_selections: Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
   };
 };
