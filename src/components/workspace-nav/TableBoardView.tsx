@@ -692,6 +692,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setAddGroupAnchor(null);
   };
 
+  // ── Rename table (group) — inline input in place of the group's title, no popover ──
+  const handleRenameGroup = async (group_id: string, name: string) => {
+    const updated = await boardContentService.updateGroup(board_id, Number(group_id), { name });
+    setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g)));
+  };
+
   // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
   const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
 
@@ -856,6 +862,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           addingItemGroupId={adding_item_group_id}
           onSubmitNewItem={handleSubmitNewItem}
           onCancelAddItem={handleCancelAddItem}
+          onRenameGroup={handleRenameGroup}
         />
       )}
 

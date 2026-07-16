@@ -99,6 +99,56 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
   );
 };
 
+type GroupTitleEditorProps = {
+  value: string;
+  accent_color: string;
+  onCommit: (name: string) => void;
+  onCancel: () => void;
+};
+
+/**
+ * Replaces a group's static title with a real text input, in place, while
+ * it's being renamed — same commit/cancel contract as `AddItemInputRow`.
+ * Enter or blur with a non-empty, changed value commits; Escape or blurring
+ * back to the original/empty value cancels without calling `onCommit`.
+ */
+const GroupTitleEditor: React.FC<GroupTitleEditorProps> = ({ value, accent_color, onCommit, onCancel }) => {
+  const [draft_name, setDraftName] = useState(value);
+  const input_ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    input_ref.current?.focus();
+    input_ref.current?.select();
+  }, []);
+
+  const commit = () => {
+    const trimmed = draft_name.trim();
+    if (trimmed && trimmed !== value) onCommit(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <input
+      ref={input_ref}
+      value={draft_name}
+      onChange={(event) => setDraftName(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          commit();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          onCancel();
+        }
+      }}
+      onBlur={commit}
+      className="rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1 text-base font-bold tracking-[-0.01em] outline-none"
+      style={{ color: accent_color, maxWidth: 320 }}
+    />
+  );
+};
+
 /**
  * Generic, reusable Monday-style board table. It owns group collapse state and
  * the fixed-column layout; callers supply the columns, grouped rows and a
@@ -120,8 +170,10 @@ function BoardTable<TRow>({
   addingItemGroupId = null,
   onSubmitNewItem,
   onCancelAddItem,
+  onRenameGroup,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
+  const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
 
@@ -188,12 +240,27 @@ function BoardTable<TRow>({
                   />
                 </svg>
               </button>
-              <span
-                className="text-base font-bold tracking-[-0.01em]"
-                style={{ color: group.accent_color }}
-              >
-                {group.name}
-              </span>
+              {editing_group_id === group.id ? (
+                <GroupTitleEditor
+                  value={group.name}
+                  accent_color={group.accent_color}
+                  onCommit={(name) => {
+                    onRenameGroup?.(group.id, name);
+                    setEditingGroupId(null);
+                  }}
+                  onCancel={() => setEditingGroupId(null)}
+                />
+              ) : (
+                <span
+                  onClick={onRenameGroup ? () => setEditingGroupId(group.id) : undefined}
+                  className={`rounded-[6px] border border-transparent px-2 py-1 text-base font-bold tracking-[-0.01em] ${
+                    onRenameGroup ? "cursor-pointer hover:border-shell-border hover:bg-shell-hover" : ""
+                  }`}
+                  style={{ color: group.accent_color }}
+                >
+                  {group.name}
+                </span>
+              )}
               <span className="text-xs font-medium text-shell-text-faint">{group.rows.length}</span>
             </div>
 

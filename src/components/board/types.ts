@@ -76,4 +76,10 @@ export type BoardTableProps<TRow> = {
   onSubmitNewItem?: (group_id: string, name: string) => void;
   /** Dismisses the inline add-item input without creating anything (Escape, or blur while empty). */
   onCancelAddItem?: () => void;
+  /**
+   * Clicking a group's title swaps it for an inline text input (see
+   * {@link BoardGroup}'s `name`). Called on commit with the trimmed, changed
+   * name. Omit to keep group titles display-only (e.g. Client Hub's static mockup).
+   */
+  onRenameGroup?: (group_id: string, name: string) => void;
 };
