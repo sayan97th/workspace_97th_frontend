@@ -128,6 +128,7 @@
   --color-shell-text-secondary: var(--color-gray-500);
   --color-shell-text-muted: var(--color-gray-400);
   --color-shell-text-faint: var(--color-gray-300);
+  --color-shell-scrollbar-thumb: rgba(10, 23, 23, 0.16);
 
   --z-index-1: 1;
   --z-index-2: 2;
@@ -201,9 +202,13 @@
   --color-shell-text-secondary: #c2cacb;
   --color-shell-text-muted: #9aa4a5;
   --color-shell-text-faint: #7e8889;
+  --color-shell-scrollbar-thumb: rgba(255, 255, 255, 0.12);
 }
 
-/* Dark workspace shell (sidebar + dropdown menus) scrollbar and controls */
+/* Workspace shell (sidebar + dropdown menus) scrollbar and controls.
+   Thumb color comes from --color-shell-scrollbar-thumb, which is themed
+   alongside the other shell-* tokens above (light default, dark override),
+   so the thumb stays visible against both the light and dark panel backgrounds. */
 @utility shell-scrollbar {
   &::-webkit-scrollbar {
     @apply w-2.5;
@@ -214,7 +219,7 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--color-shell-scrollbar-thumb);
     border-radius: 8px;
     border: 3px solid transparent;
     background-clip: padding-box;
@@ -232,7 +237,7 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 255, 255, 0.12);
+    background-color: var(--color-shell-scrollbar-thumb);
     border-radius: 8px;
     border: 3px solid transparent;
     background-clip: padding-box;
