@@ -287,9 +287,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const [add_group_anchor, setAddGroupAnchor] = useState<HTMLElement | null>(null);
   const [add_group_name, setAddGroupName] = useState("");
-  const [add_item_group_id, setAddItemGroupId] = useState<string | null>(null);
-  const [add_item_anchor, setAddItemAnchor] = useState<HTMLElement | null>(null);
-  const [add_item_name, setAddItemName] = useState("");
+  const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
@@ -688,24 +686,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setAddGroupAnchor(null);
   };
 
-  // ── Add item ──
-  const handleOpenAddItem = (group_id: string, event: React.MouseEvent<HTMLDivElement>) => {
-    setAddItemGroupId(group_id);
-    setAddItemAnchor(event.currentTarget);
-    setAddItemName("");
-  };
+  // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
+  const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
 
-  const handleCreateItem = async () => {
-    const name = add_item_name.trim();
-    if (!name || !add_item_group_id) return;
+  const handleSubmitNewItem = async (group_id: string, name: string) => {
     const created = await boardContentService.createItem(board_id, {
       name,
-      group_id: Number(add_item_group_id),
+      group_id: Number(group_id),
     });
     setItems((current) => [...current, created]);
-    setAddItemName("");
-    setAddItemAnchor(null);
+    setAddingItemGroupId(null);
   };
+
+  const handleCancelAddItem = () => setAddingItemGroupId(null);
 
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
@@ -828,6 +821,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRowClick={handleRowClick}
           selectedRowId={drawer.open_row_id}
           onAddItem={handleOpenAddItem}
+          addingItemGroupId={adding_item_group_id}
+          onSubmitNewItem={handleSubmitNewItem}
+          onCancelAddItem={handleCancelAddItem}
         />
       )}
 
@@ -854,31 +850,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             className="mt-1 rounded-md bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-600"
           >
             Add table
-          </button>
-        </form>
-      </BoardPopover>
-
-      <BoardPopover anchor_el={add_item_anchor} is_open={add_item_anchor !== null} onClose={() => setAddItemAnchor(null)} width={260}>
-        <form
-          className="flex flex-col gap-2 p-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleCreateItem();
-          }}
-        >
-          <label className="text-[12.5px] font-semibold text-shell-text">New item name</label>
-          <input
-            autoFocus
-            value={add_item_name}
-            onChange={(event) => setAddItemName(event.target.value)}
-            className="rounded-md border border-shell-border bg-shell-bg px-2.5 py-1.5 text-[13px] text-shell-text outline-none focus:border-brand-500"
-            placeholder="Item name"
-          />
-          <button
-            type="submit"
-            className="mt-1 rounded-md bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-600"
-          >
-            Add item
           </button>
         </form>
       </BoardPopover>

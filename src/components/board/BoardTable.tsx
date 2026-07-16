@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon } from "@/icons/board-icons";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
@@ -42,6 +42,63 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pin
   );
 };
 
+type AddItemInputRowProps = {
+  accent_color: string;
+  height: number;
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+};
+
+/**
+ * Replaces the static "+ Add item" footer text with a real text input, in
+ * place, when a group is actively adding a row — no popover/dialog. Enter
+ * submits a non-empty name; Escape or blurring an empty input cancels.
+ */
+const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height, onSubmit, onCancel }) => {
+  const [value, setValue] = useState("");
+  const input_ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    input_ref.current?.focus();
+  }, []);
+
+  const commit = () => {
+    const trimmed = value.trim();
+    if (trimmed) onSubmit(trimmed);
+    else onCancel();
+  };
+
+  return (
+    <div
+      className="flex items-center border-t border-shell-border bg-shell-panel-alt"
+      style={{ borderLeft: `4px solid ${accent_color}`, height }}
+    >
+      <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }}>
+        <BoardCheckbox borderColor="var(--color-shell-border)" />
+      </div>
+      <input
+        ref={input_ref}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
+        onBlur={commit}
+        placeholder="Item name"
+        className="mx-3 flex-1 rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1 text-[13px] text-shell-text outline-none"
+        style={{ maxWidth: 280 }}
+      />
+    </div>
+  );
+};
+
 /**
  * Generic, reusable Monday-style board table. It owns group collapse state and
  * the fixed-column layout; callers supply the columns, grouped rows and a
@@ -60,6 +117,9 @@ function BoardTable<TRow>({
   onRowClick,
   selectedRowId = null,
   onAddItem,
+  addingItemGroupId = null,
+  onSubmitNewItem,
+  onCancelAddItem,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
@@ -173,23 +233,31 @@ function BoardTable<TRow>({
                 </div>
 
                 {/* Empty state */}
-                {is_empty && (
-                  <div
-                    onClick={onAddItem ? (event) => onAddItem(group.id, event) : undefined}
-                    className={`flex items-center border-t border-shell-border bg-shell-bg ${
-                      onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
-                    }`}
-                    style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
-                  >
+                {is_empty &&
+                  (addingItemGroupId === group.id ? (
+                    <AddItemInputRow
+                      accent_color={group.accent_color}
+                      height={row_height_px}
+                      onSubmit={(name) => onSubmitNewItem?.(group.id, name)}
+                      onCancel={() => onCancelAddItem?.()}
+                    />
+                  ) : (
                     <div
-                      className="flex flex-none items-center justify-center"
-                      style={{ width: CHECKBOX_WIDTH }}
+                      onClick={onAddItem ? () => onAddItem(group.id) : undefined}
+                      className={`flex items-center border-t border-shell-border bg-shell-bg ${
+                        onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                      }`}
+                      style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
                     >
-                      <BoardCheckbox borderColor="var(--color-shell-border)" />
+                      <div
+                        className="flex flex-none items-center justify-center"
+                        style={{ width: CHECKBOX_WIDTH }}
+                      >
+                        <BoardCheckbox borderColor="var(--color-shell-border)" />
+                      </div>
+                      <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
                     </div>
-                    <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
-                  </div>
-                )}
+                  ))}
 
                 {/* Rows */}
                 {group.rows.map((row) => {
@@ -249,23 +317,31 @@ function BoardTable<TRow>({
                 })}
 
                 {/* Add-item footer */}
-                {!is_empty && (
-                  <div
-                    onClick={onAddItem ? (event) => onAddItem(group.id, event) : undefined}
-                    className={`flex h-10 items-center border-t border-shell-border bg-shell-bg ${
-                      onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
-                    }`}
-                    style={{ borderLeft: `4px solid ${group.accent_color}` }}
-                  >
+                {!is_empty &&
+                  (addingItemGroupId === group.id ? (
+                    <AddItemInputRow
+                      accent_color={group.accent_color}
+                      height={40}
+                      onSubmit={(name) => onSubmitNewItem?.(group.id, name)}
+                      onCancel={() => onCancelAddItem?.()}
+                    />
+                  ) : (
                     <div
-                      className="flex flex-none items-center justify-center"
-                      style={{ width: CHECKBOX_WIDTH }}
+                      onClick={onAddItem ? () => onAddItem(group.id) : undefined}
+                      className={`flex h-10 items-center border-t border-shell-border bg-shell-bg ${
+                        onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                      }`}
+                      style={{ borderLeft: `4px solid ${group.accent_color}` }}
                     >
-                      <BoardCheckbox borderColor="var(--color-shell-border)" />
+                      <div
+                        className="flex flex-none items-center justify-center"
+                        style={{ width: CHECKBOX_WIDTH }}
+                      >
+                        <BoardCheckbox borderColor="var(--color-shell-border)" />
+                      </div>
+                      <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
                     </div>
-                    <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
-                  </div>
-                )}
+                  ))}
               </div>
             )}
           </div>

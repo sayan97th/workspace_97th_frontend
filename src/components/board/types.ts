@@ -68,6 +68,12 @@ export type BoardTableProps<TRow> = {
   onRowClick?: (row: TRow) => void;
   /** Row-id of the row whose detail is currently open (e.g. in a {@link BoardItemDrawer}); it's painted with a highlight background and a checked checkbox. */
   selectedRowId?: string | null;
-  /** Wires the group's static "+ Add item" footer to create a row in that group. Omit to keep it display-only. */
-  onAddItem?: (group_id: string, event: React.MouseEvent<HTMLDivElement>) => void;
+  /** Clicking the group's static "+ Add item" footer opens its inline input (see {@link addingItemGroupId}). Omit to keep the footer display-only. */
+  onAddItem?: (group_id: string) => void;
+  /** Group id whose "+ Add item" footer is currently showing its inline text input instead of the static label. */
+  addingItemGroupId?: string | null;
+  /** Submits the inline add-item input: called with the trimmed, non-empty name the user typed. */
+  onSubmitNewItem?: (group_id: string, name: string) => void;
+  /** Dismisses the inline add-item input without creating anything (Escape, or blur while empty). */
+  onCancelAddItem?: () => void;
 };
