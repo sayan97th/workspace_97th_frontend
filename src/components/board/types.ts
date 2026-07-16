@@ -82,4 +82,12 @@ export type BoardTableProps<TRow> = {
    * name. Omit to keep group titles display-only (e.g. Client Hub's static mockup).
    */
   onRenameGroup?: (group_id: string, name: string) => void;
+  /**
+   * Renders a "+ Add new group" footer button below the last group. Clicking
+   * it should immediately append a new table at the bottom of the view
+   * (Monday-style) — the caller creates it with a default name; the new
+   * group's title can then be renamed inline via {@link onRenameGroup}.
+   * Omit to hide the footer entirely.
+   */
+  onAddGroup?: () => void;
 };

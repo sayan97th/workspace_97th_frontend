@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BoardItemDrawer,
-  BoardPopover,
   BoardShell,
   BoardTable,
   BoardToolbar,
@@ -291,8 +290,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [applied_view_id, setAppliedViewId] = useState<number | null>(null);
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
-  const [add_group_anchor, setAddGroupAnchor] = useState<HTMLElement | null>(null);
-  const [add_group_name, setAddGroupName] = useState("");
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
 
   const columns_by_id = useMemo(
@@ -682,14 +679,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     router.push(buildViewUrl(created));
   };
 
-  // ── Add table (group) ──
+  // ── Add group (table) — one click appends a new table at the bottom of the view, no popover. Rename it inline afterward via the group title. ──
   const handleCreateGroup = async () => {
-    const name = add_group_name.trim();
-    if (!name) return;
-    const created = await boardContentService.createGroup(board_id, { name });
+    const created = await boardContentService.createGroup(board_id, { name: "New group" });
     setGroups((current) => [...current, created]);
-    setAddGroupName("");
-    setAddGroupAnchor(null);
   };
 
   // ── Rename table (group) — inline input in place of the group's title, no popover ──
@@ -805,16 +798,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       tabs={{ tabs, active_view_id, onSelectView: handleSelectView, onAddView: handleAddView }}
       toolbar={<BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />}
     >
-      <div className="mb-3 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={(event) => setAddGroupAnchor(event.currentTarget)}
-          className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-        >
-          <PlusIcon size={13} />
-          Add table
-        </button>
-        {is_dirty && (
+      {is_dirty && (
+        <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
             onClick={handleSaveView}
@@ -822,8 +807,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           >
             Save changes to &ldquo;{active_view?.label}&rdquo;
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {breadcrumb.length > 1 && (
         <div className="mb-3 flex flex-wrap items-center gap-1 text-[12.5px] text-shell-text-muted">
@@ -845,6 +830,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <p className="text-[13.5px] text-shell-text-muted">
             Add your first table to start adding items to this board.
           </p>
+          <button
+            type="button"
+            onClick={handleCreateGroup}
+            className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+          >
+            <PlusIcon size={13} />
+            Add new group
+          </button>
         </div>
       ) : (
         <BoardTable<BoardItemDto>
@@ -863,35 +856,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onSubmitNewItem={handleSubmitNewItem}
           onCancelAddItem={handleCancelAddItem}
           onRenameGroup={handleRenameGroup}
+          onAddGroup={handleCreateGroup}
         />
       )}
 
       <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
-
-      <BoardPopover anchor_el={add_group_anchor} is_open={add_group_anchor !== null} onClose={() => setAddGroupAnchor(null)} width={260}>
-        <form
-          className="flex flex-col gap-2 p-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleCreateGroup();
-          }}
-        >
-          <label className="text-[12.5px] font-semibold text-shell-text">New table name</label>
-          <input
-            autoFocus
-            value={add_group_name}
-            onChange={(event) => setAddGroupName(event.target.value)}
-            className="rounded-md border border-shell-border bg-shell-bg px-2.5 py-1.5 text-[13px] text-shell-text outline-none focus:border-brand-500"
-            placeholder="e.g. Backlog"
-          />
-          <button
-            type="submit"
-            className="mt-1 rounded-md bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white hover:bg-brand-600"
-          >
-            Add table
-          </button>
-        </form>
-      </BoardPopover>
     </BoardShell>
   );
 };

@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { CheckIcon } from "@/icons/board-icons";
+import { CheckIcon, PlusIcon } from "@/icons/board-icons";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
 /** Left-most checkbox column width (kept out of the column config). */
@@ -171,6 +171,7 @@ function BoardTable<TRow>({
   onSubmitNewItem,
   onCancelAddItem,
   onRenameGroup,
+  onAddGroup,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
@@ -414,6 +415,17 @@ function BoardTable<TRow>({
           </div>
         );
       })}
+
+      {onAddGroup && (
+        <button
+          type="button"
+          onClick={onAddGroup}
+          className="flex w-fit items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+        >
+          <PlusIcon size={13} />
+          Add new group
+        </button>
+      )}
     </div>
   );
 }
