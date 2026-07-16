@@ -68,4 +68,6 @@ export type BoardTableProps<TRow> = {
   onRowClick?: (row: TRow) => void;
   /** Row-id of the row whose detail is currently open (e.g. in a {@link BoardItemDrawer}); it's painted with a highlight background and a checked checkbox. */
   selectedRowId?: string | null;
+  /** Wires the group's static "+ Add item" footer to create a row in that group. Omit to keep it display-only. */
+  onAddItem?: (group_id: string, event: React.MouseEvent<HTMLDivElement>) => void;
 };

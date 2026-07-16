@@ -59,6 +59,7 @@ function BoardTable<TRow>({
   cellColors = {},
   onRowClick,
   selectedRowId = null,
+  onAddItem,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
@@ -174,7 +175,10 @@ function BoardTable<TRow>({
                 {/* Empty state */}
                 {is_empty && (
                   <div
-                    className="flex items-center border-t border-shell-border bg-shell-bg"
+                    onClick={onAddItem ? (event) => onAddItem(group.id, event) : undefined}
+                    className={`flex items-center border-t border-shell-border bg-shell-bg ${
+                      onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                    }`}
                     style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
                   >
                     <div
@@ -247,7 +251,10 @@ function BoardTable<TRow>({
                 {/* Add-item footer */}
                 {!is_empty && (
                   <div
-                    className="flex h-10 items-center border-t border-shell-border bg-shell-bg"
+                    onClick={onAddItem ? (event) => onAddItem(group.id, event) : undefined}
+                    className={`flex h-10 items-center border-t border-shell-border bg-shell-bg ${
+                      onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                    }`}
                     style={{ borderLeft: `4px solid ${group.accent_color}` }}
                   >
                     <div
