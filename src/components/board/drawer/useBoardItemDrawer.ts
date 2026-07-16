@@ -1,6 +1,8 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
+import { boardCommentsService } from "@/services/board-comments.service";
 import type { BoardPersonOption } from "../toolbar/types";
+import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import type {
   BoardItemDrawerApi,
@@ -35,23 +37,34 @@ const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReactio
   );
 };
 
+type ComposerAttachmentDraft = { attachment: DrawerAttachment; file: File };
+
 /**
  * Owns all Board Item Drawer state — open/closed row, active tab, comment threads,
  * composer drafts, `@mentions`, emoji palettes, likes/reactions/seen — so any board
  * view can open a rich, commentable drawer for one of its rows with a single hook.
  * Mirrors the `useBoardToolbar` config-in/API-out pattern used across `@/components/board`.
+ *
+ * When `config.board_id` is set, comments are persisted through
+ * {@link boardCommentsService} against the real Laravel backend; otherwise (e.g.
+ * Client Hub) everything stays local, synchronous mock state exactly as before.
  */
 export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): BoardItemDrawerApi<TRow> {
-  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog } = config;
+  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, board_id } = config;
   const accent_color = config.accent_color ?? DEFAULT_ACCENT_COLOR;
+  const is_api_backed = board_id !== undefined;
 
   const [open_row, setOpenRow] = useState<TRow | null>(null);
   const [active_tab, setActiveTab] = useState<DrawerTabId>("updates");
   const [comments_by_row, setCommentsByRow] = useState<Record<string, DrawerComment[]>>({});
+  const [comments_loading, setCommentsLoading] = useState(false);
+  const [comments_error, setCommentsError] = useState<string | null>(null);
 
   const [composer_text, setComposerText] = useState("");
-  const [composer_attachments, setComposerAttachments] = useState<DrawerAttachment[]>([]);
+  const [composer_attachment_drafts, setComposerAttachmentDrafts] = useState<ComposerAttachmentDraft[]>([]);
   const [reply_text_by_comment, setReplyTextByComment] = useState<Record<string, string>>({});
+  /** Ids of people picked via `@mention` for the in-progress composer/reply draft, keyed the same way as `DrawerComposerTarget`. */
+  const [mention_ids_by_target, setMentionIdsByTarget] = useState<Record<string, string[]>>({});
 
   const [mention_target, setMentionTarget] = useState<DrawerComposerTarget | null>(null);
   const [mention_query, setMentionQuery] = useState("");
@@ -79,16 +92,31 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const openRow = (row: TRow) => {
     const row_id = getRowId(row);
-    setCommentsByRow((current) =>
-      current[row_id] ? current : { ...current, [row_id]: getInitialComments(row) }
-    );
     setOpenRow(row);
     setActiveTab("updates");
     setComposerText("");
-    setComposerAttachments([]);
+    setComposerAttachmentDrafts([]);
     setMentionTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
+    setMentionIdsByTarget({});
+    setCommentsError(null);
+
+    if (is_api_backed) {
+      const item_id = Number(row_id);
+      setCommentsLoading(true);
+      boardCommentsService
+        .listComments(board_id, item_id)
+        .then((dtos) => {
+          setCommentsByRow((current) => ({ ...current, [row_id]: dtos.map(mapCommentDtoToDrawerComment) }));
+        })
+        .catch(() => setCommentsError("Couldn't load comments. Please try again."))
+        .finally(() => setCommentsLoading(false));
+    } else {
+      setCommentsByRow((current) =>
+        current[row_id] ? current : { ...current, [row_id]: getInitialComments(row) }
+      );
+    }
   };
 
   const close = () => {
@@ -119,6 +147,10 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
         [target_comment_id]: insertMention(current[target_comment_id] ?? "", person.name),
       }));
     }
+    setMentionIdsByTarget((current) => ({
+      ...current,
+      [mention_target]: [...(current[mention_target] ?? []), person.id],
+    }));
     setMentionTarget(null);
   };
 
@@ -128,7 +160,25 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const postComment = () => {
     if (!open_row_id) return;
     const body = composer_text.trim();
-    if (!body && composer_attachments.length === 0) return;
+    if (!body && composer_attachment_drafts.length === 0) return;
+
+    if (is_api_backed) {
+      const item_id = Number(open_row_id);
+      const mentioned_user_ids = (mention_ids_by_target.composer ?? []).map(Number);
+      const files = composer_attachment_drafts.map((draft) => draft.file);
+      setCommentsError(null);
+      boardCommentsService
+        .postComment(board_id, item_id, { body, mentioned_user_ids, attachments: files })
+        .then((dto) => {
+          updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
+          setComposerText("");
+          setComposerAttachmentDrafts([]);
+          setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
+        })
+        .catch(() => setCommentsError("Couldn't post your update. Please try again."));
+      return;
+    }
+
     const new_comment: DrawerComment = {
       id: nextCommentId(),
       author: config.current_user,
@@ -138,33 +188,53 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       liked_by_me: false,
       like_count: 0,
       seen: false,
-      attachments: composer_attachments,
+      attachments: composer_attachment_drafts.map((draft) => draft.attachment),
       replies: [],
       reactions: [],
     };
     updateComments(open_row_id, (comments) => [new_comment, ...comments]);
     setComposerText("");
-    setComposerAttachments([]);
+    setComposerAttachmentDrafts([]);
     setMentionTarget(null);
   };
 
   const addComposerAttachments = (files: File[]) => {
     if (files.length === 0) return;
-    const additions: DrawerAttachment[] = files.map((file) => ({
-      id: createId(),
-      file_name: file.name,
-      ...classifyAttachment(file.name),
+    const additions: ComposerAttachmentDraft[] = files.map((file) => ({
+      attachment: { id: createId(), file_name: file.name, ...classifyAttachment(file.name) },
+      file,
     }));
-    setComposerAttachments((current) => [...current, ...additions]);
+    setComposerAttachmentDrafts((current) => [...current, ...additions]);
   };
 
   const removeComposerAttachment = (attachment_id: string) =>
-    setComposerAttachments((current) => current.filter((attachment) => attachment.id !== attachment_id));
+    setComposerAttachmentDrafts((current) => current.filter((draft) => draft.attachment.id !== attachment_id));
 
   const postReply = (comment_id: string) => {
     if (!open_row_id) return;
     const body = (reply_text_by_comment[comment_id] ?? "").trim();
     if (!body) return;
+
+    if (is_api_backed) {
+      const item_id = Number(open_row_id);
+      const mentioned_user_ids = (mention_ids_by_target[comment_id] ?? []).map(Number);
+      setCommentsError(null);
+      boardCommentsService
+        .postComment(board_id, item_id, { body, parent_id: Number(comment_id), mentioned_user_ids })
+        .then((dto) => {
+          const new_reply = mapCommentDtoToDrawerReply(dto);
+          updateComments(open_row_id, (comments) =>
+            comments.map((comment) =>
+              comment.id === comment_id ? { ...comment, replies: [...comment.replies, new_reply] } : comment
+            )
+          );
+          setReplyTextByComment((current) => ({ ...current, [comment_id]: "" }));
+          setMentionIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
+        })
+        .catch(() => setCommentsError("Couldn't post your reply. Please try again."));
+      return;
+    }
+
     const new_reply: DrawerReply = {
       id: nextCommentId(),
       author: config.current_user,
@@ -201,9 +271,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const toggleReactionPalette = (id: string) => setReactionPaletteId((current) => (current === id ? null : id));
 
-  const toggleReaction = (comment_id: string, reply_id: string | null, emoji: string) => {
-    if (!open_row_id) return;
-    updateComments(open_row_id, (comments) =>
+  /** Applies (or reverts, by calling it again) the local reaction toggle for a comment or reply. */
+  const applyReactionToggle = (row_id: string, comment_id: string, reply_id: string | null, emoji: string) =>
+    updateComments(row_id, (comments) =>
       comments.map((comment) => {
         if (comment.id !== comment_id) return comment;
         if (reply_id === null) return { ...comment, reactions: bumpReaction(comment.reactions, emoji) };
@@ -215,12 +285,25 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
         };
       })
     );
+
+  const toggleReaction = (comment_id: string, reply_id: string | null, emoji: string) => {
+    if (!open_row_id) return;
+    applyReactionToggle(open_row_id, comment_id, reply_id, emoji);
     setReactionPaletteId(null);
+
+    if (!is_api_backed) return;
+    const item_id = Number(open_row_id);
+    boardCommentsService
+      .toggleReaction(board_id, item_id, Number(reply_id ?? comment_id), emoji)
+      .catch(() => {
+        applyReactionToggle(open_row_id, comment_id, reply_id, emoji);
+        setCommentsError("Couldn't update that reaction. Please try again.");
+      });
   };
 
-  const toggleLike = (comment_id: string, reply_id?: string) => {
-    if (!open_row_id) return;
-    updateComments(open_row_id, (comments) =>
+  /** Applies (or reverts, by calling it again) the local like toggle for a comment or reply. */
+  const applyLikeToggle = (row_id: string, comment_id: string, reply_id?: string) =>
+    updateComments(row_id, (comments) =>
       comments.map((comment) => {
         if (comment.id !== comment_id) return comment;
         if (!reply_id) {
@@ -237,13 +320,38 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
         };
       })
     );
+
+  const toggleLike = (comment_id: string, reply_id?: string) => {
+    if (!open_row_id) return;
+    applyLikeToggle(open_row_id, comment_id, reply_id);
+
+    if (!is_api_backed) return;
+    const item_id = Number(open_row_id);
+    boardCommentsService
+      .toggleLike(board_id, item_id, Number(reply_id ?? comment_id))
+      .catch(() => {
+        applyLikeToggle(open_row_id, comment_id, reply_id);
+        setCommentsError("Couldn't update that like. Please try again.");
+      });
   };
+
+  const applySeenToggle = (row_id: string, comment_id: string) =>
+    updateComments(row_id, (comments) =>
+      comments.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
+    );
 
   const toggleSeen = (comment_id: string) => {
     if (!open_row_id) return;
-    updateComments(open_row_id, (comments) =>
-      comments.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
-    );
+    applySeenToggle(open_row_id, comment_id);
+
+    if (!is_api_backed) return;
+    const item_id = Number(open_row_id);
+    boardCommentsService
+      .toggleSeen(board_id, item_id, Number(comment_id))
+      .catch(() => {
+        applySeenToggle(open_row_id, comment_id);
+        setCommentsError("Couldn't update seen state. Please try again.");
+      });
   };
 
   const mention_matches = useMemo(
@@ -255,6 +363,11 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   );
 
   const comments = open_row_id ? comments_by_row[open_row_id] ?? [] : [];
+  const composer_attachments = useMemo(
+    () => composer_attachment_drafts.map((draft) => draft.attachment),
+    [composer_attachment_drafts]
+  );
+  const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
   const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
   const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
 
@@ -271,6 +384,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setActiveTab,
 
     comments,
+    comments_loading,
+    comments_error,
+    all_attachments,
     info_boxes,
     activity_log,
 

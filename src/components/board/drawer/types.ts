@@ -14,6 +14,8 @@ export type DrawerAttachment = {
   file_name: string;
   tag: DrawerAttachmentTag;
   tag_color: string;
+  /** Present once the attachment is actually uploaded (real boards); absent for a composer's not-yet-posted draft. */
+  download_url?: string;
 };
 
 /** A reply nested under a top-level comment. */
@@ -70,8 +72,15 @@ export type BoardItemDrawerConfig<TRow> = {
   accent_color?: string;
   current_user: BoardPersonOption;
   mentionable_people: BoardPersonOption[];
-  /** Seeds a row's comment thread the first time its drawer is opened. */
+  /** Seeds a row's comment thread the first time its drawer is opened. Ignored when {@link board_id} is set. */
   getInitialComments: (row: TRow) => DrawerComment[];
+  /**
+   * When set, comments/replies/likes/reactions/seen-state/attachments are
+   * persisted through `boardCommentsService` against this real board id
+   * instead of using `getInitialComments`'s local mock data. Omit to keep a
+   * board fully client-side (e.g. Client Hub).
+   */
+  board_id?: number;
   getInfoBoxes?: (row: TRow) => DrawerInfoBox[];
   getActivityLog?: (row: TRow) => DrawerActivityEntry[];
 };
@@ -88,6 +97,12 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   setActiveTab: (tab: DrawerTabId) => void;
 
   comments: DrawerComment[];
+  /** True while a real board's comments are being fetched (only ever set when {@link BoardItemDrawerConfig.board_id} is present). */
+  comments_loading: boolean;
+  /** Set when a comment/reply/like/reaction/seen/attachment request against a real board fails. */
+  comments_error: string | null;
+  /** Every attachment across `comments` (top-level only), flattened for the Files tab. */
+  all_attachments: DrawerAttachment[];
   info_boxes: DrawerInfoBox[];
   activity_log: DrawerActivityEntry[];
 

@@ -625,10 +625,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       current_user,
       mentionable_people: persons,
       getInitialComments: () => [],
+      board_id,
       getInfoBoxes,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, getInfoBoxes]
+    [node.label, current_user.id, persons, board_id, getInfoBoxes]
   );
 
   const drawer = useBoardItemDrawer(drawer_config);

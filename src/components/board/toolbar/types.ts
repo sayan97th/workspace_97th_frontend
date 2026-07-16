@@ -10,6 +10,8 @@ export type BoardPersonOption = {
   avatar_seed: number;
   /** Renders a small guest badge on the person's avatar in picker popovers. */
   is_guest?: boolean;
+  /** Real uploaded profile photo, when available — {@link PersonAvatar} prefers this over the initials-on-gradient fallback. */
+  avatar_url?: string;
 };
 
 export type BoardSortDirection = "asc" | "desc";

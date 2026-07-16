@@ -96,7 +96,9 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
 
         {/* Active tab body */}
         {drawer.active_tab === "updates" && <UpdatesPanel drawer={drawer} />}
-        {drawer.active_tab === "files" && <FilesPanel item_title={drawer.open_row_title} />}
+        {drawer.active_tab === "files" && (
+          <FilesPanel item_title={drawer.open_row_title} attachments={drawer.all_attachments} />
+        )}
         {drawer.active_tab === "activity" && <ActivityLogPanel entries={drawer.activity_log} />}
         {drawer.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={drawer.info_boxes} />}
       </div>
