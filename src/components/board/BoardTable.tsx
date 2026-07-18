@@ -2,7 +2,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, PlusIcon } from "@/icons/board-icons";
 import InlineTitleEditor from "./InlineTitleEditor";
+import AddColumnMenu from "./AddColumnMenu";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
+
+/** Width of the trailing "+" add-column header cell. */
+const ADD_COLUMN_WIDTH = 48;
 
 /** Left-most checkbox column width (kept out of the column config). */
 const CHECKBOX_WIDTH = 44;
@@ -124,10 +128,12 @@ function BoardTable<TRow>({
   onRenameGroup,
   onRenameColumn,
   onAddGroup,
+  onAddColumn,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
   const [editing_column_id, setEditingColumnId] = useState<string | null>(null);
+  const [add_column_anchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
 
@@ -288,6 +294,22 @@ function BoardTable<TRow>({
                       </ColumnCell>
                     );
                   })}
+                  {onAddColumn && (
+                    <div
+                      className="flex flex-none items-center justify-center border-r border-shell-border"
+                      style={{ width: ADD_COLUMN_WIDTH }}
+                    >
+                      <button
+                        type="button"
+                        onClick={(event) => setAddColumnAnchor(event.currentTarget)}
+                        aria-label="Add column"
+                        title="Add column"
+                        className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                      >
+                        <PlusIcon size={15} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Empty state */}
@@ -415,6 +437,15 @@ function BoardTable<TRow>({
           <PlusIcon size={13} />
           Add new group
         </button>
+      )}
+
+      {onAddColumn && (
+        <AddColumnMenu
+          anchor_el={add_column_anchor}
+          is_open={add_column_anchor !== null}
+          onClose={() => setAddColumnAnchor(null)}
+          onSelectType={(type) => onAddColumn(type)}
+        />
       )}
     </div>
   );

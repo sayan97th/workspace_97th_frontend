@@ -12,19 +12,18 @@
  */
 import type {
   BoardAdvancedFilterRow,
+  BoardColumnKind,
   BoardConditionalColorRule,
   BoardRowHeight,
   BoardSortRule,
 } from "@/components/board";
 
-export type BoardColumnType =
-  | "text"
-  | "status"
-  | "people"
-  | "date"
-  | "tags"
-  | "number"
-  | "checkbox";
+/**
+ * The engine's column data-type. Aliases {@link BoardColumnKind} from the board
+ * kit so the presentational components and this API layer share one definition
+ * (the kit must not depend on this file — that would be a circular import).
+ */
+export type BoardColumnType = BoardColumnKind;
 
 /** One option in a `status`/`tags` column's `config.options`. */
 export type BoardColumnOption = {

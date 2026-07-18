@@ -7,6 +7,16 @@ export type { BoardViewTabItem, BoardViewTabsProps } from "./BoardViewTabs";
 export { default as BoardToolbar } from "./BoardToolbar";
 export type { BoardToolbarProps } from "./BoardToolbar";
 export { default as BoardTable } from "./BoardTable";
+export { default as AddColumnMenu } from "./AddColumnMenu";
+export type { AddColumnMenuProps } from "./AddColumnMenu";
+export {
+  ADDABLE_COLUMN_TYPES,
+  COLUMN_KIND_SWATCH,
+  COLUMN_TYPE_SECTIONS,
+  COLUMN_OPTION_PALETTE,
+} from "./columnTypes";
+export type { BoardColumnKind, AddableColumnType, ColumnTypeSection } from "./columnTypes";
+export * from "./cells";
 export { default as InlineTitleEditor } from "./InlineTitleEditor";
 export type { InlineTitleEditorProps } from "./InlineTitleEditor";
 export { default as StatusPill } from "./StatusPill";

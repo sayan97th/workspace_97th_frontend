@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { AddableColumnType } from "./columnTypes";
 
 /** Colour + glyph identifying a column's data type across the Sort/Group-by/Hide pickers. */
 export type BoardColumnSwatch = {
@@ -99,4 +100,11 @@ export type BoardTableProps<TRow> = {
    * Omit to hide the footer entirely.
    */
   onAddGroup?: () => void;
+  /**
+   * Renders a trailing "+" button after the last column header. Clicking it
+   * opens the reusable {@link AddColumnMenu}; picking a type calls this with the
+   * chosen {@link AddableColumnType} so the caller can create the column. Omit
+   * to hide the button (e.g. Client Hub's static mockup).
+   */
+  onAddColumn?: (type: AddableColumnType) => void;
 };

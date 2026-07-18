@@ -7,13 +7,14 @@ import {
   BoardShell,
   BoardTable,
   BoardToolbar,
+  BoardValueCell,
   BoardViewTabs,
   ChangeBoardTypeModal,
-  PersonAvatarStack,
-  ProductTag,
-  StatusPill,
+  COLUMN_KIND_SWATCH,
   useBoardItemDrawer,
   useBoardToolbar,
+  type AddableColumnType,
+  type BoardCellOption,
   type BoardColumn,
   type BoardGroup as BoardGroupRow,
   type BoardGroupByOption,
@@ -25,17 +26,17 @@ import {
   type BoardToolbarConfig,
   type BoardViewTabItem,
 } from "@/components/board";
-import { CheckIcon, PlusIcon } from "@/icons/board-icons";
+import { PlusIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { boardContentService } from "@/services/board-content.service";
 import type {
   BoardColumnDto,
-  BoardColumnType,
   BoardFilterState,
   BoardGroupDto,
   BoardItemDetailDto,
   BoardItemDto,
+  BoardItemValue,
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardType, WorkspaceNavNode } from "@/types/workspace";
@@ -54,16 +55,6 @@ export type WorkspaceViewProps = {
 };
 
 const ITEM_COLUMN_ID = "name";
-
-const COLUMN_TYPE_META: Record<BoardColumnType, { accent_color: string; glyph: string; glyph_text_color?: string }> = {
-  text: { accent_color: "#579bfc", glyph: "Te" },
-  status: { accent_color: "#00c875", glyph: "St" },
-  people: { accent_color: "#a358df", glyph: "Pp" },
-  date: { accent_color: "#2b76e5", glyph: "Da" },
-  tags: { accent_color: "#7e5bef", glyph: "Tg" },
-  number: { accent_color: "#fdab3d", glyph: "#", glyph_text_color: "#3a2a00" },
-  checkbox: { accent_color: "#17a2b8", glyph: "Ck" },
-};
 
 const EMPTY_FILTER_STATE: BoardFilterState = {
   search_query: "",
@@ -323,7 +314,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         width: c.width,
         hideable: c.hideable,
         pinnable: c.pinnable,
-        swatch: COLUMN_TYPE_META[c.type],
+        swatch: COLUMN_KIND_SWATCH[c.type],
         full_label: c.label,
         bleed: c.type === "status",
         align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
@@ -386,7 +377,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ...columns.map((c) => ({
         id: String(c.id),
         label: c.label,
-        swatch: COLUMN_TYPE_META[c.type],
+        swatch: COLUMN_KIND_SWATCH[c.type],
         getValue: (row: BoardItemDto): string | number => {
           const value = row.values[String(c.id)];
           if (c.type === "number") return typeof value === "number" ? value : 0;
@@ -407,7 +398,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         options.push({
           id: String(c.id),
           label: `By ${c.label}`,
-          swatch: COLUMN_TYPE_META.status,
+          swatch: COLUMN_KIND_SWATCH.status,
           getGroupKey: (row) => String(row.values[String(c.id)] ?? "none"),
           getGroupLabel: (key) => option_by_id.get(key)?.label ?? "No status",
           getGroupColor: (key) => option_by_id.get(key)?.color ?? "#c4c4c4",
@@ -755,6 +746,55 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     ]);
   };
 
+  // ── Add column — "+" header button opens the reusable AddColumnMenu; a new
+  // typed column is appended to the board (status columns get default options
+  // seeded server-side). ──
+  const handleAddColumn = async (type: AddableColumnType) => {
+    // `key` must be unique per board and match `^[a-z0-9_]+$` — the kind plus a
+    // timestamp satisfies both without a round-trip to check for collisions.
+    const created = await boardContentService.createColumn(board_id, {
+      key: `${type.kind}_${Date.now()}`,
+      label: type.label,
+      type: type.kind,
+      width: type.default_width,
+    });
+    setColumns((current) => [...current, created]);
+  };
+
+  // ── Inline cell edit — optimistically writes the new value, then persists it,
+  // reverting the whole item list if the request fails. ──
+  const handleUpdateCellValue = async (item_id: number, column_id: string, value: BoardItemValue) => {
+    const previous = items;
+    setItems((current) =>
+      current.map((item) =>
+        item.id === item_id ? { ...item, values: { ...item.values, [column_id]: value } } : item
+      )
+    );
+    try {
+      await boardContentService.updateItemValues(board_id, item_id, { [column_id]: value });
+    } catch {
+      setItems(previous);
+    }
+  };
+
+  // ── Add option to a status/dropdown column, inline from its cell picker —
+  // persists the option to the column's config and resolves to it (with its
+  // generated id) so the cell can select it right away. ──
+  const handleAddColumnOption = async (
+    column_id: string,
+    option: { label: string; color: string }
+  ): Promise<BoardCellOption | null> => {
+    const column = columns_by_id[column_id];
+    if (!column) return null;
+    const new_option: BoardCellOption = { id: `opt_${Date.now()}`, label: option.label, color: option.color };
+    const next_options = [...(column.config?.options ?? []), new_option];
+    const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+      config: { ...(column.config ?? {}), options: next_options },
+    });
+    setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    return new_option;
+  };
+
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
       return (
@@ -764,56 +804,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
     const column_dto = columns_by_id[column.id];
     if (!column_dto) return null;
-    const value = row.values[column.id];
 
-    switch (column_dto.type) {
-      case "status": {
-        const option = column_dto.config?.options?.find((o) => o.id === value);
-        return option ? (
-          <StatusPill label={option.label} bg={option.color} color="#ffffff" />
-        ) : (
-          <div className="h-full w-full bg-shell-panel-alt" />
-        );
-      }
-      case "tags": {
-        const ids = Array.isArray(value) ? value.map(String) : [];
-        const options_by_id = new Map((column_dto.config?.options ?? []).map((o) => [o.id, o]));
-        return (
-          <div className="flex flex-wrap items-center gap-1">
-            {ids.map((id) => {
-              const option = options_by_id.get(id);
-              return option ? <ProductTag key={id} label={option.label} /> : null;
-            })}
-          </div>
-        );
-      }
-      case "people": {
-        const ids = Array.isArray(value) ? value.map(String) : [];
-        const people = ids
-          .map((id) => node.owners.find((o) => String(o.id) === id))
-          .filter((owner): owner is (typeof node.owners)[number] => Boolean(owner));
-        return <PersonAvatarStack people={people} empty_label="—" />;
-      }
-      case "date":
-        return value ? (
-          <span className="text-[12.5px] text-shell-text-secondary">{formatDate(String(value))}</span>
-        ) : null;
-      case "number":
-        return value != null ? (
-          <span className="text-[12.5px] text-shell-text-secondary">{String(value)}</span>
-        ) : null;
-      case "checkbox":
-        return value ? (
-          <span className="text-success-500">
-            <CheckIcon size={14} />
-          </span>
-        ) : null;
-      case "text":
-      default:
-        return value ? (
-          <span className="w-full truncate text-[12.5px] text-shell-text-secondary">{String(value)}</span>
-        ) : null;
-    }
+    const has_options = column_dto.type === "status" || column_dto.type === "tags";
+    return (
+      <BoardValueCell
+        column={{
+          id: String(column_dto.id),
+          kind: column_dto.type,
+          options: column_dto.config?.options ?? undefined,
+        }}
+        value={row.values[column.id] ?? null}
+        people={node.owners}
+        bleed={column_dto.type === "status"}
+        onCommit={(next) => handleUpdateCellValue(row.id, column.id, next)}
+        onAddOption={has_options ? (opt) => handleAddColumnOption(column.id, opt) : undefined}
+      />
+    );
   };
 
   return (
@@ -882,6 +888,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRenameGroup={handleRenameGroup}
           onRenameColumn={handleRenameColumn}
           onAddGroup={handleCreateGroup}
+          onAddColumn={handleAddColumn}
         />
       )}
 
