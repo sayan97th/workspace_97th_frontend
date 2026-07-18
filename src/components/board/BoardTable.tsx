@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, PlusIcon } from "@/icons/board-icons";
+import InlineTitleEditor from "./InlineTitleEditor";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
 
 /** Left-most checkbox column width (kept out of the column config). */
@@ -99,56 +100,6 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
   );
 };
 
-type GroupTitleEditorProps = {
-  value: string;
-  accent_color: string;
-  onCommit: (name: string) => void;
-  onCancel: () => void;
-};
-
-/**
- * Replaces a group's static title with a real text input, in place, while
- * it's being renamed — same commit/cancel contract as `AddItemInputRow`.
- * Enter or blur with a non-empty, changed value commits; Escape or blurring
- * back to the original/empty value cancels without calling `onCommit`.
- */
-const GroupTitleEditor: React.FC<GroupTitleEditorProps> = ({ value, accent_color, onCommit, onCancel }) => {
-  const [draft_name, setDraftName] = useState(value);
-  const input_ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    input_ref.current?.focus();
-    input_ref.current?.select();
-  }, []);
-
-  const commit = () => {
-    const trimmed = draft_name.trim();
-    if (trimmed && trimmed !== value) onCommit(trimmed);
-    else onCancel();
-  };
-
-  return (
-    <input
-      ref={input_ref}
-      value={draft_name}
-      onChange={(event) => setDraftName(event.target.value)}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          commit();
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
-      onBlur={commit}
-      className="rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1 text-base font-bold tracking-[-0.01em] outline-none"
-      style={{ color: accent_color, maxWidth: 320 }}
-    />
-  );
-};
-
 /**
  * Generic, reusable Monday-style board table. It owns group collapse state and
  * the fixed-column layout; callers supply the columns, grouped rows and a
@@ -171,10 +122,12 @@ function BoardTable<TRow>({
   onSubmitNewItem,
   onCancelAddItem,
   onRenameGroup,
+  onRenameColumn,
   onAddGroup,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
+  const [editing_column_id, setEditingColumnId] = useState<string | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
 
@@ -242,14 +195,16 @@ function BoardTable<TRow>({
                 </svg>
               </button>
               {editing_group_id === group.id ? (
-                <GroupTitleEditor
+                <InlineTitleEditor
                   value={group.name}
-                  accent_color={group.accent_color}
                   onCommit={(name) => {
                     onRenameGroup?.(group.id, name);
                     setEditingGroupId(null);
                   }}
                   onCancel={() => setEditingGroupId(null)}
+                  className="text-base font-bold tracking-[-0.01em]"
+                  style={{ color: group.accent_color, maxWidth: 320 }}
+                  aria_label="Rename table"
                 />
               ) : (
                 <span
@@ -288,16 +243,51 @@ function BoardTable<TRow>({
                   >
                     <BoardCheckbox borderColor="var(--color-shell-border-strong)" />
                   </div>
-                  {columns.map((column) => (
-                    <ColumnCell
-                      key={column.id}
-                      column={column}
-                      isHeader
-                      pinStyle={getColumnPinStyle(column, HEADER_STICKY_BG)}
-                    >
-                      <span className="truncate py-[11px]">{column.label}</span>
-                    </ColumnCell>
-                  ))}
+                  {columns.map((column) => {
+                    const is_renamable = Boolean(onRenameColumn) && column.renamable !== false;
+                    // Columns are board-wide, so the same header repeats once per group.
+                    // Key the open editor by group *and* column so clicking a header only
+                    // turns that one cell into an input, not every group's copy of it.
+                    const editing_key = `${group.id}::${column.id}`;
+                    return (
+                      <ColumnCell
+                        key={column.id}
+                        column={column}
+                        isHeader
+                        pinStyle={getColumnPinStyle(column, HEADER_STICKY_BG)}
+                      >
+                        {is_renamable && editing_column_id === editing_key ? (
+                          <InlineTitleEditor
+                            value={column.label}
+                            onCommit={(label) => {
+                              onRenameColumn?.(column.id, label);
+                              setEditingColumnId(null);
+                            }}
+                            onCancel={() => setEditingColumnId(null)}
+                            className="w-full min-w-0 text-[12.5px] font-semibold text-shell-text"
+                            aria_label="Rename column"
+                          />
+                        ) : (
+                          <span
+                            onClick={
+                              is_renamable
+                                ? (event) => {
+                                    event.stopPropagation();
+                                    setEditingColumnId(editing_key);
+                                  }
+                                : undefined
+                            }
+                            className={`truncate py-[11px] ${
+                              is_renamable ? "cursor-pointer rounded-[4px] hover:text-shell-text" : ""
+                            }`}
+                            title={is_renamable ? "Rename column" : undefined}
+                          >
+                            {column.label}
+                          </span>
+                        )}
+                      </ColumnCell>
+                    );
+                  })}
                 </div>
 
                 {/* Empty state */}

@@ -45,6 +45,8 @@ export type WorkspaceNavNode = {
   href: string | null;
   display_style: string | null;
   board_type: BoardType;
+  /** Custom name for the board's first (item name) column; null falls back to "Item". */
+  item_column_label: string | null;
   is_favorite: boolean;
   position: number;
   created_at: string | null;
@@ -119,6 +121,7 @@ export type UpdateNavItemPayload = {
   href?: string | null;
   display_style?: string | null;
   board_type?: BoardType;
+  item_column_label?: string | null;
   is_favorite?: boolean;
 };
 

@@ -28,6 +28,8 @@ export type BoardColumn = {
   swatch?: BoardColumnSwatch;
   /** Full descriptive label for pickers with more room than the in-table header (which may truncate, e.g. "Client ..."). Defaults to `label`. */
   full_label?: string;
+  /** Whether this column's header can be renamed inline (see {@link BoardTableProps.onRenameColumn}). Defaults to true when a rename handler is provided. */
+  renamable?: boolean;
 };
 
 /** A collapsible group of rows (e.g. "Active Contracts"). */
@@ -82,6 +84,13 @@ export type BoardTableProps<TRow> = {
    * name. Omit to keep group titles display-only (e.g. Client Hub's static mockup).
    */
   onRenameGroup?: (group_id: string, name: string) => void;
+  /**
+   * Clicking a column header swaps it for an inline text input (see
+   * {@link BoardColumn}'s `label`). Called on commit with the trimmed, changed
+   * label. Columns opt out individually via `BoardColumn.renamable = false`.
+   * Omit to keep every column header display-only.
+   */
+  onRenameColumn?: (column_id: string, label: string) => void;
   /**
    * Renders a "+ Add new group" footer button below the last group. Clicking
    * it should immediately append a new table at the bottom of the view

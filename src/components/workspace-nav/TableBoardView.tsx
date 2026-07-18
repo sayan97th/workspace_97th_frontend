@@ -223,6 +223,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         key={node.id}
         node={node}
         breadcrumb={breadcrumb}
+        workspace_slug={workspace_slug}
         board_type={board_type}
         info={info}
         initial_columns={loaded.columns}
@@ -249,6 +250,7 @@ export default TableBoardView;
 type TableBoardBodyProps = {
   node: WorkspaceNavNode;
   breadcrumb: string[];
+  workspace_slug: string;
   board_type: BoardType;
   info: BoardHeaderInfo;
   initial_columns: BoardColumnDto[];
@@ -268,6 +270,7 @@ type TableBoardBodyProps = {
 const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   node,
   breadcrumb,
+  workspace_slug,
   info,
   initial_columns,
   initial_groups,
@@ -291,6 +294,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
+  const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
@@ -304,10 +308,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const board_columns: BoardColumn[] = useMemo(() => {
     const item_column: BoardColumn = {
       id: ITEM_COLUMN_ID,
-      label: "Item",
+      label: item_column_label,
       width: 280,
       swatch: { accent_color: "#7e5bef", glyph: "It" },
-      full_label: "Item",
+      full_label: item_column_label,
       pinnable: true,
       hideable: false,
     };
@@ -325,7 +329,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
       })),
     ];
-  }, [columns]);
+  }, [columns, item_column_label]);
 
   const default_groups: BoardGroupRow<BoardItemDto>[] = useMemo(
     () =>
@@ -692,6 +696,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g)));
   };
 
+  // ── Rename column — inline input in place of the column header, no popover ──
+  //
+  // Every data column is a real `board_columns` row, renamed through the board
+  // content API. The first "Item" column is the exception: it isn't a column
+  // row (it's the item's own name), so its custom label lives on the board
+  // (nav item) itself and is renamed through the workspace API.
+  const handleRenameColumn = async (column_id: string, label: string) => {
+    if (column_id === ITEM_COLUMN_ID) {
+      const { workspaceService } = await import("@/services/workspace.service");
+      const updated = await workspaceService.updateNavItem(workspace_slug, board_id, {
+        item_column_label: label,
+      });
+      setItemColumnLabel(updated.item_column_label ?? "Item");
+      return;
+    }
+    const updated = await boardContentService.updateColumn(board_id, Number(column_id), { label });
+    setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+  };
+
   // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
   const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
 
@@ -857,6 +880,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onSubmitNewItem={handleSubmitNewItem}
           onCancelAddItem={handleCancelAddItem}
           onRenameGroup={handleRenameGroup}
+          onRenameColumn={handleRenameColumn}
           onAddGroup={handleCreateGroup}
         />
       )}

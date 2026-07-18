@@ -7,6 +7,8 @@ export type { BoardViewTabItem, BoardViewTabsProps } from "./BoardViewTabs";
 export { default as BoardToolbar } from "./BoardToolbar";
 export type { BoardToolbarProps } from "./BoardToolbar";
 export { default as BoardTable } from "./BoardTable";
+export { default as InlineTitleEditor } from "./InlineTitleEditor";
+export type { InlineTitleEditorProps } from "./InlineTitleEditor";
 export { default as StatusPill } from "./StatusPill";
 export type { StatusPillProps } from "./StatusPill";
 export { default as ProductTag, OverflowBadge } from "./ProductTag";
