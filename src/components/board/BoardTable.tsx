@@ -137,6 +137,22 @@ function BoardTable<TRow>({
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
 
+  /**
+   * The table's real content width: the checkbox gutter, every column's fixed
+   * width, and the trailing "+" add-column cell. Driving the container off this
+   * (instead of a static `minWidth`) is what lets the table grow as columns are
+   * added — otherwise the root stays viewport-wide, rows only stretch that far,
+   * and the fixed-width cells that overflow paint past the row's own background,
+   * so the table looks "cut off" when scrolled right. A `minWidth: 100%` floor
+   * still fills the viewport when the columns don't add up to a full screen.
+   */
+  const content_width = useMemo(() => {
+    const columns_width = columns.reduce((sum, column) => sum + column.width, 0);
+    return CHECKBOX_WIDTH + columns_width + (onAddColumn ? ADD_COLUMN_WIDTH : 0);
+  }, [columns, onAddColumn]);
+
+  const table_width = Math.max(content_width, minWidth);
+
   const toggleGroup = (id: string) => {
     setCollapsedGroupIds((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -171,7 +187,7 @@ function BoardTable<TRow>({
   };
 
   return (
-    <div className="flex flex-col gap-[34px]" style={{ minWidth }}>
+    <div className="flex flex-col gap-[34px]" style={{ width: table_width, minWidth: "100%" }}>
       {groups.map((group) => {
         const is_expanded = !collapsed_group_ids[group.id];
         const is_empty = group.rows.length === 0;

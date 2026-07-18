@@ -57,7 +57,13 @@ export type BoardTableProps<TRow> = {
   groups: BoardGroup<TRow>[];
   getRowId: (row: TRow) => string;
   renderCell: (row: TRow, column: BoardColumn) => ReactNode;
-  /** Minimum table width so columns keep their size and scroll horizontally. */
+  /**
+   * Floor for the table width in pixels. The table normally sizes itself to the
+   * real total width of its columns (so it grows as columns are added and each
+   * row's background paints edge-to-edge), and always fills at least the
+   * viewport. This value only kicks in when the columns add up to less than it,
+   * keeping a consistent minimum. Defaults to 1450 (the Client Hub baseline).
+   */
   minWidth?: number;
   /** Row height preset. Defaults to "medium" (today's fixed 42px rows). */
   rowHeight?: BoardRowHeight;
