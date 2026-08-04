@@ -16,6 +16,7 @@ import {
   type AddableColumnType,
   type BoardCellOption,
   type BoardColumn,
+  type BoardOptionActions,
   type BoardGroup as BoardGroupRow,
   type BoardGroupByOption,
   type BoardHeaderInfo,
@@ -623,6 +624,45 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return new_option;
   };
 
+  // ── Edit Labels (rename/recolor/delete/deactivate/describe) — every action
+  // is a read-modify-write over the column's `config.options` array, so they
+  // all funnel through this one persistence helper. ──
+  const patchColumnOptions = useCallback(
+    async (column_id: string, updater: (options: BoardCellOption[]) => BoardCellOption[]) => {
+      const column = columns_by_id[column_id];
+      if (!column) return;
+      const next_options = updater(column.config?.options ?? []);
+      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+        config: { ...(column.config ?? {}), options: next_options },
+      });
+      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    },
+    [board_id, columns_by_id]
+  );
+
+  const makeOptionActions = (column_id: string): BoardOptionActions => ({
+    onRename: (option_id, label) =>
+      void patchColumnOptions(column_id, (options) =>
+        options.map((option) => (option.id === option_id ? { ...option, label } : option))
+      ),
+    onRecolor: (option_id, color) =>
+      void patchColumnOptions(column_id, (options) =>
+        options.map((option) => (option.id === option_id ? { ...option, color } : option))
+      ),
+    onDelete: (option_id) =>
+      void patchColumnOptions(column_id, (options) => options.filter((option) => option.id !== option_id)),
+    onToggleActive: (option_id) =>
+      void patchColumnOptions(column_id, (options) =>
+        options.map((option) =>
+          option.id === option_id ? { ...option, is_active: option.is_active === false } : option
+        )
+      ),
+    onSetDescription: (option_id, description) =>
+      void patchColumnOptions(column_id, (options) =>
+        options.map((option) => (option.id === option_id ? { ...option, description } : option))
+      ),
+  });
+
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
       if (editing_item_id === row.id) {
@@ -676,6 +716,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         bleed={column_dto.type === "status"}
         onCommit={(next) => handleUpdateCellValue(row.id, column.id, next)}
         onAddOption={has_options ? (opt) => handleAddColumnOption(column.id, opt) : undefined}
+        onEditOptions={has_options ? makeOptionActions(column.id) : undefined}
       />
     );
   };

@@ -2,9 +2,20 @@
 import React, { useState } from "react";
 import { CheckIcon, PlusIcon } from "@/icons/board-icons";
 import { COLUMN_OPTION_PALETTE } from "../columnTypes";
+import EditLabelsPanel, { type BoardOptionActions } from "./EditLabelsPanel";
 
 /** One colour-coded label a status/dropdown column offers. */
-export type BoardCellOption = { id: string; label: string; color: string };
+export type BoardCellOption = {
+  id: string;
+  label: string;
+  color: string;
+  /** Deactivated labels stay assigned to items that already have them but drop out of the picker's selectable list. Defaults to true when omitted. */
+  is_active?: boolean;
+  /** Optional helper text shown under the label in the Edit Labels panel. */
+  description?: string | null;
+};
+
+export type { BoardOptionActions };
 
 export type OptionPickerProps = {
   options: BoardCellOption[];
@@ -20,6 +31,12 @@ export type OptionPickerProps = {
    * id) so the picker can immediately select it. Return null to abort.
    */
   onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  /**
+   * Rename/recolor/delete/deactivate/describe an existing option. Supplying
+   * this unlocks the "Edit Labels" footer link, which swaps the picker for
+   * {@link EditLabelsPanel} in place.
+   */
+  option_actions?: BoardOptionActions;
 };
 
 /**
@@ -35,9 +52,11 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
   onToggle,
   onClear,
   onCreateOption,
+  option_actions,
 }) => {
   const [new_label, setNewLabel] = useState("");
   const [is_creating, setIsCreating] = useState(false);
+  const [is_editing_labels, setIsEditingLabels] = useState(false);
 
   const handleCreate = async () => {
     const label = new_label.trim();
@@ -52,6 +71,22 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
     }
   };
 
+  if (is_editing_labels && option_actions) {
+    return (
+      <EditLabelsPanel
+        options={options}
+        actions={option_actions}
+        onCreateOption={onCreateOption}
+        onDone={() => setIsEditingLabels(false)}
+      />
+    );
+  }
+
+  // Deactivated labels drop out of the pick list — unless an item is already
+  // set to one, in which case it stays visible (greyed) so the assignment
+  // remains legible instead of silently vanishing.
+  const pickable_options = options.filter((option) => option.is_active !== false || selected_ids.includes(option.id));
+
   return (
     <div className="flex flex-col gap-1 p-2" onClick={(event) => event.stopPropagation()}>
       {options.length === 0 && !onCreateOption && (
@@ -59,14 +94,17 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
       )}
 
       <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto">
-        {options.map((option) => {
+        {pickable_options.map((option) => {
           const is_selected = selected_ids.includes(option.id);
+          const is_inactive = option.is_active === false;
           return (
             <button
               key={option.id}
               type="button"
               onClick={() => onToggle(option.id)}
-              className="flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
+              className={`flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover ${
+                is_inactive ? "opacity-50" : ""
+              }`}
             >
               <span
                 className="h-[18px] w-[18px] flex-none rounded-[5px]"
@@ -116,6 +154,16 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
           className="mt-1 rounded-md px-1.5 py-1.5 text-left text-[12.5px] text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
         >
           Clear
+        </button>
+      )}
+
+      {option_actions && (
+        <button
+          type="button"
+          onClick={() => setIsEditingLabels(true)}
+          className="mt-1 rounded-md border-t border-shell-border px-1.5 pt-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:text-shell-text"
+        >
+          Edit Labels
         </button>
       )}
     </div>

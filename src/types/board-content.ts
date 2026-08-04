@@ -30,6 +30,10 @@ export type BoardColumnOption = {
   id: string;
   label: string;
   color: string;
+  /** Deactivated labels stay assigned to any item that already has them but drop out of the picker's selectable list. Defaults to true when omitted. */
+  is_active?: boolean;
+  /** Optional helper text shown under the label in the Edit Labels panel. */
+  description?: string | null;
 };
 
 export type BoardColumnConfig = {

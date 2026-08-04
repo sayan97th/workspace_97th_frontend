@@ -7,9 +7,9 @@ import ProductTag, { OverflowBadge } from "../ProductTag";
 import PersonAvatarStack from "../PersonAvatarStack";
 import PersonAvatar from "../PersonAvatar";
 import BoardPopover from "../toolbar/BoardPopover";
-import OptionPicker, { type BoardCellOption } from "./OptionPicker";
+import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
 
-export type { BoardCellOption };
+export type { BoardCellOption, BoardOptionActions };
 
 /** A cell value, shaped per the owning column's kind. */
 export type BoardCellValue = string | number | boolean | string[] | null;
@@ -33,6 +33,8 @@ export type BoardValueCellProps = {
   onCommit: (value: BoardCellValue) => void;
   /** Adds an option to a status/dropdown column and resolves to it so the cell can select it. */
   onAddOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  /** Rename/recolor/delete/deactivate/describe an existing status/dropdown option — unlocks "Edit Labels". */
+  onEditOptions?: BoardOptionActions;
   /** Whether the cell paints edge-to-edge (status columns). */
   bleed?: boolean;
 };
@@ -83,6 +85,7 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
   people = [],
   onCommit,
   onAddOption,
+  onEditOptions,
   bleed,
 }) => {
   switch (column.kind) {
@@ -93,9 +96,26 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
     case "date":
       return <DateCell value={value} onCommit={onCommit} />;
     case "status":
-      return <StatusCell column={column} value={value} onCommit={onCommit} onAddOption={onAddOption} bleed={bleed} />;
+      return (
+        <StatusCell
+          column={column}
+          value={value}
+          onCommit={onCommit}
+          onAddOption={onAddOption}
+          onEditOptions={onEditOptions}
+          bleed={bleed}
+        />
+      );
     case "tags":
-      return <DropdownCell column={column} value={value} onCommit={onCommit} onAddOption={onAddOption} />;
+      return (
+        <DropdownCell
+          column={column}
+          value={value}
+          onCommit={onCommit}
+          onAddOption={onAddOption}
+          onEditOptions={onEditOptions}
+        />
+      );
     case "people":
       return <PeopleCell value={value} people={people} onCommit={onCommit} />;
     case "text":
@@ -278,8 +298,9 @@ const StatusCell: React.FC<{
   value: BoardCellValue;
   onCommit: (value: BoardCellValue) => void;
   onAddOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  onEditOptions?: BoardOptionActions;
   bleed?: boolean;
-}> = ({ column, value, onCommit, onAddOption, bleed }) => {
+}> = ({ column, value, onCommit, onAddOption, onEditOptions, bleed }) => {
   const popover = usePopoverAnchor();
   const options = column.options ?? [];
   const selected = typeof value === "string" ? value : null;
@@ -310,6 +331,7 @@ const StatusCell: React.FC<{
             popover.close();
           }}
           onCreateOption={onAddOption}
+          option_actions={onEditOptions}
         />
       </BoardPopover>
     </>
@@ -321,7 +343,8 @@ const DropdownCell: React.FC<{
   value: BoardCellValue;
   onCommit: (value: BoardCellValue) => void;
   onAddOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
-}> = ({ column, value, onCommit, onAddOption }) => {
+  onEditOptions?: BoardOptionActions;
+}> = ({ column, value, onCommit, onAddOption, onEditOptions }) => {
   const popover = usePopoverAnchor();
   const options = column.options ?? [];
   const selected_ids = asStringArray(value);
@@ -361,6 +384,7 @@ const DropdownCell: React.FC<{
           onToggle={toggle}
           onClear={() => onCommit(null)}
           onCreateOption={onAddOption}
+          option_actions={onEditOptions}
         />
       </BoardPopover>
     </>
