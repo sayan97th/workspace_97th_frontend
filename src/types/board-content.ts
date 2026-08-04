@@ -67,6 +67,8 @@ export type BoardItemDto = {
   name: string;
   position: number;
   values: Record<string, BoardItemValue>;
+  /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
+  comment_count: number;
 };
 
 /** Extends {@link BoardItemDto} with the fields the pulse detail drawer shows. */

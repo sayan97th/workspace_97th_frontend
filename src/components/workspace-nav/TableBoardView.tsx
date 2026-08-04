@@ -10,6 +10,7 @@ import {
   BoardValueCell,
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
+  InlineTitleEditor,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
@@ -24,7 +25,7 @@ import {
   type BoardSortOption,
   type BoardToolbarConfig,
 } from "@/components/board";
-import { PlusIcon } from "@/icons/board-icons";
+import { PlusIcon, RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
@@ -53,6 +54,8 @@ export type WorkspaceViewProps = {
 };
 
 const ITEM_COLUMN_ID = "name";
+/** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
+const CHAT_COLUMN_ID = "comments";
 
 const getInitials = (full_name: string): string =>
   full_name
@@ -233,6 +236,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
+  const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
 
   const columns_by_id = useMemo(
@@ -254,8 +258,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       pinnable: true,
       hideable: false,
     };
+    const chat_column: BoardColumn = {
+      id: CHAT_COLUMN_ID,
+      label: "",
+      width: 56,
+      align: "center",
+      hideable: false,
+      pinnable: false,
+    };
     return [
       item_column,
+      chat_column,
       ...columns.map((c) => ({
         id: String(c.id),
         label: c.label,
@@ -284,6 +297,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const getColumnText = useCallback(
     (row: BoardItemDto, column_id: string): string => {
       if (column_id === ITEM_COLUMN_ID) return row.name;
+      if (column_id === CHAT_COLUMN_ID) return String(row.comment_count);
       const column = columns_by_id[column_id];
       const value = row.values[column_id];
       if (value == null) return "";
@@ -510,6 +524,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
   };
 
+  // ── Rename item — click the item name to swap it for an inline input, mirroring
+  // group/column rename. Only the name field is merged back in (not the whole
+  // server item) so a stale `comment_count`/`values` response can't clobber
+  // what's already known client-side. ──
+  const handleRenameItem = async (item_id: number, name: string) => {
+    const updated = await boardContentService.updateItem(board_id, item_id, { name });
+    setItems((current) => current.map((item) => (item.id === item_id ? { ...item, name: updated.name } : item)));
+    setEditingItemId(null);
+  };
+
   // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
   const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
 
@@ -601,8 +625,38 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
+      if (editing_item_id === row.id) {
+        return (
+          <InlineTitleEditor
+            value={row.name}
+            onCommit={(name) => handleRenameItem(row.id, name)}
+            onCancel={() => setEditingItemId(null)}
+            className="w-full min-w-0 text-[13.5px] font-medium text-shell-text"
+            aria_label="Rename item"
+          />
+        );
+      }
       return (
-        <span className="min-w-0 truncate text-[13.5px] font-medium text-shell-text">{row.name}</span>
+        <span
+          onClick={(event) => {
+            event.stopPropagation();
+            setEditingItemId(row.id);
+          }}
+          className="-mx-1 min-w-0 cursor-text truncate rounded-[4px] px-1 text-[13.5px] font-medium text-shell-text hover:bg-shell-hover"
+          title="Click to rename"
+        >
+          {row.name}
+        </span>
+      );
+    }
+
+    if (column.id === CHAT_COLUMN_ID) {
+      if (!row.comment_count) return null;
+      return (
+        <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-muted">
+          <RowChatIcon />
+          {row.comment_count}
+        </span>
       );
     }
 
