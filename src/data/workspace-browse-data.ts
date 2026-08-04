@@ -107,22 +107,32 @@ export const browse_tab_empty_titles: Record<WorkspaceBrowseTab, string> = {
 };
 
 /**
- * Filters the catalog down to a tab and (optionally) a search query. The "all"
- * tab returns everything; the membership tabs match the workspace's buckets.
+ * Filters the catalog down to a tab, an optional search query, and an optional
+ * set of workspace types (privacy). The "all" tab returns everything; the
+ * membership tabs match the workspace's buckets. An empty `privacy_filter`
+ * means "no type filter applied" (shows every type).
  */
 export const filterBrowseWorkspaces = (
   workspaces: BrowseWorkspace[],
   tab: WorkspaceBrowseTab,
-  query: string
+  query: string,
+  privacy_filter: WorkspacePrivacy[] = []
 ): BrowseWorkspace[] => {
   const by_tab =
     tab === "all"
       ? workspaces
       : workspaces.filter((workspace) => workspace.memberships.includes(tab));
 
+  const by_privacy =
+    privacy_filter.length === 0
+      ? by_tab
+      : by_tab.filter(
+          (workspace) => workspace.privacy && privacy_filter.includes(workspace.privacy)
+        );
+
   const normalized = query.trim().toLowerCase();
-  if (!normalized) return by_tab;
-  return by_tab.filter((workspace) =>
+  if (!normalized) return by_privacy;
+  return by_privacy.filter((workspace) =>
     workspace.name.toLowerCase().includes(normalized)
   );
 };

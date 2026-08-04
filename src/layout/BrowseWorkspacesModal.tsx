@@ -1,7 +1,9 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import WorkspaceCard from "./WorkspaceCard";
 import WorkspaceEmptyState from "./WorkspaceEmptyState";
+import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import ToolbarCheckbox from "@/components/board/toolbar/ToolbarCheckbox";
 import {
   BrowseAllIcon,
   ClockIcon,
@@ -22,6 +24,8 @@ import {
   type BrowseWorkspace,
   type WorkspaceBrowseTab,
 } from "@/data/workspace-browse-data";
+import type { WorkspacePrivacy } from "@/data/workspace-create-data";
+import type { UpdateWorkspacePayload } from "@/types/workspace";
 
 type BrowseWorkspacesModalProps = {
   is_open: boolean;
@@ -29,7 +33,19 @@ type BrowseWorkspacesModalProps = {
   workspaces?: BrowseWorkspace[];
   onSelectWorkspace?: (workspace: BrowseWorkspace) => void;
   onCreateWorkspace?: () => void;
+  /** When provided, each card gets a "…" options button (Rename / Change type / Leave / Delete). */
+  updateWorkspace?: (
+    workspace_slug: string,
+    payload: UpdateWorkspacePayload
+  ) => Promise<BrowseWorkspace>;
+  leaveWorkspace?: (workspace_slug: string) => Promise<void>;
+  deleteWorkspace?: (workspace_slug: string) => Promise<void>;
 };
+
+const PRIVACY_FILTER_OPTIONS: { key: WorkspacePrivacy; label: string }[] = [
+  { key: "open", label: "Open workspaces" },
+  { key: "closed", label: "Closed workspaces" },
+];
 
 type NavTab = { key: WorkspaceBrowseTab; label: string; icon: IconComponent };
 
@@ -82,15 +98,23 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
   workspaces = default_browse_workspaces,
   onSelectWorkspace,
   onCreateWorkspace,
+  updateWorkspace,
+  leaveWorkspace,
+  deleteWorkspace,
 }) => {
   const [active_tab, setActiveTab] = useState<WorkspaceBrowseTab>("all");
   const [query, setQuery] = useState("");
+  const [privacy_filter, setPrivacyFilter] = useState<WorkspacePrivacy[]>([]);
+  const [is_filter_open, setIsFilterOpen] = useState(false);
+  const filter_button_ref = useRef<HTMLButtonElement>(null);
 
   // Reset transient state each time the modal is opened.
   useEffect(() => {
     if (is_open) {
       setActiveTab("all");
       setQuery("");
+      setPrivacyFilter([]);
+      setIsFilterOpen(false);
     }
   }, [is_open]);
 
@@ -110,8 +134,8 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
   }, [is_open, onClose]);
 
   const results = useMemo(
-    () => filterBrowseWorkspaces(workspaces, active_tab, query),
-    [workspaces, active_tab, query]
+    () => filterBrowseWorkspaces(workspaces, active_tab, query, privacy_filter),
+    [workspaces, active_tab, query, privacy_filter]
   );
 
   if (!is_open) return null;
@@ -124,6 +148,14 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
   const handleCreate = () => {
     onCreateWorkspace?.();
   };
+
+  const togglePrivacyFilter = (key: WorkspacePrivacy) => {
+    setPrivacyFilter((current) =>
+      current.includes(key) ? current.filter((value) => value !== key) : [...current, key]
+    );
+  };
+
+  const clearPrivacyFilter = () => setPrivacyFilter([]);
 
   return (
     <div
@@ -158,12 +190,62 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
             </div>
           </div>
           <button
+            ref={filter_button_ref}
             type="button"
-            className="flex items-center gap-[7px] rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-gray-200 transition-colors hover:bg-shell-hover"
+            onClick={() => setIsFilterOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={is_filter_open}
+            className={`flex items-center gap-[7px] rounded-lg px-2.5 py-2 text-[13.5px] font-medium transition-colors ${
+              is_filter_open || privacy_filter.length > 0
+                ? "bg-shell-hover-strong text-gray-50"
+                : "text-gray-200 hover:bg-shell-hover"
+            }`}
           >
             <FilterIcon size={15} />
             Filter
+            {privacy_filter.length > 0 && (
+              <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-semibold text-white">
+                {privacy_filter.length}
+              </span>
+            )}
           </button>
+          <BoardPopover
+            anchor_el={filter_button_ref.current}
+            is_open={is_filter_open}
+            onClose={() => setIsFilterOpen(false)}
+            width={240}
+          >
+            <div className="p-1.5">
+              <div className="flex items-center justify-between px-2.5 pb-1.5 pt-1">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-shell-text-muted">
+                  Workspace type
+                </span>
+                {privacy_filter.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearPrivacyFilter}
+                    className="text-[12px] font-medium text-brand-400 hover:underline"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+              {PRIVACY_FILTER_OPTIONS.map((option) => {
+                const is_checked = privacy_filter.includes(option.key);
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => togglePrivacyFilter(option.key)}
+                    className="flex w-full items-center gap-2.5 rounded-[9px] px-2.5 py-2 text-left text-[13.5px] text-shell-text transition-colors hover:bg-shell-hover"
+                  >
+                    <ToolbarCheckbox state={is_checked ? "checked" : "unchecked"} />
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </BoardPopover>
           <button
             type="button"
             onClick={onClose}
@@ -223,6 +305,9 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
                     key={workspace.id}
                     workspace={workspace}
                     onSelect={handleSelect}
+                    updateWorkspace={updateWorkspace}
+                    leaveWorkspace={leaveWorkspace}
+                    deleteWorkspace={deleteWorkspace}
                   />
                 ))}
               </div>

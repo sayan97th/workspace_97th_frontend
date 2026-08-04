@@ -14,6 +14,11 @@ export { default as TableBoardView } from "./TableBoardView";
 export type { WorkspaceViewProps } from "./TableBoardView";
 export { default as WorkspaceOptionsMenu } from "./WorkspaceOptionsMenu";
 export type { WorkspaceOptionsMenuProps } from "./WorkspaceOptionsMenu";
+export { default as WorkspaceOptionsButton } from "./WorkspaceOptionsButton";
+export type {
+  WorkspaceOptionsButtonProps,
+  WorkspaceOptionsButtonWorkspace,
+} from "./WorkspaceOptionsButton";
 export { default as ChangeWorkspaceTypeModal } from "./ChangeWorkspaceTypeModal";
 export type { ChangeWorkspaceTypeModalProps } from "./ChangeWorkspaceTypeModal";
 export { default as WorkspacePrivacyPicker } from "./WorkspacePrivacyPicker";

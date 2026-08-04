@@ -2,6 +2,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import WorkspaceBadge from "./WorkspaceBadge";
 import AddNewContentMenu from "@/components/workspace-nav/AddNewContentMenu";
+import WorkspaceOptionsButton, {
+  type WorkspaceOptionsButtonProps,
+} from "@/components/workspace-nav/WorkspaceOptionsButton";
 import type { WorkspaceNavApi } from "@/components/workspace-nav/useWorkspaceNav";
 import {
   BrowseAllIcon,
@@ -16,7 +19,12 @@ import {
   type WorkspaceSummary,
 } from "@/data/workspace-switcher-data";
 
-type WorkspaceSwitcherProps = {
+type WorkspaceMutationProps = Pick<
+  WorkspaceOptionsButtonProps,
+  "updateWorkspace" | "leaveWorkspace" | "deleteWorkspace"
+>;
+
+type WorkspaceSwitcherProps = Partial<WorkspaceMutationProps> & {
   active_workspace?: WorkspaceSummary;
   recent_workspaces?: WorkspaceSummary[];
   my_workspaces?: WorkspaceSummary[];
@@ -43,17 +51,35 @@ const filterWorkspaces = (list: WorkspaceSummary[], query: string) => {
   );
 };
 
-type WorkspaceRowProps = {
+type WorkspaceRowProps = Partial<WorkspaceMutationProps> & {
   workspace: WorkspaceSummary;
   is_active: boolean;
   onSelect: (workspace: WorkspaceSummary) => void;
 };
 
-const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, is_active, onSelect }) => (
-  <button
-    type="button"
+/**
+ * Rendered as a `div[role=button]` rather than a `<button>` so it can nest the
+ * options trigger's own `<button>` without invalid button-in-button markup.
+ */
+const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
+  workspace,
+  is_active,
+  onSelect,
+  updateWorkspace,
+  leaveWorkspace,
+  deleteWorkspace,
+}) => (
+  <div
+    role="button"
+    tabIndex={0}
     onClick={() => onSelect(workspace)}
-    className={`flex w-full items-center gap-[11px] rounded-[9px] px-2.5 py-2.5 text-left transition-colors hover:bg-shell-hover ${
+    onKeyDown={(event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        onSelect(workspace);
+      }
+    }}
+    className={`group flex w-full cursor-pointer items-center gap-[11px] rounded-[9px] px-2.5 py-2.5 text-left transition-colors hover:bg-shell-hover ${
       is_active ? "bg-shell-hover" : ""
     }`}
   >
@@ -61,7 +87,15 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, is_active, onSel
     <span className="flex-1 truncate text-sm font-medium text-shell-text">
       {workspace.name}
     </span>
-  </button>
+    {updateWorkspace && leaveWorkspace && deleteWorkspace && (
+      <WorkspaceOptionsButton
+        workspace={workspace}
+        updateWorkspace={updateWorkspace}
+        leaveWorkspace={leaveWorkspace}
+        deleteWorkspace={deleteWorkspace}
+      />
+    )}
+  </div>
 );
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -84,6 +118,9 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   onSelectWorkspace,
   onAddWorkspace,
   onBrowseAll,
+  updateWorkspace,
+  leaveWorkspace,
+  deleteWorkspace,
 }) => {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -210,6 +247,9 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                     workspace={workspace}
                     is_active={workspace.id === active_workspace.id}
                     onSelect={handleSelect}
+                    updateWorkspace={updateWorkspace}
+                    leaveWorkspace={leaveWorkspace}
+                    deleteWorkspace={deleteWorkspace}
                   />
                 ))}
               </>

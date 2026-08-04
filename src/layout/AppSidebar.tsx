@@ -4,6 +4,7 @@ import { useSidebar } from "../context/SidebarContext";
 import useWorkspaces from "@/components/workspace-nav/useWorkspaces";
 import useWorkspaceNav from "@/components/workspace-nav/useWorkspaceNav";
 import NavTree from "@/components/workspace-nav/NavTree";
+import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsButton";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
@@ -27,6 +28,9 @@ const AppSidebar: React.FC = () => {
     my_workspaces,
     selectWorkspace,
     createWorkspace,
+    updateWorkspace,
+    leaveWorkspace,
+    deleteWorkspace,
   } = workspaces_api;
 
   const nav = useWorkspaceNav(active_workspace_slug);
@@ -78,9 +82,21 @@ const AppSidebar: React.FC = () => {
               Workspace
             </span>
             <div className="flex items-center gap-1.5 text-shell-text-muted">
-              <button type="button" className="shell-icon-button h-7 w-7" aria-label="Workspace options">
-                <MoreDotsIcon size={16} />
-              </button>
+              {active_workspace ? (
+                <WorkspaceOptionsButton
+                  workspace={active_workspace}
+                  updateWorkspace={updateWorkspace}
+                  leaveWorkspace={leaveWorkspace}
+                  deleteWorkspace={deleteWorkspace}
+                  trigger_class_name="shell-icon-button h-7 w-7"
+                  icon_size={16}
+                  aria_label="Workspace options"
+                />
+              ) : (
+                <button type="button" className="shell-icon-button h-7 w-7" aria-label="Workspace options" disabled>
+                  <MoreDotsIcon size={16} />
+                </button>
+              )}
               <button type="button" className="shell-icon-button h-7 w-7" aria-label="Search">
                 <SearchIcon />
               </button>
@@ -103,6 +119,9 @@ const AppSidebar: React.FC = () => {
             onSelectWorkspace={selectWorkspace}
             onAddWorkspace={() => setIsCreateOpen(true)}
             onBrowseAll={() => setIsBrowseOpen(true)}
+            updateWorkspace={updateWorkspace}
+            leaveWorkspace={leaveWorkspace}
+            deleteWorkspace={deleteWorkspace}
           />
         </div>
 
@@ -125,6 +144,9 @@ const AppSidebar: React.FC = () => {
         workspaces={workspaces}
         onSelectWorkspace={selectWorkspace}
         onCreateWorkspace={() => setIsCreateOpen(true)}
+        updateWorkspace={updateWorkspace}
+        leaveWorkspace={leaveWorkspace}
+        deleteWorkspace={deleteWorkspace}
       />
 
       <CreateWorkspaceModal
