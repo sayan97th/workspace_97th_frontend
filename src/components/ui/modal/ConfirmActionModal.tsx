@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CloseIcon, WarningTriangleIcon } from "@/icons/workspace-icons";
 import type { ApiError } from "@/types/auth";
 
@@ -69,7 +70,7 @@ const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -125,7 +126,8 @@ const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

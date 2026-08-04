@@ -16,6 +16,7 @@ import NavTreeRow from "./NavTreeRow";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { getLeafHref } from "./helpers";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
 
@@ -56,6 +57,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   const [menu, setMenu] = useState<MenuState>(CLOSED_MENU);
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
   const [move, setMove] = useState<MoveState>({ is_open: false, node: null });
+  const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode | null>(null);
 
   const openRowMenu = (event: React.MouseEvent, node: WorkspaceNavNode) => {
     setMenu({ is_open: true, anchor_el: event.currentTarget as HTMLElement, node });
@@ -72,11 +74,12 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   };
 
   const handleDelete = (node: WorkspaceNavNode) => {
-    const message =
-      node.type === "group"
-        ? `Delete "${node.label}" and everything inside it?`
-        : `Delete "${node.label}"?`;
-    if (window.confirm(message)) void nav.deleteItem(node.id);
+    setPendingDelete(node);
+  };
+
+  const confirmDelete = async () => {
+    if (!pending_delete) return;
+    await nav.deleteItem(pending_delete.id);
   };
 
   const buildRootItems = (): AnchoredMenuItem[] => [
@@ -254,6 +257,26 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
           move.node ? nav.moveItem(move.node.id, { parent_id }) : undefined
         }
         onClose={() => setMove({ is_open: false, node: null })}
+      />
+
+      <ConfirmActionModal
+        is_open={pending_delete !== null}
+        title={pending_delete?.type === "group" ? "Delete folder" : "Delete view"}
+        description={
+          pending_delete?.type === "group" ? (
+            <>
+              &ldquo;{pending_delete.label}&rdquo; and everything inside it will be moved to trash. This can be undone from Trash within 30 days.
+            </>
+          ) : (
+            <>
+              &ldquo;{pending_delete?.label}&rdquo; will be moved to trash. This can be undone from Trash within 30 days.
+            </>
+          )
+        }
+        confirm_label={pending_delete?.type === "group" ? "Delete folder" : "Delete view"}
+        danger
+        onConfirm={confirmDelete}
+        onClose={() => setPendingDelete(null)}
       />
     </>
   );
