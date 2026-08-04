@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   BoardItemDrawer,
   BoardShell,
@@ -15,6 +15,9 @@ import {
   type BoardItemDrawerConfig,
   type BoardToolbarConfig,
 } from "@/components/board";
+import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
+import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
+import { boardContentService } from "@/services/board-content.service";
 import { RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, StarIcon } from "@/icons/workspace-icons";
 import {
@@ -27,7 +30,6 @@ import {
   CLIENT_HUB_QUICK_FILTER_FACETS,
   CLIENT_HUB_SORT_OPTIONS,
   CLIENT_HUB_TEAM_ROSTER,
-  CLIENT_HUB_VIEWS,
   CLIENT_STATUS,
   getClientColumnText,
   getClientHubActivityLog,
@@ -35,6 +37,7 @@ import {
   getClientHubInitialComments,
   type ClientRow,
 } from "@/data/client-hub-data";
+import type { BoardViewDto } from "@/types/board-content";
 
 /** Renders one Client Hub cell for the given column. */
 const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode => {
@@ -128,9 +131,72 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
 
 /**
  * The Client Hub board view. Composes the reusable board shell + table with the
- * Client Hub column schema, seed data and cell renderers.
+ * Client Hub column schema, seed data and cell renderers. The table itself
+ * stays frontend mock data by design, but its tabs are real: this resolves
+ * Client Hub's board id (it renders at the static `/client-hub` route, so it
+ * never gets one from routing) and loads its saved views before mounting the
+ * interactive board body.
  */
 const ClientHubBoard: React.FC = () => {
+  const [board_id, setBoardId] = useState<number | null>(null);
+  const [initial_views, setInitialViews] = useState<BoardViewDto[] | null>(null);
+  const [has_error, setHasError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    boardContentService
+      .getClientHubBoardId()
+      .then((id) => boardContentService.getViews(id).then((views) => ({ id, views })))
+      .then(({ id, views }) => {
+        if (cancelled) return;
+        setBoardId(id);
+        setInitialViews(views);
+      })
+      .catch(() => {
+        if (!cancelled) setHasError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (has_error) {
+    return (
+      <CenteredMessage title="Something went wrong" detail="We couldn't load Client Hub. Please try again." />
+    );
+  }
+
+  if (board_id === null || initial_views === null) {
+    return (
+      <BoardShell
+        header={{ title: "Client Hub", is_favorite: true, invite_count: 18, info: CLIENT_HUB_BOARD_INFO }}
+        tabs={{ primary_label: "Main table", views: [] }}
+      >
+        <BoardLoadingSpinner />
+      </BoardShell>
+    );
+  }
+
+  return <ClientHubBoardBody board_id={board_id} initial_views={initial_views} />;
+};
+
+export default ClientHubBoard;
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+type ClientHubBoardBodyProps = {
+  board_id: number;
+  initial_views: BoardViewDto[];
+};
+
+/**
+ * Mounted only once Client Hub's board id and saved views have resolved, so
+ * `useBoardViewTabs`'s tab-switch effect has real views to replay from its
+ * very first render.
+ */
+const ClientHubBoardBody: React.FC<ClientHubBoardBodyProps> = ({ board_id, initial_views }) => {
   const toolbar_config: BoardToolbarConfig<ClientRow> = useMemo(
     () => ({
       columns: CLIENT_HUB_COLUMNS,
@@ -147,6 +213,12 @@ const ClientHubBoard: React.FC = () => {
   );
 
   const toolbar = useBoardToolbar(toolbar_config);
+
+  const view_tabs = useBoardViewTabs({
+    board_id,
+    initial_views,
+    toolbar,
+  });
 
   const drawer_config: BoardItemDrawerConfig<ClientRow> = useMemo(
     () => ({
@@ -172,9 +244,29 @@ const ClientHubBoard: React.FC = () => {
         invite_count: 18,
         info: CLIENT_HUB_BOARD_INFO,
       }}
-      tabs={{ primary_label: "Main table", views: CLIENT_HUB_VIEWS }}
+      tabs={{
+        tabs: view_tabs.tabs,
+        active_view_id: view_tabs.active_view_id,
+        onSelectView: view_tabs.selectView,
+        onAddView: () => view_tabs.addView(),
+        onRenameView: (id, label) => view_tabs.renameView(Number(id), label),
+        onChangeIcon: (id, icon) => view_tabs.changeViewIcon(Number(id), icon),
+        onDeleteView: (id) => view_tabs.deleteView(Number(id)),
+      }}
       toolbar={<BoardToolbar toolbar={toolbar} />}
     >
+      {view_tabs.is_dirty && (
+        <div className="mb-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={view_tabs.saveActiveView}
+            className="rounded-[7px] bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+          >
+            Save changes to &ldquo;{view_tabs.active_view?.label}&rdquo;
+          </button>
+        </div>
+      )}
+
       <BoardTable<ClientRow>
         columns={toolbar.visible_columns}
         groups={toolbar.groups}
@@ -191,5 +283,3 @@ const ClientHubBoard: React.FC = () => {
     </BoardShell>
   );
 };
-
-export default ClientHubBoard;

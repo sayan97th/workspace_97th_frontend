@@ -97,6 +97,8 @@ export type BoardViewDto = {
   id: number;
   board_id: number;
   label: string;
+  /** Key into `BOARD_VIEW_ICON_OPTIONS` (@/components/board/boardViewIcons); null renders the default per-position icon. */
+  icon: string | null;
   position: number;
   is_primary: boolean;
   filter_state: BoardFilterState | null;
@@ -145,6 +147,7 @@ export type UpdateBoardItemPayload = {
 /** Saves/creates a view — this is also the "save filters for this board view" payload. */
 export type SaveBoardViewPayload = {
   label?: string;
+  icon?: string | null;
   position?: number;
   is_primary?: boolean;
   filter_state?: BoardFilterState | null;

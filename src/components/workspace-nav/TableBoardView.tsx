@@ -8,7 +8,6 @@ import {
   BoardTable,
   BoardToolbar,
   BoardValueCell,
-  BoardViewTabs,
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
   useBoardItemDrawer,
@@ -24,15 +23,14 @@ import {
   type BoardQuickFilterFacet,
   type BoardSortOption,
   type BoardToolbarConfig,
-  type BoardViewTabItem,
 } from "@/components/board";
 import { PlusIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
+import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import type {
   BoardColumnDto,
-  BoardFilterState,
   BoardGroupDto,
   BoardItemDetailDto,
   BoardItemDto,
@@ -55,51 +53,6 @@ export type WorkspaceViewProps = {
 };
 
 const ITEM_COLUMN_ID = "name";
-
-const EMPTY_FILTER_STATE: BoardFilterState = {
-  search_query: "",
-  search_column_ids: [],
-  selected_person_ids: [],
-  quick_filter_selections: {},
-  advanced_filter_rows: [],
-};
-
-/**
- * A saved `filter_state` blob's `quick_filter_selections` may come back as `[]`
- * instead of `{}` — an empty PHP array json-encodes as a list, not an object,
- * so an empty map round-trips through the API as `[]`. Normalize it back to an
- * object so it doesn't perpetually read as "different from the toolbar's `{}`".
- *
- * `search_query` can likewise come back as `null` — views saved before the
- * search box was ever touched store the column as `null` rather than `""`.
- * `deriveBoardRows` calls `.trim()` on it unconditionally, so it must be
- * coerced to a string here rather than downstream.
- */
-const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilterState => {
-  const base = filter_state ?? EMPTY_FILTER_STATE;
-  return {
-    ...base,
-    search_query: base.search_query ?? "",
-    quick_filter_selections: Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
-  };
-};
-
-/**
- * `JSON.stringify` on a plain object serializes keys in insertion order, but
- * MySQL's native `JSON` column type doesn't guarantee that order survives a
- * round-trip — a saved view's `filter_state` can come back with its keys in a
- * different order than it went in. Sorting keys at every level before
- * stringifying makes the dirty-check compare data, not incidental key order.
- * Array element order is left untouched — it's meaningful there (row order).
- */
-const stableStringify = (value: unknown): string => {
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    const keys = Object.keys(value as Record<string, unknown>).sort();
-    return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`).join(",")}}`;
-  }
-  return JSON.stringify(value);
-};
 
 const getInitials = (full_name: string): string =>
   full_name
@@ -277,11 +230,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [columns, setColumns] = useState(initial_columns);
   const [groups, setGroups] = useState(initial_groups);
   const [items, setItems] = useState(initial_items);
-  const [views, setViews] = useState(initial_views);
-  const [active_view_id, setActiveViewId] = useState<number | null>(
-    initial_active_view_id ?? initial_views.find((v) => v.is_primary)?.id ?? initial_views[0]?.id ?? null
-  );
-  const [applied_view_id, setAppliedViewId] = useState<number | null>(null);
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
@@ -440,142 +388,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   );
 
   const toolbar = useBoardToolbar(toolbar_config);
-  const toolbar_ref = useRef(toolbar);
-  toolbar_ref.current = toolbar;
+  // ── Tabs — real saved views, applied onto the toolbar on every tab switch ──
+  const buildViewUrl = (view: BoardViewDto): string =>
+    view.is_primary ? `/boards/${board_id}` : `/boards/${board_id}/views/${view.id}`;
 
-  // ── Apply the active view's saved filter/sort/display state to the toolbar ──
-  //
-  // Two phases, because `addAdvancedFilterRow`/`addSortRule`/`addConditionalColorRule`
-  // each generate their OWN random id for the row they create — there's no way to
-  // tell them "use this id". Phase 1 resets the toolbar and adds one blank
-  // placeholder row per saved rule. Phase 2 waits for those placeholders to show
-  // up in `toolbar`'s state, then fills each one in by position by using its real
-  // (now-known) generated id — calling `updateAdvancedFilterRow(rule.id, rule)`
-  // directly in phase 1 would silently no-op, since `rule.id` is the *saved* id,
-  // which never matches the freshly generated placeholder's id.
-  const [pending_view, setPendingView] = useState<BoardViewDto | null>(null);
+  const view_tabs = useBoardViewTabs({
+    board_id,
+    initial_views,
+    initial_active_view_id,
+    toolbar,
+    onViewActivated: (view) => router.push(buildViewUrl(view)),
+  });
 
-  useEffect(() => {
-    const view = views.find((v) => v.id === active_view_id);
-    if (!view) return;
-
-    const t = toolbar_ref.current;
-    const filter_state = normalizeFilterState(view.filter_state);
-    t.setSearchQuery(filter_state.search_query);
-    t.setAllSearchColumns(false);
-    filter_state.search_column_ids.forEach((id) => t.toggleSearchColumnId(id));
-    t.clearPersonFilter();
-    filter_state.selected_person_ids.forEach((id) => t.togglePersonId(id));
-    t.clearQuickFilters();
-    Object.entries(filter_state.quick_filter_selections).forEach(([facet_id, option_ids]) => {
-      option_ids.forEach((option_id) => t.toggleQuickFilterOption(facet_id, option_id));
-    });
-    t.clearAdvancedFilters();
-    filter_state.advanced_filter_rows.forEach(() => t.addAdvancedFilterRow());
-    t.clearSort();
-    (view.sort_state ?? []).forEach(() => t.addSortRule());
-    t.showAllColumns();
-    (view.hidden_column_ids ?? []).forEach((id) => t.toggleColumnHidden(id));
-    t.unpinAllColumns();
-    (view.pinned_column_ids ?? []).forEach((id) => t.togglePinnedColumn(id));
-    t.setRowHeight(view.row_height);
-    t.clearConditionalColorRules();
-    (view.conditional_color_rules ?? []).forEach(() => t.addConditionalColorRule());
-    t.setGroupByOptionId(view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID);
-
-    setPendingView(view);
-    // Deliberately only re-runs when the active view id changes — replays the
-    // saved state onto the toolbar once per tab switch, not on every toolbar edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active_view_id]);
-
-  useEffect(() => {
-    if (!pending_view) return;
-    const t = toolbar_ref.current;
-    const filter_state = normalizeFilterState(pending_view.filter_state);
-    const wanted_filters = filter_state.advanced_filter_rows;
-    const wanted_sorts = pending_view.sort_state ?? [];
-    const wanted_colors = pending_view.conditional_color_rules ?? [];
-
-    // Not all placeholder rows have landed in toolbar state yet — wait for the render where they have.
-    if (
-      t.advanced_filter_rows.length !== wanted_filters.length ||
-      t.sort_rules.length !== wanted_sorts.length ||
-      t.conditional_color_rules.length !== wanted_colors.length
-    ) {
-      return;
-    }
-
-    wanted_filters.forEach((rule, index) => {
-      const actual_id = t.advanced_filter_rows[index]?.id;
-      if (actual_id) t.updateAdvancedFilterRow(actual_id, rule);
-    });
-    wanted_sorts.forEach((rule, index) => {
-      const actual_id = t.sort_rules[index]?.id;
-      if (actual_id) t.updateSortRule(actual_id, rule);
-    });
-    wanted_colors.forEach((rule, index) => {
-      const actual_id = t.conditional_color_rules[index]?.id;
-      if (actual_id) t.updateConditionalColorRule(actual_id, rule);
-    });
-
-    setAppliedViewId(pending_view.id);
-    setPendingView(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending_view, toolbar.advanced_filter_rows.length, toolbar.sort_rules.length, toolbar.conditional_color_rules.length]);
-
-  // ── "Save filters for this view" dirty check ──
-  const active_view = views.find((v) => v.id === active_view_id) ?? null;
-  const is_view_applied = applied_view_id === active_view_id;
-  const current_filter_state: BoardFilterState = {
-    search_query: toolbar.search_query,
-    search_column_ids: toolbar.search_column_ids,
-    selected_person_ids: toolbar.selected_person_ids,
-    quick_filter_selections: toolbar.quick_filter_selections,
-    advanced_filter_rows: toolbar.advanced_filter_rows,
-  };
-  // `id` on advanced-filter/sort/color rows is a local React-key concern, freshly
-  // generated every time a view is replayed onto the toolbar — it never matches
-  // the saved blob's ids even when the rule itself is unchanged, so it's stripped
-  // before comparing (otherwise every view with a saved rule would always read
-  // as dirty, even right after loading it).
-  const withoutIds = <T extends { id: string }>(rows: T[]): Omit<T, "id">[] =>
-    rows.map(({ id: _id, ...rest }) => rest);
-  const is_dirty =
-    is_view_applied &&
-    active_view !== null &&
-    stableStringify({
-      filter_state: { ...current_filter_state, advanced_filter_rows: withoutIds(current_filter_state.advanced_filter_rows) },
-      sort_state: withoutIds(toolbar.sort_rules),
-      hidden_column_ids: toolbar.hidden_column_ids,
-      pinned_column_ids: toolbar.pinned_column_ids,
-      row_height: toolbar.row_height,
-      conditional_color_rules: withoutIds(toolbar.conditional_color_rules),
-    }) !==
-      stableStringify({
-        filter_state: {
-          ...normalizeFilterState(active_view.filter_state),
-          advanced_filter_rows: withoutIds(normalizeFilterState(active_view.filter_state).advanced_filter_rows),
-        },
-        sort_state: withoutIds(active_view.sort_state ?? []),
-        hidden_column_ids: active_view.hidden_column_ids ?? [],
-        pinned_column_ids: active_view.pinned_column_ids ?? [],
-        row_height: active_view.row_height,
-        conditional_color_rules: withoutIds(active_view.conditional_color_rules ?? []),
-      });
-
-  const handleSaveView = async () => {
-    if (!active_view) return;
-    const saved = await boardContentService.saveView(board_id, active_view.id, {
-      filter_state: current_filter_state,
-      sort_state: toolbar.sort_rules,
-      hidden_column_ids: toolbar.hidden_column_ids,
-      pinned_column_ids: toolbar.pinned_column_ids,
-      conditional_color_rules: toolbar.conditional_color_rules,
-      row_height: toolbar.row_height,
-    });
-    setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
-  };
+  const handleAddView = () => view_tabs.addView();
+  const handleRenameView = (id: number | string, label: string) => view_tabs.renameView(Number(id), label);
+  const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
+  const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
   // ── Item detail drawer ──
   const current_user: BoardPersonOption = user
@@ -629,9 +457,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const drawer = useBoardItemDrawer(drawer_config);
 
-  const buildViewUrl = (view: BoardViewDto): string =>
-    view.is_primary ? `/boards/${board_id}` : `/boards/${board_id}/views/${view.id}`;
-
   const handleRowClick = (row: BoardItemDto) => {
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
@@ -640,8 +465,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const handleDrawerClose = () => {
     drawer.close();
-    const view = views.find((v) => v.id === active_view_id);
-    router.push(view ? buildViewUrl(view) : `/boards/${board_id}`);
+    router.push(view_tabs.active_view ? buildViewUrl(view_tabs.active_view) : `/boards/${board_id}`);
   };
 
   const opened_initial_ref = useRef(false);
@@ -654,26 +478,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     fetchItemDetail(String(row.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, initial_open_item_id]);
-
-  // ── Tabs ──
-  const tabs: BoardViewTabItem[] = views
-    .slice()
-    .sort((a, b) => (a.is_primary === b.is_primary ? a.position - b.position : a.is_primary ? -1 : 1))
-    .map((v) => ({ id: v.id, label: v.label }));
-
-  const handleSelectView = (id: number | string) => {
-    const view = views.find((v) => v.id === id);
-    if (!view) return;
-    setActiveViewId(view.id);
-    router.push(buildViewUrl(view));
-  };
-
-  const handleAddView = async () => {
-    const created = await boardContentService.createView(board_id, { label: `View ${views.length + 1}` });
-    setViews((current) => [...current, created]);
-    setActiveViewId(created.id);
-    router.push(buildViewUrl(created));
-  };
 
   // ── Add group (table) — one click appends a new table at the bottom of the view, no popover. Rename it inline afterward via the group title. ──
   const handleCreateGroup = async () => {
@@ -825,17 +629,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   return (
     <BoardShell
       header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }}
-      tabs={{ tabs, active_view_id, onSelectView: handleSelectView, onAddView: handleAddView }}
+      tabs={{
+        tabs: view_tabs.tabs,
+        active_view_id: view_tabs.active_view_id,
+        onSelectView: view_tabs.selectView,
+        onAddView: handleAddView,
+        onRenameView: handleRenameView,
+        onChangeIcon: handleChangeViewIcon,
+        onDeleteView: handleDeleteView,
+      }}
       toolbar={<BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />}
     >
-      {is_dirty && (
+      {view_tabs.is_dirty && (
         <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
-            onClick={handleSaveView}
+            onClick={view_tabs.saveActiveView}
             className="rounded-[7px] bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
           >
-            Save changes to &ldquo;{active_view?.label}&rdquo;
+            Save changes to &ldquo;{view_tabs.active_view?.label}&rdquo;
           </button>
         </div>
       )}
