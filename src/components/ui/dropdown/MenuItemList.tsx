@@ -22,8 +22,8 @@ export type MenuItemListProps = {
 /**
  * Shared row-list renderer for kebab/options menus: a title, a stack of icon +
  * label rows, and an auto-inserted divider before the first `danger` row.
- * Positioning is intentionally left to the caller — {@link NavRowMenu} wraps
- * this for fixed x/y row menus, {@link AnchoredMenu} for anchor-el popovers.
+ * Positioning is intentionally left to the caller — {@link AnchoredMenu} wraps
+ * this for anchor-el popovers.
  */
 export const MenuItemList: React.FC<MenuItemListProps> = ({ title, items, onSelect }) => {
   const base_item_class =

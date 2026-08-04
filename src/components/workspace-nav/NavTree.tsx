@@ -13,7 +13,7 @@ import {
   StarIcon,
 } from "@/icons/workspace-icons";
 import NavTreeRow from "./NavTreeRow";
-import NavRowMenu, { type NavMenuItem } from "./NavRowMenu";
+import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
 import { getLeafHref } from "./helpers";
@@ -26,8 +26,10 @@ export type NavTreeProps = {
 
 type MenuState = {
   is_open: boolean;
-  x: number;
-  y: number;
+  /** The clicked kebab/add button — {@link AnchoredMenu} measures its own
+   * rendered size against this element's real position, so the popover always
+   * lands next to whichever row was clicked instead of a precomputed guess. */
+  anchor_el: HTMLElement | null;
   /** null → the "add at root" menu; a node → that row's kebab menu. */
   node: WorkspaceNavNode | null;
 };
@@ -41,7 +43,7 @@ type FormState = {
 
 type MoveState = { is_open: boolean; node: WorkspaceNavNode | null };
 
-const CLOSED_MENU: MenuState = { is_open: false, x: 0, y: 0, node: null };
+const CLOSED_MENU: MenuState = { is_open: false, anchor_el: null, node: null };
 const CLOSED_FORM: FormState = { is_open: false, mode: "create-folder", parent_id: null, target: null };
 
 /**
@@ -55,25 +57,12 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
   const [move, setMove] = useState<MoveState>({ is_open: false, node: null });
 
-  const positionMenu = (event: React.MouseEvent): { x: number; y: number } => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    const menu_height = 320;
-    const menu_width = 214;
-    let y = rect.bottom + 4;
-    if (y + menu_height > window.innerHeight) {
-      y = Math.max(8, rect.top - menu_height - 4);
-    }
-    let x = rect.right - menu_width;
-    if (x < 8) x = 8;
-    return { x, y };
-  };
-
   const openRowMenu = (event: React.MouseEvent, node: WorkspaceNavNode) => {
-    setMenu({ is_open: true, ...positionMenu(event), node });
+    setMenu({ is_open: true, anchor_el: event.currentTarget as HTMLElement, node });
   };
 
   const openRootMenu = (event: React.MouseEvent) => {
-    setMenu({ is_open: true, ...positionMenu(event), node: null });
+    setMenu({ is_open: true, anchor_el: event.currentTarget as HTMLElement, node: null });
   };
 
   const closeMenu = () => setMenu(CLOSED_MENU);
@@ -90,7 +79,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
     if (window.confirm(message)) void nav.deleteItem(node.id);
   };
 
-  const buildRootItems = (): NavMenuItem[] => [
+  const buildRootItems = (): AnchoredMenuItem[] => [
     {
       key: "new-folder",
       label: "New folder",
@@ -105,8 +94,8 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
     },
   ];
 
-  const buildNodeItems = (node: WorkspaceNavNode): NavMenuItem[] => {
-    const items: NavMenuItem[] = [];
+  const buildNodeItems = (node: WorkspaceNavNode): AnchoredMenuItem[] => {
+    const items: AnchoredMenuItem[] = [];
 
     if (node.type === "group") {
       items.push(
@@ -237,12 +226,13 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         ))
       )}
 
-      <NavRowMenu
+      <AnchoredMenu
+        anchor_el={menu.anchor_el}
         is_open={menu.is_open}
-        x={menu.x}
-        y={menu.y}
         title={menu.node?.label}
         items={menu.node ? buildNodeItems(menu.node) : buildRootItems()}
+        width={214}
+        align="end"
         onClose={closeMenu}
       />
 

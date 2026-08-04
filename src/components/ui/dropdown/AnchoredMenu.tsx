@@ -16,12 +16,13 @@ export type AnchoredMenuProps = {
 };
 
 /**
- * Generic "…" options menu anchored to a trigger button (unlike {@link NavRowMenu},
- * which is positioned by an explicit x/y from a row's kebab click). Wraps
- * {@link BoardPopover} for anchor-based positioning/outside-click/Escape and
+ * Generic "…" options menu anchored to a trigger button. Wraps
+ * {@link BoardPopover} for anchor-based positioning/outside-click/Escape (it
+ * measures the trigger's real position and the menu's real rendered size, so
+ * it always lands next to the click instead of guessing an offset) and
  * {@link MenuItemList} for the icon+label row styling, so any future single-anchor
- * "…" menu (workspace options, board header, etc.) can reuse this instead of
- * hand-rolling another fixed-position popover.
+ * "…" menu (workspace options, nav tree rows, board header, etc.) can reuse
+ * this instead of hand-rolling another fixed-position popover.
  */
 const AnchoredMenu: React.FC<AnchoredMenuProps> = ({
   anchor_el,

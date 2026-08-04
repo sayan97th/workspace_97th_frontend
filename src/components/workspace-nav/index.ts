@@ -2,8 +2,6 @@ export { default as NavTree } from "./NavTree";
 export type { NavTreeProps } from "./NavTree";
 export { default as NavTreeRow } from "./NavTreeRow";
 export type { NavTreeRowProps } from "./NavTreeRow";
-export { default as NavRowMenu } from "./NavRowMenu";
-export type { NavMenuItem, NavRowMenuProps } from "./NavRowMenu";
 export { default as NavItemFormModal } from "./NavItemFormModal";
 export type { NavItemFormModalProps } from "./NavItemFormModal";
 export { default as AddNewContentMenu } from "./AddNewContentMenu";
