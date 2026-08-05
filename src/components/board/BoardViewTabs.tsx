@@ -18,6 +18,8 @@ import {
   UnlockIcon,
 } from "@/icons/workspace-icons";
 import { PinIcon, TableViewIcon } from "@/icons/board-icons";
+import AddBoardViewMenu from "./AddBoardViewMenu";
+import type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
 import BoardViewIconPicker from "./BoardViewIconPicker";
 import { getBoardViewIcon } from "./boardViewIcons";
 import InlineTitleEditor from "./InlineTitleEditor";
@@ -51,7 +53,15 @@ export type BoardViewTabsProps =
       tabs: BoardViewTabItem[];
       active_view_id: number | string | null;
       onSelectView: (id: number | string) => void;
-      onAddView?: () => void;
+      /** Called with the chosen kind when `view_type_options` is set (picker mode), or with no argument otherwise (plain "always table" mode). */
+      onAddView?: (view_type?: BoardViewKind) => void;
+      /**
+       * Offering this turns "+" into the Monday-style "Board views" picker
+       * (see {@link AddBoardViewMenu}) instead of immediately calling
+       * `onAddView()` — omit to keep the simple one-click "add another table
+       * tab" behavior (e.g. Client Hub, whose tabs are all mock-data tables).
+       */
+      view_type_options?: BoardViewTypeOption[];
       /** Renames a tab — wired to `PATCH /boards/{id}/views/{id}` by the caller. Omit to make tabs read-only. */
       onRenameView?: (id: number | string, label: string) => void;
       /** Assigns (or clears, with `null`) a tab's icon. */
@@ -131,6 +141,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   active_view_id,
   onSelectView,
   onAddView,
+  view_type_options,
   onRenameView,
   onChangeIcon,
   onDeleteView,
@@ -145,8 +156,10 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   const [menu_id, setMenuId] = useState<number | string | null>(null);
   const [pending_delete_id, setPendingDeleteId] = useState<number | string | null>(null);
   const [share_view_id, setShareViewId] = useState<number | string | null>(null);
+  const [is_view_type_menu_open, setIsViewTypeMenuOpen] = useState(false);
   const icon_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const menu_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const add_view_button_ref = useRef<HTMLButtonElement | null>(null);
 
   const pending_delete_tab = tabs.find((tab) => tab.id === pending_delete_id) ?? null;
   const share_tab = tabs.find((tab) => tab.id === share_view_id) ?? null;
@@ -371,13 +384,24 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
       })}
 
       <button
+        ref={add_view_button_ref}
         type="button"
-        onClick={onAddView}
+        onClick={() => (view_type_options ? setIsViewTypeMenuOpen(true) : onAddView?.())}
         className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
         aria-label="Add view"
       >
         <PlusIcon size={15} />
       </button>
+
+      {view_type_options && (
+        <AddBoardViewMenu
+          anchor_el={add_view_button_ref.current}
+          is_open={is_view_type_menu_open}
+          onClose={() => setIsViewTypeMenuOpen(false)}
+          onSelectType={(type) => onAddView?.(type.kind)}
+          types={view_type_options}
+        />
+      )}
 
       {onDeleteView && (
         <ConfirmActionModal

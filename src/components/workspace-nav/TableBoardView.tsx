@@ -2,20 +2,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ADDABLE_COLUMN_TYPES,
   BOARD_DEFAULT_GROUP_BY_ID,
+  BOARD_VIEW_TYPES,
+  BoardComingSoonView,
   BoardItemDrawer,
+  BoardKanban,
   BoardShell,
   BoardTable,
   BoardToolbar,
   BoardValueCell,
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
+  COLUMN_OPTION_PALETTE,
   InlineTitleEditor,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
   type BoardCellOption,
   type BoardColumn,
+  type BoardKanbanLane,
   type BoardOptionActions,
   type BoardGroup as BoardGroupRow,
   type BoardGroupByOption,
@@ -25,8 +31,9 @@ import {
   type BoardQuickFilterFacet,
   type BoardSortOption,
   type BoardToolbarConfig,
+  type BoardViewKind,
 } from "@/components/board";
-import { PlusIcon, RowChatIcon } from "@/icons/board-icons";
+import { KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
@@ -246,6 +253,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
+  const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
@@ -423,7 +431,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     onViewActivated: (view) => router.push(buildViewUrl(view)),
   });
 
-  const handleAddView = () => view_tabs.addView();
+  const handleAddView = (view_type?: BoardViewKind) => view_tabs.addView(view_type);
   const handleRenameView = (id: number | string, label: string) => view_tabs.renameView(Number(id), label);
   const handlePinView = (id: number | string) => view_tabs.pinView(Number(id));
   const handleDuplicateView = (id: number | string) => view_tabs.duplicateView(Number(id));
@@ -743,6 +751,133 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
   };
 
+  // ── Kanban ── lanes are the first status column's options; a card's lane
+  // membership *is* its value in that column, so dragging a card between
+  // lanes is just an ordinary cell edit (`handleUpdateCellValue`) — no
+  // separate "lane" concept to keep in sync.
+  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
+  const kanban_lane_column = columns.find((c) => c.type === "status") ?? null;
+  const kanban_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
+
+  const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
+    if (!kanban_lane_column) return [];
+    const column_id = String(kanban_lane_column.id);
+    const options = (kanban_lane_column.config?.options ?? []).filter((o) => o.is_active !== false);
+    const lanes: BoardKanbanLane<BoardItemDto>[] = options.map((option) => ({
+      id: option.id,
+      label: option.label,
+      color: option.color,
+      rows: kanban_rows.filter((row) => row.values[column_id] === option.id),
+      renamable: true,
+    }));
+    const known_ids = new Set(options.map((o) => o.id));
+    const unassigned = kanban_rows.filter((row) => {
+      const value = row.values[column_id];
+      return value == null || !known_ids.has(String(value));
+    });
+    if (unassigned.length > 0) {
+      lanes.push({ id: "__none__", label: "No status", color: "#c4c4c4", rows: unassigned, renamable: false });
+    }
+    return lanes;
+  }, [kanban_lane_column, kanban_rows]);
+
+  const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
+    const other_columns = columns.filter((c) => c.id !== kanban_lane_column?.id);
+    return (
+      <div className="flex flex-col gap-2">
+        {editing_item_id === row.id ? (
+          <InlineTitleEditor
+            value={row.name}
+            onCommit={(name) => handleRenameItem(row.id, name)}
+            onCancel={() => setEditingItemId(null)}
+            className="w-full min-w-0 text-[13px] font-medium text-shell-text"
+            aria_label="Rename item"
+          />
+        ) : (
+          <span
+            onClick={(event) => {
+              event.stopPropagation();
+              setEditingItemId(row.id);
+            }}
+            className="min-w-0 cursor-text truncate text-[13px] font-medium text-shell-text"
+            title="Click to rename"
+          >
+            {row.name}
+          </span>
+        )}
+        {other_columns.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+            {other_columns.slice(0, 3).map((column) => {
+              const has_options = column.type === "status" || column.type === "tags";
+              return (
+                <div key={column.id} className="h-6 min-w-[26px] max-w-[120px]">
+                  <BoardValueCell
+                    column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
+                    value={row.values[String(column.id)] ?? null}
+                    people={node.owners}
+                    onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
+                    onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
+                    onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {row.comment_count > 0 && (
+          <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
+            <RowChatIcon />
+            {row.comment_count}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  /** Guarantees an item has a table (group) to belong to even when the Kanban view has never opened the Table tab — auto-creates one silently. */
+  const ensureKanbanGroup = async (): Promise<BoardGroupDto | null> => {
+    if (groups[0]) return groups[0];
+    if (view_tabs.active_view_id == null) return null;
+    const created = await boardContentService.createGroup(board_id, { view_id: view_tabs.active_view_id, name: "Board" });
+    setGroups((current) => [...current, created]);
+    return created;
+  };
+
+  const handleMoveKanbanCard = (row_id: string, lane_id: string) => {
+    if (!kanban_lane_column) return;
+    handleUpdateCellValue(Number(row_id), String(kanban_lane_column.id), lane_id === "__none__" ? null : lane_id);
+  };
+
+  const handleSubmitNewKanbanCard = async (lane_id: string, title: string) => {
+    const target_group = await ensureKanbanGroup();
+    if (!target_group) return;
+    const values =
+      kanban_lane_column && lane_id !== "__none__" ? { [String(kanban_lane_column.id)]: lane_id } : undefined;
+    const created = await boardContentService.createItem(board_id, { name: title, group_id: target_group.id, values });
+    setItems((current) => [...current, created]);
+    setAddingKanbanLaneId(null);
+  };
+
+  const handleAddKanbanLane = () => {
+    if (!kanban_lane_column) return;
+    const next_index = kanban_lane_column.config?.options?.length ?? 0;
+    void handleAddColumnOption(String(kanban_lane_column.id), {
+      label: `New lane ${next_index + 1}`,
+      color: COLUMN_OPTION_PALETTE[next_index % COLUMN_OPTION_PALETTE.length],
+    });
+  };
+
+  const handleRenameKanbanLane = (lane_id: string, label: string) => {
+    if (!kanban_lane_column) return;
+    makeOptionActions(String(kanban_lane_column.id)).onRename(lane_id, label);
+  };
+
+  /** A brand-new Kanban tab has no status column yet — offer to add one instead of showing empty lanes. */
+  const handleStartKanbanBoard = () => {
+    const status_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "status");
+    if (status_type) void handleAddColumn(status_type);
+  };
+
   return (
     <BoardShell
       header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }}
@@ -751,6 +886,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         active_view_id: view_tabs.active_view_id,
         onSelectView: view_tabs.selectView,
         onAddView: handleAddView,
+        view_type_options: BOARD_VIEW_TYPES,
         onRenameView: handleRenameView,
         onChangeIcon: handleChangeViewIcon,
         onDeleteView: handleDeleteView,
@@ -785,7 +921,44 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         </div>
       )}
 
-      {groups.length === 0 ? (
+      {active_view_type === "kanban" ? (
+        kanban_lane_column ? (
+          <BoardKanban<BoardItemDto>
+            lanes={kanban_lanes}
+            getRowId={(row) => String(row.id)}
+            renderCard={renderKanbanCard}
+            onCardClick={handleRowClick}
+            selectedRowId={drawer.open_row_id}
+            onMoveCard={handleMoveKanbanCard}
+            onAddCard={(lane_id) => setAddingKanbanLaneId(lane_id)}
+            addingLaneId={adding_kanban_lane_id}
+            onSubmitNewCard={handleSubmitNewKanbanCard}
+            onCancelAddCard={() => setAddingKanbanLaneId(null)}
+            onAddLane={handleAddKanbanLane}
+            onRenameLane={handleRenameKanbanLane}
+          />
+        ) : (
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
+              <KanbanViewIcon size={26} />
+            </span>
+            <h2 className="text-lg font-semibold text-shell-text">Set up your Kanban board</h2>
+            <p className="text-[13.5px] text-shell-text-muted">
+              Kanban lanes come from a Status column — add one to start grouping cards into lanes.
+            </p>
+            <button
+              type="button"
+              onClick={handleStartKanbanBoard}
+              className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+            >
+              <PlusIcon size={13} />
+              Add Status column
+            </button>
+          </div>
+        )
+      ) : active_view_type !== "table" ? (
+        <BoardComingSoonView view_type={active_view_type} />
+      ) : groups.length === 0 ? (
         <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
             <FolderIcon size={26} />

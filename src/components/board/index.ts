@@ -20,6 +20,12 @@ export {
   COLUMN_OPTION_PALETTE,
 } from "./columnTypes";
 export type { BoardColumnKind, AddableColumnType, ColumnTypeSection } from "./columnTypes";
+export { BOARD_VIEW_TYPES, getBoardViewTypeOption } from "./boardViewTypes";
+export type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
+export { default as AddBoardViewMenu } from "./AddBoardViewMenu";
+export type { AddBoardViewMenuProps } from "./AddBoardViewMenu";
+export { default as BoardComingSoonView } from "./BoardComingSoonView";
+export type { BoardComingSoonViewProps } from "./BoardComingSoonView";
 export * from "./cells";
 export { default as InlineTitleEditor } from "./InlineTitleEditor";
 export type { InlineTitleEditorProps } from "./InlineTitleEditor";
@@ -60,3 +66,4 @@ export { default as ConditionalColoringPanel } from "./toolbar/ConditionalColori
 export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColoringPanel";
 export * from "./toolbar/types";
 export * from "./drawer";
+export * from "./kanban";

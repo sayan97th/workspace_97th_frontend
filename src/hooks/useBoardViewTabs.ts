@@ -2,10 +2,12 @@
 import { useEffect, useRef, useState } from "react";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
+  getBoardViewTypeOption,
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
   type BoardRowHeight,
   type BoardSortRule,
+  type BoardViewKind,
   type BoardViewTabItem,
 } from "@/components/board";
 import { boardContentService } from "@/services/board-content.service";
@@ -76,6 +78,15 @@ const stableStringify = (value: unknown): string => {
 
 const withoutIds = <T extends { id: string }>(rows: T[]): Omit<T, "id">[] => rows.map(({ id: _id, ...rest }) => rest);
 
+/** Appends " 2", " 3", … to `base` until it no longer collides with an existing tab's label. */
+function dedupeLabel(base: string, views: BoardViewDto[]): string {
+  const taken = new Set(views.map((v) => v.label));
+  if (!taken.has(base)) return base;
+  let attempt = 2;
+  while (taken.has(`${base} ${attempt}`)) attempt += 1;
+  return `${base} ${attempt}`;
+}
+
 /**
  * The subset of {@link import("@/components/board").useBoardToolbar}'s return
  * value {@link useBoardViewTabs} drives — a saved view is replayed onto the
@@ -140,7 +151,8 @@ export type UseBoardViewTabsApi = {
   /** Whether the toolbar's live state has diverged from the active view's saved state. */
   is_dirty: boolean;
   selectView: (id: number | string) => void;
-  addView: () => Promise<BoardViewDto>;
+  /** Creates a new tab, defaulting to a plain table when no kind is given (see `BoardViewTabs`'s "+" picker). */
+  addView: (view_type?: BoardViewKind) => Promise<BoardViewDto>;
   renameView: (id: number, label: string) => Promise<void>;
   changeViewIcon: (id: number, icon: string | null) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
@@ -331,8 +343,15 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     onViewActivated?.(view);
   };
 
-  const addView = async (): Promise<BoardViewDto> => {
-    const created = await boardContentService.createView(board_id, { label: `View ${views.length + 1}` });
+  const addView = async (view_type?: BoardViewKind): Promise<BoardViewDto> => {
+    // Plain "table" (or omitted) keeps the historical "View N" label; any
+    // other kind is labeled after itself (e.g. "Kanban"), de-duplicated
+    // against tabs already carrying that label.
+    const label =
+      !view_type || view_type === "table"
+        ? `View ${views.length + 1}`
+        : dedupeLabel(getBoardViewTypeOption(view_type).label, views);
+    const created = await boardContentService.createView(board_id, { label, view_type });
     setViews((current) => [...current, created]);
     setActiveViewId(created.id);
     onViewActivated?.(created);

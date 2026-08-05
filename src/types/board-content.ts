@@ -16,6 +16,7 @@ import type {
   BoardConditionalColorRule,
   BoardRowHeight,
   BoardSortRule,
+  BoardViewKind,
 } from "@/components/board";
 
 /**
@@ -107,6 +108,8 @@ export type BoardViewDto = {
   id: number;
   board_id: number;
   label: string;
+  /** Which content the tab renders — see `BoardViewKind` (@/components/board/boardViewTypes). Set once at creation and immutable afterward. */
+  view_type: BoardViewKind;
   /** Key into `BOARD_VIEW_ICON_OPTIONS` (@/components/board/boardViewIcons); null renders the default per-position icon. */
   icon: string | null;
   position: number;
@@ -176,6 +179,8 @@ export type UpdateBoardItemPayload = {
 /** Saves/creates a view — this is also the "save filters for this board view" payload. */
 export type SaveBoardViewPayload = {
   label?: string;
+  /** Only meaningful on creation — the backend ignores it on update (a view's type is immutable). Defaults to `"table"` when omitted. */
+  view_type?: BoardViewKind;
   icon?: string | null;
   position?: number;
   is_primary?: boolean;
