@@ -783,6 +783,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
     const other_columns = columns.filter((c) => c.id !== kanban_lane_column?.id);
+    const has_footer = row.comment_count > 0;
     return (
       <div className="flex flex-col gap-2">
         {editing_item_id === row.id ? (
@@ -790,7 +791,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             value={row.name}
             onCommit={(name) => handleRenameItem(row.id, name)}
             onCancel={() => setEditingItemId(null)}
-            className="w-full min-w-0 text-[13px] font-medium text-shell-text"
+            className="w-full min-w-0 text-[13px] font-semibold text-shell-text"
             aria_label="Rename item"
           />
         ) : (
@@ -799,7 +800,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               event.stopPropagation();
               setEditingItemId(row.id);
             }}
-            className="min-w-0 cursor-text truncate text-[13px] font-medium text-shell-text"
+            className="min-w-0 cursor-text text-[13px] font-semibold leading-snug text-shell-text"
             title="Click to rename"
           >
             {row.name}
@@ -824,11 +825,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             })}
           </div>
         )}
-        {row.comment_count > 0 && (
-          <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
-            <RowChatIcon />
-            {row.comment_count}
-          </span>
+        {has_footer && (
+          <div className="flex items-center gap-1 border-t border-shell-border pt-1.5">
+            <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
+              <RowChatIcon />
+              {row.comment_count}
+            </span>
+          </div>
         )}
       </div>
     );
