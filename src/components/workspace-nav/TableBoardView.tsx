@@ -851,6 +851,53 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     handleUpdateCellValue(Number(row_id), String(kanban_lane_column.id), lane_id === "__none__" ? null : lane_id);
   };
 
+  /**
+   * Persists a lane's new card order after a drag by recomputing `position`
+   * only for that lane's rows, splicing them back into each backing table's
+   * existing position sequence in place — so rows in other lanes (which may
+   * share the same table/group) keep their relative order untouched.
+   */
+  const handleReorderKanbanCards = (lane_id: string, ordered_row_ids: string[]) => {
+    const moved_ids = new Set(ordered_row_ids);
+    const rows_by_group = new Map<number, BoardItemDto[]>();
+    for (const row of kanban_rows) {
+      const list = rows_by_group.get(row.group_id) ?? [];
+      list.push(row);
+      rows_by_group.set(row.group_id, list);
+    }
+
+    const position_updates: Array<{ id: number; position: number }> = [];
+    for (const group_rows of rows_by_group.values()) {
+      const lane_rows_in_group = group_rows.filter((row) => moved_ids.has(String(row.id)));
+      if (lane_rows_in_group.length === 0) continue;
+
+      const new_lane_order = ordered_row_ids
+        .map((id) => lane_rows_in_group.find((row) => String(row.id) === id))
+        .filter((row): row is BoardItemDto => Boolean(row));
+
+      let cursor = 0;
+      group_rows
+        .map((row) => (moved_ids.has(String(row.id)) ? new_lane_order[cursor++] : row))
+        .forEach((row, index) => {
+          if (row.position !== index) position_updates.push({ id: row.id, position: index });
+        });
+    }
+
+    if (position_updates.length === 0) return;
+
+    const previous = items;
+    setItems((current) =>
+      current.map((item) => {
+        const update = position_updates.find((entry) => entry.id === item.id);
+        return update ? { ...item, position: update.position } : item;
+      })
+    );
+
+    Promise.all(
+      position_updates.map((update) => boardContentService.updateItem(board_id, update.id, { position: update.position }))
+    ).catch(() => setItems(previous));
+  };
+
   const handleSubmitNewKanbanCard = async (lane_id: string, title: string) => {
     const target_group = await ensureKanbanGroup();
     if (!target_group) return;
@@ -933,6 +980,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             onCardClick={handleRowClick}
             selectedRowId={drawer.open_row_id}
             onMoveCard={handleMoveKanbanCard}
+            onReorderCards={handleReorderKanbanCards}
             onAddCard={(lane_id) => setAddingKanbanLaneId(lane_id)}
             addingLaneId={adding_kanban_lane_id}
             onSubmitNewCard={handleSubmitNewKanbanCard}
