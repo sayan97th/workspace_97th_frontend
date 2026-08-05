@@ -125,10 +125,13 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     setLoaded(null);
     setHasError(false);
 
+    // Each tab (view) has its own independent columns/groups/items, so the
+    // fetch is re-run on every tab switch, not just on board change — see
+    // `active_view_id` in the dependency array below.
     Promise.all([
-      boardContentService.getColumns(node.id),
-      boardContentService.getGroups(node.id),
-      boardContentService.getItems(node.id),
+      boardContentService.getColumns(node.id, active_view_id),
+      boardContentService.getGroups(node.id, active_view_id),
+      boardContentService.getItems(node.id, active_view_id),
       boardContentService.getViews(node.id),
     ])
       .then(([columns, groups, items, views]) => {
@@ -141,7 +144,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [node.id]);
+  }, [node.id, active_view_id]);
 
   const handleChangeBoardType = async (next_board_type: BoardType) => {
     await import("@/services/workspace.service").then(({ workspaceService }) =>
@@ -484,7 +487,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleRowClick = (row: BoardItemDto) => {
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
-    router.push(`/boards/${board_id}/pulses/${row.id}`);
+    // Carries the active tab along so the board underneath the drawer keeps
+    // showing that tab's content instead of falling back to the primary tab.
+    const suffix =
+      view_tabs.active_view && !view_tabs.active_view.is_primary ? `?view_id=${view_tabs.active_view.id}` : "";
+    router.push(`/boards/${board_id}/pulses/${row.id}${suffix}`);
   };
 
   const handleDrawerClose = () => {
@@ -503,9 +510,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, initial_open_item_id]);
 
-  // ── Add group (table) — one click appends a new table at the bottom of the view, no popover. Rename it inline afterward via the group title. ──
+  // ── Add group (table) — one click appends a new table at the bottom of the active tab, no popover. Rename it inline afterward via the group title. ──
   const handleCreateGroup = async () => {
-    const created = await boardContentService.createGroup(board_id, { name: "New group" });
+    if (view_tabs.active_view_id == null) return;
+    const created = await boardContentService.createGroup(board_id, {
+      view_id: view_tabs.active_view_id,
+      name: "New group",
+    });
     setGroups((current) => [...current, created]);
   };
 
@@ -588,9 +599,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // typed column is appended to the board (status columns get default options
   // seeded server-side). ──
   const handleAddColumn = async (type: AddableColumnType) => {
-    // `key` must be unique per board and match `^[a-z0-9_]+$` — the kind plus a
+    if (view_tabs.active_view_id == null) return;
+    // `key` must be unique per tab and match `^[a-z0-9_]+$` — the kind plus a
     // timestamp satisfies both without a round-trip to check for collisions.
     const created = await boardContentService.createColumn(board_id, {
+      view_id: view_tabs.active_view_id,
       key: `${type.kind}_${Date.now()}`,
       label: type.label,
       type: type.kind,

@@ -37,9 +37,10 @@ export const boardContentService = {
     return response.id;
   },
 
-  /** GET /api/boards/{board_id}/columns */
-  async getColumns(board_id: number): Promise<BoardColumnDto[]> {
-    const response = await apiClient.get<{ data: BoardColumnDto[] }>(`/api/boards/${board_id}/columns`);
+  /** GET /api/boards/{board_id}/columns — scoped to `view_id` (a tab), defaulting to the board's primary tab. */
+  async getColumns(board_id: number, view_id?: number | null): Promise<BoardColumnDto[]> {
+    const query = view_id ? `?view_id=${view_id}` : "";
+    const response = await apiClient.get<{ data: BoardColumnDto[] }>(`/api/boards/${board_id}/columns${query}`);
     return response.data;
   },
 
@@ -72,9 +73,10 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/columns/${column_id}`);
   },
 
-  /** GET /api/boards/{board_id}/groups — a board's tables (any number, 1…N). */
-  async getGroups(board_id: number): Promise<BoardGroupDto[]> {
-    const response = await apiClient.get<{ data: BoardGroupDto[] }>(`/api/boards/${board_id}/groups`);
+  /** GET /api/boards/{board_id}/groups — a tab's tables (any number, 1…N), scoped to `view_id`, defaulting to the board's primary tab. */
+  async getGroups(board_id: number, view_id?: number | null): Promise<BoardGroupDto[]> {
+    const query = view_id ? `?view_id=${view_id}` : "";
+    const response = await apiClient.get<{ data: BoardGroupDto[] }>(`/api/boards/${board_id}/groups${query}`);
     return response.data;
   },
 
@@ -98,9 +100,12 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/groups/${group_id}`);
   },
 
-  /** GET /api/boards/{board_id}/items — optionally narrowed by a server-side `search` term. */
-  async getItems(board_id: number, search?: string): Promise<BoardItemDto[]> {
-    const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  /** GET /api/boards/{board_id}/items — scoped to `view_id` (a tab), defaulting to the board's primary tab, optionally narrowed by a server-side `search` term. */
+  async getItems(board_id: number, view_id?: number | null, search?: string): Promise<BoardItemDto[]> {
+    const params = new URLSearchParams();
+    if (view_id) params.set("view_id", String(view_id));
+    if (search) params.set("search", search);
+    const query = params.toString() ? `?${params.toString()}` : "";
     const response = await apiClient.get<{ data: BoardItemDto[] }>(`/api/boards/${board_id}/items${query}`);
     return response.data;
   },

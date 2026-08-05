@@ -43,6 +43,8 @@ export type BoardColumnConfig = {
 export type BoardColumnDto = {
   id: number;
   board_id: number;
+  /** The tab (view) this column belongs to — columns are independent per tab. */
+  board_view_id: number;
   key: string;
   label: string;
   type: BoardColumnType;
@@ -56,6 +58,8 @@ export type BoardColumnDto = {
 export type BoardGroupDto = {
   id: number;
   board_id: number;
+  /** The tab (view) this group belongs to — groups (and therefore their items) are independent per tab. */
+  board_view_id: number;
   name: string;
   accent_color: string;
   position: number;
@@ -132,6 +136,8 @@ export type BoardViewsIndexDto = {
 };
 
 export type CreateBoardColumnPayload = {
+  /** Which tab (view) the new column belongs to. */
+  view_id: number;
   key: string;
   label: string;
   type: BoardColumnType;
@@ -145,6 +151,8 @@ export type CreateBoardColumnPayload = {
 export type UpdateBoardColumnPayload = Partial<Omit<CreateBoardColumnPayload, "key">>;
 
 export type CreateBoardGroupPayload = {
+  /** Which tab (view) the new group belongs to. */
+  view_id: number;
   name: string;
   accent_color?: string;
   position?: number;
