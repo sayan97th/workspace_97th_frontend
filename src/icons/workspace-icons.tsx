@@ -369,6 +369,44 @@ export const LockBadgeIcon: React.FC<IconProps> = ({ className, size = 9 }) => (
   </svg>
 );
 
+/** Full padlock outline (closed) — used by "Lock view" menu rows, as opposed to {@link LockBadgeIcon}'s small filled tab-status glyph. */
+export const LockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="3.2" y="7" width="9.6" height="6.5" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0 V7" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="8" cy="10.1" r="0.9" fill="currentColor" />
+  </svg>
+);
+
+/** Open-shackle padlock — used by "Unlock view" menu rows. */
+export const UnlockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="3.2" y="7" width="9.6" height="6.5" rx="1.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5.5 7 V5 a2.5 2.5 0 0 1 5 0" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="8" cy="10.1" r="0.9" fill="currentColor" />
+  </svg>
+);
+
+/** Outbound share glyph (box + arrow escaping upward) — used by "Share view" menu rows. */
+export const ShareIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2.5 V9.5 M8 2.5 L5.3 5.2 M8 2.5 L10.7 5.2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M3.5 8.2 V12 A1.3 1.3 0 0 0 4.8 13.3 H11.2 A1.3 1.3 0 0 0 12.5 12 V8.2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 /* ------------------------------------------------------------------ *
  * Top application bar icons (full-width dark header)
  * ------------------------------------------------------------------ */

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BoardItemDrawer,
   BoardShell,
@@ -138,8 +139,12 @@ const renderClientCell = (row: ClientRow, column: BoardColumn): React.ReactNode 
  * interactive board body.
  */
 const ClientHubBoard: React.FC = () => {
+  const search_params = useSearchParams();
+  const initial_active_view_id = Number(search_params.get("view")) || null;
+
   const [board_id, setBoardId] = useState<number | null>(null);
   const [initial_views, setInitialViews] = useState<BoardViewDto[] | null>(null);
+  const [initial_personal_order, setInitialPersonalOrder] = useState<number[] | null>(null);
   const [has_error, setHasError] = useState(false);
 
   useEffect(() => {
@@ -151,7 +156,8 @@ const ClientHubBoard: React.FC = () => {
       .then(({ id, views }) => {
         if (cancelled) return;
         setBoardId(id);
-        setInitialViews(views);
+        setInitialViews(views.views);
+        setInitialPersonalOrder(views.personal_order);
       })
       .catch(() => {
         if (!cancelled) setHasError(true);
@@ -179,7 +185,14 @@ const ClientHubBoard: React.FC = () => {
     );
   }
 
-  return <ClientHubBoardBody board_id={board_id} initial_views={initial_views} />;
+  return (
+    <ClientHubBoardBody
+      board_id={board_id}
+      initial_views={initial_views}
+      initial_active_view_id={initial_active_view_id}
+      initial_personal_order={initial_personal_order}
+    />
+  );
 };
 
 export default ClientHubBoard;
@@ -189,6 +202,8 @@ export default ClientHubBoard;
 type ClientHubBoardBodyProps = {
   board_id: number;
   initial_views: BoardViewDto[];
+  initial_active_view_id: number | null;
+  initial_personal_order: number[] | null;
 };
 
 /**
@@ -196,7 +211,17 @@ type ClientHubBoardBodyProps = {
  * `useBoardViewTabs`'s tab-switch effect has real views to replay from its
  * very first render.
  */
-const ClientHubBoardBody: React.FC<ClientHubBoardBodyProps> = ({ board_id, initial_views }) => {
+const ClientHubBoardBody: React.FC<ClientHubBoardBodyProps> = ({
+  board_id,
+  initial_views,
+  initial_active_view_id,
+  initial_personal_order,
+}) => {
+  const router = useRouter();
+
+  /** Deep-link URL for a tab: the static Client Hub route, with a `?view=` query param for non-primary tabs. */
+  const buildViewUrl = (view: BoardViewDto): string => (view.is_primary ? "/client-hub" : `/client-hub?view=${view.id}`);
+
   const toolbar_config: BoardToolbarConfig<ClientRow> = useMemo(
     () => ({
       columns: CLIENT_HUB_COLUMNS,
@@ -217,7 +242,10 @@ const ClientHubBoardBody: React.FC<ClientHubBoardBodyProps> = ({ board_id, initi
   const view_tabs = useBoardViewTabs({
     board_id,
     initial_views,
+    initial_active_view_id,
+    initial_personal_order,
     toolbar,
+    onViewActivated: (view) => router.replace(buildViewUrl(view)),
   });
 
   const drawer_config: BoardItemDrawerConfig<ClientRow> = useMemo(
@@ -252,6 +280,11 @@ const ClientHubBoardBody: React.FC<ClientHubBoardBodyProps> = ({ board_id, initi
         onRenameView: (id, label) => view_tabs.renameView(Number(id), label),
         onChangeIcon: (id, icon) => view_tabs.changeViewIcon(Number(id), icon),
         onDeleteView: (id) => view_tabs.deleteView(Number(id)),
+        onPinView: (id) => view_tabs.pinView(Number(id)),
+        onDuplicateView: (id) => view_tabs.duplicateView(Number(id)),
+        onLockView: (id) => view_tabs.lockView(Number(id)),
+        getViewUrl: (tab) => (tab.id === view_tabs.tabs[0]?.id ? "/client-hub" : `/client-hub?view=${tab.id}`),
+        onReorderPersonalTabs: (ordered_ids) => view_tabs.reorderPersonalTabs(ordered_ids),
       }}
       toolbar={<BoardToolbar toolbar={toolbar} />}
     >

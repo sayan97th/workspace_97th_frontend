@@ -9,6 +9,10 @@ interface DropdownItemProps {
   baseClassName?: string;
   className?: string;
   children: React.ReactNode;
+  /** Captures the rendered `<button>`'s DOM node — e.g. to anchor a nested submenu flyout off this specific row. Ignored for `tag="a"`. */
+  buttonRef?: React.Ref<HTMLButtonElement>;
+  /** Renders the row greyed-out and non-interactive (e.g. "Move ahead" when already last) instead of hiding it outright. */
+  disabled?: boolean;
 }
 
 export const DropdownItem: React.FC<DropdownItemProps> = ({
@@ -19,6 +23,8 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
   baseClassName = "block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900",
   className = "",
   children,
+  buttonRef,
+  disabled = false,
 }) => {
   const combinedClasses = `${baseClassName} ${className}`.trim();
 
@@ -26,6 +32,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
     if (tag === "button") {
       event.preventDefault();
     }
+    if (disabled) return;
     if (onClick) onClick();
     if (onItemClick) onItemClick();
   };
@@ -39,7 +46,7 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
   }
 
   return (
-    <button onClick={handleClick} className={combinedClasses}>
+    <button ref={buttonRef} onClick={handleClick} disabled={disabled} className={combinedClasses}>
       {children}
     </button>
   );

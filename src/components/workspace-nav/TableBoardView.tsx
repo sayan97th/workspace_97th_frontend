@@ -116,6 +116,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     groups: BoardGroupDto[];
     items: BoardItemDto[];
     views: BoardViewDto[];
+    personal_order: number[] | null;
   } | null>(null);
   const [has_error, setHasError] = useState(false);
 
@@ -131,7 +132,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       boardContentService.getViews(node.id),
     ])
       .then(([columns, groups, items, views]) => {
-        if (!cancelled) setLoaded({ columns, groups, items, views });
+        if (!cancelled) setLoaded({ columns, groups, items, views: views.views, personal_order: views.personal_order });
       })
       .catch(() => {
         if (!cancelled) setHasError(true);
@@ -179,6 +180,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         initial_items={loaded.items}
         initial_views={loaded.views}
         initial_active_view_id={active_view_id ?? null}
+        initial_personal_order={loaded.personal_order}
         initial_open_item_id={initial_open_item_id ?? null}
       />
       <ChangeBoardTypeModal
@@ -206,6 +208,7 @@ type TableBoardBodyProps = {
   initial_items: BoardItemDto[];
   initial_views: BoardViewDto[];
   initial_active_view_id: number | null;
+  initial_personal_order: number[] | null;
   initial_open_item_id: number | null;
 };
 
@@ -225,6 +228,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_items,
   initial_views,
   initial_active_view_id,
+  initial_personal_order,
   initial_open_item_id,
 }) => {
   const router = useRouter();
@@ -411,12 +415,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     board_id,
     initial_views,
     initial_active_view_id,
+    initial_personal_order,
     toolbar,
     onViewActivated: (view) => router.push(buildViewUrl(view)),
   });
 
   const handleAddView = () => view_tabs.addView();
   const handleRenameView = (id: number | string, label: string) => view_tabs.renameView(Number(id), label);
+  const handlePinView = (id: number | string) => view_tabs.pinView(Number(id));
+  const handleDuplicateView = (id: number | string) => view_tabs.duplicateView(Number(id));
+  const handleLockView = (id: number | string) => view_tabs.lockView(Number(id));
+  const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) => view_tabs.reorderPersonalTabs(ordered_ids);
   const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
@@ -732,6 +741,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onRenameView: handleRenameView,
         onChangeIcon: handleChangeViewIcon,
         onDeleteView: handleDeleteView,
+        onPinView: handlePinView,
+        onDuplicateView: handleDuplicateView,
+        onLockView: handleLockView,
+        getViewUrl: (tab) => (tab.id === view_tabs.tabs[0]?.id ? `/boards/${board_id}` : `/boards/${board_id}/views/${tab.id}`),
+        onReorderPersonalTabs: handleReorderPersonalTabs,
       }}
       toolbar={<BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />}
     >

@@ -12,6 +12,26 @@ import { boardContentService } from "@/services/board-content.service";
 import type { BoardFilterState, BoardViewDto, SaveBoardViewPayload } from "@/types/board-content";
 
 /**
+ * Sorts a board's non-primary views for display. When the viewer has a saved
+ * "Reorder (for you only)" order, it wins outright — any view id missing
+ * from it (created after the order was last saved) is appended at the end in
+ * its normal position order. Otherwise, pinned views sort ahead of unpinned
+ * ones, each group by `position`.
+ */
+function sortSecondaryViews(views: BoardViewDto[], personal_order: number[] | null): BoardViewDto[] {
+  const by_position = views.slice().sort((a, b) => a.position - b.position);
+  if (!personal_order) {
+    return by_position.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned));
+  }
+
+  const rank = new Map(personal_order.map((id, index) => [id, index]));
+  const ordered = by_position.filter((v) => rank.has(v.id));
+  const unordered = by_position.filter((v) => !rank.has(v.id));
+  ordered.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+  return [...ordered, ...unordered];
+}
+
+/**
  * A saved `filter_state` blob's `quick_filter_selections` may come back as `[]`
  * instead of `{}` — an empty PHP array json-encodes as a list, not an object,
  * so an empty map round-trips through the API as `[]`. Normalize it back to an
@@ -104,6 +124,8 @@ export type UseBoardViewTabsConfig = {
   initial_views: BoardViewDto[];
   /** Deep-link support — selects this tab instead of the primary one on mount. */
   initial_active_view_id?: number | null;
+  /** The viewer's saved "Reorder (for you only)" tab order, if they have one. */
+  initial_personal_order?: number[] | null;
   toolbar: BoardViewSyncToolbar;
   /** Called right after a tab becomes active — e.g. to push `/boards/{id}/views/{id}`. Most boards don't have view-scoped URLs, so this is optional. */
   onViewActivated?: (view: BoardViewDto) => void;
@@ -113,7 +135,7 @@ export type UseBoardViewTabsApi = {
   views: BoardViewDto[];
   active_view_id: number | null;
   active_view: BoardViewDto | null;
-  /** Ready for `<BoardViewTabs tabs={...} .../>`, sorted primary-first then by position. */
+  /** Ready for `<BoardViewTabs tabs={...} .../>`, sorted primary-first then pinned/personal order. */
   tabs: BoardViewTabItem[];
   /** Whether the toolbar's live state has diverged from the active view's saved state. */
   is_dirty: boolean;
@@ -123,6 +145,11 @@ export type UseBoardViewTabsApi = {
   changeViewIcon: (id: number, icon: string | null) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
   saveActiveView: () => Promise<void>;
+  duplicateView: (id: number) => Promise<BoardViewDto>;
+  pinView: (id: number) => Promise<void>;
+  lockView: (id: number) => Promise<void>;
+  /** Saves the viewer's own tab order — does not affect other collaborators. */
+  reorderPersonalTabs: (ordered_ids: Array<number | string>) => Promise<void>;
 };
 
 /**
@@ -138,9 +165,11 @@ export type UseBoardViewTabsApi = {
  * {@link BoardViewSyncToolbar} slice of it.
  */
 export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTabsApi {
-  const { board_id, initial_views, initial_active_view_id, toolbar, onViewActivated } = config;
+  const { board_id, initial_views, initial_active_view_id, initial_personal_order, toolbar, onViewActivated } =
+    config;
 
   const [views, setViews] = useState(initial_views);
+  const [personal_order, setPersonalOrder] = useState<number[] | null>(initial_personal_order ?? null);
   const [active_view_id, setActiveViewId] = useState<number | null>(
     initial_active_view_id ?? initial_views.find((v) => v.is_primary)?.id ?? initial_views[0]?.id ?? null
   );
@@ -281,11 +310,19 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
   };
 
-  // ── Tabs ──
-  const tabs: BoardViewTabItem[] = views
-    .slice()
-    .sort((a, b) => (a.is_primary === b.is_primary ? a.position - b.position : a.is_primary ? -1 : 1))
-    .map((v) => ({ id: v.id, label: v.label, icon: v.icon }));
+  // ── Tabs ── primary first, then pinned/personal-order among the rest (see `sortSecondaryViews`).
+  const primary_views = views.filter((v) => v.is_primary);
+  const secondary_views = sortSecondaryViews(
+    views.filter((v) => !v.is_primary),
+    personal_order
+  );
+  const tabs: BoardViewTabItem[] = [...primary_views, ...secondary_views].map((v) => ({
+    id: v.id,
+    label: v.label,
+    icon: v.icon,
+    pinned: v.pinned,
+    is_locked: v.is_locked,
+  }));
 
   const selectView = (id: number | string) => {
     const view = views.find((v) => v.id === id);
@@ -312,15 +349,45 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
 
   const deleteView = async (id: number) => {
     await boardContentService.deleteView(board_id, id);
-    setViews((current) => {
-      const remaining = current.filter((v) => v.id !== id);
-      if (active_view_id === id) {
-        const next_active = remaining.find((v) => v.is_primary) ?? remaining[0] ?? null;
-        setActiveViewId(next_active?.id ?? null);
-        if (next_active) onViewActivated?.(next_active);
-      }
-      return remaining;
-    });
+    // Side effects (setActiveViewId, onViewActivated's router navigation) are
+    // deliberately kept out of the `setViews` updater — React can invoke a
+    // functional updater during render, and calling another component's
+    // setState (the router) from in there trips "Cannot update a component
+    // while rendering a different component". `views` here is just the
+    // closure's current snapshot, which is fine for a one-off event handler.
+    const remaining = views.filter((v) => v.id !== id);
+    setViews(remaining);
+    if (active_view_id === id) {
+      const next_active = remaining.find((v) => v.is_primary) ?? remaining[0] ?? null;
+      setActiveViewId(next_active?.id ?? null);
+      if (next_active) onViewActivated?.(next_active);
+    }
+  };
+
+  const duplicateView = async (id: number): Promise<BoardViewDto> => {
+    const created = await boardContentService.duplicateView(board_id, id);
+    setViews((current) => [...current, created]);
+    setActiveViewId(created.id);
+    onViewActivated?.(created);
+    return created;
+  };
+
+  const pinView = async (id: number) => {
+    const saved = await boardContentService.togglePinView(board_id, id);
+    setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
+  };
+
+  const lockView = async (id: number) => {
+    const saved = await boardContentService.toggleLockView(board_id, id);
+    setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
+  };
+
+  const reorderPersonalTabs = async (ordered_ids: Array<number | string>) => {
+    const saved = await boardContentService.updatePersonalViewOrder(
+      board_id,
+      ordered_ids.map((id) => Number(id))
+    );
+    setPersonalOrder(saved);
   };
 
   return {
@@ -335,6 +402,10 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     changeViewIcon,
     deleteView,
     saveActiveView,
+    duplicateView,
+    pinView,
+    lockView,
+    reorderPersonalTabs,
   };
 }
 

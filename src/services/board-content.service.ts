@@ -6,6 +6,7 @@ import type {
   BoardItemDto,
   BoardItemValue,
   BoardViewDto,
+  BoardViewsIndexDto,
   CreateBoardColumnPayload,
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
@@ -142,10 +143,12 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}`);
   },
 
-  /** GET /api/boards/{board_id}/views — the board's tabs. */
-  async getViews(board_id: number): Promise<BoardViewDto[]> {
-    const response = await apiClient.get<{ data: BoardViewDto[] }>(`/api/boards/${board_id}/views`);
-    return response.data;
+  /** GET /api/boards/{board_id}/views — the board's tabs + the viewer's personal tab order, if saved. */
+  async getViews(board_id: number): Promise<BoardViewsIndexDto> {
+    const response = await apiClient.get<{ data: BoardViewDto[]; personal_order: number[] | null }>(
+      `/api/boards/${board_id}/views`
+    );
+    return { views: response.data, personal_order: response.personal_order };
   },
 
   /** POST /api/boards/{board_id}/views — add a new tab. */
@@ -169,5 +172,31 @@ export const boardContentService = {
   /** DELETE /api/boards/{board_id}/views/{view_id} */
   async deleteView(board_id: number, view_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/views/${view_id}`);
+  },
+
+  /** POST /api/boards/{board_id}/views/{view_id}/duplicate — clone a tab's label + saved config. */
+  async duplicateView(board_id: number, view_id: number): Promise<BoardViewDto> {
+    const response = await apiClient.post<{ view: BoardViewDto }>(`/api/boards/${board_id}/views/${view_id}/duplicate`);
+    return response.view;
+  },
+
+  /** POST /api/boards/{board_id}/views/{view_id}/pin — toggles whether the tab is pinned. */
+  async togglePinView(board_id: number, view_id: number): Promise<BoardViewDto> {
+    const response = await apiClient.post<{ view: BoardViewDto }>(`/api/boards/${board_id}/views/${view_id}/pin`);
+    return response.view;
+  },
+
+  /** POST /api/boards/{board_id}/views/{view_id}/lock — toggles whether the tab is locked to restrict edits. */
+  async toggleLockView(board_id: number, view_id: number): Promise<BoardViewDto> {
+    const response = await apiClient.post<{ view: BoardViewDto }>(`/api/boards/${board_id}/views/${view_id}/lock`);
+    return response.view;
+  },
+
+  /** PUT /api/boards/{board_id}/views/order — saves the viewer's own "Reorder (for you only)" tab order. */
+  async updatePersonalViewOrder(board_id: number, view_ids: Array<number | string>): Promise<number[]> {
+    const response = await apiClient.put<{ personal_order: number[] }>(`/api/boards/${board_id}/views/order`, {
+      view_ids,
+    });
+    return response.personal_order;
   },
 };

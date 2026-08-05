@@ -107,6 +107,11 @@ export type BoardViewDto = {
   icon: string | null;
   position: number;
   is_primary: boolean;
+  /** Sorts ahead of unpinned tabs (behind the primary tab) whenever the viewer has no personal tab order saved. */
+  pinned: boolean;
+  /** While locked, nobody can rename/delete/duplicate the view or save filter/sort/display changes to it. */
+  is_locked: boolean;
+  locked_by_id: number | null;
   filter_state: BoardFilterState | null;
   sort_state: BoardSortRule[] | null;
   group_by_option_id: string | null;
@@ -114,6 +119,16 @@ export type BoardViewDto = {
   pinned_column_ids: string[] | null;
   row_height: BoardRowHeight;
   conditional_color_rules: BoardConditionalColorRule[] | null;
+};
+
+/**
+ * `GET /api/boards/{board_id}/views` — the board's tabs plus the
+ * authenticated viewer's own "Reorder (for you only)" tab order, if they've
+ * ever saved one for this board.
+ */
+export type BoardViewsIndexDto = {
+  views: BoardViewDto[];
+  personal_order: number[] | null;
 };
 
 export type CreateBoardColumnPayload = {

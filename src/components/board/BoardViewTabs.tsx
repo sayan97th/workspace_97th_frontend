@@ -1,9 +1,24 @@
 "use client";
 import React, { useRef, useState } from "react";
 import AnchoredMenu from "@/components/ui/dropdown/AnchoredMenu";
+import type { MenuListItem } from "@/components/ui/dropdown/MenuItemList";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
-import { ChevronDownIcon, DeleteIcon, MoreDotsIcon, PlusIcon, RenameIcon } from "@/icons/workspace-icons";
-import { TableViewIcon } from "@/icons/board-icons";
+import CopyLinkModal from "@/components/ui/modal/CopyLinkModal";
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  LockBadgeIcon,
+  LockIcon,
+  MoreDotsIcon,
+  MoveToIcon,
+  PlusIcon,
+  RenameIcon,
+  ShareIcon,
+  UnlockIcon,
+} from "@/icons/workspace-icons";
+import { PinIcon, TableViewIcon } from "@/icons/board-icons";
 import BoardViewIconPicker from "./BoardViewIconPicker";
 import { getBoardViewIcon } from "./boardViewIcons";
 import InlineTitleEditor from "./InlineTitleEditor";
@@ -14,6 +29,10 @@ export type BoardViewTabItem = {
   label: string;
   /** Key into `BOARD_VIEW_ICON_OPTIONS`; null/undefined shows no icon (except the primary tab, which defaults to the table icon). */
   icon?: string | null;
+  /** Sorts ahead of unpinned tabs whenever the viewer has no personal tab order saved. */
+  pinned?: boolean;
+  /** While locked, Rename/Duplicate/Delete are hidden — only Pin, Share, Unlock and Reorder remain. */
+  is_locked?: boolean;
 };
 
 export type BoardViewTabsProps =
@@ -40,6 +59,16 @@ export type BoardViewTabsProps =
       onChangeIcon?: (id: number | string, icon: string | null) => void;
       /** Deletes a non-primary tab. Omit to hide the delete option. */
       onDeleteView?: (id: number | string) => void;
+      /** Toggles whether a tab is pinned. Omit to hide the pin option. */
+      onPinView?: (id: number | string) => void;
+      /** Duplicates a tab's label + saved filter/sort/display config. Omit to hide the duplicate option. */
+      onDuplicateView?: (id: number | string) => void;
+      /** Toggles whether a tab is locked to restrict edits. Omit to hide the lock option. */
+      onLockView?: (id: number | string) => void;
+      /** Builds the deep-link URL for a tab's "Share view" menu item. Omit to hide the share option. */
+      getViewUrl?: (tab: BoardViewTabItem) => string;
+      /** Saves the viewer's own tab order (doesn't affect other collaborators). Omit to hide the reorder option. */
+      onReorderPersonalTabs?: (ordered_ids: Array<number | string>) => void;
     };
 
 /**
@@ -50,7 +79,8 @@ export type BoardViewTabsProps =
  * loading skeleton, where there's nothing to click yet) and the interactive
  * `{ tabs, active_view_id, onSelectView }` mode every real board (Client Hub
  * included) renders through — real tab switching, inline rename, an icon
- * picker and tab deletion, all backed by `boards/{id}/views`.
+ * picker, pin/duplicate/share/lock and a personal reorder submenu, all
+ * backed by `boards/{id}/views`.
  */
 const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
   if ("tabs" in props) {
@@ -110,15 +140,120 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   onRenameView,
   onChangeIcon,
   onDeleteView,
+  onPinView,
+  onDuplicateView,
+  onLockView,
+  getViewUrl,
+  onReorderPersonalTabs,
 }) => {
   const [editing_id, setEditingId] = useState<number | string | null>(null);
   const [icon_picker_id, setIconPickerId] = useState<number | string | null>(null);
   const [menu_id, setMenuId] = useState<number | string | null>(null);
   const [pending_delete_id, setPendingDeleteId] = useState<number | string | null>(null);
+  const [share_view_id, setShareViewId] = useState<number | string | null>(null);
   const icon_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const menu_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   const pending_delete_tab = tabs.find((tab) => tab.id === pending_delete_id) ?? null;
+  const share_tab = tabs.find((tab) => tab.id === share_view_id) ?? null;
+  const non_primary_tabs = tabs.slice(1);
+
+  /** Builds the "Reorder (for you only)" submenu for a non-primary tab, or `undefined` when there's nothing to reorder. */
+  const buildReorderSubmenu = (tab: BoardViewTabItem): MenuListItem[] | undefined => {
+    if (!onReorderPersonalTabs || non_primary_tabs.length < 2) return undefined;
+
+    const index = non_primary_tabs.findIndex((t) => t.id === tab.id);
+    const is_first = index === 0;
+    const is_last = index === non_primary_tabs.length - 1;
+    const other_ids = non_primary_tabs.filter((t) => t.id !== tab.id).map((t) => t.id);
+
+    const moveTo = (target_index: number) => {
+      const ordered = other_ids.slice();
+      ordered.splice(target_index, 0, tab.id);
+      onReorderPersonalTabs(ordered);
+    };
+
+    return [
+      {
+        key: "move-back",
+        label: "Move back",
+        icon: <ChevronRightIcon className="-rotate-90" size={13} />,
+        disabled: is_first,
+        onClick: () => moveTo(index - 1),
+      },
+      {
+        key: "move-ahead",
+        label: "Move ahead",
+        icon: <ChevronRightIcon className="rotate-90" size={13} />,
+        disabled: is_last,
+        onClick: () => moveTo(index + 1),
+      },
+      {
+        key: "move-first",
+        label: "Move to first",
+        icon: <ChevronRightIcon className="-rotate-90" size={13} />,
+        disabled: is_first,
+        onClick: () => moveTo(0),
+      },
+      {
+        key: "move-last",
+        label: "Move to last",
+        icon: <ChevronRightIcon className="rotate-90" size={13} />,
+        disabled: is_last,
+        onClick: () => moveTo(other_ids.length),
+      },
+    ];
+  };
+
+  /** Builds a tab's "…" menu items — a reduced set while the view is locked, matching the backend's edit guards. */
+  const buildMenuItems = (tab: BoardViewTabItem, is_primary: boolean): MenuListItem[] => {
+    const items: MenuListItem[] = [];
+    const is_locked = Boolean(tab.is_locked);
+
+    if (onRenameView && !is_locked) {
+      items.push({ key: "rename", label: "Rename view", icon: <RenameIcon size={14} />, onClick: () => setEditingId(tab.id) });
+    }
+    if (onPinView) {
+      items.push({
+        key: "pin",
+        label: tab.pinned ? "Unpin view" : "Pin view",
+        icon: <PinIcon size={14} />,
+        onClick: () => onPinView(tab.id),
+      });
+    }
+    if (onDuplicateView && !is_locked) {
+      items.push({ key: "duplicate", label: "Duplicate view", icon: <DuplicateIcon size={14} />, onClick: () => onDuplicateView(tab.id) });
+    }
+    if (getViewUrl) {
+      items.push({ key: "share", label: "Share view", icon: <ShareIcon size={14} />, onClick: () => setShareViewId(tab.id) });
+    }
+    if (onLockView) {
+      items.push({
+        key: "lock",
+        label: is_locked ? "Unlock view" : "Lock view to restrict edits",
+        icon: is_locked ? <UnlockIcon size={14} /> : <LockIcon size={14} />,
+        onClick: () => onLockView(tab.id),
+      });
+    }
+    if (!is_primary) {
+      const submenu = buildReorderSubmenu(tab);
+      if (submenu) {
+        items.push({
+          key: "reorder",
+          label: "Reorder (for you only)",
+          icon: <MoveToIcon size={14} />,
+          trailing: <ChevronRightIcon size={11} />,
+          onClick: () => {},
+          submenu,
+        });
+      }
+    }
+    if (onDeleteView && !is_primary && !is_locked) {
+      items.push({ key: "delete", label: "Delete view", icon: <DeleteIcon size={14} />, danger: true, onClick: () => setPendingDeleteId(tab.id) });
+    }
+
+    return items;
+  };
 
   return (
     <div className="flex items-center gap-0.5 border-b border-shell-border">
@@ -128,6 +263,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         const is_editing = editing_id === tab.id;
         const Icon = getBoardViewIcon(tab.icon) ?? (is_primary ? TableViewIcon : null);
         const key = String(tab.id);
+        const menu_items = buildMenuItems(tab, is_primary);
 
         return (
           <div
@@ -138,6 +274,12 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
                 : "group -mb-px flex items-center gap-1.5 border-b-2 border-transparent px-3 py-[9px] transition-colors hover:border-shell-border-strong"
             }
           >
+            {tab.pinned && (
+              <span className="flex flex-none items-center text-shell-text-faint" aria-label="Pinned">
+                <PinIcon size={11} />
+              </span>
+            )}
+
             {onChangeIcon ? (
               <button
                 ref={(el) => {
@@ -177,18 +319,23 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectView(tab.id)}
-                onDoubleClick={() => onRenameView && setEditingId(tab.id)}
+                onDoubleClick={() => onRenameView && !tab.is_locked && setEditingId(tab.id)}
                 className={
                   is_active
-                    ? "cursor-pointer whitespace-nowrap text-[13.5px] font-semibold text-shell-text"
-                    : "cursor-pointer whitespace-nowrap text-[13.5px] font-medium text-shell-text-muted transition-colors group-hover:text-shell-text"
+                    ? "flex items-center gap-1 whitespace-nowrap text-[13.5px] font-semibold text-shell-text"
+                    : "flex items-center gap-1 whitespace-nowrap text-[13.5px] font-medium text-shell-text-muted transition-colors group-hover:text-shell-text"
                 }
               >
                 {tab.label}
+                {tab.is_locked && (
+                  <span className="flex flex-none items-center text-shell-text-faint" aria-label="Locked">
+                    <LockBadgeIcon size={9} />
+                  </span>
+                )}
               </button>
             )}
 
-            {(onRenameView || onDeleteView) && (
+            {menu_items.length > 0 && (
               <button
                 ref={(el) => {
                   menu_button_refs.current[key] = el;
@@ -216,28 +363,13 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
               />
             )}
 
-            {(onRenameView || onDeleteView) && (
+            {menu_items.length > 0 && (
               <AnchoredMenu
                 anchor_el={menu_button_refs.current[key] ?? null}
                 is_open={menu_id === tab.id}
                 onClose={() => setMenuId(null)}
-                width={190}
-                items={[
-                  ...(onRenameView
-                    ? [{ key: "rename", label: "Rename view", icon: <RenameIcon size={14} />, onClick: () => setEditingId(tab.id) }]
-                    : []),
-                  ...(onDeleteView && !is_primary
-                    ? [
-                        {
-                          key: "delete",
-                          label: "Delete view",
-                          icon: <DeleteIcon size={14} />,
-                          danger: true,
-                          onClick: () => setPendingDeleteId(tab.id),
-                        },
-                      ]
-                    : []),
-                ]}
+                width={220}
+                items={menu_items}
               />
             )}
           </div>
@@ -273,6 +405,16 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
           onConfirm={() => {
             if (pending_delete_tab) onDeleteView(pending_delete_tab.id);
           }}
+        />
+      )}
+
+      {getViewUrl && (
+        <CopyLinkModal
+          is_open={share_tab !== null}
+          title="Share view"
+          description={share_tab ? <>Anyone with access to this board can open &ldquo;{share_tab.label}&rdquo; from this link.</> : null}
+          link={share_tab && typeof window !== "undefined" ? `${window.location.origin}${getViewUrl(share_tab)}` : ""}
+          onClose={() => setShareViewId(null)}
         />
       )}
     </div>
