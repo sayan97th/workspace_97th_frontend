@@ -172,7 +172,7 @@ function SortableCard<TRow>({ row, row_id, lane_color, is_selected, can_drag, on
 function CardPreview<TRow>({ row, lane_color, renderCard }: { row: TRow; lane_color: string; renderCard: (row: TRow) => React.ReactNode }) {
   return (
     <div
-      className="rotate-2 rounded-lg border border-shell-border-strong bg-shell-panel p-2.5 pl-3 shadow-xl ring-1 ring-black/5"
+      className="rounded-lg border border-shell-border-strong bg-shell-panel p-2.5 pl-3 shadow-xl ring-1 ring-black/5"
       style={{ borderLeftWidth: 3, borderLeftColor: lane_color, width: LANE_WIDTH - 16 }}
     >
       {renderCard(row)}
