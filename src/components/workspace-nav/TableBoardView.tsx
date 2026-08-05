@@ -16,6 +16,7 @@ import {
   COLUMN_KIND_SWATCH,
   COLUMN_OPTION_PALETTE,
   InlineTitleEditor,
+  KANBAN_DEFAULT_LANE_OPTIONS,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
@@ -39,6 +40,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import type {
+  BoardColumnConfig,
   BoardColumnDto,
   BoardGroupDto,
   BoardItemDetailDto,
@@ -605,8 +607,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   // ── Add column — "+" header button opens the reusable AddColumnMenu; a new
   // typed column is appended to the board (status columns get default options
-  // seeded server-side). ──
-  const handleAddColumn = async (type: AddableColumnType) => {
+  // seeded server-side, unless the caller supplies its own `config` — e.g.
+  // the Kanban "set up your board" flow, which seeds Monday-style lane
+  // labels instead). ──
+  const handleAddColumn = async (type: AddableColumnType, config?: BoardColumnConfig) => {
     if (view_tabs.active_view_id == null) return;
     // `key` must be unique per tab and match `^[a-z0-9_]+$` — the kind plus a
     // timestamp satisfies both without a round-trip to check for collisions.
@@ -616,6 +620,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       label: type.label,
       type: type.kind,
       width: type.default_width,
+      config,
     });
     setColumns((current) => [...current, created]);
   };
@@ -922,10 +927,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     makeOptionActions(String(kanban_lane_column.id)).onRename(lane_id, label);
   };
 
-  /** A brand-new Kanban tab has no status column yet — offer to add one instead of showing empty lanes. */
+  /**
+   * A brand-new Kanban tab has no status column yet — offer to add one
+   * instead of showing empty lanes, seeded with `KANBAN_DEFAULT_LANE_OPTIONS`
+   * ("To do" / "Working on it" / "Done") rather than the generic Status
+   * column's server-side default (which includes "Stuck") so a fresh board
+   * doesn't open with a lane that reads as a problem to solve.
+   */
   const handleStartKanbanBoard = () => {
     const status_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "status");
-    if (status_type) void handleAddColumn(status_type);
+    if (!status_type) return;
+    const options = KANBAN_DEFAULT_LANE_OPTIONS.map((option, index) => ({
+      id: `opt_${Date.now()}_${index}`,
+      label: option.label,
+      color: option.color,
+    }));
+    void handleAddColumn(status_type, { options });
   };
 
   return (
