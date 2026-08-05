@@ -5,7 +5,6 @@ import type { MenuListItem } from "@/components/ui/dropdown/MenuItemList";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import CopyLinkModal from "@/components/ui/modal/CopyLinkModal";
 import {
-  ChevronDownIcon,
   ChevronRightIcon,
   DeleteIcon,
   DuplicateIcon,
@@ -109,11 +108,6 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
           {view}
         </span>
       ))}
-
-      <span className="flex cursor-pointer items-center gap-1.5 px-3 py-[9px] text-[13.5px] font-medium text-shell-text-muted transition-colors hover:text-shell-text">
-        All
-        <ChevronDownIcon size={11} />
-      </span>
 
       <button
         type="button"
@@ -375,11 +369,6 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
           </div>
         );
       })}
-
-      <span className="flex cursor-pointer items-center gap-1.5 px-3 py-[9px] text-[13.5px] font-medium text-shell-text-muted transition-colors hover:text-shell-text">
-        All
-        <ChevronDownIcon size={11} />
-      </span>
 
       <button
         type="button"
