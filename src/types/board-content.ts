@@ -74,12 +74,16 @@ export type BoardItemDto = {
   board_id: number;
   group_id: number;
   name: string;
+  /** Free-form item detail, edited from the item drawer — unlike column `values`, this is a first-class field on the item itself (like `name`), so it needs no backing column to exist. */
+  description: string | null;
   position: number;
   /** Trello-style Kanban card cover, set via `updateItemCover`/`removeItemCover`. */
   cover_image_url: string | null;
   values: Record<string, BoardItemValue>;
   /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
   comment_count: number;
+  /** Total attachments across this item's comments — powers the Kanban card's attachment count. Only `getItems` returns a real count; other calls return 0. */
+  attachment_count: number;
 };
 
 /** Extends {@link BoardItemDto} with the fields the pulse detail drawer shows. */
@@ -176,6 +180,7 @@ export type UpdateBoardGroupPayload = Partial<CreateBoardGroupPayload>;
 
 export type CreateBoardItemPayload = {
   name: string;
+  description?: string | null;
   group_id: number;
   position?: number;
   values?: Record<string, BoardItemValue>;
@@ -183,6 +188,7 @@ export type CreateBoardItemPayload = {
 
 export type UpdateBoardItemPayload = {
   name?: string;
+  description?: string | null;
   group_id?: number;
   position?: number;
 };

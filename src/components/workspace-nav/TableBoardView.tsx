@@ -19,10 +19,12 @@ import {
   COLUMN_KIND_SWATCH,
   COLUMN_OPTION_PALETTE,
   InlineTitleEditor,
+  KANBAN_COLORS,
   KANBAN_DEFAULT_LANE_OPTIONS,
   KanbanCardCover,
   KanbanCardLabels,
   KanbanCardMembers,
+  KanbanItemDrawer,
   PersonAvatarStack,
   useBoardItemDrawer,
   useBoardToolbar,
@@ -36,14 +38,15 @@ import {
   type BoardGroupByOption,
   type BoardHeaderInfo,
   type BoardItemDrawerConfig,
+  type DrawerDetailField,
   type BoardPersonOption,
   type BoardQuickFilterFacet,
   type BoardSortOption,
   type BoardToolbarConfig,
   type BoardViewKind,
 } from "@/components/board";
-import { CalendarViewIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
-import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
+import { AttachmentIcon, CalendarViewIcon, CheckIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
+import { ChevronRightIcon, FolderIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
@@ -92,6 +95,31 @@ const formatDate = (value: string | null): string => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+/**
+ * A Kanban card's due-date pill: "Today" (flagged urgent) beats the usual
+ * short "Nov 4" form, and a past-due date is flagged urgent too.
+ *
+ * A plain `YYYY-MM-DD` string parses as UTC midnight (`new Date(value)`),
+ * but `toDateString()`/`toLocaleDateString()` read it back in the *local*
+ * zone — west of UTC that rolls the calendar day back by one (a stored
+ * "2026-08-06" reads as "Aug 5"). Parsing the y/m/d digits directly into a
+ * *local* `Date` sidesteps the UTC round-trip entirely.
+ */
+const formatKanbanDueDate = (value: string): { label: string; urgent: boolean } => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  const date = match
+    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return { label: value, urgent: false };
+  const today = new Date();
+  const start_of_today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const is_same_day = date.getTime() === start_of_today.getTime();
+  return {
+    label: is_same_day ? "Today" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    urgent: date < new Date(start_of_today.getTime() + 24 * 60 * 60 * 1000),
+  };
 };
 
 /** Resolves a node into the "Board info" popover content shown from its header chevron. */
@@ -277,6 +305,36 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [node.owners]
   );
 
+  // ── Shared across Kanban/Calendar/the drawer's Details strip ── the board's
+  // first column of each relevant type drives that view's structural axis:
+  // Kanban's lanes and Calendar's event color both come from the first
+  // `status` column, Trello-style card "Labels"/Calendar overflow chips from
+  // the first `tags` column, card/event "Members" from the first `people`
+  // column, and Calendar's day placement from the first (and, for a
+  // start+end range, second) `date` column. A row's membership in all of
+  // these *is* just its value in that column, so dragging a card between
+  // lanes or an event onto a new day is an ordinary cell edit
+  // (`handleUpdateCellValue`) — no separate "lane"/"event" concept to keep
+  // in sync. Declared this early (rather than alongside `kanban_lanes`
+  // below) purely so `getDetailFields` — built ahead of `useBoardItemDrawer`
+  // — can close over them without a temporal-dead-zone crash.
+  const board_status_column = columns.find((c) => c.type === "status") ?? null;
+  const board_label_column = columns.find((c) => c.type === "tags") ?? null;
+  const board_member_column = columns.find((c) => c.type === "people") ?? null;
+  // A Kanban card's priority pill/left-border accent — a second `status`
+  // column (the first one is already spoken for by the lanes) labeled
+  // "Priority", so a board opts in just by adding one with that label; no
+  // new column type or schema change needed.
+  const board_priority_column =
+    columns.find((c) => c.type === "status" && c.id !== board_status_column?.id && /priority/i.test(c.label)) ?? null;
+  // A Kanban card's "mark complete" toggle — the board's first `checkbox`
+  // column, mirroring how `board_status_column` etc pick "the first column
+  // of that type". Optional: cards render without a toggle until one exists.
+  const board_done_column = columns.find((c) => c.type === "checkbox") ?? null;
+  const date_columns = useMemo(() => columns.filter((c) => c.type === "date"), [columns]);
+  const board_date_column = date_columns[0] ?? null;
+  const board_date_end_column = date_columns[1] ?? null;
+
   const board_columns: BoardColumn[] = useMemo(() => {
     const item_column: BoardColumn = {
       id: ITEM_COLUMN_ID,
@@ -453,83 +511,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
-  // ── Item detail drawer ──
-  const current_user: BoardPersonOption = user
-    ? { id: String(user.id), name: user.full_name, initials: getInitials(user.full_name), avatar_seed: 0 }
-    : { id: "0", name: "You", initials: "Y", avatar_seed: 0 };
-
-  const fetchItemDetail = useCallback(
-    (item_id: string) => {
-      if (item_detail_by_id[item_id]) return;
-      boardContentService.getItem(board_id, Number(item_id)).then((detail) => {
-        setItemDetailById((current) => ({ ...current, [item_id]: detail }));
-      });
-    },
-    [board_id, item_detail_by_id]
-  );
-
-  const getInfoBoxes = useCallback(
-    (row: BoardItemDto) => {
-      const detail = item_detail_by_id[String(row.id)];
-      const group = groups.find((g) => g.id === row.group_id);
-      return [
-        {
-          id: "details",
-          label: "Details",
-          accent_color: "#00c875",
-          rows: [
-            { label: "Table", value: group?.name ?? "—" },
-            { label: "Created by", value: detail?.creator?.full_name ?? "Loading…" },
-            { label: "Created at", value: detail ? formatDate(detail.created_at) : "Loading…" },
-          ],
-        },
-      ];
-    },
-    [item_detail_by_id, groups]
-  );
-
-  const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
-    () => ({
-      getRowId: (row) => String(row.id),
-      getRowTitle: (row) => row.name,
-      eyebrow_label: `${node.label} · Item`,
-      current_user,
-      mentionable_people: persons,
-      getInitialComments: () => [],
-      board_id,
-      getInfoBoxes,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, board_id, getInfoBoxes]
-  );
-
-  const drawer = useBoardItemDrawer(drawer_config);
-
-  const handleRowClick = (row: BoardItemDto) => {
-    drawer.openRow(row);
-    fetchItemDetail(String(row.id));
-    // Carries the active tab along so the board underneath the drawer keeps
-    // showing that tab's content instead of falling back to the primary tab.
-    const suffix =
-      view_tabs.active_view && !view_tabs.active_view.is_primary ? `?view_id=${view_tabs.active_view.id}` : "";
-    router.push(`/boards/${board_id}/pulses/${row.id}${suffix}`);
-  };
-
-  const handleDrawerClose = () => {
-    drawer.close();
-    router.push(view_tabs.active_view ? buildViewUrl(view_tabs.active_view) : `/boards/${board_id}`);
-  };
-
-  const opened_initial_ref = useRef(false);
-  useEffect(() => {
-    if (opened_initial_ref.current || !initial_open_item_id) return;
-    const row = items.find((item) => item.id === initial_open_item_id);
-    if (!row) return;
-    opened_initial_ref.current = true;
-    drawer.openRow(row);
-    fetchItemDetail(String(row.id));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, initial_open_item_id]);
+  // `current_user`/`fetchItemDetail`/`getInfoBoxes`/`drawer_config`/`drawer`/
+  // `handleRowClick`/`handleDrawerClose` are declared further down (after
+  // `handleUpdateCellValue`/`makeOptionActions`/`handleAddColumnOption`), since
+  // `drawer_config`'s `getDetailFields` closes over all three.
 
   // ── Add group (table) — one click appends a new table at the bottom of the active tab, no popover. Rename it inline afterward via the group title. ──
   const handleCreateGroup = async () => {
@@ -709,6 +694,130 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ),
   });
 
+  // ── Item detail drawer ──
+  const current_user: BoardPersonOption = user
+    ? { id: String(user.id), name: user.full_name, initials: getInitials(user.full_name), avatar_seed: 0 }
+    : { id: "0", name: "You", initials: "Y", avatar_seed: 0 };
+
+  const fetchItemDetail = useCallback(
+    (item_id: string) => {
+      if (item_detail_by_id[item_id]) return;
+      boardContentService.getItem(board_id, Number(item_id)).then((detail) => {
+        setItemDetailById((current) => ({ ...current, [item_id]: detail }));
+      });
+    },
+    [board_id, item_detail_by_id]
+  );
+
+  const getInfoBoxes = useCallback(
+    (row: BoardItemDto) => {
+      const detail = item_detail_by_id[String(row.id)];
+      const group = groups.find((g) => g.id === row.group_id);
+      return [
+        {
+          id: "details",
+          label: "Details",
+          accent_color: "#00c875",
+          rows: [
+            { label: "Table", value: group?.name ?? "—" },
+            { label: "Created by", value: detail?.creator?.full_name ?? "Loading…" },
+            { label: "Created at", value: detail ? formatDate(detail.created_at) : "Loading…" },
+          ],
+        },
+      ];
+    },
+    [item_detail_by_id, groups]
+  );
+
+  // ── Details strip (Status/Priority/Due date/People) shown above the
+  // drawer's tabs — each field reuses the same `BoardValueCell` editor the
+  // table's cells and the Kanban card's "other columns" preview use, so
+  // editing from the drawer is the exact same persistence path
+  // (`handleUpdateCellValue`) as editing from anywhere else. Board-specific
+  // (not every board has a Status/Priority/Due date/People column), so it's
+  // built here rather than in the generic `BoardItemDrawer` shell.
+  const getDetailFields = (row: BoardItemDto): DrawerDetailField[] => {
+    const fields: DrawerDetailField[] = [];
+    const pushField = (column: BoardColumnDto, label: string) => {
+      const has_options = column.type === "status" || column.type === "tags";
+      fields.push({
+        id: String(column.id),
+        label,
+        content: (
+          <BoardValueCell
+            column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
+            value={row.values[String(column.id)] ?? null}
+            people={node.owners}
+            onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
+            onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
+            onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
+          />
+        ),
+      });
+    };
+    if (board_status_column) pushField(board_status_column, board_status_column.label);
+    if (board_priority_column) pushField(board_priority_column, "Priority");
+    if (board_date_column) pushField(board_date_column, "Due date");
+    if (board_member_column) pushField(board_member_column, "People");
+    return fields;
+  };
+
+  // ── Description — a first-class field on the item itself (like `name`),
+  // not a column value, so it persists through `updateItem` rather than
+  // `updateItemValues`. Debounced inside `useBoardItemDrawer` (mirrors
+  // `BoardDocView`'s autosave), so this just needs to write straight through. ──
+  const handleUpdateItemDescription = (item_id: string, description: string) => {
+    const previous = items;
+    setItems((current) => current.map((item) => (String(item.id) === item_id ? { ...item, description } : item)));
+    boardContentService.updateItem(board_id, Number(item_id), { description }).catch(() => setItems(previous));
+  };
+
+  const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
+    () => ({
+      getRowId: (row) => String(row.id),
+      getRowTitle: (row) => row.name,
+      eyebrow_label: `${node.label} · Item`,
+      current_user,
+      mentionable_people: persons,
+      getInitialComments: () => [],
+      board_id,
+      getInfoBoxes,
+      getDetailFields,
+      getDescription: (row) => row.description ?? "",
+      onDescriptionChange: handleUpdateItemDescription,
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [node.label, current_user.id, persons, board_id, getInfoBoxes, board_status_column, board_priority_column, board_date_column, board_member_column]
+  );
+
+  const drawer = useBoardItemDrawer(drawer_config);
+
+  const handleRowClick = (row: BoardItemDto) => {
+    drawer.openRow(row);
+    fetchItemDetail(String(row.id));
+    // Carries the active tab along so the board underneath the drawer keeps
+    // showing that tab's content instead of falling back to the primary tab.
+    const suffix =
+      view_tabs.active_view && !view_tabs.active_view.is_primary ? `?view_id=${view_tabs.active_view.id}` : "";
+    router.push(`/boards/${board_id}/pulses/${row.id}${suffix}`);
+  };
+
+  const handleDrawerClose = () => {
+    drawer.close();
+    router.push(view_tabs.active_view ? buildViewUrl(view_tabs.active_view) : `/boards/${board_id}`);
+  };
+
+  const opened_initial_ref = useRef(false);
+  useEffect(() => {
+    if (opened_initial_ref.current || !initial_open_item_id) return;
+    const row = items.find((item) => item.id === initial_open_item_id);
+    if (!row) return;
+    opened_initial_ref.current = true;
+    drawer.openRow(row);
+    fetchItemDetail(String(row.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, initial_open_item_id]);
+
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
       if (editing_item_id === row.id) {
@@ -767,24 +876,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
   };
 
-  // ── Shared across Kanban/Calendar ── the board's first column of each
-  // relevant type drives that view's structural axis: Kanban's lanes and
-  // Calendar's event color both come from the first `status` column,
-  // Trello-style card "Labels"/Calendar overflow chips from the first
-  // `tags` column, card/event "Members" from the first `people` column,
-  // and Calendar's day placement from the first (and, for a start+end
-  // range, second) `date` column. A row's membership in all of these *is*
-  // just its value in that column, so dragging a card between lanes or an
-  // event onto a new day is an ordinary cell edit (`handleUpdateCellValue`)
-  // — no separate "lane"/"event" concept to keep in sync.
+  // `board_status_column`/`board_label_column`/`board_member_column`/
+  // `board_priority_column`/`board_done_column`/`board_date_column`/
+  // `board_date_end_column` are declared earlier in this component (right
+  // after `columns_by_id`) — see the comment there.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const active_doc_view = view_tabs.active_view;
-  const board_status_column = columns.find((c) => c.type === "status") ?? null;
-  const board_label_column = columns.find((c) => c.type === "tags") ?? null;
-  const board_member_column = columns.find((c) => c.type === "people") ?? null;
-  const date_columns = useMemo(() => columns.filter((c) => c.type === "date"), [columns]);
-  const board_date_column = date_columns[0] ?? null;
-  const board_date_end_column = date_columns[1] ?? null;
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
@@ -824,60 +921,160 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
     const excluded_column_ids = new Set(
-      [board_status_column?.id, board_label_column?.id, board_member_column?.id].filter(
-        (id): id is number => id != null
-      )
+      [
+        board_status_column?.id,
+        board_label_column?.id,
+        board_member_column?.id,
+        board_priority_column?.id,
+        board_done_column?.id,
+        board_date_column?.id,
+      ].filter((id): id is number => id != null)
     );
     const other_columns = columns.filter((c) => !excluded_column_ids.has(c.id));
-    const has_footer = row.comment_count > 0;
 
     const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
     const members = board_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
 
+    const priority_value = board_priority_column ? row.values[String(board_priority_column.id)] : null;
+    const priority_option =
+      board_priority_column && typeof priority_value === "string"
+        ? (board_priority_column.config?.options ?? []).find((option) => option.id === priority_value) ?? null
+        : null;
+
+    const is_done = board_done_column ? row.values[String(board_done_column.id)] === true : false;
+    const due_date_value = board_date_column ? row.values[String(board_date_column.id)] : null;
+    const due_date = typeof due_date_value === "string" && due_date_value ? formatKanbanDueDate(due_date_value) : null;
+
+    const has_meta_row = Boolean(priority_option || due_date || row.attachment_count > 0 || row.comment_count > 0 || board_member_column);
+
     return (
-      <div className="flex flex-col">
+      <div
+        className="flex flex-col"
+        style={{ borderLeft: `3px solid ${priority_option?.color ?? KANBAN_COLORS.border_default}` }}
+      >
         <KanbanCardCover
           cover_image_url={row.cover_image_url}
           onUpload={(file) => void handleUploadCardCover(row.id, file)}
           onRemove={() => void handleRemoveCardCover(row.id)}
         />
 
-        <div className="flex flex-col gap-2 p-2.5">
+        <div className="flex flex-col" style={{ padding: "11px 12px 10px" }}>
+          <div className="flex items-start gap-2">
+            {board_done_column && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void handleUpdateCellValue(row.id, String(board_done_column.id), !is_done);
+                }}
+                aria-label={is_done ? "Mark incomplete" : "Mark complete"}
+                title={is_done ? "Mark incomplete" : "Mark complete"}
+                className="mt-px flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.6px] transition-colors"
+                style={is_done ? { background: KANBAN_COLORS.success, borderColor: KANBAN_COLORS.success } : { borderColor: KANBAN_COLORS.text_hairline }}
+              >
+                {is_done && <CheckIcon size={9} className="text-white" />}
+              </button>
+            )}
+
+            {editing_item_id === row.id ? (
+              <InlineTitleEditor
+                value={row.name}
+                onCommit={(name) => handleRenameItem(row.id, name)}
+                onCancel={() => setEditingItemId(null)}
+                className="w-full min-w-0 text-[13.5px] font-bold"
+                style={{ color: KANBAN_COLORS.text_strong }}
+                aria_label="Rename item"
+              />
+            ) : (
+              <span
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setEditingItemId(row.id);
+                }}
+                className="min-w-0 flex-1 cursor-text text-[13.5px] font-bold leading-snug"
+                style={{ color: is_done ? KANBAN_COLORS.text_faded : KANBAN_COLORS.text_strong, textDecoration: is_done ? "line-through" : "none" }}
+                title="Click to rename"
+              >
+                {row.name}
+              </span>
+            )}
+            <span className="mt-px flex-none" style={{ color: KANBAN_COLORS.text_hairline }}>
+              <MoreDotsIcon size={13} />
+            </span>
+          </div>
+
           {board_label_column && (
-            <KanbanCardLabels
-              options={board_label_column.config?.options ?? []}
-              selected_ids={label_ids}
-              onToggle={(option_id) => {
-                const next = label_ids.includes(option_id)
-                  ? label_ids.filter((id) => id !== option_id)
-                  : [...label_ids, option_id];
-                void handleUpdateCellValue(row.id, String(board_label_column.id), next.length ? next : null);
-              }}
-              onCreateOption={(option) => handleAddColumnOption(String(board_label_column.id), option)}
-              onEditOptions={makeOptionActions(String(board_label_column.id))}
-            />
+            <div style={{ margin: "8px 0 9px", paddingLeft: 24 }}>
+              <KanbanCardLabels
+                options={board_label_column.config?.options ?? []}
+                selected_ids={label_ids}
+                onToggle={(option_id) => {
+                  const next = label_ids.includes(option_id)
+                    ? label_ids.filter((id) => id !== option_id)
+                    : [...label_ids, option_id];
+                  void handleUpdateCellValue(row.id, String(board_label_column.id), next.length ? next : null);
+                }}
+                onCreateOption={(option) => handleAddColumnOption(String(board_label_column.id), option)}
+                onEditOptions={makeOptionActions(String(board_label_column.id))}
+              />
+            </div>
           )}
 
-          {editing_item_id === row.id ? (
-            <InlineTitleEditor
-              value={row.name}
-              onCommit={(name) => handleRenameItem(row.id, name)}
-              onCancel={() => setEditingItemId(null)}
-              className="w-full min-w-0 text-[13px] font-semibold text-shell-text"
-              aria_label="Rename item"
-            />
-          ) : (
-            <span
-              onClick={(event) => {
-                event.stopPropagation();
-                setEditingItemId(row.id);
-              }}
-              className="min-w-0 cursor-text text-[13px] font-semibold leading-snug text-shell-text"
-              title="Click to rename"
+          {has_meta_row && (
+            <div
+              className="flex flex-wrap items-center gap-1.5"
+              style={{ paddingLeft: 24 }}
+              onClick={(event) => event.stopPropagation()}
             >
-              {row.name}
-            </span>
+              {priority_option && (
+                <span
+                  className="rounded-[5px] px-1.5 py-[3px] text-[10.5px] font-bold"
+                  style={{ background: `${priority_option.color}1A`, color: priority_option.color }}
+                >
+                  {priority_option.label}
+                </span>
+              )}
+              {due_date && (
+                <span
+                  className="flex items-center gap-1 rounded-[5px] px-1.5 py-[3px] text-[11.5px] font-semibold"
+                  style={
+                    due_date.urgent && !is_done
+                      ? { background: KANBAN_COLORS.danger_bg, color: KANBAN_COLORS.red }
+                      : { background: KANBAN_COLORS.chip_bg, color: KANBAN_COLORS.text_faint }
+                  }
+                >
+                  <CalendarViewIcon size={11} />
+                  {due_date.label}
+                </span>
+              )}
+              {row.attachment_count > 0 && (
+                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
+                  <AttachmentIcon size={11} />
+                  {row.attachment_count}
+                </span>
+              )}
+              {row.comment_count > 0 && (
+                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
+                  <RowChatIcon size={11} />
+                  {row.comment_count}
+                </span>
+              )}
+              {board_member_column && (
+                <span className="ml-auto flex-none">
+                  <KanbanCardMembers
+                    people={node.owners}
+                    selected={members}
+                    onToggle={(person_id) => {
+                      const next = member_ids.includes(person_id)
+                        ? member_ids.filter((id) => id !== person_id)
+                        : [...member_ids, person_id];
+                      void handleUpdateCellValue(row.id, String(board_member_column.id), next.length ? next : null);
+                    }}
+                  />
+                </span>
+              )}
+            </div>
           )}
 
           {other_columns.length > 0 && (
@@ -897,31 +1094,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   </div>
                 );
               })}
-            </div>
-          )}
-
-          {(has_footer || board_member_column) && (
-            <div className="flex items-center justify-between gap-1 border-t border-shell-border pt-1.5">
-              {has_footer ? (
-                <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
-                  <RowChatIcon />
-                  {row.comment_count}
-                </span>
-              ) : (
-                <span />
-              )}
-              {board_member_column && (
-                <KanbanCardMembers
-                  people={node.owners}
-                  selected={members}
-                  onToggle={(person_id) => {
-                    const next = member_ids.includes(person_id)
-                      ? member_ids.filter((id) => id !== person_id)
-                      : [...member_ids, person_id];
-                    void handleUpdateCellValue(row.id, String(board_member_column.id), next.length ? next : null);
-                  }}
-                />
-              )}
             </div>
           )}
         </div>
@@ -1097,6 +1269,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleAddColumn(date_type);
   };
 
+  // ── Kanban's own drawer — a literal reproduction of the mockup's single-panel
+  // task drawer (see `KanbanItemDrawer`), not the richer tabbed `BoardItemDrawer`
+  // every other view (Table/Calendar) keeps using. Every field still writes
+  // through the exact same real persistence (`handleUpdateCellValue`/
+  // `handleRenameItem`) as the card and the table cell it's mirrored from. ──
+  const kanban_open_row = active_view_type === "kanban" ? items.find((item) => String(item.id) === drawer.open_row_id) ?? null : null;
+  const kanban_open_row_member_ids = board_member_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_member_column.id)]) : [];
+  const kanban_open_row_label_ids = board_label_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_label_column.id)]) : [];
+
   return (
     <BoardShell
       header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }}
@@ -1269,7 +1450,74 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         />
       )}
 
-      <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
+      {active_view_type === "kanban" ? (
+        <KanbanItemDrawer<BoardItemDto>
+          drawer={{ ...drawer, close: handleDrawerClose }}
+          title={kanban_open_row?.name ?? ""}
+          onRenameTitle={(name) => kanban_open_row && handleRenameItem(kanban_open_row.id, name)}
+          is_done={board_done_column && kanban_open_row ? kanban_open_row.values[String(board_done_column.id)] === true : false}
+          onToggleDone={
+            board_done_column && kanban_open_row
+              ? () =>
+                  handleUpdateCellValue(
+                    kanban_open_row.id,
+                    String(board_done_column.id),
+                    !(kanban_open_row.values[String(board_done_column.id)] === true)
+                  )
+              : undefined
+          }
+          people={
+            board_member_column
+              ? {
+                  roster: node.owners,
+                  selected: node.owners.filter((owner) => kanban_open_row_member_ids.includes(String(owner.id))),
+                  onToggle: (person_id) => {
+                    if (!kanban_open_row) return;
+                    const next = kanban_open_row_member_ids.includes(person_id)
+                      ? kanban_open_row_member_ids.filter((id) => id !== person_id)
+                      : [...kanban_open_row_member_ids, person_id];
+                    void handleUpdateCellValue(kanban_open_row.id, String(board_member_column.id), next.length ? next : null);
+                  },
+                }
+              : undefined
+          }
+          due_date={
+            board_date_column
+              ? {
+                  value: kanban_open_row && typeof kanban_open_row.values[String(board_date_column.id)] === "string" ? (kanban_open_row.values[String(board_date_column.id)] as string) : null,
+                  onChange: (value) => kanban_open_row && void handleUpdateCellValue(kanban_open_row.id, String(board_date_column.id), value),
+                }
+              : undefined
+          }
+          priority={
+            board_priority_column
+              ? {
+                  options: board_priority_column.config?.options ?? [],
+                  selected_id: kanban_open_row && typeof kanban_open_row.values[String(board_priority_column.id)] === "string" ? (kanban_open_row.values[String(board_priority_column.id)] as string) : null,
+                  onSelect: (option_id) => kanban_open_row && void handleUpdateCellValue(kanban_open_row.id, String(board_priority_column.id), option_id),
+                }
+              : undefined
+          }
+          project={
+            board_label_column
+              ? {
+                  options: board_label_column.config?.options ?? [],
+                  selected_ids: kanban_open_row_label_ids,
+                  onToggle: (option_id) => {
+                    if (!kanban_open_row) return;
+                    const next = kanban_open_row_label_ids.includes(option_id)
+                      ? kanban_open_row_label_ids.filter((id) => id !== option_id)
+                      : [...kanban_open_row_label_ids, option_id];
+                    void handleUpdateCellValue(kanban_open_row.id, String(board_label_column.id), next.length ? next : null);
+                  },
+                  onCreateOption: (option) => handleAddColumnOption(String(board_label_column.id), option),
+                }
+              : undefined
+          }
+        />
+      ) : (
+        <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
+      )}
     </BoardShell>
   );
 };

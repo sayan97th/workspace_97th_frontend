@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 
 /** A single emoji reaction pill on a comment or reply, with its live tally. */
@@ -59,6 +60,19 @@ export type DrawerInfoBox = {
 
 export type DrawerTabId = "updates" | "files" | "activity" | "info_boxes";
 
+/**
+ * One editable row in the drawer's "Details" strip (Status/Priority/Due
+ * date/People, …) shown above the tabs. The caller owns rendering the
+ * editor itself (typically a `BoardValueCell`) — the drawer just lays out
+ * the label/value grid, mirroring how `BoardTable`'s `renderCell` and
+ * `BoardKanban`'s `renderCard` keep cell content with the caller.
+ */
+export type DrawerDetailField = {
+  id: string;
+  label: string;
+  content: ReactNode;
+};
+
 /** Which composer a `@mention` picker or emoji palette is currently open for: the top-level composer, or a reply box keyed by its parent comment id. */
 export type DrawerComposerTarget = "composer" | string;
 
@@ -83,6 +97,12 @@ export type BoardItemDrawerConfig<TRow> = {
   board_id?: number;
   getInfoBoxes?: (row: TRow) => DrawerInfoBox[];
   getActivityLog?: (row: TRow) => DrawerActivityEntry[];
+  /** Editable Status/Priority/Due date/People rows shown above the tabs — omit to hide the strip entirely (e.g. Client Hub, which stays mock data). */
+  getDetailFields?: (row: TRow) => DrawerDetailField[];
+  /** Seeds the description textarea's initial value — omit to hide the field entirely. */
+  getDescription?: (row: TRow) => string;
+  /** Persists a debounced description edit — required alongside {@link getDescription} for the field to be editable rather than read-only. */
+  onDescriptionChange?: (row_id: string, description: string) => void;
 };
 
 /** Full live state + actions returned by {@link useBoardItemDrawer}. */
@@ -105,6 +125,13 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   all_attachments: DrawerAttachment[];
   info_boxes: DrawerInfoBox[];
   activity_log: DrawerActivityEntry[];
+  detail_fields: DrawerDetailField[];
+
+  /** Live draft (reflects unsaved keystrokes immediately; persisted on a debounce). Empty when neither {@link BoardItemDrawerConfig.getDescription} nor an open row is set. */
+  description: string;
+  /** True when {@link BoardItemDrawerConfig.getDescription} is configured — gates whether the drawer renders the field at all. */
+  has_description: boolean;
+  onDescriptionChange: (value: string) => void;
 
   composer_text: string;
   composer_attachments: DrawerAttachment[];

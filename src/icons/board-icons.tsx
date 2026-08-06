@@ -376,3 +376,15 @@ export const ListViewToggleIcon: React.FC<IconProps> = ({ className, size = 15 }
     <rect x="2" y="10.4" width="12" height="2.6" rx="1" fill="currentColor" />
   </svg>
 );
+
+/** Paperclip — a Kanban card's attachment count. */
+export const AttachmentIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M9.5 3 4.5 8a2 2 0 1 0 2.8 2.8L12.8 6.3a3.2 3.2 0 1 0-4.5-4.5L3 7"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);

@@ -1,7 +1,10 @@
 export { default as BoardKanban } from "./BoardKanban";
 export type { BoardKanbanLane, BoardKanbanProps } from "./BoardKanban";
 export { KANBAN_DEFAULT_LANE_OPTIONS } from "./kanbanDefaults";
+export { KANBAN_COLORS } from "./kanbanDesign";
 export { default as KanbanCardCover } from "./KanbanCardCover";
 export { default as KanbanCoverMenu } from "./KanbanCoverMenu";
 export { default as KanbanCardLabels } from "./KanbanCardLabels";
 export { default as KanbanCardMembers } from "./KanbanCardMembers";
+export { default as KanbanItemDrawer } from "./KanbanItemDrawer";
+export type { KanbanItemDrawerProps } from "./KanbanItemDrawer";

@@ -46,7 +46,7 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
       ) : (
         <button
           type="button"
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-dashed border-shell-border text-shell-text-faint opacity-0 transition-opacity hover:border-shell-border-strong hover:text-shell-text group-hover:opacity-100"
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-dashed border-[#D7DAD8] text-[#A7AEAD] opacity-0 transition-opacity hover:border-[#A7AEAD] hover:text-[#546264] group-hover:opacity-100"
           title="Add member"
         >
           <PlusIcon size={10} />

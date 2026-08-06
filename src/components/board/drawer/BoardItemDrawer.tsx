@@ -63,6 +63,36 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
           </button>
         </div>
 
+        {/* Details strip (Status/Priority/Due date/People, …) + Description — always
+            visible above the tabs, mirroring how the title stays fixed regardless of
+            which tab is active. Omitted entirely for a board that supplies neither. */}
+        {(drawer.detail_fields.length > 0 || drawer.has_description) && (
+          <div className="flex flex-none flex-col gap-4 border-b border-shell-border px-[22px] py-4">
+            {drawer.detail_fields.length > 0 && (
+              <div className="flex flex-col gap-2.5">
+                {drawer.detail_fields.map((field) => (
+                  <div key={field.id} className="grid grid-cols-[110px_1fr] items-center gap-2">
+                    <span className="text-[12.5px] font-semibold text-shell-text-faint">{field.label}</span>
+                    <div className="min-w-0">{field.content}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {drawer.has_description && (
+              <div>
+                <div className="mb-1.5 text-[12.5px] font-semibold text-shell-text-faint">Description</div>
+                <textarea
+                  value={drawer.description}
+                  onChange={(event) => drawer.onDescriptionChange(event.target.value)}
+                  placeholder="Add a more detailed description…"
+                  rows={3}
+                  className="w-full resize-y rounded-lg border border-shell-border bg-shell-bg px-2.5 py-2 text-[13px] leading-relaxed text-shell-text outline-none focus:border-brand-500"
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Tabs */}
         <div className="flex flex-none items-center gap-0.5 border-b border-shell-border px-[18px]">
           {tabs.map((tab) => {

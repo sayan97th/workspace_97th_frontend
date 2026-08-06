@@ -30,7 +30,7 @@ const KanbanCardCover: React.FC<KanbanCardCoverProps> = ({ cover_image_url, onUp
         <button
           type="button"
           onClick={openMenu}
-          className="flex h-6 w-full items-center justify-center gap-1.5 text-[11px] font-medium text-shell-text-faint opacity-0 transition-opacity hover:bg-shell-hover hover:text-shell-text group-hover:opacity-100"
+          className="flex h-6 w-full items-center justify-center gap-1.5 text-[11px] font-medium text-[#7E8889] opacity-0 transition-opacity hover:bg-[#F4F4F2] hover:text-[#2B3C40] group-hover:opacity-100"
           title="Add cover image"
         >
           <ImageIcon size={12} />

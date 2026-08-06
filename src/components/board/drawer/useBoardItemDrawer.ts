@@ -16,6 +16,7 @@ import type {
 } from "./types";
 
 const DEFAULT_ACCENT_COLOR = "#00c875";
+const DESCRIPTION_AUTOSAVE_DELAY_MS = 800;
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
@@ -50,7 +51,7 @@ type ComposerAttachmentDraft = { attachment: DrawerAttachment; file: File };
  * Client Hub) everything stays local, synchronous mock state exactly as before.
  */
 export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): BoardItemDrawerApi<TRow> {
-  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, board_id } = config;
+  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, getDetailFields, getDescription, board_id } = config;
   const accent_color = config.accent_color ?? DEFAULT_ACCENT_COLOR;
   const is_api_backed = board_id !== undefined;
 
@@ -59,6 +60,15 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [comments_by_row, setCommentsByRow] = useState<Record<string, DrawerComment[]>>({});
   const [comments_loading, setCommentsLoading] = useState(false);
   const [comments_error, setCommentsError] = useState<string | null>(null);
+
+  // Local draft that wins over `getDescription(open_row)` once the viewer has
+  // typed — `null` means "no unsaved edit yet, defer to the row's own value".
+  // Reset to `null` on every `openRow` and flushed (skipping the debounce) on
+  // `close`, mirroring `BoardDocView`'s autosave so a fast close right after
+  // typing can't silently drop the last edit.
+  const [description_draft, setDescriptionDraft] = useState<string | null>(null);
+  const description_save_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const description_flush_ref = useRef<() => void>(() => {});
 
   const [composer_text, setComposerText] = useState("");
   const [composer_attachment_drafts, setComposerAttachmentDrafts] = useState<ComposerAttachmentDraft[]>([]);
@@ -91,6 +101,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   };
 
   const openRow = (row: TRow) => {
+    description_flush_ref.current();
     const row_id = getRowId(row);
     setOpenRow(row);
     setActiveTab("updates");
@@ -101,6 +112,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setReactionPaletteId(null);
     setMentionIdsByTarget({});
     setCommentsError(null);
+    setDescriptionDraft(null);
 
     if (is_api_backed) {
       const item_id = Number(row_id);
@@ -120,6 +132,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   };
 
   const close = () => {
+    description_flush_ref.current();
     setOpenRow(null);
     setMentionTarget(null);
     setEmojiPaletteTarget(null);
@@ -370,6 +383,28 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
   const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
   const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
+  const detail_fields = open_row && getDetailFields ? getDetailFields(open_row) : [];
+
+  const has_description = getDescription !== undefined;
+  const description = description_draft ?? (open_row && getDescription ? getDescription(open_row) : "");
+
+  // Kept in a ref (rather than a plain closure passed to `setTimeout`) so
+  // `openRow`/`close` can always flush whatever the *latest* pending edit
+  // is, even though those functions are defined above this point in the
+  // hook and can't see values computed here directly.
+  description_flush_ref.current = () => {
+    if (description_save_timeout_ref.current) clearTimeout(description_save_timeout_ref.current);
+    if (description_draft === null || !open_row_id) return;
+    config.onDescriptionChange?.(open_row_id, description_draft);
+  };
+
+  const onDescriptionChange = (value: string) => {
+    setDescriptionDraft(value);
+    if (description_save_timeout_ref.current) clearTimeout(description_save_timeout_ref.current);
+    description_save_timeout_ref.current = setTimeout(() => {
+      if (open_row_id) config.onDescriptionChange?.(open_row_id, value);
+    }, DESCRIPTION_AUTOSAVE_DELAY_MS);
+  };
 
   return {
     ...config,
@@ -389,6 +424,11 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     all_attachments,
     info_boxes,
     activity_log,
+    detail_fields,
+
+    description,
+    has_description,
+    onDescriptionChange,
 
     composer_text,
     composer_attachments,

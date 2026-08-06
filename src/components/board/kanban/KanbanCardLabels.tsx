@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { PlusIcon } from "@/icons/board-icons";
 import BoardPopover from "../toolbar/BoardPopover";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "../cells/OptionPicker";
+import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type KanbanCardLabelsProps = {
   options: BoardCellOption[];
@@ -37,16 +38,18 @@ const KanbanCardLabels: React.FC<KanbanCardLabelsProps> = ({ options, selected_i
         selected.map((label) => (
           <span
             key={label.id}
-            className="cursor-pointer rounded-[4px] px-2 py-0.5 text-[11px] font-semibold text-white transition-opacity hover:opacity-85"
-            style={{ background: label.color }}
+            className="flex max-w-[170px] cursor-pointer items-center gap-1.5 rounded-[5px] px-1.5 py-[3px] text-[11.5px] font-semibold transition-opacity hover:opacity-80"
+            style={{ background: KANBAN_COLORS.chip_bg, color: KANBAN_COLORS.text_muted }}
           >
-            {label.label}
+            <span className="h-1.5 w-1.5 flex-none rounded-full" style={{ background: label.color }} />
+            <span className="min-w-0 truncate">{label.label}</span>
           </span>
         ))
       ) : (
         <button
           type="button"
-          className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium text-shell-text-faint opacity-0 transition-opacity hover:bg-shell-hover hover:text-shell-text group-hover:opacity-100"
+          className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium opacity-0 transition-opacity hover:bg-[#F4F4F2] group-hover:opacity-100"
+          style={{ color: KANBAN_COLORS.text_placeholder }}
         >
           <PlusIcon size={9} />
           Add label

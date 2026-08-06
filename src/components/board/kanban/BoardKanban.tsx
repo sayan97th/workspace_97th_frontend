@@ -21,8 +21,11 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandleIcon, EyeIcon, PlusIcon } from "@/icons/board-icons";
+import { PlusIcon } from "@/icons/board-icons";
+import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import InlineTitleEditor from "../InlineTitleEditor";
+import BoardPopover from "../toolbar/BoardPopover";
+import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type BoardKanbanLane<TRow> = {
   id: string;
@@ -55,7 +58,7 @@ const AddCardInput: React.FC<AddCardInputProps> = ({ color, onSubmit, onCancel }
   };
 
   return (
-    <div className="rounded-[10px] border bg-shell-panel p-2 shadow-sm" style={{ borderColor: color }}>
+    <div className="rounded-[9px] border bg-white p-2 shadow-[0_1px_2px_rgba(10,23,23,0.05)]" style={{ borderColor: color }}>
       <input
         ref={input_ref}
         value={value}
@@ -71,7 +74,8 @@ const AddCardInput: React.FC<AddCardInputProps> = ({ color, onSubmit, onCancel }
         }}
         onBlur={commit}
         placeholder="Card title"
-        className="w-full rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1.5 text-[13px] text-shell-text outline-none"
+        style={{ borderColor: color, color: KANBAN_COLORS.text_strong }}
+        className="w-full rounded-[6px] border bg-white px-2 py-1.5 text-[13px] outline-none"
       />
     </div>
   );
@@ -132,25 +136,24 @@ function SortableCard<TRow>({ row, row_id, is_selected, can_drag, onCardClick, r
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        background: KANBAN_COLORS.card_bg,
+        boxShadow: isDragging
+          ? "none"
+          : is_selected
+            ? `0 0 0 2px ${KANBAN_COLORS.text_strong}, 0 8px 20px rgba(10,23,23,0.12)`
+            : "0 1px 2px rgba(10,23,23,0.05)",
+        opacity: isDragging ? 0 : 1,
+      }}
       {...(can_drag ? attributes : {})}
       {...(can_drag ? listeners : {})}
       onClick={onCardClick ? () => onCardClick(row) : undefined}
-      className={`group relative overflow-hidden rounded-lg border bg-shell-panel transition-shadow duration-150 ${
-        onCardClick ? "cursor-pointer" : ""
-      } ${can_drag ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${
-        isDragging
-          ? "opacity-0"
-          : is_selected
-            ? "border-brand-500 shadow-sm ring-1 ring-brand-500/35"
-            : "border-shell-border hover:-translate-y-0.5 hover:border-shell-border-strong hover:shadow-md"
+      className={`group relative overflow-hidden rounded-[9px] transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-[0_8px_20px_rgba(10,23,23,0.12)] ${
+        can_drag ? "cursor-grab touch-none active:cursor-grabbing" : onCardClick ? "cursor-pointer" : ""
       }`}
     >
-      {can_drag && (
-        <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 text-shell-text-faint opacity-0 transition-opacity group-hover:opacity-70">
-          <DragHandleIcon size={9} />
-        </span>
-      )}
       {renderCard(row)}
     </div>
   );
@@ -160,8 +163,8 @@ function SortableCard<TRow>({ row, row_id, is_selected, can_drag, onCardClick, r
 function CardPreview<TRow>({ row, renderCard }: { row: TRow; renderCard: (row: TRow) => React.ReactNode }) {
   return (
     <div
-      className="overflow-hidden rounded-lg border border-shell-border-strong bg-shell-panel shadow-xl ring-1 ring-black/5"
-      style={{ width: LANE_WIDTH - 16 }}
+      className="overflow-hidden rounded-[9px] shadow-xl ring-1 ring-black/5"
+      style={{ width: LANE_WIDTH - 16, background: KANBAN_COLORS.card_bg }}
     >
       {renderCard(row)}
     </div>
@@ -205,19 +208,31 @@ function KanbanLaneColumn<TRow>({
 }: KanbanLaneColumnProps<TRow>) {
   const { setNodeRef } = useDroppable({ id: lane.id, data: { type: "lane", lane_id: lane.id } });
   // Purely local, unpersisted UI state — collapsing a lane just hides its card
-  // stack to skim the board faster, mirroring the "eye" affordance in the
-  // Trello-style reference this card layout is modeled on.
+  // stack to skim the board faster.
   const [is_collapsed, setIsCollapsed] = useState(false);
+  const [kebab_anchor_el, setKebabAnchorEl] = useState<HTMLElement | null>(null);
+  const can_rename = Boolean(onRenameLane) && lane.renamable !== false;
 
   return (
     <div
-      className="flex flex-none flex-col overflow-hidden rounded-xl border border-shell-border bg-shell-panel-alt shadow-sm transition-shadow duration-150"
+      className="flex flex-none flex-col overflow-hidden rounded-[14px] p-[10px] transition-shadow duration-150"
       style={{
         width: LANE_WIDTH,
+        background: KANBAN_COLORS.column_bg,
         boxShadow: is_over ? `0 0 0 2px ${lane.color}, 0 4px 14px rgba(0,0,0,0.12)` : undefined,
       }}
     >
-      <div className="flex flex-none items-center gap-2 border-b border-shell-border bg-shell-panel px-3 py-2.5">
+      <div className="flex flex-none items-center gap-[7px] px-1 pb-[10px] pt-1">
+        <button
+          type="button"
+          onClick={() => setIsCollapsed((current) => !current)}
+          className="flex-none rounded-[5px] p-0.5 transition-transform duration-150 hover:bg-[#E2E2DE]"
+          style={{ color: KANBAN_COLORS.icon_default, transform: is_collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
+          aria-label={is_collapsed ? "Expand list" : "Collapse list"}
+          title={is_collapsed ? "Expand list" : "Collapse list"}
+        >
+          <ChevronRightIcon size={11} />
+        </button>
         <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: lane.color }} />
         {editing_lane_id === lane.id ? (
           <InlineTitleEditor
@@ -227,47 +242,82 @@ function KanbanLaneColumn<TRow>({
               setEditingLaneId(null);
             }}
             onCancel={() => setEditingLaneId(null)}
-            className="min-w-0 flex-1 text-[13px] font-semibold text-shell-text"
+            className="min-w-0 flex-1 text-[13.5px] font-bold"
+            style={{ color: KANBAN_COLORS.text_strong }}
             aria_label="Rename lane"
           />
         ) : (
           <span
-            onClick={onRenameLane && lane.renamable !== false ? () => setEditingLaneId(lane.id) : undefined}
-            className={`min-w-0 flex-1 truncate text-[13px] font-semibold text-shell-text ${
-              onRenameLane && lane.renamable !== false ? "cursor-text hover:opacity-80" : ""
-            }`}
-            title={onRenameLane && lane.renamable !== false ? "Click to rename" : undefined}
+            onClick={can_rename ? () => setEditingLaneId(lane.id) : undefined}
+            className={`min-w-0 flex-1 truncate text-[13.5px] font-bold ${can_rename ? "cursor-text hover:opacity-80" : ""}`}
+            style={{ color: KANBAN_COLORS.text_strong }}
+            title={can_rename ? "Click to rename" : undefined}
           >
             {lane.label}
           </span>
         )}
-        <span className="flex-none rounded-full bg-shell-hover px-2 py-0.5 text-[11px] font-bold tabular-nums text-shell-text-secondary">
+        <span className="flex-none text-[13px] font-semibold" style={{ color: "#AEB4B3" }}>
           {row_ids.length}
         </span>
-        <button
-          type="button"
-          onClick={() => setIsCollapsed((current) => !current)}
-          className="flex-none rounded-[6px] p-1 text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
-          aria-label={is_collapsed ? "Expand list" : "Collapse list"}
-          title={is_collapsed ? "Expand list" : "Collapse list"}
-        >
-          <EyeIcon size={14} open={!is_collapsed} />
-        </button>
+        <span className="ml-auto flex flex-none items-center gap-0.5">
+          {can_rename && (
+            <>
+              <button
+                type="button"
+                onClick={(event) => setKebabAnchorEl(event.currentTarget)}
+                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#E2E2DE]"
+                style={{ color: KANBAN_COLORS.icon_default }}
+                aria-label="List actions"
+                title="List actions"
+              >
+                <MoreDotsIcon size={14} />
+              </button>
+              <BoardPopover anchor_el={kebab_anchor_el} is_open={kebab_anchor_el !== null} onClose={() => setKebabAnchorEl(null)} align="end" width={160}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingLaneId(lane.id);
+                    setKebabAnchorEl(null);
+                  }}
+                  className="w-full rounded-md px-2.5 py-1.5 text-left text-[12.5px] font-medium hover:bg-[#F4F4F2]"
+                  style={{ color: KANBAN_COLORS.text_strong }}
+                >
+                  Rename list
+                </button>
+              </BoardPopover>
+            </>
+          )}
+          {onAddCard && (
+            <button
+              type="button"
+              onClick={() => onAddCard(lane.id)}
+              className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#E2E2DE]"
+              style={{ color: KANBAN_COLORS.icon_default }}
+              aria-label="Add card"
+              title="Add card"
+            >
+              <PlusIcon size={13} />
+            </button>
+          )}
+        </span>
       </div>
 
       {is_collapsed ? (
-        <div ref={setNodeRef} className="px-3 py-3 text-[11.5px] text-shell-text-faint">
+        <div ref={setNodeRef} className="px-2 py-3 text-[11.5px]" style={{ color: KANBAN_COLORS.text_placeholder }}>
           {row_ids.length} card{row_ids.length === 1 ? "" : "s"} hidden
         </div>
       ) : (
         <div
           ref={setNodeRef}
-          className="shell-scrollbar flex flex-col gap-2 overflow-y-auto px-2 pb-2 pt-2"
+          className="shell-scrollbar flex flex-col gap-2 overflow-y-auto overflow-x-hidden"
           style={{ maxHeight: LANE_BODY_MAX_HEIGHT }}
         >
           <SortableContext items={row_ids} strategy={verticalListSortingStrategy}>
             {row_ids.length === 0 && addingLaneId !== lane.id && (
-              <div className="rounded-lg border border-dashed border-shell-border px-2.5 py-4 text-center text-[11.5px] text-shell-text-faint">
+              <div
+                className="rounded-[9px] border border-dashed px-2.5 py-4 text-center text-[11.5px]"
+                style={{ borderColor: KANBAN_COLORS.border_default, color: KANBAN_COLORS.text_placeholder }}
+              >
                 No cards yet
               </div>
             )}
@@ -300,10 +350,10 @@ function KanbanLaneColumn<TRow>({
               <button
                 type="button"
                 onClick={() => onAddCard(lane.id)}
-                className="flex items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-left text-[12.5px] font-medium text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
+                className="flex items-center gap-1.5 rounded-[8px] px-2 py-2 text-left text-[12.5px] font-semibold text-[#A7AEAD] transition-colors hover:bg-[#E2E2DE] hover:text-[#546264]"
               >
-                <PlusIcon size={12} />
-                Add card
+                <PlusIcon size={13} />
+                Add task
               </button>
             ))}
         </div>
@@ -494,10 +544,10 @@ function BoardKanban<TRow>({
           <button
             type="button"
             onClick={onAddLane}
-            className="group flex flex-none flex-col items-center justify-center gap-2 self-start rounded-xl border-2 border-dashed border-shell-border px-4 py-8 text-shell-text-muted transition-colors hover:border-brand-400 hover:bg-shell-hover hover:text-shell-text"
-            style={{ width: LANE_WIDTH }}
+            className="group flex flex-none flex-col items-center justify-center gap-2 self-start rounded-[14px] border-2 border-dashed px-4 py-8 text-[#7E8889] transition-colors hover:bg-[#EFEFEC] hover:text-[#2B3C40]"
+            style={{ width: LANE_WIDTH, borderColor: KANBAN_COLORS.border_default }}
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-shell-hover text-shell-text-muted transition-colors group-hover:bg-brand-500/15 group-hover:text-brand-500">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F4F2] text-[#7E8889] transition-colors group-hover:bg-[#E2E2DE] group-hover:text-[#2B3C40]">
               <PlusIcon size={15} />
             </span>
             <span className="text-[12.5px] font-semibold">Add lane</span>
