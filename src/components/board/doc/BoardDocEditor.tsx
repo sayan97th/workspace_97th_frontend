@@ -32,6 +32,8 @@ import {
 import "@mdxeditor/editor/style.css";
 import "./board-doc-editor.css";
 import { markdownFidelityPlugin } from "./markdown-fidelity-plugin";
+import BoardDocLinkDialog from "./dialogs/BoardDocLinkDialog";
+import BoardDocImageDialog from "./dialogs/BoardDocImageDialog";
 
 export type BoardDocEditorProps = {
   /** The document's markdown. Only read on mount/remount — pass a `key` at the call site (e.g. the view id) to load a different document. */
@@ -50,6 +52,8 @@ export type BoardDocEditorProps = {
   autoFocus?: boolean;
   /** Imperative access (e.g. `.focus()`) for the rare caller that needs it. */
   editor_ref?: React.Ref<MDXEditorMethods>;
+  /** Uploads an image dropped/pasted/inserted into the doc, resolving to its public URL — omit to fall back to a plain "image URL" field with no device upload. */
+  onUploadImage?: (file: File) => Promise<string>;
 };
 
 /**
@@ -73,6 +77,7 @@ const BoardDocEditor: React.FC<BoardDocEditorProps> = ({
   readOnly = false,
   autoFocus = false,
   editor_ref,
+  onUploadImage,
 }) => {
   return (
     <MDXEditor
@@ -92,8 +97,20 @@ const BoardDocEditor: React.FC<BoardDocEditorProps> = ({
         quotePlugin(),
         thematicBreakPlugin(),
         linkPlugin(),
-        linkDialogPlugin(),
-        imagePlugin(),
+        // Custom LinkDialog: the stock Radix-Popover dialog anchors its collision
+        // math to the selection rect's DOM ancestors, which this app's shell
+        // layout (an `overflow-hidden` + `position: relative` panel) throws off
+        // badly enough to render it clipped off-screen. `BoardDocLinkDialog`
+        // reads the same public MDXEditor cells but positions itself with
+        // real-viewport-clamped math, portaled straight to `document.body`.
+        linkDialogPlugin({ LinkDialog: BoardDocLinkDialog as () => React.JSX.Element }),
+        // Custom ImageDialog: styled with this app's own design tokens instead
+        // of @mdxeditor/editor's, and wired to `onUploadImage` so inserting an
+        // image uploads it to the backend instead of only accepting a URL.
+        imagePlugin({
+          ImageDialog: BoardDocImageDialog as () => React.JSX.Element,
+          imageUploadHandler: onUploadImage ?? null,
+        }),
         tablePlugin(),
         codeBlockPlugin({ defaultCodeBlockLanguage: "text" }),
         codeMirrorPlugin({

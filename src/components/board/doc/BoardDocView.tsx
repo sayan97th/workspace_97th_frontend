@@ -9,6 +9,8 @@ export type BoardDocViewProps = {
   view: BoardViewDto;
   /** Persists the doc's markdown — called by the debounced autosave below. */
   onSaveDocContent: (doc_content: string) => Promise<void>;
+  /** Uploads an image dropped/pasted/inserted into the doc, resolving to its public URL — omit to fall back to inline base64 data URIs. */
+  onUploadImage?: (file: File) => Promise<string>;
 };
 
 const AUTOSAVE_DELAY_MS = 800;
@@ -37,7 +39,7 @@ type SaveStatus = "idle" | "saving" | "saved";
  * everything content-shaped lives here and in the reusable `BoardDocEditor`,
  * which any future long-form-text view can reuse on its own.
  */
-const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent }) => {
+const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent, onUploadImage }) => {
   const [save_status, setSaveStatus] = useState<SaveStatus>("idle");
 
   const save_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,6 +113,7 @@ const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent }) =
         onChange={handleChange}
         onBlur={flushSave}
         placeholder="Start writing… type “/” for formatting, or just start typing Markdown like # or -."
+        onUploadImage={onUploadImage}
       />
     </div>
   );

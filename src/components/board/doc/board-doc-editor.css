@@ -104,3 +104,21 @@
 .board-doc-editor-content code {
   color: var(--color-shell-text);
 }
+
+/*
+ * @mdxeditor/editor portals every remaining stock popover it owns (the block-
+ * type select, table insert menu, code-block language picker, diff/source
+ * toggle, …) into a `.mdxeditor-popup-container` div appended as a sibling of
+ * <body> — see `EditorRootElement` in the package's `MDXEditor.js`. That
+ * container ships at `z-index: 2`, low enough for this app's own chrome (e.g.
+ * the sidebar flyout at `z-50`) to render on top of it and swallow clicks.
+ * The link and image dialogs are replaced outright (see
+ * `dialogs/BoardDocLinkDialog.tsx` / `dialogs/BoardDocImageDialog.tsx`, which
+ * portal to `document.body` themselves at `z-[1000]`/`z-[420]`) — this covers
+ * every *other* popover the editor still owns natively. `!important` because
+ * the package's own rule targets the exact same single-class specificity, and
+ * this must win regardless of the two stylesheets' bundling order.
+ */
+.mdxeditor-popup-container {
+  z-index: 1000 !important;
+}

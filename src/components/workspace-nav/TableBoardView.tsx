@@ -1111,6 +1111,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardDocView
           view={active_doc_view}
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
+          onUploadImage={(file) => boardContentService.uploadDocImage(board_id, active_doc_view.id, file)}
         />
       ) : active_view_type !== "table" ? (
         <BoardComingSoonView view_type={active_view_type} />
