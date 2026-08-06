@@ -123,8 +123,7 @@ type SortableCardProps<TRow> = {
 };
 
 /**
- * The card shell owns no padding of its own (a Trello-style cover image needs
- * to sit flush against the rounded corners) — `renderCard` is responsible for
+ * The card shell owns no padding of its own — `renderCard` is responsible for
  * padding its own content.
  */
 function SortableCard<TRow>({ row, row_id, is_selected, can_drag, onCardClick, renderCard }: SortableCardProps<TRow>) {
@@ -370,8 +369,8 @@ function KanbanLaneColumn<TRow>({
  * between lanes and within a lane, and a floating drag overlay so the held
  * card never gets clipped by a lane's own scroll container. Callers supply
  * the lanes (already partitioned) and a `renderCard` function that owns its
- * own padding (so a card can bleed a cover image edge-to-edge), so any board
- * view whose rows can be bucketed into lanes can reuse this shell — mirroring
+ * own padding, so any board view whose rows can be bucketed into lanes can
+ * reuse this shell — mirroring
  * how `BoardTable` takes `renderCell` instead of owning cell layout itself.
  */
 function BoardKanban<TRow>({

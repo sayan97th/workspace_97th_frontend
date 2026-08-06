@@ -122,6 +122,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   postComment: () => void;
   addComposerAttachments: (files: File[]) => void;
   removeComposerAttachment: (attachment_id: string) => void;
+  /** Posts one or more files straight away as a bodiless comment — the "attach a file to this card" affordance, independent of whatever text is (or isn't) sitting in the composer. */
+  postAttachments: (files: File[]) => void;
 
   reply_text_by_comment: Record<string, string>;
   onReplyTextChange: (comment_id: string, value: string) => void;

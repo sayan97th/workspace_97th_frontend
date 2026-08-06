@@ -211,6 +211,42 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setMentionTarget(null);
   };
 
+  /**
+   * Posts `files` immediately as a bodiless comment — used by the dedicated
+   * Attachments affordance, which shouldn't depend on (or interfere with)
+   * whatever the viewer may currently be typing into the main composer.
+   */
+  const postAttachments = (files: File[]) => {
+    if (!open_row_id || files.length === 0) return;
+
+    if (is_api_backed) {
+      const item_id = Number(open_row_id);
+      setCommentsError(null);
+      boardCommentsService
+        .postComment(board_id, item_id, { body: "", attachments: files })
+        .then((dto) => {
+          updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
+        })
+        .catch(() => setCommentsError("Couldn't attach your file(s). Please try again."));
+      return;
+    }
+
+    const new_comment: DrawerComment = {
+      id: nextCommentId(),
+      author: config.current_user,
+      posted_at: "Just now",
+      body: "",
+      view_count: 1,
+      liked_by_me: false,
+      like_count: 0,
+      seen: false,
+      attachments: files.map((file) => ({ id: createId(), file_name: file.name, ...classifyAttachment(file.name) })),
+      replies: [],
+      reactions: [],
+    };
+    updateComments(open_row_id, (comments) => [new_comment, ...comments]);
+  };
+
   const addComposerAttachments = (files: File[]) => {
     if (files.length === 0) return;
     const additions: ComposerAttachmentDraft[] = files.map((file) => ({
@@ -434,6 +470,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     postComment,
     addComposerAttachments,
     removeComposerAttachment,
+    postAttachments,
 
     reply_text_by_comment,
     onReplyTextChange,

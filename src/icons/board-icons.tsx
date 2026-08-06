@@ -305,7 +305,7 @@ export const SortDescendingIcon: React.FC<IconProps> = ({ className, size = 15 }
   </svg>
 );
 
-/** Picture frame with a mountain glyph — the Kanban card "set cover image" affordance. */
+/** Picture frame with a mountain glyph — used for image-related affordances (e.g. inserting an image into a doc-type board view). */
 export const ImageIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" stroke="currentColor" strokeWidth="1.3" />

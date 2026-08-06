@@ -21,7 +21,6 @@ import {
   InlineTitleEditor,
   KANBAN_COLORS,
   KANBAN_DEFAULT_LANE_OPTIONS,
-  KanbanCardCover,
   KanbanCardLabels,
   KanbanCardMembers,
   KanbanItemDrawer,
@@ -890,19 +889,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return lanes;
   }, [board_status_column, filtered_rows]);
 
-  // ── Kanban card cover — a Trello-style attribute of the card itself (not a
-  // column value), so it round-trips through its own multipart endpoints
-  // rather than `handleUpdateCellValue`. ──
-  const handleUploadCardCover = async (item_id: number, file: File) => {
-    const updated = await boardContentService.updateItemCover(board_id, item_id, file);
-    setItems((current) => current.map((item) => (item.id === item_id ? updated : item)));
-  };
-
-  const handleRemoveCardCover = async (item_id: number) => {
-    const updated = await boardContentService.removeItemCover(board_id, item_id);
-    setItems((current) => current.map((item) => (item.id === item_id ? updated : item)));
-  };
-
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
     const excluded_column_ids = new Set(
       [
@@ -937,12 +923,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         className="flex flex-col"
         style={{ borderLeft: `3px solid ${priority_option?.color ?? KANBAN_COLORS.border_default}` }}
       >
-        <KanbanCardCover
-          cover_image_url={row.cover_image_url}
-          onUpload={(file) => void handleUploadCardCover(row.id, file)}
-          onRemove={() => void handleRemoveCardCover(row.id)}
-        />
-
         <div className="flex flex-col" style={{ padding: "11px 12px 10px" }}>
           <div className="flex items-start gap-2">
             {board_done_column && (

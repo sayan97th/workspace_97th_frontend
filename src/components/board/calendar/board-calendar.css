@@ -87,7 +87,7 @@
 
 /* Event chrome is fully reset — CalendarEvent (rendered via `components.event`)
    owns its own pill styling, mirroring how BoardKanban's card shell owns no
-   padding so a cover image can bleed edge-to-edge. */
+   padding of its own. */
 .board-calendar .rbc-event,
 .board-calendar .rbc-background-event {
   background: transparent;

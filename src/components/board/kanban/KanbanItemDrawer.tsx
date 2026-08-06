@@ -107,12 +107,22 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
           {is_done ? "Completed" : "Mark complete"}
         </span>
         <span className="ml-auto flex flex-none items-center gap-1">
-          <span
-            className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
+          <label
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
             style={{ color: KANBAN_COLORS.text_faint }}
+            title="Attach a file"
           >
             <AttachmentIcon size={15} />
-          </span>
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                if (event.target.files) drawer.postAttachments(Array.from(event.target.files));
+                event.target.value = "";
+              }}
+            />
+          </label>
           <span
             className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
             style={{ color: KANBAN_COLORS.text_faint }}
@@ -223,6 +233,42 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
               />
             </div>
           )}
+        </div>
+
+        <div className="mb-5" style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>
+          <div className="mb-2.5 flex items-center justify-between">
+            <span className="text-[12.5px] font-bold" style={{ color: KANBAN_COLORS.text_disabled }}>
+              Attachments
+            </span>
+            <span className="text-[12px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
+              {drawer.all_attachments.length}
+            </span>
+          </div>
+
+          {drawer.all_attachments.length > 0 && (
+            <div className="mb-2.5 flex flex-wrap gap-1.5">
+              {drawer.all_attachments.map((attachment) => (
+                <CommentAttachmentChip key={attachment.id} attachment={attachment} />
+              ))}
+            </div>
+          )}
+
+          <label
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors hover:bg-[#F4F4F2]"
+            style={{ color: KANBAN_COLORS.text_faint, border: `1px solid ${KANBAN_COLORS.border_subtle}` }}
+          >
+            <AttachmentIcon size={13} />
+            Attach a file
+            <input
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                if (event.target.files) drawer.postAttachments(Array.from(event.target.files));
+                event.target.value = "";
+              }}
+            />
+          </label>
         </div>
 
         {drawer.has_description && (
