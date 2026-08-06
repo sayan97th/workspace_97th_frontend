@@ -5,6 +5,7 @@ import {
   ADDABLE_COLUMN_TYPES,
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_VIEW_TYPES,
+  BoardCalendar,
   BoardComingSoonView,
   BoardDocView,
   BoardItemDrawer,
@@ -21,9 +22,11 @@ import {
   KanbanCardCover,
   KanbanCardLabels,
   KanbanCardMembers,
+  PersonAvatarStack,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
+  type BoardCalendarRange,
   type BoardCellOption,
   type BoardColumn,
   type BoardKanbanLane,
@@ -38,7 +41,7 @@ import {
   type BoardToolbarConfig,
   type BoardViewKind,
 } from "@/components/board";
-import { KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
+import { CalendarViewIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, FolderIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
@@ -763,33 +766,39 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
   };
 
-  // ── Kanban ── lanes are the first status column's options; a card's lane
-  // membership *is* its value in that column, so dragging a card between
-  // lanes is just an ordinary cell edit (`handleUpdateCellValue`) — no
-  // separate "lane" concept to keep in sync. Trello-style "Labels" and
-  // "Members" follow the same idea: the first `tags`/`people` column on the
-  // board, rendered as colored pills / avatar circles instead of the generic
-  // value chip other columns get.
+  // ── Shared across Kanban/Calendar ── the board's first column of each
+  // relevant type drives that view's structural axis: Kanban's lanes and
+  // Calendar's event color both come from the first `status` column,
+  // Trello-style card "Labels"/Calendar overflow chips from the first
+  // `tags` column, card/event "Members" from the first `people` column,
+  // and Calendar's day placement from the first (and, for a start+end
+  // range, second) `date` column. A row's membership in all of these *is*
+  // just its value in that column, so dragging a card between lanes or an
+  // event onto a new day is an ordinary cell edit (`handleUpdateCellValue`)
+  // — no separate "lane"/"event" concept to keep in sync.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const active_doc_view = view_tabs.active_view;
-  const kanban_lane_column = columns.find((c) => c.type === "status") ?? null;
-  const kanban_label_column = columns.find((c) => c.type === "tags") ?? null;
-  const kanban_member_column = columns.find((c) => c.type === "people") ?? null;
-  const kanban_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
+  const board_status_column = columns.find((c) => c.type === "status") ?? null;
+  const board_label_column = columns.find((c) => c.type === "tags") ?? null;
+  const board_member_column = columns.find((c) => c.type === "people") ?? null;
+  const date_columns = useMemo(() => columns.filter((c) => c.type === "date"), [columns]);
+  const board_date_column = date_columns[0] ?? null;
+  const board_date_end_column = date_columns[1] ?? null;
+  const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
-    if (!kanban_lane_column) return [];
-    const column_id = String(kanban_lane_column.id);
-    const options = (kanban_lane_column.config?.options ?? []).filter((o) => o.is_active !== false);
+    if (!board_status_column) return [];
+    const column_id = String(board_status_column.id);
+    const options = (board_status_column.config?.options ?? []).filter((o) => o.is_active !== false);
     const lanes: BoardKanbanLane<BoardItemDto>[] = options.map((option) => ({
       id: option.id,
       label: option.label,
       color: option.color,
-      rows: kanban_rows.filter((row) => row.values[column_id] === option.id),
+      rows: filtered_rows.filter((row) => row.values[column_id] === option.id),
       renamable: true,
     }));
     const known_ids = new Set(options.map((o) => o.id));
-    const unassigned = kanban_rows.filter((row) => {
+    const unassigned = filtered_rows.filter((row) => {
       const value = row.values[column_id];
       return value == null || !known_ids.has(String(value));
     });
@@ -797,7 +806,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       lanes.push({ id: "__none__", label: "No status", color: "#c4c4c4", rows: unassigned, renamable: false });
     }
     return lanes;
-  }, [kanban_lane_column, kanban_rows]);
+  }, [board_status_column, filtered_rows]);
 
   // ── Kanban card cover — a Trello-style attribute of the card itself (not a
   // column value), so it round-trips through its own multipart endpoints
@@ -814,16 +823,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
     const excluded_column_ids = new Set(
-      [kanban_lane_column?.id, kanban_label_column?.id, kanban_member_column?.id].filter(
+      [board_status_column?.id, board_label_column?.id, board_member_column?.id].filter(
         (id): id is number => id != null
       )
     );
     const other_columns = columns.filter((c) => !excluded_column_ids.has(c.id));
     const has_footer = row.comment_count > 0;
 
-    const label_ids = kanban_label_column ? asStringArray(row.values[String(kanban_label_column.id)]) : [];
-    const member_ids = kanban_member_column ? asStringArray(row.values[String(kanban_member_column.id)]) : [];
-    const members = kanban_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
+    const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
+    const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
+    const members = board_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
 
     return (
       <div className="flex flex-col">
@@ -834,18 +843,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         />
 
         <div className="flex flex-col gap-2 p-2.5">
-          {kanban_label_column && (
+          {board_label_column && (
             <KanbanCardLabels
-              options={kanban_label_column.config?.options ?? []}
+              options={board_label_column.config?.options ?? []}
               selected_ids={label_ids}
               onToggle={(option_id) => {
                 const next = label_ids.includes(option_id)
                   ? label_ids.filter((id) => id !== option_id)
                   : [...label_ids, option_id];
-                void handleUpdateCellValue(row.id, String(kanban_label_column.id), next.length ? next : null);
+                void handleUpdateCellValue(row.id, String(board_label_column.id), next.length ? next : null);
               }}
-              onCreateOption={(option) => handleAddColumnOption(String(kanban_label_column.id), option)}
-              onEditOptions={makeOptionActions(String(kanban_label_column.id))}
+              onCreateOption={(option) => handleAddColumnOption(String(board_label_column.id), option)}
+              onEditOptions={makeOptionActions(String(board_label_column.id))}
             />
           )}
 
@@ -890,7 +899,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </div>
           )}
 
-          {(has_footer || kanban_member_column) && (
+          {(has_footer || board_member_column) && (
             <div className="flex items-center justify-between gap-1 border-t border-shell-border pt-1.5">
               {has_footer ? (
                 <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
@@ -900,7 +909,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               ) : (
                 <span />
               )}
-              {kanban_member_column && (
+              {board_member_column && (
                 <KanbanCardMembers
                   people={node.owners}
                   selected={members}
@@ -908,7 +917,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                     const next = member_ids.includes(person_id)
                       ? member_ids.filter((id) => id !== person_id)
                       : [...member_ids, person_id];
-                    void handleUpdateCellValue(row.id, String(kanban_member_column.id), next.length ? next : null);
+                    void handleUpdateCellValue(row.id, String(board_member_column.id), next.length ? next : null);
                   }}
                 />
               )}
@@ -919,8 +928,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
   };
 
-  /** Guarantees an item has a table (group) to belong to even when the Kanban view has never opened the Table tab — auto-creates one silently. */
-  const ensureKanbanGroup = async (): Promise<BoardGroupDto | null> => {
+  /** Guarantees an item has a table (group) to belong to even when the active tab (Kanban/Calendar) has never opened the Table tab — auto-creates one silently. */
+  const ensureBoardGroup = async (): Promise<BoardGroupDto | null> => {
     if (groups[0]) return groups[0];
     if (view_tabs.active_view_id == null) return null;
     const created = await boardContentService.createGroup(board_id, { view_id: view_tabs.active_view_id, name: "Board" });
@@ -929,8 +938,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   const handleMoveKanbanCard = (row_id: string, lane_id: string) => {
-    if (!kanban_lane_column) return;
-    handleUpdateCellValue(Number(row_id), String(kanban_lane_column.id), lane_id === "__none__" ? null : lane_id);
+    if (!board_status_column) return;
+    handleUpdateCellValue(Number(row_id), String(board_status_column.id), lane_id === "__none__" ? null : lane_id);
   };
 
   /**
@@ -942,7 +951,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleReorderKanbanCards = (lane_id: string, ordered_row_ids: string[]) => {
     const moved_ids = new Set(ordered_row_ids);
     const rows_by_group = new Map<number, BoardItemDto[]>();
-    for (const row of kanban_rows) {
+    for (const row of filtered_rows) {
       const list = rows_by_group.get(row.group_id) ?? [];
       list.push(row);
       rows_by_group.set(row.group_id, list);
@@ -981,27 +990,27 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   const handleSubmitNewKanbanCard = async (lane_id: string, title: string) => {
-    const target_group = await ensureKanbanGroup();
+    const target_group = await ensureBoardGroup();
     if (!target_group) return;
     const values =
-      kanban_lane_column && lane_id !== "__none__" ? { [String(kanban_lane_column.id)]: lane_id } : undefined;
+      board_status_column && lane_id !== "__none__" ? { [String(board_status_column.id)]: lane_id } : undefined;
     const created = await boardContentService.createItem(board_id, { name: title, group_id: target_group.id, values });
     setItems((current) => [...current, created]);
     setAddingKanbanLaneId(null);
   };
 
   const handleAddKanbanLane = () => {
-    if (!kanban_lane_column) return;
-    const next_index = kanban_lane_column.config?.options?.length ?? 0;
-    void handleAddColumnOption(String(kanban_lane_column.id), {
+    if (!board_status_column) return;
+    const next_index = board_status_column.config?.options?.length ?? 0;
+    void handleAddColumnOption(String(board_status_column.id), {
       label: `New lane ${next_index + 1}`,
       color: COLUMN_OPTION_PALETTE[next_index % COLUMN_OPTION_PALETTE.length],
     });
   };
 
   const handleRenameKanbanLane = (lane_id: string, label: string) => {
-    if (!kanban_lane_column) return;
-    makeOptionActions(String(kanban_lane_column.id)).onRename(lane_id, label);
+    if (!board_status_column) return;
+    makeOptionActions(String(board_status_column.id)).onRename(lane_id, label);
   };
 
   /**
@@ -1020,6 +1029,71 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       color: option.color,
     }));
     void handleAddColumn(status_type, { options });
+  };
+
+  // ── Calendar ── events are positioned by the board's first Date column
+  // (an optional second Date column becomes the range's end, e.g. "Start
+  // date"/"Due date"); a card's day *is* its value in that column, so
+  // dragging an event onto a new day is an ordinary cell edit, same as
+  // Kanban's lane drag. Color comes from the same first Status column
+  // Kanban uses (falling back to the Date column's own swatch blue when the
+  // board has no status column), and "Members" reuses the same first People
+  // column and avatar stack Kanban cards use. ──
+  const getCalendarRowRange = (row: BoardItemDto): BoardCalendarRange | null => {
+    if (!board_date_column) return null;
+    const start = row.values[String(board_date_column.id)];
+    if (typeof start !== "string" || !start) return null;
+    const end = board_date_end_column ? row.values[String(board_date_end_column.id)] : null;
+    return { start, end: typeof end === "string" && end ? end : null };
+  };
+
+  const getCalendarRowColor = (row: BoardItemDto): string => {
+    if (!board_status_column) return COLUMN_KIND_SWATCH.date.accent_color;
+    const value = row.values[String(board_status_column.id)];
+    const option = (board_status_column.config?.options ?? []).find((o) => o.id === value);
+    return option?.color ?? "#c4c4c4";
+  };
+
+  const renderCalendarEvent = (row: BoardItemDto): React.ReactNode => {
+    const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
+    const members = board_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
+
+    return (
+      <div className="flex min-w-0 items-center gap-1.5">
+        <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-shell-text">{row.name}</span>
+        {members.length > 0 && <PersonAvatarStack people={members} size={16} max_visible={3} />}
+      </div>
+    );
+  };
+
+  const handleMoveCalendarEvent = (row_id: string, new_start: string, new_end: string) => {
+    if (!board_date_column) return;
+    void handleUpdateCellValue(Number(row_id), String(board_date_column.id), new_start);
+    if (board_date_end_column) {
+      void handleUpdateCellValue(Number(row_id), String(board_date_end_column.id), new_end);
+    }
+  };
+
+  const handleAddCalendarEvent = async (date: string) => {
+    const target_group = await ensureBoardGroup();
+    if (!target_group || !board_date_column) return;
+    const created = await boardContentService.createItem(board_id, {
+      name: "New item",
+      group_id: target_group.id,
+      values: { [String(board_date_column.id)]: date },
+    });
+    setItems((current) => [...current, created]);
+    handleRowClick(created);
+  };
+
+  /**
+   * A brand-new Calendar tab has no Date column yet — offer to add one
+   * instead of showing an empty grid, mirroring `handleStartKanbanBoard`.
+   */
+  const handleStartCalendarBoard = () => {
+    const date_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "date");
+    if (!date_type) return;
+    void handleAddColumn(date_type);
   };
 
   return (
@@ -1072,7 +1146,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       {active_view_type === "kanban" ? (
-        kanban_lane_column ? (
+        board_status_column ? (
           <BoardKanban<BoardItemDto>
             lanes={kanban_lanes}
             getRowId={(row) => String(row.id)}
@@ -1104,6 +1178,39 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             >
               <PlusIcon size={13} />
               Add Status column
+            </button>
+          </div>
+        )
+      ) : active_view_type === "calendar" ? (
+        board_date_column ? (
+          <BoardCalendar<BoardItemDto>
+            rows={filtered_rows}
+            getRowId={(row) => String(row.id)}
+            getRowRange={getCalendarRowRange}
+            getRowColor={getCalendarRowColor}
+            renderEvent={renderCalendarEvent}
+            onSelectEvent={handleRowClick}
+            selectedRowId={drawer.open_row_id}
+            onMoveEvent={handleMoveCalendarEvent}
+            resizable={Boolean(board_date_end_column)}
+            onAddEvent={handleAddCalendarEvent}
+          />
+        ) : (
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
+              <CalendarViewIcon size={26} />
+            </span>
+            <h2 className="text-lg font-semibold text-shell-text">Set up your Calendar</h2>
+            <p className="text-[13.5px] text-shell-text-muted">
+              Calendar events come from a Date column — add one to place items on the calendar.
+            </p>
+            <button
+              type="button"
+              onClick={handleStartCalendarBoard}
+              className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+            >
+              <PlusIcon size={13} />
+              Add Date column
             </button>
           </div>
         )

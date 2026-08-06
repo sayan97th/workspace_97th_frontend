@@ -1,0 +1,196 @@
+/*
+ * Repoints react-big-calendar's own (hardcoded-hex) stylesheet at the
+ * workspace shell's design tokens (--color-shell-*, --color-brand-*, defined
+ * in src/app/globals.css) so the calendar reads as a native shell surface
+ * instead of a themed-in third-party widget — mirrors board-doc-editor.css's
+ * approach for @mdxeditor/editor. Unlike that file, react-big-calendar has no
+ * CSS-variable theming layer of its own, so every rule below targets its
+ * `.rbc-*` class names directly. Both light and dark values come from the
+ * shell tokens, which already flip under `.dark` on <html>, so no separate
+ * dark branch is needed here.
+ */
+.board-calendar .rbc-calendar {
+  font-family: inherit;
+  color: var(--color-shell-text);
+}
+
+.board-calendar .rbc-month-view,
+.board-calendar .rbc-time-view,
+.board-calendar .rbc-agenda-view {
+  border: 1px solid var(--color-shell-border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-shell-panel);
+}
+
+.board-calendar .rbc-month-row,
+.board-calendar .rbc-month-header,
+.board-calendar .rbc-day-bg,
+.board-calendar .rbc-header,
+.board-calendar .rbc-time-header,
+.board-calendar .rbc-time-content,
+.board-calendar .rbc-time-header-content,
+.board-calendar .rbc-timeslot-group,
+.board-calendar .rbc-agenda-view table.rbc-agenda-table,
+.board-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr > td,
+.board-calendar .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  border-color: var(--color-shell-border) !important;
+}
+
+.board-calendar .rbc-off-range-bg {
+  background: var(--color-shell-panel-alt);
+}
+
+.board-calendar .rbc-off-range {
+  color: var(--color-shell-text-faint);
+}
+
+.board-calendar .rbc-today {
+  background: color-mix(in srgb, var(--color-brand-500) 8%, transparent);
+}
+
+.board-calendar .rbc-header {
+  padding: 8px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--color-shell-text-muted);
+}
+
+.board-calendar .rbc-header + .rbc-header {
+  border-left-color: var(--color-shell-border);
+}
+
+.board-calendar .rbc-date-cell {
+  padding: 5px 8px 0 0;
+  font-size: 12.5px;
+  color: var(--color-shell-text-secondary);
+}
+
+.board-calendar .rbc-date-cell.rbc-now .rbc-button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 4px;
+  border-radius: 6px;
+  background: var(--color-brand-500);
+  color: var(--color-white);
+  font-weight: 700;
+}
+
+.board-calendar .rbc-button-link {
+  color: inherit;
+}
+
+/* Event chrome is fully reset — CalendarEvent (rendered via `components.event`)
+   owns its own pill styling, mirroring how BoardKanban's card shell owns no
+   padding so a cover image can bleed edge-to-edge. */
+.board-calendar .rbc-event,
+.board-calendar .rbc-background-event {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 1px 4px;
+  box-shadow: none;
+}
+
+.board-calendar .rbc-event:focus,
+.board-calendar .rbc-event.rbc-selected {
+  background: transparent;
+  outline: none;
+}
+
+.board-calendar .rbc-event-content {
+  overflow: visible;
+}
+
+.board-calendar .rbc-row-segment {
+  padding: 0;
+}
+
+.board-calendar .rbc-show-more {
+  background: transparent;
+  color: var(--color-brand-500);
+  font-weight: 600;
+  font-size: 11.5px;
+  padding: 1px 4px;
+}
+
+.board-calendar .rbc-show-more:hover {
+  color: var(--color-brand-600);
+}
+
+.board-calendar .rbc-overlay {
+  background: var(--color-shell-panel);
+  border: 1px solid var(--color-shell-border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-theme-lg);
+  padding: 10px;
+}
+
+.board-calendar .rbc-overlay-header {
+  color: var(--color-shell-text);
+  border-bottom-color: var(--color-shell-border);
+  font-weight: 600;
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+}
+
+.board-calendar .rbc-agenda-date-cell,
+.board-calendar .rbc-agenda-time-cell {
+  color: var(--color-shell-text-secondary);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.board-calendar .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
+  color: var(--color-shell-text-muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 8px 10px;
+}
+
+.board-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
+  padding: 8px 10px;
+}
+
+.board-calendar .rbc-selected-cell {
+  background: color-mix(in srgb, var(--color-brand-500) 10%, transparent);
+}
+
+.board-calendar .rbc-current-time-indicator {
+  background-color: var(--color-brand-500);
+}
+
+/* The pill a calendar event renders as — accent-colored via the inline
+   `--event-color` custom property CalendarEventContent sets per row (its
+   status column color, mirroring Kanban's lane accent). */
+.board-calendar-event {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  border-radius: 6px;
+  border-left: 3px solid var(--event-color, var(--color-brand-500));
+  background: color-mix(in srgb, var(--event-color, var(--color-brand-500)) 14%, var(--color-shell-panel));
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: filter 0.12s ease;
+}
+
+.board-calendar-event:hover {
+  filter: brightness(0.97);
+}
+
+.dark .board-calendar-event:hover {
+  filter: brightness(1.18);
+}
+
+.board-calendar-event--selected {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 1px;
+}

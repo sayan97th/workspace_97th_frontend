@@ -67,4 +67,5 @@ export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColorin
 export * from "./toolbar/types";
 export * from "./drawer";
 export * from "./kanban";
+export * from "./calendar";
 export * from "./doc";

@@ -93,7 +93,7 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Calendar",
     description: "See items laid out across a calendar",
     Icon: CalendarViewIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "canvas",
