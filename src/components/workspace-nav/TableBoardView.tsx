@@ -38,7 +38,6 @@ import {
   type BoardGroupByOption,
   type BoardHeaderInfo,
   type BoardItemDrawerConfig,
-  type DrawerDetailField,
   type BoardPersonOption,
   type BoardQuickFilterFacet,
   type BoardSortOption,
@@ -305,19 +304,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [node.owners]
   );
 
-  // ── Shared across Kanban/Calendar/the drawer's Details strip ── the board's
-  // first column of each relevant type drives that view's structural axis:
-  // Kanban's lanes and Calendar's event color both come from the first
-  // `status` column, Trello-style card "Labels"/Calendar overflow chips from
-  // the first `tags` column, card/event "Members" from the first `people`
-  // column, and Calendar's day placement from the first (and, for a
-  // start+end range, second) `date` column. A row's membership in all of
-  // these *is* just its value in that column, so dragging a card between
-  // lanes or an event onto a new day is an ordinary cell edit
+  // ── Shared across Kanban/Calendar/the Kanban drawer's own detail rows ──
+  // the board's first column of each relevant type drives that view's
+  // structural axis: Kanban's lanes and Calendar's event color both come
+  // from the first `status` column, Trello-style card "Labels"/Calendar
+  // overflow chips from the first `tags` column, card/event "Members" from
+  // the first `people` column, and Calendar's day placement from the first
+  // (and, for a start+end range, second) `date` column. A row's membership
+  // in all of these *is* just its value in that column, so dragging a card
+  // between lanes or an event onto a new day is an ordinary cell edit
   // (`handleUpdateCellValue`) — no separate "lane"/"event" concept to keep
-  // in sync. Declared this early (rather than alongside `kanban_lanes`
-  // below) purely so `getDetailFields` — built ahead of `useBoardItemDrawer`
-  // — can close over them without a temporal-dead-zone crash.
+  // in sync.
   const board_status_column = columns.find((c) => c.type === "status") ?? null;
   const board_label_column = columns.find((c) => c.type === "tags") ?? null;
   const board_member_column = columns.find((c) => c.type === "people") ?? null;
@@ -510,11 +507,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) => view_tabs.reorderPersonalTabs(ordered_ids);
   const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
-
-  // `current_user`/`fetchItemDetail`/`getInfoBoxes`/`drawer_config`/`drawer`/
-  // `handleRowClick`/`handleDrawerClose` are declared further down (after
-  // `handleUpdateCellValue`/`makeOptionActions`/`handleAddColumnOption`), since
-  // `drawer_config`'s `getDetailFields` closes over all three.
 
   // ── Add group (table) — one click appends a new table at the bottom of the active tab, no popover. Rename it inline afterward via the group title. ──
   const handleCreateGroup = async () => {
@@ -729,39 +721,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [item_detail_by_id, groups]
   );
 
-  // ── Details strip (Status/Priority/Due date/People) shown above the
-  // drawer's tabs — each field reuses the same `BoardValueCell` editor the
-  // table's cells and the Kanban card's "other columns" preview use, so
-  // editing from the drawer is the exact same persistence path
-  // (`handleUpdateCellValue`) as editing from anywhere else. Board-specific
-  // (not every board has a Status/Priority/Due date/People column), so it's
-  // built here rather than in the generic `BoardItemDrawer` shell.
-  const getDetailFields = (row: BoardItemDto): DrawerDetailField[] => {
-    const fields: DrawerDetailField[] = [];
-    const pushField = (column: BoardColumnDto, label: string) => {
-      const has_options = column.type === "status" || column.type === "tags";
-      fields.push({
-        id: String(column.id),
-        label,
-        content: (
-          <BoardValueCell
-            column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
-            value={row.values[String(column.id)] ?? null}
-            people={node.owners}
-            onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
-            onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
-            onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
-          />
-        ),
-      });
-    };
-    if (board_status_column) pushField(board_status_column, board_status_column.label);
-    if (board_priority_column) pushField(board_priority_column, "Priority");
-    if (board_date_column) pushField(board_date_column, "Due date");
-    if (board_member_column) pushField(board_member_column, "People");
-    return fields;
-  };
-
   // ── Description — a first-class field on the item itself (like `name`),
   // not a column value, so it persists through `updateItem` rather than
   // `updateItemValues`. Debounced inside `useBoardItemDrawer` (mirrors
@@ -782,12 +741,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       getInitialComments: () => [],
       board_id,
       getInfoBoxes,
-      getDetailFields,
       getDescription: (row) => row.description ?? "",
       onDescriptionChange: handleUpdateItemDescription,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, board_id, getInfoBoxes, board_status_column, board_priority_column, board_date_column, board_member_column]
+    [node.label, current_user.id, persons, board_id, getInfoBoxes]
   );
 
   const drawer = useBoardItemDrawer(drawer_config);

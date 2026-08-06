@@ -51,7 +51,7 @@ type ComposerAttachmentDraft = { attachment: DrawerAttachment; file: File };
  * Client Hub) everything stays local, synchronous mock state exactly as before.
  */
 export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): BoardItemDrawerApi<TRow> {
-  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, getDetailFields, getDescription, board_id } = config;
+  const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, getDescription, board_id } = config;
   const accent_color = config.accent_color ?? DEFAULT_ACCENT_COLOR;
   const is_api_backed = board_id !== undefined;
 
@@ -383,7 +383,6 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
   const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
   const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
-  const detail_fields = open_row && getDetailFields ? getDetailFields(open_row) : [];
 
   const has_description = getDescription !== undefined;
   const description = description_draft ?? (open_row && getDescription ? getDescription(open_row) : "");
@@ -424,7 +423,6 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     all_attachments,
     info_boxes,
     activity_log,
-    detail_fields,
 
     description,
     has_description,

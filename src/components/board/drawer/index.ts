@@ -1,6 +1,9 @@
 export { default as BoardItemDrawer } from "./BoardItemDrawer";
 export type { BoardItemDrawerProps } from "./BoardItemDrawer";
 export { default as useBoardItemDrawer } from "./useBoardItemDrawer";
+export { default as SlideOverPanel } from "./SlideOverPanel";
+export type { SlideOverPanelProps } from "./SlideOverPanel";
+export { default as useLatchWhileOpen } from "./useLatchWhileOpen";
 export { default as CommentComposer } from "./CommentComposer";
 export type { CommentComposerProps } from "./CommentComposer";
 export { default as CommentThread } from "./CommentThread";
