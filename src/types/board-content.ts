@@ -75,6 +75,8 @@ export type BoardItemDto = {
   group_id: number;
   name: string;
   position: number;
+  /** Trello-style Kanban card cover, set via `updateItemCover`/`removeItemCover`. */
+  cover_image_url: string | null;
   values: Record<string, BoardItemValue>;
   /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
   comment_count: number;

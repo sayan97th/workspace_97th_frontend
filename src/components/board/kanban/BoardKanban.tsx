@@ -21,7 +21,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { DragHandleIcon, PlusIcon } from "@/icons/board-icons";
+import { DragHandleIcon, EyeIcon, PlusIcon } from "@/icons/board-icons";
 import InlineTitleEditor from "../InlineTitleEditor";
 
 export type BoardKanbanLane<TRow> = {
@@ -31,17 +31,6 @@ export type BoardKanbanLane<TRow> = {
   rows: TRow[];
   /** Lanes without a real backing option (e.g. the "No status" bucket) can't be renamed. */
   renamable?: boolean;
-};
-
-/** Perceived-luminance check so a lane's colored header always keeps readable text, whatever hex it's given. */
-const getReadableTextColor = (hex: string): string => {
-  const normalized = hex.replace("#", "");
-  const full = normalized.length === 3 ? normalized.split("").map((c) => c + c).join("") : normalized;
-  const r = parseInt(full.substring(0, 2), 16) || 0;
-  const g = parseInt(full.substring(2, 4), 16) || 0;
-  const b = parseInt(full.substring(4, 6), 16) || 0;
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.6 ? "#1a2b2b" : "#ffffff";
 };
 
 type AddCardInputProps = {
@@ -123,14 +112,18 @@ function laneIdMap<TRow>(lanes: BoardKanbanLane<TRow>[], getRowId: (row: TRow) =
 type SortableCardProps<TRow> = {
   row: TRow;
   row_id: string;
-  lane_color: string;
   is_selected: boolean;
   can_drag: boolean;
   onCardClick?: (row: TRow) => void;
   renderCard: (row: TRow) => React.ReactNode;
 };
 
-function SortableCard<TRow>({ row, row_id, lane_color, is_selected, can_drag, onCardClick, renderCard }: SortableCardProps<TRow>) {
+/**
+ * The card shell owns no padding of its own (a Trello-style cover image needs
+ * to sit flush against the rounded corners) — `renderCard` is responsible for
+ * padding its own content.
+ */
+function SortableCard<TRow>({ row, row_id, is_selected, can_drag, onCardClick, renderCard }: SortableCardProps<TRow>) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row_id,
     disabled: !can_drag,
@@ -139,16 +132,11 @@ function SortableCard<TRow>({ row, row_id, lane_color, is_selected, can_drag, on
   return (
     <div
       ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        borderLeftWidth: 3,
-        borderLeftColor: lane_color,
-      }}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       {...(can_drag ? attributes : {})}
       {...(can_drag ? listeners : {})}
       onClick={onCardClick ? () => onCardClick(row) : undefined}
-      className={`group relative rounded-lg border bg-shell-panel p-2.5 pl-3 transition-shadow duration-150 ${
+      className={`group relative overflow-hidden rounded-lg border bg-shell-panel transition-shadow duration-150 ${
         onCardClick ? "cursor-pointer" : ""
       } ${can_drag ? "cursor-grab touch-none active:cursor-grabbing" : ""} ${
         isDragging
@@ -159,7 +147,7 @@ function SortableCard<TRow>({ row, row_id, lane_color, is_selected, can_drag, on
       }`}
     >
       {can_drag && (
-        <span className="pointer-events-none absolute right-1.5 top-1.5 text-shell-text-faint opacity-0 transition-opacity group-hover:opacity-70">
+        <span className="pointer-events-none absolute right-1.5 top-1.5 z-10 text-shell-text-faint opacity-0 transition-opacity group-hover:opacity-70">
           <DragHandleIcon size={9} />
         </span>
       )}
@@ -169,11 +157,11 @@ function SortableCard<TRow>({ row, row_id, lane_color, is_selected, can_drag, on
 }
 
 /** A static (non-interactive) copy of a card's content, used inside the drag overlay so the "held" card renders identically to its resting state, just elevated. */
-function CardPreview<TRow>({ row, lane_color, renderCard }: { row: TRow; lane_color: string; renderCard: (row: TRow) => React.ReactNode }) {
+function CardPreview<TRow>({ row, renderCard }: { row: TRow; renderCard: (row: TRow) => React.ReactNode }) {
   return (
     <div
-      className="rounded-lg border border-shell-border-strong bg-shell-panel p-2.5 pl-3 shadow-xl ring-1 ring-black/5"
-      style={{ borderLeftWidth: 3, borderLeftColor: lane_color, width: LANE_WIDTH - 16 }}
+      className="overflow-hidden rounded-lg border border-shell-border-strong bg-shell-panel shadow-xl ring-1 ring-black/5"
+      style={{ width: LANE_WIDTH - 16 }}
     >
       {renderCard(row)}
     </div>
@@ -216,7 +204,10 @@ function KanbanLaneColumn<TRow>({
   onRenameLane,
 }: KanbanLaneColumnProps<TRow>) {
   const { setNodeRef } = useDroppable({ id: lane.id, data: { type: "lane", lane_id: lane.id } });
-  const header_text_color = getReadableTextColor(lane.color);
+  // Purely local, unpersisted UI state — collapsing a lane just hides its card
+  // stack to skim the board faster, mirroring the "eye" affordance in the
+  // Trello-style reference this card layout is modeled on.
+  const [is_collapsed, setIsCollapsed] = useState(false);
 
   return (
     <div
@@ -226,10 +217,8 @@ function KanbanLaneColumn<TRow>({
         boxShadow: is_over ? `0 0 0 2px ${lane.color}, 0 4px 14px rgba(0,0,0,0.12)` : undefined,
       }}
     >
-      <div
-        className="flex flex-none items-center gap-2 px-3 py-2.5"
-        style={{ background: lane.color, color: header_text_color }}
-      >
+      <div className="flex flex-none items-center gap-2 border-b border-shell-border bg-shell-panel px-3 py-2.5">
+        <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: lane.color }} />
         {editing_lane_id === lane.id ? (
           <InlineTitleEditor
             value={lane.label}
@@ -239,13 +228,12 @@ function KanbanLaneColumn<TRow>({
             }}
             onCancel={() => setEditingLaneId(null)}
             className="min-w-0 flex-1 text-[13px] font-semibold text-shell-text"
-            style={{ background: "rgba(255,255,255,0.96)" }}
             aria_label="Rename lane"
           />
         ) : (
           <span
             onClick={onRenameLane && lane.renamable !== false ? () => setEditingLaneId(lane.id) : undefined}
-            className={`min-w-0 flex-1 truncate text-[13px] font-semibold ${
+            className={`min-w-0 flex-1 truncate text-[13px] font-semibold text-shell-text ${
               onRenameLane && lane.renamable !== false ? "cursor-text hover:opacity-80" : ""
             }`}
             title={onRenameLane && lane.renamable !== false ? "Click to rename" : undefined}
@@ -253,76 +241,88 @@ function KanbanLaneColumn<TRow>({
             {lane.label}
           </span>
         )}
-        <span
-          className="flex-none rounded-full px-2 py-0.5 text-[11px] font-bold tabular-nums"
-          style={{ background: header_text_color === "#ffffff" ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.1)" }}
-        >
+        <span className="flex-none rounded-full bg-shell-hover px-2 py-0.5 text-[11px] font-bold tabular-nums text-shell-text-secondary">
           {row_ids.length}
         </span>
+        <button
+          type="button"
+          onClick={() => setIsCollapsed((current) => !current)}
+          className="flex-none rounded-[6px] p-1 text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
+          aria-label={is_collapsed ? "Expand list" : "Collapse list"}
+          title={is_collapsed ? "Expand list" : "Collapse list"}
+        >
+          <EyeIcon size={14} open={!is_collapsed} />
+        </button>
       </div>
 
-      <div
-        ref={setNodeRef}
-        className="shell-scrollbar flex flex-col gap-2 overflow-y-auto px-2 pb-2 pt-2"
-        style={{ maxHeight: LANE_BODY_MAX_HEIGHT }}
-      >
-        <SortableContext items={row_ids} strategy={verticalListSortingStrategy}>
-          {row_ids.length === 0 && addingLaneId !== lane.id && (
-            <div className="rounded-lg border border-dashed border-shell-border px-2.5 py-4 text-center text-[11.5px] text-shell-text-faint">
-              No cards yet
-            </div>
-          )}
+      {is_collapsed ? (
+        <div ref={setNodeRef} className="px-3 py-3 text-[11.5px] text-shell-text-faint">
+          {row_ids.length} card{row_ids.length === 1 ? "" : "s"} hidden
+        </div>
+      ) : (
+        <div
+          ref={setNodeRef}
+          className="shell-scrollbar flex flex-col gap-2 overflow-y-auto px-2 pb-2 pt-2"
+          style={{ maxHeight: LANE_BODY_MAX_HEIGHT }}
+        >
+          <SortableContext items={row_ids} strategy={verticalListSortingStrategy}>
+            {row_ids.length === 0 && addingLaneId !== lane.id && (
+              <div className="rounded-lg border border-dashed border-shell-border px-2.5 py-4 text-center text-[11.5px] text-shell-text-faint">
+                No cards yet
+              </div>
+            )}
 
-          {row_ids.map((row_id) => {
-            const row = rows_by_id[row_id];
-            if (!row) return null;
-            return (
-              <SortableCard
-                key={row_id}
-                row={row}
-                row_id={row_id}
-                lane_color={lane.color}
-                is_selected={selectedRowId === row_id}
-                can_drag={Boolean(onMoveCard)}
-                onCardClick={onCardClick}
-                renderCard={renderCard}
+            {row_ids.map((row_id) => {
+              const row = rows_by_id[row_id];
+              if (!row) return null;
+              return (
+                <SortableCard
+                  key={row_id}
+                  row={row}
+                  row_id={row_id}
+                  is_selected={selectedRowId === row_id}
+                  can_drag={Boolean(onMoveCard)}
+                  onCardClick={onCardClick}
+                  renderCard={renderCard}
+                />
+              );
+            })}
+          </SortableContext>
+
+          {onAddCard &&
+            (addingLaneId === lane.id ? (
+              <AddCardInput
+                color={lane.color}
+                onSubmit={(title) => onSubmitNewCard?.(lane.id, title)}
+                onCancel={() => onCancelAddCard?.()}
               />
-            );
-          })}
-        </SortableContext>
-
-        {onAddCard &&
-          (addingLaneId === lane.id ? (
-            <AddCardInput
-              color={lane.color}
-              onSubmit={(title) => onSubmitNewCard?.(lane.id, title)}
-              onCancel={() => onCancelAddCard?.()}
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => onAddCard(lane.id)}
-              className="flex items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-left text-[12.5px] font-medium text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
-            >
-              <PlusIcon size={12} />
-              Add card
-            </button>
-          ))}
-      </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onAddCard(lane.id)}
+                className="flex items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-left text-[12.5px] font-medium text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
+              >
+                <PlusIcon size={12} />
+                Add card
+              </button>
+            ))}
+        </div>
+      )}
     </div>
   );
 }
 
 /**
- * Generic, reusable Monday-style Kanban board built on `@dnd-kit`: fixed-width
- * lanes with a full-color header, a scrollable card stack (each lane scrolls
- * independently once it grows past the viewport), smooth pointer/keyboard
- * drag-and-drop both between lanes and within a lane, and a floating drag
- * overlay so the held card never gets clipped by a lane's own scroll
- * container. Callers supply the lanes (already partitioned) and a
- * `renderCard` function, so any board view whose rows can be bucketed into
- * lanes can reuse this shell — mirroring how `BoardTable` takes `renderCell`
- * instead of owning cell layout itself.
+ * Generic, reusable Trello/Monday-style Kanban board built on `@dnd-kit`:
+ * fixed-width lanes with a color-accented header (collapsible via the eye
+ * toggle), a scrollable card stack (each lane scrolls independently once it
+ * grows past the viewport), smooth pointer/keyboard drag-and-drop both
+ * between lanes and within a lane, and a floating drag overlay so the held
+ * card never gets clipped by a lane's own scroll container. Callers supply
+ * the lanes (already partitioned) and a `renderCard` function that owns its
+ * own padding (so a card can bleed a cover image edge-to-edge), so any board
+ * view whose rows can be bucketed into lanes can reuse this shell — mirroring
+ * how `BoardTable` takes `renderCell` instead of owning cell layout itself.
  */
 function BoardKanban<TRow>({
   lanes,
@@ -453,7 +453,6 @@ function BoardKanban<TRow>({
   };
 
   const active_row = active_row_id ? rows_by_id[active_row_id] : null;
-  const active_lane = active_row_id ? lanes.find((lane) => lane_ids[lane.id]?.includes(active_row_id)) : null;
 
   return (
     <DndContext
@@ -507,7 +506,7 @@ function BoardKanban<TRow>({
       </div>
 
       <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
-        {active_row && active_lane ? <CardPreview row={active_row} lane_color={active_lane.color} renderCard={renderCard} /> : null}
+        {active_row ? <CardPreview row={active_row} renderCard={renderCard} /> : null}
       </DragOverlay>
     </DndContext>
   );

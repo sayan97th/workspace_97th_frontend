@@ -148,6 +148,23 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}`);
   },
 
+  /** POST /api/boards/{board_id}/items/{item_id}/cover — sets (or replaces) the Kanban card's cover image. */
+  async updateItemCover(board_id: number, item_id: number, cover: File): Promise<BoardItemDto> {
+    const form_data = new FormData();
+    form_data.append("cover", cover);
+    const response = await apiClient.postFormData<{ item: BoardItemDto }>(
+      `/api/boards/${board_id}/items/${item_id}/cover`,
+      form_data
+    );
+    return response.item;
+  },
+
+  /** DELETE /api/boards/{board_id}/items/{item_id}/cover */
+  async removeItemCover(board_id: number, item_id: number): Promise<BoardItemDto> {
+    const response = await apiClient.delete<{ item: BoardItemDto }>(`/api/boards/${board_id}/items/${item_id}/cover`);
+    return response.item;
+  },
+
   /** GET /api/boards/{board_id}/views — the board's tabs + the viewer's personal tab order, if saved. */
   async getViews(board_id: number): Promise<BoardViewsIndexDto> {
     const response = await apiClient.get<{ data: BoardViewDto[]; personal_order: number[] | null }>(

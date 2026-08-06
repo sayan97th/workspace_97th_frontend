@@ -304,3 +304,43 @@ export const SortDescendingIcon: React.FC<IconProps> = ({ className, size = 15 }
     />
   </svg>
 );
+
+/** Picture frame with a mountain glyph — the Kanban card "set cover image" affordance. */
+export const ImageIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="5.4" cy="6" r="1.15" fill="currentColor" />
+    <path
+      d="M2.6 11.4l3.4-3.4a1 1 0 0 1 1.4 0l1.4 1.4M8.6 9l1.3-1.3a1 1 0 0 1 1.4 0l2 2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Open eye — the Kanban lane "collapse/expand this list" toggle. */
+export const EyeIcon: React.FC<IconProps & { open?: boolean }> = ({ className, size = 15, open = true }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    {open ? (
+      <>
+        <path
+          d="M1.5 8S3.8 3.3 8 3.3 14.5 8 14.5 8 12.2 12.7 8 12.7 1.5 8 1.5 8Z"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinejoin="round"
+        />
+        <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
+      </>
+    ) : (
+      <path
+        d="M2 2l12 12M6.6 6.7a2 2 0 0 0 2.7 2.7M4.2 4.4C2.5 5.5 1.5 8 1.5 8s2.3 4.7 6.5 4.7c1.2 0 2.2-.3 3.1-.9M9.8 3.6c-.6-.2-1.2-.3-1.8-.3-4.2 0-6.5 4.7-6.5 4.7"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    )}
+  </svg>
+);

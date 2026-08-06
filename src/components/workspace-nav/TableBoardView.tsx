@@ -17,6 +17,9 @@ import {
   COLUMN_OPTION_PALETTE,
   InlineTitleEditor,
   KANBAN_DEFAULT_LANE_OPTIONS,
+  KanbanCardCover,
+  KanbanCardLabels,
+  KanbanCardMembers,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
@@ -66,6 +69,9 @@ export type WorkspaceViewProps = {
 const ITEM_COLUMN_ID = "name";
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
+
+/** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
+const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
 
 const getInitials = (full_name: string): string =>
   full_name
@@ -759,9 +765,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Kanban ── lanes are the first status column's options; a card's lane
   // membership *is* its value in that column, so dragging a card between
   // lanes is just an ordinary cell edit (`handleUpdateCellValue`) — no
-  // separate "lane" concept to keep in sync.
+  // separate "lane" concept to keep in sync. Trello-style "Labels" and
+  // "Members" follow the same idea: the first `tags`/`people` column on the
+  // board, rendered as colored pills / avatar circles instead of the generic
+  // value chip other columns get.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const kanban_lane_column = columns.find((c) => c.type === "status") ?? null;
+  const kanban_label_column = columns.find((c) => c.type === "tags") ?? null;
+  const kanban_member_column = columns.find((c) => c.type === "people") ?? null;
   const kanban_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
@@ -786,58 +797,122 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return lanes;
   }, [kanban_lane_column, kanban_rows]);
 
+  // ── Kanban card cover — a Trello-style attribute of the card itself (not a
+  // column value), so it round-trips through its own multipart endpoints
+  // rather than `handleUpdateCellValue`. ──
+  const handleUploadCardCover = async (item_id: number, file: File) => {
+    const updated = await boardContentService.updateItemCover(board_id, item_id, file);
+    setItems((current) => current.map((item) => (item.id === item_id ? updated : item)));
+  };
+
+  const handleRemoveCardCover = async (item_id: number) => {
+    const updated = await boardContentService.removeItemCover(board_id, item_id);
+    setItems((current) => current.map((item) => (item.id === item_id ? updated : item)));
+  };
+
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
-    const other_columns = columns.filter((c) => c.id !== kanban_lane_column?.id);
+    const excluded_column_ids = new Set(
+      [kanban_lane_column?.id, kanban_label_column?.id, kanban_member_column?.id].filter(
+        (id): id is number => id != null
+      )
+    );
+    const other_columns = columns.filter((c) => !excluded_column_ids.has(c.id));
     const has_footer = row.comment_count > 0;
+
+    const label_ids = kanban_label_column ? asStringArray(row.values[String(kanban_label_column.id)]) : [];
+    const member_ids = kanban_member_column ? asStringArray(row.values[String(kanban_member_column.id)]) : [];
+    const members = kanban_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
+
     return (
-      <div className="flex flex-col gap-2">
-        {editing_item_id === row.id ? (
-          <InlineTitleEditor
-            value={row.name}
-            onCommit={(name) => handleRenameItem(row.id, name)}
-            onCancel={() => setEditingItemId(null)}
-            className="w-full min-w-0 text-[13px] font-semibold text-shell-text"
-            aria_label="Rename item"
-          />
-        ) : (
-          <span
-            onClick={(event) => {
-              event.stopPropagation();
-              setEditingItemId(row.id);
-            }}
-            className="min-w-0 cursor-text text-[13px] font-semibold leading-snug text-shell-text"
-            title="Click to rename"
-          >
-            {row.name}
-          </span>
-        )}
-        {other_columns.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
-            {other_columns.slice(0, 3).map((column) => {
-              const has_options = column.type === "status" || column.type === "tags";
-              return (
-                <div key={column.id} className="h-6 min-w-[26px] max-w-[120px]">
-                  <BoardValueCell
-                    column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
-                    value={row.values[String(column.id)] ?? null}
-                    people={node.owners}
-                    onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
-                    onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
-                    onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {has_footer && (
-          <div className="flex items-center gap-1 border-t border-shell-border pt-1.5">
-            <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
-              <RowChatIcon />
-              {row.comment_count}
+      <div className="flex flex-col">
+        <KanbanCardCover
+          cover_image_url={row.cover_image_url}
+          onUpload={(file) => void handleUploadCardCover(row.id, file)}
+          onRemove={() => void handleRemoveCardCover(row.id)}
+        />
+
+        <div className="flex flex-col gap-2 p-2.5">
+          {kanban_label_column && (
+            <KanbanCardLabels
+              options={kanban_label_column.config?.options ?? []}
+              selected_ids={label_ids}
+              onToggle={(option_id) => {
+                const next = label_ids.includes(option_id)
+                  ? label_ids.filter((id) => id !== option_id)
+                  : [...label_ids, option_id];
+                void handleUpdateCellValue(row.id, String(kanban_label_column.id), next.length ? next : null);
+              }}
+              onCreateOption={(option) => handleAddColumnOption(String(kanban_label_column.id), option)}
+              onEditOptions={makeOptionActions(String(kanban_label_column.id))}
+            />
+          )}
+
+          {editing_item_id === row.id ? (
+            <InlineTitleEditor
+              value={row.name}
+              onCommit={(name) => handleRenameItem(row.id, name)}
+              onCancel={() => setEditingItemId(null)}
+              className="w-full min-w-0 text-[13px] font-semibold text-shell-text"
+              aria_label="Rename item"
+            />
+          ) : (
+            <span
+              onClick={(event) => {
+                event.stopPropagation();
+                setEditingItemId(row.id);
+              }}
+              className="min-w-0 cursor-text text-[13px] font-semibold leading-snug text-shell-text"
+              title="Click to rename"
+            >
+              {row.name}
             </span>
-          </div>
-        )}
+          )}
+
+          {other_columns.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+              {other_columns.slice(0, 3).map((column) => {
+                const has_options = column.type === "status" || column.type === "tags";
+                return (
+                  <div key={column.id} className="h-6 min-w-[26px] max-w-[120px]">
+                    <BoardValueCell
+                      column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
+                      value={row.values[String(column.id)] ?? null}
+                      people={node.owners}
+                      onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
+                      onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
+                      onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {(has_footer || kanban_member_column) && (
+            <div className="flex items-center justify-between gap-1 border-t border-shell-border pt-1.5">
+              {has_footer ? (
+                <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-faint">
+                  <RowChatIcon />
+                  {row.comment_count}
+                </span>
+              ) : (
+                <span />
+              )}
+              {kanban_member_column && (
+                <KanbanCardMembers
+                  people={node.owners}
+                  selected={members}
+                  onToggle={(person_id) => {
+                    const next = member_ids.includes(person_id)
+                      ? member_ids.filter((id) => id !== person_id)
+                      : [...member_ids, person_id];
+                    void handleUpdateCellValue(row.id, String(kanban_member_column.id), next.length ? next : null);
+                  }}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
     );
   };
