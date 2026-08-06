@@ -773,6 +773,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // back/forward. Ordinary row clicks (`handleRowClick`) still open the
   // drawer synchronously themselves; this effect just no-ops for those once
   // the pushed URL round-trips back down as a matching `initial_open_item_id`.
+  //
+  // Deliberately NOT keyed on `drawer.open_row_id`: `router.push` inside
+  // `handleRowClick` resolves a render or two after `drawer.openRow` sets
+  // local state, so a row click produces one render where `open_row_id` has
+  // already flipped to the clicked row but `initial_open_item_id` (still
+  // read from the pre-navigation URL) hasn't caught up yet. Watching
+  // `open_row_id` made that in-between render re-run this effect, hit the
+  // `!initial_open_item_id` branch, and immediately close the drawer that
+  // was just opened — then the *next* render (URL caught up) reopened it,
+  // re-fetching its comments a second time. That open/close/reopen inside a
+  // few milliseconds is what read as the table "flickering" or "reloading"
+  // when clicking a row's checkbox/selection cell. Reading `drawer.open_row_id`
+  // inside the effect body (without depending on it) still lets the
+  // `!initial_open_item_id` branch close the drawer correctly — it now just
+  // does so only when the URL itself changes (deep link, tab switch, browser
+  // back/forward), which is the only case this effect needs to react to.
   useEffect(() => {
     if (!initial_open_item_id) {
       if (drawer.open_row_id != null) drawer.close();
@@ -784,7 +800,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, initial_open_item_id, drawer.open_row_id]);
+  }, [items, initial_open_item_id]);
 
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
