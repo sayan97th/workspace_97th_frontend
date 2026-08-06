@@ -1,0 +1,102 @@
+/*
+ * Repoints @mdxeditor/editor's own Radix-style theme variables at the
+ * workspace shell's design tokens (--color-shell-*, --color-brand-*, defined
+ * in src/app/globals.css) so the editor reads as a native shell surface
+ * instead of a themed-in third-party widget. No dark/light branching needed
+ * here: the shell tokens these point at already flip under the shell's own
+ * `.dark` class on <html>, and MDXEditor's `--base*`/`--accent*` variables
+ * inherit down from wherever they're set.
+ */
+.board-doc-editor {
+  --basePageBg: var(--color-shell-panel);
+  --baseBase: var(--color-shell-panel-alt);
+  --baseBgSubtle: var(--color-shell-panel-alt);
+  --baseBg: var(--color-shell-panel);
+  --baseBgHover: var(--color-shell-hover);
+  --baseBgActive: var(--color-shell-hover-strong);
+  --baseLine: var(--color-shell-border);
+  --baseBorder: var(--color-shell-border);
+  --baseBorderHover: var(--color-shell-border-strong);
+  --baseSolid: var(--color-shell-text-muted);
+  --baseSolidHover: var(--color-shell-text-secondary);
+  --baseText: var(--color-shell-text);
+  --baseTextContrast: var(--color-shell-text);
+
+  --accentBg: color-mix(in srgb, var(--color-brand-500) 12%, transparent);
+  --accentBgActive: color-mix(in srgb, var(--color-brand-500) 20%, transparent);
+  --accentBorder: var(--color-brand-500);
+  --accentLine: var(--color-brand-300);
+  --accentSolid: var(--color-brand-500);
+  --accentSolidHover: var(--color-brand-600);
+  --accentText: var(--color-brand-500);
+
+  --font-body: var(--font-outfit), ui-sans-serif, sans-serif;
+
+  border-radius: 12px;
+  border: 1px solid var(--color-shell-border);
+  background: var(--color-shell-panel);
+}
+
+.board-doc-editor [role="toolbar"] {
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  border-bottom: 1px solid var(--color-shell-border);
+  padding: 8px 10px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.board-doc-editor-content {
+  min-height: 60vh;
+  padding: 24px clamp(16px, 6%, 96px);
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--color-shell-text);
+}
+
+.board-doc-editor-content h1 {
+  font-size: 1.9em;
+}
+
+.board-doc-editor-content h2 {
+  font-size: 1.5em;
+}
+
+.board-doc-editor-content h3 {
+  font-size: 1.2em;
+}
+
+.board-doc-editor-content a {
+  color: var(--color-brand-500);
+}
+
+/*
+ * Tailwind's preflight resets `ul`/`ol` to `list-style: none` app-wide.
+ * MDXEditor relies on the browser default disc/decimal markers for plain
+ * list items (it only strips `list-style` itself on the wrapper `<li>` of a
+ * *nested* list, and on checklist items, which draw their own marker) — so
+ * without this, every bullet/numbered list in the doc silently renders with
+ * no visible marker at all.
+ */
+.board-doc-editor-content ul {
+  list-style: disc;
+  padding-inline-start: 1.5em;
+}
+
+.board-doc-editor-content ol {
+  list-style: decimal;
+  padding-inline-start: 1.5em;
+}
+
+.board-doc-editor-content ul ul {
+  list-style-type: circle;
+}
+
+.board-doc-editor-content li[class*="nestedListItem"] {
+  list-style: none;
+}
+
+.board-doc-editor-content code {
+  color: var(--color-shell-text);
+}

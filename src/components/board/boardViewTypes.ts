@@ -100,7 +100,7 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Doc",
     description: "A collaborative document",
     Icon: FileIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "file_gallery",

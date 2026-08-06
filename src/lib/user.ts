@@ -1,10 +1,13 @@
 import type { User } from "@/types/auth";
 
+/** The subset of {@link User} these helpers actually read — lets callers pass a partial creator/member shape (e.g. `BoardItemDetailDto.creator`, which only ever has `full_name`) without a full `User` object. */
+type UserNameFields = Partial<Pick<User, "full_name" | "first_name" | "last_name" | "email">>;
+
 /**
  * Human-friendly display name for a user, preferring the API-provided
  * `full_name` and falling back to the name parts or the email handle.
  */
-export const getUserDisplayName = (user: User | null | undefined): string => {
+export const getUserDisplayName = (user: UserNameFields | null | undefined): string => {
   if (!user) return "Guest";
 
   const full_name = user.full_name?.trim();
@@ -20,7 +23,7 @@ export const getUserDisplayName = (user: User | null | undefined): string => {
  * Up to two uppercase initials derived from the user's name (or email as a
  * last resort). Used by the avatar fallback when there is no profile photo.
  */
-export const getUserInitials = (user: User | null | undefined): string => {
+export const getUserInitials = (user: UserNameFields | null | undefined): string => {
   if (!user) return "?";
 
   const source = [user.first_name, user.last_name]

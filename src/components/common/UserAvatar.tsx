@@ -4,8 +4,11 @@ import React, { useState } from "react";
 import type { User } from "@/types/auth";
 import { getUserDisplayName, getUserInitials } from "@/lib/user";
 
+/** The subset of {@link User} the avatar actually renders — lets callers pass a partial creator/member shape (e.g. `BoardItemDetailDto.creator`, which only ever has `full_name`/`profile_photo_url`) without a full `User` object. */
+type AvatarUser = Partial<Pick<User, "full_name" | "first_name" | "last_name" | "email">> & Pick<User, "profile_photo_url">;
+
 type UserAvatarProps = {
-  user: User | null | undefined;
+  user: AvatarUser | null | undefined;
   /** Rendered width/height in pixels. */
   size?: number;
   /** Font size for the initials fallback; defaults to a size-relative value. */

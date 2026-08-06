@@ -112,6 +112,8 @@ export type BoardViewDto = {
   label: string;
   /** Which content the tab renders — see `BoardViewKind` (@/components/board/boardViewTypes). Set once at creation and immutable afterward. */
   view_type: BoardViewKind;
+  /** Markdown source for a `doc`-type view (see `BoardDocView`) — null/unused for every other kind. */
+  doc_content: string | null;
   /** Key into `BOARD_VIEW_ICON_OPTIONS` (@/components/board/boardViewIcons); null renders the default per-position icon. */
   icon: string | null;
   position: number;
@@ -128,6 +130,13 @@ export type BoardViewDto = {
   pinned_column_ids: string[] | null;
   row_height: BoardRowHeight;
   conditional_color_rules: BoardConditionalColorRule[] | null;
+  created_at: string | null;
+  updated_at: string | null;
+  creator: {
+    id: number;
+    full_name: string;
+    profile_photo_url: string | null;
+  } | null;
 };
 
 /**
@@ -193,4 +202,6 @@ export type SaveBoardViewPayload = {
   pinned_column_ids?: string[] | null;
   row_height?: BoardRowHeight;
   conditional_color_rules?: BoardConditionalColorRule[] | null;
+  /** Markdown source, saved by a `doc`-type view's autosave. */
+  doc_content?: string | null;
 };

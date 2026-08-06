@@ -155,6 +155,8 @@ export type UseBoardViewTabsApi = {
   addView: (view_type?: BoardViewKind) => Promise<BoardViewDto>;
   renameView: (id: number, label: string) => Promise<void>;
   changeViewIcon: (id: number, icon: string | null) => Promise<void>;
+  /** Saves a `doc`-type view's markdown — the Doc tab's autosave calls this directly (not `saveActiveView`, which is the filter/sort "save this view" action). */
+  updateDocContent: (id: number, doc_content: string) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
   saveActiveView: () => Promise<void>;
   duplicateView: (id: number) => Promise<BoardViewDto>;
@@ -365,6 +367,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
 
   const renameView = (id: number, label: string) => patchView(id, { label });
   const changeViewIcon = (id: number, icon: string | null) => patchView(id, { icon });
+  const updateDocContent = (id: number, doc_content: string) => patchView(id, { doc_content });
 
   const deleteView = async (id: number) => {
     await boardContentService.deleteView(board_id, id);
@@ -419,6 +422,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     addView,
     renameView,
     changeViewIcon,
+    updateDocContent,
     deleteView,
     saveActiveView,
     duplicateView,

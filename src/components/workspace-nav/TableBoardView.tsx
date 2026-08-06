@@ -6,6 +6,7 @@ import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_VIEW_TYPES,
   BoardComingSoonView,
+  BoardDocView,
   BoardItemDrawer,
   BoardKanban,
   BoardShell,
@@ -770,6 +771,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // board, rendered as colored pills / avatar circles instead of the generic
   // value chip other columns get.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
+  const active_doc_view = view_tabs.active_view;
   const kanban_lane_column = columns.find((c) => c.type === "status") ?? null;
   const kanban_label_column = columns.find((c) => c.type === "tags") ?? null;
   const kanban_member_column = columns.find((c) => c.type === "people") ?? null;
@@ -1038,7 +1040,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         getViewUrl: (tab) => (tab.id === view_tabs.tabs[0]?.id ? `/boards/${board_id}` : `/boards/${board_id}/views/${tab.id}`),
         onReorderPersonalTabs: handleReorderPersonalTabs,
       }}
-      toolbar={<BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />}
+      toolbar={
+        // A Doc tab has no items/columns to search, filter or sort — the item-grid
+        // toolbar would be pure noise above a document.
+        active_view_type === "doc" ? undefined : <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
+      }
     >
       {view_tabs.is_dirty && (
         <div className="mb-3 flex items-center gap-2">
@@ -1099,6 +1105,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </button>
           </div>
         )
+      ) : active_view_type === "doc" && active_doc_view ? (
+        <BoardDocView
+          view={active_doc_view}
+          onRenameView={(label) => handleRenameView(active_doc_view.id, label)}
+          onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
+        />
       ) : active_view_type !== "table" ? (
         <BoardComingSoonView view_type={active_view_type} />
       ) : groups.length === 0 ? (
