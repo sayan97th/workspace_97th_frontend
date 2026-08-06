@@ -3,12 +3,10 @@ import React, { useEffect, useRef, useState } from "react";
 import UserAvatar from "@/components/common/UserAvatar";
 import { ClockIcon, CheckIcon } from "@/icons/workspace-icons";
 import type { BoardViewDto } from "@/types/board-content";
-import InlineTitleEditor from "../InlineTitleEditor";
 import BoardDocEditor from "./BoardDocEditor";
 
 export type BoardDocViewProps = {
   view: BoardViewDto;
-  onRenameView: (label: string) => void;
   /** Persists the doc's markdown — called by the debounced autosave below. */
   onSaveDocContent: (doc_content: string) => Promise<void>;
 };
@@ -31,15 +29,15 @@ const formatDateTime = (value: string | null): string => {
 type SaveStatus = "idle" | "saving" | "saved";
 
 /**
- * The "Doc" board view — a Notion-style freeform document tab: a header with
- * the (renamable) title plus creator/created/updated metadata, and a
+ * The "Doc" board view — a Notion-style freeform document tab: a slim
+ * creator/created/updated metadata header (the document's title is just the
+ * tab's own label — renamed from the tab itself, not duplicated here) and a
  * markdown editor (`BoardDocEditor`) below it. Owns the autosave debounce so
- * `TableBoardView` only has to supply persistence (`onSaveDocContent`) and a
- * rename callback; everything content-shaped lives here and in the reusable
- * `BoardDocEditor`, which any future long-form-text view can reuse on its own.
+ * `TableBoardView` only has to supply persistence (`onSaveDocContent`);
+ * everything content-shaped lives here and in the reusable `BoardDocEditor`,
+ * which any future long-form-text view can reuse on its own.
  */
-const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onRenameView, onSaveDocContent }) => {
-  const [is_editing_title, setIsEditingTitle] = useState(false);
+const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent }) => {
   const [save_status, setSaveStatus] = useState<SaveStatus>("idle");
 
   const save_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -83,27 +81,6 @@ const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onRenameView, onSaveD
   return (
     <div className="flex w-full flex-col gap-4 pb-24">
       <div className="flex flex-col gap-2 px-1">
-        {is_editing_title ? (
-          <InlineTitleEditor
-            value={view.label}
-            onCommit={(label) => {
-              onRenameView(label);
-              setIsEditingTitle(false);
-            }}
-            onCancel={() => setIsEditingTitle(false)}
-            className="w-full max-w-xl text-[28px] font-bold text-shell-text"
-            aria_label="Document title"
-          />
-        ) : (
-          <h1
-            onClick={() => setIsEditingTitle(true)}
-            className="w-fit cursor-text rounded-[6px] px-1 -mx-1 text-[28px] font-bold text-shell-text transition-colors hover:bg-shell-hover"
-            title="Click to rename"
-          >
-            {view.label}
-          </h1>
-        )}
-
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-shell-text-muted">
           <span className="flex items-center gap-1.5">
             <UserAvatar user={view.creator} size={20} font_size={9} />

@@ -1058,7 +1058,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         </div>
       )}
 
-      {breadcrumb.length > 1 && (
+      {/* A Doc tab's own header (creator/created/updated) already anchors it — the
+          parent-path breadcrumb above the item-grid views would just be noise here. */}
+      {active_view_type !== "doc" && breadcrumb.length > 1 && (
         <div className="mb-3 flex flex-wrap items-center gap-1 text-[12.5px] text-shell-text-muted">
           {breadcrumb.slice(0, -1).map((crumb, index) => (
             <span key={`${crumb}-${index}`} className="flex items-center gap-1">
@@ -1108,7 +1110,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ) : active_view_type === "doc" && active_doc_view ? (
         <BoardDocView
           view={active_doc_view}
-          onRenameView={(label) => handleRenameView(active_doc_view.id, label)}
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
         />
       ) : active_view_type !== "table" ? (
