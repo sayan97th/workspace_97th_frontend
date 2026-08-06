@@ -8,6 +8,7 @@ import {
   BoardCalendar,
   BoardComingSoonView,
   BoardDocView,
+  BoardFileGalleryView,
   BoardItemDrawer,
   BoardKanban,
   BoardShell,
@@ -1115,9 +1116,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onReorderPersonalTabs: handleReorderPersonalTabs,
       }}
       toolbar={
-        // A Doc tab has no items/columns to search, filter or sort — the item-grid
-        // toolbar would be pure noise above a document.
-        active_view_type === "doc" ? undefined : <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
+        // A Doc or Files Gallery tab has no items/columns to search, filter or
+        // sort — the item-grid toolbar would be pure noise above either one
+        // (Files Gallery renders its own dedicated toolbar instead).
+        active_view_type === "doc" || active_view_type === "file_gallery" ? undefined : (
+          <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
+        )
       }
     >
       {view_tabs.is_dirty && (
@@ -1220,6 +1224,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
           onUploadImage={(file) => boardContentService.uploadDocImage(board_id, active_doc_view.id, file)}
         />
+      ) : active_view_type === "file_gallery" && active_doc_view ? (
+        <BoardFileGalleryView board_id={board_id} view_id={active_doc_view.id} />
       ) : active_view_type !== "table" ? (
         <BoardComingSoonView view_type={active_view_type} />
       ) : groups.length === 0 ? (

@@ -107,7 +107,7 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "File gallery",
     description: "Browse every file attached to this board",
     Icon: BoardGridIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "form",

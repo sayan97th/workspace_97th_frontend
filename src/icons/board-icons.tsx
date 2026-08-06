@@ -344,3 +344,35 @@ export const EyeIcon: React.FC<IconProps & { open?: boolean }> = ({ className, s
     )}
   </svg>
 );
+
+/** Download-to-disk glyph — file gallery card/list actions. */
+export const DownloadIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2v7.4M5 6.6 8 9.6l3-3M2.5 12h11"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** 2x2 tile grid — the file gallery's "Grid" display-mode toggle. */
+export const GridViewToggleIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="2" width="5" height="5" rx="1.1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="9" y="2" width="5" height="5" rx="1.1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="2" y="9" width="5" height="5" rx="1.1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="9" y="9" width="5" height="5" rx="1.1" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
+/** Stacked rows — the file gallery's "List" display-mode toggle. */
+export const ListViewToggleIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="3" width="12" height="2.6" rx="1" fill="currentColor" />
+    <rect x="2" y="6.7" width="12" height="2.6" rx="1" fill="currentColor" />
+    <rect x="2" y="10.4" width="12" height="2.6" rx="1" fill="currentColor" />
+  </svg>
+);
