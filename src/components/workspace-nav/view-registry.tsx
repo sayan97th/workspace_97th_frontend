@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import ClientHubBoard from "@/app/(admin)/client-hub/_components/ClientHubBoard";
 import WorkspaceHome from "@/app/(admin)/workspace-home/_components/WorkspaceHome";
 import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
 
@@ -12,9 +11,11 @@ import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
  * Anything without an entry falls back to {@link TableBoardView} — the
  * reusable, data-backed "table board" engine (tables/items/columns/filters/
  * views), so any newly-created board gets full real functionality for free.
+ * Client Hub used to have its own entry here (`ClientHubBoard.tsx`); it's now
+ * a fully generic board seeded by `ClientHubContentSeeder` and rendered
+ * through this same fallback.
  */
 export const VIEW_REGISTRY: Record<string, React.ComponentType<WorkspaceViewProps>> = {
-  client_hub: () => <ClientHubBoard />,
   workspace_home: () => <WorkspaceHome />,
 };
 

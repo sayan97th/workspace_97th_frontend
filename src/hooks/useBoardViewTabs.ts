@@ -173,9 +173,9 @@ export type UseBoardViewTabsApi = {
  * the toolbar has since drifted from what's saved, and wraps the
  * rename/icon/add/delete/save mutations against `boards/{board_id}/views`.
  *
- * Shared by `TableBoardView` (the generic, DB-backed board engine) and
- * `ClientHubBoard` (mock table data, but real tabs) — both compose the same
- * `useBoardToolbar` from `@/components/board`, so this hook only needs the
+ * Used by `TableBoardView`, the generic, DB-backed board engine every board
+ * (including Client Hub) renders through — it composes `useBoardToolbar`
+ * from `@/components/board`, so this hook only needs the
  * {@link BoardViewSyncToolbar} slice of it.
  */
 export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTabsApi {

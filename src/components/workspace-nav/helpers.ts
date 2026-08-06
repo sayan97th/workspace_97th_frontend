@@ -11,8 +11,10 @@ export const BOARD_ROUTE_BASE = "/boards";
 export const buildBoardPath = (item_id: number): string => `${BOARD_ROUTE_BASE}/${item_id}`;
 
 /**
- * The href a leaf navigates to: an explicit `href` (used by the real Client Hub /
- * Workspace Home pages) takes precedence, otherwise the id-routed board path.
+ * The href a leaf navigates to: an explicit `href` (used by special static
+ * pages like Workspace Home) takes precedence, otherwise the id-routed board
+ * path — which is what every generic, database-backed board (including
+ * Client Hub) resolves to.
  */
 export const getLeafHref = (node: WorkspaceNavNode): string =>
   node.href ?? buildBoardPath(node.id);

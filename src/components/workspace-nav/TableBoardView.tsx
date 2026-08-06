@@ -140,12 +140,11 @@ const buildBoardInfo = (
 
 /**
  * The reusable "table board" engine — any board without a special `view_key`
- * (see `view-registry.tsx`) renders through here. Composes the same board kit
- * `ClientHubBoard.tsx` uses (`BoardShell`/`BoardTable`/`BoardToolbar`/
- * `BoardItemDrawer`), but driven by real data from `board-content.service.ts`
- * instead of static seed data, with any number of tables (groups), a
- * server-searchable item list, saved views/tabs, and a drawer addressable at
- * `/boards/{id}/pulses/{item_id}`.
+ * (see `view-registry.tsx`) renders through here, including Client Hub.
+ * Composes the board kit (`BoardShell`/`BoardTable`/`BoardToolbar`/
+ * `BoardItemDrawer`) driven by real data from `board-content.service.ts`,
+ * with any number of tables (groups), a server-searchable item list, saved
+ * views/tabs, and a drawer addressable at `/boards/{id}/pulses/{item_id}`.
  */
 const TableBoardView: React.FC<WorkspaceViewProps> = ({
   node,

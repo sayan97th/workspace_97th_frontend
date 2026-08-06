@@ -23,20 +23,6 @@ import type {
  * style: every call goes through the shared `apiClient`.
  */
 export const boardContentService = {
-  /**
-   * GET /api/boards/client-hub — resolves Client Hub's navigation-item id.
-   *
-   * Client Hub renders at the static `/client-hub` frontend route (not the
-   * id-routed `/boards/{id}` page), so it never receives its own id as a
-   * route param. This is the one Client-Hub-specific call in this service —
-   * everything else (views CRUD) reuses the generic `board_id`-keyed
-   * endpoints below once the id is known.
-   */
-  async getClientHubBoardId(): Promise<number> {
-    const response = await apiClient.get<{ id: number }>("/api/boards/client-hub");
-    return response.id;
-  },
-
   /** GET /api/boards/{board_id}/columns — scoped to `view_id` (a tab), defaulting to the board's primary tab. */
   async getColumns(board_id: number, view_id?: number | null): Promise<BoardColumnDto[]> {
     const query = view_id ? `?view_id=${view_id}` : "";

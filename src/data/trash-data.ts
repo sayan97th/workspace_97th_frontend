@@ -4,8 +4,8 @@ import type { TrashEntry } from "@/components/trash/types";
  * Seed rows for the account Trash dialog (Account menu > Trash). Breadcrumbs reuse the
  * real sidebar hierarchy from `workspace-nav-data.ts` (Fulfillment > Client Hub, 97th
  * Floor Development > Palomar, Fulfillment > Team Blake, Creative processes) and
- * `deleted_by_id` references the app's one canonical roster (`TEAMS_ROSTER` /
- * `CLIENT_HUB_TEAM_ROSTER`), per this app's "one real cast of people" convention.
+ * `deleted_by_id` references the app's one canonical mock roster (`TEAMS_ROSTER` in
+ * `teams-data.ts`), per this app's "one real cast of people" convention.
  */
 export const TRASH_ENTRIES: TrashEntry[] = [
   {

@@ -46,9 +46,9 @@ export type BoardViewTabsProps =
   | {
       /**
        * Full tab list (including the primary tab), each addressable by id —
-       * used by `TableBoardView` and `ClientHubBoard` to drive real
-       * `/boards/{id}/views/{view_id}`-style tab switching. Clicking a tab
-       * (or "+") is the caller's responsibility.
+       * used by `TableBoardView` to drive real `/boards/{id}/views/{view_id}`-
+       * style tab switching. Clicking a tab (or "+") is the caller's
+       * responsibility.
        */
       tabs: BoardViewTabItem[];
       active_view_id: number | string | null;
