@@ -48,8 +48,12 @@
 }
 
 .board-doc-editor-content {
-  min-height: 60vh;
-  padding: 24px clamp(16px, 6%, 96px);
+  /* Fills the rest of the view (viewport minus the shell header/tabs and the
+     doc header above it) so clicking anywhere below the last line still
+     focuses the editor, instead of leaving a short box with dead space
+     below it. */
+  min-height: calc(100vh - 260px);
+  padding: 24px clamp(16px, 4%, 64px);
   font-size: 14.5px;
   line-height: 1.7;
   color: var(--color-shell-text);

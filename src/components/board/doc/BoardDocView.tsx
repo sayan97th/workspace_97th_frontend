@@ -81,7 +81,7 @@ const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onRenameView, onSaveD
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 pb-24">
+    <div className="flex w-full flex-col gap-4 pb-24">
       <div className="flex flex-col gap-2 px-1">
         {is_editing_title ? (
           <InlineTitleEditor
