@@ -31,6 +31,7 @@ import {
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import "./board-doc-editor.css";
+import { markdownFidelityPlugin } from "./markdown-fidelity-plugin";
 
 export type BoardDocEditorProps = {
   /** The document's markdown. Only read on mount/remount — pass a `key` at the call site (e.g. the view id) to load a different document. */
@@ -85,6 +86,7 @@ const BoardDocEditor: React.FC<BoardDocEditorProps> = ({
       className="board-doc-editor"
       contentEditableClassName="board-doc-editor-content"
       plugins={[
+        markdownFidelityPlugin(),
         headingsPlugin(),
         listsPlugin(),
         quotePlugin(),
