@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ADDABLE_COLUMN_TYPES,
@@ -807,16 +807,26 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     router.push(view_tabs.active_view ? buildViewUrl(view_tabs.active_view) : `/boards/${board_id}`);
   };
 
-  const opened_initial_ref = useRef(false);
+  // Keeps the drawer in sync with `initial_open_item_id` (the board's
+  // `/pulses/{item_id}` URL, read from `BoardRouteContext`) rather than only
+  // opening it once on mount — since the board/view no longer remounts
+  // between navigations (see `BoardRouteView`), this is what actually opens
+  // the drawer for a fresh deep link, and what closes it again on browser
+  // back/forward. Ordinary row clicks (`handleRowClick`) still open the
+  // drawer synchronously themselves; this effect just no-ops for those once
+  // the pushed URL round-trips back down as a matching `initial_open_item_id`.
   useEffect(() => {
-    if (opened_initial_ref.current || !initial_open_item_id) return;
+    if (!initial_open_item_id) {
+      if (drawer.open_row_id != null) drawer.close();
+      return;
+    }
+    if (String(initial_open_item_id) === drawer.open_row_id) return;
     const row = items.find((item) => item.id === initial_open_item_id);
     if (!row) return;
-    opened_initial_ref.current = true;
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, initial_open_item_id]);
+  }, [items, initial_open_item_id, drawer.open_row_id]);
 
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
