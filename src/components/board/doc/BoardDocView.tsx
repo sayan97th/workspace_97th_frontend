@@ -112,7 +112,7 @@ const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent, onU
         markdown={view.doc_content ?? ""}
         onChange={handleChange}
         onBlur={flushSave}
-        placeholder="Start writing… type “/” for formatting, or just start typing Markdown like # or -."
+        placeholder=""
         onUploadImage={onUploadImage}
       />
     </div>

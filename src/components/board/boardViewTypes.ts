@@ -68,6 +68,13 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     is_available: true,
   },
   {
+    kind: "doc",
+    label: "Doc",
+    description: "A collaborative document",
+    Icon: FileIcon,
+    is_available: true,
+  },
+  {
     kind: "gantt",
     label: "Gantt",
     description: "Plan timelines and dependencies",
@@ -94,13 +101,6 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     description: "A freeform space to brainstorm and sketch",
     Icon: CanvasViewIcon,
     is_available: false,
-  },
-  {
-    kind: "doc",
-    label: "Doc",
-    description: "A collaborative document",
-    Icon: FileIcon,
-    is_available: true,
   },
   {
     kind: "file_gallery",
