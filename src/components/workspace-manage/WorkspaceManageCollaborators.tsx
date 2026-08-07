@@ -1,8 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { workspaceService } from "@/services/workspace.service";
 import type { WorkspaceMember } from "@/types/workspace";
-import { CrownIcon, EyeIcon, MemberIcon } from "@/icons/workspace-icons";
+import { ChevronRightIcon, CrownIcon, EyeIcon, MemberIcon } from "@/icons/workspace-icons";
 import CreatorAvatar from "@/components/content/CreatorAvatar";
 import { gradientForId, initialsFromName } from "./creatorAvatar";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
@@ -13,6 +14,7 @@ export type WorkspaceManageCollaboratorsProps = {
 
 /** Manage Workspace's "Collaborations" tab: the full member roster and each person's role. */
 const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> = ({ workspace_slug }) => {
+  const router = useRouter();
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,19 +41,41 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
     };
   }, [workspace_slug]);
 
+  const viewSentInvitations = () => router.push(`/invitations?workspace=${workspace_slug}`);
+
   if (is_loading) return <BoardLoadingSpinner />;
   if (error) return <CenteredMessage title="Something went wrong" detail={error} />;
 
   if (members.length === 0) {
     return (
-      <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
-        [ no collaborators yet ]
+      <div className="pb-[60px]">
+        <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
+          [ no collaborators yet ]
+        </div>
+        <button
+          type="button"
+          onClick={viewSentInvitations}
+          className="flex items-center gap-1 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:text-shell-text"
+        >
+          View sent invitations
+          <ChevronRightIcon size={10} />
+        </button>
       </div>
     );
   }
 
   return (
     <div className="mt-2.5 pb-[60px]">
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={viewSentInvitations}
+          className="flex items-center gap-1 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:text-shell-text"
+        >
+          View sent invitations
+          <ChevronRightIcon size={10} />
+        </button>
+      </div>
       {members.map((member, index) => {
         const [gradient_from, gradient_to] = gradientForId(member.id);
         const is_owner = member.role === "owner";

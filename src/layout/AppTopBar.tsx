@@ -234,6 +234,7 @@ const AppTopBar: React.FC = () => {
       <InviteMembersModal
         is_open={is_invite_open}
         onClose={closeInvite}
+        workspace_slug={active_workspace_slug}
         onSubmit={handleInviteSubmit}
       />
 

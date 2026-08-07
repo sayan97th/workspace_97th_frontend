@@ -6,14 +6,62 @@
 /** Real workspace membership role a `workspace_user.role` row can hold — distinct from the invite modal's `InviteRoleId`, see `invitation.service.ts`. */
 export type WorkspaceMembershipRole = "owner" | "member" | "viewer";
 
-/** One invitation the API created or resent, from `POST /api/workspaces/{slug}/invitations`'s `data` array. */
+/** Where an invitation stands: still open, past its `expires_at`, or already accepted. */
+export type WorkspaceInvitationStatus = "pending" | "expired" | "accepted";
+
+/** The teammate who sent an invitation — only present when the endpoint eager-loads it. */
+export type WorkspaceInvitationInviter = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+};
+
+/** One invitation the API created, resent, or is listing, from `WorkspaceInvitationResource`. */
 export type WorkspaceInvitation = {
   id: number;
   email: string;
   role: WorkspaceMembershipRole;
   role_label: string;
+  status: WorkspaceInvitationStatus;
+  message: string | null;
+  /** Only present on `GET /api/workspaces/{slug}/invitations`, which eager-loads it. */
+  inviter?: WorkspaceInvitationInviter;
   expires_at: string | null;
+  accepted_at: string | null;
   created_at: string | null;
+};
+
+/** Pagination metadata mirroring every other server-paginated list in the app (Content tab, team rosters, …). */
+export type WorkspaceInvitationsPageMeta = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+/** Response for `GET /api/workspaces/{slug}/invitations`. */
+export type WorkspaceInvitationsPage = {
+  data: WorkspaceInvitation[];
+  meta: WorkspaceInvitationsPageMeta;
+};
+
+/** Column the "Sent invitations" table can be sorted by. */
+export type WorkspaceInvitationSortField = "email" | "role" | "status" | "expires_at" | "created_at";
+
+export type SortDirection = "asc" | "desc";
+
+/** Query params `GET /api/workspaces/{slug}/invitations` accepts. */
+export type WorkspaceInvitationListQuery = {
+  search?: string;
+  status?: WorkspaceInvitationStatus | "";
+  role?: WorkspaceMembershipRole | "";
+  sort_field?: WorkspaceInvitationSortField;
+  sort_direction?: SortDirection;
+  /** "Invited at" (`created_at`) date range, both inclusive, `YYYY-MM-DD`. */
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  per_page?: number;
 };
 
 /** One email that was NOT invited, and why. */

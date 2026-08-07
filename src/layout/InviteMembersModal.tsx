@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import RoleSelect from "./RoleSelect";
 import { CheckIcon, CloseIcon, LinkIcon } from "@/icons/workspace-icons";
 import {
@@ -30,6 +31,8 @@ type InviteMembersModalProps = {
   onClose: () => void;
   /** Shareable join link shown in the "Invite with link" section. */
   invite_link?: string;
+  /** Active workspace's slug, carried into the "View sent invitations" link so that page opens scoped to the same workspace. */
+  workspace_slug?: string;
   onSubmit?: (submission: InviteMembersSubmission) => Promise<InviteMembersResult>;
 };
 
@@ -57,8 +60,10 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   is_open,
   onClose,
   invite_link = default_invite_link,
+  workspace_slug,
   onSubmit,
 }) => {
+  const router = useRouter();
   const [emails, setEmails] = useState("");
   const [role, setRole] = useState<InviteRoleId>(invite_default_role);
   const [message, setMessage] = useState("");
@@ -252,34 +257,47 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
         )}
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-shell-border px-8 py-5">
-          {result ? (
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-            >
-              Done
-            </button>
-          ) : (
-            <>
+        <div className="flex items-center justify-between gap-3 border-t border-shell-border px-8 py-5">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              router.push(workspace_slug ? `/invitations?workspace=${workspace_slug}` : "/invitations");
+            }}
+            className="rounded-[9px] px-2 py-[11px] text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-white"
+          >
+            View sent invitations
+          </button>
+
+          <div className="flex items-center gap-3">
+            {result ? (
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-white"
+                className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600"
               >
-                Cancel
+                Done
               </button>
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={!can_submit}
-                className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {is_submitting ? "Sending…" : "Send invites"}
-              </button>
-            </>
-          )}
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!can_submit}
+                  className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {is_submitting ? "Sending…" : "Send invites"}
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
