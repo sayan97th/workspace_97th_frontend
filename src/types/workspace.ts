@@ -169,6 +169,31 @@ export type WorkspaceContentItemCreator = {
   profile_photo_url: string | null;
 };
 
+/** Coarse content kind, derived server-side from `view_key` — drives the Content tab's "Asset type" filter and row icon. */
+export type WorkspaceContentAssetType = "board" | "doc" | "dashboard" | "workflow";
+
+/** One "Last modified" cutoff bucket in the Content tab's filter panel — "N+ ago". */
+export type WorkspaceContentLastModifiedBucket = "1m" | "3m" | "6m" | "1y" | "2y";
+
+/** The current user's relationship to a content item's owning workspace, for the "Membership" filter. */
+export type WorkspaceContentMembership = "owner" | "member";
+
+/** Selected "Filter by" facets for `GET /api/content`; an empty array means that facet is unfiltered. */
+export type WorkspaceContentFilters = {
+  last_modified: WorkspaceContentLastModifiedBucket[];
+  asset_type: WorkspaceContentAssetType[];
+  created_by: number[];
+  membership: WorkspaceContentMembership[];
+};
+
+/** A distinct creator behind the current user's accessible content, from `GET /api/content/creators` — populates the "Created by" filter list. */
+export type WorkspaceContentCreator = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+  content_count: number;
+};
+
 /** The workspace a {@link WorkspaceContentItem} belongs to. */
 export type WorkspaceContentItemWorkspace = {
   id: number;
@@ -193,6 +218,7 @@ export type WorkspaceContentItem = {
   id: number;
   label: string;
   type: WorkspaceNavNodeType;
+  asset_type: WorkspaceContentAssetType;
   display_style: string | null;
   board_type: BoardType;
   icon: string | null;

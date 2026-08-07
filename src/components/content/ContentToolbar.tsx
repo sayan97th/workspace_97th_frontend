@@ -7,6 +7,8 @@ export type ContentToolbarProps = {
   /** Number of active filters; renders a red count badge when greater than 0. */
   filter_count?: number;
   onToggleFilters?: () => void;
+  /** Ref to the Filters button, for a caller-owned popover (e.g. `WorkspaceManageContentFilters`) to anchor to. */
+  filters_button_ref?: React.Ref<HTMLButtonElement>;
   search_placeholder?: string;
 };
 
@@ -19,6 +21,7 @@ const ContentToolbar: React.FC<ContentToolbarProps> = ({
   onSearchChange,
   filter_count = 0,
   onToggleFilters,
+  filters_button_ref,
   search_placeholder = "Search",
 }) => (
   <div className="flex items-center gap-1">
@@ -36,6 +39,7 @@ const ContentToolbar: React.FC<ContentToolbarProps> = ({
     </label>
 
     <button
+      ref={filters_button_ref}
       type="button"
       onClick={onToggleFilters}
       className="flex items-center gap-2 rounded-[9px] px-3 py-2 transition-colors hover:bg-gray-100"

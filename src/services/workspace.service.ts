@@ -7,6 +7,8 @@ import type {
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
   Workspace,
+  WorkspaceContentCreator,
+  WorkspaceContentFilters,
   WorkspaceContentItem,
   WorkspaceContentPage,
   WorkspaceMember,
@@ -82,10 +84,31 @@ export const workspaceService = {
 
   /**
    * GET /api/content — every board/doc across every workspace the current
-   * user belongs to, paginated (the same rows the sidebar renders).
+   * user belongs to, paginated (the same rows the sidebar renders). Accepts
+   * the Content tab's "Filter by" facets, applied server-side.
    */
-  async getContentItems(page = 1, per_page = 30): Promise<WorkspaceContentPage> {
-    return apiClient.get<WorkspaceContentPage>(`/api/content?page=${page}&per_page=${per_page}`);
+  async getContentItems(
+    page = 1,
+    per_page = 30,
+    filters?: Partial<WorkspaceContentFilters>
+  ): Promise<WorkspaceContentPage> {
+    const params = new URLSearchParams({ page: String(page), per_page: String(per_page) });
+    filters?.last_modified?.forEach((value) => params.append("last_modified[]", value));
+    filters?.asset_type?.forEach((value) => params.append("asset_type[]", value));
+    filters?.created_by?.forEach((value) => params.append("created_by[]", String(value)));
+    filters?.membership?.forEach((value) => params.append("membership[]", value));
+
+    return apiClient.get<WorkspaceContentPage>(`/api/content?${params.toString()}`);
+  },
+
+  /**
+   * GET /api/content/creators — every distinct creator behind the current
+   * user's accessible content, with their content count. Populates the
+   * Content tab's "Created by" filter list.
+   */
+  async getContentCreators(): Promise<WorkspaceContentCreator[]> {
+    const response = await apiClient.get<{ data: WorkspaceContentCreator[] }>("/api/content/creators");
+    return response.data;
   },
 
   /**
