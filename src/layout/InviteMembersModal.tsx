@@ -9,6 +9,7 @@ import {
   invite_message_placeholder,
   type InviteRoleId,
 } from "@/data/invite-members-data";
+import type { ApiError } from "@/types/auth";
 
 export type InviteMembersSubmission = {
   /** Raw emails entered, split on commas/whitespace and trimmed. */
@@ -17,12 +18,19 @@ export type InviteMembersSubmission = {
   message: string;
 };
 
+/** Outcome of a real invite submission, reported back so the modal can show a summary before closing. */
+export type InviteMembersResult = {
+  invited_count: number;
+  /** Emails that were not (re)invited because they're already members. */
+  skipped_emails: string[];
+};
+
 type InviteMembersModalProps = {
   is_open: boolean;
   onClose: () => void;
   /** Shareable join link shown in the "Invite with link" section. */
   invite_link?: string;
-  onSubmit?: (submission: InviteMembersSubmission) => void;
+  onSubmit?: (submission: InviteMembersSubmission) => Promise<InviteMembersResult>;
 };
 
 /** Splits the free-text email field into a clean list of addresses. */
@@ -31,6 +39,12 @@ const parseEmails = (raw: string): string[] =>
     .split(/[\s,]+/)
     .map((value) => value.trim())
     .filter(Boolean);
+
+const apiErrorMessage = (error: unknown, fallback: string): string => {
+  const api_error = error as ApiError;
+  const field_message = api_error?.errors ? Object.values(api_error.errors)[0]?.[0] : undefined;
+  return field_message || api_error?.message || fallback;
+};
 
 /**
  * Centered "Invite members" dialog opened from the AppTopBar invite button.
@@ -49,6 +63,9 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   const [role, setRole] = useState<InviteRoleId>(invite_default_role);
   const [message, setMessage] = useState("");
   const [is_link_copied, setIsLinkCopied] = useState(false);
+  const [is_submitting, setIsSubmitting] = useState(false);
+  const [submit_error, setSubmitError] = useState<string | null>(null);
+  const [result, setResult] = useState<InviteMembersResult | null>(null);
 
   // Reset the form every time the modal is (re)opened.
   useEffect(() => {
@@ -57,6 +74,9 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
       setRole(invite_default_role);
       setMessage("");
       setIsLinkCopied(false);
+      setIsSubmitting(false);
+      setSubmitError(null);
+      setResult(null);
     }
   }, [is_open]);
 
@@ -88,16 +108,24 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   };
 
   const parsed_emails = parseEmails(emails);
-  const can_submit = parsed_emails.length > 0;
+  const can_submit = parsed_emails.length > 0 && !is_submitting;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!can_submit) return;
-    onSubmit?.({
-      emails: parsed_emails,
-      role,
-      message: message.trim(),
-    });
-    onClose();
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      const submission_result = await onSubmit?.({
+        emails: parsed_emails,
+        role,
+        message: message.trim(),
+      });
+      setResult(submission_result ?? { invited_count: parsed_emails.length, skipped_emails: [] });
+    } catch (error) {
+      setSubmitError(apiErrorMessage(error, "We couldn't send those invites. Please try again."));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,80 +162,124 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
           </button>
         </div>
 
-        <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-8 pb-2 pt-6">
-          {/* Invite with link */}
-          <label className="mb-2 block text-[12.5px] font-semibold text-shell-text-secondary">
-            Invite with link
-          </label>
-          <div className="flex gap-2.5">
-            <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13px] text-gray-300">
-              <LinkIcon size={14} className="flex-none text-gray-400" />
-              <span className="truncate">{invite_link}</span>
+        {result ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-2 pt-6">
+            <div className="flex items-start gap-3 rounded-[11px] border border-success-500/30 bg-success-500/10 px-4 py-3.5">
+              <CheckIcon size={16} className="mt-0.5 flex-none text-success-400" />
+              <div className="text-[13.5px] leading-[1.55] text-shell-text">
+                {result.invited_count > 0 ? (
+                  <p>
+                    {result.invited_count === 1
+                      ? "1 invitation was sent."
+                      : `${result.invited_count} invitations were sent.`}
+                  </p>
+                ) : (
+                  <p>No new invitations were sent.</p>
+                )}
+                {result.skipped_emails.length > 0 && (
+                  <p className="mt-1.5 text-shell-text-secondary">
+                    Already a member, so skipped: {result.skipped_emails.join(", ")}
+                  </p>
+                )}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white"
-            >
-              {is_link_copied ? (
-                <>
-                  <CheckIcon size={13} className="text-success-400" />
-                  Copied
-                </>
-              ) : (
-                "Copy"
-              )}
-            </button>
           </div>
-
-          <div className="my-6 h-px bg-shell-hover-strong" />
-
-          {/* Invite with email */}
-          <div className="mb-2 flex items-center justify-between">
-            <label className="text-[12.5px] font-semibold text-shell-text-secondary">
-              Invite with email
+        ) : (
+          <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-8 pb-2 pt-6">
+            {/* Invite with link */}
+            <label className="mb-2 block text-[12.5px] font-semibold text-shell-text-secondary">
+              Invite with link
             </label>
-            <RoleSelect value={role} onChange={setRole} />
-          </div>
-          <textarea
-            value={emails}
-            onChange={(event) => setEmails(event.target.value)}
-            placeholder={invite_email_placeholder}
-            rows={3}
-            className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
-          />
+            <div className="flex gap-2.5">
+              <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13px] text-gray-300">
+                <LinkIcon size={14} className="flex-none text-gray-400" />
+                <span className="truncate">{invite_link}</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white"
+              >
+                {is_link_copied ? (
+                  <>
+                    <CheckIcon size={13} className="text-success-400" />
+                    Copied
+                  </>
+                ) : (
+                  "Copy"
+                )}
+              </button>
+            </div>
 
-          {/* Optional message */}
-          <label className="mb-2 mt-5 block text-[12.5px] font-semibold text-shell-text-secondary">
-            Write a message{" "}
-            <span className="font-normal text-gray-400">(optional)</span>
-          </label>
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder={invite_message_placeholder}
-            rows={3}
-            className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none"
-          />
-        </div>
+            <div className="my-6 h-px bg-shell-hover-strong" />
+
+            {/* Invite with email */}
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-[12.5px] font-semibold text-shell-text-secondary">
+                Invite with email
+              </label>
+              <RoleSelect value={role} onChange={setRole} />
+            </div>
+            <textarea
+              value={emails}
+              onChange={(event) => setEmails(event.target.value)}
+              placeholder={invite_email_placeholder}
+              rows={3}
+              disabled={is_submitting}
+              className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none disabled:opacity-60"
+            />
+
+            {/* Optional message */}
+            <label className="mb-2 mt-5 block text-[12.5px] font-semibold text-shell-text-secondary">
+              Write a message{" "}
+              <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={invite_message_placeholder}
+              rows={3}
+              disabled={is_submitting}
+              className="w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13.5px] text-shell-text placeholder:text-gray-400 focus:border-brand-500 focus:outline-none disabled:opacity-60"
+            />
+
+            {submit_error && (
+              <p className="mt-4 rounded-[10px] border border-error-500/30 bg-error-500/10 px-3.5 py-3 text-[13px] leading-[1.5] text-error-400">
+                {submit_error}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-3 border-t border-shell-border px-8 py-5">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-white"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!can_submit}
-            className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Send invites
-          </button>
+          {result ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+            >
+              Done
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!can_submit}
+                className="rounded-[9px] bg-brand-500 px-[22px] py-[11px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {is_submitting ? "Sending…" : "Send invites"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

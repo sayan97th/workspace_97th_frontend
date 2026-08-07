@@ -9,8 +9,11 @@ import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
 import InviteMembersModal, {
+  type InviteMembersResult,
   type InviteMembersSubmission,
 } from "./InviteMembersModal";
+import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
+import { invitationService } from "@/services/invitation.service";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TeamsModal } from "@/components/teams";
@@ -38,6 +41,7 @@ const AppTopBar: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
   const { logo_url } = useBranding();
+  const { active_workspace_slug } = useWorkspaces();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_profile_open, setIsProfileOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
@@ -85,9 +89,22 @@ const AppTopBar: React.FC = () => {
     console.log("Request edit access submitted", submission);
   };
 
-  const handleInviteSubmit = (submission: InviteMembersSubmission) => {
-    // No backend wiring yet — surface the payload for the future API hook.
-    console.log("Invite members submitted", submission);
+  const handleInviteSubmit = async (
+    submission: InviteMembersSubmission
+  ): Promise<InviteMembersResult> => {
+    if (!active_workspace_slug) {
+      throw new Error("Select a workspace before inviting members.");
+    }
+    const result = await invitationService.inviteMembers(
+      active_workspace_slug,
+      submission.emails,
+      submission.role,
+      submission.message
+    );
+    return {
+      invited_count: result.data.length,
+      skipped_emails: result.skipped.map((skipped) => skipped.email),
+    };
   };
 
   const toggleAccount = (event: React.MouseEvent<HTMLButtonElement>) => {

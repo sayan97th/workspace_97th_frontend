@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
 import type { WorkspaceMember } from "@/types/workspace";
-import { CrownIcon, MemberIcon } from "@/icons/workspace-icons";
+import { CrownIcon, EyeIcon, MemberIcon } from "@/icons/workspace-icons";
 import CreatorAvatar from "@/components/content/CreatorAvatar";
 import { gradientForId, initialsFromName } from "./creatorAvatar";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
@@ -55,6 +55,7 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
       {members.map((member, index) => {
         const [gradient_from, gradient_to] = gradientForId(member.id);
         const is_owner = member.role === "owner";
+        const is_viewer = member.role === "viewer";
         return (
           <div
             key={member.id}
@@ -74,7 +75,13 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
               <span className="block truncate text-[12.5px] text-shell-text-faint">{member.email}</span>
             </span>
             <span className="flex flex-none items-center gap-1.5 rounded-full border border-shell-border px-2.5 py-1 text-[12.5px] font-medium text-shell-text-secondary">
-              {is_owner ? <CrownIcon size={13} /> : <MemberIcon size={13} />}
+              {is_owner ? (
+                <CrownIcon size={13} />
+              ) : is_viewer ? (
+                <EyeIcon size={13} />
+              ) : (
+                <MemberIcon size={13} />
+              )}
               {member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : "Member"}
             </span>
           </div>

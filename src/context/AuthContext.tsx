@@ -2,8 +2,10 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { authService } from "@/services/auth.service";
+import { invitationService } from "@/services/invitation.service";
 import { getToken } from "@/lib/api-client";
 import type { User, AuthResponse, LoginCredentials, RegisterData, ApiError } from "@/types/auth";
+import type { AcceptInvitationPayload } from "@/types/invitation";
 
 export type LoginResult =
   | { requires_two_factor: false }
@@ -21,6 +23,8 @@ type AuthContextType = {
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
   loginWithTwoFactor: (two_factor_token: string, code: string) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
+  /** Accepts a workspace invitation (creating/authenticating its account) and starts a session, like `register`. */
+  acceptInvitation: (code: string, payload: AcceptInvitationPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -157,6 +161,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     scheduleRefresh();
   };
 
+  const acceptInvitation = async (code: string, payload: AcceptInvitationPayload) => {
+    const data = await invitationService.acceptInvitation(code, payload);
+    setUser(data.user);
+    try {
+      const me_data = await authService.getMe();
+      setPermissions(me_data.permissions);
+    } catch {
+      // permissions remain empty if /me fails
+    }
+    scheduleRefresh();
+  };
+
   const refreshUser = async () => {
     try {
       const data = await authService.getMe();
@@ -186,6 +202,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         loginWithTwoFactor,
         register,
+        acceptInvitation,
         logout,
         refreshUser,
       }}
