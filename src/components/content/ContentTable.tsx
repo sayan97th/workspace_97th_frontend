@@ -139,6 +139,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
                 initials={creator.initials}
                 gradient_from={creator.gradient_from}
                 gradient_to={creator.gradient_to}
+                photo_url={creator.photo_url}
                 title={creator.name}
               />
             )}

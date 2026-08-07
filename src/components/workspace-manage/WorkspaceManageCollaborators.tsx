@@ -66,6 +66,7 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
               initials={initialsFromName(member.full_name)}
               gradient_from={gradient_from}
               gradient_to={gradient_to}
+              photo_url={member.profile_photo_url}
               title={member.full_name}
             />
             <span className="min-w-0 flex-1">

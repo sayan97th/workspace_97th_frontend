@@ -25,6 +25,7 @@ const toAssetsAndCreators = (
         name: item.creator.full_name,
         gradient_from,
         gradient_to,
+        photo_url: item.creator.profile_photo_url,
       };
     }
 

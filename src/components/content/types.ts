@@ -9,9 +9,11 @@ export type CreatorKey = string;
 export type Creator = {
   initials: string;
   name: string;
-  /** Avatar gradient stops (rendered as an inline linear-gradient). */
+  /** Avatar gradient stops (rendered as an inline linear-gradient), used when there's no `photo_url`. */
   gradient_from: string;
   gradient_to: string;
+  /** Real uploaded profile photo — takes precedence over the initials gradient when present. */
+  photo_url?: string | null;
 };
 
 export type AssetType = "board" | "doc" | "dashboard" | "workflow";
