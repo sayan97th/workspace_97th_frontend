@@ -150,3 +150,53 @@ export type UpdateWorkspacePayload = {
   product?: string | null;
   privacy?: "open" | "closed";
 };
+
+/** A workspace member, from `GET /api/workspaces/{slug}/members` — Manage Workspace's Collaborations tab. */
+export type WorkspaceMember = {
+  id: number;
+  full_name: string;
+  email: string;
+  profile_photo_url: string | null;
+  role: string | null;
+  is_recent: boolean;
+  joined_at: string | null;
+};
+
+/** A board view's creator, embedded on a {@link BoardViewSummary}. */
+export type BoardViewSummaryCreator = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+};
+
+/** The board (navigation leaf) a {@link BoardViewSummary} belongs to. */
+export type BoardViewSummaryBoard = {
+  id: number;
+  label: string;
+  slug: string;
+};
+
+/** The workspace a {@link BoardViewSummary}'s board belongs to. */
+export type BoardViewSummaryWorkspace = {
+  id: number;
+  slug: string;
+  name: string;
+};
+
+/**
+ * A lightweight board view (tab), listed across boards — Manage Workspace's
+ * "Recents" (scoped to one workspace) and "Content" (app-wide) tabs. Mirrors
+ * the Laravel `BoardViewSummaryResource` payload.
+ */
+export type BoardViewSummary = {
+  id: number;
+  label: string;
+  view_type: string;
+  icon: string | null;
+  is_primary: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+  creator: BoardViewSummaryCreator | null;
+  board: BoardViewSummaryBoard | null;
+  workspace: BoardViewSummaryWorkspace | null;
+};

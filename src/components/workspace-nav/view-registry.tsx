@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import WorkspaceHome from "@/app/(admin)/workspace-home/_components/WorkspaceHome";
+import { WorkspaceManage } from "@/components/workspace-manage";
 import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
 
 /**
@@ -16,7 +16,7 @@ import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
  * through this same fallback.
  */
 export const VIEW_REGISTRY: Record<string, React.ComponentType<WorkspaceViewProps>> = {
-  workspace_home: () => <WorkspaceHome />,
+  workspace_manage: WorkspaceManage,
 };
 
 /** Resolve the component for a view key, defaulting to the generic table board view. */

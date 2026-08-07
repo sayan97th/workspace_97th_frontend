@@ -1,12 +1,14 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   BoardDetail,
+  BoardViewSummary,
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
   Workspace,
+  WorkspaceMember,
   WorkspaceNavNode,
 } from "@/types/workspace";
 
@@ -50,6 +52,33 @@ export const workspaceService = {
   /** POST /api/workspaces/{slug}/leave — remove the current user from the workspace. */
   async leaveWorkspace(workspace_slug: string): Promise<void> {
     await apiClient.post(`/api/workspaces/${workspace_slug}/leave`);
+  },
+
+  /** GET /api/workspaces/{slug} — a single workspace's own details (name/mono/color/role/…). */
+  async getWorkspace(workspace_slug: string): Promise<Workspace> {
+    return apiClient.get<Workspace>(`/api/workspaces/${workspace_slug}`);
+  },
+
+  /** GET /api/workspaces/{slug}/members — the full member roster, for the Collaborations tab. */
+  async getWorkspaceMembers(workspace_slug: string): Promise<WorkspaceMember[]> {
+    const response = await apiClient.get<{ data: WorkspaceMember[] }>(
+      `/api/workspaces/${workspace_slug}/members`
+    );
+    return response.data;
+  },
+
+  /** GET /api/workspaces/{slug}/board-views/recent — the workspace's most recently created board views. */
+  async getRecentBoardViews(workspace_slug: string, limit = 10): Promise<BoardViewSummary[]> {
+    const response = await apiClient.get<{ data: BoardViewSummary[] }>(
+      `/api/workspaces/${workspace_slug}/board-views/recent?limit=${limit}`
+    );
+    return response.data;
+  },
+
+  /** GET /api/board-views — every board view across every workspace the current user belongs to. */
+  async getAllBoardViews(): Promise<BoardViewSummary[]> {
+    const response = await apiClient.get<{ data: BoardViewSummary[] }>("/api/board-views");
+    return response.data;
   },
 
   /**

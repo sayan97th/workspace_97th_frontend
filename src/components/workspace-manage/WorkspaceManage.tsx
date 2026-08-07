@@ -1,32 +1,32 @@
 "use client";
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSidebar } from "@/context/SidebarContext";
 import {
   ChatBubbleIcon,
   ChevronDownIcon,
   ClockIcon,
   CollaboratorsIcon,
   ContentTabIcon,
-  FileIcon,
   BoardGridIcon,
-  FolderIcon,
   MemberIcon,
   MoreDotsIcon,
   PermissionsIcon,
   PersonIcon,
-  StarIcon,
 } from "@/icons/workspace-icons";
 import {
   ChangeWorkspaceTypeModal,
   NavItemFormModal,
-  useWorkspaces,
   WorkspaceOptionsMenu,
 } from "@/components/workspace-nav";
+import type { WorkspaceViewProps } from "@/components/workspace-nav/TableBoardView";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
-import WorkspaceContent from "./WorkspaceContent";
-import WorkspacePermissions from "./WorkspacePermissions";
+import { useWorkspaceDetail } from "./useWorkspaceDetail";
+import WorkspaceManageRecents from "./WorkspaceManageRecents";
+import WorkspaceManageContent from "./WorkspaceManageContent";
+import WorkspaceManagePermissions from "./WorkspaceManagePermissions";
+import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
+import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
 type TabId = "recents" | "content" | "collaborators" | "permissions";
 
@@ -36,34 +36,30 @@ type TabDefinition = {
   Icon: React.FC<{ size?: number; className?: string }>;
 };
 
-type RecentItem = {
-  id: string;
-  label: string;
-  kind: "file" | "folder";
-};
-
 /** Which single-field/confirm dialog the "…" menu currently has open. */
 type OptionsDialog = "rename" | "change-type" | "leave" | "delete" | null;
 
-const workspace_tabs: TabDefinition[] = [
+const WORKSPACE_TABS: TabDefinition[] = [
   { id: "recents", label: "Recents", Icon: ClockIcon },
   { id: "content", label: "Content", Icon: ContentTabIcon },
   { id: "collaborators", label: "Collaborators", Icon: CollaboratorsIcon },
   { id: "permissions", label: "Permissions", Icon: PermissionsIcon },
 ];
 
-const recent_items: RecentItem[] = [
-  { id: "mcp", label: "MCP getting started", kind: "file" },
-  { id: "teamjaecie", label: "Team Jaecie", kind: "folder" },
-  { id: "teamblake", label: "Team Blake", kind: "folder" },
-  { id: "retro", label: "Retrospectives", kind: "folder" },
-  { id: "salesres", label: "Sales Resources", kind: "folder" },
-];
-
-const WorkspaceHome: React.FC = () => {
-  const { active_item_label } = useSidebar();
+/**
+ * "Manage Workspace" — every workspace's settings/overview hub: a summary of
+ * its recent activity, all its content, its collaborators, and the default
+ * permission matrix applied to it. Registered under `view_key:
+ * "workspace_manage"` (see `view-registry.tsx`), so it renders through the
+ * same generic `/boards/{id}` route as every other board — that's what gives
+ * it a real, always-correct `workspace_slug` instead of guessing at an
+ * independently-selected "active workspace".
+ */
+const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug }) => {
   const router = useRouter();
-  const workspaces = useWorkspaces();
+  const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace } =
+    useWorkspaceDetail(workspace_slug);
+
   const [active_tab, setActiveTab] = useState<TabId>("recents");
   const [is_options_open, setIsOptionsOpen] = useState(false);
   const [is_info_open, setIsInfoOpen] = useState(false);
@@ -71,33 +67,38 @@ const WorkspaceHome: React.FC = () => {
   const options_button_ref = useRef<HTMLButtonElement>(null);
   const info_button_ref = useRef<HTMLButtonElement>(null);
 
-  const active_workspace = workspaces.active_workspace;
-  const workspace_name = active_workspace?.name ?? "Fulfillment";
-  const workspace_mono = active_workspace?.mono ?? "97";
-  const workspace_color = active_workspace?.color;
-  const can_manage_workspace = active_workspace?.role?.toLowerCase() === "owner";
+  if (is_loading && !workspace) return <BoardLoadingSpinner />;
+  if (error || !workspace) {
+    return (
+      <CenteredMessage
+        title="Something went wrong"
+        detail={error ?? "We couldn't load this workspace."}
+      />
+    );
+  }
+
+  const workspace_name = workspace.name;
+  const workspace_mono = workspace.mono;
+  const workspace_color = workspace.color;
+  const can_manage_workspace = workspace.role?.toLowerCase() === "owner";
 
   const closeDialog = () => setOpenDialog(null);
 
   const handleRename = async (name: string) => {
-    if (!active_workspace) return;
-    await workspaces.updateWorkspace(active_workspace.id, { name });
+    await updateWorkspace({ name });
   };
 
   const handleChangeType = async (privacy: "open" | "closed") => {
-    if (!active_workspace) return;
-    await workspaces.updateWorkspace(active_workspace.id, { privacy });
+    await updateWorkspace({ privacy });
   };
 
   const handleLeave = async () => {
-    if (!active_workspace) return;
-    await workspaces.leaveWorkspace(active_workspace.id);
+    await leaveWorkspace();
     router.push("/");
   };
 
   const handleDelete = async () => {
-    if (!active_workspace) return;
-    await workspaces.deleteWorkspace(active_workspace.id);
+    await deleteWorkspace();
     router.push("/");
   };
 
@@ -106,8 +107,6 @@ const WorkspaceHome: React.FC = () => {
       {/* Cover banner — placeholder gradient, matches the approved workspace design. */}
       <div className="relative h-[170px] w-full overflow-hidden bg-[linear-gradient(115deg,#0A1717_0%,#1C2B2E_38%,#3A4A4D_60%,#D8DCDB_100%)]">
         <div className="absolute inset-0 bg-[repeating-linear-gradient(108deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_22px)]" />
-        <div className="absolute right-10 top-[18px] font-mono-accent text-[11px] tracking-[0.14em] text-white/45">
-        </div>
       </div>
 
       <div className="px-10">
@@ -154,9 +153,7 @@ const WorkspaceHome: React.FC = () => {
                         <>
                           <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
                           <span className="flex-1">
-                            {active_workspace?.privacy === "closed"
-                              ? "Closed workspace"
-                              : "Open workspace"}
+                            {workspace.privacy === "closed" ? "Closed workspace" : "Open workspace"}
                           </span>
                           {can_manage_workspace && (
                             <ChevronDownIcon size={13} className="flex-none -rotate-90 text-shell-text-faint" />
@@ -177,7 +174,7 @@ const WorkspaceHome: React.FC = () => {
                         <>
                           <MemberIcon size={15} className="flex-none text-shell-text-muted" />
                           <span className="flex-1">
-                            {active_workspace?.privacy === "closed"
+                            {workspace.privacy === "closed"
                               ? "Invite-only — managed from Permissions"
                               : "All members in monday"}
                           </span>
@@ -189,7 +186,7 @@ const WorkspaceHome: React.FC = () => {
               </div>
               <div className="mt-1 font-mono-accent text-xs tracking-[0.02em] text-shell-text-muted">
                 {workspace_name}&nbsp;&nbsp;/&nbsp;&nbsp;
-                <span className="font-medium text-brand-500">{active_item_label}</span>
+                <span className="font-medium text-brand-500">{node.label}</span>
               </div>
             </div>
 
@@ -210,6 +207,7 @@ const WorkspaceHome: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setActiveTab("collaborators")}
                 className="rounded-lg bg-shell-text px-[18px] py-2.5 text-[13px] font-semibold text-shell-bg hover:opacity-90"
               >
                 Members
@@ -239,7 +237,7 @@ const WorkspaceHome: React.FC = () => {
 
         {/* Tabs */}
         <div className="mt-[26px] flex gap-1.5 border-b border-shell-border">
-          {workspace_tabs.map(({ id, label, Icon }) => {
+          {WORKSPACE_TABS.map(({ id, label, Icon }) => {
             const is_active = active_tab === id;
             return (
               <button
@@ -259,37 +257,10 @@ const WorkspaceHome: React.FC = () => {
         </div>
 
         {/* Tab panels */}
-        {active_tab === "recents" && (
-          <div className="mt-2.5 pb-[60px]">
-            {recent_items.map((item, index) => (
-              <div
-                key={item.id}
-                className={`flex cursor-pointer items-center gap-3.5 rounded-lg px-2 py-[15px] hover:bg-shell-hover ${index < recent_items.length - 1 ? "border-b border-shell-border" : ""
-                  }`}
-              >
-                <span className="flex flex-none text-shell-text-muted">
-                  {item.kind === "file" ? <FileIcon /> : <FolderIcon size={17} />}
-                </span>
-                <span className="flex-1 text-[15px] font-medium text-shell-text">
-                  {item.label}
-                </span>
-                <span className="flex flex-none text-shell-text-faint">
-                  <StarIcon size={16} />
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {active_tab === "content" && <WorkspaceContent />}
-
-        {active_tab === "permissions" && <WorkspacePermissions />}
-
-        {active_tab === "collaborators" && (
-          <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
-            [ no {active_tab} yet ]
-          </div>
-        )}
+        {active_tab === "recents" && <WorkspaceManageRecents workspace_slug={workspace.slug} />}
+        {active_tab === "content" && <WorkspaceManageContent />}
+        {active_tab === "permissions" && <WorkspaceManagePermissions />}
+        {active_tab === "collaborators" && <WorkspaceManageCollaborators workspace_slug={workspace.slug} />}
       </div>
 
       <NavItemFormModal
@@ -304,7 +275,7 @@ const WorkspaceHome: React.FC = () => {
 
       <ChangeWorkspaceTypeModal
         is_open={open_dialog === "change-type"}
-        initial_privacy={active_workspace?.privacy ?? "open"}
+        initial_privacy={workspace.privacy}
         onSubmit={handleChangeType}
         onClose={closeDialog}
       />
@@ -331,4 +302,4 @@ const WorkspaceHome: React.FC = () => {
   );
 };
 
-export default WorkspaceHome;
+export default WorkspaceManage;

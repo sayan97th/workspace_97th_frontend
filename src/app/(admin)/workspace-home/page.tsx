@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import WorkspaceHome from "./_components/WorkspaceHome";
+import WorkspaceHomeRedirect from "./_components/WorkspaceHomeRedirect";
 
 export const metadata: Metadata = {
   title: "Workspace home | Workspace 97th",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function WorkspaceHomePage() {
-  return <WorkspaceHome />;
+  return <WorkspaceHomeRedirect />;
 }

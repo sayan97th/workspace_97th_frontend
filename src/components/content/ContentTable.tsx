@@ -11,11 +11,7 @@ import {
 } from "@/icons/workspace-icons";
 import CreatorAvatar from "./CreatorAvatar";
 import Checkbox from "./Checkbox";
-import type {
-  ContentAsset,
-  Creator,
-  CreatorKey,
-} from "@/data/workspace-content-data";
+import type { ContentAsset, Creator, CreatorKey } from "./types";
 
 export type ContentTableProps = {
   assets: ContentAsset[];
