@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import PeopleMultiSelect from "@/components/common/PeopleMultiSelect";
 import { CloseIcon } from "@/icons/board-icons";
 import { TeamsIcon } from "@/icons/workspace-icons";
+import type { TeamMember } from "./types";
 import type { TeamsManagerApi } from "./useTeamsManager";
 
 export type CreateTeamModalProps = {
@@ -10,31 +11,37 @@ export type CreateTeamModalProps = {
 };
 
 /**
- * "Create new team" sub-dialog opened from {@link TeamsRail}. Sits on top of the Teams
- * modal (higher z-index) so both can be open at once, matching the approved design.
+ * "Create new team" / "Edit team" sub-dialog opened from {@link TeamsRail} — both flows
+ * share the same name + member-picker form, distinguished by `teams.team_form_mode`. Sits
+ * on top of the Teams modal (higher z-index) so both can be open at once, matching the
+ * approved design.
  */
 const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
   useEffect(() => {
-    if (!teams.is_create_team_open) return;
+    if (!teams.is_team_form_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") teams.closeCreateTeam();
+      if (event.key === "Escape") teams.closeTeamForm();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [teams]);
 
-  if (!teams.is_create_team_open) return null;
+  if (!teams.is_team_form_open) return null;
+
+  const is_edit_mode = teams.team_form_mode === "edit";
+  const title = is_edit_mode ? "Edit team" : "Create new team";
+  const submit_label = is_edit_mode ? "Save" : "Create";
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Create new team"
+      aria-label={title}
       className="fixed inset-0 z-[420] flex items-center justify-center p-6"
     >
       <div
         className="absolute inset-0 bg-[#060e0e]/[0.68]"
-        onClick={teams.closeCreateTeam}
+        onClick={teams.closeTeamForm}
         aria-hidden="true"
       />
 
@@ -44,11 +51,11 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
             <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-brand-500/[0.16] text-brand-200">
               <TeamsIcon size={18} />
             </span>
-            <span className="text-[18px] font-extrabold tracking-[-0.01em]">Create new team</span>
+            <span className="text-[18px] font-extrabold tracking-[-0.01em]">{title}</span>
           </div>
           <button
             type="button"
-            onClick={teams.closeCreateTeam}
+            onClick={teams.closeTeamForm}
             aria-label="Close"
             className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
           >
@@ -63,8 +70,8 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
             <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Team name</div>
             <input
               type="text"
-              value={teams.new_team_name}
-              onChange={(event) => teams.setNewTeamName(event.target.value)}
+              value={teams.team_form_name}
+              onChange={(event) => teams.setTeamFormName(event.target.value)}
               placeholder="Enter team name"
               className="w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text placeholder:text-shell-text-faint focus:border-brand-500 focus:outline-none"
             />
@@ -72,34 +79,44 @@ const CreateTeamModal: React.FC<CreateTeamModalProps> = ({ teams }) => {
 
           <div>
             <div className="mb-[7px] text-[12.5px] font-semibold text-shell-text-muted">Team members</div>
-            <PeopleMultiSelect
-              people={teams.members}
-              selected_ids={teams.new_team_member_ids}
-              onChange={teams.setNewTeamMemberIds}
-              getSubtitle={(person) =>
-                teams.members.find((member) => member.id === person.id)?.email
-              }
-              placeholder="Search people by name or email"
-              default_open
-            />
+            {teams.is_loading_candidates || (is_edit_mode && teams.is_loading_team_form_roster) ? (
+              <div className="rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[13px] text-shell-text-faint">
+                Loading people…
+              </div>
+            ) : (
+              <PeopleMultiSelect
+                people={teams.candidates}
+                selected_ids={teams.team_form_member_ids}
+                onChange={teams.setTeamFormMemberIds}
+                getSubtitle={(person) => (person as TeamMember).email}
+                placeholder="Search people by name or email"
+                default_open
+              />
+            )}
           </div>
+
+          {teams.team_form_error ? (
+            <div className="rounded-lg border border-brand-500/30 bg-brand-500/[0.1] px-3 py-2.5 text-[13px] font-medium text-brand-200">
+              {teams.team_form_error}
+            </div>
+          ) : null}
         </div>
 
         <div className="flex flex-none items-center justify-end gap-2.5 border-t border-shell-border px-[22px] py-4">
           <button
             type="button"
-            onClick={teams.closeCreateTeam}
+            onClick={teams.closeTeamForm}
             className="rounded-lg px-3.5 py-[10px] text-[13.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
           >
             Cancel
           </button>
           <button
             type="button"
-            onClick={teams.createTeam}
-            disabled={!teams.can_create_team}
+            onClick={teams.submitTeamForm}
+            disabled={!teams.can_submit_team_form}
             className="rounded-lg bg-brand-500 px-5 py-[10px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            Create
+            {teams.is_submitting_team_form ? "Please wait…" : submit_label}
           </button>
         </div>
       </div>

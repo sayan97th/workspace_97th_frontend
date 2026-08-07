@@ -1,21 +1,17 @@
 "use client";
 import React, { useEffect } from "react";
 import SearchField from "@/components/common/SearchField";
-import { TEAMS_ROSTER, TEAMS_SEED } from "@/data/teams-data";
+import { Pagination } from "@/components/content";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { CloseIcon } from "@/icons/board-icons";
 import CreateTeamModal from "./CreateTeamModal";
 import TeamMembersTable from "./TeamMembersTable";
 import TeamsRail from "./TeamsRail";
-import type { Team, TeamMember } from "./types";
 import { useTeamsManager } from "./useTeamsManager";
 
 export type TeamsModalProps = {
   is_open: boolean;
   onClose: () => void;
-  /** Seed teams shown in the rail. Defaults to the account's Teams directory. */
-  teams?: Team[];
-  /** Full people directory the teams draw members from. Defaults to the account's Teams directory. */
-  members?: TeamMember[];
 };
 
 const tabButtonClass = (is_active: boolean) =>
@@ -30,20 +26,15 @@ const tabButtonClass = (is_active: boolean) =>
  * {@link TeamMembersTable} and {@link CreateTeamModal}, so a future "team picker" elsewhere
  * in the app can reuse the same pieces instead of this whole dialog.
  */
-const TeamsModal: React.FC<TeamsModalProps> = ({
-  is_open,
-  onClose,
-  teams: initial_teams = TEAMS_SEED,
-  members = TEAMS_ROSTER,
-}) => {
-  const teams = useTeamsManager({ teams: initial_teams, members });
+const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
+  const teams = useTeamsManager();
 
   useEffect(() => {
     if (!is_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Let the nested "Create new team" dialog handle Escape first — otherwise one
+      // Let the nested "Create/Edit team" dialog handle Escape first — otherwise one
       // press would close both dialogs since each has its own window keydown listener.
-      if (event.key === "Escape" && !teams.is_create_team_open) onClose();
+      if (event.key === "Escape" && !teams.is_team_form_open) onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     const previous_overflow = document.body.style.overflow;
@@ -52,7 +43,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previous_overflow;
     };
-  }, [is_open, onClose, teams.is_create_team_open]);
+  }, [is_open, onClose, teams.is_team_form_open]);
 
   if (!is_open) return null;
 
@@ -102,7 +93,26 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
                 />
               </div>
               <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-[26px] pb-6 pt-[10px]">
-                <TeamMembersTable members={teams.visible_members} />
+                {teams.is_loading_members ? (
+                  <div className="px-[10px] py-10 text-center text-[13px] text-shell-text-faint">
+                    Loading people…
+                  </div>
+                ) : teams.members_error ? (
+                  <div className="px-[10px] py-10 text-center text-[13px] text-brand-200">
+                    {teams.members_error}
+                  </div>
+                ) : (
+                  <>
+                    <TeamMembersTable members={teams.visible_members} />
+                    <Pagination
+                      current_page={teams.page}
+                      last_page={teams.last_page}
+                      total={teams.total_members}
+                      per_page={teams.per_page}
+                      onPageChange={teams.setPage}
+                    />
+                  </>
+                )}
               </div>
             </>
           ) : (
@@ -120,6 +130,16 @@ const TeamsModal: React.FC<TeamsModalProps> = ({
       </div>
 
       <CreateTeamModal teams={teams} />
+
+      <ConfirmActionModal
+        is_open={teams.team_pending_delete !== null}
+        title="Delete team"
+        description={`"${teams.team_pending_delete?.name}" will be permanently deleted. This can't be undone.`}
+        confirm_label="Delete team"
+        danger
+        onConfirm={teams.confirmDeleteTeam}
+        onClose={teams.cancelDeleteTeam}
+      />
     </div>
   );
 };

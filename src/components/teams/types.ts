@@ -7,11 +7,14 @@ export type TeamMember = BoardPersonOption & {
   is_owner?: boolean;
 };
 
-/** One team in the account. `member_ids` reference {@link TeamMember.id}. */
+/**
+ * One team in the account. Rosters are fetched separately (and paginated) per
+ * team rather than embedded here, so this stays cheap to list.
+ */
 export type Team = {
   id: string;
   name: string;
-  member_ids: string[];
+  member_count: number;
 };
 
 export type TeamsTabId = "users" | "content";

@@ -1,5 +1,5 @@
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
-import type { Team, TeamMember } from "@/components/teams/types";
+import type { TeamMember } from "@/components/teams/types";
 
 /**
  * The Teams directory's mock account roster (Client Hub itself is now a
@@ -65,24 +65,3 @@ export const TEAMS_ROSTER: TeamMember[] = ACCOUNT_TEAM_ROSTER.map((person) => ({
   is_owner: person.id === TEAMS_OWNER_ID,
 }));
 
-export const findTeamsMember = (id: string): TeamMember | undefined =>
-  TEAMS_ROSTER.find((member) => member.id === id);
-
-/** Seed teams shown in the Teams view's left rail before the user creates any of their own. */
-export const TEAMS_SEED: Team[] = [
-  {
-    id: "account-directors",
-    name: "Account Directors",
-    member_ids: ["josh", "blake", "brandon", "rachel", "paxton", "hayley"],
-  },
-  {
-    id: "department-heads",
-    name: "Department Heads",
-    member_ids: ["blake", "danny", "mike", "nora"],
-  },
-  {
-    id: "team-josh",
-    name: "Team Josh",
-    member_ids: ["josh", "hayley", "paxton", "jasmin"],
-  },
-];

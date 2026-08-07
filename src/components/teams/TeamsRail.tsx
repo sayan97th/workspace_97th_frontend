@@ -1,6 +1,7 @@
 import React from "react";
 import SearchField from "@/components/common/SearchField";
 import { PlusIcon, TeamFolderIcon, TeamsIcon } from "@/icons/workspace-icons";
+import TeamOptionsButton from "./TeamOptionsButton";
 import { ALL_TEAMS_ID, type TeamsManagerApi } from "./useTeamsManager";
 
 export type TeamsRailProps = {
@@ -8,7 +9,7 @@ export type TeamsRailProps = {
 };
 
 const railRowClass = (is_selected: boolean) =>
-  `flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-left transition-colors ${
+  `group flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-left transition-colors ${
     is_selected ? "bg-shell-hover-strong" : "hover:bg-shell-hover"
   }`;
 
@@ -54,21 +55,48 @@ const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
         <span className="text-[12px] text-shell-text-faint">{teams.total_team_count}</span>
       </button>
 
-      {teams.team_rows.map((row) => (
-        <button key={row.id} type="button" onClick={row.select} className={railRowClass(row.is_selected)}>
-          <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-shell-hover text-shell-text-muted">
-            <TeamFolderIcon size={14} />
-          </span>
-          <span
-            className={`min-w-0 flex-1 truncate text-[13.5px] font-medium ${
-              row.is_selected ? "text-shell-text" : "text-shell-text-secondary"
-            }`}
+      {teams.is_loading_teams ? (
+        <div className="px-[10px] py-4 text-center text-[12.5px] text-shell-text-faint">Loading teams…</div>
+      ) : teams.teams_error ? (
+        <div className="px-[10px] py-4 text-center text-[12.5px] text-brand-200">{teams.teams_error}</div>
+      ) : (
+        teams.team_rows.map((row) => (
+          // div[role=button], not <button>: it nests TeamOptionsButton's own <button>,
+          // and a button can't validly contain another button.
+          <div
+            key={row.id}
+            role="button"
+            tabIndex={0}
+            onClick={row.select}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                row.select();
+              }
+            }}
+            className={`${railRowClass(row.is_selected)} cursor-pointer`}
           >
-            {row.name}
-          </span>
-          <span className="text-[12px] text-shell-text-faint">{row.member_count}</span>
-        </button>
-      ))}
+            <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-shell-hover text-shell-text-muted">
+              <TeamFolderIcon size={14} />
+            </span>
+            <span
+              className={`min-w-0 flex-1 truncate text-[13.5px] font-medium ${
+                row.is_selected ? "text-shell-text" : "text-shell-text-secondary"
+              }`}
+            >
+              {row.name}
+            </span>
+            <span className="text-[12px] text-shell-text-faint">{row.member_count}</span>
+            <TeamOptionsButton
+              team_name={row.name}
+              onEdit={() => teams.openEditTeam({ id: row.id, name: row.name, member_count: row.member_count })}
+              onDelete={() =>
+                teams.requestDeleteTeam({ id: row.id, name: row.name, member_count: row.member_count })
+              }
+            />
+          </div>
+        ))
+      )}
     </div>
 
     <div className="border-t border-shell-border px-4 py-3">
