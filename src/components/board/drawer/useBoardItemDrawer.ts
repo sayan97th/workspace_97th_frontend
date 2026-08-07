@@ -60,6 +60,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [comments_by_row, setCommentsByRow] = useState<Record<string, DrawerComment[]>>({});
   const [comments_loading, setCommentsLoading] = useState(false);
   const [comments_error, setCommentsError] = useState<string | null>(null);
+  const [is_uploading_files, setIsUploadingFiles] = useState(false);
+  const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
 
   // Local draft that wins over `getDescription(open_row)` once the viewer has
   // typed — `null` means "no unsaved edit yet, defer to the row's own value".
@@ -112,6 +114,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setReactionPaletteId(null);
     setMentionIdsByTarget({});
     setCommentsError(null);
+    setFilesUploadError(null);
     setDescriptionDraft(null);
 
     if (is_api_backed) {
@@ -213,21 +216,27 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   /**
    * Posts `files` immediately as a bodiless comment — used by the dedicated
-   * Attachments affordance, which shouldn't depend on (or interfere with)
-   * whatever the viewer may currently be typing into the main composer.
+   * Attachments affordance (Kanban's paperclip button, the Files tab's
+   * dropzone), which shouldn't depend on (or interfere with) whatever the
+   * viewer may currently be typing into the main composer. Tracked through
+   * its own {@link is_uploading_files}/{@link files_upload_error} rather than
+   * the composer's `comments_error`, since a Files-tab upload can fail while
+   * the viewer is looking at a tab that never renders the composer's banner.
    */
   const postAttachments = (files: File[]) => {
     if (!open_row_id || files.length === 0) return;
 
     if (is_api_backed) {
       const item_id = Number(open_row_id);
-      setCommentsError(null);
+      setFilesUploadError(null);
+      setIsUploadingFiles(true);
       boardCommentsService
         .postComment(board_id, item_id, { body: "", attachments: files })
         .then((dto) => {
           updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
         })
-        .catch(() => setCommentsError("Couldn't attach your file(s). Please try again."));
+        .catch(() => setFilesUploadError("Couldn't upload one or more files. Please try again."))
+        .finally(() => setIsUploadingFiles(false));
       return;
     }
 
@@ -246,6 +255,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     };
     updateComments(open_row_id, (comments) => [new_comment, ...comments]);
   };
+
+  const dismissFilesUploadError = () => setFilesUploadError(null);
 
   const addComposerAttachments = (files: File[]) => {
     if (files.length === 0) return;
@@ -471,6 +482,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     addComposerAttachments,
     removeComposerAttachment,
     postAttachments,
+    is_uploading_files,
+    files_upload_error,
+    dismissFilesUploadError,
 
     reply_text_by_comment,
     onReplyTextChange,

@@ -36,7 +36,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
 
   const tabs: TabDefinition[] = [
     { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length },
-    { id: "files", label: "Files", icon: <FilesTabIcon size={15} /> },
+    { id: "files", label: "Files", icon: <FilesTabIcon size={15} />, count: content.all_attachments.length },
     { id: "activity", label: "Activity Log", icon: <ActivityLogTabIcon size={15} /> },
     { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={15} /> },
   ];
@@ -105,9 +105,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
 
       {/* Active tab body */}
       {content.active_tab === "updates" && <UpdatesPanel drawer={content} />}
-      {content.active_tab === "files" && (
-        <FilesPanel item_title={content.open_row_title} attachments={content.all_attachments} />
-      )}
+      {content.active_tab === "files" && <FilesPanel drawer={content} />}
       {content.active_tab === "activity" && <ActivityLogPanel entries={content.activity_log} />}
       {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
     </SlideOverPanel>

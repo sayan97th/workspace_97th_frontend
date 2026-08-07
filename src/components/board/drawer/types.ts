@@ -124,6 +124,11 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   removeComposerAttachment: (attachment_id: string) => void;
   /** Posts one or more files straight away as a bodiless comment — the "attach a file to this card" affordance, independent of whatever text is (or isn't) sitting in the composer. */
   postAttachments: (files: File[]) => void;
+  /** True while a `postAttachments` call is in flight — lets the Files tab's dropzone disable itself and show upload feedback. */
+  is_uploading_files: boolean;
+  /** Set when a `postAttachments` request fails; shown as a dismissible banner on the Files tab. */
+  files_upload_error: string | null;
+  dismissFilesUploadError: () => void;
 
   reply_text_by_comment: Record<string, string>;
   onReplyTextChange: (comment_id: string, value: string) => void;
