@@ -156,7 +156,12 @@ const WorkspaceManageContent: React.FC = () => {
 
   const openAsset = (id: string) => router.push(buildBoardPath(Number(id)));
 
-  if (is_loading && items.length === 0) return <BoardLoadingSpinner />;
+  // `meta` only stays null until the very first successful fetch — unlike `items`, it
+  // doesn't go back to "empty" just because a filter/search legitimately matches nothing.
+  // Gating the full-page spinner on it (instead of `items.length === 0`) keeps the
+  // toolbar, the open filters popover, and the table mounted across every later refetch,
+  // even ones that resolve to zero rows.
+  if (is_loading && meta === null) return <BoardLoadingSpinner />;
   if (error) return <CenteredMessage title="Something went wrong" detail={error} />;
 
   const selected_count = selected_ids.size;
