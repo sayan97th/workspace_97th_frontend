@@ -1,13 +1,14 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   BoardDetail,
-  BoardViewSummary,
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
   Workspace,
+  WorkspaceContentItem,
+  WorkspaceContentPage,
   WorkspaceMember,
   WorkspaceNavNode,
 } from "@/types/workspace";
@@ -67,18 +68,24 @@ export const workspaceService = {
     return response.data;
   },
 
-  /** GET /api/workspaces/{slug}/board-views/recent — the workspace's most recently created board views. */
-  async getRecentBoardViews(workspace_slug: string, limit = 10): Promise<BoardViewSummary[]> {
-    const response = await apiClient.get<{ data: BoardViewSummary[] }>(
-      `/api/workspaces/${workspace_slug}/board-views/recent?limit=${limit}`
+  /**
+   * GET /api/workspaces/{slug}/content/recent — the workspace's most
+   * recently created boards/docs, at any depth in its navigation tree
+   * (the same rows the sidebar renders).
+   */
+  async getRecentContentItems(workspace_slug: string, limit = 10): Promise<WorkspaceContentItem[]> {
+    const response = await apiClient.get<{ data: WorkspaceContentItem[] }>(
+      `/api/workspaces/${workspace_slug}/content/recent?limit=${limit}`
     );
     return response.data;
   },
 
-  /** GET /api/board-views — every board view across every workspace the current user belongs to. */
-  async getAllBoardViews(): Promise<BoardViewSummary[]> {
-    const response = await apiClient.get<{ data: BoardViewSummary[] }>("/api/board-views");
-    return response.data;
+  /**
+   * GET /api/content — every board/doc across every workspace the current
+   * user belongs to, paginated (the same rows the sidebar renders).
+   */
+  async getContentItems(page = 1, per_page = 30): Promise<WorkspaceContentPage> {
+    return apiClient.get<WorkspaceContentPage>(`/api/content?page=${page}&per_page=${per_page}`);
   },
 
   /**

@@ -162,41 +162,57 @@ export type WorkspaceMember = {
   joined_at: string | null;
 };
 
-/** A board view's creator, embedded on a {@link BoardViewSummary}. */
-export type BoardViewSummaryCreator = {
+/** A content item's creator, embedded on a {@link WorkspaceContentItem}. */
+export type WorkspaceContentItemCreator = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
 };
 
-/** The board (navigation leaf) a {@link BoardViewSummary} belongs to. */
-export type BoardViewSummaryBoard = {
-  id: number;
-  label: string;
-  slug: string;
-};
-
-/** The workspace a {@link BoardViewSummary}'s board belongs to. */
-export type BoardViewSummaryWorkspace = {
+/** The workspace a {@link WorkspaceContentItem} belongs to. */
+export type WorkspaceContentItemWorkspace = {
   id: number;
   slug: string;
   name: string;
 };
 
-/**
- * A lightweight board view (tab), listed across boards — Manage Workspace's
- * "Recents" (scoped to one workspace) and "Content" (app-wide) tabs. Mirrors
- * the Laravel `BoardViewSummaryResource` payload.
- */
-export type BoardViewSummary = {
+/** One ancestor group in a {@link WorkspaceContentItem}'s `folder_path`. */
+export type WorkspaceContentItemFolder = {
   id: number;
   label: string;
-  view_type: string;
+};
+
+/**
+ * A board/doc leaf, listed outside its workspace's navigation tree — Manage
+ * Workspace's "Recents" (scoped to one workspace) and "Content" (app-wide)
+ * tabs. This is deliberately the same kind of row the sidebar itself
+ * renders, not a board's internal view/tabs — mirrors the Laravel
+ * `WorkspaceContentItemResource` payload.
+ */
+export type WorkspaceContentItem = {
+  id: number;
+  label: string;
+  type: WorkspaceNavNodeType;
+  display_style: string | null;
+  board_type: BoardType;
   icon: string | null;
-  is_primary: boolean;
+  is_favorite: boolean;
   created_at: string | null;
   updated_at: string | null;
-  creator: BoardViewSummaryCreator | null;
-  board: BoardViewSummaryBoard | null;
-  workspace: BoardViewSummaryWorkspace | null;
+  creator: WorkspaceContentItemCreator | null;
+  workspace: WorkspaceContentItemWorkspace | null;
+  folder_path: WorkspaceContentItemFolder[];
+};
+
+/** Pagination metadata returned alongside a `GET /api/content` page. */
+export type WorkspaceContentPageMeta = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+};
+
+export type WorkspaceContentPage = {
+  data: WorkspaceContentItem[];
+  meta: WorkspaceContentPageMeta;
 };

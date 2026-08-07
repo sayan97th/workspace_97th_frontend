@@ -1,38 +1,42 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import { ContentTable, ContentToolbar } from "@/components/content";
+import { useRouter } from "next/navigation";
+import { ContentTable, ContentToolbar, Pagination } from "@/components/content";
 import type { ContentAsset, Creator } from "@/components/content";
 import { workspaceService } from "@/services/workspace.service";
-import type { BoardViewSummary } from "@/types/workspace";
+import { buildBoardPath } from "@/components/workspace-nav/helpers";
+import type { WorkspaceContentItem, WorkspaceContentPageMeta } from "@/types/workspace";
 import { formatShortDate, gradientForId, initialsFromName } from "./creatorAvatar";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
-/** Every board view the current user can see, mapped to a `ContentAsset` row + its creator's avatar entry. */
+const PER_PAGE = 30;
+
+/** A page of board/doc leaves, mapped to `ContentAsset` rows + their creators' avatar entries. */
 const toAssetsAndCreators = (
-  views: BoardViewSummary[]
+  items: WorkspaceContentItem[]
 ): { assets: ContentAsset[]; creators: Record<string, Creator> } => {
   const creators: Record<string, Creator> = {};
 
-  const assets = views.map((view): ContentAsset => {
-    if (view.creator && !creators[String(view.creator.id)]) {
-      const [gradient_from, gradient_to] = gradientForId(view.creator.id);
-      creators[String(view.creator.id)] = {
-        initials: initialsFromName(view.creator.full_name),
-        name: view.creator.full_name,
+  const assets = items.map((item): ContentAsset => {
+    if (item.creator && !creators[String(item.creator.id)]) {
+      const [gradient_from, gradient_to] = gradientForId(item.creator.id);
+      creators[String(item.creator.id)] = {
+        initials: initialsFromName(item.creator.full_name),
+        name: item.creator.full_name,
         gradient_from,
         gradient_to,
       };
     }
 
     return {
-      id: String(view.id),
-      name: view.label,
-      type: view.view_type === "doc" ? "doc" : "board",
-      creator: view.creator ? String(view.creator.id) : "",
-      created_date: formatShortDate(view.created_at),
-      modified_date: formatShortDate(view.updated_at),
-      folder: view.workspace?.name ?? "—",
-      sub_folder: view.board?.label,
+      id: String(item.id),
+      name: item.label,
+      type: "board",
+      creator: item.creator ? String(item.creator.id) : "",
+      created_date: formatShortDate(item.created_at),
+      modified_date: formatShortDate(item.updated_at),
+      folder: item.folder_path.map((crumb) => crumb.label).join(" / "),
+      is_favorite: item.is_favorite,
     };
   });
 
@@ -40,12 +44,16 @@ const toAssetsAndCreators = (
 };
 
 /**
- * Manage Workspace's "Content" tab: every board view created across every
- * workspace the current user belongs to, with its creator — a searchable,
- * spreadsheet-style table composing the reusable content toolbar + table.
+ * Manage Workspace's "Content" tab: every board/doc across every workspace
+ * the current user belongs to — the same rows their sidebar renders, not a
+ * board's internal views/tabs. Server-paginated (30 at a time) so a large
+ * account never loads everything at once.
  */
 const WorkspaceManageContent: React.FC = () => {
-  const [views, setViews] = useState<BoardViewSummary[]>([]);
+  const router = useRouter();
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<WorkspaceContentItem[]>([]);
+  const [meta, setMeta] = useState<WorkspaceContentPageMeta | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search_value, setSearchValue] = useState("");
@@ -57,9 +65,11 @@ const WorkspaceManageContent: React.FC = () => {
     setIsLoading(true);
     setError(null);
     workspaceService
-      .getAllBoardViews()
-      .then((data) => {
-        if (!cancelled) setViews(data);
+      .getContentItems(page, PER_PAGE)
+      .then(({ data, meta: page_meta }) => {
+        if (cancelled) return;
+        setItems(data);
+        setMeta(page_meta);
       })
       .catch(() => {
         if (!cancelled) setError("We couldn't load workspace content.");
@@ -71,10 +81,12 @@ const WorkspaceManageContent: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [page]);
 
-  const { assets, creators } = useMemo(() => toAssetsAndCreators(views), [views]);
+  const { assets, creators } = useMemo(() => toAssetsAndCreators(items), [items]);
 
+  // Search only narrows the current page — fetching every page just to
+  // filter client-side would defeat the point of paginating in the first place.
   const filtered_assets = useMemo(() => {
     const query = search_value.trim().toLowerCase();
     if (!query) return assets;
@@ -99,14 +111,20 @@ const WorkspaceManageContent: React.FC = () => {
     );
   };
 
-  if (is_loading) return <BoardLoadingSpinner />;
+  const openAsset = (id: string) => router.push(buildBoardPath(Number(id)));
+
+  if (is_loading && items.length === 0) return <BoardLoadingSpinner />;
   if (error) return <CenteredMessage title="Something went wrong" detail={error} />;
 
   const selected_count = selected_ids.size;
 
   return (
     <div className="mt-4 pb-[60px]">
-      <ContentToolbar search_value={search_value} onSearchChange={setSearchValue} />
+      <ContentToolbar
+        search_value={search_value}
+        onSearchChange={setSearchValue}
+        search_placeholder="Search this page"
+      />
 
       <div className="mt-4">
         <ContentTable
@@ -115,14 +133,25 @@ const WorkspaceManageContent: React.FC = () => {
           selected_ids={selected_ids}
           onToggleRow={toggleRow}
           onToggleAll={toggleAll}
+          onOpenAsset={openAsset}
         />
       </div>
 
-      <div className="mt-3 font-mono-accent text-[12.5px] tracking-[0.02em] text-shell-text-muted">
-        {selected_count > 0
-          ? `${selected_count} selected`
-          : `${filtered_assets.length} of ${assets.length} assets`}
+      <div className="mt-3 flex items-center justify-between">
+        <div className="font-mono-accent text-[12.5px] tracking-[0.02em] text-shell-text-muted">
+          {selected_count > 0 ? `${selected_count} selected` : `${filtered_assets.length} on this page`}
+        </div>
       </div>
+
+      {meta && (
+        <Pagination
+          current_page={meta.current_page}
+          last_page={meta.last_page}
+          total={meta.total}
+          per_page={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 };

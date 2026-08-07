@@ -6,4 +6,6 @@ export { default as ContentTable } from "./ContentTable";
 export type { ContentTableProps } from "./ContentTable";
 export { default as Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
+export { default as Pagination } from "./Pagination";
+export type { PaginationProps } from "./Pagination";
 export type { AssetType, ContentAsset, Creator, CreatorKey } from "./types";

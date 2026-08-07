@@ -22,6 +22,8 @@ export type ContentTableProps = {
   onToggleRow: (id: string) => void;
   /** Toggle selection for every visible row (select all / clear). */
   onToggleAll: (select_all: boolean) => void;
+  /** Open an asset (e.g. navigate to its board). When omitted, clicking a row toggles selection instead. */
+  onOpenAsset?: (id: string) => void;
   /** Copy shown when there are no rows (e.g. after a search). */
   empty_title?: string;
   empty_hint?: string;
@@ -49,6 +51,7 @@ const ContentTable: React.FC<ContentTableProps> = ({
   selected_ids,
   onToggleRow,
   onToggleAll,
+  onOpenAsset,
   empty_title = "No assets match your filters",
   empty_hint = "Try a different search or clear the filters.",
 }) => {
@@ -91,12 +94,15 @@ const ContentTable: React.FC<ContentTableProps> = ({
       return (
         <div
           key={asset.id}
-          onClick={() => onToggleRow(asset.id)}
+          onClick={() => (onOpenAsset ? onOpenAsset(asset.id) : onToggleRow(asset.id))}
           className={`flex h-[53px] cursor-pointer items-center border-b border-[#eeeee9] px-[18px] last:border-b-0 ${
             is_selected ? "bg-brand-25 hover:bg-brand-50" : "bg-shell-panel hover:bg-shell-hover"
           }`}
         >
-          <div className="flex w-8 flex-none items-center">
+          <div
+            className="flex w-8 flex-none items-center"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Checkbox
               checked={is_selected}
               onChange={() => onToggleRow(asset.id)}
