@@ -18,6 +18,8 @@ type AuthContextType = {
   isLoading: boolean;
   /** Returns true when the user has ALL of the given roles. */
   hasRole: (...roles: string[]) => boolean;
+  /** Returns true when the user has ANY of the given roles. */
+  hasAnyRole: (...roles: string[]) => boolean;
   /** Returns true when the user has ALL of the given permissions. */
   hasPermission: (...perms: string[]) => boolean;
   login: (credentials: LoginCredentials) => Promise<LoginResult>;
@@ -48,6 +50,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     (...roles: string[]): boolean => {
       const user_roles = getUserRoleNames();
       return roles.every((r) => user_roles.includes(r));
+    },
+    [getUserRoleNames]
+  );
+
+  const hasAnyRole = useCallback(
+    (...roles: string[]): boolean => {
+      const user_roles = getUserRoleNames();
+      return roles.some((r) => user_roles.includes(r));
     },
     [getUserRoleNames]
   );
@@ -198,6 +208,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAuthenticated: !!user,
         isLoading,
         hasRole,
+        hasAnyRole,
         hasPermission,
         login,
         loginWithTwoFactor,

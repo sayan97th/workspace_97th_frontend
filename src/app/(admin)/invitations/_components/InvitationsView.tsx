@@ -1,8 +1,16 @@
 "use client";
 import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { InvitationsFilterBar, InvitationsTable, SendInvitationModal, useInvitations } from "@/components/invitations";
+import {
+  INVITATION_MANAGER_ROLES,
+  InvitationsFilterBar,
+  InvitationsTable,
+  SendInvitationModal,
+  canManageWorkspaceInvitations,
+  useInvitations,
+} from "@/components/invitations";
 import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
+import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { ChevronRightIcon, PlusIcon } from "@/icons/workspace-icons";
 
@@ -19,27 +27,48 @@ import { ChevronRightIcon, PlusIcon } from "@/icons/workspace-icons";
  * tab) takes priority; otherwise falls back to the top bar's "active"
  * workspace, matching where `InviteMembersModal`'s own "View sent
  * invitations" link sends the user.
+ *
+ * Gated to a privileged global role (super_admin/admin) or that workspace's
+ * own owner, matching the Laravel `WorkspaceInvitationController`'s own
+ * authorization — anyone else sees a permission message instead of a failed
+ * fetch.
  */
 const InvitationsView: React.FC = () => {
   const router = useRouter();
   const search_params = useSearchParams();
   const workspace_param = search_params.get("workspace") ?? undefined;
   const { workspaces, active_workspace, active_workspace_slug, is_loading: is_workspaces_loading } = useWorkspaces();
+  const { hasAnyRole } = useAuth();
+
+  const target_workspace = workspace_param
+    ? workspaces.find((workspace) => workspace.id === workspace_param)
+    : active_workspace;
 
   const workspace_slug = workspace_param ?? active_workspace_slug;
-  const workspace_name = workspace_param
-    ? workspaces.find((workspace) => workspace.id === workspace_param)?.name
-    : active_workspace?.name;
+  const workspace_name = target_workspace?.name;
+  const can_manage_invitations = canManageWorkspaceInvitations(
+    hasAnyRole(...INVITATION_MANAGER_ROLES),
+    target_workspace
+  );
 
-  const invitations = useInvitations(workspace_slug);
+  const invitations = useInvitations(!is_workspaces_loading && can_manage_invitations ? workspace_slug : undefined);
   const [is_invite_modal_open, setIsInviteModalOpen] = useState(false);
 
-  if (is_workspaces_loading && !workspace_slug) {
+  if (is_workspaces_loading) {
     return <BoardLoadingSpinner />;
   }
 
   if (!workspace_slug) {
     return <CenteredMessage title="No workspace selected" detail="Select a workspace to see its sent invitations." />;
+  }
+
+  if (!can_manage_invitations) {
+    return (
+      <CenteredMessage
+        title="You don't have access to this page"
+        detail="Only the workspace owner or an administrator can view and manage sent invitations."
+      />
+    );
   }
 
   return (

@@ -10,3 +10,4 @@ export { default as SendInvitationModal } from "./SendInvitationModal";
 export type { SendInvitationModalProps } from "./SendInvitationModal";
 export { useInvitations } from "./useInvitations";
 export type { InvitationsApi } from "./useInvitations";
+export { INVITATION_MANAGER_ROLES, canManageWorkspaceInvitations } from "./invitationPermissions";
