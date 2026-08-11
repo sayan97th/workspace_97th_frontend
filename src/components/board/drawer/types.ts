@@ -24,6 +24,8 @@ export type DrawerReply = {
   author: BoardPersonOption;
   posted_at: string;
   body: string;
+  /** True once the author has edited the body at least once. Absent on client-side-only mock data — treat as false. */
+  is_edited?: boolean;
   view_count: number;
   liked_by_me: boolean;
   like_count: number;
@@ -149,6 +151,18 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
 
   toggleLike: (comment_id: string, reply_id?: string) => void;
   toggleSeen: (comment_id: string) => void;
+  /** Deletes a top-level comment, or (when `reply_id` is given) just that reply. Author-only — also enforced server-side. */
+  deleteComment: (comment_id: string, reply_id?: string) => void;
+
+  /** `comment.id` while editing a top-level comment, `"commentId:replyId"` while editing a reply (mirrors `reaction_palette_key`) — null when nothing is being edited. */
+  editing_key: string | null;
+  /** Live draft for whichever comment/reply {@link editing_key} points at. */
+  edit_draft: string;
+  onEditDraftChange: (value: string) => void;
+  /** Opens the inline editor for a top-level comment, or (when `reply_id` is given) a reply — seeds {@link edit_draft} from its current body. Author-only — also enforced server-side. */
+  startEditingComment: (comment_id: string, reply_id?: string) => void;
+  cancelEditingComment: () => void;
+  saveEditedComment: () => void;
 };
 
 /** Emoji options offered by every insert/react palette in the drawer. */

@@ -52,6 +52,13 @@ function UpdatesPanel<TRow>({ drawer }: UpdatesPanelProps<TRow>) {
             current_user={drawer.current_user}
             onToggleLike={drawer.toggleLike}
             onToggleSeen={drawer.toggleSeen}
+            onDeleteComment={drawer.deleteComment}
+            editing_key={drawer.editing_key}
+            edit_draft={drawer.edit_draft}
+            onEditDraftChange={drawer.onEditDraftChange}
+            onStartEditing={drawer.startEditingComment}
+            onCancelEditing={drawer.cancelEditingComment}
+            onSaveEditing={drawer.saveEditedComment}
             reaction_palette_id={drawer.reaction_palette_id}
             onToggleReactionPalette={drawer.toggleReactionPalette}
             onToggleReaction={drawer.toggleReaction}

@@ -62,6 +62,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [comments_error, setCommentsError] = useState<string | null>(null);
   const [is_uploading_files, setIsUploadingFiles] = useState(false);
   const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
+  const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
+  const [edit_draft, setEditDraft] = useState("");
 
   // Local draft that wins over `getDescription(open_row)` once the viewer has
   // typed — `null` means "no unsaved edit yet, defer to the row's own value".
@@ -116,6 +118,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setCommentsError(null);
     setFilesUploadError(null);
     setDescriptionDraft(null);
+    setEditingTarget(null);
+    setEditDraft("");
 
     if (is_api_backed) {
       const item_id = Number(row_id);
@@ -140,6 +144,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setMentionTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
+    setEditingTarget(null);
+    setEditDraft("");
   };
 
   const onComposerTextChange = (value: string) => {
@@ -395,6 +401,85 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       });
   };
 
+  /** Removes a comment (or, when `reply_id` is given, just that reply) from local state. */
+  const removeCommentLocally = (row_id: string, comment_id: string, reply_id?: string) =>
+    updateComments(row_id, (comments) =>
+      reply_id
+        ? comments.map((comment) =>
+            comment.id === comment_id
+              ? { ...comment, replies: comment.replies.filter((reply) => reply.id !== reply_id) }
+              : comment
+          )
+        : comments.filter((comment) => comment.id !== comment_id)
+    );
+
+  const deleteComment = (comment_id: string, reply_id?: string) => {
+    if (!open_row_id) return;
+    const row_id = open_row_id;
+    const previous_comments = comments_by_row[row_id] ?? [];
+    removeCommentLocally(row_id, comment_id, reply_id);
+
+    if (!is_api_backed) return;
+    const item_id = Number(row_id);
+    boardCommentsService
+      .deleteComment(board_id, item_id, Number(reply_id ?? comment_id))
+      .catch(() => {
+        setCommentsByRow((current) => ({ ...current, [row_id]: previous_comments }));
+        setCommentsError("Couldn't delete that comment. Please try again.");
+      });
+  };
+
+  /** Applies (or reverts, by calling it again with the prior body) a body edit for a comment or reply. */
+  const applyBodyEdit = (row_id: string, comment_id: string, reply_id: string | undefined, body: string) =>
+    updateComments(row_id, (comments) =>
+      comments.map((comment) => {
+        if (comment.id !== comment_id) return comment;
+        if (!reply_id) return { ...comment, body, is_edited: true };
+        return {
+          ...comment,
+          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true } : reply)),
+        };
+      })
+    );
+
+  const startEditingComment = (comment_id: string, reply_id?: string) => {
+    if (!open_row_id) return;
+    const comment = (comments_by_row[open_row_id] ?? []).find((c) => c.id === comment_id);
+    const target = reply_id ? comment?.replies.find((reply) => reply.id === reply_id) : comment;
+    if (!target) return;
+    setEditingTarget({ comment_id, reply_id });
+    setEditDraft(target.body);
+  };
+
+  const onEditDraftChange = (value: string) => setEditDraft(value);
+
+  const cancelEditingComment = () => {
+    setEditingTarget(null);
+    setEditDraft("");
+  };
+
+  const saveEditedComment = () => {
+    if (!open_row_id || !editing_target) return;
+    const row_id = open_row_id;
+    const { comment_id, reply_id } = editing_target;
+    const body = edit_draft.trim();
+    if (!body) return;
+
+    const previous_comments = comments_by_row[row_id] ?? [];
+    applyBodyEdit(row_id, comment_id, reply_id, body);
+    setEditingTarget(null);
+    setEditDraft("");
+
+    if (!is_api_backed) return;
+    const item_id = Number(row_id);
+    boardCommentsService
+      .updateComment(board_id, item_id, Number(reply_id ?? comment_id), body)
+      .catch(() => {
+        setCommentsByRow((current) => ({ ...current, [row_id]: previous_comments }));
+        setCommentsError("Couldn't update that comment. Please try again.");
+      });
+  };
+
   const applySeenToggle = (row_id: string, comment_id: string) =>
     updateComments(row_id, (comments) =>
       comments.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
@@ -430,6 +515,12 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
   const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
   const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
+
+  const editing_key = editing_target
+    ? editing_target.reply_id
+      ? `${editing_target.comment_id}:${editing_target.reply_id}`
+      : editing_target.comment_id
+    : null;
 
   const has_description = getDescription !== undefined;
   const description = description_draft ?? (open_row && getDescription ? getDescription(open_row) : "");
@@ -505,6 +596,14 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
     toggleLike,
     toggleSeen,
+    deleteComment,
+
+    editing_key,
+    edit_draft,
+    onEditDraftChange,
+    startEditingComment,
+    cancelEditingComment,
+    saveEditedComment,
   };
 }
 

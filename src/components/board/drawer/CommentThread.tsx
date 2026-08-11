@@ -5,6 +5,8 @@ import PersonAvatar from "../PersonAvatar";
 import { LikeIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import CommentComposer from "./CommentComposer";
+import CommentEditForm from "./CommentEditForm";
+import CommentOptionsMenu from "./CommentOptionsMenu";
 import EmojiPalette from "./EmojiPalette";
 import { renderMentionText } from "./renderMentionText";
 import type { DrawerComment, DrawerComposerTarget, DrawerReaction, DrawerReply } from "./types";
@@ -14,6 +16,13 @@ export type CommentThreadProps = {
   current_user: BoardPersonOption;
   onToggleLike: (comment_id: string, reply_id?: string) => void;
   onToggleSeen: (comment_id: string) => void;
+  onDeleteComment: (comment_id: string, reply_id?: string) => void;
+  editing_key: string | null;
+  edit_draft: string;
+  onEditDraftChange: (value: string) => void;
+  onStartEditing: (comment_id: string, reply_id?: string) => void;
+  onCancelEditing: () => void;
+  onSaveEditing: () => void;
   reaction_palette_id: string | null;
   onToggleReactionPalette: (id: string) => void;
   onToggleReaction: (comment_id: string, reply_id: string | null, emoji: string) => void;
@@ -56,7 +65,15 @@ const ReactionPills: React.FC<ReactionPillsProps> = ({ reactions, onToggle }) =>
 
 type ReplyRowProps = {
   reply: DrawerReply;
+  current_user_id: string;
   onLike: () => void;
+  onDelete: () => void;
+  onStartEditing: () => void;
+  is_editing: boolean;
+  edit_draft: string;
+  onEditDraftChange: (value: string) => void;
+  onSaveEditing: () => void;
+  onCancelEditing: () => void;
   reaction_palette_id: string | null;
   reaction_palette_key: string;
   onToggleReactionPalette: (id: string) => void;
@@ -65,7 +82,15 @@ type ReplyRowProps = {
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
   reply,
+  current_user_id,
   onLike,
+  onDelete,
+  onStartEditing,
+  is_editing,
+  edit_draft,
+  onEditDraftChange,
+  onSaveEditing,
+  onCancelEditing,
   reaction_palette_id,
   reaction_palette_key,
   onToggleReactionPalette,
@@ -77,8 +102,18 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
       <div className="flex items-center gap-2">
         <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
         <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
+        {reply.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
+        {reply.author.id === current_user_id && (
+          <span className="ml-auto">
+            <CommentOptionsMenu onEdit={onStartEditing} onDelete={onDelete} kind="reply" />
+          </span>
+        )}
       </div>
-      <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
+      {is_editing ? (
+        <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+      ) : (
+        <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
+      )}
       <ReactionPills reactions={reply.reactions} onToggle={onToggleReaction} />
       <div className="mt-[7px] flex items-center gap-3.5">
         <button
@@ -114,6 +149,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   current_user,
   onToggleLike,
   onToggleSeen,
+  onDeleteComment,
+  editing_key,
+  edit_draft,
+  onEditDraftChange,
+  onStartEditing,
+  onCancelEditing,
+  onSaveEditing,
   reaction_palette_id,
   onToggleReactionPalette,
   onToggleReaction,
@@ -137,16 +179,26 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         <div className="flex items-center gap-2.5">
           <PersonAvatar person={comment.author} size={32} />
           <div className="min-w-0 flex-1">
-            <div className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</span>
+              {comment.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
+            </div>
             <div className="text-[11.5px] text-shell-text-faint">{comment.posted_at}</div>
           </div>
           <span className="flex items-center gap-1.5 text-[11.5px] text-shell-text-faint">
             <ViewsIcon />
             {comment.view_count}
           </span>
+          {comment.author.id === current_user.id && (
+            <CommentOptionsMenu onEdit={() => onStartEditing(comment.id)} onDelete={() => onDeleteComment(comment.id)} kind="comment" />
+          )}
         </div>
 
-        <div className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary">{renderMentionText(comment.body)}</div>
+        {editing_key === comment.id ? (
+          <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+        ) : (
+          <div className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary">{renderMentionText(comment.body)}</div>
+        )}
 
         {comment.attachments.length > 0 && (
           <div className="mt-[11px] flex flex-wrap gap-2">
@@ -207,7 +259,15 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <ReplyRow
               key={reply.id}
               reply={reply}
+              current_user_id={current_user.id}
               onLike={() => onToggleLike(comment.id, reply.id)}
+              onDelete={() => onDeleteComment(comment.id, reply.id)}
+              onStartEditing={() => onStartEditing(comment.id, reply.id)}
+              is_editing={editing_key === `${comment.id}:${reply.id}`}
+              edit_draft={edit_draft}
+              onEditDraftChange={onEditDraftChange}
+              onSaveEditing={onSaveEditing}
+              onCancelEditing={onCancelEditing}
               reaction_palette_id={reaction_palette_id}
               reaction_palette_key={`${comment.id}:${reply.id}`}
               onToggleReactionPalette={onToggleReactionPalette}

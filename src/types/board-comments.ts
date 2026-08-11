@@ -35,6 +35,7 @@ export type BoardItemCommentDto = {
   author: BoardItemCommentAuthorDto;
   body: string;
   created_at: string;
+  is_edited: boolean;
   like_count: number;
   liked_by_me: boolean;
   view_count: number;

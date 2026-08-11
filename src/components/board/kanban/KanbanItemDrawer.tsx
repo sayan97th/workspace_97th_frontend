@@ -4,6 +4,8 @@ import { AttachmentIcon, CheckIcon, CloseIcon } from "@/icons/board-icons";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import type { BoardItemDrawerApi } from "../drawer/types";
 import CommentAttachmentChip from "../drawer/CommentAttachmentChip";
+import CommentEditForm from "../drawer/CommentEditForm";
+import CommentOptionsMenu from "../drawer/CommentOptionsMenu";
 import SlideOverPanel from "../drawer/SlideOverPanel";
 import { useLatchWhileOpen } from "../drawer/useLatchWhileOpen";
 import PersonAvatar from "../PersonAvatar";
@@ -302,17 +304,44 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
               <div key={comment.id} className="flex gap-2.5">
                 <PersonAvatar person={comment.author} size={24} />
                 <div className="min-w-0 flex-1">
-                  <div className="mb-0.5 flex items-baseline gap-1.5">
-                    <span className="text-[12.5px] font-bold" style={{ color: KANBAN_COLORS.text_secondary }}>
-                      {comment.author.name}
-                    </span>
-                    <span className="text-[11px]" style={{ color: KANBAN_COLORS.text_faded }}>
-                      {comment.posted_at}
-                    </span>
+                  <div className="mb-0.5 flex items-center justify-between gap-1.5">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-[12.5px] font-bold" style={{ color: KANBAN_COLORS.text_secondary }}>
+                        {comment.author.name}
+                      </span>
+                      <span className="text-[11px]" style={{ color: KANBAN_COLORS.text_faded }}>
+                        {comment.posted_at}
+                      </span>
+                      {comment.is_edited && (
+                        <span className="text-[11px]" style={{ color: KANBAN_COLORS.text_faded }}>
+                          (edited)
+                        </span>
+                      )}
+                    </div>
+                    {comment.author.id === drawer.current_user.id && (
+                      <CommentOptionsMenu
+                        onEdit={() => drawer.startEditingComment(comment.id)}
+                        onDelete={() => drawer.deleteComment(comment.id)}
+                        kind="comment"
+                        icon_size={11}
+                        class_name="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#F4F4F2]"
+                        style={{ color: KANBAN_COLORS.text_faint }}
+                      />
+                    )}
                   </div>
-                  <div className="text-[13px] leading-snug" style={{ color: KANBAN_COLORS.text_muted }}>
-                    {comment.body}
-                  </div>
+                  {drawer.editing_key === comment.id ? (
+                    <CommentEditForm
+                      value={drawer.edit_draft}
+                      onChange={drawer.onEditDraftChange}
+                      onSave={drawer.saveEditedComment}
+                      onCancel={drawer.cancelEditingComment}
+                      autoFocus
+                    />
+                  ) : (
+                    <div className="text-[13px] leading-snug" style={{ color: KANBAN_COLORS.text_muted }}>
+                      {comment.body}
+                    </div>
+                  )}
                   {comment.attachments.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {comment.attachments.map((attachment) => (

@@ -35,6 +35,15 @@ export const boardCommentsService = {
     return response.comment;
   },
 
+  /** PATCH /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
+  async updateComment(board_id: number, item_id: number, comment_id: number, body: string): Promise<BoardItemCommentDto> {
+    const response = await apiClient.patch<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`,
+      { body }
+    );
+    return response.comment;
+  },
+
   /** DELETE /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
   async deleteComment(board_id: number, item_id: number, comment_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`);
