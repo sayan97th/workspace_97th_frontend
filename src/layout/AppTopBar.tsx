@@ -41,7 +41,8 @@ const AppTopBar: React.FC = () => {
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
   const { logo_url } = useBranding();
-  const { active_workspace_slug } = useWorkspaces();
+  const { active_workspace, active_workspace_slug } = useWorkspaces();
+  const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_profile_open, setIsProfileOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
@@ -140,18 +141,22 @@ const AppTopBar: React.FC = () => {
           )}
         </span>
 
-        <span className="hidden items-center gap-1.5 rounded-lg bg-shell-hover px-[11px] py-1.5 text-[13px] font-semibold text-shell-text-secondary sm:flex">
-          <EyeIcon size={15} />
-          Viewer
-        </span>
+        {is_active_workspace_viewer && (
+          <>
+            <span className="hidden items-center gap-1.5 rounded-lg bg-shell-hover px-[11px] py-1.5 text-[13px] font-semibold text-shell-text-secondary sm:flex">
+              <EyeIcon size={15} />
+              Viewer
+            </span>
 
-        <button
-          type="button"
-          onClick={openRequestAccess}
-          className="hidden rounded-lg border border-shell-border-strong px-[13px] py-1.5 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-brand-500 md:block"
-        >
-          Request edit access
-        </button>
+            <button
+              type="button"
+              onClick={openRequestAccess}
+              className="hidden rounded-lg border border-shell-border-strong px-[13px] py-1.5 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-brand-500 md:block"
+            >
+              Request edit access
+            </button>
+          </>
+        )}
       </div>
 
       {/* Center search */}
