@@ -1,6 +1,7 @@
 export { default as TeamsModal } from "./TeamsModal";
 export type { TeamsModalProps } from "./TeamsModal";
 export { default as CreateTeamModal } from "./CreateTeamModal";
+export { default as AddTeamMembersModal } from "./AddTeamMembersModal";
 export { default as TeamsRail } from "./TeamsRail";
 export { default as TeamMembersTable } from "./TeamMembersTable";
 export { default as TeamOptionsButton } from "./TeamOptionsButton";

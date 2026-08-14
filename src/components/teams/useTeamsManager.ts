@@ -77,6 +77,23 @@ export type TeamsManagerApi = {
   requestDeleteTeam: (team: Team) => void;
   cancelDeleteTeam: () => void;
   confirmDeleteTeam: () => Promise<void>;
+
+  is_add_members_open: boolean;
+  add_member_candidates: TeamMember[];
+  is_loading_add_member_candidates: boolean;
+  add_member_selected_ids: string[];
+  setAddMemberSelectedIds: (ids: string[]) => void;
+  can_submit_add_members: boolean;
+  is_submitting_add_members: boolean;
+  add_members_error: string | null;
+  openAddMembers: () => void;
+  closeAddMembers: () => void;
+  submitAddMembers: () => Promise<void>;
+
+  member_pending_remove: TeamMember | null;
+  requestRemoveMember: (member: TeamMember) => void;
+  cancelRemoveMember: () => void;
+  confirmRemoveMember: () => Promise<void>;
 };
 
 const apiErrorMessage = (error: unknown, fallback: string): string => {
@@ -125,6 +142,15 @@ export function useTeamsManager(): TeamsManagerApi {
   const [team_form_error, setTeamFormError] = useState<string | null>(null);
 
   const [team_pending_delete, setTeamPendingDelete] = useState<Team | null>(null);
+
+  const [is_add_members_open, setIsAddMembersOpen] = useState(false);
+  const [add_member_candidates, setAddMemberCandidates] = useState<TeamMember[]>([]);
+  const [is_loading_add_member_candidates, setIsLoadingAddMemberCandidates] = useState(false);
+  const [add_member_selected_ids, setAddMemberSelectedIds] = useState<string[]>([]);
+  const [is_submitting_add_members, setIsSubmittingAddMembers] = useState(false);
+  const [add_members_error, setAddMembersError] = useState<string | null>(null);
+
+  const [member_pending_remove, setMemberPendingRemove] = useState<TeamMember | null>(null);
 
   const loadTeams = useCallback(async () => {
     setIsLoadingTeams(true);
@@ -308,6 +334,60 @@ export function useTeamsManager(): TeamsManagerApi {
     setTeamPendingDelete(null);
   }, [team_pending_delete, selected_team_id, selectTeam]);
 
+  /** Reflects a roster mutation's fresh `member_count` into the team list without a full refetch. */
+  const applyMemberCount = useCallback((team_id: string, member_count: number) => {
+    setTeams((current) => current.map((team) => (team.id === team_id ? { ...team, member_count } : team)));
+  }, []);
+
+  const openAddMembers = useCallback(() => {
+    if (is_all_selected) return;
+    setAddMemberSelectedIds([]);
+    setAddMembersError(null);
+    setIsAddMembersOpen(true);
+    setIsLoadingAddMemberCandidates(true);
+    accountTeamsService
+      .getCandidates({ per_page: DIRECTORY_PER_PAGE, exclude_team_id: selected_team_id })
+      .then((result) => setAddMemberCandidates(result.data.map(mapAccountTeamMemberDtoToTeamMember)))
+      .catch(() => setAddMemberCandidates([]))
+      .finally(() => setIsLoadingAddMemberCandidates(false));
+  }, [is_all_selected, selected_team_id]);
+
+  const closeAddMembers = useCallback(() => setIsAddMembersOpen(false), []);
+
+  const can_submit_add_members = add_member_selected_ids.length > 0 && !is_submitting_add_members;
+
+  const submitAddMembers = useCallback(async () => {
+    if (!can_submit_add_members || is_all_selected) return;
+    setIsSubmittingAddMembers(true);
+    setAddMembersError(null);
+    try {
+      const updated = await accountTeamsService.addTeamMembers(selected_team_id, add_member_selected_ids);
+      applyMemberCount(selected_team_id, updated.member_count);
+      setMembersRefreshToken((token) => token + 1);
+      setIsAddMembersOpen(false);
+    } catch (error) {
+      setAddMembersError(apiErrorMessage(error, "Something went wrong. Please try again."));
+    } finally {
+      setIsSubmittingAddMembers(false);
+    }
+  }, [can_submit_add_members, is_all_selected, selected_team_id, add_member_selected_ids, applyMemberCount]);
+
+  const requestRemoveMember = useCallback((member: TeamMember) => setMemberPendingRemove(member), []);
+  const cancelRemoveMember = useCallback(() => setMemberPendingRemove(null), []);
+
+  const confirmRemoveMember = useCallback(async () => {
+    if (!member_pending_remove || is_all_selected) return;
+    const updated = await accountTeamsService.removeTeamMember(selected_team_id, member_pending_remove.id);
+    applyMemberCount(selected_team_id, updated.member_count);
+    // Removing the last row on a page beyond the first would otherwise leave that page empty.
+    if (visible_members.length === 1 && page > 1) {
+      setPage((current) => current - 1);
+    } else {
+      setMembersRefreshToken((token) => token + 1);
+    }
+    setMemberPendingRemove(null);
+  }, [member_pending_remove, is_all_selected, selected_team_id, visible_members.length, page, applyMemberCount]);
+
   const total_team_count = teams.length;
   const all_members_total = is_all_selected ? total_members : 0;
 
@@ -372,5 +452,22 @@ export function useTeamsManager(): TeamsManagerApi {
     requestDeleteTeam,
     cancelDeleteTeam,
     confirmDeleteTeam,
+
+    is_add_members_open,
+    add_member_candidates,
+    is_loading_add_member_candidates,
+    add_member_selected_ids,
+    setAddMemberSelectedIds,
+    can_submit_add_members,
+    is_submitting_add_members,
+    add_members_error,
+    openAddMembers,
+    closeAddMembers,
+    submitAddMembers,
+
+    member_pending_remove,
+    requestRemoveMember,
+    cancelRemoveMember,
+    confirmRemoveMember,
   };
 }

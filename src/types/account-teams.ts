@@ -49,4 +49,6 @@ export type MemberListQuery = {
   search?: string;
   page?: number;
   per_page?: number;
+  /** Candidate directory only: leave out staff already on this team. */
+  exclude_team_id?: string;
 };

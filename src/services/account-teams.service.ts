@@ -13,6 +13,7 @@ const buildQuery = (query?: MemberListQuery): string => {
   if (query?.search) params.set("search", query.search);
   if (query?.page) params.set("page", String(query.page));
   if (query?.per_page) params.set("per_page", String(query.per_page));
+  if (query?.exclude_team_id) params.set("exclude_team_id", query.exclude_team_id);
   const search = params.toString();
   return search ? `?${search}` : "";
 };
@@ -60,6 +61,23 @@ export const accountTeamsService = {
   /** PUT /api/account-teams/{id}/members — replace a team's roster wholesale. */
   async syncTeamMembers(team_id: string, member_ids: string[]): Promise<void> {
     await apiClient.put(`/api/account-teams/${team_id}/members`, { member_ids });
+  },
+
+  /** POST /api/account-teams/{id}/members — add members without disturbing the existing roster. */
+  async addTeamMembers(team_id: string, member_ids: string[]): Promise<AccountTeamDto> {
+    const response = await apiClient.post<{ team: AccountTeamDto }>(
+      `/api/account-teams/${team_id}/members`,
+      { member_ids }
+    );
+    return response.team;
+  },
+
+  /** DELETE /api/account-teams/{id}/members/{user_id} — remove a single member from the roster. */
+  async removeTeamMember(team_id: string, user_id: string): Promise<AccountTeamDto> {
+    const response = await apiClient.delete<{ team: AccountTeamDto }>(
+      `/api/account-teams/${team_id}/members/${user_id}`
+    );
+    return response.team;
   },
 
   /** GET /api/account-team-members — the account-wide "All members" dedupe. */

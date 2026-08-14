@@ -4,6 +4,8 @@ import SearchField from "@/components/common/SearchField";
 import { Pagination } from "@/components/content";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { CloseIcon } from "@/icons/board-icons";
+import { PlusIcon } from "@/icons/workspace-icons";
+import AddTeamMembersModal from "./AddTeamMembersModal";
 import CreateTeamModal from "./CreateTeamModal";
 import TeamMembersTable from "./TeamMembersTable";
 import TeamsRail from "./TeamsRail";
@@ -32,9 +34,12 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
   useEffect(() => {
     if (!is_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Let the nested "Create/Edit team" dialog handle Escape first — otherwise one
-      // press would close both dialogs since each has its own window keydown listener.
-      if (event.key === "Escape" && !teams.is_team_form_open) onClose();
+      // Let a nested dialog (Create/Edit team, Add members, remove-member confirm) handle
+      // Escape first — otherwise one press would close all of them since each has its own
+      // window keydown listener.
+      const has_nested_dialog_open =
+        teams.is_team_form_open || teams.is_add_members_open || teams.member_pending_remove !== null;
+      if (event.key === "Escape" && !has_nested_dialog_open) onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     const previous_overflow = document.body.style.overflow;
@@ -43,7 +48,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
       window.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previous_overflow;
     };
-  }, [is_open, onClose, teams.is_team_form_open]);
+  }, [is_open, onClose, teams.is_team_form_open, teams.is_add_members_open, teams.member_pending_remove]);
 
   if (!is_open) return null;
 
@@ -84,13 +89,23 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
 
           {teams.active_tab === "users" ? (
             <>
-              <div className="flex-none px-[26px] pt-[14px]">
+              <div className="flex flex-none items-center justify-between gap-3 px-[26px] pt-[14px]">
                 <SearchField
                   value={teams.user_query}
                   onChange={teams.setUserQuery}
                   placeholder="Search people"
                   className="max-w-[280px]"
                 />
+                {!teams.is_all_selected ? (
+                  <button
+                    type="button"
+                    onClick={teams.openAddMembers}
+                    className="flex flex-none items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+                  >
+                    <PlusIcon size={11} />
+                    Add members
+                  </button>
+                ) : null}
               </div>
               <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-[26px] pb-6 pt-[10px]">
                 {teams.is_loading_members ? (
@@ -103,7 +118,10 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
                   </div>
                 ) : (
                   <>
-                    <TeamMembersTable members={teams.visible_members} />
+                    <TeamMembersTable
+                      members={teams.visible_members}
+                      onRemoveMember={teams.is_all_selected ? undefined : teams.requestRemoveMember}
+                    />
                     <Pagination
                       current_page={teams.page}
                       last_page={teams.last_page}
@@ -130,6 +148,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
       </div>
 
       <CreateTeamModal teams={teams} />
+      <AddTeamMembersModal teams={teams} />
 
       <ConfirmActionModal
         is_open={teams.team_pending_delete !== null}
@@ -139,6 +158,16 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
         danger
         onConfirm={teams.confirmDeleteTeam}
         onClose={teams.cancelDeleteTeam}
+      />
+
+      <ConfirmActionModal
+        is_open={teams.member_pending_remove !== null}
+        title="Remove member"
+        description={`"${teams.member_pending_remove?.name}" will be removed from "${teams.selected_team?.name}".`}
+        confirm_label="Remove"
+        danger
+        onConfirm={teams.confirmRemoveMember}
+        onClose={teams.cancelRemoveMember}
       />
     </div>
   );
