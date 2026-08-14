@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import { CloseIcon } from "@/icons/workspace-icons";
 import ProfileNav from "./ProfileNav";
+import ProfileBanner from "./ProfileBanner";
 import { useProfileManager } from "./useProfileManager";
 import type { ProfileSectionId } from "./types";
 import PersonalInfoSection from "./sections/PersonalInfoSection";
@@ -70,6 +71,11 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ is_open, onClose, onOpenTea
         <ProfileNav profile={profile} />
 
         <div className="scrollnice min-w-0 flex-1 overflow-y-auto px-11 pb-11 pt-9">
+          {profile.preferences_error ? (
+            <ProfileBanner tone="error" className="mb-6">
+              {profile.preferences_error}
+            </ProfileBanner>
+          ) : null}
           {SECTION_PANELS[profile.active_section]}
         </div>
       </div>

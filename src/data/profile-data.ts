@@ -1,6 +1,5 @@
 import type {
   ProfileNotificationSeed,
-  ProfileSessionRow,
   ProfileStatusOption,
 } from "@/components/profile/types";
 
@@ -37,14 +36,4 @@ export const PROFILE_NOTIFICATION_SEED: ProfileNotificationSeed[] = [
   { key: "violation_summaries", label: "Violation summaries", sub: "for breaching DLP policies", category: "Security" },
   { key: "file_deleted", label: "File has been deleted", sub: "for breaching data policies", category: "Security" },
   { key: "update_deleted", label: "Update has been deleted or redacted", sub: "for breaching data policies", category: "Security" },
-];
-
-/** My Profile > Session history — seed rows for the signed-in devices list. */
-export const PROFILE_SESSIONS_SEED: ProfileSessionRow[] = [
-  { id: "1", device: "Generic Linux · Chrome", location: "Lehi, Utah, US", ip: "192.168.1.42", last_usage: "Jul 12, 2026", duration: "5 minutes ago", is_current_device: true, can_logout: false },
-  { id: "2", device: "Mac · Chrome", location: "Salt Lake City, Utah, US", ip: "192.184.3.19", last_usage: "Jun 22, 2026", duration: "20 days ago", is_current_device: false, can_logout: true },
-  { id: "3", device: "Generic Linux · Chrome", location: "Lehi, Utah, US", ip: "2800:b20:1116:be4::1", last_usage: "Sep 05, 2025", duration: "10 months ago", is_current_device: false, can_logout: true },
-  { id: "4", device: "Mac · Chrome", location: "Kissimmee, Florida, US", ip: "2603:9001:8300:115c::2", last_usage: "Feb 25, 2025", duration: "a year ago", is_current_device: false, can_logout: true },
-  { id: "5", device: "Windows · Chrome", location: "Salt Lake City, Utah, US", ip: "192.184.3.19", last_usage: "Jan 22, 2025", duration: "a year ago", is_current_device: false, can_logout: true },
-  { id: "6", device: "Generic Linux · Chrome", location: "Provo, Utah, US", ip: "2800:b20:1116:10d2::4", last_usage: "Feb 20, 2025", duration: "a year ago", is_current_device: false, can_logout: true },
 ];

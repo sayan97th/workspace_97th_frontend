@@ -18,6 +18,18 @@ export interface User {
   created_at: string;
   updated_at: string;
   roles: Role[] | string[];
+
+  // ─── My Profile preferences ──────────────────────────────────────────────
+  working_status: string | null;
+  working_status_dates: string | null;
+  disable_notifications_while_away: boolean;
+  hide_online_status: boolean;
+  notification_preferences: Record<string, boolean>;
+  desktop_notifications_enabled: boolean;
+  language: string;
+  time_format: "12" | "24";
+  date_format: "long" | "euro";
+  first_day_of_week: "sunday" | "monday";
 }
 
 export interface AuthResponse {
@@ -109,6 +121,17 @@ export interface ProfileResponse extends ProfileData {
   profile_photo_url: string | null;
   email_verified_at: string | null;
   created_at: string;
+
+  working_status: string | null;
+  working_status_dates: string | null;
+  disable_notifications_while_away: boolean;
+  hide_online_status: boolean;
+  notification_preferences: Record<string, boolean>;
+  desktop_notifications_enabled: boolean;
+  language: string;
+  time_format: "12" | "24";
+  date_format: "long" | "euro";
+  first_day_of_week: "sunday" | "monday";
 }
 
 /** Partial update payload for PATCH /api/profile. */

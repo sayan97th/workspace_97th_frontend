@@ -1,10 +1,10 @@
 "use client";
-import { useMemo, useState } from "react";
-import {
-  PROFILE_NOTIFICATION_SEED,
-  PROFILE_SESSIONS_SEED,
-  PROFILE_STATUS_OPTIONS,
-} from "@/data/profile-data";
+import { useEffect, useRef, useState } from "react";
+import { format, formatDistanceToNow } from "date-fns";
+import { useAuth } from "@/context/AuthContext";
+import { apiErrorMessage, profilePreferencesService } from "@/services/profile-preferences.service";
+import { PROFILE_NOTIFICATION_SEED, PROFILE_STATUS_OPTIONS } from "@/data/profile-data";
+import type { UserSessionDto } from "@/types/profile-preferences";
 import type {
   ProfileDateFormat,
   ProfileFirstDayOfWeek,
@@ -19,6 +19,9 @@ export type ProfileManagerApi = {
   // ── Left nav ──────────────────────────────────────────────────────────
   active_section: ProfileSectionId;
   selectSection: (id: ProfileSectionId) => void;
+
+  /** Set when a preference save fails; shown as a banner above the active section. */
+  preferences_error: string | null;
 
   // ── Working status ───────────────────────────────────────────────────
   status_options: ProfileStatusOption[];
@@ -55,6 +58,7 @@ export type ProfileManagerApi = {
   setFirstDayOfWeek: (value: ProfileFirstDayOfWeek) => void;
 
   // ── Session history ───────────────────────────────────────────────────
+  is_loading_sessions: boolean;
   session_rows: ProfileSessionRow[];
   logoutSession: (id: string) => void;
 };
@@ -102,31 +106,103 @@ const DEFAULT_NOTIFICATION_PREFS: Record<string, boolean> = {
   update_deleted_email: true,
 };
 
+const DEBOUNCE_MS = 600;
+
+function toSessionRow(dto: UserSessionDto): ProfileSessionRow {
+  const parsed = new Date(dto.last_used_at);
+  return {
+    id: dto.id,
+    device: dto.device,
+    ip: dto.ip,
+    last_usage: format(parsed, "MMM d, yyyy"),
+    duration: formatDistanceToNow(parsed, { addSuffix: true }),
+    is_current_device: dto.is_current_device,
+    can_logout: dto.can_logout,
+  };
+}
+
 /**
  * Owns all My Profile modal state behind one config-in/API-out hook, the same shape as
  * {@link useAdministrationManager} — so {@link ProfileModal} and its section panels stay
- * presentational. Personal info, password and two-factor auth already have real backend
- * wiring (see {@link ProfileForm}, {@link ChangePasswordSection}, {@link TwoFactorSection})
- * and are left to manage themselves; the sections driven by this hook (working status,
- * notifications, language & region, session history) don't have an API yet, so writes here
- * just update local state — mirroring how the Administration modal mocks its own sections.
+ * presentational. Personal info, password and two-factor auth manage their own real-API
+ * wiring (see {@link ProfileForm}, {@link ChangePasswordSection}, {@link TwoFactorSection}).
+ * The sections driven by this hook (working status, notifications, language & region,
+ * session history) are backed by `PATCH /api/profile/*`: every setter optimistically
+ * updates local state and persists in the background, reverting + surfacing
+ * {@link preferences_error} on failure.
  */
 export function useProfileManager(): ProfileManagerApi {
+  const { user, refreshUser } = useAuth();
   const [active_section, setActiveSection] = useState<ProfileSectionId>("personal");
+  const [preferences_error, setPreferencesError] = useState<string | null>(null);
 
   // ── Working status ───────────────────────────────────────────────────
-  const [working_status, setWorkingStatus] = useState("office");
-  const [status_dates, setStatusDates] = useState("");
-  const [disable_notifications_while_away, setDisableNotificationsWhileAway] = useState(false);
-  const [hide_online_status, setHideOnlineStatus] = useState(false);
+  const [working_status, setWorkingStatusValue] = useState("office");
+  const [status_dates, setStatusDatesValue] = useState("");
+  const [disable_notifications_while_away, setDisableNotificationsWhileAwayValue] = useState(false);
+  const [hide_online_status, setHideOnlineStatusValue] = useState(false);
+  const status_dates_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Notifications ─────────────────────────────────────────────────────
   const [notification_prefs, setNotificationPrefs] = useState(DEFAULT_NOTIFICATION_PREFS);
   const [is_desktop_banner_dismissed, setIsDesktopBannerDismissed] = useState(false);
-  const [desktop_notifications_enabled, setDesktopNotificationsEnabled] = useState(false);
+  const [desktop_notifications_enabled, setDesktopNotificationsEnabledValue] = useState(false);
   const [is_muted_boards_expanded, setIsMutedBoardsExpanded] = useState(false);
 
-  const notification_rows: ProfileNotificationRow[] = useMemo(() => {
+  // ── Language & region ────────────────────────────────────────────────
+  const [language, setLanguageValue] = useState("en");
+  const [region_timezone, setRegionTimezoneValue] = useState("");
+  const [time_format, setTimeFormatValue] = useState<ProfileTimeFormat>("12");
+  const [date_format, setDateFormatValue] = useState<ProfileDateFormat>("long");
+  const [first_day_of_week, setFirstDayOfWeekValue] = useState<ProfileFirstDayOfWeek>("sunday");
+
+  // ── Session history ───────────────────────────────────────────────────
+  const [session_rows, setSessionRows] = useState<ProfileSessionRow[]>([]);
+  const [is_loading_sessions, setIsLoadingSessions] = useState(true);
+
+  // Hydrate every section's local state from the already-fetched AuthContext user —
+  // no extra GET needed, ProfileResource now includes all of this in one payload.
+  useEffect(() => {
+    if (!user) return;
+    setWorkingStatusValue(user.working_status ?? "office");
+    setStatusDatesValue(user.working_status_dates ?? "");
+    setDisableNotificationsWhileAwayValue(user.disable_notifications_while_away);
+    setHideOnlineStatusValue(user.hide_online_status);
+    setNotificationPrefs({ ...DEFAULT_NOTIFICATION_PREFS, ...(user.notification_preferences ?? {}) });
+    setDesktopNotificationsEnabledValue(user.desktop_notifications_enabled);
+    setLanguageValue(user.language ?? "en");
+    setRegionTimezoneValue(user.timezone ?? "");
+    setTimeFormatValue(user.time_format ?? "12");
+    setDateFormatValue(user.date_format ?? "long");
+    setFirstDayOfWeekValue(user.first_day_of_week ?? "sunday");
+  }, [user]);
+
+  // Fetch Session history once on mount — its own endpoint, not part of the profile payload.
+  useEffect(() => {
+    let cancelled = false;
+    profilePreferencesService
+      .fetchSessions()
+      .then((rows) => {
+        if (!cancelled) setSessionRows(rows.map(toSessionRow));
+      })
+      .catch((error) => {
+        if (!cancelled) setPreferencesError(apiErrorMessage(error, "Failed to load session history."));
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSessions(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (status_dates_timeout_ref.current) clearTimeout(status_dates_timeout_ref.current);
+    };
+  }, []);
+
+  const notification_rows: ProfileNotificationRow[] = (() => {
     let previous_category: string | null = null;
     return PROFILE_NOTIFICATION_SEED.map((seed) => {
       const show_header = seed.category !== previous_category;
@@ -138,29 +214,130 @@ export function useProfileManager(): ProfileManagerApi {
         email_on: !!notification_prefs[`${seed.key}_email`],
       };
     });
-  }, [notification_prefs]);
+  })();
 
-  const toggleNotificationApp = (key: string) =>
-    setNotificationPrefs((current) => ({ ...current, [`${key}_app`]: !current[`${key}_app`] }));
-  const toggleNotificationEmail = (key: string) =>
-    setNotificationPrefs((current) => ({ ...current, [`${key}_email`]: !current[`${key}_email`] }));
+  // ── Working status persistence ──────────────────────────────────────────
 
-  // ── Language & region ────────────────────────────────────────────────
-  const [language, setLanguage] = useState("en");
-  const [region_timezone, setRegionTimezone] = useState("mt");
-  const [time_format, setTimeFormat] = useState<ProfileTimeFormat>("12");
-  const [date_format, setDateFormat] = useState<ProfileDateFormat>("long");
-  const [first_day_of_week, setFirstDayOfWeek] = useState<ProfileFirstDayOfWeek>("sunday");
+  const saveWorkingStatus = async (payload: Parameters<typeof profilePreferencesService.updateWorkingStatus>[0]) => {
+    try {
+      await profilePreferencesService.updateWorkingStatus(payload);
+      await refreshUser();
+    } catch (error) {
+      setPreferencesError(apiErrorMessage(error, "Failed to save working status."));
+    }
+  };
+
+  const setWorkingStatus = (key: string) => {
+    setWorkingStatusValue(key);
+    void saveWorkingStatus({ working_status: key });
+  };
+
+  const setStatusDates = (value: string) => {
+    setStatusDatesValue(value);
+    if (status_dates_timeout_ref.current) clearTimeout(status_dates_timeout_ref.current);
+    status_dates_timeout_ref.current = setTimeout(() => {
+      void saveWorkingStatus({ working_status_dates: value || null });
+    }, DEBOUNCE_MS);
+  };
+
+  const toggleDisableNotificationsWhileAway = () => {
+    const next_value = !disable_notifications_while_away;
+    setDisableNotificationsWhileAwayValue(next_value);
+    void saveWorkingStatus({ disable_notifications_while_away: next_value });
+  };
+
+  const toggleHideOnlineStatus = () => {
+    const next_value = !hide_online_status;
+    setHideOnlineStatusValue(next_value);
+    void saveWorkingStatus({ hide_online_status: next_value });
+  };
+
+  // ── Notification persistence ────────────────────────────────────────────
+
+  const saveNotificationPreferences = async (
+    payload: Parameters<typeof profilePreferencesService.updateNotificationPreferences>[0],
+  ) => {
+    try {
+      await profilePreferencesService.updateNotificationPreferences(payload);
+      await refreshUser();
+    } catch (error) {
+      setPreferencesError(apiErrorMessage(error, "Failed to save notification preferences."));
+    }
+  };
+
+  const toggleNotificationChannel = (key: string, channel: "app" | "email") => {
+    const preference_key = `${key}_${channel}`;
+    const next_value = !notification_prefs[preference_key];
+    setNotificationPrefs((current) => ({ ...current, [preference_key]: next_value }));
+    void saveNotificationPreferences({ preferences: { [preference_key]: next_value } });
+  };
+
+  const toggleNotificationApp = (key: string) => toggleNotificationChannel(key, "app");
+  const toggleNotificationEmail = (key: string) => toggleNotificationChannel(key, "email");
+
+  const toggleDesktopNotifications = () => {
+    const next_value = !desktop_notifications_enabled;
+    setDesktopNotificationsEnabledValue(next_value);
+    void saveNotificationPreferences({ desktop_notifications_enabled: next_value });
+  };
+
+  // ── Language & region persistence ───────────────────────────────────────
+
+  const saveLocalePreferences = async (payload: Parameters<typeof profilePreferencesService.updateLocalePreferences>[0]) => {
+    try {
+      await profilePreferencesService.updateLocalePreferences(payload);
+      await refreshUser();
+    } catch (error) {
+      setPreferencesError(apiErrorMessage(error, "Failed to save language & region preferences."));
+    }
+  };
+
+  const setLanguage = (value: string) => {
+    setLanguageValue(value);
+    void saveLocalePreferences({ language: value });
+  };
+
+  const setRegionTimezone = (value: string) => {
+    setRegionTimezoneValue(value);
+    void saveLocalePreferences({ timezone: value });
+  };
+
+  const setTimeFormat = (value: ProfileTimeFormat) => {
+    setTimeFormatValue(value);
+    void saveLocalePreferences({ time_format: value });
+  };
+
+  const setDateFormat = (value: ProfileDateFormat) => {
+    setDateFormatValue(value);
+    void saveLocalePreferences({ date_format: value });
+  };
+
+  const setFirstDayOfWeek = (value: ProfileFirstDayOfWeek) => {
+    setFirstDayOfWeekValue(value);
+    void saveLocalePreferences({ first_day_of_week: value });
+  };
 
   // ── Session history ───────────────────────────────────────────────────
-  const [logged_out_session_ids, setLoggedOutSessionIds] = useState<string[]>([]);
-  const session_rows = PROFILE_SESSIONS_SEED.filter((row) => !logged_out_session_ids.includes(row.id));
-  const logoutSession = (id: string) =>
-    setLoggedOutSessionIds((current) => [...current, id]);
+
+  const logoutSession = async (id: string) => {
+    try {
+      await profilePreferencesService.logoutSession(id);
+      setSessionRows((current) => current.filter((row) => row.id !== id));
+    } catch (error) {
+      setPreferencesError(apiErrorMessage(error, "Failed to log out that session."));
+    }
+  };
+
+  const selectSection = (id: ProfileSectionId) => {
+    setPreferencesError(null);
+    setActiveSection(id);
+  };
 
   return {
     active_section,
-    selectSection: setActiveSection,
+    selectSection,
+
+    preferences_error,
 
     status_options: PROFILE_STATUS_OPTIONS,
     working_status,
@@ -168,9 +345,9 @@ export function useProfileManager(): ProfileManagerApi {
     status_dates,
     setStatusDates,
     disable_notifications_while_away,
-    toggleDisableNotificationsWhileAway: () => setDisableNotificationsWhileAway((current) => !current),
+    toggleDisableNotificationsWhileAway,
     hide_online_status,
-    toggleHideOnlineStatus: () => setHideOnlineStatus((current) => !current),
+    toggleHideOnlineStatus,
 
     notification_rows,
     toggleNotificationApp,
@@ -178,7 +355,7 @@ export function useProfileManager(): ProfileManagerApi {
     is_desktop_banner_dismissed,
     dismissDesktopBanner: () => setIsDesktopBannerDismissed(true),
     desktop_notifications_enabled,
-    toggleDesktopNotifications: () => setDesktopNotificationsEnabled((current) => !current),
+    toggleDesktopNotifications,
     is_muted_boards_expanded,
     toggleMutedBoardsExpanded: () => setIsMutedBoardsExpanded((current) => !current),
 
@@ -193,6 +370,7 @@ export function useProfileManager(): ProfileManagerApi {
     first_day_of_week,
     setFirstDayOfWeek,
 
+    is_loading_sessions,
     session_rows,
     logoutSession,
   };

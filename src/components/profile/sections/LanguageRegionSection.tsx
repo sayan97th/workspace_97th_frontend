@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { SettingsRadioOption } from "@/components/administration";
+import { timezone_options } from "@/data/timezone-options";
 import type { ProfileManagerApi } from "../useProfileManager";
 
 export type LanguageRegionSectionProps = {
@@ -17,16 +18,6 @@ const LANGUAGE_OPTIONS = [
   { value: "ja", label: "日本語" },
   { value: "ko", label: "한국어" },
   { value: "zh", label: "中文" },
-];
-
-const REGION_TIMEZONE_OPTIONS = [
-  { value: "hi", label: "(GMT-10:00) Hawaii Time" },
-  { value: "ak", label: "(GMT-09:00) Alaska Time" },
-  { value: "pt", label: "(GMT-08:00) Pacific Time (US & Can)" },
-  { value: "mt", label: "(GMT-07:00) Mountain Time (US & Can)" },
-  { value: "ct", label: "(GMT-06:00) Central Time (US & Can)" },
-  { value: "et", label: "(GMT-05:00) Eastern Time (US & Can)" },
-  { value: "ast", label: "(GMT-04:00) Atlantic Time (Can)" },
 ];
 
 const selectClass =
@@ -63,7 +54,7 @@ const LanguageRegionSection: React.FC<LanguageRegionSectionProps> = ({ profile }
         onChange={(event) => profile.setRegionTimezone(event.target.value)}
         className={selectClass}
       >
-        {REGION_TIMEZONE_OPTIONS.map((option) => (
+        {timezone_options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
           </option>
