@@ -181,6 +181,14 @@ export default function AcceptInvitationForm({ code }: Props) {
                   </div>
                 </div>
 
+                {preview_state.preview.message && (
+                  <div className="mb-6 rounded-lg border-l-[3px] border-brand-500 bg-gray-50 px-4 py-3 dark:bg-shell-panel-alt">
+                    <p className="text-sm italic leading-relaxed text-gray-600 dark:text-shell-text-secondary">
+                      &ldquo;{preview_state.preview.message}&rdquo;
+                    </p>
+                  </div>
+                )}
+
                 {error && (
                   <div className="mb-4 flex items-start gap-2 rounded-xl border border-error-200 bg-error-50 p-3 text-sm text-error-600 dark:border-error-500/20 dark:bg-error-500/10 dark:text-error-400">
                     <AlertCircle className="h-4 w-4 flex-none translate-y-0.5" />

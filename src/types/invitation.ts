@@ -89,6 +89,7 @@ export type InvitationPreview = {
     color: string;
   };
   inviter_name: string;
+  message: string | null;
   status: "pending" | "expired" | "accepted";
   /** True when the invited email already has an account — the accept form only needs a password, not a full name. */
   account_exists: boolean;
