@@ -1,6 +1,6 @@
-export { default as ProfileModal } from "./ProfileModal";
-export type { ProfileModalProps } from "./ProfileModal";
-export { default as ProfileNav } from "./ProfileNav";
+export { default as ProfileView } from "./ProfileView";
+export { default as ProfileTabs } from "./ProfileTabs";
+export type { ProfileTabsProps } from "./ProfileTabs";
 export { default as ProfileCheckbox } from "./ProfileCheckbox";
 export type { ProfileCheckboxProps } from "./ProfileCheckbox";
 export { useProfileManager } from "./useProfileManager";

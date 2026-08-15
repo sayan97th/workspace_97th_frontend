@@ -1,8 +1,10 @@
 "use client";
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranding } from "@/context/BrandingContext";
+import { useGlobalModals } from "@/context/GlobalModalsContext";
 import UserAvatar from "@/components/common/UserAvatar";
 import AccountMenu from "./AccountMenu";
 import RequestAccessModal, {
@@ -19,7 +21,6 @@ import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TeamsModal } from "@/components/teams";
 import { TrashModal, type TrashTabId } from "@/components/trash";
 import { AdministrationModal } from "@/components/administration";
-import { ProfileModal } from "@/components/profile";
 import {
   AppsGridIcon,
   BellIcon,
@@ -38,18 +39,18 @@ import {
  * Light/Dark/System default switcher.
  */
 const AppTopBar: React.FC = () => {
+  const router = useRouter();
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
   const { logo_url } = useBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
+  const { is_teams_open, openTeams, closeTeams } = useGlobalModals();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const [is_account_open, setIsAccountOpen] = useState(false);
-  const [is_profile_open, setIsProfileOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
   const [is_feed_open, setIsFeedOpen] = useState(false);
-  const [is_teams_open, setIsTeamsOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [trash_initial_tab, setTrashInitialTab] = useState<TrashTabId>("trash");
   const [is_administration_open, setIsAdministrationOpen] = useState(false);
@@ -66,11 +67,8 @@ const AppTopBar: React.FC = () => {
   const openInvite = () => setIsInviteOpen(true);
   const closeInvite = () => setIsInviteOpen(false);
 
-  const openProfile = () => setIsProfileOpen(true);
-  const closeProfile = () => setIsProfileOpen(false);
-
-  const openTeams = () => setIsTeamsOpen(true);
-  const closeTeams = () => setIsTeamsOpen(false);
+  /** "My Profile" is now a routed page (`/profile`) rather than a modal. */
+  const openProfile = () => router.push("/profile");
 
   const openTrash = () => {
     setTrashInitialTab("trash");
@@ -255,8 +253,6 @@ const AppTopBar: React.FC = () => {
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 
       <AdministrationModal is_open={is_administration_open} onClose={closeAdministration} />
-
-      <ProfileModal is_open={is_profile_open} onClose={closeProfile} onOpenTeams={openTeams} />
 
       <AccountMenu
         is_open={is_account_open}

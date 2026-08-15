@@ -1,10 +1,10 @@
 "use client";
 import React from "react";
-import type { ProfileManagerApi } from "./useProfileManager";
 import type { ProfileSectionId } from "./types";
 
-export type ProfileNavProps = {
-  profile: ProfileManagerApi;
+export type ProfileTabsProps = {
+  active_section: ProfileSectionId;
+  onSelect: (id: ProfileSectionId) => void;
 };
 
 const iconProps = {
@@ -54,7 +54,7 @@ const SessionHistoryIcon = () => (
   </svg>
 );
 
-const NAV_ITEMS: { id: ProfileSectionId; label: string; icon: React.ReactNode }[] = [
+const TAB_ITEMS: { id: ProfileSectionId; label: string; icon: React.ReactNode }[] = [
   { id: "personal", label: "Personal info", icon: <PersonalInfoIcon /> },
   { id: "working", label: "Working status", icon: <WorkingStatusIcon /> },
   { id: "notifications", label: "Notifications", icon: <NotificationsIcon /> },
@@ -64,29 +64,34 @@ const NAV_ITEMS: { id: ProfileSectionId; label: string; icon: React.ReactNode }[
 ];
 
 /**
- * Left sidebar of {@link ProfileModal}: a flat list of the six profile pages, styled the
- * same way as {@link AdministrationNav} but without nested groups.
+ * Horizontal top tab bar for {@link ProfileView} — the page equivalent of the old
+ * `ProfileModal`'s left nav: one tab per profile section, switched without a route change.
+ * Styled after {@link BoardViewTabs}'s active-tab underline so the profile page reads
+ * consistently with the board views tab row elsewhere in the app.
  */
-const ProfileNav: React.FC<ProfileNavProps> = ({ profile }) => (
-  <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-panel-alt px-[14px] py-5">
-    <div className="mb-[22px] px-2 text-[22px] font-extrabold tracking-[-0.01em] text-shell-text">Profile</div>
-
-    {NAV_ITEMS.map((item) => {
-      const is_active = profile.active_section === item.id;
+const ProfileTabs: React.FC<ProfileTabsProps> = ({ active_section, onSelect }) => (
+  <div role="tablist" aria-label="Profile sections" className="scrollnice flex items-center gap-1 overflow-x-auto border-b border-shell-border">
+    {TAB_ITEMS.map((item) => {
+      const is_active = active_section === item.id;
       return (
-        <div
+        <button
           key={item.id}
-          onClick={() => profile.selectSection(item.id)}
-          className={`mb-[2px] flex cursor-pointer items-center gap-[11px] rounded-lg px-[10px] py-[9px] text-[13.5px] transition-colors ${
-            is_active ? "bg-brand-500/[0.12] font-bold text-brand-200" : "font-medium text-shell-text-secondary hover:bg-shell-hover"
+          type="button"
+          role="tab"
+          aria-selected={is_active}
+          onClick={() => onSelect(item.id)}
+          className={`-mb-px flex flex-none items-center gap-2 whitespace-nowrap border-b-2 px-4 py-3 text-[13.5px] transition-colors ${
+            is_active
+              ? "border-brand-500 font-bold text-shell-text"
+              : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
           }`}
         >
-          <span className={`flex flex-none ${is_active ? "text-brand-200" : "text-shell-text-muted"}`}>{item.icon}</span>
+          <span className={`flex flex-none ${is_active ? "text-brand-500" : "text-shell-text-faint"}`}>{item.icon}</span>
           {item.label}
-        </div>
+        </button>
       );
     })}
   </div>
 );
 
-export default ProfileNav;
+export default ProfileTabs;
