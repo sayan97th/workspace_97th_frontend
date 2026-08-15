@@ -3,7 +3,6 @@ import React from "react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { useGlobalModals } from "@/context/GlobalModalsContext";
 import UserAvatar from "@/components/common/UserAvatar";
 import { getUserDisplayName } from "@/lib/user";
 import { ChevronRightIcon } from "@/icons/workspace-icons";
@@ -27,8 +26,10 @@ import SessionHistorySection from "./sections/SessionHistorySection";
 const ProfileView: React.FC = () => {
   const router = useRouter();
   const { user } = useAuth();
-  const { openTeams } = useGlobalModals();
   const profile = useProfileManager();
+
+  /** "Teams" is a routed page (`/teams`) rather than a modal. */
+  const openTeams = () => router.push("/teams");
 
   const SECTION_PANELS: Record<ProfileSectionId, React.ReactNode> = {
     personal: <PersonalInfoSection onOpenTeams={openTeams} />,

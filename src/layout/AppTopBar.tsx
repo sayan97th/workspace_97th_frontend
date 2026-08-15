@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranding } from "@/context/BrandingContext";
-import { useGlobalModals } from "@/context/GlobalModalsContext";
 import UserAvatar from "@/components/common/UserAvatar";
 import AccountMenu from "./AccountMenu";
 import RequestAccessModal, {
@@ -18,7 +17,6 @@ import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
 import { invitationService } from "@/services/invitation.service";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
-import { TeamsModal } from "@/components/teams";
 import { TrashModal, type TrashTabId } from "@/components/trash";
 import { AdministrationModal } from "@/components/administration";
 import {
@@ -44,7 +42,6 @@ const AppTopBar: React.FC = () => {
   const { user } = useAuth();
   const { logo_url } = useBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
-  const { is_teams_open, openTeams, closeTeams } = useGlobalModals();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
@@ -69,6 +66,9 @@ const AppTopBar: React.FC = () => {
 
   /** "My Profile" is now a routed page (`/profile`) rather than a modal. */
   const openProfile = () => router.push("/profile");
+
+  /** "Teams" is now a routed page (`/teams`) rather than a modal. */
+  const openTeams = () => router.push("/teams");
 
   const openTrash = () => {
     setTrashInitialTab("trash");
@@ -247,8 +247,6 @@ const AppTopBar: React.FC = () => {
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
-
-      <TeamsModal is_open={is_teams_open} onClose={closeTeams} />
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 

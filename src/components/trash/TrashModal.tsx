@@ -42,7 +42,7 @@ const tabButtonClass = (is_active: boolean) =>
 /**
  * Account-wide "Trash" browser opened from {@link AccountMenu}'s Trash entry: Trash/Archive
  * tabs, a search + type-filter row, a bulk-action bar once rows are selected, and the
- * shared {@link TrashTable}. Composes {@link useTrashManager} the same way `TeamsModal`
+ * shared {@link TrashTable}. Composes {@link useTrashManager} the same way `TeamsView`
  * composes `useTeamsManager`, so any future "deleted items" surface (e.g. a per-board
  * trash) can reuse the same table/menu/filter pieces instead of this whole dialog.
  */

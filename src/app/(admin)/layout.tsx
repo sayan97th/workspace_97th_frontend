@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { GlobalModalsProvider } from "@/context/GlobalModalsContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
@@ -32,17 +31,15 @@ export default function AdminLayout({
   }
 
   return (
-    <GlobalModalsProvider>
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-gray-50">
-        <AppTopBar />
-        <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
-          <AppSidebar />
-          <Backdrop />
-          <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-gray-50">
-            {children}
-          </main>
-        </div>
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-gray-50">
+      <AppTopBar />
+      <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+        <AppSidebar />
+        <Backdrop />
+        <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-gray-50">
+          {children}
+        </main>
       </div>
-    </GlobalModalsProvider>
+    </div>
   );
 }

@@ -107,7 +107,7 @@ const apiErrorMessage = (error: unknown, fallback: string): string => {
  * selection/search, the account-wide "All members" dedupe vs. a single team's
  * roster (both searched and paginated server-side), and the create/edit/delete
  * team flows. Mirrors the board toolbar's `useBoardToolbar(config) -> Api` shape
- * so {@link TeamsModal} and its panels stay presentational.
+ * so {@link TeamsView} and its panels stay presentational.
  */
 export function useTeamsManager(): TeamsManagerApi {
   const [teams, setTeams] = useState<Team[]>([]);

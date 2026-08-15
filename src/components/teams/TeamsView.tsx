@@ -1,20 +1,15 @@
 "use client";
-import React, { useEffect } from "react";
+import React from "react";
+import { useRouter } from "next/navigation";
 import SearchField from "@/components/common/SearchField";
 import { Pagination } from "@/components/content";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
-import { CloseIcon } from "@/icons/board-icons";
-import { PlusIcon } from "@/icons/workspace-icons";
+import { ChevronRightIcon, PlusIcon } from "@/icons/workspace-icons";
 import AddTeamMembersModal from "./AddTeamMembersModal";
 import CreateTeamModal from "./CreateTeamModal";
 import TeamMembersTable from "./TeamMembersTable";
 import TeamsRail from "./TeamsRail";
 import { useTeamsManager } from "./useTeamsManager";
-
-export type TeamsModalProps = {
-  is_open: boolean;
-  onClose: () => void;
-};
 
 const tabButtonClass = (is_active: boolean) =>
   `border-b-2 pb-[11px] text-[13.5px] font-semibold transition-colors ${
@@ -22,62 +17,40 @@ const tabButtonClass = (is_active: boolean) =>
   }`;
 
 /**
- * Account-wide "Teams" browser opened from {@link AccountMenu}'s Teams entry: a left rail
- * of teams (search + "All teams") and a right panel with Users/Content tabs for the
- * selected team. Composes {@link useTeamsManager} with {@link TeamsRail},
- * {@link TeamMembersTable} and {@link CreateTeamModal}, so a future "team picker" elsewhere
- * in the app can reuse the same pieces instead of this whole dialog.
+ * "Teams" page, mounted at `/teams`. Replaces the old floating `TeamsModal` dialog with a
+ * full route: the same left rail ({@link TeamsRail}) and Users/Content roster panel, still
+ * driven entirely by {@link useTeamsManager}, now filling the admin shell's content area
+ * instead of a centered overlay. Nested action dialogs ({@link CreateTeamModal},
+ * {@link AddTeamMembersModal}, the delete/remove confirmations) stay real modals, they are
+ * short-lived flows layered on top of the view, not the view itself.
  */
-const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
+const TeamsView: React.FC = () => {
+  const router = useRouter();
   const teams = useTeamsManager();
 
-  useEffect(() => {
-    if (!is_open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Let a nested dialog (Create/Edit team, Add members, remove-member confirm) handle
-      // Escape first — otherwise one press would close all of them since each has its own
-      // window keydown listener.
-      const has_nested_dialog_open =
-        teams.is_team_form_open || teams.is_add_members_open || teams.member_pending_remove !== null;
-      if (event.key === "Escape" && !has_nested_dialog_open) onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    const previous_overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = previous_overflow;
-    };
-  }, [is_open, onClose, teams.is_team_form_open, teams.is_add_members_open, teams.member_pending_remove]);
-
-  if (!is_open) return null;
-
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Teams"
-      className="fixed inset-0 z-[300] flex items-center justify-center p-6"
-    >
-      <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={onClose} aria-hidden="true" />
-
-      <div className="relative z-[301] flex h-[760px] max-h-[92vh] w-[1240px] max-w-full overflow-hidden rounded-[18px] border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
+    <div className="flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
+      <div className="flex flex-none items-center gap-3 border-b border-shell-border px-6 py-3.5">
         <button
           type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="absolute right-4 top-4 z-10 flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover"
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 text-[13px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
         >
-          <CloseIcon size={15} />
+          <ChevronRightIcon className="rotate-180" size={11} />
+          Back
         </button>
+        <span className="h-4 w-px bg-shell-border" aria-hidden="true" />
+        <span className="text-[13px] font-medium text-shell-text-muted">Teams directory</span>
+      </div>
 
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <TeamsRail teams={teams} />
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex-none px-[26px] pt-[22px]">
-            <div className="text-[20px] font-extrabold tracking-[-0.01em]">{teams.panel_title}</div>
-            <div className="mt-[3px] text-[12.5px] text-shell-text-muted">{teams.panel_subtitle}</div>
-            <div className="mt-[18px] flex gap-[22px] border-b border-shell-border">
+          <div className="flex-none px-[30px] pt-7">
+            <div className="text-[22px] font-extrabold tracking-[-0.01em]">{teams.panel_title}</div>
+            <div className="mt-[3px] text-[13px] text-shell-text-muted">{teams.panel_subtitle}</div>
+            <div className="mt-5 flex gap-[22px] border-b border-shell-border">
               <button type="button" onClick={() => teams.setActiveTab("users")} className={tabButtonClass(teams.active_tab === "users")}>
                 Users
               </button>
@@ -89,7 +62,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
 
           {teams.active_tab === "users" ? (
             <>
-              <div className="flex flex-none items-center justify-between gap-3 px-[26px] pt-[14px]">
+              <div className="flex flex-none items-center justify-between gap-3 px-[30px] pt-[16px]">
                 <SearchField
                   value={teams.user_query}
                   onChange={teams.setUserQuery}
@@ -107,7 +80,7 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
                   </button>
                 ) : null}
               </div>
-              <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-[26px] pb-6 pt-[10px]">
+              <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-[30px] pb-8 pt-[10px]">
                 {teams.is_loading_members ? (
                   <div className="px-[10px] py-10 text-center text-[13px] text-shell-text-faint">
                     Loading people…
@@ -173,4 +146,4 @@ const TeamsModal: React.FC<TeamsModalProps> = ({ is_open, onClose }) => {
   );
 };
 
-export default TeamsModal;
+export default TeamsView;

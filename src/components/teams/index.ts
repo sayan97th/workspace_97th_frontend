@@ -1,5 +1,4 @@
-export { default as TeamsModal } from "./TeamsModal";
-export type { TeamsModalProps } from "./TeamsModal";
+export { default as TeamsView } from "./TeamsView";
 export { default as CreateTeamModal } from "./CreateTeamModal";
 export { default as AddTeamMembersModal } from "./AddTeamMembersModal";
 export { default as TeamsRail } from "./TeamsRail";

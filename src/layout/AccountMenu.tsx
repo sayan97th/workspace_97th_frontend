@@ -180,7 +180,7 @@ export type AccountMenuProps = {
   onOpenProfile?: () => void;
   /** Opens the invite-members flow owned by the top bar. */
   onInviteMembers?: () => void;
-  /** Opens the Teams directory owned by the top bar. */
+  /** Navigates to the Teams directory page, provided by the top bar. */
   onOpenTeams?: () => void;
   /** Opens the account Trash dialog owned by the top bar, defaulted to the Trash tab. */
   onOpenTrash?: () => void;

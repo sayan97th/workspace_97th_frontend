@@ -65,7 +65,7 @@ const SECTION_PANELS: Record<AdminSectionId, React.FC<{ admin: AdministrationMan
  * Account-wide "Administration" dialog opened from {@link AccountMenu}'s Administration
  * entry: a nested left nav ({@link AdministrationNav}) and a right content pane that swaps
  * between the twelve settings pages. Structured the same way as {@link TrashModal} and
- * {@link TeamsModal} — a `use*Manager` hook owns all the state, every section below stays
+ * `TeamsView` (`src/components/teams/TeamsView.tsx`) — a `use*Manager` hook owns all the state, every section below stays
  * presentational over its output.
  */
 const AdministrationModal: React.FC<AdministrationModalProps> = ({ is_open, onClose }) => {
