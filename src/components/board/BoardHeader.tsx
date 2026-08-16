@@ -233,8 +233,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         <CommentIcon />
         {board_updates_count > 0 && (
           <span
-            className={`absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10.5px] font-bold leading-none text-white ${
-              board_updates_unseen ? "bg-brand-500" : "bg-gray-500"
+            className={`absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10.5px] font-bold leading-none ${
+              board_updates_unseen ? "bg-brand-500/15 text-brand-500" : "bg-shell-hover-strong text-shell-text-secondary"
             }`}
           >
             {board_updates_count > 99 ? "99+" : board_updates_count}
