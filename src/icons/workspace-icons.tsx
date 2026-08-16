@@ -814,3 +814,13 @@ export const MultiLevelBoardIcon: React.FC<IconProps> = ({ className, size = 15 
     <rect x="9" y="9" width="4.5" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
   </svg>
 );
+
+/** Small office-building glyph — the "Invite to this board" dialog's "Anyone at {company} can access" notice. */
+export const BuildingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="3" y="1.8" width="7.5" height="12.4" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M10.5 6.5 H13 a1 1 0 0 1 1 1 V14.2 H10.5" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+    <path d="M5.2 4.4 H7.8 M5.2 7 H7.8 M5.2 9.6 H7.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M6.5 14.2 V11.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);

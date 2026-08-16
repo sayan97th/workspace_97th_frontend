@@ -9,6 +9,7 @@ import {
   BoardComingSoonView,
   BoardDocView,
   BoardFileGalleryView,
+  BoardInviteModal,
   BoardItemDrawer,
   BoardKanban,
   BoardShell,
@@ -48,6 +49,7 @@ import { ChevronRightIcon, FolderIcon, MoreDotsIcon } from "@/icons/workspace-ic
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
+import { boardInvitationService } from "@/services/board-invitation.service";
 import type {
   BoardColumnConfig,
   BoardColumnDto,
@@ -57,12 +59,13 @@ import type {
   BoardItemValue,
   BoardViewDto,
 } from "@/types/board-content";
-import type { BoardType, WorkspaceNavNode } from "@/types/workspace";
+import type { BoardAccessEntry } from "@/types/board-invitation";
+import type { BoardDetail, BoardType } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
 export type WorkspaceViewProps = {
-  /** The navigation node whose view is being rendered. */
-  node: WorkspaceNavNode;
+  /** The navigation node whose view is being rendered, plus the workspace it belongs to. */
+  node: BoardDetail;
   /** Human-readable labels from the workspace root down to this node. */
   breadcrumb: string[];
   workspace_slug: string;
@@ -122,7 +125,7 @@ const formatKanbanDueDate = (value: string): { label: string; urgent: boolean } 
 
 /** Resolves a node into the "Board info" popover content shown from its header chevron. */
 const buildBoardInfo = (
-  node: WorkspaceNavNode,
+  node: BoardDetail,
   board_type: BoardType,
   onChangeBoardType: () => void
 ): BoardHeaderInfo => ({
@@ -155,6 +158,29 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
 }) => {
   const [board_type, setBoardType] = useState<BoardType>(node.board_type);
   const [is_change_type_open, setIsChangeTypeOpen] = useState(false);
+
+  const [access, setAccess] = useState<BoardAccessEntry[]>([]);
+  const [is_invite_open, setIsInviteOpen] = useState(false);
+
+  // The "who can view this board" roster is board-level, not per-tab, so it's
+  // fetched once per board rather than re-running on every `active_view_id`
+  // tab switch like the columns/groups/items/views fetch below.
+  useEffect(() => {
+    let cancelled = false;
+    setAccess([]);
+    boardInvitationService
+      .listAccess(node.id)
+      .then((data) => {
+        if (!cancelled) setAccess(data);
+      })
+      .catch(() => {
+        // The header's invite count/roster just stays empty; not worth a
+        // whole-board error state over.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [node.id]);
 
   const [loaded, setLoaded] = useState<{
     columns: BoardColumnDto[];
@@ -208,7 +234,10 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
 
   if (!loaded) {
     return (
-      <BoardShell header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }} tabs={{ primary_label: "Main table", views: [] }}>
+      <BoardShell
+        header={{ title: node.label, is_favorite: node.is_favorite, invite_count: access.length, info, onInviteClick: () => setIsInviteOpen(true) }}
+        tabs={{ primary_label: "Main table", views: [] }}
+      >
         <BoardLoadingSpinner />
       </BoardShell>
     );
@@ -223,6 +252,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         workspace_slug={workspace_slug}
         board_type={board_type}
         info={info}
+        invite_count={access.length}
+        onInviteClick={() => setIsInviteOpen(true)}
         initial_columns={loaded.columns}
         initial_groups={loaded.groups}
         initial_items={loaded.items}
@@ -237,6 +268,16 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         onSubmit={handleChangeBoardType}
         onClose={() => setIsChangeTypeOpen(false)}
       />
+      <BoardInviteModal
+        is_open={is_invite_open}
+        onClose={() => setIsInviteOpen(false)}
+        board_id={node.id}
+        board_label={node.label}
+        board_type={board_type}
+        workspace_name={node.workspace.name}
+        initial_access={access}
+        onAccessChange={setAccess}
+      />
     </>
   );
 };
@@ -246,11 +287,13 @@ export default TableBoardView;
 // ─────────────────────────────────────────────────────────────────────────────
 
 type TableBoardBodyProps = {
-  node: WorkspaceNavNode;
+  node: BoardDetail;
   breadcrumb: string[];
   workspace_slug: string;
   board_type: BoardType;
   info: BoardHeaderInfo;
+  invite_count: number;
+  onInviteClick: () => void;
   initial_columns: BoardColumnDto[];
   initial_groups: BoardGroupDto[];
   initial_items: BoardItemDto[];
@@ -271,6 +314,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   breadcrumb,
   workspace_slug,
   info,
+  invite_count,
+  onInviteClick,
   initial_columns,
   initial_groups,
   initial_items,
@@ -1243,7 +1288,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   return (
     <BoardShell
-      header={{ title: node.label, is_favorite: node.is_favorite, invite_count: 0, info }}
+      header={{ title: node.label, is_favorite: node.is_favorite, invite_count, info, onInviteClick }}
       tabs={{
         tabs: view_tabs.tabs,
         active_view_id: view_tabs.active_view_id,

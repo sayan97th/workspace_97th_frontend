@@ -1,7 +1,8 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   BellIcon,
+  CheckIcon,
   ChevronDownIcon,
   CrownIcon,
   InviteIcon,
@@ -44,6 +45,8 @@ export type BoardHeaderProps = {
   user_initials?: string;
   /** Board info popover content; the chevron next to the title stays inert when omitted. */
   info?: BoardHeaderInfo;
+  /** Opens the "Invite to this board" dialog; the button stays inert when omitted. */
+  onInviteClick?: () => void;
 };
 
 const action_button_class =
@@ -59,12 +62,30 @@ const icon_button_class =
 const BoardHeader: React.FC<BoardHeaderProps> = ({
   title,
   is_favorite = false,
-  invite_count = 18,
+  invite_count = 0,
   user_initials = "JM",
   info,
+  onInviteClick,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
+  const [is_link_copied, setIsLinkCopied] = useState(false);
+
+  // Reverts the "Copied" confirmation back to the plain link icon after a beat.
+  useEffect(() => {
+    if (!is_link_copied) return;
+    const timeout = window.setTimeout(() => setIsLinkCopied(false), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [is_link_copied]);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setIsLinkCopied(true);
+    } catch {
+      // Clipboard can be unavailable (insecure context); fail silently.
+    }
+  };
 
   return (
   <div className="flex items-center gap-[9px]">
@@ -202,14 +223,21 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
       <button
         type="button"
+        onClick={onInviteClick}
         className="flex items-center gap-[7px] rounded-lg border border-shell-border-strong px-[13px] py-[7px] text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500"
       >
         <InviteIcon size={14} />
         Invite / {invite_count}
       </button>
 
-      <button type="button" className={`${icon_button_class} hidden sm:flex`} aria-label="Copy board link">
-        <LinkIcon />
+      <button
+        type="button"
+        onClick={handleCopyLink}
+        className={`${icon_button_class} hidden sm:flex`}
+        aria-label={is_link_copied ? "Board link copied" : "Copy board link"}
+        title={is_link_copied ? "Link copied!" : "Copy board link"}
+      >
+        {is_link_copied ? <CheckIcon size={14} className="text-success-400" /> : <LinkIcon />}
       </button>
       <button type="button" className={`${icon_button_class} hidden sm:flex`} aria-label="More board actions">
         <MoreDotsIcon />

@@ -41,6 +41,8 @@ export { default as BoardTypePicker, BOARD_TYPE_OPTIONS, BOARD_TYPE_HINTS } from
 export type { BoardTypePickerProps } from "./BoardTypePicker";
 export { default as ChangeBoardTypeModal } from "./ChangeBoardTypeModal";
 export type { ChangeBoardTypeModalProps } from "./ChangeBoardTypeModal";
+export { default as BoardInviteModal } from "./BoardInviteModal";
+export type { BoardInviteModalProps } from "./BoardInviteModal";
 export type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardRowHeight, BoardTableProps } from "./types";
 export { BOARD_ROW_HEIGHT_PX } from "./types";
 export { default as useBoardToolbar } from "./toolbar/useBoardToolbar";

@@ -2,10 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { authService } from "@/services/auth.service";
+import { boardInvitationService } from "@/services/board-invitation.service";
 import { invitationService } from "@/services/invitation.service";
 import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
 import { getToken } from "@/lib/api-client";
 import type { User, AuthResponse, LoginCredentials, RegisterData, ApiError } from "@/types/auth";
+import type { AcceptBoardInvitationPayload } from "@/types/board-invitation";
 import type { AcceptInvitationPayload, JoinWorkspaceByLinkPayload } from "@/types/invitation";
 
 export type LoginResult =
@@ -28,6 +30,8 @@ type AuthContextType = {
   register: (data: RegisterData) => Promise<void>;
   /** Accepts a workspace invitation (creating/authenticating its account) and starts a session, like `register`. */
   acceptInvitation: (code: string, payload: AcceptInvitationPayload) => Promise<void>;
+  /** Accepts a board invitation (creating/authenticating its account) and starts a session, like `register`. */
+  acceptBoardInvitation: (code: string, payload: AcceptBoardInvitationPayload) => Promise<void>;
   /** Joins a workspace through its shareable invite link (creating/authenticating its account) and starts a session, like `register`. */
   joinWorkspaceByLink: (code: string, payload: JoinWorkspaceByLinkPayload) => Promise<void>;
   logout: () => Promise<void>;
@@ -186,6 +190,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     scheduleRefresh();
   };
 
+  const acceptBoardInvitation = async (code: string, payload: AcceptBoardInvitationPayload) => {
+    const data = await boardInvitationService.acceptInvitation(code, payload);
+    setUser(data.user);
+    try {
+      const me_data = await authService.getMe();
+      setPermissions(me_data.permissions);
+    } catch {
+      // permissions remain empty if /me fails
+    }
+    scheduleRefresh();
+  };
+
   const joinWorkspaceByLink = async (code: string, payload: JoinWorkspaceByLinkPayload) => {
     const data = await workspaceInviteLinkService.joinByLink(code, payload);
     setUser(data.user);
@@ -229,6 +245,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithTwoFactor,
         register,
         acceptInvitation,
+        acceptBoardInvitation,
         joinWorkspaceByLink,
         logout,
         refreshUser,
