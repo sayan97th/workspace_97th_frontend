@@ -1,8 +1,9 @@
 "use client";
-import React from "react";
-import EmojiPicker, { EmojiStyle, Theme, type EmojiClickData } from "emoji-picker-react";
+import React, { useMemo } from "react";
+import EmojiPicker, { EmojiStyle, SuggestionMode, Theme, type EmojiClickData } from "emoji-picker-react";
 import BoardPopover from "../toolbar/BoardPopover";
 import { useTheme } from "@/context/ThemeContext";
+import { getQuickReactionUnifiedIds, recordReactionUsage } from "./reactionFrequency";
 
 export type EmojiPaletteProps = {
   anchor_el: HTMLElement | null;
@@ -42,6 +43,11 @@ const themedPickerStyle = {
   "--epr-search-border-color": "#00c875",
   "--epr-picker-border-color": "transparent",
   "--epr-dark-picker-border-color": "transparent",
+  // Slack-sized grid: the library's 30px/5px defaults render noticeably
+  // larger and sparser than Slack's own picker.
+  "--epr-emoji-size": "20px",
+  "--epr-emoji-padding": "4px",
+  "--epr-category-navigation-button-size": "24px",
 } as React.CSSProperties;
 
 /**
@@ -52,15 +58,28 @@ const themedPickerStyle = {
  * a small hand-picked grid. In `react` mode it opens in the library's
  * built-in "Reactions" layout: a single quick-pick row plus a `+` button
  * that expands into the same full picker, mirroring Slack/Discord's
- * quick-react-then-expand pattern. Portals via {@link BoardPopover}, which
- * also supplies outside-click/Escape-to-close and viewport-aware
- * positioning — this popover no longer risks being clipped by the drawer's
- * scroll container the way the old `position: absolute` grid could.
+ * quick-react-then-expand pattern. That row starts out as Slack's own
+ * default lineup and reorders itself around whichever emoji this user
+ * actually reacts with most (tracked client-side, see
+ * {@link reactionFrequency}); the full picker's own "Frequently Used"
+ * category does the same for every emoji, insert or react alike. Portals
+ * via {@link BoardPopover}, which also supplies outside-click/Escape-to-close
+ * and viewport-aware positioning — this popover no longer risks being
+ * clipped by the drawer's scroll container the way the old
+ * `position: absolute` grid could.
  */
 const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose, onPick, mode = "insert" }) => {
   const { resolved_theme } = useTheme();
 
+  // Re-read each time the popover opens, so a reaction picked a moment ago
+  // (in this same session) is already reflected the next time it's opened.
+  const quick_reactions = useMemo(
+    () => (mode === "react" && is_open ? getQuickReactionUnifiedIds() : undefined),
+    [mode, is_open]
+  );
+
   const handlePick = (data: EmojiClickData) => {
+    if (mode === "react") recordReactionUsage(data.emoji);
     onPick(data.emoji);
     onClose();
   };
@@ -74,7 +93,9 @@ const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose
           onEmojiClick={handlePick}
           onReactionClick={handlePick}
           reactionsDefaultOpen={mode === "react"}
+          reactions={quick_reactions}
           allowExpandReactions
+          suggestedEmojisMode={SuggestionMode.FREQUENT}
           previewConfig={{ showPreview: false }}
           searchPlaceholder="Search emoji"
           width={PICKER_WIDTH - 8}

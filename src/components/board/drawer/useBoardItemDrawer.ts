@@ -359,6 +359,19 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       })
     );
 
+  /** Replaces a comment or reply's reactions with the server's authoritative list — called once a toggle request resolves, so any drift from the optimistic guess (an overlapping request, a stale retry) self-heals immediately instead of lingering until the next full reload. */
+  const applyServerReactions = (row_id: string, comment_id: string, reply_id: string | null, reactions: DrawerReaction[]) =>
+    updateComments(row_id, (comments) =>
+      comments.map((comment) => {
+        if (comment.id !== comment_id) return comment;
+        if (reply_id === null) return { ...comment, reactions };
+        return {
+          ...comment,
+          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, reactions } : reply)),
+        };
+      })
+    );
+
   const toggleReaction = (comment_id: string, reply_id: string | null, emoji: string) => {
     if (!open_row_id) return;
     applyReactionToggle(open_row_id, comment_id, reply_id, emoji);
@@ -368,6 +381,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     const item_id = Number(open_row_id);
     boardCommentsService
       .toggleReaction(board_id, item_id, Number(reply_id ?? comment_id), emoji)
+      .then((dto) => applyServerReactions(open_row_id, comment_id, reply_id, dto.reactions))
       .catch(() => {
         applyReactionToggle(open_row_id, comment_id, reply_id, emoji);
         setCommentsError("Couldn't update that reaction. Please try again.");

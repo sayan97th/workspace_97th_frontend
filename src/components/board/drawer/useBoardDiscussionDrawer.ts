@@ -276,14 +276,30 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       })
     );
 
+  /** Replaces a comment or reply's reactions with the server's authoritative list — called once a toggle request resolves, so any drift from the optimistic guess (an overlapping request, a stale retry) self-heals immediately instead of lingering until the next full reload. */
+  const applyServerReactions = (comment_id: string, reply_id: string | null, reactions: DrawerReaction[]) =>
+    setComments((current) =>
+      current.map((comment) => {
+        if (comment.id !== comment_id) return comment;
+        if (reply_id === null) return { ...comment, reactions };
+        return {
+          ...comment,
+          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, reactions } : reply)),
+        };
+      })
+    );
+
   const toggleReaction = (comment_id: string, reply_id: string | null, emoji: string) => {
     applyReactionToggle(comment_id, reply_id, emoji);
     setReactionPaletteId(null);
 
-    boardDiscussionService.toggleReaction(board_id, Number(reply_id ?? comment_id), emoji).catch(() => {
-      applyReactionToggle(comment_id, reply_id, emoji);
-      setCommentsError("Couldn't update that reaction. Please try again.");
-    });
+    boardDiscussionService
+      .toggleReaction(board_id, Number(reply_id ?? comment_id), emoji)
+      .then((dto) => applyServerReactions(comment_id, reply_id, dto.reactions))
+      .catch(() => {
+        applyReactionToggle(comment_id, reply_id, emoji);
+        setCommentsError("Couldn't update that reaction. Please try again.");
+      });
   };
 
   /** Applies (or reverts, by calling it again) the local like toggle for a comment or reply. */
