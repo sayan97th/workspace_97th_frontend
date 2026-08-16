@@ -1,6 +1,10 @@
 export { default as BoardItemDrawer } from "./BoardItemDrawer";
 export type { BoardItemDrawerProps } from "./BoardItemDrawer";
 export { default as useBoardItemDrawer } from "./useBoardItemDrawer";
+export { default as BoardDiscussionDrawer } from "./BoardDiscussionDrawer";
+export type { BoardDiscussionDrawerProps } from "./BoardDiscussionDrawer";
+export { default as useBoardDiscussionDrawer } from "./useBoardDiscussionDrawer";
+export type { BoardDiscussionDrawerConfig, BoardDiscussionDrawerApi } from "./useBoardDiscussionDrawer";
 export { default as SlideOverPanel } from "./SlideOverPanel";
 export type { SlideOverPanelProps } from "./SlideOverPanel";
 export { default as useLatchWhileOpen } from "./useLatchWhileOpen";

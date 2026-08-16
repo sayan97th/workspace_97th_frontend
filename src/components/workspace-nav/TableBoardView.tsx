@@ -7,6 +7,7 @@ import {
   BOARD_VIEW_TYPES,
   BoardCalendar,
   BoardComingSoonView,
+  BoardDiscussionDrawer,
   BoardDocView,
   BoardFileGalleryView,
   BoardInviteModal,
@@ -26,6 +27,7 @@ import {
   KanbanCardMembers,
   KanbanItemDrawer,
   PersonAvatarStack,
+  useBoardDiscussionDrawer,
   useBoardItemDrawer,
   useBoardToolbar,
   type AddableColumnType,
@@ -793,6 +795,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const drawer = useBoardItemDrawer(drawer_config);
 
+  // ── Board-wide discussion drawer ("Board updates") ──
+  const discussion_drawer = useBoardDiscussionDrawer({
+    board_id,
+    current_user,
+    mentionable_people: persons,
+    breadcrumb_label: `${node.workspace.name} · ${node.label}`,
+  });
+
   const handleRowClick = (row: BoardItemDto) => {
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
@@ -1288,7 +1298,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   return (
     <BoardShell
-      header={{ title: node.label, is_favorite: node.is_favorite, invite_count, info, onInviteClick }}
+      header={{
+        title: node.label,
+        is_favorite: node.is_favorite,
+        invite_count,
+        info,
+        onInviteClick,
+        onBoardUpdatesClick: discussion_drawer.open,
+      }}
       tabs={{
         tabs: view_tabs.tabs,
         active_view_id: view_tabs.active_view_id,
@@ -1526,6 +1543,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ) : (
         <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
       )}
+
+      <BoardDiscussionDrawer drawer={discussion_drawer} />
     </BoardShell>
   );
 };

@@ -47,6 +47,8 @@ export type BoardHeaderProps = {
   info?: BoardHeaderInfo;
   /** Opens the "Invite to this board" dialog; the button stays inert when omitted. */
   onInviteClick?: () => void;
+  /** Opens the board-wide discussion drawer ("Board updates"); the button stays inert when omitted. */
+  onBoardUpdatesClick?: () => void;
 };
 
 const action_button_class =
@@ -66,6 +68,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   user_initials = "JM",
   info,
   onInviteClick,
+  onBoardUpdatesClick,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
@@ -213,7 +216,12 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
       <span className="mx-1.5 hidden h-5 w-px bg-shell-border-strong md:block" />
 
-      <button type="button" className={icon_button_class} aria-label="Board updates">
+      <button
+        type="button"
+        onClick={onBoardUpdatesClick}
+        className={icon_button_class}
+        aria-label="Board updates"
+      >
         <CommentIcon />
       </button>
 
