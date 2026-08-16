@@ -251,3 +251,75 @@
 @utility shell-nav-item-active {
   @apply bg-brand-500;
 }
+
+/*
+ * `emoji-picker-react`'s root element redeclares --epr-emoji-size and
+ * friends on itself (its `baseVariables` class, applied to the same node
+ * as `.board-emoji-palette` below) — a value declared directly on an
+ * element always wins over one merely inherited from an ancestor, so
+ * setting these as inline custom properties on a wrapping div (see
+ * `EmojiPalette.tsx`) never had any effect. `!important` here is what
+ * actually lets our value win. Slack's own grid runs noticeably smaller
+ * and denser than the library's 30px/5px defaults. `PICKER_WIDTH` in
+ * `EmojiPalette.tsx` is chosen so the emoji grid's content width divides
+ * evenly by `--epr-emoji-size + --epr-emoji-padding * 2` (28px), so every
+ * row fills edge to edge with zero leftover column space.
+ */
+.board-emoji-palette {
+  --epr-emoji-size: 20px !important;
+  --epr-emoji-padding: 4px !important;
+  --epr-category-navigation-button-size: 26px !important;
+  --epr-horizontal-padding: 12px !important;
+  --epr-picker-border-radius: 12px !important;
+  --epr-search-input-height: 38px !important;
+  --epr-search-input-border-radius: 10px !important;
+  --epr-category-label-height: 32px !important;
+}
+
+/*
+ * The library lays out each category's emoji as a CSS grid —
+ * `grid-template-columns: repeat(auto-fill, <emoji-fullsize>)` with
+ * `justify-content: space-between`. Whenever the row's content width isn't
+ * an exact multiple of the emoji cell size (the common case, since it
+ * depends on the popover's rendered width), the browser doesn't collapse
+ * that leftover into one trailing gap — `space-between` spreads it out as
+ * extra space between *every* column, so each emoji reads as having its
+ * own right-hand padding. Left-aligning the grid removes that entirely;
+ * any leftover now collapses into a single (and with the sizing above,
+ * usually zero) strip at the end of the row, same as any other picker.
+ */
+.board-emoji-palette .epr-emoji-category-content {
+  justify-content: start !important;
+}
+
+/*
+ * Re-skins the library's bare category icon row into something that reads
+ * as an actual tab bar: a divider beneath it, and a colored pill behind
+ * whichever category the grid is currently scrolled to, instead of the
+ * library's subtle opacity-only default. Needs `!important` for the same
+ * same-element-specificity reason as the custom properties above — these
+ * classes come from the library's own generated stylesheet, attached to
+ * the same elements.
+ */
+.board-emoji-palette .epr-category-nav {
+  border-bottom: 1px solid var(--color-shell-border);
+  margin-bottom: 4px !important;
+}
+.board-emoji-palette .epr-cat-btn {
+  border-radius: 8px !important;
+  transition: background-color 0.15s ease-in-out !important;
+}
+.board-emoji-palette .epr-cat-btn.epr-active,
+.board-emoji-palette .epr-cat-btn:hover {
+  background-color: var(--color-shell-hover-strong) !important;
+}
+
+/* Denser, quieter category section headers ("Smileys & People", …) to match
+ * this app's small-caps microcopy scale instead of the library's 16px bold
+ * default, which reads oversized next to a 20px emoji grid. */
+.board-emoji-palette .epr-emoji-category-label {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+}

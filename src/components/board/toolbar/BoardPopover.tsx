@@ -63,9 +63,23 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
     updatePosition();
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
+
+    // Content that grows/shrinks *after* this popover has already opened
+    // (e.g. EmojiPalette's react-mode picker, whose compact single-row
+    // quick-reaction bar expands into the full searchable grid in place)
+    // doesn't change `is_open`/`anchor_el`/`width`/`align`, so the effect
+    // above wouldn't otherwise rerun and reposition — leaving the popover
+    // pinned wherever it was placed for its old, smaller size while the
+    // new, taller content spills past the viewport edge. Watching the
+    // popover's own box for resizes keeps it correctly flipped/clamped no
+    // matter what causes its content to change size.
+    const resize_observer = new ResizeObserver(updatePosition);
+    if (popover_ref.current) resize_observer.observe(popover_ref.current);
+
     return () => {
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
+      resize_observer.disconnect();
     };
   }, [is_open, anchor_el, width, align]);
 

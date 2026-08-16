@@ -14,7 +14,31 @@ export type EmojiPaletteProps = {
   mode?: "insert" | "react";
 };
 
-const PICKER_WIDTH = 320;
+/**
+ * Chosen so the emoji grid divides evenly: {@link EMOJI_SIZE_OVERRIDE_CLASS_NAME}'s
+ * overrides in `globals.css` set the emoji cell to 28px (20px + 4px padding on
+ * each side) and the category row's side padding to 12px each; `340 - 8` (this
+ * wrapper's own padding) `- 24` (that side padding) `= 308`, which is exactly
+ * `28 * 11`. Changing either the picker width or those overrides without
+ * re-checking this division reintroduces a leftover strip at the end of each row.
+ */
+const PICKER_WIDTH = 340;
+
+/**
+ * Used for both modes, not just "insert" — the library only *ignores* our
+ * `height`/`width` props while it's showing `react` mode's compact
+ * single-row quick-reaction bar (it lets that row size itself to its own
+ * content instead); the moment that bar is expanded into the full grid
+ * (via its own "+" button), it starts applying whatever `height` we passed.
+ * Passing `"auto"` there (as this used to) breaks the grid's internal
+ * `flex: 1; overflow-y: scroll` body — with no definite height to
+ * distribute, the flex item can't compute a max-height to scroll within,
+ * so the *entire* unscrolled emoji list renders at full natural height and
+ * the popover balloons far past the viewport instead of scrolling. A fixed
+ * height keeps the compact bar unaffected and gives the expanded grid a
+ * real, scrollable bound.
+ */
+const PICKER_HEIGHT = 400;
 
 /**
  * Maps the picker's own CSS custom properties onto this app's shell design
@@ -43,12 +67,21 @@ const themedPickerStyle = {
   "--epr-search-border-color": "#00c875",
   "--epr-picker-border-color": "transparent",
   "--epr-dark-picker-border-color": "transparent",
-  // Slack-sized grid: the library's 30px/5px defaults render noticeably
-  // larger and sparser than Slack's own picker.
-  "--epr-emoji-size": "20px",
-  "--epr-emoji-padding": "4px",
-  "--epr-category-navigation-button-size": "24px",
 } as React.CSSProperties;
+
+/**
+ * `EmojiPicker`'s root element redeclares `--epr-emoji-size`/`--epr-emoji-padding`
+ * on *itself* (its own `baseVariables` class, applied to the same node this
+ * class name lands on via the `className` prop below) — an explicit
+ * declaration on an element always wins over a value merely inherited from
+ * an ancestor, no matter how that ancestor set it, so putting these in
+ * {@link themedPickerStyle} on our wrapping `div` had no effect; the picker
+ * rendered at its 30px/5px defaults regardless. The `!important` overrides
+ * for this class (in `globals.css`) are what actually make a same-element
+ * declaration win. Slack's own grid runs noticeably smaller and denser than
+ * that default.
+ */
+const EMOJI_SIZE_OVERRIDE_CLASS_NAME = "board-emoji-palette";
 
 /**
  * Anchored emoji popover reused both for inserting an emoji into a
@@ -88,6 +121,7 @@ const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose
     <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={PICKER_WIDTH} align="start">
       <div style={themedPickerStyle} className="overflow-hidden rounded-xl p-1">
         <EmojiPicker
+          className={EMOJI_SIZE_OVERRIDE_CLASS_NAME}
           theme={resolved_theme === "dark" ? Theme.DARK : Theme.LIGHT}
           emojiStyle={EmojiStyle.NATIVE}
           onEmojiClick={handlePick}
@@ -99,7 +133,7 @@ const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose
           previewConfig={{ showPreview: false }}
           searchPlaceholder="Search emoji"
           width={PICKER_WIDTH - 8}
-          height={mode === "react" ? "auto" : 380}
+          height={PICKER_HEIGHT}
           lazyLoadEmojis
         />
       </div>
