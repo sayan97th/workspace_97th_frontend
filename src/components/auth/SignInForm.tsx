@@ -431,7 +431,7 @@ export default function SignInForm() {
                 Two-Factor Authentication
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Enter the 6-digit code from your authenticator app to continue.
+                Enter the 6-digit code from your authenticator app, or the one we just emailed you.
               </p>
             </div>
 
@@ -446,7 +446,7 @@ export default function SignInForm() {
                     </p>
                   )}
                   <p className="text-center text-xs text-gray-400 dark:text-gray-500">
-                    The code refreshes every 30 seconds.
+                    Didn&apos;t get an email? Check your spam folder, or use your authenticator app instead.
                   </p>
                 </div>
 
