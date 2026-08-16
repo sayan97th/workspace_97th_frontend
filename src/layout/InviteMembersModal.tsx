@@ -2,15 +2,16 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import RoleSelect from "./RoleSelect";
-import { CheckIcon, CloseIcon, LinkIcon } from "@/icons/workspace-icons";
+import { CheckIcon, CloseIcon, LinkIcon, RefreshIcon } from "@/icons/workspace-icons";
 import {
   invite_default_role,
   invite_email_placeholder,
-  invite_link as default_invite_link,
   invite_message_placeholder,
   type InviteRoleId,
 } from "@/data/invite-members-data";
+import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
 import type { ApiError } from "@/types/auth";
+import type { WorkspaceInviteLink } from "@/types/invitation";
 
 export type InviteMembersSubmission = {
   /** Raw emails entered, split on commas/whitespace and trimmed. */
@@ -26,12 +27,16 @@ export type InviteMembersResult = {
   skipped_emails: string[];
 };
 
+/** "Invite with link" section state: fetched on open, since only a workspace owner or admin may view/manage it. */
+type InviteLinkState =
+  | { status: "loading" }
+  | { status: "loaded"; link: WorkspaceInviteLink }
+  | { status: "error"; message: string };
+
 type InviteMembersModalProps = {
   is_open: boolean;
   onClose: () => void;
-  /** Shareable join link shown in the "Invite with link" section. */
-  invite_link?: string;
-  /** Active workspace's slug, carried into the "View sent invitations" link so that page opens scoped to the same workspace. */
+  /** Active workspace's slug, used to load the shareable link and carried into the "View sent invitations" link so that page opens scoped to the same workspace. */
   workspace_slug?: string;
   onSubmit?: (submission: InviteMembersSubmission) => Promise<InviteMembersResult>;
 };
@@ -59,7 +64,6 @@ const apiErrorMessage = (error: unknown, fallback: string): string => {
 const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   is_open,
   onClose,
-  invite_link = default_invite_link,
   workspace_slug,
   onSubmit,
 }) => {
@@ -71,6 +75,8 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   const [is_submitting, setIsSubmitting] = useState(false);
   const [submit_error, setSubmitError] = useState<string | null>(null);
   const [result, setResult] = useState<InviteMembersResult | null>(null);
+  const [link_state, setLinkState] = useState<InviteLinkState>({ status: "loading" });
+  const [is_regenerating_link, setIsRegeneratingLink] = useState(false);
 
   // Reset the form every time the modal is (re)opened.
   useEffect(() => {
@@ -84,6 +90,30 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
       setResult(null);
     }
   }, [is_open]);
+
+  // Load the workspace's shareable link every time the modal opens. Only a
+  // workspace owner or admin can see it, so members get a friendly notice
+  // instead (via `link_state.status === "error"`).
+  useEffect(() => {
+    if (!is_open || !workspace_slug) return;
+    let cancelled = false;
+    setLinkState({ status: "loading" });
+    workspaceInviteLinkService
+      .getInviteLink(workspace_slug)
+      .then((link) => {
+        if (!cancelled) setLinkState({ status: "loaded", link });
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setLinkState({
+          status: "error",
+          message: apiErrorMessage(error, "You don't have permission to view this workspace's invite link."),
+        });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [is_open, workspace_slug]);
 
   // Close on Escape and lock body scroll while open.
   useEffect(() => {
@@ -103,12 +133,26 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
   if (!is_open) return null;
 
   const handleCopyLink = async () => {
+    if (link_state.status !== "loaded") return;
     try {
-      await navigator.clipboard.writeText(invite_link);
+      await navigator.clipboard.writeText(link_state.link.url);
       setIsLinkCopied(true);
       window.setTimeout(() => setIsLinkCopied(false), 2000);
     } catch {
       // Clipboard can be unavailable (insecure context); fail silently.
+    }
+  };
+
+  const handleRegenerateLink = async () => {
+    if (!workspace_slug || is_regenerating_link) return;
+    setIsRegeneratingLink(true);
+    try {
+      const link = await workspaceInviteLinkService.regenerateInviteLink(workspace_slug);
+      setLinkState({ status: "loaded", link });
+    } catch (error) {
+      setLinkState({ status: "error", message: apiErrorMessage(error, "We couldn't reset that link. Please try again.") });
+    } finally {
+      setIsRegeneratingLink(false);
     }
   };
 
@@ -195,26 +239,50 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             <label className="mb-2 block text-[12.5px] font-semibold text-shell-text-secondary">
               Invite with link
             </label>
-            <div className="flex gap-2.5">
-              <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13px] text-gray-300">
-                <LinkIcon size={14} className="flex-none text-gray-400" />
-                <span className="truncate">{invite_link}</span>
+            {link_state.status === "error" ? (
+              <p className="rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-3 text-[13px] leading-[1.5] text-shell-text-secondary">
+                {link_state.message}
+              </p>
+            ) : (
+              <div className="flex gap-2.5">
+                <div className="flex flex-1 items-center gap-2 truncate rounded-[10px] border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13px] text-gray-300">
+                  <LinkIcon size={14} className="flex-none text-gray-400" />
+                  <span className="truncate">
+                    {link_state.status === "loaded" ? link_state.link.url : "Loading link…"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  disabled={link_state.status !== "loaded"}
+                  className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {is_link_copied ? (
+                    <>
+                      <CheckIcon size={13} className="text-success-400" />
+                      Copied
+                    </>
+                  ) : (
+                    "Copy"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegenerateLink}
+                  disabled={link_state.status !== "loaded" || is_regenerating_link}
+                  aria-label="Reset invite link"
+                  title="Reset invite link"
+                  className="flex flex-none items-center justify-center rounded-[10px] border border-shell-border-strong px-3 text-shell-text-secondary transition-colors hover:border-brand-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <RefreshIcon size={14} className={is_regenerating_link ? "animate-spin" : undefined} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white"
-              >
-                {is_link_copied ? (
-                  <>
-                    <CheckIcon size={13} className="text-success-400" />
-                    Copied
-                  </>
-                ) : (
-                  "Copy"
-                )}
-              </button>
-            </div>
+            )}
+            {link_state.status === "loaded" && !link_state.link.enabled && (
+              <p className="mt-2 text-[12px] leading-[1.5] text-shell-text-muted">
+                Link invites are currently turned off for this workspace.
+              </p>
+            )}
 
             <div className="my-6 h-px bg-shell-hover-strong" />
 

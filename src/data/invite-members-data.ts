@@ -38,9 +38,6 @@ export const invite_roles: InviteRole[] = [
 /** Role selected by default when the invite modal is opened. */
 export const invite_default_role: InviteRoleId = "member";
 
-/** Anyone with this link and a matching domain can join the workspace. */
-export const invite_link = "https://97work.monday.com/users/sign_up?workspace=97th-floor";
-
 /** Placeholder shown in the multi-email input. */
 export const invite_email_placeholder = "name@company.com, name@company.com ...";
 

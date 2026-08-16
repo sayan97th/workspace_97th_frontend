@@ -3,9 +3,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { authService } from "@/services/auth.service";
 import { invitationService } from "@/services/invitation.service";
+import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
 import { getToken } from "@/lib/api-client";
 import type { User, AuthResponse, LoginCredentials, RegisterData, ApiError } from "@/types/auth";
-import type { AcceptInvitationPayload } from "@/types/invitation";
+import type { AcceptInvitationPayload, JoinWorkspaceByLinkPayload } from "@/types/invitation";
 
 export type LoginResult =
   | { requires_two_factor: false }
@@ -27,6 +28,8 @@ type AuthContextType = {
   register: (data: RegisterData) => Promise<void>;
   /** Accepts a workspace invitation (creating/authenticating its account) and starts a session, like `register`. */
   acceptInvitation: (code: string, payload: AcceptInvitationPayload) => Promise<void>;
+  /** Joins a workspace through its shareable invite link (creating/authenticating its account) and starts a session, like `register`. */
+  joinWorkspaceByLink: (code: string, payload: JoinWorkspaceByLinkPayload) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -183,6 +186,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     scheduleRefresh();
   };
 
+  const joinWorkspaceByLink = async (code: string, payload: JoinWorkspaceByLinkPayload) => {
+    const data = await workspaceInviteLinkService.joinByLink(code, payload);
+    setUser(data.user);
+    try {
+      const me_data = await authService.getMe();
+      setPermissions(me_data.permissions);
+    } catch {
+      // permissions remain empty if /me fails
+    }
+    scheduleRefresh();
+  };
+
   const refreshUser = async () => {
     try {
       const data = await authService.getMe();
@@ -214,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginWithTwoFactor,
         register,
         acceptInvitation,
+        joinWorkspaceByLink,
         logout,
         refreshUser,
       }}

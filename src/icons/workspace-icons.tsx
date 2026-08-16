@@ -291,6 +291,19 @@ export const LinkIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/** Circular arrow used to regenerate a share link. */
+export const RefreshIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M13 8 A5 5 0 1 1 11.5 4.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <path d="M11.5 2.4 V4.9 H9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** Close (X) glyph used by modal/dialog dismiss controls. */
 export const CloseIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">

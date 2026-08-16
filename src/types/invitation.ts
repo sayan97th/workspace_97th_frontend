@@ -102,3 +102,43 @@ export type AcceptInvitationPayload = {
   first_name?: string;
   last_name?: string;
 };
+
+/**
+ * A workspace's single reusable "invite with link" share link, from
+ * `GET/PATCH /api/workspaces/{slug}/invite-link` and the regenerate action.
+ * Unlike an email {@link WorkspaceInvitation}, it isn't addressed to one
+ * person: anyone holding the URL can join with the role it grants, until an
+ * owner disables or regenerates it.
+ */
+export type WorkspaceInviteLink = {
+  url: string;
+  role: WorkspaceMembershipRole;
+  role_label: string;
+  enabled: boolean;
+};
+
+/** The public preview shown before joining a workspace by link, from `GET /api/auth/workspaces/join/{code}`. */
+export type WorkspaceJoinLinkPreview = {
+  workspace: {
+    id: number;
+    name: string;
+    mono: string;
+    color: string;
+  };
+  role: WorkspaceMembershipRole;
+  role_label: string;
+  enabled: boolean;
+};
+
+/**
+ * Payload for `POST /api/auth/workspaces/join/{code}`. The joiner isn't
+ * known in advance, so, unlike {@link AcceptInvitationPayload}, this always
+ * includes the email they're joining with.
+ */
+export type JoinWorkspaceByLinkPayload = {
+  email: string;
+  password: string;
+  password_confirmation?: string;
+  first_name?: string;
+  last_name?: string;
+};
