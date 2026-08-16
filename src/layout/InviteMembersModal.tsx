@@ -205,7 +205,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="-mr-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-shell-hover hover:text-white"
+            className="-mr-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-shell-hover hover:text-shell-text"
           >
             <CloseIcon size={16} />
           </button>
@@ -255,7 +255,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                   type="button"
                   onClick={handleCopyLink}
                   disabled={link_state.status !== "loaded"}
-                  className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex flex-none items-center gap-2 rounded-[10px] border border-shell-border-strong px-4 text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {is_link_copied ? (
                     <>
@@ -272,7 +272,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                   disabled={link_state.status !== "loaded" || is_regenerating_link}
                   aria-label="Reset invite link"
                   title="Reset invite link"
-                  className="flex flex-none items-center justify-center rounded-[10px] border border-shell-border-strong px-3 text-shell-text-secondary transition-colors hover:border-brand-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex flex-none items-center justify-center rounded-[10px] border border-shell-border-strong px-3 text-shell-text-secondary transition-colors hover:border-brand-500 hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <RefreshIcon size={14} className={is_regenerating_link ? "animate-spin" : undefined} />
                 </button>
@@ -332,7 +332,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
               onClose();
               router.push(workspace_slug ? `/invitations?workspace=${workspace_slug}` : "/invitations");
             }}
-            className="rounded-[9px] px-2 py-[11px] text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-white"
+            className="rounded-[9px] px-2 py-[11px] text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
           >
             View sent invitations
           </button>
@@ -351,7 +351,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-white"
+                  className="rounded-[9px] px-4 py-[11px] text-[13.5px] font-semibold text-gray-300 transition-colors hover:text-shell-text"
                 >
                   Cancel
                 </button>
