@@ -49,6 +49,10 @@ export type BoardHeaderProps = {
   onInviteClick?: () => void;
   /** Opens the board-wide discussion drawer ("Board updates"); the button stays inert when omitted. */
   onBoardUpdatesClick?: () => void;
+  /** Total updates on the board's discussion feed; shown as a badge on the "Board updates" button, hidden when 0 or omitted. */
+  board_updates_count?: number;
+  /** Whether that badge reads as unseen (brand red, to draw the eye) rather than caught-up (neutral gray). */
+  board_updates_unseen?: boolean;
 };
 
 const action_button_class =
@@ -69,6 +73,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   info,
   onInviteClick,
   onBoardUpdatesClick,
+  board_updates_count = 0,
+  board_updates_unseen = false,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
@@ -219,10 +225,21 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       <button
         type="button"
         onClick={onBoardUpdatesClick}
-        className={icon_button_class}
-        aria-label="Board updates"
+        className={`${icon_button_class} relative`}
+        aria-label={
+          board_updates_count > 0 ? `Board updates, ${board_updates_count} comments` : "Board updates"
+        }
       >
         <CommentIcon />
+        {board_updates_count > 0 && (
+          <span
+            className={`absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10.5px] font-bold leading-none text-white ${
+              board_updates_unseen ? "bg-brand-500" : "bg-gray-500"
+            }`}
+          >
+            {board_updates_count > 99 ? "99+" : board_updates_count}
+          </span>
+        )}
       </button>
 
       <span className="mx-1 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[11px] font-bold text-white">

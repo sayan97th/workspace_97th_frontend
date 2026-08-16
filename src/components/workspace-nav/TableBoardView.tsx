@@ -801,6 +801,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     current_user,
     mentionable_people: persons,
     breadcrumb_label: `${node.workspace.name} · ${node.label}`,
+    initial_comment_count: node.comments_count,
+    initial_has_unseen_comments: node.has_unseen_comments,
   });
 
   const handleRowClick = (row: BoardItemDto) => {
@@ -1305,6 +1307,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         info,
         onInviteClick,
         onBoardUpdatesClick: discussion_drawer.open,
+        board_updates_count: discussion_drawer.comment_count,
+        board_updates_unseen: discussion_drawer.has_unseen_comments,
       }}
       tabs={{
         tabs: view_tabs.tabs,

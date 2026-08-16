@@ -41,6 +41,10 @@ export type BoardDiscussionDrawerConfig = {
   mentionable_people: BoardPersonOption[];
   /** Small breadcrumb line shown under the drawer's "Board Discussion" title, e.g. "Personal · Marketing Plan". */
   breadcrumb_label: string;
+  /** Server-known comment count (board.comments_count) shown on the "Board updates" badge before the drawer has ever been opened. */
+  initial_comment_count?: number;
+  /** Server-known unseen state (board.has_unseen_comments) — whether the badge should start out red before the drawer has ever been opened this load. */
+  initial_has_unseen_comments?: boolean;
 };
 
 /** Full live state + actions returned by {@link useBoardDiscussionDrawer}. */
@@ -54,6 +58,10 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   comments_loading: boolean;
   /** Set when a comment/reply/like/reaction/seen/attachment request fails. */
   comments_error: string | null;
+  /** Total updates (top-level + replies), for the header's "Board updates" badge — `initial_comment_count` until the drawer has loaded once, then derived live from `comments`. */
+  comment_count: number;
+  /** Whether the "Board updates" badge should read as unseen (red) rather than caught-up (gray) — true until the drawer is opened once, since opening it marks the board as viewed server-side. */
+  has_unseen_comments: boolean;
 
   composer_text: string;
   composer_attachments: DrawerAttachment[];
@@ -111,6 +119,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const [comments, setComments] = useState<DrawerComment[]>([]);
   const [comments_loading, setCommentsLoading] = useState(false);
   const [comments_error, setCommentsError] = useState<string | null>(null);
+  /** Flips true once `listComments` has resolved at least once, so `comment_count`/`has_unseen_comments` can switch from the server-known initial values to ones derived from `comments` — that same fetch is also what marks the board as viewed server-side. */
+  const [has_loaded_comments, setHasLoadedComments] = useState(false);
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
   const [edit_draft, setEditDraft] = useState("");
 
@@ -150,7 +160,10 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setCommentsLoading(true);
     boardDiscussionService
       .listComments(board_id)
-      .then((dtos) => setComments(dtos.map(mapDiscussionCommentDtoToDrawerComment)))
+      .then((dtos) => {
+        setComments(dtos.map(mapDiscussionCommentDtoToDrawerComment));
+        setHasLoadedComments(true);
+      })
       .catch(() => setCommentsError("Couldn't load updates. Please try again."))
       .finally(() => setCommentsLoading(false));
   };
@@ -430,6 +443,11 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       : editing_target.comment_id
     : null;
 
+  const comment_count = has_loaded_comments
+    ? comments.reduce((total, comment) => total + 1 + comment.replies.length, 0)
+    : config.initial_comment_count ?? 0;
+  const has_unseen_comments = has_loaded_comments ? false : config.initial_has_unseen_comments ?? false;
+
   return {
     ...config,
     is_open,
@@ -439,6 +457,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     comments,
     comments_loading,
     comments_error,
+    comment_count,
+    has_unseen_comments,
 
     composer_text,
     composer_attachments,

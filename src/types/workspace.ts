@@ -48,6 +48,8 @@ export type WorkspaceNavNode = {
   /** Custom name for the board's first (item name) column; null falls back to "Item". */
   item_column_label: string | null;
   is_favorite: boolean;
+  /** Total updates (top-level + replies) on the board's discussion feed; only populated on {@link BoardDetail} (0 elsewhere). */
+  comments_count: number;
   position: number;
   created_at: string | null;
   creator: WorkspaceNavNodeCreator | null;
@@ -78,6 +80,8 @@ export type BoardWorkspaceSummary = {
 export type BoardDetail = WorkspaceNavNode & {
   workspace: BoardWorkspaceSummary;
   breadcrumb: BoardBreadcrumbItem[];
+  /** Whether the current user has discussion updates they haven't seen yet — drives the "Board updates" badge's red/gray state. */
+  has_unseen_comments: boolean;
 };
 
 export type Workspace = {
