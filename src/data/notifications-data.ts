@@ -1,8 +1,8 @@
 /**
- * Static data backing the Notifications drawer opened from the AppTopBar bell.
- * Mirrors the approved 97 Workspace design. Notifications are intentionally
- * decoupled from the presentation layer so the same list can later be fed from
- * the API without touching the components.
+ * Types and copy backing the Notifications drawer opened from the AppTopBar
+ * bell. Notification entries themselves come from the API (see
+ * `src/types/notifications.ts` and `useNotifications`), this module only
+ * holds the shared shapes and static tab/copy strings.
  */
 
 /** Which filter tab a notification belongs to (beyond the catch-all "All"). */
@@ -44,6 +44,8 @@ export type WorkspaceNotification = {
   time_label: string;
   is_unread: boolean;
   category: NotificationCategory;
+  /** Frontend route to navigate to on click, e.g. `/boards/12`. */
+  link?: string;
 };
 
 /** Tabs shown in the drawer header, in display order. */
@@ -63,67 +65,3 @@ export const notification_mute_hint =
 /** Placeholder for the search input in the drawer header. */
 export const notification_search_placeholder =
   "Search notifications by people, boards…";
-
-/** Seed notifications matching the approved design. */
-export const workspace_notifications: WorkspaceNotification[] = [
-  {
-    id: "blake-team-blake",
-    actor: { name: "Blake", avatar_gradient: "from-[#5b7c99] to-[#2e4257]" },
-    action_label: "Subscribed you",
-    action_target: 'to the Board "Team Blake"',
-    board: { name: "Team Blake", color: "#e53e2e" },
-    time_label: "16 days",
-    is_unread: true,
-    category: "subscribed",
-  },
-  {
-    id: "jaecie-client-hub",
-    actor: { name: "Jaecie", avatar_gradient: "from-[#c98a6b] to-[#8a4a34]" },
-    action_label: "Subscribed you",
-    action_target: 'to the Board "Client Hub"',
-    board: { name: "Client Hub", color: "#e53e2e" },
-    time_label: "17 days",
-    is_unread: true,
-    category: "subscribed",
-  },
-  {
-    id: "jaecie-team-jaecie",
-    actor: { name: "Jaecie", avatar_gradient: "from-[#c98a6b] to-[#8a4a34]" },
-    action_label: "Subscribed you",
-    action_target: 'to the Board "Team Jaecie"',
-    board: { name: "Team Jaecie", color: "#e53e2e" },
-    time_label: "17 days",
-    is_unread: true,
-    category: "subscribed",
-  },
-  {
-    id: "amanda-sales-resources",
-    actor: { name: "Amanda McKay", avatar_gradient: "from-[#8a7cc9] to-[#4a3a8a]" },
-    action_label: "Subscribed you",
-    action_target: 'to the Board "Sales Resources"',
-    board: { name: "Sales Resources", color: "#e53e2e" },
-    time_label: "17 days",
-    is_unread: true,
-    category: "subscribed",
-  },
-  {
-    id: "priya-mention-sprints",
-    actor: { name: "Priya Sharma", avatar_gradient: "from-[#6b9c8a] to-[#347a5a]" },
-    action_label: "Mentioned you",
-    action_target: 'in a comment on "Sprint 42"',
-    board: { name: "Sprints", color: "#ecaa17" },
-    time_label: "2 days",
-    is_unread: true,
-    category: "mentioned",
-  },
-  {
-    id: "daniel-assigned-research",
-    actor: { name: "Daniel Cortez", avatar_gradient: "from-[#9c6ba0] to-[#5a347a]" },
-    action_label: "Assigned you",
-    action_target: 'to the task "Research RAG for Palomar"',
-    board: { name: "Client Hub", color: "#e53e2e" },
-    time_label: "3 days",
-    is_unread: false,
-    category: "assigned",
-  },
-];

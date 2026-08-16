@@ -6,6 +6,7 @@ import { boardInvitationService } from "@/services/board-invitation.service";
 import { invitationService } from "@/services/invitation.service";
 import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
 import { getToken } from "@/lib/api-client";
+import { resetEcho } from "@/lib/echo";
 import type { User, AuthResponse, LoginCredentials, RegisterData, ApiError } from "@/types/auth";
 import type { AcceptBoardInvitationPayload } from "@/types/board-invitation";
 import type { AcceptInvitationPayload, JoinWorkspaceByLinkPayload } from "@/types/invitation";
@@ -228,6 +229,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await authService.logout();
     setUser(null);
     setPermissions([]);
+    resetEcho();
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
   };
 

@@ -9,7 +9,6 @@ import {
   notification_mute_hint,
   notification_search_placeholder,
   notification_tabs,
-  workspace_notifications,
   type NotificationTabId,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
@@ -17,7 +16,8 @@ import {
 type NotificationsPanelProps = {
   is_open: boolean;
   onClose: () => void;
-  notifications?: WorkspaceNotification[];
+  notifications: WorkspaceNotification[];
+  onSelectNotification: (id: string) => void;
 };
 
 /** Keeps a notification only when it matches the currently active tab. */
@@ -45,13 +45,14 @@ const matchesQuery = (
 /**
  * Notifications drawer opened from the AppTopBar bell. Shows the "All",
  * "Mentioned" and "Assigned to me" tabs, a search box, an "unread only" toggle,
- * a dismissible board-mute hint and the filtered notification list. Presentation
- * only — data is injected so it can be wired to the API later.
+ * a dismissible board-mute hint and the filtered notification list. Data comes
+ * from the API via `useNotifications`, this component only filters/renders it.
  */
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   is_open,
   onClose,
-  notifications = workspace_notifications,
+  notifications,
+  onSelectNotification,
 }) => {
   const { resolved_theme, toggleTheme } = useTheme();
   const [active_tab, setActiveTab] = useState<NotificationTabId>("all");
@@ -195,7 +196,11 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         ) : (
           <div className="flex flex-col gap-2.5">
             {visible_notifications.map((notification) => (
-              <NotificationItem key={notification.id} notification={notification} />
+              <NotificationItem
+                key={notification.id}
+                notification={notification}
+                onSelect={onSelectNotification}
+              />
             ))}
           </div>
         )}

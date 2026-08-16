@@ -15,6 +15,7 @@ import InviteMembersModal, {
 } from "./InviteMembersModal";
 import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
 import { invitationService } from "@/services/invitation.service";
+import { useNotifications } from "@/hooks/useNotifications";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TrashModal, type TrashTabId } from "@/components/trash";
@@ -43,6 +44,7 @@ const AppTopBar: React.FC = () => {
   const { logo_url } = useBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
+  const { notifications, unread_count, selectNotification } = useNotifications();
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -183,7 +185,9 @@ const AppTopBar: React.FC = () => {
           aria-expanded={is_notifications_open}
         >
           <BellIcon size={17} />
-          <span className="absolute right-2 top-[7px] h-[7px] w-[7px] rounded-full border-[1.5px] border-shell-surface bg-brand-500" />
+          {unread_count > 0 && (
+            <span className="absolute right-2 top-[7px] h-[7px] w-[7px] rounded-full border-[1.5px] border-shell-surface bg-brand-500" />
+          )}
         </button>
 
         <button
@@ -248,6 +252,11 @@ const AppTopBar: React.FC = () => {
       <NotificationsPanel
         is_open={is_notifications_open}
         onClose={closeNotifications}
+        notifications={notifications}
+        onSelectNotification={(id) => {
+          const selected = selectNotification(id);
+          if (selected?.link) router.push(selected.link);
+        }}
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />

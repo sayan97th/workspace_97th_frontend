@@ -26,7 +26,8 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
       className="flex w-full gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt p-[13px] text-left transition-colors hover:border-shell-border-strong"
     >
       <span
-        className={`h-[30px] w-[30px] flex-none rounded-full bg-gradient-to-br ${actor.avatar_gradient}`}
+        className="h-[30px] w-[30px] flex-none rounded-full"
+        style={{ background: actor.avatar_gradient }}
         aria-hidden="true"
       />
 
