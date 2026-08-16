@@ -31,8 +31,23 @@ function SlideOverPanel({ is_open, onClose, children, panel_class_name, overlay_
   useEffect(() => {
     if (is_open) {
       setIsMounted(true);
-      const raf_id = requestAnimationFrame(() => setIsVisible(true));
-      return () => cancelAnimationFrame(raf_id);
+      // A single `requestAnimationFrame` isn't reliable here: React can
+      // still batch the `is_visible` flip into the very same frame as the
+      // `is_mounted` one, so the browser never actually paints the
+      // off-screen "translate-x-full" state and has nothing to transition
+      // from — the panel just snaps straight to its resting position. The
+      // standard fix is a *double* rAF: the first callback runs once this
+      // frame has been scheduled, and the browser paints in between it and
+      // the second callback, so `is_visible` only flips on the frame after
+      // the off-screen state was actually rendered.
+      let inner_raf_id = 0;
+      const outer_raf_id = requestAnimationFrame(() => {
+        inner_raf_id = requestAnimationFrame(() => setIsVisible(true));
+      });
+      return () => {
+        cancelAnimationFrame(outer_raf_id);
+        cancelAnimationFrame(inner_raf_id);
+      };
     }
     setIsVisible(false);
     const timeout_id = setTimeout(() => setIsMounted(false), TRANSITION_DURATION_MS);
