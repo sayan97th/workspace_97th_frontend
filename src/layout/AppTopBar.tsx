@@ -70,6 +70,10 @@ const AppTopBar: React.FC = () => {
   /** "Teams" is now a routed page (`/teams`) rather than a modal. */
   const openTeams = () => router.push("/teams");
 
+  /** "Invitations" opens the Sent invitations page, scoped to the active workspace. */
+  const openInvitations = () =>
+    router.push(active_workspace_slug ? `/invitations?workspace=${active_workspace_slug}` : "/invitations");
+
   const openTrash = () => {
     setTrashInitialTab("trash");
     setIsTrashOpen(true);
@@ -258,6 +262,7 @@ const AppTopBar: React.FC = () => {
         onOpenProfile={openProfile}
         onInviteMembers={openInvite}
         onOpenTeams={openTeams}
+        onOpenInvitations={openInvitations}
         onOpenTrash={openTrash}
         onOpenArchive={openArchive}
         onOpenAdministration={openAdministration}

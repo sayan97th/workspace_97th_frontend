@@ -27,13 +27,10 @@ const ProfileGlyph = () => (
     <path d="M3 13 c0-2.8 2.2-4.3 5-4.3 s5 1.5 5 4.3" strokeLinecap="round" />
   </svg>
 );
-const DevelopersGlyph = () => (
+const InvitationsGlyph = () => (
   <svg {...iconBaseProps}>
-    <path
-      d="M6 5 L2.5 8 L6 11 M10 5 L13.5 8 L10 11"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
+    <rect x="1.8" y="3.5" width="12.4" height="9" rx="1.2" />
+    <path d="M2.2 4.3 L8 9 L13.8 4.3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 const TrashGlyph = () => (
@@ -182,6 +179,8 @@ export type AccountMenuProps = {
   onInviteMembers?: () => void;
   /** Navigates to the Teams directory page, provided by the top bar. */
   onOpenTeams?: () => void;
+  /** Navigates to the Sent invitations page, provided by the top bar. */
+  onOpenInvitations?: () => void;
   /** Opens the account Trash dialog owned by the top bar, defaulted to the Trash tab. */
   onOpenTrash?: () => void;
   /** Opens the account Trash dialog owned by the top bar, defaulted to the Archive tab. */
@@ -203,6 +202,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onOpenProfile,
   onInviteMembers,
   onOpenTeams,
+  onOpenInvitations,
   onOpenTrash,
   onOpenArchive,
   onOpenAdministration,
@@ -248,6 +248,11 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onOpenTeams?.();
   };
 
+  const handleOpenInvitations = () => {
+    onClose();
+    onOpenInvitations?.();
+  };
+
   const handleOpenTrash = () => {
     onClose();
     onOpenTrash?.();
@@ -265,7 +270,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
 
   const account_items: MenuItem[] = [
     { label: "My profile", icon: <ProfileGlyph />, onSelect: handleOpenProfile },
-    { label: "Developers", icon: <DevelopersGlyph />, onSelect: onClose },
+    { label: "Invitations", icon: <InvitationsGlyph />, onSelect: handleOpenInvitations },
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
     { label: "Administration", icon: <AdministrationGlyph />, onSelect: handleOpenAdministration },
@@ -375,14 +380,12 @@ const DndOption: React.FC<{
   <button
     type="button"
     onClick={onSelect}
-    className={`flex items-center gap-1.5 text-[13px] transition-colors ${
-      is_active ? "text-brand-200" : "text-shell-text-muted"
-    }`}
+    className={`flex items-center gap-1.5 text-[13px] transition-colors ${is_active ? "text-brand-200" : "text-shell-text-muted"
+      }`}
   >
     <span
-      className={`flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 ${
-        is_active ? "border-brand-200" : "border-shell-text-muted"
-      }`}
+      className={`flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 ${is_active ? "border-brand-200" : "border-shell-text-muted"
+        }`}
     >
       {is_active && <span className="h-[7px] w-[7px] rounded-full bg-brand-200" />}
     </span>
