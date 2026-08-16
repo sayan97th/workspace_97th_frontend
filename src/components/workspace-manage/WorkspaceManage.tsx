@@ -26,7 +26,9 @@ import WorkspaceManageRecents from "./WorkspaceManageRecents";
 import WorkspaceManageContent from "./WorkspaceManageContent";
 import WorkspaceManagePermissions from "./WorkspaceManagePermissions";
 import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
+import TransferOwnershipModal from "./TransferOwnershipModal";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
+import type { TransferOwnershipPayload } from "@/types/workspace";
 
 type TabId = "recents" | "content" | "collaborators" | "permissions";
 
@@ -37,7 +39,7 @@ type TabDefinition = {
 };
 
 /** Which single-field/confirm dialog the "…" menu currently has open. */
-type OptionsDialog = "rename" | "change-type" | "leave" | "delete" | null;
+type OptionsDialog = "rename" | "change-type" | "transfer-ownership" | "leave" | "delete" | null;
 
 const WORKSPACE_TABS: TabDefinition[] = [
   { id: "recents", label: "Recents", Icon: ClockIcon },
@@ -57,13 +59,14 @@ const WORKSPACE_TABS: TabDefinition[] = [
  */
 const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug }) => {
   const router = useRouter();
-  const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace } =
+  const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace, transferOwnership } =
     useWorkspaceDetail(workspace_slug);
 
   const [active_tab, setActiveTab] = useState<TabId>("recents");
   const [is_options_open, setIsOptionsOpen] = useState(false);
   const [is_info_open, setIsInfoOpen] = useState(false);
   const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);
+  const [collaborators_refresh_key, setCollaboratorsRefreshKey] = useState(0);
   const options_button_ref = useRef<HTMLButtonElement>(null);
   const info_button_ref = useRef<HTMLButtonElement>(null);
 
@@ -90,6 +93,15 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
 
   const handleChangeType = async (privacy: "open" | "closed") => {
     await updateWorkspace({ privacy });
+  };
+
+  const handleTransferOwnership = async (payload: TransferOwnershipPayload) => {
+    const result = await transferOwnership(payload);
+    if (result.left) {
+      router.push("/");
+    } else {
+      setCollaboratorsRefreshKey((key) => key + 1);
+    }
   };
 
   const handleLeave = async () => {
@@ -228,6 +240,7 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
                 can_manage={can_manage_workspace}
                 onRename={() => setOpenDialog("rename")}
                 onChangeType={() => setOpenDialog("change-type")}
+                onTransferOwnership={() => setOpenDialog("transfer-ownership")}
                 onLeave={() => setOpenDialog("leave")}
                 onDelete={() => setOpenDialog("delete")}
               />
@@ -260,7 +273,9 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
         {active_tab === "recents" && <WorkspaceManageRecents workspace_slug={workspace.slug} />}
         {active_tab === "content" && <WorkspaceManageContent />}
         {active_tab === "permissions" && <WorkspaceManagePermissions />}
-        {active_tab === "collaborators" && <WorkspaceManageCollaborators workspace_slug={workspace.slug} />}
+        {active_tab === "collaborators" && (
+          <WorkspaceManageCollaborators key={collaborators_refresh_key} workspace_slug={workspace.slug} />
+        )}
       </div>
 
       <NavItemFormModal
@@ -277,6 +292,14 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
         is_open={open_dialog === "change-type"}
         initial_privacy={workspace.privacy}
         onSubmit={handleChangeType}
+        onClose={closeDialog}
+      />
+
+      <TransferOwnershipModal
+        is_open={open_dialog === "transfer-ownership"}
+        workspace_slug={workspace.slug}
+        workspace_name={workspace_name}
+        onSubmit={handleTransferOwnership}
         onClose={closeDialog}
       />
 

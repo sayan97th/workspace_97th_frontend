@@ -1,7 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
-import type { UpdateWorkspacePayload, Workspace } from "@/types/workspace";
+import type {
+  TransferOwnershipPayload,
+  TransferOwnershipResult,
+  UpdateWorkspacePayload,
+  Workspace,
+} from "@/types/workspace";
 
 export type WorkspaceDetailApi = {
   workspace: Workspace | undefined;
@@ -10,6 +15,7 @@ export type WorkspaceDetailApi = {
   updateWorkspace: (payload: UpdateWorkspacePayload) => Promise<void>;
   leaveWorkspace: () => Promise<void>;
   deleteWorkspace: () => Promise<void>;
+  transferOwnership: (payload: TransferOwnershipPayload) => Promise<TransferOwnershipResult>;
 };
 
 /**
@@ -64,7 +70,27 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     await workspaceService.deleteWorkspace(current_slug);
   }, [current_slug]);
 
-  return { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace };
+  const transferOwnership = useCallback(
+    async (payload: TransferOwnershipPayload): Promise<TransferOwnershipResult> => {
+      const result = await workspaceService.transferOwnership(current_slug, payload);
+      // Only refetch when the caller stayed on: their own role (and thus
+      // `can_manage_workspace`) may have changed. Leaving redirects the
+      // caller away instead, so there's nothing left to refresh here.
+      if (!result.left) await load();
+      return result;
+    },
+    [current_slug, load]
+  );
+
+  return {
+    workspace,
+    is_loading,
+    error,
+    updateWorkspace,
+    leaveWorkspace,
+    deleteWorkspace,
+    transferOwnership,
+  };
 }
 
 export default useWorkspaceDetail;

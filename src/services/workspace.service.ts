@@ -13,6 +13,8 @@ import type {
   WorkspaceContentPage,
   WorkspaceMember,
   WorkspaceNavNode,
+  TransferOwnershipPayload,
+  TransferOwnershipResult,
 } from "@/types/workspace";
 
 /**
@@ -55,6 +57,21 @@ export const workspaceService = {
   /** POST /api/workspaces/{slug}/leave — remove the current user from the workspace. */
   async leaveWorkspace(workspace_slug: string): Promise<void> {
     await apiClient.post(`/api/workspaces/${workspace_slug}/leave`);
+  },
+
+  /**
+   * POST /api/workspaces/{slug}/transfer-ownership, hands the "owner" role
+   * to another member and sets what happens to the current owner (a new
+   * role, or leaving the workspace) in one atomic step. Owner only.
+   */
+  async transferOwnership(
+    workspace_slug: string,
+    payload: TransferOwnershipPayload
+  ): Promise<TransferOwnershipResult> {
+    return apiClient.post<TransferOwnershipResult>(
+      `/api/workspaces/${workspace_slug}/transfer-ownership`,
+      payload
+    );
   },
 
   /** GET /api/workspaces/{slug} — a single workspace's own details (name/mono/color/role/…). */

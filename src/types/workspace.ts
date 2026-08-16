@@ -159,7 +159,25 @@ export type WorkspaceMember = {
   profile_photo_url: string | null;
   role: string | null;
   is_recent: boolean;
+  /** Id of the user who invited this member, null when unknown (e.g. the workspace's creator). */
+  invited_by: number | null;
   joined_at: string | null;
+};
+
+/** The role the current owner keeps after handing off ownership, or `"leave"` to exit the workspace entirely. */
+export type SelfRoleAfterTransfer = "member" | "viewer" | "leave";
+
+/** Payload for `POST /api/workspaces/{slug}/transfer-ownership`. */
+export type TransferOwnershipPayload = {
+  new_owner_id: number;
+  self_role: SelfRoleAfterTransfer;
+};
+
+/** Response for `POST /api/workspaces/{slug}/transfer-ownership`. */
+export type TransferOwnershipResult = {
+  message: string;
+  /** True when `self_role` was `"leave"`, meaning the caller is no longer a member. */
+  left: boolean;
 };
 
 /** A content item's creator, embedded on a {@link WorkspaceContentItem}. */

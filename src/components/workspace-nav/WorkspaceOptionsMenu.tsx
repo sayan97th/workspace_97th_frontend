@@ -1,16 +1,18 @@
 "use client";
 import React from "react";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
-import { DeleteIcon, LeaveWorkspaceIcon, RenameIcon, WorkspaceTypeIcon } from "@/icons/workspace-icons";
+import { CrownIcon, DeleteIcon, LeaveWorkspaceIcon, RenameIcon, WorkspaceTypeIcon } from "@/icons/workspace-icons";
 
 export type WorkspaceOptionsMenuProps = {
   anchor_el: HTMLElement | null;
   is_open: boolean;
   onClose: () => void;
-  /** Owner-only actions (rename / change type / delete) are hidden for non-owners. */
+  /** Owner-only actions (rename / change type / transfer ownership / delete) are hidden for non-owners. */
   can_manage: boolean;
   onRename: () => void;
   onChangeType: () => void;
+  /** Omit to hide "Transfer ownership" (e.g. compact switcher/browse contexts that don't have a member list to hand). */
+  onTransferOwnership?: () => void;
   onLeave: () => void;
   onDelete: () => void;
 };
@@ -28,6 +30,7 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
   can_manage,
   onRename,
   onChangeType,
+  onTransferOwnership,
   onLeave,
   onDelete,
 }) => {
@@ -41,6 +44,16 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
             icon: <WorkspaceTypeIcon />,
             onClick: onChangeType,
           },
+          ...(onTransferOwnership
+            ? ([
+                {
+                  key: "transfer-ownership",
+                  label: "Transfer ownership",
+                  icon: <CrownIcon />,
+                  onClick: onTransferOwnership,
+                },
+              ] satisfies AnchoredMenuItem[])
+            : []),
         ] satisfies AnchoredMenuItem[])
       : []),
     { key: "leave", label: "Leave workspace", icon: <LeaveWorkspaceIcon />, onClick: onLeave },
