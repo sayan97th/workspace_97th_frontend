@@ -16,6 +16,16 @@ export type BoardPopoverProps = {
    * flush against the left side of the Person button instead of covering Search/New item.
    */
   align?: "start" | "end";
+  /**
+   * When true, the popover's box sizes itself to its content's natural width
+   * instead of being forced to `width` — `width` still caps how wide it can
+   * grow and is what the open/clamp positioning math above plans around.
+   * EmojiPalette's react-mode picker needs this: its compact single-row
+   * quick-reaction bar is far narrower than the full searchable grid it can
+   * expand into, and forcing the full `width` onto it left a slab of empty
+   * popover background trailing off to the right of the row.
+   */
+  hug_content?: boolean;
   children: React.ReactNode;
 };
 
@@ -33,6 +43,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   onClose,
   width = 300,
   align = "end",
+  hug_content = false,
   children,
 }) => {
   const popover_ref = useRef<HTMLDivElement>(null);
@@ -120,7 +131,8 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
       ref={popover_ref}
       className="fixed z-[1000] rounded-xl border border-shell-border bg-shell-panel text-shell-text shadow-2xl shadow-black/40"
       style={{
-        width,
+        width: hug_content ? undefined : width,
+        maxWidth: width,
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
         visibility: position ? "visible" : "hidden",

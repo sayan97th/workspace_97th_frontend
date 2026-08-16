@@ -118,7 +118,14 @@ const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose
   };
 
   return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={PICKER_WIDTH} align="start">
+    <BoardPopover
+      anchor_el={anchor_el}
+      is_open={is_open}
+      onClose={onClose}
+      width={PICKER_WIDTH}
+      align="start"
+      hug_content={mode === "react"}
+    >
       <div style={themedPickerStyle} className="overflow-hidden rounded-xl p-1">
         <EmojiPicker
           className={EMOJI_SIZE_OVERRIDE_CLASS_NAME}
