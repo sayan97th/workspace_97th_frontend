@@ -1,35 +1,89 @@
+"use client";
 import React from "react";
-import { DRAWER_EMOJI_OPTIONS } from "./types";
+import EmojiPicker, { EmojiStyle, Theme, type EmojiClickData } from "emoji-picker-react";
+import BoardPopover from "../toolbar/BoardPopover";
+import { useTheme } from "@/context/ThemeContext";
 
 export type EmojiPaletteProps = {
+  anchor_el: HTMLElement | null;
+  is_open: boolean;
+  onClose: () => void;
   onPick: (emoji: string) => void;
-  /** Positions the popover above (composer/reply triggers) or below (reaction trigger) the anchor. */
-  placement?: "above" | "below";
+  /** "react" opens straight into a Slack-style single-row quick-reaction bar with a "+" to expand into the full picker; "insert" (default) opens straight into the full searchable, categorized picker. */
+  mode?: "insert" | "react";
 };
 
+const PICKER_WIDTH = 320;
+
 /**
- * Small emoji grid popover reused both for inserting an emoji into a composer/reply
- * draft and for reacting to a posted comment or reply. Must be rendered inside a
- * `position: relative` anchor (the trigger button).
+ * Maps the picker's own CSS custom properties onto this app's shell design
+ * tokens so it reads as native chrome instead of a bolted-on third-party
+ * widget, in both the light and dark theme.
  */
-const EmojiPalette: React.FC<EmojiPaletteProps> = ({ onPick, placement = "above" }) => (
-  <div
-    onClick={(event) => event.stopPropagation()}
-    className={`absolute left-0 z-[6] flex w-[236px] flex-wrap gap-[3px] rounded-xl border border-shell-border-strong bg-shell-panel p-2 shadow-[0_18px_44px_rgba(0,0,0,0.5)] ${
-      placement === "above" ? "bottom-[36px]" : "top-[38px]"
-    }`}
-  >
-    {DRAWER_EMOJI_OPTIONS.map((emoji) => (
-      <button
-        key={emoji}
-        type="button"
-        onClick={() => onPick(emoji)}
-        className="flex h-8 w-8 items-center justify-center rounded-md text-[19px] hover:bg-shell-hover-strong"
-      >
-        {emoji}
-      </button>
-    ))}
-  </div>
-);
+const themedPickerStyle = {
+  "--epr-bg-color": "var(--color-shell-panel)",
+  "--epr-dark-bg-color": "var(--color-shell-panel)",
+  "--epr-category-label-bg-color": "var(--color-shell-panel)",
+  "--epr-dark-category-label-bg-color": "var(--color-shell-panel)",
+  "--epr-text-color": "var(--color-shell-text-secondary)",
+  "--epr-dark-text-color": "var(--color-shell-text-secondary)",
+  "--epr-search-input-bg-color": "var(--color-shell-hover)",
+  "--epr-dark-search-input-bg-color": "var(--color-shell-hover)",
+  "--epr-search-input-bg-color-active": "var(--color-shell-hover-strong)",
+  "--epr-dark-search-input-bg-color-active": "var(--color-shell-hover-strong)",
+  "--epr-hover-bg-color": "var(--color-shell-hover-strong)",
+  "--epr-dark-hover-bg-color": "var(--color-shell-hover-strong)",
+  "--epr-focus-bg-color": "var(--color-shell-hover-strong)",
+  "--epr-dark-focus-bg-color": "var(--color-shell-hover-strong)",
+  "--epr-highlight-color": "#00c875",
+  "--epr-dark-highlight-color": "#00c875",
+  "--epr-category-icon-active-color": "#00c875",
+  "--epr-dark-category-icon-active-color": "#00c875",
+  "--epr-search-border-color": "#00c875",
+  "--epr-picker-border-color": "transparent",
+  "--epr-dark-picker-border-color": "transparent",
+} as React.CSSProperties;
+
+/**
+ * Anchored emoji popover reused both for inserting an emoji into a
+ * composer/reply draft and for reacting to a posted comment or reply — a
+ * themed wrapper around `emoji-picker-react`'s full, searchable, categorized
+ * picker library (thousands of emoji, skin tones, recently-used) instead of
+ * a small hand-picked grid. In `react` mode it opens in the library's
+ * built-in "Reactions" layout: a single quick-pick row plus a `+` button
+ * that expands into the same full picker, mirroring Slack/Discord's
+ * quick-react-then-expand pattern. Portals via {@link BoardPopover}, which
+ * also supplies outside-click/Escape-to-close and viewport-aware
+ * positioning — this popover no longer risks being clipped by the drawer's
+ * scroll container the way the old `position: absolute` grid could.
+ */
+const EmojiPalette: React.FC<EmojiPaletteProps> = ({ anchor_el, is_open, onClose, onPick, mode = "insert" }) => {
+  const { resolved_theme } = useTheme();
+
+  const handlePick = (data: EmojiClickData) => {
+    onPick(data.emoji);
+    onClose();
+  };
+
+  return (
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={PICKER_WIDTH} align="start">
+      <div style={themedPickerStyle} className="overflow-hidden rounded-xl p-1">
+        <EmojiPicker
+          theme={resolved_theme === "dark" ? Theme.DARK : Theme.LIGHT}
+          emojiStyle={EmojiStyle.NATIVE}
+          onEmojiClick={handlePick}
+          onReactionClick={handlePick}
+          reactionsDefaultOpen={mode === "react"}
+          allowExpandReactions
+          previewConfig={{ showPreview: false }}
+          searchPlaceholder="Search emoji"
+          width={PICKER_WIDTH - 8}
+          height={mode === "react" ? "auto" : 380}
+          lazyLoadEmojis
+        />
+      </div>
+    </BoardPopover>
+  );
+};
 
 export default EmojiPalette;

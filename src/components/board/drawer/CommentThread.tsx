@@ -8,6 +8,7 @@ import CommentComposer from "./CommentComposer";
 import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EmojiPalette from "./EmojiPalette";
+import { formatReactorNames } from "./reactionFormatting";
 import { renderMentionText } from "./renderMentionText";
 import type { DrawerComment, DrawerComposerTarget, DrawerReaction, DrawerReply } from "./types";
 
@@ -25,6 +26,7 @@ export type CommentThreadProps = {
   onSaveEditing: () => void;
   reaction_palette_id: string | null;
   onToggleReactionPalette: (id: string) => void;
+  onCloseReactionPalette: () => void;
   onToggleReaction: (comment_id: string, reply_id: string | null, emoji: string) => void;
   reply_value: string;
   onReplyChange: (value: string) => void;
@@ -34,23 +36,41 @@ export type CommentThreadProps = {
   onPickMention: (person: BoardPersonOption) => void;
   emoji_palette_target: DrawerComposerTarget | null;
   onToggleEmojiPalette: (target: DrawerComposerTarget) => void;
+  onCloseEmojiPalette: () => void;
   onInsertEmoji: (emoji: string) => void;
 };
 
-type ReactionPillsProps = {
+type ReactionsRowProps = {
   reactions: DrawerReaction[];
+  is_palette_open: boolean;
+  onToggleOpen: () => void;
+  onClosePalette: () => void;
   onToggle: (emoji: string) => void;
 };
 
-const ReactionPills: React.FC<ReactionPillsProps> = ({ reactions, onToggle }) =>
-  reactions.length === 0 ? null : (
-    <div className="mt-2.5 flex flex-wrap gap-1.5">
+/**
+ * A comment or reply's reaction pills, plus a trailing "+" that opens the
+ * same Slack-style quick-react popover as the action row's "React" trigger —
+ * only rendered once at least one reaction exists, so there's always exactly
+ * one way to open the picker (never two competing triggers). Each pill's
+ * `title` surfaces who reacted, and clicking a pill toggles the current
+ * user's own reaction for that emoji, so a comment can carry any number of
+ * different emoji, each from any number of people, at once.
+ */
+const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open, onToggleOpen, onClosePalette, onToggle }) => {
+  const add_trigger_ref = useRef<HTMLButtonElement>(null);
+
+  if (reactions.length === 0) return null;
+
+  return (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
       {reactions.map((reaction) => (
         <button
           key={reaction.emoji}
           type="button"
           onClick={() => onToggle(reaction.emoji)}
-          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold text-shell-text-secondary"
+          title={`${formatReactorNames(reaction.reactor_names)} reacted with ${reaction.emoji}`}
+          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors"
           style={{
             background: reaction.reacted_by_me ? "rgba(87,155,252,0.18)" : "var(--color-shell-hover)",
             borderColor: reaction.reacted_by_me ? "#579bfc" : "var(--color-shell-border-strong)",
@@ -60,8 +80,22 @@ const ReactionPills: React.FC<ReactionPillsProps> = ({ reactions, onToggle }) =>
           {reaction.count}
         </button>
       ))}
+      <button
+        ref={add_trigger_ref}
+        type="button"
+        onClick={onToggleOpen}
+        aria-label="Add another reaction"
+        title="Add another reaction"
+        className={`flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full border border-dashed text-shell-text-faint transition-colors hover:border-solid hover:border-shell-border-strong hover:text-shell-text-secondary hover:bg-shell-hover ${
+          is_palette_open ? "border-solid border-shell-border-strong bg-shell-hover text-shell-text-secondary" : "border-shell-border"
+        }`}
+      >
+        <ReactSmileyIcon size={13} />
+      </button>
+      <EmojiPalette anchor_el={add_trigger_ref.current} is_open={is_palette_open} onClose={onClosePalette} onPick={onToggle} mode="react" />
     </div>
   );
+};
 
 type ReplyRowProps = {
   reply: DrawerReply;
@@ -77,6 +111,7 @@ type ReplyRowProps = {
   reaction_palette_id: string | null;
   reaction_palette_key: string;
   onToggleReactionPalette: (id: string) => void;
+  onCloseReactionPalette: () => void;
   onToggleReaction: (emoji: string) => void;
 };
 
@@ -94,54 +129,73 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   reaction_palette_id,
   reaction_palette_key,
   onToggleReactionPalette,
+  onCloseReactionPalette,
   onToggleReaction,
-}) => (
-  <div className="flex gap-2.5 py-3 pl-5 pr-4">
-    <PersonAvatar person={reply.author} size={27} />
-    <div className="min-w-0 flex-1">
-      <div className="flex items-center gap-2">
-        <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
-        <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
-        {reply.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
-        {reply.author.id === current_user_id && (
-          <span className="ml-auto">
-            <CommentOptionsMenu onEdit={onStartEditing} onDelete={onDelete} kind="reply" />
-          </span>
+}) => {
+  const react_trigger_ref = useRef<HTMLButtonElement>(null);
+  const is_palette_open = reaction_palette_id === reaction_palette_key;
+
+  return (
+    <div className="flex gap-2.5 py-3 pl-5 pr-4">
+      <PersonAvatar person={reply.author} size={27} />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
+          <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
+          {reply.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
+          {reply.author.id === current_user_id && (
+            <span className="ml-auto">
+              <CommentOptionsMenu onEdit={onStartEditing} onDelete={onDelete} kind="reply" />
+            </span>
+          )}
+        </div>
+        {is_editing ? (
+          <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+        ) : (
+          <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
         )}
-      </div>
-      {is_editing ? (
-        <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
-      ) : (
-        <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
-      )}
-      <ReactionPills reactions={reply.reactions} onToggle={onToggleReaction} />
-      <div className="mt-[7px] flex items-center gap-3.5">
-        <button
-          type="button"
-          onClick={onLike}
-          className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
-          style={{ color: reply.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
-        >
-          <LikeIcon size={13} filled={reply.liked_by_me} />
-          Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
-        </button>
-        <span className="relative">
+        <ReactionsRow
+          reactions={reply.reactions}
+          is_palette_open={is_palette_open}
+          onToggleOpen={() => onToggleReactionPalette(reaction_palette_key)}
+          onClosePalette={onCloseReactionPalette}
+          onToggle={onToggleReaction}
+        />
+        <div className="mt-[7px] flex items-center gap-3.5">
           <button
             type="button"
-            onClick={() => onToggleReactionPalette(reaction_palette_key)}
-            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
+            onClick={onLike}
+            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
+            style={{ color: reply.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
           >
-            <ReactSmileyIcon size={13} />
-            React
+            <LikeIcon size={13} filled={reply.liked_by_me} />
+            Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
           </button>
-          {reaction_palette_id === reaction_palette_key && (
-            <EmojiPalette placement="above" onPick={onToggleReaction} />
+          {reply.reactions.length === 0 && (
+            <span className="relative">
+              <button
+                ref={react_trigger_ref}
+                type="button"
+                onClick={() => onToggleReactionPalette(reaction_palette_key)}
+                className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
+              >
+                <ReactSmileyIcon size={13} />
+                React
+              </button>
+              <EmojiPalette
+                anchor_el={react_trigger_ref.current}
+                is_open={is_palette_open}
+                onClose={onCloseReactionPalette}
+                onPick={onToggleReaction}
+                mode="react"
+              />
+            </span>
           )}
-        </span>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 /** One update thread card: the main comment, its replies, and an always-visible reply composer. */
 const CommentThread: React.FC<CommentThreadProps> = ({
@@ -158,6 +212,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   onSaveEditing,
   reaction_palette_id,
   onToggleReactionPalette,
+  onCloseReactionPalette,
   onToggleReaction,
   reply_value,
   onReplyChange,
@@ -167,9 +222,12 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   onPickMention,
   emoji_palette_target,
   onToggleEmojiPalette,
+  onCloseEmojiPalette,
   onInsertEmoji,
 }) => {
   const reply_composer_ref = useRef<HTMLDivElement>(null);
+  const react_trigger_ref = useRef<HTMLButtonElement>(null);
+  const is_palette_open = reaction_palette_id === comment.id;
 
   const focusReplyComposer = () => reply_composer_ref.current?.querySelector("textarea")?.focus();
 
@@ -208,7 +266,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           </div>
         )}
 
-        <ReactionPills reactions={comment.reactions} onToggle={(emoji) => onToggleReaction(comment.id, null, emoji)} />
+        <ReactionsRow
+          reactions={comment.reactions}
+          is_palette_open={is_palette_open}
+          onToggleOpen={() => onToggleReactionPalette(comment.id)}
+          onClosePalette={onCloseReactionPalette}
+          onToggle={(emoji) => onToggleReaction(comment.id, null, emoji)}
+        />
 
         <div className="mt-3 flex items-center gap-4">
           <button
@@ -220,19 +284,26 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <LikeIcon filled={comment.liked_by_me} />
             Like{comment.like_count > 0 ? ` · ${comment.like_count}` : ""}
           </button>
-          <span className="relative">
-            <button
-              type="button"
-              onClick={() => onToggleReactionPalette(comment.id)}
-              className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
-            >
-              <ReactSmileyIcon />
-              React
-            </button>
-            {reaction_palette_id === comment.id && (
-              <EmojiPalette placement="above" onPick={(emoji) => onToggleReaction(comment.id, null, emoji)} />
-            )}
-          </span>
+          {comment.reactions.length === 0 && (
+            <span className="relative">
+              <button
+                ref={react_trigger_ref}
+                type="button"
+                onClick={() => onToggleReactionPalette(comment.id)}
+                className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
+              >
+                <ReactSmileyIcon />
+                React
+              </button>
+              <EmojiPalette
+                anchor_el={react_trigger_ref.current}
+                is_open={is_palette_open}
+                onClose={onCloseReactionPalette}
+                onPick={(emoji) => onToggleReaction(comment.id, null, emoji)}
+                mode="react"
+              />
+            </span>
+          )}
           <button
             type="button"
             onClick={focusReplyComposer}
@@ -271,6 +342,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               reaction_palette_id={reaction_palette_id}
               reaction_palette_key={`${comment.id}:${reply.id}`}
               onToggleReactionPalette={onToggleReactionPalette}
+              onCloseReactionPalette={onCloseReactionPalette}
               onToggleReaction={(emoji) => onToggleReaction(comment.id, reply.id, emoji)}
             />
           ))}
@@ -292,6 +364,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onPickMention={onPickMention}
           emoji_palette_target={emoji_palette_target}
           onToggleEmojiPalette={onToggleEmojiPalette}
+          onCloseEmojiPalette={onCloseEmojiPalette}
           onInsertEmoji={onInsertEmoji}
         />
       </div>

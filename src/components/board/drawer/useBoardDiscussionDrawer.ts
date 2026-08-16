@@ -14,15 +14,21 @@ const MENTION_TRIGGER = /@([\w]*)$/;
 const insertMention = (text: string, person_name: string): string =>
   MENTION_TRIGGER.test(text) ? text.replace(MENTION_TRIGGER, `@${person_name} `) : `${text}@${person_name} `;
 
-/** Bumps (or removes) a single emoji's reaction pill, toggling whether the current user reacted with it. */
+/** Bumps (or removes) a single emoji's reaction pill, toggling whether the current user reacted with it — a comment can carry any number of these in parallel, one per distinct emoji. */
 const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReaction[] => {
   const index = reactions.findIndex((reaction) => reaction.emoji === emoji);
-  if (index === -1) return [...reactions, { emoji, count: 1, reacted_by_me: true }];
+  if (index === -1) return [...reactions, { emoji, count: 1, reacted_by_me: true, reactor_names: ["You"] }];
   const current = reactions[index];
-  const next_count = current.count + (current.reacted_by_me ? -1 : 1);
+  const next_reacted_by_me = !current.reacted_by_me;
+  const next_count = current.count + (next_reacted_by_me ? 1 : -1);
   if (next_count <= 0) return reactions.filter((_, existing_index) => existing_index !== index);
+  const next_reactor_names = next_reacted_by_me
+    ? [...current.reactor_names, "You"]
+    : current.reactor_names.filter((name) => name !== "You");
   return reactions.map((reaction, existing_index) =>
-    existing_index === index ? { ...reaction, count: next_count, reacted_by_me: !current.reacted_by_me } : reaction
+    existing_index === index
+      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names }
+      : reaction
   );
 };
 
@@ -71,6 +77,7 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
 
   reaction_palette_id: string | null;
   toggleReactionPalette: (id: string) => void;
+  closeReactionPalette: () => void;
   toggleReaction: (comment_id: string, reply_id: string | null, emoji: string) => void;
 
   toggleLike: (comment_id: string, reply_id?: string) => void;
@@ -252,6 +259,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   };
 
   const toggleReactionPalette = (id: string) => setReactionPaletteId((current) => (current === id ? null : id));
+  const closeReactionPalette = () => setReactionPaletteId(null);
 
   /** Applies (or reverts, by calling it again) the local reaction toggle for a comment or reply. */
   const applyReactionToggle = (comment_id: string, reply_id: string | null, emoji: string) =>
@@ -438,6 +446,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
     reaction_palette_id,
     toggleReactionPalette,
+    closeReactionPalette,
     toggleReaction,
 
     toggleLike,

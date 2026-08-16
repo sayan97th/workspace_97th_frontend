@@ -78,6 +78,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           onPickMention={drawer.pickMention}
           emoji_palette_target={drawer.emoji_palette_target}
           onToggleEmojiPalette={drawer.toggleEmojiPalette}
+          onCloseEmojiPalette={drawer.closeEmojiPalette}
           onInsertEmoji={drawer.insertEmoji}
           attachments={drawer.composer_attachments}
           onAddFiles={drawer.addComposerAttachments}
@@ -126,6 +127,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             onSaveEditing={drawer.saveEditedComment}
             reaction_palette_id={drawer.reaction_palette_id}
             onToggleReactionPalette={drawer.toggleReactionPalette}
+            onCloseReactionPalette={drawer.closeReactionPalette}
             onToggleReaction={drawer.toggleReaction}
             reply_value={drawer.reply_text_by_comment[comment.id] ?? ""}
             onReplyChange={(value) => drawer.onReplyTextChange(comment.id, value)}
@@ -135,6 +137,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             onPickMention={drawer.pickMention}
             emoji_palette_target={drawer.emoji_palette_target}
             onToggleEmojiPalette={drawer.toggleEmojiPalette}
+            onCloseEmojiPalette={drawer.closeEmojiPalette}
             onInsertEmoji={drawer.insertEmoji}
           />
         ))}

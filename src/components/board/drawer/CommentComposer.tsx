@@ -24,6 +24,7 @@ export type CommentComposerProps = {
   onPickMention: (person: BoardPersonOption) => void;
   emoji_palette_target: DrawerComposerTarget | null;
   onToggleEmojiPalette: (target: DrawerComposerTarget) => void;
+  onCloseEmojiPalette: () => void;
   onInsertEmoji: (emoji: string) => void;
   attachments?: DrawerAttachment[];
   onAddFiles?: (files: File[]) => void;
@@ -48,12 +49,14 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   onPickMention,
   emoji_palette_target,
   onToggleEmojiPalette,
+  onCloseEmojiPalette,
   onInsertEmoji,
   attachments = [],
   onAddFiles,
   onRemoveAttachment,
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
+  const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_update = variant === "update";
   const has_draft = value.trim().length > 0;
   const show_mention_picker = mention_target === target && mention_matches.length > 0;
@@ -79,13 +82,20 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             <div className="flex items-center gap-1">
               <span className="relative">
                 <button
+                  ref={emoji_trigger_ref}
                   type="button"
                   onClick={() => onToggleEmojiPalette(target)}
                   className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                 >
                   <ReactSmileyIcon size={is_update ? 17 : 16} />
                 </button>
-                {show_emoji_palette && <EmojiPalette onPick={onInsertEmoji} />}
+                <EmojiPalette
+                  anchor_el={emoji_trigger_ref.current}
+                  is_open={show_emoji_palette}
+                  onClose={onCloseEmojiPalette}
+                  onPick={onInsertEmoji}
+                  mode="insert"
+                />
               </span>
               {is_update && onAddFiles && (
                 <>

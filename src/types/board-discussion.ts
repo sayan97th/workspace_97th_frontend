@@ -17,6 +17,7 @@ export type BoardDiscussionCommentReactionDto = {
   emoji: string;
   count: number;
   reacted_by_me: boolean;
+  reactor_names: string[];
 };
 
 export type BoardDiscussionCommentAttachmentDto = {

@@ -5,6 +5,8 @@ export type DrawerReaction = {
   emoji: string;
   count: number;
   reacted_by_me: boolean;
+  /** Display names of everyone who reacted with this emoji (the current user shows as "You") — powers the pill's hover tooltip. */
+  reactor_names: string[];
 };
 
 export type DrawerAttachmentTag = "PDF" | "DOC" | "XLS" | "IMG" | "PPT" | "FILE";
@@ -147,6 +149,7 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
 
   reaction_palette_id: string | null;
   toggleReactionPalette: (id: string) => void;
+  closeReactionPalette: () => void;
   toggleReaction: (comment_id: string, reply_id: string | null, emoji: string) => void;
 
   toggleLike: (comment_id: string, reply_id?: string) => void;
@@ -164,8 +167,3 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   cancelEditingComment: () => void;
   saveEditedComment: () => void;
 };
-
-/** Emoji options offered by every insert/react palette in the drawer. */
-export const DRAWER_EMOJI_OPTIONS: string[] = [
-  "👍", "❤️", "😄", "🎉", "😍", "😂", "🙏", "🔥", "👀", "✅", "💯", "🚀",
-];
