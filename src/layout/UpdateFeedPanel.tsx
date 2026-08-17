@@ -4,6 +4,7 @@ import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import SlideOverDrawer from "./SlideOverDrawer";
 import UpdateFeedCard from "./UpdateFeedCard";
+import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import {
   BookmarkIcon,
   ChatBubbleIcon,
@@ -13,13 +14,10 @@ import {
   MentionIcon,
 } from "@/icons/workspace-icons";
 import {
-  feed_board_filters,
   feed_default_board_filter,
   feed_helper_prompt,
   update_feed_default_tab,
   update_feed_tabs,
-  workspace_feed_updates,
-  type FeedUpdate,
   type UpdateFeedTab,
   type UpdateFeedTabId,
 } from "@/data/update-feed-data";
@@ -27,7 +25,6 @@ import {
 type UpdateFeedPanelProps = {
   is_open: boolean;
   onClose: () => void;
-  updates?: FeedUpdate[];
 };
 
 /** Which read state the feed list is filtered to. */
@@ -45,46 +42,27 @@ const renderTabIcon = (tab: UpdateFeedTab) => {
   return null;
 };
 
-/** Keeps an update only when it matches the currently active tab. */
-const matchesTab = (update: FeedUpdate, tab: UpdateFeedTabId): boolean => {
-  if (tab === "all") return true;
-  return update.categories.includes(tab);
-};
-
-/** Keeps an update only when it belongs to the selected board filter. */
-const matchesBoard = (update: FeedUpdate, board_id: string): boolean => {
-  if (board_id === feed_default_board_filter) return true;
-  const board = feed_board_filters.find((entry) => entry.id === board_id);
-  return board ? update.breadcrumb.crumbs[0] === board.name : true;
-};
-
 /**
  * Wide update-feed drawer opened from the AppTopBar feed button. A left sidebar
  * filters by board while the content pane shows the "All updates",
  * "I was mentioned", "Bookmarked", "All account" and "Scheduled" tabs, a
- * read-state filter and the feed cards. Presentation only — data is injected so
- * it can be wired to the API later.
+ * read-state filter and the feed cards. Backed by real `BoardItemComment`/
+ * `BoardComment` rows via {@link useFeedUpdates}, kept live over the
+ * `feed.{user_id}` Reverb channel.
  */
-const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
-  is_open,
-  onClose,
-  updates = workspace_feed_updates,
-}) => {
+const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) => {
   const [active_tab, setActiveTab] =
     useState<UpdateFeedTabId>(update_feed_default_tab);
   const [active_board, setActiveBoard] = useState(feed_default_board_filter);
-  const [read_filter, setReadFilter] = useState<FeedReadFilter>("unread");
+  const [read_filter, setReadFilter] = useState<FeedReadFilter>("all");
   const [is_filter_open, setIsFilterOpen] = useState(false);
 
+  const { updates, boards, bookmarkUpdate, likeUpdate, replyToUpdate, scheduleReply, markSeen } =
+    useFeedUpdates({ tab: active_tab, board_id: active_board });
+
   const visible_updates = useMemo(
-    () =>
-      updates.filter(
-        (update) =>
-          matchesTab(update, active_tab) &&
-          matchesBoard(update, active_board) &&
-          (read_filter === "all" || update.is_unread)
-      ),
-    [updates, active_tab, active_board, read_filter]
+    () => updates.filter((update) => read_filter === "all" || update.is_unread),
+    [updates, read_filter]
   );
 
   const selectReadFilter = (value: FeedReadFilter) => {
@@ -132,7 +110,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
             </button>
           </div>
 
-          {feed_board_filters.map((board) => {
+          {boards.map((board) => {
             const is_active = board.id === active_board;
             return (
               <button
@@ -237,7 +215,15 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({
           ) : (
             <div className="flex flex-col gap-5">
               {visible_updates.map((update) => (
-                <UpdateFeedCard key={update.id} update={update} />
+                <UpdateFeedCard
+                  key={update.id}
+                  update={update}
+                  onLike={likeUpdate}
+                  onBookmark={bookmarkUpdate}
+                  onReply={replyToUpdate}
+                  onSchedule={scheduleReply}
+                  onMarkSeen={markSeen}
+                />
               ))}
             </div>
           )}

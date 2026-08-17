@@ -16,6 +16,7 @@ import InviteMembersModal, {
 import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
 import { invitationService } from "@/services/invitation.service";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TrashModal, type TrashTabId } from "@/components/trash";
@@ -45,6 +46,7 @@ const AppTopBar: React.FC = () => {
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const { notifications, unread_count, selectNotification } = useNotifications();
+  const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all" });
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -199,9 +201,11 @@ const AppTopBar: React.FC = () => {
           aria-expanded={is_feed_open}
         >
           <FeedIcon size={17} />
-          <span className="absolute right-0.5 top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-lg border-[1.5px] border-shell-surface bg-brand-500 px-[3px] text-[9.5px] font-bold text-white">
-            8
-          </span>
+          {feed_unread_count > 0 && (
+            <span className="absolute right-0.5 top-0.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-lg border-[1.5px] border-shell-surface bg-brand-500 px-[3px] text-[9.5px] font-bold text-white">
+              {feed_unread_count > 99 ? "99+" : feed_unread_count}
+            </span>
+          )}
         </button>
 
         <button
