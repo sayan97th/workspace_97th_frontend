@@ -11,6 +11,8 @@ export type { BoardViewIconOption } from "./boardViewIcons";
 export { default as BoardToolbar } from "./BoardToolbar";
 export type { BoardToolbarProps } from "./BoardToolbar";
 export { default as BoardTable } from "./BoardTable";
+export { default as SelectionActionBar } from "./SelectionActionBar";
+export type { SelectionActionBarProps, SelectionActionBarAction } from "./SelectionActionBar";
 export { default as AddColumnMenu } from "./AddColumnMenu";
 export type { AddColumnMenuProps } from "./AddColumnMenu";
 export {

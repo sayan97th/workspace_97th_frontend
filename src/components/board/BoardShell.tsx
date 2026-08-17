@@ -8,6 +8,12 @@ export type BoardShellProps = {
   tabs: BoardViewTabsProps;
   /** Typically a <BoardToolbar toolbar={...} />; kept as a node so BoardShell itself stays non-generic. */
   toolbar?: React.ReactNode;
+  /**
+   * Typically a <SelectionActionBar .../>, shown while one or more rows are
+   * checked. Floats bottom-center over the body, outside its scroll
+   * container, so it stays put while the table scrolls underneath it.
+   */
+  selectionBar?: React.ReactNode;
   /** The board table (or any scrollable board body). */
   children: React.ReactNode;
 };
@@ -16,8 +22,8 @@ export type BoardShellProps = {
  * Full board layout shell: dark surface, fixed header/tabs/toolbar and a single
  * scrollable body region. Reused by every board view (Client Hub and beyond).
  */
-const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, children }) => (
-  <div className="flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
+const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectionBar, children }) => (
+  <div className="relative flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
     <div className="flex-none px-6 pt-4">
       <BoardHeader {...header} />
       <div className="mt-3.5">
@@ -32,6 +38,12 @@ const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, children
     <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-6 pb-20 pt-0.5">
       {children}
     </div>
+
+    {selectionBar && (
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-6">
+        <div className="pointer-events-auto">{selectionBar}</div>
+      </div>
+    )}
   </div>
 );
 

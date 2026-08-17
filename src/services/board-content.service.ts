@@ -134,6 +134,33 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}`);
   },
 
+  /** POST /api/boards/{board_id}/items/duplicate — selection action bar's "Duplicate". */
+  async duplicateItems(board_id: number, item_ids: number[]): Promise<BoardItemDto[]> {
+    const response = await apiClient.post<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/duplicate`, {
+      item_ids,
+    });
+    return response.items;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/move — selection action bar's "Move to". */
+  async moveItems(board_id: number, item_ids: number[], group_id: number): Promise<BoardItemDto[]> {
+    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/move`, {
+      item_ids,
+      group_id,
+    });
+    return response.items;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/archive — selection action bar's "Archive". */
+  async archiveItems(board_id: number, item_ids: number[]): Promise<void> {
+    await apiClient.patch(`/api/boards/${board_id}/items/archive`, { item_ids });
+  },
+
+  /** DELETE /api/boards/{board_id}/items — selection action bar's "Delete", the bulk counterpart of {@link deleteItem}. */
+  async deleteItems(board_id: number, item_ids: number[]): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/items`, { item_ids });
+  },
+
   /** GET /api/boards/{board_id}/views — the board's tabs + the viewer's personal tab order, if saved. */
   async getViews(board_id: number): Promise<BoardViewsIndexDto> {
     const response = await apiClient.get<{ data: BoardViewDto[]; personal_order: number[] | null }>(

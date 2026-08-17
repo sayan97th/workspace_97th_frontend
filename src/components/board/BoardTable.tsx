@@ -17,13 +17,22 @@ const ROW_STICKY_BG = "var(--color-shell-bg)";
 const STICKY_BOX_SHADOW = "1px 0 0 var(--color-shell-border-strong)";
 /** Background of the row whose detail drawer is open — a green-tinted mix over the row surface, reactive to the active theme. */
 const SELECTED_ROW_BG = "color-mix(in srgb, var(--color-shell-panel-alt) 78%, var(--color-success-500) 22%)";
+/** Background of a row checked for the selection action bar — a blue-tinted mix matching the checkbox's own accent, reactive to the active theme. Takes priority over {@link SELECTED_ROW_BG} when both apply. */
+const CHECKBOX_SELECTED_ROW_BG = "color-mix(in srgb, var(--color-shell-panel-alt) 84%, #0073ea 16%)";
 
-const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean }> = ({ borderColor = "var(--color-shell-border-strong)", checked }) => (
+const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean; partial?: boolean; onClick?: (event: React.MouseEvent) => void }> = ({
+  borderColor = "var(--color-shell-border-strong)",
+  checked,
+  partial,
+  onClick,
+}) => (
   <span
+    onClick={onClick}
     className="flex h-[15px] w-[15px] flex-none cursor-pointer items-center justify-center rounded"
-    style={checked ? { background: "#0073ea" } : { border: `1.5px solid ${borderColor}` }}
+    style={checked || partial ? { background: "#0073ea" } : { border: `1.5px solid ${borderColor}` }}
   >
     {checked && <CheckIcon size={10} className="text-white" />}
+    {partial && !checked && <span className="h-[2px] w-[7px] rounded-full bg-white" />}
   </span>
 );
 
@@ -121,6 +130,9 @@ function BoardTable<TRow>({
   cellColors = {},
   onRowClick,
   selectedRowId = null,
+  selectedRowIds,
+  onToggleRowSelection,
+  onToggleGroupSelection,
   onAddItem,
   addingItemGroupId = null,
   onSubmitNewItem,
@@ -191,6 +203,11 @@ function BoardTable<TRow>({
       {groups.map((group) => {
         const is_expanded = !collapsed_group_ids[group.id];
         const is_empty = group.rows.length === 0;
+        const selected_row_count = selectedRowIds
+          ? group.rows.filter((row) => selectedRowIds.has(getRowId(row))).length
+          : 0;
+        const is_group_fully_selected = !is_empty && selected_row_count === group.rows.length;
+        const is_group_partially_selected = selected_row_count > 0 && !is_group_fully_selected;
 
         return (
           <div key={group.id}>
@@ -263,7 +280,19 @@ function BoardTable<TRow>({
                       ...(checkboxPinStyle ? { background: HEADER_STICKY_BG } : {}),
                     }}
                   >
-                    <BoardCheckbox borderColor="var(--color-shell-border-strong)" />
+                    <BoardCheckbox
+                      borderColor="var(--color-shell-border-strong)"
+                      checked={is_group_fully_selected}
+                      partial={is_group_partially_selected}
+                      onClick={
+                        onToggleGroupSelection
+                          ? (event) => {
+                              event.stopPropagation();
+                              onToggleGroupSelection(group.id);
+                            }
+                          : undefined
+                      }
+                    />
                   </div>
                   {columns.map((column) => {
                     const is_renamable = Boolean(onRenameColumn) && column.renamable !== false;
@@ -358,8 +387,11 @@ function BoardTable<TRow>({
                 {/* Rows */}
                 {group.rows.map((row) => {
                   const row_id = getRowId(row);
-                  const is_selected = selectedRowId === row_id;
-                  const row_background = rowColors[row_id] ?? (is_selected ? SELECTED_ROW_BG : undefined);
+                  const is_drawer_open = selectedRowId === row_id;
+                  const is_checkbox_selected = selectedRowIds?.has(row_id) ?? false;
+                  const row_background =
+                    rowColors[row_id] ??
+                    (is_checkbox_selected ? CHECKBOX_SELECTED_ROW_BG : is_drawer_open ? SELECTED_ROW_BG : undefined);
                   const row_cell_colors = cellColors[row_id];
                   return (
                     <div
@@ -383,7 +415,10 @@ function BoardTable<TRow>({
                           ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
                         }}
                       >
-                        <BoardCheckbox checked={is_selected} />
+                        <BoardCheckbox
+                          checked={is_checkbox_selected}
+                          onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
+                        />
                       </div>
                       {columns.map((column) => {
                         const cell_background = row_cell_colors?.[column.id];

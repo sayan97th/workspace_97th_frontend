@@ -77,6 +77,17 @@ export type BoardTableProps<TRow> = {
   onRowClick?: (row: TRow) => void;
   /** Row-id of the row whose detail is currently open (e.g. in a {@link BoardItemDrawer}); it's painted with a highlight background and a checked checkbox. */
   selectedRowId?: string | null;
+  /**
+   * Row-ids checked for bulk actions (independent of {@link selectedRowId},
+   * which tracks the single row whose drawer is open) — drives each row's
+   * checkbox and a blue selection highlight. Omit to keep every row's
+   * checkbox display-only.
+   */
+  selectedRowIds?: Set<string>;
+  /** Clicking a row's own checkbox toggles its membership in {@link selectedRowIds}. */
+  onToggleRowSelection?: (row_id: string) => void;
+  /** Clicking a table's header checkbox toggles every one of that group's (currently visible) rows in/out of {@link selectedRowIds} at once. */
+  onToggleGroupSelection?: (group_id: string) => void;
   /** Clicking the group's static "+ Add item" footer opens its inline input (see {@link addingItemGroupId}). Omit to keep the footer display-only. */
   onAddItem?: (group_id: string) => void;
   /** Group id whose "+ Add item" footer is currently showing its inline text input instead of the static label. */

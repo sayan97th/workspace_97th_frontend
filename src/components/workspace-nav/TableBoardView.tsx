@@ -27,6 +27,7 @@ import {
   KanbanCardMembers,
   KanbanItemDrawer,
   PersonAvatarStack,
+  SelectionActionBar,
   useBoardDiscussionDrawer,
   useBoardItemDrawer,
   useBoardToolbar,
@@ -45,11 +46,26 @@ import {
   type BoardSortOption,
   type BoardToolbarConfig,
   type BoardViewKind,
+  type SelectionActionBarAction,
 } from "@/components/board";
-import { AttachmentIcon, CalendarViewIcon, CheckIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
-import { ChevronRightIcon, FolderIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import { AttachmentIcon, CalendarViewIcon, CheckIcon, DownloadIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
+import {
+  AiSummaryIcon,
+  AppsGridIcon,
+  ArchiveIcon,
+  ChevronRightIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  FolderIcon,
+  MoreDotsIcon,
+  MoveToIcon,
+  RefreshIcon,
+} from "@/icons/workspace-icons";
+import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
+import { downloadCsv } from "@/lib/csv-export";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import type {
@@ -339,6 +355,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
+
+  // ── Selection action bar — row checkboxes, independent of the drawer's own `selectedRowId` ──
+  const [selected_item_ids, setSelectedItemIds] = useState<Set<number>>(() => new Set());
+  const [move_to_anchor_el, setMoveToAnchorEl] = useState<HTMLButtonElement | null>(null);
+  const [is_bulk_delete_confirm_open, setIsBulkDeleteConfirmOpen] = useState(false);
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
@@ -857,6 +878,125 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, initial_open_item_id]);
 
+  // ── Selection action bar — bulk actions over the rows checked in the table's checkbox gutter ──
+  const toggleItemSelection = (row_id: string) => {
+    const id = Number(row_id);
+    setSelectedItemIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  // Toggles every *currently visible* row of one table (respecting the toolbar's active search/filters), not the group's full row set.
+  const toggleGroupSelection = (group_id: string) => {
+    const group_row_ids = (toolbar.groups.find((g) => g.id === group_id)?.rows ?? []).map((row) => row.id);
+    setSelectedItemIds((current) => {
+      const all_selected = group_row_ids.length > 0 && group_row_ids.every((id) => current.has(id));
+      const next = new Set(current);
+      group_row_ids.forEach((id) => (all_selected ? next.delete(id) : next.add(id)));
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedItemIds(new Set());
+
+  // BoardTable's row ids are strings (`getRowId`); `selected_item_ids` itself stays numeric so bulk API calls don't need to re-parse it.
+  const selected_item_ids_as_strings = useMemo(
+    () => new Set(Array.from(selected_item_ids, String)),
+    [selected_item_ids]
+  );
+
+  const handleBulkDuplicate = async () => {
+    if (selected_item_ids.size === 0) return;
+    const created = await boardContentService.duplicateItems(board_id, Array.from(selected_item_ids));
+    setItems((current) => [...current, ...created]);
+    clearSelection();
+  };
+
+  const handleBulkArchive = async () => {
+    if (selected_item_ids.size === 0) return;
+    const archived_ids = new Set(selected_item_ids);
+    await boardContentService.archiveItems(board_id, Array.from(archived_ids));
+    setItems((current) => current.filter((existing_item) => !archived_ids.has(existing_item.id)));
+    if (drawer.open_row_id && archived_ids.has(Number(drawer.open_row_id))) handleDrawerClose();
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const deleted_ids = new Set(selected_item_ids);
+    await boardContentService.deleteItems(board_id, Array.from(deleted_ids));
+    setItems((current) => current.filter((existing_item) => !deleted_ids.has(existing_item.id)));
+    if (drawer.open_row_id && deleted_ids.has(Number(drawer.open_row_id))) handleDrawerClose();
+    clearSelection();
+    setIsBulkDeleteConfirmOpen(false);
+  };
+
+  const handleBulkMove = async (target_group_id: number) => {
+    setMoveToAnchorEl(null);
+    if (selected_item_ids.size === 0) return;
+    const moved = await boardContentService.moveItems(board_id, Array.from(selected_item_ids), target_group_id);
+    const moved_by_id = new Map(moved.map((moved_item) => [moved_item.id, moved_item]));
+    setItems((current) => current.map((existing_item) => moved_by_id.get(existing_item.id) ?? existing_item));
+    clearSelection();
+  };
+
+  // Client-side CSV export — the checked rows' visible column values, formatted the same way the toolbar's own search reads them.
+  const handleBulkExport = () => {
+    const export_columns = board_columns.filter((column) => column.id !== ITEM_COLUMN_ID && column.id !== CHAT_COLUMN_ID);
+    const selected_rows = items.filter((existing_item) => selected_item_ids.has(existing_item.id));
+    const headers = [item_column_label, ...export_columns.map((column) => column.full_label ?? column.label)];
+    const rows = selected_rows.map((row) => [row.name, ...export_columns.map((column) => getColumnText(row, column.id))]);
+    const file_slug = node.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "board";
+    downloadCsv(`${file_slug}-export.csv`, headers, rows);
+  };
+
+  const move_to_menu_items: AnchoredMenuItem[] = groups.map((group) => ({
+    key: String(group.id),
+    label: group.name,
+    icon: <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: group.accent_color }} />,
+    onClick: () => void handleBulkMove(group.id),
+  }));
+
+  const selection_bar_actions: SelectionActionBarAction[] = [
+    { key: "duplicate", label: "Duplicate", icon: <DuplicateIcon size={16} />, onClick: () => void handleBulkDuplicate() },
+    { key: "export", label: "Export", icon: <DownloadIcon size={16} />, onClick: handleBulkExport },
+    { key: "archive", label: "Archive", icon: <ArchiveIcon size={16} />, onClick: () => void handleBulkArchive() },
+    {
+      key: "delete",
+      label: "Delete",
+      icon: <DeleteIcon size={16} />,
+      danger: true,
+      onClick: () => setIsBulkDeleteConfirmOpen(true),
+    },
+    {
+      key: "convert",
+      label: "Convert",
+      icon: <RefreshIcon size={16} />,
+      disabled: true,
+      disabled_reason: "Coming soon",
+      onClick: () => {},
+    },
+    { key: "move-to", label: "Move to", icon: <MoveToIcon size={16} />, onClick: (anchor_el) => setMoveToAnchorEl(anchor_el) },
+    {
+      key: "sidekick",
+      label: "Sidekick",
+      icon: <AiSummaryIcon size={16} />,
+      disabled: true,
+      disabled_reason: "Coming soon",
+      onClick: () => {},
+    },
+    {
+      key: "apps",
+      label: "Apps",
+      icon: <AppsGridIcon size={16} />,
+      disabled: true,
+      disabled_reason: "Coming soon",
+      onClick: () => {},
+    },
+  ];
+
   const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
     if (column.id === ITEM_COLUMN_ID) {
       if (editing_item_id === row.id) {
@@ -1344,6 +1484,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
         )
       }
+      selectionBar={
+        active_view_type === "table" && selected_item_ids.size > 0 ? (
+          <SelectionActionBar
+            selected_count={selected_item_ids.size}
+            item_noun={item_column_label}
+            actions={selection_bar_actions}
+            onClose={clearSelection}
+          />
+        ) : undefined
+      }
     >
       {view_tabs.is_dirty && (
         <div className="mb-3 flex items-center gap-2">
@@ -1479,6 +1629,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           cellColors={toolbar.cell_colors}
           onRowClick={handleRowClick}
           selectedRowId={drawer.open_row_id}
+          selectedRowIds={selected_item_ids_as_strings}
+          onToggleRowSelection={toggleItemSelection}
+          onToggleGroupSelection={toggleGroupSelection}
           onAddItem={handleOpenAddItem}
           addingItemGroupId={adding_item_group_id}
           onSubmitNewItem={handleSubmitNewItem}
@@ -1560,6 +1713,26 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       <BoardDiscussionDrawer drawer={discussion_drawer} />
+
+      <AnchoredMenu
+        anchor_el={move_to_anchor_el}
+        is_open={move_to_anchor_el !== null}
+        onClose={() => setMoveToAnchorEl(null)}
+        title="Move to table"
+        items={move_to_menu_items}
+        width={220}
+        align="end"
+      />
+
+      <ConfirmActionModal
+        is_open={is_bulk_delete_confirm_open}
+        title={`Delete ${selected_item_ids.size} ${item_column_label}${selected_item_ids.size > 1 ? "s" : ""}?`}
+        description="This can't be undone from here. Deleted items are removed from every table view."
+        confirm_label="Delete"
+        danger
+        onConfirm={handleBulkDelete}
+        onClose={() => setIsBulkDeleteConfirmOpen(false)}
+      />
     </BoardShell>
   );
 };

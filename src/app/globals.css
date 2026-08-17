@@ -205,6 +205,20 @@
   --color-shell-scrollbar-thumb: rgba(255, 255, 255, 0.12);
 }
 
+/* Entrance animation for the board table's floating selection action bar
+   (`SelectionActionBar`) — a short rise + fade so it reads as appearing
+   rather than popping in when the first row checkbox is checked. */
+@keyframes selection-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* Workspace shell (sidebar + dropdown menus) scrollbar and controls.
    Thumb color comes from --color-shell-scrollbar-thumb, which is themed
    alongside the other shell-* tokens above (light default, dark override),
