@@ -130,7 +130,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
           {breadcrumb.crumbs.map((crumb, index) => {
             const is_last = index === breadcrumb.crumbs.length - 1;
             return (
-              <React.Fragment key={crumb}>
+              <React.Fragment key={`${crumb}-${index}`}>
                 <span className={is_last ? "font-medium text-shell-text-secondary" : ""}>
                   {crumb}
                 </span>
