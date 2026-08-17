@@ -43,10 +43,10 @@ const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
     <div
       role="toolbar"
       aria-label="Selected rows"
-      className="flex items-center gap-1 rounded-2xl border border-white/[0.08] bg-[#132323] py-2 pl-4 pr-2 text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.55)] backdrop-blur-sm animate-[selection-bar-in_0.16s_ease-out]"
+      className="flex items-center gap-1 rounded-2xl border border-shell-border-strong bg-shell-panel py-2 pl-4 pr-2 text-shell-text shadow-2xl shadow-black/40 backdrop-blur-sm animate-[selection-bar-in_0.16s_ease-out]"
     >
       <div className="flex items-center gap-2 pr-3">
-        <span className="flex h-6 min-w-6 flex-none items-center justify-center rounded-full bg-[#0073ea] px-1.5 text-[12px] font-bold">
+        <span className="flex h-6 min-w-6 flex-none items-center justify-center rounded-full bg-[#0073ea] px-1.5 text-[12px] font-bold text-white">
           {selected_count}
         </span>
         <span className="whitespace-nowrap text-[13px] font-semibold">
@@ -55,7 +55,7 @@ const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         </span>
       </div>
 
-      <span className="h-7 w-px flex-none bg-white/10" aria-hidden="true" />
+      <span className="h-7 w-px flex-none bg-shell-border-strong" aria-hidden="true" />
 
       <div className="flex items-center gap-0.5 px-1">
         {actions.map((action) => (
@@ -69,16 +69,16 @@ const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
               action.disabled
                 ? "cursor-default opacity-35"
                 : action.danger
-                  ? "cursor-pointer hover:bg-red-500/[0.14]"
-                  : "cursor-pointer hover:bg-white/[0.08]"
+                  ? "cursor-pointer hover:bg-error-500/[0.12]"
+                  : "cursor-pointer hover:bg-shell-hover"
             }`}
           >
-            <span className={action.danger && !action.disabled ? "text-red-400" : "text-white/85"}>
+            <span className={action.danger && !action.disabled ? "text-error-400" : "text-shell-text-secondary"}>
               {action.icon}
             </span>
             <span
               className={`text-[10.5px] font-medium leading-none ${
-                action.danger && !action.disabled ? "text-red-400" : "text-white/70"
+                action.danger && !action.disabled ? "text-error-400" : "text-shell-text-muted"
               }`}
             >
               {action.label}
@@ -87,14 +87,14 @@ const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         ))}
       </div>
 
-      <span className="h-7 w-px flex-none bg-white/10" aria-hidden="true" />
+      <span className="h-7 w-px flex-none bg-shell-border-strong" aria-hidden="true" />
 
       <button
         type="button"
         onClick={onClose}
         aria-label="Clear selection"
         title="Clear selection"
-        className="ml-1 flex h-7 w-7 flex-none items-center justify-center rounded-lg text-white/60 transition-colors hover:bg-white/[0.08] hover:text-white"
+        className="ml-1 flex h-7 w-7 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
       >
         <CloseIcon size={13} />
       </button>
