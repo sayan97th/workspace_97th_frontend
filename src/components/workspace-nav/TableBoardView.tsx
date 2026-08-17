@@ -885,12 +885,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     }
 
     if (column.id === CHAT_COLUMN_ID) {
-      if (!row.comment_count) return null;
+      const has_comments = row.comment_count > 0;
       return (
-        <span className="flex items-center gap-[3px] text-[11px] font-semibold text-shell-text-muted">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleRowClick(row);
+          }}
+          aria-label={has_comments ? `${row.comment_count} comments, open item` : "Open item comments"}
+          title={has_comments ? `${row.comment_count} comments` : "Comments"}
+          className={`flex items-center gap-[3px] rounded-[4px] px-1 py-1 text-[11px] font-semibold transition-colors hover:bg-shell-hover ${
+            has_comments ? "text-shell-text-muted" : "text-shell-text-faint"
+          }`}
+        >
           <RowChatIcon />
-          {row.comment_count}
-        </span>
+          {has_comments && row.comment_count}
+        </button>
       );
     }
 

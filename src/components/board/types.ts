@@ -73,7 +73,7 @@ export type BoardTableProps<TRow> = {
   rowColors?: Record<string, string>;
   /** Row-id → column-id → background color, from the toolbar's Conditional coloring rules (scope "cell"). */
   cellColors?: Record<string, Record<string, string>>;
-  /** Opens a row's detail (e.g. a {@link BoardItemDrawer}) when the row body is clicked. */
+  /** Opens a row's detail (e.g. a {@link BoardItemDrawer}) when the row body is clicked; the checkbox gutter is exempt (see the checkbox cell's own click handler) so it never triggers this. */
   onRowClick?: (row: TRow) => void;
   /** Row-id of the row whose detail is currently open (e.g. in a {@link BoardItemDrawer}); it's painted with a highlight background and a checked checkbox. */
   selectedRowId?: string | null;

@@ -373,7 +373,9 @@ function BoardTable<TRow>({
                         ...(row_background ? { background: row_background } : {}),
                       }}
                     >
+                      {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. */}
                       <div
+                        onClick={(event) => event.stopPropagation()}
                         className="flex flex-none items-center justify-center border-r border-shell-border"
                         style={{
                           width: CHECKBOX_WIDTH,
