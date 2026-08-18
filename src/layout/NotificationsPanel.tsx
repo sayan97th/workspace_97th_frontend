@@ -36,10 +36,9 @@ const matchesQuery = (
 ): boolean => {
   if (!query) return true;
   const needle = query.toLowerCase();
-  return (
-    notification.actor.name.toLowerCase().includes(needle) ||
-    notification.board.name.toLowerCase().includes(needle)
-  );
+  const actor_name = notification.actor.name?.toLowerCase() ?? "";
+  const board_name = notification.board.name?.toLowerCase() ?? "";
+  return actor_name.includes(needle) || board_name.includes(needle);
 };
 
 /**
