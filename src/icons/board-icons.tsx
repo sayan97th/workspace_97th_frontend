@@ -199,6 +199,13 @@ export const CheckIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
   </svg>
 );
 
+export const ChecklistIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.2" y="2.2" width="11.6" height="11.6" rx="2.4" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5 8 L7 10 L11 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const CloseIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 14 14" fill="none">
     <path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />

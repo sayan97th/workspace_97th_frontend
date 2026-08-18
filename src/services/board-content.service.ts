@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   BoardColumnDto,
   BoardGroupDto,
+  BoardItemChecklistItemDto,
   BoardItemDetailDto,
   BoardItemDto,
   BoardItemValue,
@@ -10,10 +11,12 @@ import type {
   CreateBoardColumnPayload,
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
+  CreateChecklistItemPayload,
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
   UpdateBoardGroupPayload,
   UpdateBoardItemPayload,
+  UpdateChecklistItemPayload,
 } from "@/types/board-content";
 
 /**
@@ -132,6 +135,38 @@ export const boardContentService = {
   /** DELETE /api/boards/{board_id}/items/{item_id} */
   async deleteItem(board_id: number, item_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}`);
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/checklist-items — adds a subtask line, appended to the end. */
+  async createChecklistItem(
+    board_id: number,
+    item_id: number,
+    payload: CreateChecklistItemPayload
+  ): Promise<BoardItemChecklistItemDto> {
+    const response = await apiClient.post<{ checklist_item: BoardItemChecklistItemDto }>(
+      `/api/boards/${board_id}/items/${item_id}/checklist-items`,
+      payload
+    );
+    return response.checklist_item;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/{item_id}/checklist-items/{checklist_item_id} — renames and/or toggles a subtask. */
+  async updateChecklistItem(
+    board_id: number,
+    item_id: number,
+    checklist_item_id: number,
+    payload: UpdateChecklistItemPayload
+  ): Promise<BoardItemChecklistItemDto> {
+    const response = await apiClient.patch<{ checklist_item: BoardItemChecklistItemDto }>(
+      `/api/boards/${board_id}/items/${item_id}/checklist-items/${checklist_item_id}`,
+      payload
+    );
+    return response.checklist_item;
+  },
+
+  /** DELETE /api/boards/{board_id}/items/{item_id}/checklist-items/{checklist_item_id} */
+  async deleteChecklistItem(board_id: number, item_id: number, checklist_item_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/checklist-items/${checklist_item_id}`);
   },
 
   /** POST /api/boards/{board_id}/items/duplicate — selection action bar's "Duplicate". */

@@ -82,6 +82,19 @@ export type BoardItemDto = {
   comment_count: number;
   /** Total attachments across this item's comments — powers the Kanban card's attachment count. Only `getItems` returns a real count; other calls return 0. */
   attachment_count: number;
+  /** Total subtask checklist lines — powers the Kanban card's "✓ done/total" badge. Only `getItems` returns a real count; other calls return 0. */
+  checklist_total_count: number;
+  /** Subtask checklist lines marked done — see {@link checklist_total_count}. */
+  checklist_done_count: number;
+};
+
+/** One line of a board item's subtask checklist — see `BoardItemDto.checklist_total_count`. */
+export type BoardItemChecklistItemDto = {
+  id: number;
+  item_id: number;
+  label: string;
+  is_done: boolean;
+  position: number;
 };
 
 /** Extends {@link BoardItemDto} with the fields the pulse detail drawer shows. */
@@ -97,6 +110,7 @@ export type BoardItemDetailDto = BoardItemDto & {
     full_name: string;
     profile_photo_url: string | null;
   } | null;
+  checklist_items: BoardItemChecklistItemDto[];
 };
 
 /** The serializable subset of `useBoardToolbar` state a view saves/restores. */
@@ -189,6 +203,15 @@ export type UpdateBoardItemPayload = {
   description?: string | null;
   group_id?: number;
   position?: number;
+};
+
+export type CreateChecklistItemPayload = {
+  label: string;
+};
+
+export type UpdateChecklistItemPayload = {
+  label?: string;
+  is_done?: boolean;
 };
 
 /** Saves/creates a view — this is also the "save filters for this board view" payload. */

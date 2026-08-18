@@ -12,7 +12,9 @@ import PersonAvatar from "../PersonAvatar";
 import PersonAvatarStack, { type PersonAvatarStackPerson } from "../PersonAvatarStack";
 import KanbanCardLabels from "./KanbanCardLabels";
 import KanbanCardMembers from "./KanbanCardMembers";
+import KanbanChecklistSection from "./KanbanChecklistSection";
 import type { BoardCellOption } from "../cells/OptionPicker";
+import type { BoardItemChecklistItemDto } from "@/types/board-content";
 import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type KanbanItemDrawerProps<TRow> = {
@@ -51,6 +53,16 @@ export type KanbanItemDrawerProps<TRow> = {
     onToggle: (option_id: string) => void;
     onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   };
+
+  /** Omit to hide the Subtasks section — the caller has no checklist state wired up. */
+  checklist?: {
+    items: BoardItemChecklistItemDto[];
+    loading: boolean;
+    onAdd: (label: string) => void;
+    onToggle: (checklist_item_id: number) => void;
+    onRename: (checklist_item_id: number, label: string) => void;
+    onDelete: (checklist_item_id: number) => void;
+  };
 };
 
 const toDateInputValue = (value: string | null): string => {
@@ -75,7 +87,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
   // showing the card it was open for while `SlideOverPanel` slides it
   // closed — `title`/`people`/`due_date`/`priority`/`project` are all
   // derived by the caller from the (now-cleared) open row too.
-  const { drawer, title, onRenameTitle, is_done, onToggleDone, people, due_date, priority, project } =
+  const { drawer, title, onRenameTitle, is_done, onToggleDone, people, due_date, priority, project, checklist } =
     useLatchWhileOpen(props, props.drawer.is_open);
 
   if (!props.drawer.is_open && !drawer.is_open) return null;
@@ -287,6 +299,17 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
               style={{ border: `1px solid ${KANBAN_COLORS.border_subtle}`, color: KANBAN_COLORS.text_secondary }}
             />
           </div>
+        )}
+
+        {checklist && (
+          <KanbanChecklistSection
+            items={checklist.items}
+            loading={checklist.loading}
+            onAdd={checklist.onAdd}
+            onToggle={checklist.onToggle}
+            onRename={checklist.onRename}
+            onDelete={checklist.onDelete}
+          />
         )}
 
         <div style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>

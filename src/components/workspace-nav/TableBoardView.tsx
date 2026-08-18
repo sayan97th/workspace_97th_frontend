@@ -48,7 +48,16 @@ import {
   type BoardViewKind,
   type SelectionActionBarAction,
 } from "@/components/board";
-import { AttachmentIcon, CalendarViewIcon, CheckIcon, DownloadIcon, KanbanViewIcon, PlusIcon, RowChatIcon } from "@/icons/board-icons";
+import {
+  AttachmentIcon,
+  CalendarViewIcon,
+  ChecklistIcon,
+  CheckIcon,
+  DownloadIcon,
+  KanbanViewIcon,
+  PlusIcon,
+  RowChatIcon,
+} from "@/icons/board-icons";
 import {
   AiSummaryIcon,
   AppsGridIcon,
@@ -797,6 +806,114 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     boardContentService.updateItem(board_id, Number(item_id), { description }).catch(() => setItems(previous));
   };
 
+  // ── Kanban card "Subtasks" checklist — piggybacks on `item_detail_by_id`
+  // (already fetched by `fetchItemDetail` whenever a row's drawer opens, for
+  // the Info Boxes tab) for the full per-item list, and mirrors
+  // `handleUpdateItemDescription`'s optimistic-update-then-rollback pattern
+  // for both that cached detail and `items`' `checklist_total_count`/
+  // `checklist_done_count` (so the Kanban card's "✓ done/total" badge stays
+  // live without waiting on a refetch). ──
+  const handleAddChecklistItem = (item_id: string, label: string) => {
+    boardContentService
+      .createChecklistItem(board_id, Number(item_id), { label })
+      .then((created) => {
+        setItemDetailById((current) => {
+          const detail = current[item_id];
+          if (!detail) return current;
+          return { ...current, [item_id]: { ...detail, checklist_items: [...detail.checklist_items, created] } };
+        });
+        setItems((current) =>
+          current.map((item) =>
+            String(item.id) === item_id ? { ...item, checklist_total_count: item.checklist_total_count + 1 } : item
+          )
+        );
+      })
+      .catch(() => {});
+  };
+
+  const handleToggleChecklistItem = (item_id: string, checklist_item_id: number) => {
+    const detail = item_detail_by_id[item_id];
+    const target = detail?.checklist_items.find((checklist_item) => checklist_item.id === checklist_item_id);
+    if (!detail || !target) return;
+    const next_done = !target.is_done;
+    const previous_detail = detail;
+    const previous_items = items;
+
+    setItemDetailById((current) => ({
+      ...current,
+      [item_id]: {
+        ...detail,
+        checklist_items: detail.checklist_items.map((checklist_item) =>
+          checklist_item.id === checklist_item_id ? { ...checklist_item, is_done: next_done } : checklist_item
+        ),
+      },
+    }));
+    setItems((current) =>
+      current.map((item) =>
+        String(item.id) === item_id
+          ? { ...item, checklist_done_count: item.checklist_done_count + (next_done ? 1 : -1) }
+          : item
+      )
+    );
+
+    boardContentService.updateChecklistItem(board_id, Number(item_id), checklist_item_id, { is_done: next_done }).catch(() => {
+      setItemDetailById((current) => ({ ...current, [item_id]: previous_detail }));
+      setItems(previous_items);
+    });
+  };
+
+  const handleRenameChecklistItem = (item_id: string, checklist_item_id: number, label: string) => {
+    const detail = item_detail_by_id[item_id];
+    if (!detail) return;
+    const previous_detail = detail;
+
+    setItemDetailById((current) => ({
+      ...current,
+      [item_id]: {
+        ...detail,
+        checklist_items: detail.checklist_items.map((checklist_item) =>
+          checklist_item.id === checklist_item_id ? { ...checklist_item, label } : checklist_item
+        ),
+      },
+    }));
+
+    boardContentService
+      .updateChecklistItem(board_id, Number(item_id), checklist_item_id, { label })
+      .catch(() => setItemDetailById((current) => ({ ...current, [item_id]: previous_detail })));
+  };
+
+  const handleDeleteChecklistItem = (item_id: string, checklist_item_id: number) => {
+    const detail = item_detail_by_id[item_id];
+    const target = detail?.checklist_items.find((checklist_item) => checklist_item.id === checklist_item_id);
+    if (!detail || !target) return;
+    const previous_detail = detail;
+    const previous_items = items;
+
+    setItemDetailById((current) => ({
+      ...current,
+      [item_id]: {
+        ...detail,
+        checklist_items: detail.checklist_items.filter((checklist_item) => checklist_item.id !== checklist_item_id),
+      },
+    }));
+    setItems((current) =>
+      current.map((item) =>
+        String(item.id) === item_id
+          ? {
+              ...item,
+              checklist_total_count: item.checklist_total_count - 1,
+              checklist_done_count: item.checklist_done_count - (target.is_done ? 1 : 0),
+            }
+          : item
+      )
+    );
+
+    boardContentService.deleteChecklistItem(board_id, Number(item_id), checklist_item_id).catch(() => {
+      setItemDetailById((current) => ({ ...current, [item_id]: previous_detail }));
+      setItems(previous_items);
+    });
+  };
+
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
       getRowId: (row) => String(row.id),
@@ -1123,7 +1240,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const due_date_value = board_date_column ? row.values[String(board_date_column.id)] : null;
     const due_date = typeof due_date_value === "string" && due_date_value ? formatKanbanDueDate(due_date_value) : null;
 
-    const has_meta_row = Boolean(priority_option || due_date || row.attachment_count > 0 || row.comment_count > 0 || board_member_column);
+    const has_meta_row = Boolean(
+      priority_option || due_date || row.checklist_total_count > 0 || row.attachment_count > 0 || row.comment_count > 0 || board_member_column
+    );
 
     return (
       <div
@@ -1217,6 +1336,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                 >
                   <CalendarViewIcon size={11} />
                   {due_date.label}
+                </span>
+              )}
+              {row.checklist_total_count > 0 && (
+                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
+                  <ChecklistIcon size={11} />
+                  {row.checklist_done_count}/{row.checklist_total_count}
                 </span>
               )}
               {row.attachment_count > 0 && (
@@ -1448,6 +1573,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const kanban_open_row = active_view_type === "kanban" ? items.find((item) => String(item.id) === drawer.open_row_id) ?? null : null;
   const kanban_open_row_member_ids = board_member_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_member_column.id)]) : [];
   const kanban_open_row_label_ids = board_label_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_label_column.id)]) : [];
+  const kanban_open_row_detail = kanban_open_row ? item_detail_by_id[String(kanban_open_row.id)] : undefined;
 
   return (
     <BoardShell
@@ -1704,6 +1830,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                     void handleUpdateCellValue(kanban_open_row.id, String(board_label_column.id), next.length ? next : null);
                   },
                   onCreateOption: (option) => handleAddColumnOption(String(board_label_column.id), option),
+                }
+              : undefined
+          }
+          checklist={
+            kanban_open_row
+              ? {
+                  items: kanban_open_row_detail?.checklist_items ?? [],
+                  loading: !kanban_open_row_detail,
+                  onAdd: (label) => handleAddChecklistItem(String(kanban_open_row.id), label),
+                  onToggle: (checklist_item_id) => handleToggleChecklistItem(String(kanban_open_row.id), checklist_item_id),
+                  onRename: (checklist_item_id, label) =>
+                    handleRenameChecklistItem(String(kanban_open_row.id), checklist_item_id, label),
+                  onDelete: (checklist_item_id) => handleDeleteChecklistItem(String(kanban_open_row.id), checklist_item_id),
                 }
               : undefined
           }
