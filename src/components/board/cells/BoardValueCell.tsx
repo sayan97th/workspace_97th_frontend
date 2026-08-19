@@ -267,7 +267,7 @@ const CheckboxCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCel
         onCommit(!checked);
       }}
       aria-label={checked ? "Uncheck" : "Check"}
-      className="flex h-[18px] w-[18px] items-center justify-center rounded"
+      className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded"
       style={checked ? { background: "#00c875" } : { border: "1.5px solid var(--color-shell-border-strong)" }}
     >
       {checked && <CheckIcon size={11} className="text-white" />}
@@ -308,7 +308,7 @@ const StatusCell: React.FC<{
 
   return (
     <>
-      <div className="h-full w-full" onClick={popover.open}>
+      <div className="h-full w-full cursor-pointer" onClick={popover.open}>
         {option ? (
           <StatusPill label={option.label} bg={option.color} color="#ffffff" />
         ) : (
