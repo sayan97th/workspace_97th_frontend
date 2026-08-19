@@ -1326,7 +1326,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
           {has_checklist && (
             <div className="flex items-center gap-2" style={{ paddingLeft: 24, margin: "10px 0 0" }} onClick={(event) => event.stopPropagation()}>
-              <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "#EEEFED" }}>
+              <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "var(--color-shell-border-strong)" }}>
                 <div
                   className="h-full rounded-full transition-[width]"
                   style={{ width: `${checklist_pct}%`, background: KANBAN_COLORS.success }}

@@ -93,14 +93,14 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
   if (!props.drawer.is_open && !drawer.is_open) return null;
 
   const done_border = is_done ? KANBAN_COLORS.success : KANBAN_COLORS.text_hairline;
-  const done_bg = is_done ? KANBAN_COLORS.success : "#FFFFFF";
+  const done_bg = is_done ? KANBAN_COLORS.success : KANBAN_COLORS.card_bg;
 
   return (
     <SlideOverPanel
       is_open={props.drawer.is_open}
       onClose={props.drawer.close}
       overlay_class_name="bg-[rgba(10,23,23,0.32)]"
-      panel_class_name="w-[460px] max-w-[94vw] bg-white shadow-[-8px_0_32px_rgba(10,23,23,0.14)]"
+      panel_class_name="w-[460px] max-w-[94vw] bg-shell-panel shadow-[-8px_0_32px_rgba(10,23,23,0.14)]"
     >
       {/* Header */}
       <div
@@ -122,7 +122,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
         </span>
         <span className="ml-auto flex flex-none items-center gap-1">
           <label
-            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-[7px] transition-colors hover:bg-shell-hover"
             style={{ color: KANBAN_COLORS.text_faint }}
             title="Attach a file"
           >
@@ -138,7 +138,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
             />
           </label>
           <span
-            className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
+            className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-shell-hover"
             style={{ color: KANBAN_COLORS.text_faint }}
           >
             <MoreDotsIcon size={16} />
@@ -147,7 +147,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
             type="button"
             onClick={drawer.close}
             aria-label="Close"
-            className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-[#F4F4F2]"
+            className="flex h-7 w-7 items-center justify-center rounded-[7px] transition-colors hover:bg-shell-hover"
             style={{ color: KANBAN_COLORS.text_faint }}
           >
             <CloseIcon size={14} />
@@ -228,7 +228,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                       onClick={() => priority.onSelect(active ? null : option.id)}
                       className="rounded-[7px] px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide transition-colors"
                       style={{
-                        background: active ? `${option.color}1A` : "#FFFFFF",
+                        background: active ? `${option.color}1A` : KANBAN_COLORS.card_bg,
                         color: active ? option.color : KANBAN_COLORS.text_disabled,
                         border: `1.5px solid ${active ? option.color : KANBAN_COLORS.border_default}`,
                       }}
@@ -275,7 +275,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
           )}
 
           <label
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors hover:bg-[#F4F4F2]"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors hover:bg-shell-hover"
             style={{ color: KANBAN_COLORS.text_faint, border: `1px solid ${KANBAN_COLORS.border_subtle}` }}
           >
             <AttachmentIcon size={13} />
@@ -354,7 +354,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                         onDelete={() => drawer.deleteComment(comment.id)}
                         kind="comment"
                         icon_size={11}
-                        class_name="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#F4F4F2]"
+                        class_name="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-shell-hover"
                         style={{ color: KANBAN_COLORS.text_faint }}
                       />
                     )}
@@ -410,7 +410,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
               style={{ border: `1px solid ${KANBAN_COLORS.border_subtle}`, color: KANBAN_COLORS.text_secondary }}
             />
             <label
-              className="flex h-[34px] w-[34px] flex-none cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-[#F4F4F2]"
+              className="flex h-[34px] w-[34px] flex-none cursor-pointer items-center justify-center rounded-lg transition-colors hover:bg-shell-hover"
               style={{ color: KANBAN_COLORS.text_faint, border: `1px solid ${KANBAN_COLORS.border_subtle}` }}
               title="Attach a file"
             >

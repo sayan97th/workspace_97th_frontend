@@ -82,7 +82,7 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
       </div>
 
       {total_count > 0 && (
-        <div className="mb-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "#EEEFED" }}>
+        <div className="mb-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-shell-border-strong)" }}>
           <div
             className="h-full rounded-[3px] transition-[width]"
             style={{ width: `${progress_pct}%`, background: KANBAN_COLORS.success }}
@@ -101,7 +101,7 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
                 className="flex h-3.5 w-3.5 flex-none items-center justify-center rounded-[4px] border-[1.6px] transition-colors"
                 style={{
                   borderColor: item.is_done ? KANBAN_COLORS.success : KANBAN_COLORS.text_hairline,
-                  background: item.is_done ? KANBAN_COLORS.success : "#FFFFFF",
+                  background: item.is_done ? KANBAN_COLORS.success : KANBAN_COLORS.card_bg,
                 }}
               >
                 {item.is_done && <CheckIcon size={8} className="text-white" />}
@@ -138,7 +138,7 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
                 onClick={() => onDelete(item.id)}
                 aria-label="Delete subtask"
                 title="Delete subtask"
-                className="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] opacity-0 transition-opacity hover:bg-[#F4F4F2] group-hover:opacity-100"
+                className="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] opacity-0 transition-opacity hover:bg-shell-hover group-hover:opacity-100"
                 style={{ color: KANBAN_COLORS.text_faint }}
               >
                 <CloseIcon size={10} />

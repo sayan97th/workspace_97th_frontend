@@ -47,7 +47,7 @@ const KanbanCardLabels: React.FC<KanbanCardLabelsProps> = ({ options, selected_i
       ) : (
         <button
           type="button"
-          className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium opacity-0 transition-opacity hover:bg-[#F4F4F2] group-hover:opacity-100"
+          className="flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[11px] font-medium opacity-0 transition-opacity hover:bg-shell-hover group-hover:opacity-100"
           style={{ color: KANBAN_COLORS.text_placeholder }}
         >
           <PlusIcon size={9} />
