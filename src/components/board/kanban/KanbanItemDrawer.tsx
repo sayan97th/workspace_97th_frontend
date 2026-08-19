@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import { AttachmentIcon, CheckIcon, CloseIcon, PlusIcon, SendIcon } from "@/icons/board-icons";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import AddColumnMenu from "../AddColumnMenu";
-import type { AddableColumnType, BoardColumnKind } from "../columnTypes";
+import { COLUMN_KIND_SWATCH, type AddableColumnType, type BoardColumnKind } from "../columnTypes";
+import ColumnSwatchBadge from "../toolbar/ColumnSwatchBadge";
 import type { BoardItemDrawerApi } from "../drawer/types";
 import CommentAttachmentChip from "../drawer/CommentAttachmentChip";
 import CommentEditForm from "../drawer/CommentEditForm";
@@ -425,43 +426,72 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
 
         {properties && (
           <div className="mb-5" style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>
-            <div className="mb-3 flex flex-col gap-3.5">
-              {properties.columns.map((column) => {
-                const has_options = column.kind === "status" || column.kind === "tags";
-                return (
-                  <div key={column.id} className="group grid grid-cols-[100px_1fr_22px] items-center gap-2">
-                    <span className="truncate text-[12.5px] font-semibold" style={{ color: KANBAN_COLORS.text_disabled }} title={column.label}>
-                      {column.label}
-                    </span>
-                    <BoardValueCell
-                      column={{ id: column.id, kind: column.kind, options: column.options }}
-                      value={properties.getValue(column.id)}
-                      people={properties.people}
-                      onCommit={(value) => properties.onCommit(column.id, value)}
-                      onAddOption={has_options ? (option) => properties.onAddOption(column.id, option) : undefined}
-                      onEditOptions={has_options ? properties.onEditOptions(column.id) : undefined}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPropertyPendingRemovalId(column.id)}
-                      aria-label={`Remove ${column.label} property`}
-                      title="Remove property"
-                      className="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] opacity-0 transition-opacity hover:bg-shell-hover group-hover:opacity-100"
-                      style={{ color: KANBAN_COLORS.text_faint }}
-                    >
-                      <CloseIcon size={11} />
-                    </button>
-                  </div>
-                );
-              })}
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-[12.5px] font-bold" style={{ color: KANBAN_COLORS.text_disabled }}>
+                Properties
+              </span>
+              {properties.columns.length > 0 && (
+                <span className="text-[12px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
+                  {properties.columns.length}
+                </span>
+              )}
             </div>
+
+            {properties.columns.length > 0 && (
+              <div className="mb-3 flex flex-col gap-1.5">
+                {properties.columns.map((column) => {
+                  const has_options = column.kind === "status" || column.kind === "tags";
+                  return (
+                    <div
+                      key={column.id}
+                      className="group grid grid-cols-[1fr_minmax(0,1.3fr)_24px] items-center gap-2.5 rounded-[9px] px-2 py-1.5 transition-colors hover:bg-shell-hover"
+                    >
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[column.kind]} size={19} />
+                        <span
+                          className="min-w-0 truncate text-[12.5px] font-semibold"
+                          style={{ color: KANBAN_COLORS.text_disabled }}
+                          title={column.label}
+                        >
+                          {column.label}
+                        </span>
+                      </div>
+                      <BoardValueCell
+                        column={{ id: column.id, kind: column.kind, options: column.options }}
+                        value={properties.getValue(column.id)}
+                        people={properties.people}
+                        onCommit={(value) => properties.onCommit(column.id, value)}
+                        onAddOption={has_options ? (option) => properties.onAddOption(column.id, option) : undefined}
+                        onEditOptions={has_options ? properties.onEditOptions(column.id) : undefined}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setPropertyPendingRemovalId(column.id)}
+                        aria-label={`Remove ${column.label} property`}
+                        title="Remove property"
+                        className="flex h-6 w-6 flex-none items-center justify-center rounded-full border opacity-0 transition-colors group-hover:opacity-100 hover:border-transparent hover:bg-[rgba(229,62,46,0.12)] hover:text-[#E53E2E]"
+                        style={{ color: KANBAN_COLORS.text_faint, borderColor: KANBAN_COLORS.border_subtle }}
+                      >
+                        <CloseIcon size={11} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <button
               type="button"
               onClick={(event) => setAddPropertyAnchorEl(event.currentTarget)}
-              className="inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors hover:bg-shell-hover"
-              style={{ color: KANBAN_COLORS.text_faint, border: `1px solid ${KANBAN_COLORS.border_subtle}` }}
+              className="flex w-full items-center gap-2 rounded-[9px] border border-dashed px-2.5 py-2 text-[12.5px] font-semibold transition-colors hover:border-solid hover:bg-shell-hover"
+              style={{ color: KANBAN_COLORS.text_faint, borderColor: KANBAN_COLORS.border_default }}
             >
-              <PlusIcon size={12} />
+              <span
+                className="flex h-5 w-5 flex-none items-center justify-center rounded-full"
+                style={{ background: KANBAN_COLORS.chip_bg, color: KANBAN_COLORS.text_faint }}
+              >
+                <PlusIcon size={11} />
+              </span>
               Add property
             </button>
             <AddColumnMenu

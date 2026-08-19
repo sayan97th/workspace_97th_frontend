@@ -76,6 +76,7 @@ import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { downloadCsv } from "@/lib/csv-export";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { workspaceService } from "@/services/workspace.service";
 import type {
   BoardColumnConfig,
   BoardColumnDto,
@@ -86,7 +87,7 @@ import type {
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardDetail, BoardType } from "@/types/workspace";
+import type { BoardDetail, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
 export type WorkspaceViewProps = {
@@ -208,6 +209,40 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     };
   }, [node.id]);
 
+  // The full assignable roster for People columns (Kanban's Assignee row,
+  // the Table view's People cells, the Calendar's event members, etc), the
+  // whole workspace, not just `node.owners` (which is only the handful of
+  // members with the "owner" pivot role and previously left everyone else
+  // unselectable/unresolvable). Seeded with `node.owners` (mapped onto the
+  // richer `WorkspaceMember` shape with placeholder fields) so the roster
+  // isn't empty for the one paint before the real fetch below resolves.
+  const [workspace_members, setWorkspaceMembers] = useState<WorkspaceMember[]>(() =>
+    node.owners.map((owner) => ({
+      id: owner.id,
+      full_name: owner.full_name,
+      profile_photo_url: owner.profile_photo_url,
+      email: "",
+      role: null,
+      is_recent: false,
+      invited_by: null,
+      joined_at: null,
+    }))
+  );
+  useEffect(() => {
+    let cancelled = false;
+    workspaceService
+      .getWorkspaceMembers(node.workspace.slug)
+      .then((data) => {
+        if (!cancelled) setWorkspaceMembers(data);
+      })
+      .catch(() => {
+        // Keep the `node.owners` seed on failure rather than clearing the roster.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [node.workspace.slug]);
+
   const [loaded, setLoaded] = useState<{
     columns: BoardColumnDto[];
     groups: BoardGroupDto[];
@@ -279,6 +314,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         board_type={board_type}
         info={info}
         invite_count={access.length}
+        workspace_members={workspace_members}
         onInviteClick={() => setIsInviteOpen(true)}
         initial_columns={loaded.columns}
         initial_groups={loaded.groups}
@@ -320,6 +356,8 @@ type TableBoardBodyProps = {
   info: BoardHeaderInfo;
   invite_count: number;
   onInviteClick: () => void;
+  /** The full workspace roster, assignable to People columns (Assignee row, People cells, Calendar members, etc), see the fetch in `TableBoardView`. */
+  workspace_members: WorkspaceMember[];
   initial_columns: BoardColumnDto[];
   initial_groups: BoardGroupDto[];
   initial_items: BoardItemDto[];
@@ -342,6 +380,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   info,
   invite_count,
   onInviteClick,
+  workspace_members,
   initial_columns,
   initial_groups,
   initial_items,
@@ -374,8 +413,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [columns]
   );
   const people_names_by_id = useMemo(
-    () => Object.fromEntries(node.owners.map((o) => [String(o.id), o.full_name])),
-    [node.owners]
+    () => Object.fromEntries(workspace_members.map((o) => [String(o.id), o.full_name])),
+    [workspace_members]
   );
 
   // ── Shared across Kanban/Calendar/the Kanban drawer's own detail rows ──
@@ -499,13 +538,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const persons: BoardPersonOption[] = useMemo(
     () =>
-      node.owners.map((owner, index) => ({
-        id: String(owner.id),
-        name: owner.full_name,
-        initials: getInitials(owner.full_name),
+      workspace_members.map((member, index) => ({
+        id: String(member.id),
+        name: member.full_name,
+        initials: getInitials(member.full_name),
         avatar_seed: index,
       })),
-    [node.owners]
+    [workspace_members]
   );
 
   const sort_options: BoardSortOption<BoardItemDto>[] = useMemo(
@@ -1198,7 +1237,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           options: column_dto.config?.options ?? undefined,
         }}
         value={row.values[column.id] ?? null}
-        people={node.owners}
+        people={workspace_members}
         bleed={column_dto.type === "status"}
         onCommit={(next) => handleUpdateCellValue(row.id, column.id, next)}
         onAddOption={has_options ? (opt) => handleAddColumnOption(column.id, opt) : undefined}
@@ -1238,11 +1277,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   }, [board_status_column, filtered_rows]);
 
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
-    const other_columns = other_kanban_columns;
-
     const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
-    const members = board_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
+    const members = board_member_column
+      ? workspace_members.filter((member) => member_ids.includes(String(member.id)))
+      : [];
 
     const priority_value = board_priority_column ? row.values[String(board_priority_column.id)] : null;
     const priority_option =
@@ -1313,7 +1352,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </span>
           </div>
 
-          {board_label_column && (
+          {/* The Project row is only ever painted on the card once it has a value.
+              An unset Project stays a drawer-only field instead of cluttering every
+              card with an empty "+ Add label" affordance. */}
+          {board_label_column && label_ids.length > 0 && (
             <div style={{ margin: "9px 0 0", paddingLeft: 24 }}>
               <KanbanCardLabels
                 options={board_label_column.config?.options ?? []}
@@ -1395,7 +1437,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               {board_member_column && (
                 <span className="ml-auto flex-none">
                   <KanbanCardMembers
-                    people={node.owners}
+                    people={workspace_members}
                     selected={members}
                     onToggle={(person_id) => {
                       const next = member_ids.includes(person_id)
@@ -1409,25 +1451,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </div>
           )}
 
-          {other_columns.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5" style={{ paddingLeft: 24, margin: "9px 0 0" }} onClick={(event) => event.stopPropagation()}>
-              {other_columns.slice(0, 3).map((column) => {
-                const has_options = column.type === "status" || column.type === "tags";
-                return (
-                  <div key={column.id} className="h-6 min-w-[26px] max-w-[120px]">
-                    <BoardValueCell
-                      column={{ id: String(column.id), kind: column.type, options: column.config?.options ?? undefined }}
-                      value={row.values[String(column.id)] ?? null}
-                      people={node.owners}
-                      onCommit={(next) => handleUpdateCellValue(row.id, String(column.id), next)}
-                      onAddOption={has_options ? (opt) => handleAddColumnOption(String(column.id), opt) : undefined}
-                      onEditOptions={has_options ? makeOptionActions(String(column.id)) : undefined}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Custom properties (`other_kanban_columns`) are drawer-only, they never
+              spill onto the card itself, unlike the four core fields above. See the
+              drawer's own "Properties" section for where they're editable. */}
         </div>
       </div>
     );
@@ -1621,7 +1647,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const renderCalendarEvent = (row: BoardItemDto): React.ReactNode => {
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
-    const members = board_member_column ? node.owners.filter((owner) => member_ids.includes(String(owner.id))) : [];
+    const members = board_member_column
+      ? workspace_members.filter((member) => member_ids.includes(String(member.id)))
+      : [];
 
     return (
       <div className="flex min-w-0 items-center gap-1.5">
@@ -1893,8 +1921,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           people={
             board_member_column
               ? {
-                  roster: node.owners,
-                  selected: node.owners.filter((owner) => kanban_open_row_member_ids.includes(String(owner.id))),
+                  roster: workspace_members,
+                  selected: workspace_members.filter((member) => kanban_open_row_member_ids.includes(String(member.id))),
                   onToggle: (person_id) => {
                     if (!kanban_open_row) return;
                     const next = kanban_open_row_member_ids.includes(person_id)
@@ -1949,7 +1977,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                     kind: column.type,
                     options: column.config?.options,
                   })),
-                  people: node.owners,
+                  people: workspace_members,
                   getValue: (column_id) => kanban_open_row.values[column_id] ?? null,
                   onCommit: (column_id, value) => void handleUpdateCellValue(kanban_open_row.id, column_id, value),
                   onAddOption: (column_id, option) => handleAddColumnOption(column_id, option),
