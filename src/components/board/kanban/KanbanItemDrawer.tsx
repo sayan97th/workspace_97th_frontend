@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { AttachmentIcon, CheckIcon, CloseIcon } from "@/icons/board-icons";
+import { AttachmentIcon, CheckIcon, CloseIcon, SendIcon } from "@/icons/board-icons";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import type { BoardItemDrawerApi } from "../drawer/types";
 import CommentAttachmentChip from "../drawer/CommentAttachmentChip";
@@ -100,7 +100,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
       is_open={props.drawer.is_open}
       onClose={props.drawer.close}
       overlay_class_name="bg-[rgba(10,23,23,0.32)]"
-      panel_class_name="w-[440px] max-w-[94vw] bg-white shadow-[-8px_0_32px_rgba(10,23,23,0.14)]"
+      panel_class_name="w-[460px] max-w-[94vw] bg-white shadow-[-8px_0_32px_rgba(10,23,23,0.14)]"
     >
       {/* Header */}
       <div
@@ -161,9 +161,16 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
           value={title}
           onChange={(event) => onRenameTitle(event.target.value)}
           placeholder="Task name"
-          className="mb-[18px] w-full border-none py-0.5 text-[20px] font-extrabold outline-none"
+          className="mb-3 w-full border-none py-0.5 text-[20px] font-extrabold outline-none"
           style={{ color: KANBAN_COLORS.text_strong, textDecoration: is_done ? "line-through" : "none" }}
         />
+
+        {priority?.selected_id && (
+          <div
+            className="mb-[18px] h-[6px] rounded-full"
+            style={{ background: priority.options.find((option) => option.id === priority.selected_id)?.color ?? KANBAN_COLORS.border_default }}
+          />
+        )}
 
         <div className="mb-[22px] flex flex-col gap-3.5">
           {people && (
@@ -219,7 +226,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                       key={option.id}
                       type="button"
                       onClick={() => priority.onSelect(active ? null : option.id)}
-                      className="rounded-[6px] px-2.5 py-1 text-[11.5px] font-bold transition-colors"
+                      className="rounded-[7px] px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide transition-colors"
                       style={{
                         background: active ? `${option.color}1A` : "#FFFFFF",
                         color: active ? option.color : KANBAN_COLORS.text_disabled,
@@ -418,6 +425,17 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                 }}
               />
             </label>
+            <button
+              type="button"
+              onClick={() => drawer.postComment()}
+              disabled={!drawer.composer_text.trim() && drawer.composer_attachments.length === 0}
+              aria-label="Post comment"
+              title="Post comment"
+              className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg text-white transition-opacity disabled:opacity-40"
+              style={{ background: KANBAN_COLORS.red }}
+            >
+              <SendIcon size={14} />
+            </button>
           </div>
         </div>
       </div>

@@ -142,28 +142,44 @@ function SortableCard<TRow>({ row, row_id, is_selected, can_drag, onCardClick, r
         boxShadow: isDragging
           ? "none"
           : is_selected
-            ? `0 0 0 2px ${KANBAN_COLORS.text_strong}, 0 8px 20px rgba(10,23,23,0.12)`
-            : "0 1px 2px rgba(10,23,23,0.05)",
+            ? `0 0 0 2px ${KANBAN_COLORS.text_strong}, ${KANBAN_COLORS.shadow_hover}`
+            : KANBAN_COLORS.shadow_resting,
         opacity: isDragging ? 0 : 1,
+        borderRadius: KANBAN_COLORS.card_radius,
+        border: `1px solid ${is_selected ? "transparent" : "rgba(10,23,23,0.06)"}`,
       }}
       {...(can_drag ? attributes : {})}
       {...(can_drag ? listeners : {})}
       onClick={onCardClick ? () => onCardClick(row) : undefined}
-      className={`group relative overflow-hidden rounded-[9px] transition-[box-shadow,transform] duration-150 hover:-translate-y-px hover:shadow-[0_8px_20px_rgba(10,23,23,0.12)] ${
+      className={`group relative overflow-hidden transition-[box-shadow,transform] duration-150 hover:-translate-y-[3px] ${
         can_drag ? "cursor-grab touch-none active:cursor-grabbing" : onCardClick ? "cursor-pointer" : ""
       }`}
+      onMouseEnter={(event) => {
+        if (isDragging || is_selected) return;
+        event.currentTarget.style.boxShadow = KANBAN_COLORS.shadow_hover;
+      }}
+      onMouseLeave={(event) => {
+        if (isDragging || is_selected) return;
+        event.currentTarget.style.boxShadow = KANBAN_COLORS.shadow_resting;
+      }}
     >
       {renderCard(row)}
     </div>
   );
 }
 
-/** A static (non-interactive) copy of a card's content, used inside the drag overlay so the "held" card renders identically to its resting state, just elevated. */
+/** A static (non-interactive) copy of a card's content, used inside the drag overlay so the "held" card renders identically to its resting state, just lifted and tilted — mirrors the redesign's "dragging" state. */
 function CardPreview<TRow>({ row, renderCard }: { row: TRow; renderCard: (row: TRow) => React.ReactNode }) {
   return (
     <div
-      className="overflow-hidden rounded-[9px] shadow-xl ring-1 ring-black/5"
-      style={{ width: LANE_WIDTH - 16, background: KANBAN_COLORS.card_bg }}
+      className="overflow-hidden"
+      style={{
+        width: LANE_WIDTH - 16,
+        background: KANBAN_COLORS.card_bg,
+        borderRadius: KANBAN_COLORS.card_radius,
+        boxShadow: KANBAN_COLORS.shadow_dragging,
+        transform: "rotate(-2deg)",
+      }}
     >
       {renderCard(row)}
     </div>
@@ -213,19 +229,12 @@ function KanbanLaneColumn<TRow>({
   const can_rename = Boolean(onRenameLane) && lane.renamable !== false;
 
   return (
-    <div
-      className="flex flex-none flex-col overflow-hidden rounded-[14px] p-[10px] transition-shadow duration-150"
-      style={{
-        width: LANE_WIDTH,
-        background: KANBAN_COLORS.column_bg,
-        boxShadow: is_over ? `0 0 0 2px ${lane.color}, 0 4px 14px rgba(0,0,0,0.12)` : undefined,
-      }}
-    >
-      <div className="flex flex-none items-center gap-[7px] px-1 pb-[10px] pt-1">
+    <div className="group/lane flex flex-none flex-col" style={{ width: LANE_WIDTH }}>
+      <div className="flex flex-none items-center gap-[7px] px-1 pb-3 pt-1">
         <button
           type="button"
           onClick={() => setIsCollapsed((current) => !current)}
-          className="flex-none rounded-[5px] p-0.5 transition-transform duration-150 hover:bg-[#E2E2DE]"
+          className="flex-none rounded-[6px] p-0.5 opacity-0 transition-[transform,opacity,background-color] duration-150 hover:bg-[#E2E2DE] group-hover/lane:opacity-100"
           style={{ color: KANBAN_COLORS.icon_default, transform: is_collapsed ? "rotate(0deg)" : "rotate(90deg)" }}
           aria-label={is_collapsed ? "Expand list" : "Collapse list"}
           title={is_collapsed ? "Expand list" : "Collapse list"}
@@ -241,30 +250,30 @@ function KanbanLaneColumn<TRow>({
               setEditingLaneId(null);
             }}
             onCancel={() => setEditingLaneId(null)}
-            className="min-w-0 flex-1 text-[13.5px] font-bold"
+            className="min-w-0 flex-1 text-[14.5px] font-extrabold"
             style={{ color: KANBAN_COLORS.text_strong }}
             aria_label="Rename lane"
           />
         ) : (
           <span
             onClick={can_rename ? () => setEditingLaneId(lane.id) : undefined}
-            className={`min-w-0 flex-1 truncate text-[13.5px] font-bold ${can_rename ? "cursor-text hover:opacity-80" : ""}`}
+            className={`min-w-0 flex-1 truncate text-[14.5px] font-extrabold tracking-tight ${can_rename ? "cursor-text hover:opacity-80" : ""}`}
             style={{ color: KANBAN_COLORS.text_strong }}
             title={can_rename ? "Click to rename" : undefined}
           >
             {lane.label}
           </span>
         )}
-        <span className="flex-none text-[13px] font-semibold" style={{ color: "#AEB4B3" }}>
+        <span className="flex-none text-[13px] font-bold" style={{ color: KANBAN_COLORS.text_faded }}>
           {row_ids.length}
         </span>
-        <span className="ml-auto flex flex-none items-center gap-0.5">
+        <span className="ml-auto flex flex-none items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover/lane:opacity-100">
           {can_rename && (
             <>
               <button
                 type="button"
                 onClick={(event) => setKebabAnchorEl(event.currentTarget)}
-                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#E2E2DE]"
+                className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-[#E2E2DE]"
                 style={{ color: KANBAN_COLORS.icon_default }}
                 aria-label="List actions"
                 title="List actions"
@@ -290,7 +299,7 @@ function KanbanLaneColumn<TRow>({
             <button
               type="button"
               onClick={() => onAddCard(lane.id)}
-              className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[6px] transition-colors hover:bg-[#E2E2DE]"
+              className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-[7px] transition-colors hover:bg-[#E2E2DE]"
               style={{ color: KANBAN_COLORS.icon_default }}
               aria-label="Add card"
               title="Add card"
@@ -302,14 +311,17 @@ function KanbanLaneColumn<TRow>({
       </div>
 
       {is_collapsed ? (
-        <div ref={setNodeRef} className="px-2 py-3 text-[11.5px]" style={{ color: KANBAN_COLORS.text_placeholder }}>
+        <div ref={setNodeRef} className="rounded-[12px] px-2.5 py-3 text-[11.5px]" style={{ color: KANBAN_COLORS.text_placeholder }}>
           {row_ids.length} card{row_ids.length === 1 ? "" : "s"} hidden
         </div>
       ) : (
         <div
           ref={setNodeRef}
-          className="shell-scrollbar flex flex-col gap-2 overflow-y-auto overflow-x-hidden"
-          style={{ maxHeight: LANE_BODY_MAX_HEIGHT }}
+          className="shell-scrollbar flex flex-col gap-3 overflow-y-auto overflow-x-hidden rounded-[16px] p-1 transition-shadow duration-150"
+          style={{
+            maxHeight: LANE_BODY_MAX_HEIGHT,
+            boxShadow: is_over ? `inset 0 0 0 2px ${lane.color}` : undefined,
+          }}
         >
           <SortableContext items={row_ids} strategy={verticalListSortingStrategy}>
             {row_ids.length === 0 && addingLaneId !== lane.id && (
@@ -517,41 +529,46 @@ function BoardKanban<TRow>({
         applyLaneIds(laneIdMap(lanes, getRowId));
       }}
     >
-      <div className="shell-scrollbar flex items-start gap-4 overflow-x-auto pb-4 pt-1">
-        {lanes.map((lane) => (
-          <KanbanLaneColumn
-            key={lane.id}
-            lane={lane}
-            row_ids={lane_ids[lane.id] ?? []}
-            rows_by_id={rows_by_id}
-            is_over={over_lane_id === lane.id}
-            editing_lane_id={editing_lane_id}
-            setEditingLaneId={setEditingLaneId}
-            selectedRowId={selectedRowId}
-            onCardClick={onCardClick}
-            renderCard={renderCard}
-            onMoveCard={onMoveCard}
-            onAddCard={onAddCard}
-            addingLaneId={addingLaneId}
-            onSubmitNewCard={onSubmitNewCard}
-            onCancelAddCard={onCancelAddCard}
-            onRenameLane={onRenameLane}
-          />
-        ))}
+      <div
+        className="rounded-[20px] p-4"
+        style={{ background: KANBAN_COLORS.canvas_bg }}
+      >
+        <div className="shell-scrollbar flex items-start gap-5 overflow-x-auto pb-2 pt-1">
+          {lanes.map((lane) => (
+            <KanbanLaneColumn
+              key={lane.id}
+              lane={lane}
+              row_ids={lane_ids[lane.id] ?? []}
+              rows_by_id={rows_by_id}
+              is_over={over_lane_id === lane.id}
+              editing_lane_id={editing_lane_id}
+              setEditingLaneId={setEditingLaneId}
+              selectedRowId={selectedRowId}
+              onCardClick={onCardClick}
+              renderCard={renderCard}
+              onMoveCard={onMoveCard}
+              onAddCard={onAddCard}
+              addingLaneId={addingLaneId}
+              onSubmitNewCard={onSubmitNewCard}
+              onCancelAddCard={onCancelAddCard}
+              onRenameLane={onRenameLane}
+            />
+          ))}
 
-        {onAddLane && (
-          <button
-            type="button"
-            onClick={onAddLane}
-            className="group flex flex-none flex-col items-center justify-center gap-2 self-start rounded-[14px] border-2 border-dashed px-4 py-8 text-[#7E8889] transition-colors hover:bg-[#EFEFEC] hover:text-[#2B3C40]"
-            style={{ width: LANE_WIDTH, borderColor: KANBAN_COLORS.border_default }}
-          >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F4F2] text-[#7E8889] transition-colors group-hover:bg-[#E2E2DE] group-hover:text-[#2B3C40]">
-              <PlusIcon size={15} />
-            </span>
-            <span className="text-[12.5px] font-semibold">Add lane</span>
-          </button>
-        )}
+          {onAddLane && (
+            <button
+              type="button"
+              onClick={onAddLane}
+              className="group flex flex-none flex-col items-center justify-center gap-2 self-start rounded-[14px] border-2 border-dashed px-4 py-8 text-[#7E8889] transition-colors hover:bg-[#E2E2DE] hover:text-[#2B3C40]"
+              style={{ width: LANE_WIDTH, borderColor: KANBAN_COLORS.border_default }}
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F4F4F2] text-[#7E8889] transition-colors group-hover:bg-white group-hover:text-[#2B3C40]">
+                <PlusIcon size={15} />
+              </span>
+              <span className="text-[12.5px] font-semibold">Add lane</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>

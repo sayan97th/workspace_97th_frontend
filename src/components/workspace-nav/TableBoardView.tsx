@@ -51,7 +51,6 @@ import {
 import {
   AttachmentIcon,
   CalendarViewIcon,
-  ChecklistIcon,
   CheckIcon,
   DownloadIcon,
   KanbanViewIcon,
@@ -1239,17 +1238,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const is_done = board_done_column ? row.values[String(board_done_column.id)] === true : false;
     const due_date_value = board_date_column ? row.values[String(board_date_column.id)] : null;
     const due_date = typeof due_date_value === "string" && due_date_value ? formatKanbanDueDate(due_date_value) : null;
+    const has_checklist = row.checklist_total_count > 0;
+    const checklist_pct = has_checklist ? Math.round((100 * row.checklist_done_count) / row.checklist_total_count) : 0;
+    const description_snippet = row.description?.trim();
 
     const has_meta_row = Boolean(
-      priority_option || due_date || row.checklist_total_count > 0 || row.attachment_count > 0 || row.comment_count > 0 || board_member_column
+      priority_option || due_date || row.attachment_count > 0 || row.comment_count > 0 || board_member_column
     );
 
     return (
-      <div
-        className="flex flex-col"
-        style={{ borderLeft: `3px solid ${priority_option?.color ?? KANBAN_COLORS.border_default}` }}
-      >
-        <div className="flex flex-col" style={{ padding: "11px 12px 10px" }}>
+      <div className="flex flex-col">
+        {priority_option && <div className="h-[6px]" style={{ background: priority_option.color }} />}
+
+        <div className="flex flex-col" style={{ padding: "13px 14px 12px" }}>
           <div className="flex items-start gap-2">
             {board_done_column && (
               <button
@@ -1272,7 +1273,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                 value={row.name}
                 onCommit={(name) => handleRenameItem(row.id, name)}
                 onCancel={() => setEditingItemId(null)}
-                className="w-full min-w-0 text-[13.5px] font-bold"
+                className="w-full min-w-0 text-[14px] font-bold"
                 style={{ color: KANBAN_COLORS.text_strong }}
                 aria_label="Rename item"
               />
@@ -1282,20 +1283,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   event.stopPropagation();
                   setEditingItemId(row.id);
                 }}
-                className="min-w-0 flex-1 cursor-text text-[13.5px] font-bold leading-snug"
+                className="min-w-0 flex-1 cursor-text text-[14px] font-bold leading-snug"
                 style={{ color: is_done ? KANBAN_COLORS.text_faded : KANBAN_COLORS.text_strong, textDecoration: is_done ? "line-through" : "none" }}
                 title="Click to rename"
               >
                 {row.name}
               </span>
             )}
-            <span className="mt-px flex-none" style={{ color: KANBAN_COLORS.text_hairline }}>
+            <span
+              className="-mr-1 -mt-1 flex-none rounded-[6px] p-1 opacity-0 transition-opacity group-hover:opacity-100"
+              style={{ color: KANBAN_COLORS.text_hairline }}
+            >
               <MoreDotsIcon size={13} />
             </span>
           </div>
 
           {board_label_column && (
-            <div style={{ margin: "8px 0 9px", paddingLeft: 24 }}>
+            <div style={{ margin: "9px 0 0", paddingLeft: 24 }}>
               <KanbanCardLabels
                 options={board_label_column.config?.options ?? []}
                 selected_ids={label_ids}
@@ -1311,15 +1315,38 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </div>
           )}
 
+          {description_snippet && (
+            <div
+              className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px]"
+              style={{ color: KANBAN_COLORS.text_disabled, paddingLeft: 24, margin: "6px 0 0" }}
+            >
+              {description_snippet}
+            </div>
+          )}
+
+          {has_checklist && (
+            <div className="flex items-center gap-2" style={{ paddingLeft: 24, margin: "10px 0 0" }} onClick={(event) => event.stopPropagation()}>
+              <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "#EEEFED" }}>
+                <div
+                  className="h-full rounded-full transition-[width]"
+                  style={{ width: `${checklist_pct}%`, background: KANBAN_COLORS.success }}
+                />
+              </div>
+              <span className="flex-none text-[11px] font-bold" style={{ color: checklist_pct === 100 ? KANBAN_COLORS.success : KANBAN_COLORS.text_placeholder }}>
+                {row.checklist_done_count}/{row.checklist_total_count}
+              </span>
+            </div>
+          )}
+
           {has_meta_row && (
             <div
-              className="flex flex-wrap items-center gap-1.5"
-              style={{ paddingLeft: 24 }}
+              className="flex flex-wrap items-center gap-2"
+              style={{ paddingLeft: 24, margin: "11px 0 0" }}
               onClick={(event) => event.stopPropagation()}
             >
               {priority_option && (
                 <span
-                  className="rounded-[5px] px-1.5 py-[3px] text-[10.5px] font-bold"
+                  className="rounded-[6px] px-[7px] py-[3px] text-[10.5px] font-extrabold uppercase tracking-wide"
                   style={{ background: `${priority_option.color}1A`, color: priority_option.color }}
                 >
                   {priority_option.label}
@@ -1327,7 +1354,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               )}
               {due_date && (
                 <span
-                  className="flex items-center gap-1 rounded-[5px] px-1.5 py-[3px] text-[11.5px] font-semibold"
+                  className="flex items-center gap-1 rounded-[6px] px-[7px] py-[3px] text-[11.5px] font-semibold"
                   style={
                     due_date.urgent && !is_done
                       ? { background: KANBAN_COLORS.danger_bg, color: KANBAN_COLORS.red }
@@ -1336,12 +1363,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                 >
                   <CalendarViewIcon size={11} />
                   {due_date.label}
-                </span>
-              )}
-              {row.checklist_total_count > 0 && (
-                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
-                  <ChecklistIcon size={11} />
-                  {row.checklist_done_count}/{row.checklist_total_count}
                 </span>
               )}
               {row.attachment_count > 0 && (
@@ -1374,7 +1395,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           )}
 
           {other_columns.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
+            <div className="flex flex-wrap items-center gap-1.5" style={{ paddingLeft: 24, margin: "9px 0 0" }} onClick={(event) => event.stopPropagation()}>
               {other_columns.slice(0, 3).map((column) => {
                 const has_options = column.type === "status" || column.type === "tags";
                 return (
