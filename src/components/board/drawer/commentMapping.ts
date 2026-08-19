@@ -1,6 +1,7 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import { classifyAttachment } from "./drawerAttachments";
 import type { DrawerAttachment, DrawerComment, DrawerReply } from "./types";
+import type { BoardItemAttachmentDto } from "@/types/board-attachments";
 import type {
   BoardItemCommentAttachmentDto,
   BoardItemCommentAuthorDto,
@@ -48,6 +49,14 @@ export const mapAuthorToPerson = (author: BoardItemCommentAuthorDto): BoardPerso
 
 export const mapAttachmentDto = (dto: BoardItemCommentAttachmentDto): DrawerAttachment => ({
   id: String(dto.id),
+  file_name: dto.file_name,
+  download_url: dto.download_url,
+  ...classifyAttachment(dto.file_name),
+});
+
+/** Maps a file attached directly to the item (not to a comment) — see `board-item-attachments.service.ts`. Ids are prefixed so they can't collide with a comment attachment's id once both lists are merged into `all_attachments`. */
+export const mapItemAttachmentDto = (dto: BoardItemAttachmentDto): DrawerAttachment => ({
+  id: `item-${dto.id}`,
   file_name: dto.file_name,
   download_url: dto.download_url,
   ...classifyAttachment(dto.file_name),

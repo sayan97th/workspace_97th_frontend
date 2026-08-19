@@ -1,8 +1,9 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { boardCommentsService } from "@/services/board-comments.service";
+import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply } from "./commentMapping";
+import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import type {
   BoardItemDrawerApi,
@@ -65,6 +66,10 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [active_tab, setActiveTab] = useState<DrawerTabId>("updates");
   const [comments_by_row, setCommentsByRow] = useState<Record<string, DrawerComment[]>>({});
   const [comments_loading, setCommentsLoading] = useState(false);
+  // Files attached directly to the item (the "Attachments" affordance) —
+  // kept separate from `comments_by_row` so uploading one never shows up as
+  // a blank entry in the Comments feed. See `postAttachments` below.
+  const [item_attachments_by_row, setItemAttachmentsByRow] = useState<Record<string, DrawerAttachment[]>>({});
   const [comments_error, setCommentsError] = useState<string | null>(null);
   const [is_uploading_files, setIsUploadingFiles] = useState(false);
   const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
@@ -137,6 +142,13 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
         })
         .catch(() => setCommentsError("Couldn't load comments. Please try again."))
         .finally(() => setCommentsLoading(false));
+
+      boardItemAttachmentsService
+        .listAttachments(board_id, item_id)
+        .then((dtos) => {
+          setItemAttachmentsByRow((current) => ({ ...current, [row_id]: dtos.map(mapItemAttachmentDto) }));
+        })
+        .catch(() => setFilesUploadError("Couldn't load attachments. Please try again."));
     } else {
       setCommentsByRow((current) =>
         current[row_id] ? current : { ...current, [row_id]: getInitialComments(row) }
@@ -226,14 +238,20 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setMentionTarget(null);
   };
 
+  const updateItemAttachments = (row_id: string, updater: (attachments: DrawerAttachment[]) => DrawerAttachment[]) =>
+    setItemAttachmentsByRow((current) => ({ ...current, [row_id]: updater(current[row_id] ?? []) }));
+
   /**
-   * Posts `files` immediately as a bodiless comment — used by the dedicated
+   * Uploads `files` straight onto the item — used by the dedicated
    * Attachments affordance (Kanban's paperclip button, the Files tab's
    * dropzone), which shouldn't depend on (or interfere with) whatever the
-   * viewer may currently be typing into the main composer. Tracked through
-   * its own {@link is_uploading_files}/{@link files_upload_error} rather than
-   * the composer's `comments_error`, since a Files-tab upload can fail while
-   * the viewer is looking at a tab that never renders the composer's banner.
+   * viewer may currently be typing into the main composer. Persisted through
+   * `boardItemAttachmentsService` (a real item-level attachment), never as a
+   * comment, so it never shows up as a blank entry in the Comments feed.
+   * Tracked through its own {@link is_uploading_files}/{@link files_upload_error}
+   * rather than the composer's `comments_error`, since a Files-tab upload
+   * can fail while the viewer is looking at a tab that never renders the
+   * composer's banner.
    */
   const postAttachments = (files: File[]) => {
     if (!open_row_id || files.length === 0) return;
@@ -242,30 +260,22 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       const item_id = Number(open_row_id);
       setFilesUploadError(null);
       setIsUploadingFiles(true);
-      boardCommentsService
-        .postComment(board_id, item_id, { body: "", attachments: files })
-        .then((dto) => {
-          updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
+      boardItemAttachmentsService
+        .uploadAttachments(board_id, item_id, files)
+        .then((dtos) => {
+          updateItemAttachments(open_row_id, (attachments) => [...dtos.map(mapItemAttachmentDto), ...attachments]);
         })
         .catch(() => setFilesUploadError("Couldn't upload one or more files. Please try again."))
         .finally(() => setIsUploadingFiles(false));
       return;
     }
 
-    const new_comment: DrawerComment = {
-      id: nextCommentId(),
-      author: config.current_user,
-      posted_at: "Just now",
-      body: "",
-      view_count: 1,
-      liked_by_me: false,
-      like_count: 0,
-      seen: false,
-      attachments: files.map((file) => ({ id: createId(), file_name: file.name, ...classifyAttachment(file.name) })),
-      replies: [],
-      reactions: [],
-    };
-    updateComments(open_row_id, (comments) => [new_comment, ...comments]);
+    const new_attachments: DrawerAttachment[] = files.map((file) => ({
+      id: createId(),
+      file_name: file.name,
+      ...classifyAttachment(file.name),
+    }));
+    updateItemAttachments(open_row_id, (attachments) => [...new_attachments, ...attachments]);
   };
 
   const dismissFilesUploadError = () => setFilesUploadError(null);
@@ -529,11 +539,19 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   );
 
   const comments = open_row_id ? comments_by_row[open_row_id] ?? [] : [];
+  const item_attachments = open_row_id ? item_attachments_by_row[open_row_id] ?? [] : [];
   const composer_attachments = useMemo(
     () => composer_attachment_drafts.map((draft) => draft.attachment),
     [composer_attachment_drafts]
   );
-  const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
+  // Every attachment on the item: files uploaded directly (the dedicated
+  // Attachments affordance) plus files sent along with a real comment — the
+  // Attachments/Files tab shows both, while `comments` itself only ever
+  // holds genuinely authored updates.
+  const all_attachments = useMemo(
+    () => [...item_attachments, ...comments.flatMap((comment) => comment.attachments)],
+    [item_attachments, comments]
+  );
   const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
   const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
 

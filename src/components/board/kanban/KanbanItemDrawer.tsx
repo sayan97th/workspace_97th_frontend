@@ -1,19 +1,25 @@
 "use client";
-import React from "react";
-import { AttachmentIcon, CheckIcon, CloseIcon, SendIcon } from "@/icons/board-icons";
+import React, { useState } from "react";
+import { AttachmentIcon, CheckIcon, CloseIcon, PlusIcon, SendIcon } from "@/icons/board-icons";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
+import AddColumnMenu from "../AddColumnMenu";
+import type { AddableColumnType, BoardColumnKind } from "../columnTypes";
 import type { BoardItemDrawerApi } from "../drawer/types";
 import CommentAttachmentChip from "../drawer/CommentAttachmentChip";
 import CommentEditForm from "../drawer/CommentEditForm";
 import CommentOptionsMenu from "../drawer/CommentOptionsMenu";
+import FilesPanel from "../drawer/FilesPanel";
 import SlideOverPanel from "../drawer/SlideOverPanel";
 import { useLatchWhileOpen } from "../drawer/useLatchWhileOpen";
 import PersonAvatar from "../PersonAvatar";
-import PersonAvatarStack, { type PersonAvatarStackPerson } from "../PersonAvatarStack";
+import type { PersonAvatarStackPerson } from "../PersonAvatarStack";
+import BoardPopover from "../toolbar/BoardPopover";
 import KanbanCardLabels from "./KanbanCardLabels";
 import KanbanCardMembers from "./KanbanCardMembers";
 import KanbanChecklistSection from "./KanbanChecklistSection";
-import type { BoardCellOption } from "../cells/OptionPicker";
+import BoardValueCell, { type BoardCellPerson, type BoardCellValue } from "../cells/BoardValueCell";
+import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "../cells/OptionPicker";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import type { BoardItemChecklistItemDto } from "@/types/board-content";
 import { KANBAN_COLORS } from "./kanbanDesign";
 
@@ -25,6 +31,9 @@ export type KanbanItemDrawerProps<TRow> = {
   is_done: boolean;
   /** Omit to hide the "mark complete" toggle entirely — the board has no checkbox column. */
   onToggleDone?: () => void;
+
+  /** Who created this card — omit to hide the row (e.g. while the detail fetch is still loading). */
+  created_by?: { id: string; full_name: string; profile_photo_url: string | null } | null;
 
   /** Omit to hide the People row — the board has no people column. */
   people?: {
@@ -44,6 +53,10 @@ export type KanbanItemDrawerProps<TRow> = {
     options: BoardCellOption[];
     selected_id: string | null;
     onSelect: (option_id: string | null) => void;
+    /** Lets the user add a new priority (e.g. beyond Low/Medium/High/Urgent) inline. */
+    onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+    /** Rename/recolor/delete/deactivate an existing priority. */
+    onEditOptions?: BoardOptionActions;
   };
 
   /** Omit to hide the Project row — the board has no tags/labels column. */
@@ -52,6 +65,23 @@ export type KanbanItemDrawerProps<TRow> = {
     selected_ids: string[];
     onToggle: (option_id: string) => void;
     onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  };
+
+  /**
+   * Any other board columns, shown as generic properties the user can add to
+   * or remove from — Assignee/Due date/Priority/Project above always stay
+   * on since the caller keeps their backing columns auto-provisioned; this
+   * is for anything beyond those four. Omit to hide the section entirely.
+   */
+  properties?: {
+    columns: Array<{ id: string; label: string; kind: BoardColumnKind; options?: BoardCellOption[] }>;
+    people: BoardCellPerson[];
+    getValue: (column_id: string) => BoardCellValue;
+    onCommit: (column_id: string, value: BoardCellValue) => void;
+    onAddOption: (column_id: string, option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+    onEditOptions: (column_id: string) => BoardOptionActions;
+    onAddProperty: (type: AddableColumnType) => void;
+    onRemoveProperty: (column_id: string) => void;
   };
 
   /** Omit to hide the Subtasks section — the caller has no checklist state wired up. */
@@ -72,28 +102,55 @@ const toDateInputValue = (value: string | null): string => {
   return date.toISOString().slice(0, 10);
 };
 
+const getPersonInitials = (full_name: string): string =>
+  full_name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
 /**
  * Task detail drawer for the Kanban board, built to be a literal reproduction
- * of `design/design_2/97 Workspace Menu.dc.html`'s drawer — a single flowing
- * panel (no tab bar), not the richer multi-tab `BoardItemDrawer` every other
- * board view uses. Every field here still round-trips through the exact same
- * real persistence those other views use (`useBoardItemDrawer`'s comments/
- * description, `handleUpdateCellValue` for Status/Priority/Due date/People/
- * Project) — only the presentation is Kanban-specific, which is why this
- * lives beside `BoardKanban` instead of replacing `BoardItemDrawer`.
+ * of `design/design_2/97 Workspace Menu.dc.html`'s drawer, plus a compact
+ * two-tab bar ("All" / "Attachments") layered on top — not the richer
+ * multi-tab `BoardItemDrawer` every other board view uses. Every field here
+ * still round-trips through the exact same real persistence those other
+ * views use (`useBoardItemDrawer`'s comments/attachments/description,
+ * `handleUpdateCellValue` for Status/Priority/Due date/People/Project) —
+ * only the presentation is Kanban-specific, which is why this lives beside
+ * `BoardKanban` instead of replacing `BoardItemDrawer`.
  */
 function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
   // Latches the whole props bundle (not just `drawer`) so the panel keeps
   // showing the card it was open for while `SlideOverPanel` slides it
   // closed — `title`/`people`/`due_date`/`priority`/`project` are all
   // derived by the caller from the (now-cleared) open row too.
-  const { drawer, title, onRenameTitle, is_done, onToggleDone, people, due_date, priority, project, checklist } =
-    useLatchWhileOpen(props, props.drawer.is_open);
+  const {
+    drawer,
+    title,
+    onRenameTitle,
+    is_done,
+    onToggleDone,
+    created_by,
+    people,
+    due_date,
+    priority,
+    project,
+    properties,
+    checklist,
+  } = useLatchWhileOpen(props, props.drawer.is_open);
+
+  const [priority_picker_anchor_el, setPriorityPickerAnchorEl] = useState<HTMLElement | null>(null);
+  const [add_property_anchor_el, setAddPropertyAnchorEl] = useState<HTMLElement | null>(null);
+  const [property_pending_removal_id, setPropertyPendingRemovalId] = useState<string | null>(null);
 
   if (!props.drawer.is_open && !drawer.is_open) return null;
 
   const done_border = is_done ? KANBAN_COLORS.success : KANBAN_COLORS.text_hairline;
   const done_bg = is_done ? KANBAN_COLORS.success : KANBAN_COLORS.card_bg;
+  const is_attachments_tab = drawer.active_tab === "files";
 
   return (
     <SlideOverPanel
@@ -155,7 +212,50 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
         </span>
       </div>
 
-      {/* Body */}
+      {/* Tabs */}
+      <div
+        className="flex flex-none items-center gap-1 px-[18px]"
+        style={{ borderBottom: `1px solid ${KANBAN_COLORS.border_subtle}` }}
+      >
+        {(
+          [
+            { id: "updates" as const, label: "All" },
+            { id: "files" as const, label: "Attachments", count: drawer.all_attachments.length },
+          ]
+        ).map((tab) => {
+          const is_active = drawer.active_tab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => drawer.setActiveTab(tab.id)}
+              className="relative flex items-center gap-1.5 px-2.5 py-2.5 text-[12.5px] font-semibold"
+              style={{ color: is_active ? KANBAN_COLORS.text_strong : KANBAN_COLORS.text_faint }}
+            >
+              {tab.label}
+              {tab.count !== undefined && (
+                <span
+                  className="rounded-[20px] px-[6px] py-px text-[10.5px] font-bold"
+                  style={{ background: KANBAN_COLORS.chip_bg, color: KANBAN_COLORS.text_faint }}
+                >
+                  {tab.count}
+                </span>
+              )}
+              {is_active && (
+                <span
+                  className="absolute bottom-[-1px] left-1.5 right-1.5 h-[2.5px] rounded-t-[3px]"
+                  style={{ background: KANBAN_COLORS.text_strong }}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {is_attachments_tab ? (
+        <FilesPanel drawer={drawer} />
+      ) : (
+      /* Body */
       <div className="flex-1 overflow-y-auto" style={{ padding: "20px 22px 28px" }}>
         <input
           value={title}
@@ -173,15 +273,47 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
         )}
 
         <div className="mb-[22px] flex flex-col gap-3.5">
+          {created_by && (
+            <div className="grid grid-cols-[100px_1fr] items-center gap-2">
+              <span className="text-[12.5px] font-semibold" style={{ color: KANBAN_COLORS.text_disabled }}>
+                Created by
+              </span>
+              <div className="flex items-center gap-1.5">
+                <PersonAvatar
+                  person={{
+                    id: created_by.id,
+                    name: created_by.full_name,
+                    initials: getPersonInitials(created_by.full_name),
+                    avatar_seed: 0,
+                    avatar_url: created_by.profile_photo_url ?? undefined,
+                  }}
+                  size={22}
+                />
+                <span className="text-[13.5px] font-semibold" style={{ color: KANBAN_COLORS.text_secondary }}>
+                  {created_by.full_name}
+                </span>
+              </div>
+            </div>
+          )}
+
           {people && (
             <div className="grid grid-cols-[100px_1fr] items-center gap-2">
               <span className="text-[12.5px] font-semibold" style={{ color: KANBAN_COLORS.text_disabled }}>
                 Assignee
               </span>
-              <div className="group flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5">
                 {people.selected.length > 0 ? (
                   <>
-                    <PersonAvatarStack people={people.selected.slice(0, 1)} size={22} />
+                    <PersonAvatar
+                      person={{
+                        id: String(people.selected[0].id),
+                        name: people.selected[0].full_name,
+                        initials: getPersonInitials(people.selected[0].full_name),
+                        avatar_seed: 0,
+                        avatar_url: people.selected[0].profile_photo_url ?? undefined,
+                      }}
+                      size={22}
+                    />
                     <span className="text-[13.5px] font-semibold" style={{ color: KANBAN_COLORS.text_secondary }}>
                       {people.selected.length > 1
                         ? `${people.selected[0].full_name} +${people.selected.length - 1}`
@@ -193,7 +325,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                     Unassigned
                   </span>
                 )}
-                <KanbanCardMembers people={people.roster} selected={people.selected} onToggle={people.onToggle} />
+                <KanbanCardMembers people={people.roster} selected={people.selected} onToggle={people.onToggle} hide_stack />
               </div>
             </div>
           )}
@@ -237,6 +369,41 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                     </button>
                   );
                 })}
+                {priority.onCreateOption && (
+                  <button
+                    type="button"
+                    onClick={(event) => setPriorityPickerAnchorEl(event.currentTarget)}
+                    aria-label="Add priority"
+                    title="Add priority"
+                    className="flex h-[26px] w-[26px] items-center justify-center rounded-[7px] transition-colors hover:bg-shell-hover"
+                    style={{ color: KANBAN_COLORS.text_faint, border: `1.5px dashed ${KANBAN_COLORS.border_default}` }}
+                  >
+                    <PlusIcon size={11} />
+                  </button>
+                )}
+                <BoardPopover
+                  anchor_el={priority_picker_anchor_el}
+                  is_open={priority_picker_anchor_el !== null}
+                  onClose={() => setPriorityPickerAnchorEl(null)}
+                  align="start"
+                  width={240}
+                >
+                  <OptionPicker
+                    options={priority.options}
+                    selected_ids={priority.selected_id ? [priority.selected_id] : []}
+                    multi={false}
+                    onToggle={(option_id) => {
+                      priority.onSelect(option_id);
+                      setPriorityPickerAnchorEl(null);
+                    }}
+                    onClear={() => {
+                      priority.onSelect(null);
+                      setPriorityPickerAnchorEl(null);
+                    }}
+                    onCreateOption={priority.onCreateOption}
+                    option_actions={priority.onEditOptions}
+                  />
+                </BoardPopover>
               </div>
             </div>
           )}
@@ -255,6 +422,73 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
             </div>
           )}
         </div>
+
+        {properties && (
+          <div className="mb-5" style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>
+            <div className="mb-3 flex flex-col gap-3.5">
+              {properties.columns.map((column) => {
+                const has_options = column.kind === "status" || column.kind === "tags";
+                return (
+                  <div key={column.id} className="group grid grid-cols-[100px_1fr_22px] items-center gap-2">
+                    <span className="truncate text-[12.5px] font-semibold" style={{ color: KANBAN_COLORS.text_disabled }} title={column.label}>
+                      {column.label}
+                    </span>
+                    <BoardValueCell
+                      column={{ id: column.id, kind: column.kind, options: column.options }}
+                      value={properties.getValue(column.id)}
+                      people={properties.people}
+                      onCommit={(value) => properties.onCommit(column.id, value)}
+                      onAddOption={has_options ? (option) => properties.onAddOption(column.id, option) : undefined}
+                      onEditOptions={has_options ? properties.onEditOptions(column.id) : undefined}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPropertyPendingRemovalId(column.id)}
+                      aria-label={`Remove ${column.label} property`}
+                      title="Remove property"
+                      className="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] opacity-0 transition-opacity hover:bg-shell-hover group-hover:opacity-100"
+                      style={{ color: KANBAN_COLORS.text_faint }}
+                    >
+                      <CloseIcon size={11} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={(event) => setAddPropertyAnchorEl(event.currentTarget)}
+              className="inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-[12.5px] font-semibold transition-colors hover:bg-shell-hover"
+              style={{ color: KANBAN_COLORS.text_faint, border: `1px solid ${KANBAN_COLORS.border_subtle}` }}
+            >
+              <PlusIcon size={12} />
+              Add property
+            </button>
+            <AddColumnMenu
+              anchor_el={add_property_anchor_el}
+              is_open={add_property_anchor_el !== null}
+              onClose={() => setAddPropertyAnchorEl(null)}
+              onSelectType={(type: AddableColumnType) => {
+                properties.onAddProperty(type);
+                setAddPropertyAnchorEl(null);
+              }}
+            />
+            <ConfirmActionModal
+              is_open={property_pending_removal_id !== null}
+              title="Remove this property?"
+              description={`This deletes "${
+                properties.columns.find((column) => column.id === property_pending_removal_id)?.label ?? ""
+              }" and its values from every card on this board. This can't be undone.`}
+              confirm_label="Remove"
+              danger
+              onConfirm={() => {
+                if (property_pending_removal_id) properties.onRemoveProperty(property_pending_removal_id);
+                setPropertyPendingRemovalId(null);
+              }}
+              onClose={() => setPropertyPendingRemovalId(null)}
+            />
+          </div>
+        )}
 
         <div className="mb-5" style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>
           <div className="mb-2.5 flex items-center justify-between">
@@ -439,6 +673,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
           </div>
         </div>
       </div>
+      )}
     </SlideOverPanel>
   );
 }

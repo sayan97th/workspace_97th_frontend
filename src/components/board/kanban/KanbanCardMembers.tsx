@@ -20,6 +20,13 @@ export type KanbanCardMembersProps = {
   /** The subset currently assigned to this card. */
   selected: PersonAvatarStackPerson[];
   onToggle: (person_id: string) => void;
+  /**
+   * When true, always renders just the small "+" trigger, never the avatar
+   * stack, regardless of `selected`. Used by the drawer's Assignee row, which
+   * already renders its own single avatar for the first assignee — showing
+   * the full stack here too would duplicate it.
+   */
+  hide_stack?: boolean;
 };
 
 /**
@@ -29,7 +36,7 @@ export type KanbanCardMembersProps = {
  * popover on click, mirroring the People cell's picker without pulling in the
  * generic `BoardValueCell` chip treatment.
  */
-const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected, onToggle }) => {
+const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected, onToggle, hide_stack = false }) => {
   const [anchor_el, setAnchorEl] = useState<HTMLElement | null>(null);
   const selected_ids = new Set(selected.map((person) => String(person.id)));
 
@@ -41,12 +48,14 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
       }}
       className="cursor-pointer"
     >
-      {selected.length > 0 ? (
+      {selected.length > 0 && !hide_stack ? (
         <PersonAvatarStack people={selected} size={22} empty_label="" />
       ) : (
         <button
           type="button"
-          className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-dashed border-shell-border-strong text-shell-text-faint opacity-0 transition-opacity hover:border-shell-text-faint hover:text-shell-text-secondary group-hover:opacity-100"
+          className={`flex h-[22px] w-[22px] items-center justify-center rounded-full border border-dashed border-shell-border-strong text-shell-text-faint transition-opacity hover:border-shell-text-faint hover:text-shell-text-secondary ${
+            hide_stack ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          }`}
           title="Add member"
         >
           <PlusIcon size={10} />

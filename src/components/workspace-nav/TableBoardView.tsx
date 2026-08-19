@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ADDABLE_COLUMN_TYPES,
@@ -405,6 +405,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const date_columns = useMemo(() => columns.filter((c) => c.type === "date"), [columns]);
   const board_date_column = date_columns[0] ?? null;
   const board_date_end_column = date_columns[1] ?? null;
+  // Every column beyond the six special slots above — rendered as generic
+  // "Properties" on a Kanban card (a few, inline) and in the Kanban drawer
+  // (the full set, with add/remove), mirroring how `board_columns` lists
+  // everything for the Table view.
+  const other_kanban_columns = useMemo(() => {
+    const excluded_column_ids = new Set(
+      [
+        board_status_column?.id,
+        board_label_column?.id,
+        board_member_column?.id,
+        board_priority_column?.id,
+        board_done_column?.id,
+        board_date_column?.id,
+      ].filter((id): id is number => id != null)
+    );
+    return columns.filter((c) => !excluded_column_ids.has(c.id));
+  }, [columns, board_status_column, board_label_column, board_member_column, board_priority_column, board_done_column, board_date_column]);
 
   const board_columns: BoardColumn[] = useMemo(() => {
     const item_column: BoardColumn = {
@@ -685,6 +702,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       config,
     });
     setColumns((current) => [...current, created]);
+  };
+
+  // ── Remove a property from the Kanban drawer's generic "Properties"
+  // section — deletes the backing column outright (and its values on every
+  // item), the same as deleting a column from the Table view's header. ──
+  const handleRemoveKanbanProperty = async (column_id: string) => {
+    await boardContentService.deleteColumn(board_id, Number(column_id));
+    setColumns((current) => current.filter((c) => String(c.id) !== column_id));
   };
 
   // ── Inline cell edit — optimistically writes the new value, then persists it,
@@ -1213,17 +1238,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   }, [board_status_column, filtered_rows]);
 
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
-    const excluded_column_ids = new Set(
-      [
-        board_status_column?.id,
-        board_label_column?.id,
-        board_member_column?.id,
-        board_priority_column?.id,
-        board_done_column?.id,
-        board_date_column?.id,
-      ].filter((id): id is number => id != null)
-    );
-    const other_columns = columns.filter((c) => !excluded_column_ids.has(c.id));
+    const other_columns = other_kanban_columns;
 
     const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
@@ -1521,6 +1536,66 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleAddColumn(status_type, { options });
   };
 
+  // Guards `kanban_core_columns_bootstrap` below to at most one run per
+  // board/tab, even though the columns it may create re-trigger the effect.
+  const kanban_core_columns_bootstrap_ref = useRef<string | null>(null);
+
+  /**
+   * Once a Kanban tab has its lanes (`board_status_column`) set up, the four
+   * card properties the client always wants visible — Assignee/Due date/
+   * Priority/Project — plus the "Mark complete" checkbox column are silently
+   * provisioned if missing, exactly like an ordinary "+ Add column" would,
+   * so the user can still hide/rename/delete them afterward. This is also
+   * what actually fixes "Mark complete": it previously did nothing on any
+   * board without a checkbox column.
+   */
+  useEffect(() => {
+    if (active_view_type !== "kanban" || !board_status_column) return;
+    const bootstrap_key = `${board_id}:${view_tabs.active_view_id}`;
+    if (kanban_core_columns_bootstrap_ref.current === bootstrap_key) return;
+    kanban_core_columns_bootstrap_ref.current = bootstrap_key;
+
+    if (!board_member_column) {
+      const people_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "people");
+      if (people_type) void handleAddColumn({ ...people_type, label: "Assignee" });
+    }
+    if (!board_date_column) {
+      const date_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "date");
+      if (date_type) void handleAddColumn({ ...date_type, label: "Due date" });
+    }
+    if (!board_priority_column) {
+      const priority_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "status");
+      if (priority_type) {
+        const priority_options = [
+          { label: "Low", color: "#579bfc" },
+          { label: "Medium", color: "#fdab3d" },
+          { label: "High", color: "#ff642e" },
+          { label: "Urgent", color: "#e2445c" },
+        ].map((option, index) => ({ id: `opt_${Date.now()}_${index}`, ...option }));
+        void handleAddColumn({ ...priority_type, label: "Priority" }, { options: priority_options });
+      }
+    }
+    if (!board_label_column) {
+      const project_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "tags");
+      if (project_type) void handleAddColumn({ ...project_type, label: "Project" });
+    }
+    if (!board_done_column) {
+      const done_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "checkbox");
+      if (done_type) void handleAddColumn({ ...done_type, label: "Done" });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    active_view_type,
+    board_id,
+    view_tabs.active_view_id,
+    board_status_column,
+    board_member_column,
+    board_date_column,
+    board_priority_column,
+    board_label_column,
+    board_done_column,
+  ]);
+
   // ── Calendar ── events are positioned by the board's first Date column
   // (an optional second Date column becomes the range's end, e.g. "Start
   // date"/"Due date"); a card's day *is* its value in that column, so
@@ -1796,6 +1871,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           title={kanban_open_row?.name ?? ""}
           onRenameTitle={(name) => kanban_open_row && handleRenameItem(kanban_open_row.id, name)}
           is_done={board_done_column && kanban_open_row ? kanban_open_row.values[String(board_done_column.id)] === true : false}
+          created_by={
+            kanban_open_row_detail?.creator
+              ? {
+                  id: String(kanban_open_row_detail.creator.id),
+                  full_name: kanban_open_row_detail.creator.full_name,
+                  profile_photo_url: kanban_open_row_detail.creator.profile_photo_url,
+                }
+              : null
+          }
           onToggleDone={
             board_done_column && kanban_open_row
               ? () =>
@@ -1835,6 +1919,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   options: board_priority_column.config?.options ?? [],
                   selected_id: kanban_open_row && typeof kanban_open_row.values[String(board_priority_column.id)] === "string" ? (kanban_open_row.values[String(board_priority_column.id)] as string) : null,
                   onSelect: (option_id) => kanban_open_row && void handleUpdateCellValue(kanban_open_row.id, String(board_priority_column.id), option_id),
+                  onCreateOption: (option) => handleAddColumnOption(String(board_priority_column.id), option),
+                  onEditOptions: makeOptionActions(String(board_priority_column.id)),
                 }
               : undefined
           }
@@ -1851,6 +1937,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                     void handleUpdateCellValue(kanban_open_row.id, String(board_label_column.id), next.length ? next : null);
                   },
                   onCreateOption: (option) => handleAddColumnOption(String(board_label_column.id), option),
+                }
+              : undefined
+          }
+          properties={
+            kanban_open_row
+              ? {
+                  columns: other_kanban_columns.map((column) => ({
+                    id: String(column.id),
+                    label: column.label,
+                    kind: column.type,
+                    options: column.config?.options,
+                  })),
+                  people: node.owners,
+                  getValue: (column_id) => kanban_open_row.values[column_id] ?? null,
+                  onCommit: (column_id, value) => void handleUpdateCellValue(kanban_open_row.id, column_id, value),
+                  onAddOption: (column_id, option) => handleAddColumnOption(column_id, option),
+                  onEditOptions: (column_id) => makeOptionActions(column_id),
+                  onAddProperty: (type) => void handleAddColumn(type),
+                  onRemoveProperty: (column_id) => void handleRemoveKanbanProperty(column_id),
                 }
               : undefined
           }
