@@ -278,6 +278,31 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     updateItemAttachments(open_row_id, (attachments) => [...new_attachments, ...attachments]);
   };
 
+  /**
+   * Permanently deletes an item-level attachment (id shaped `item-{id}` by
+   * {@link mapItemAttachmentDto}) — comment attachments have no per-file
+   * delete route yet, so callers must gate this behind `attachment.can_delete`.
+   * Optimistic, mirroring {@link deleteComment}: removes locally first, then
+   * rolls back and surfaces {@link files_upload_error} if the request fails.
+   */
+  const deleteAttachment = (attachment_id: string) => {
+    if (!open_row_id) return;
+    const row_id = open_row_id;
+    const previous_attachments = item_attachments_by_row[row_id] ?? [];
+    updateItemAttachments(row_id, (attachments) => attachments.filter((attachment) => attachment.id !== attachment_id));
+
+    if (!is_api_backed) return;
+    const item_id = Number(row_id);
+    const numeric_attachment_id = Number(attachment_id.replace(/^item-/, ""));
+    setFilesUploadError(null);
+    boardItemAttachmentsService
+      .deleteAttachment(board_id, item_id, numeric_attachment_id)
+      .catch(() => {
+        setItemAttachmentsByRow((current) => ({ ...current, [row_id]: previous_attachments }));
+        setFilesUploadError("Couldn't delete that file. Please try again.");
+      });
+  };
+
   const dismissFilesUploadError = () => setFilesUploadError(null);
 
   const addComposerAttachments = (files: File[]) => {
@@ -615,6 +640,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     is_uploading_files,
     files_upload_error,
     dismissFilesUploadError,
+    deleteAttachment,
 
     reply_text_by_comment,
     onReplyTextChange,

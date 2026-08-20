@@ -59,6 +59,7 @@ export const mapItemAttachmentDto = (dto: BoardItemAttachmentDto): DrawerAttachm
   id: `item-${dto.id}`,
   file_name: dto.file_name,
   download_url: dto.download_url,
+  can_delete: true,
   ...classifyAttachment(dto.file_name),
 });
 

@@ -18,6 +18,8 @@ export type DrawerAttachment = {
   tag_color: string;
   /** Present once the attachment is actually uploaded (real boards); absent for a composer's not-yet-posted draft. */
   download_url?: string;
+  /** True for attachments uploaded directly onto the item — the only kind with a backend delete route today. Comment attachments are removed by deleting the comment itself. */
+  can_delete?: boolean;
 };
 
 /** A reply nested under a top-level comment. */
@@ -130,9 +132,11 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   postAttachments: (files: File[]) => void;
   /** True while a `postAttachments` call is in flight — lets the Files tab's dropzone disable itself and show upload feedback. */
   is_uploading_files: boolean;
-  /** Set when a `postAttachments` request fails; shown as a dismissible banner on the Files tab. */
+  /** Set when a `postAttachments` or `deleteAttachment` request fails; shown as a dismissible banner on the Files tab. */
   files_upload_error: string | null;
   dismissFilesUploadError: () => void;
+  /** Permanently deletes an item-level attachment (`attachment.can_delete` must be true) — also removes its file from storage server-side. */
+  deleteAttachment: (attachment_id: string) => void;
 
   reply_text_by_comment: Record<string, string>;
   onReplyTextChange: (comment_id: string, value: string) => void;

@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { CloseIcon, PlusIcon } from "@/icons/board-icons";
 import { FilesTabIcon } from "@/icons/drawer-icons";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import FileGalleryDropzone from "../file-gallery/FileGalleryDropzone";
 import CommentAttachmentChip from "./CommentAttachmentChip";
-import type { BoardItemDrawerApi } from "./types";
+import type { BoardItemDrawerApi, DrawerAttachment } from "./types";
 
 export type FilesPanelProps<TRow> = {
   drawer: BoardItemDrawerApi<TRow>;
@@ -21,6 +22,7 @@ export type FilesPanelProps<TRow> = {
 function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
   const attachments = drawer.all_attachments;
   const has_files = attachments.length > 0;
+  const [pending_delete_attachment, setPendingDeleteAttachment] = useState<DrawerAttachment | null>(null);
 
   return (
     <FileGalleryDropzone
@@ -62,7 +64,11 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
               </div>
               <div className="flex flex-wrap gap-2.5">
                 {attachments.map((attachment) => (
-                  <CommentAttachmentChip key={attachment.id} attachment={attachment} />
+                  <CommentAttachmentChip
+                    key={attachment.id}
+                    attachment={attachment}
+                    onDelete={attachment.can_delete ? setPendingDeleteAttachment : undefined}
+                  />
                 ))}
               </div>
             </div>
@@ -91,6 +97,23 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
               <p className="text-[14px] font-semibold text-shell-text">Drop files to upload</p>
             </div>
           )}
+
+          <ConfirmActionModal
+            is_open={pending_delete_attachment !== null}
+            title="Delete file"
+            description={
+              <>
+                Are you sure you want to delete &ldquo;{pending_delete_attachment?.file_name}&rdquo;? This can&rsquo;t be undone.
+              </>
+            }
+            confirm_label="Delete file"
+            danger
+            onClose={() => setPendingDeleteAttachment(null)}
+            onConfirm={() => {
+              if (pending_delete_attachment) drawer.deleteAttachment(pending_delete_attachment.id);
+              setPendingDeleteAttachment(null);
+            }}
+          />
         </>
       )}
     </FileGalleryDropzone>

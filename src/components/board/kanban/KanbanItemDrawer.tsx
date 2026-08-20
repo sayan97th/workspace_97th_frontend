@@ -22,6 +22,7 @@ import BoardValueCell, { type BoardCellPerson, type BoardCellValue } from "../ce
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "../cells/OptionPicker";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import type { BoardItemChecklistItemDto } from "@/types/board-content";
+import type { DrawerAttachment } from "../drawer/types";
 import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type KanbanItemDrawerProps<TRow> = {
@@ -146,6 +147,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
   const [priority_picker_anchor_el, setPriorityPickerAnchorEl] = useState<HTMLElement | null>(null);
   const [add_property_anchor_el, setAddPropertyAnchorEl] = useState<HTMLElement | null>(null);
   const [property_pending_removal_id, setPropertyPendingRemovalId] = useState<string | null>(null);
+  const [pending_delete_attachment, setPendingDeleteAttachment] = useState<DrawerAttachment | null>(null);
 
   if (!props.drawer.is_open && !drawer.is_open) return null;
 
@@ -533,7 +535,11 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
           {drawer.all_attachments.length > 0 && (
             <div className="mb-2.5 flex flex-wrap gap-1.5">
               {drawer.all_attachments.map((attachment) => (
-                <CommentAttachmentChip key={attachment.id} attachment={attachment} />
+                <CommentAttachmentChip
+                  key={attachment.id}
+                  attachment={attachment}
+                  onDelete={attachment.can_delete ? setPendingDeleteAttachment : undefined}
+                />
               ))}
             </div>
           )}
@@ -554,6 +560,23 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
               }}
             />
           </label>
+
+          <ConfirmActionModal
+            is_open={pending_delete_attachment !== null}
+            title="Delete file"
+            description={
+              <>
+                Are you sure you want to delete &ldquo;{pending_delete_attachment?.file_name}&rdquo;? This can&rsquo;t be undone.
+              </>
+            }
+            confirm_label="Delete file"
+            danger
+            onClose={() => setPendingDeleteAttachment(null)}
+            onConfirm={() => {
+              if (pending_delete_attachment) drawer.deleteAttachment(pending_delete_attachment.id);
+              setPendingDeleteAttachment(null);
+            }}
+          />
         </div>
 
         {drawer.has_description && (
