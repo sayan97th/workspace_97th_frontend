@@ -24,19 +24,19 @@ export default function AdminLayout({
 
   if (isLoading || !isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-shell-bg">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-gray-50">
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
       <AppTopBar />
       <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
         <AppSidebar />
         <Backdrop />
-        <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-gray-50">
+        <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
           {children}
         </main>
       </div>
