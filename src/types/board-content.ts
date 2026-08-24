@@ -12,6 +12,7 @@
  */
 import type {
   BoardAdvancedFilterRow,
+  BoardChartConfig,
   BoardColumnKind,
   BoardConditionalColorRule,
   BoardRowHeight,
@@ -130,6 +131,8 @@ export type BoardViewDto = {
   view_type: BoardViewKind;
   /** Markdown source for a `doc`-type view (see `BoardDocView`) — null/unused for every other kind. */
   doc_content: string | null;
+  /** Chart type/data source/grouping for a `chart`-type view (see `BoardChartView`) — null/unused for every other kind. */
+  chart_config: BoardChartConfig | null;
   /** Key into `BOARD_VIEW_ICON_OPTIONS` (@/components/board/boardViewIcons); null renders the default per-position icon. */
   icon: string | null;
   position: number;
@@ -231,4 +234,6 @@ export type SaveBoardViewPayload = {
   conditional_color_rules?: BoardConditionalColorRule[] | null;
   /** Markdown source, saved by a `doc`-type view's autosave. */
   doc_content?: string | null;
+  /** Chart type/data source/grouping, saved whenever a `chart`-type view's config panel changes. */
+  chart_config?: BoardChartConfig | null;
 };

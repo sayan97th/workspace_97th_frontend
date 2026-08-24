@@ -6,6 +6,7 @@ import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_VIEW_TYPES,
   BoardCalendar,
+  BoardChartView,
   BoardComingSoonView,
   BoardDiscussionDrawer,
   BoardDocView,
@@ -1727,10 +1728,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onReorderPersonalTabs: handleReorderPersonalTabs,
       }}
       toolbar={
-        // A Doc or Files Gallery tab has no items/columns to search, filter or
-        // sort — the item-grid toolbar would be pure noise above either one
-        // (Files Gallery renders its own dedicated toolbar instead).
-        active_view_type === "doc" || active_view_type === "file_gallery" ? undefined : (
+        // A Doc, Files Gallery or Chart tab has no items/columns of its own to
+        // search, filter or sort — the item-grid toolbar would be pure noise
+        // above any of them (Files Gallery and Chart render their own
+        // dedicated toolbar/config panel instead).
+        active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" ? undefined : (
           <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
         )
       }
@@ -1847,6 +1849,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         />
       ) : active_view_type === "file_gallery" && active_doc_view ? (
         <BoardFileGalleryView board_id={board_id} view_id={active_doc_view.id} />
+      ) : active_view_type === "chart" && view_tabs.active_view_id != null ? (
+        <BoardChartView board_id={board_id} view_id={view_tabs.active_view_id} />
       ) : active_view_type !== "table" ? (
         <BoardComingSoonView view_type={active_view_type} />
       ) : groups.length === 0 ? (

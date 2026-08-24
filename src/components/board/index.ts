@@ -74,3 +74,4 @@ export * from "./kanban";
 export * from "./calendar";
 export * from "./doc";
 export * from "./file-gallery";
+export * from "./chart";

@@ -86,7 +86,7 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Chart",
     description: "Visualize your data as a chart",
     Icon: ChartViewIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "calendar",

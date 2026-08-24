@@ -408,3 +408,49 @@ export const SendIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
     />
   </svg>
 );
+
+/** Three uneven vertical bars — the Chart view's "Bar" chart type. */
+export const ChartTypeBarIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.3" y="8.4" width="2.8" height="5.2" rx="0.6" fill="currentColor" />
+    <rect x="6.6" y="4.6" width="2.8" height="9" rx="0.6" fill="currentColor" />
+    <rect x="10.9" y="6.6" width="2.8" height="7" rx="0.6" fill="currentColor" />
+  </svg>
+);
+
+/** Two-segment stacked bars — the Chart view's "Stacked bar" chart type. */
+export const ChartTypeStackedBarIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.3" y="10.2" width="2.8" height="3.4" rx="0.5" fill="currentColor" />
+    <rect x="2.3" y="6.4" width="2.8" height="3.2" rx="0.5" fill="currentColor" opacity="0.45" />
+    <rect x="6.6" y="8.6" width="2.8" height="5" rx="0.5" fill="currentColor" />
+    <rect x="6.6" y="4" width="2.8" height="4" rx="0.5" fill="currentColor" opacity="0.45" />
+    <rect x="10.9" y="9.4" width="2.8" height="4.2" rx="0.5" fill="currentColor" />
+    <rect x="10.9" y="5.8" width="2.8" height="3" rx="0.5" fill="currentColor" opacity="0.45" />
+  </svg>
+);
+
+/** Rising polyline with points — the Chart view's "Line" chart type. */
+export const ChartTypeLineIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2.3 11.5 6.2 7.3 9.3 9.7 13.7 3.6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="6.2" cy="7.3" r="1.1" fill="currentColor" />
+    <circle cx="9.3" cy="9.7" r="1.1" fill="currentColor" />
+    <circle cx="13.7" cy="3.6" r="1.1" fill="currentColor" />
+  </svg>
+);
+
+/** Full pie with two slices — the Chart view's "Pie" chart type. */
+export const ChartTypePieIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 8 V2.3 A5.7 5.7 0 1 1 3 11.2 Z" fill="currentColor" />
+    <path d="M8 8 L3 11.2 A5.7 5.7 0 0 1 8 2.3 Z" fill="currentColor" opacity="0.4" />
+  </svg>
+);
+
+/** Ring with a gap — the Chart view's "Donut" chart type. */
+export const ChartTypeDonutIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="5.3" stroke="currentColor" strokeWidth="2.6" strokeDasharray="8 3.3" />
+  </svg>
+);
