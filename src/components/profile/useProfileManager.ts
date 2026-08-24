@@ -122,9 +122,9 @@ function toSessionRow(dto: UserSessionDto): ProfileSessionRow {
 }
 
 /**
- * Owns all My Profile modal state behind one config-in/API-out hook, the same shape as
- * {@link useAdministrationManager} — so {@link ProfileView} and its section panels stay
- * presentational. Personal info, password and two-factor auth manage their own real-API
+ * Owns all My Profile modal state behind one config-in/API-out hook, the same shape as the
+ * Administration view's per-section `use<Section>Manager` hooks, so {@link ProfileView} and
+ * its section panels stay presentational. Personal info, password and two-factor auth manage their own real-API
  * wiring (see {@link ProfileForm}, {@link ChangePasswordSection}, {@link TwoFactorSection}).
  * The sections driven by this hook (working status, notifications, language & region,
  * session history) are backed by `PATCH /api/profile/*`: every setter optimistically

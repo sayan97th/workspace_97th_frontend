@@ -227,7 +227,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
                 )}
                 {result.skipped_emails.length > 0 && (
                   <p className="mt-1.5 text-shell-text-secondary">
-                    Already a member, so skipped: {result.skipped_emails.join(", ")}
+                    Not invited (already a member, or not an approved domain): {result.skipped_emails.join(", ")}
                   </p>
                 )}
               </div>

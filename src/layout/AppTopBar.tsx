@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
-import { useBranding } from "@/context/BrandingContext";
+import { useAccountBranding } from "@/hooks/useAccountBranding";
 import UserAvatar from "@/components/common/UserAvatar";
 import AccountMenu from "./AccountMenu";
 import RequestAccessModal, {
@@ -20,7 +20,6 @@ import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TrashModal, type TrashTabId } from "@/components/trash";
-import { AdministrationModal } from "@/components/administration";
 import {
   AppsGridIcon,
   BellIcon,
@@ -42,7 +41,7 @@ const AppTopBar: React.FC = () => {
   const router = useRouter();
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
-  const { logo_url } = useBranding();
+  const { logo_url } = useAccountBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const { notifications, unread_count, selectNotification } = useNotifications();
@@ -54,7 +53,6 @@ const AppTopBar: React.FC = () => {
   const [is_feed_open, setIsFeedOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [trash_initial_tab, setTrashInitialTab] = useState<TrashTabId>("trash");
-  const [is_administration_open, setIsAdministrationOpen] = useState(false);
 
   const toggleNotifications = () => setIsNotificationsOpen((previous) => !previous);
   const closeNotifications = () => setIsNotificationsOpen(false);
@@ -74,6 +72,9 @@ const AppTopBar: React.FC = () => {
   /** "Teams" is now a routed page (`/teams`) rather than a modal. */
   const openTeams = () => router.push("/teams");
 
+  /** "Administration" is now a routed page (`/administration`) rather than a modal. */
+  const openAdministration = () => router.push("/administration");
+
   /** "Invitations" opens the Sent invitations page, scoped to the active workspace. */
   const openInvitations = () =>
     router.push(active_workspace_slug ? `/invitations?workspace=${active_workspace_slug}` : "/invitations");
@@ -87,9 +88,6 @@ const AppTopBar: React.FC = () => {
     setIsTrashOpen(true);
   };
   const closeTrash = () => setIsTrashOpen(false);
-
-  const openAdministration = () => setIsAdministrationOpen(true);
-  const closeAdministration = () => setIsAdministrationOpen(false);
 
   const handleRequestAccessSubmit = (submission: RequestAccessSubmission) => {
     // No backend wiring yet — surface the payload for the future API hook.
@@ -266,8 +264,6 @@ const AppTopBar: React.FC = () => {
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
-
-      <AdministrationModal is_open={is_administration_open} onClose={closeAdministration} />
 
       <AccountMenu
         is_open={is_account_open}

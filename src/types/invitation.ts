@@ -67,7 +67,8 @@ export type WorkspaceInvitationListQuery = {
 /** One email that was NOT invited, and why. */
 export type SkippedInvitation = {
   email: string;
-  reason: "already_member";
+  /** `domain_not_approved`: blocked by Administration > Authentication's guest invite domain approval policy. */
+  reason: "already_member" | "domain_not_approved";
 };
 
 /** Response for `POST /api/workspaces/{slug}/invitations`. */
