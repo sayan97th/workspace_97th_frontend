@@ -13,7 +13,9 @@ export type BoardColumnKind =
   | "date"
   | "tags"
   | "number"
-  | "checkbox";
+  | "checkbox"
+  | "timeline"
+  | "dependency";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -24,6 +26,8 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   tags: { accent_color: "#7e5bef", glyph: "Dp" },
   number: { accent_color: "#fdab3d", glyph: "#", glyph_text_color: "#3a2a00" },
   checkbox: { accent_color: "#17a2b8", glyph: "Ck" },
+  timeline: { accent_color: "#ff642e", glyph: "Tl" },
+  dependency: { accent_color: "#7f5347", glyph: "De" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */
@@ -110,6 +114,24 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     description: "A simple done / not-done toggle",
     swatch: COLUMN_KIND_SWATCH.checkbox,
     default_width: 110,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "timeline",
+    label: "Timeline",
+    description: "A start and end date — drives the Gantt view",
+    swatch: COLUMN_KIND_SWATCH.timeline,
+    default_width: 190,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "dependency",
+    label: "Dependency",
+    description: "Link items that must finish before this one starts",
+    swatch: COLUMN_KIND_SWATCH.dependency,
+    default_width: 170,
     section: "super_useful",
     has_options: false,
   },

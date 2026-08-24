@@ -77,9 +77,9 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
   {
     kind: "gantt",
     label: "Gantt",
-    description: "Plan timelines and dependencies",
+    description: "Plan timelines and milestones",
     Icon: GanttViewIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "chart",

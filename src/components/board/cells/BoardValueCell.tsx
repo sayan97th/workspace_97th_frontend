@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { CheckIcon } from "@/icons/board-icons";
+import { CheckIcon, LinkIcon } from "@/icons/board-icons";
 import type { BoardColumnKind } from "../columnTypes";
 import StatusPill from "../StatusPill";
 import ProductTag, { OverflowBadge } from "../ProductTag";
@@ -11,8 +11,11 @@ import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./O
 
 export type { BoardCellOption, BoardOptionActions };
 
+/** A `timeline`-type column's value — both `YYYY-MM-DD`. */
+export type BoardCellTimelineValue = { start: string; end: string };
+
 /** A cell value, shaped per the owning column's kind. */
-export type BoardCellValue = string | number | boolean | string[] | null;
+export type BoardCellValue = string | number | boolean | string[] | BoardCellTimelineValue | null;
 
 /** The subset of a column a cell editor needs — decoupled from the engine's DTO. */
 export type BoardCellColumn = {
@@ -24,11 +27,16 @@ export type BoardCellColumn = {
 /** A board member the People cell can assign. */
 export type BoardCellPerson = { id: number | string; full_name: string; profile_photo_url?: string | null };
 
+/** An item the Dependency cell can link to as a predecessor. */
+export type BoardCellItemOption = { id: string; name: string };
+
 export type BoardValueCellProps = {
   column: BoardCellColumn;
   value: BoardCellValue;
   /** All assignable board members (People columns). */
   people?: BoardCellPerson[];
+  /** Every other item this cell's Dependency column can link to as a predecessor — the caller is responsible for excluding the row itself and any candidate that would form a cycle. */
+  items?: BoardCellItemOption[];
   /** Persists a new cell value. */
   onCommit: (value: BoardCellValue) => void;
   /** Adds an option to a status/dropdown column and resolves to it so the cell can select it. */
@@ -39,19 +47,48 @@ export type BoardValueCellProps = {
   bleed?: boolean;
 };
 
+/**
+ * Parses a `YYYY-MM-DD` (or full ISO timestamp) column value into a
+ * local-midnight `Date` using its raw digits — local, not UTC, components —
+ * so a stored date renders as the day a viewer actually expects regardless
+ * of timezone. A bare date-only string parses as UTC midnight per the ISO
+ * 8601 spec if handed to `new Date(value)` directly, which then displays as
+ * the *previous* day in any timezone behind UTC. Mirrors `BoardCalendar`'s
+ * and the Gantt view's own `parseIsoDate`.
+ */
+const parseIsoDateLocal = (value: string): Date | null => {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (!match) return null;
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 const formatDate = (value: string): string => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  const date = parseIsoDateLocal(value);
+  if (!date) return value;
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
+/** `Mar 4` — no year, for the tighter Timeline cell pill. */
+const formatShortDate = (value: string): string => {
+  const date = parseIsoDateLocal(value);
+  return !date ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
 /** Normalizes any stored date value to the YYYY-MM-DD an <input type="date"> expects. */
 const toDateInputValue = (value: BoardCellValue): string => {
   if (typeof value !== "string" || !value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toISOString().slice(0, 10);
+  const date = parseIsoDateLocal(value);
+  if (!date) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
+
+const asTimelineValue = (value: BoardCellValue): BoardCellTimelineValue | null =>
+  value && typeof value === "object" && !Array.isArray(value) ? value : null;
 
 const asStringArray = (value: BoardCellValue): string[] =>
   Array.isArray(value) ? value.map(String) : [];
@@ -83,6 +120,7 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
   column,
   value,
   people = [],
+  items = [],
   onCommit,
   onAddOption,
   onEditOptions,
@@ -95,6 +133,10 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
       return <TextInputCell value={value} onCommit={onCommit} numeric />;
     case "date":
       return <DateCell value={value} onCommit={onCommit} />;
+    case "timeline":
+      return <TimelineCell value={value} onCommit={onCommit} />;
+    case "dependency":
+      return <DependencyCell value={value} items={items} onCommit={onCommit} />;
     case "status":
       return (
         <StatusCell
@@ -247,6 +289,76 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
         <span className="text-[12.5px] text-transparent">—</span>
       )}
     </EditableSurface>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Timeline (start + end date — what the Gantt view's bars are driven by)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const TimelineCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellValue) => void }> = ({
+  value,
+  onCommit,
+}) => {
+  const popover = usePopoverAnchor();
+  const range = asTimelineValue(value);
+
+  const commitRange = (start: string, end: string) => {
+    if (!start) {
+      onCommit(null);
+      return;
+    }
+    // An end before the (possibly just-changed) start isn't a valid range —
+    // collapse it to a single-day milestone instead of silently swapping the
+    // two, which would surprise whichever end the user didn't just touch.
+    onCommit({ start, end: end && end >= start ? end : start });
+  };
+
+  return (
+    <>
+      <EditableSurface onClick={popover.open}>
+        {range ? (
+          <span className="truncate text-[12.5px] text-shell-text-secondary">
+            {formatShortDate(range.start)}
+            {range.end !== range.start ? ` → ${formatShortDate(range.end)}` : " (milestone)"}
+          </span>
+        ) : (
+          <span className="text-[12.5px] text-transparent">—</span>
+        )}
+      </EditableSurface>
+      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={230}>
+        <div className="flex flex-col gap-2.5 p-3" onClick={(event) => event.stopPropagation()}>
+          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-shell-text-muted">
+            Start
+            <input
+              type="date"
+              value={range?.start ?? ""}
+              onChange={(event) => commitRange(event.target.value, range?.end ?? event.target.value)}
+              className="rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-shell-text-muted">
+            End
+            <input
+              type="date"
+              value={range?.end ?? ""}
+              disabled={!range}
+              onChange={(event) => commitRange(range?.start ?? "", event.target.value)}
+              className="rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500 disabled:opacity-50"
+            />
+          </label>
+          {range && (
+            <button
+              type="button"
+              onClick={() => onCommit({ start: range.start, end: range.start })}
+              className="self-start text-[11.5px] font-semibold text-brand-500 hover:underline"
+            >
+              Set as milestone
+            </button>
+          )}
+        </div>
+      </BoardPopover>
+    </>
   );
 };
 
@@ -465,6 +577,115 @@ const PeopleCell: React.FC<{
             );
           })}
         </div>
+      </BoardPopover>
+    </>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dependency (multi-select predecessor items — drives the Gantt view's arrows)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The search + toggleable item list a Dependency picker popover shows —
+ * shared by the full grid `DependencyCell` below and the Gantt view's own
+ * compact "link" trigger (`GanttRowLabel` in `TableBoardView.tsx`), which
+ * needs the same picker but can't reuse `DependencyCell` itself since its
+ * trigger is a full-height grid cell, not a small inline badge.
+ */
+export const DependencyPickerList: React.FC<{
+  items: BoardCellItemOption[];
+  selected_ids: string[];
+  onToggle: (item_id: string) => void;
+}> = ({ items, selected_ids, onToggle }) => {
+  const [search, setSearch] = useState("");
+  const filtered_items = items.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase()));
+
+  return (
+    <div className="flex flex-col" onClick={(event) => event.stopPropagation()}>
+      <div className="p-2 pb-1">
+        <input
+          autoFocus
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search items…"
+          className="w-full rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+        />
+      </div>
+      <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto p-2 pt-1">
+        {filtered_items.length === 0 && (
+          <p className="px-1 py-3 text-center text-[12.5px] text-shell-text-faint">
+            {items.length === 0 ? "No other items to depend on yet." : "No matches."}
+          </p>
+        )}
+        {filtered_items.map((item) => {
+          const is_selected = selected_ids.includes(item.id);
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onToggle(item.id)}
+              className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
+            >
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-shell-hover text-shell-text-muted">
+                <LinkIcon size={12} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text">{item.name}</span>
+              {is_selected && (
+                <span className="flex-none text-brand-500">
+                  <CheckIcon size={14} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const DependencyCell: React.FC<{
+  value: BoardCellValue;
+  items: BoardCellItemOption[];
+  onCommit: (value: BoardCellValue) => void;
+}> = ({ value, items, onCommit }) => {
+  const popover = usePopoverAnchor();
+  const selected_ids = asStringArray(value);
+  const selected = selected_ids
+    .map((id) => items.find((item) => item.id === id))
+    .filter((item): item is BoardCellItemOption => Boolean(item));
+  const visible = selected.slice(0, 2);
+  const overflow = selected.length - visible.length;
+
+  const toggle = (item_id: string) => {
+    const next = selected_ids.includes(item_id)
+      ? selected_ids.filter((id) => id !== item_id)
+      : [...selected_ids, item_id];
+    onCommit(next.length ? next : null);
+  };
+
+  return (
+    <>
+      <EditableSurface onClick={popover.open}>
+        {selected.length > 0 ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
+            {visible.map((item) => (
+              <span
+                key={item.id}
+                className="flex max-w-[110px] items-center gap-1 truncate rounded-full bg-shell-hover px-2 py-0.5 text-[11px] font-medium text-shell-text-secondary"
+              >
+                <LinkIcon size={10} className="flex-none" />
+                <span className="truncate">{item.name}</span>
+              </span>
+            ))}
+            {overflow > 0 && <OverflowBadge label={`+${overflow}`} />}
+          </div>
+        ) : (
+          <span className="text-[12.5px] text-transparent">—</span>
+        )}
+      </EditableSurface>
+      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={260}>
+        <DependencyPickerList items={items} selected_ids={selected_ids} onToggle={toggle} />
       </BoardPopover>
     </>
   );

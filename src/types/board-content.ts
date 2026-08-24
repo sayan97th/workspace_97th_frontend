@@ -67,8 +67,11 @@ export type BoardGroupDto = {
   position: number;
 };
 
+/** A `timeline`-type column's value — both `YYYY-MM-DD`. */
+export type BoardTimelineValue = { start: string; end: string };
+
 /** A cell value, shaped per the owning column's type — see {@link BoardColumnType}. */
-export type BoardItemValue = string | number | boolean | string[] | null;
+export type BoardItemValue = string | number | boolean | string[] | BoardTimelineValue | null;
 
 export type BoardItemDto = {
   id: number;
