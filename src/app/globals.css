@@ -224,6 +224,9 @@
    alongside the other shell-* tokens above (light default, dark override),
    so the thumb stays visible against both the light and dark panel backgrounds. */
 @utility shell-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-shell-scrollbar-thumb) transparent;
+
   &::-webkit-scrollbar {
     @apply w-2.5;
   }
@@ -237,6 +240,29 @@
     border-radius: 8px;
     border: 3px solid transparent;
     background-clip: padding-box;
+  }
+}
+
+/* Thin, theme-colored scrollbar for compact scroll regions (Profile tab bar,
+   Session history list, Administration rail). Covers both scroll axes since
+   the same class is reused for horizontal-only and vertical-only containers,
+   and includes the Firefox-only properties `shell-scrollbar` above lacks, so
+   Firefox no longer falls back to its native, unstyled scrollbar. */
+@utility scrollnice {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-shell-scrollbar-thumb) transparent;
+
+  &::-webkit-scrollbar {
+    @apply size-1.5;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--color-shell-scrollbar-thumb);
+    border-radius: 8px;
   }
 }
 

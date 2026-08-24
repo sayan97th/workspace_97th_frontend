@@ -70,7 +70,11 @@ const TAB_ITEMS: { id: ProfileSectionId; label: string; icon: React.ReactNode }[
  * consistently with the board views tab row elsewhere in the app.
  */
 const ProfileTabs: React.FC<ProfileTabsProps> = ({ active_section, onSelect }) => (
-  <div role="tablist" aria-label="Profile sections" className="scrollnice flex items-center gap-1 overflow-x-auto border-b border-shell-border">
+  <div
+    role="tablist"
+    aria-label="Profile sections"
+    className="scrollnice flex items-center gap-1 overflow-x-auto overflow-y-hidden border-b border-shell-border"
+  >
     {TAB_ITEMS.map((item) => {
       const is_active = active_section === item.id;
       return (
