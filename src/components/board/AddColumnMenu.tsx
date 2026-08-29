@@ -66,7 +66,7 @@ const AddColumnMenu: React.FC<AddColumnMenuProps> = ({
         />
 
         {filtered.length === 0 ? (
-          <p className="px-1 py-6 text-center text-[13px] text-shell-text-faint">
+          <p className="px-1 py-6 text-center text-[13px] text-boardtree-text-faint">
             No column types match &ldquo;{query.trim()}&rdquo;.
           </p>
         ) : (
@@ -75,7 +75,7 @@ const AddColumnMenu: React.FC<AddColumnMenuProps> = ({
             if (section_types.length === 0) return null;
             return (
               <div key={section.id} className="flex flex-col gap-1.5">
-                <span className="px-1 text-[11.5px] font-semibold uppercase tracking-wide text-shell-text-faint">
+                <span className="px-1 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">
                   {section.label}
                 </span>
                 <div className="grid grid-cols-2 gap-1">
@@ -86,10 +86,10 @@ const AddColumnMenu: React.FC<AddColumnMenuProps> = ({
                       aria-label={type.label}
                       title={type.description}
                       onClick={() => handleSelect(type)}
-                      className="flex items-center gap-2.5 rounded-[7px] px-2 py-2 text-left transition-colors hover:bg-shell-hover"
+                      className="flex items-center gap-2.5 rounded-[7px] px-2 py-2 text-left transition-colors hover:bg-boardtree-hover"
                     >
                       <ColumnSwatchBadge swatch={type.swatch} size={22} />
-                      <span className="truncate text-[13px] font-medium text-shell-text">{type.label}</span>
+                      <span className="truncate text-[13px] font-medium text-boardtree-text">{type.label}</span>
                     </button>
                   ))}
                 </div>

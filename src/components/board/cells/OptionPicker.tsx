@@ -90,7 +90,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
   return (
     <div className="flex flex-col gap-1 p-2" onClick={(event) => event.stopPropagation()}>
       {options.length === 0 && !onCreateOption && (
-        <p className="px-1 py-3 text-center text-[12.5px] text-shell-text-faint">No options yet.</p>
+        <p className="px-1 py-3 text-center text-[12.5px] text-boardtree-text-faint">No options yet.</p>
       )}
 
       <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto">
@@ -102,7 +102,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
               key={option.id}
               type="button"
               onClick={() => onToggle(option.id)}
-              className={`flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover ${
+              className={`flex items-center gap-2 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-boardtree-hover ${
                 is_inactive ? "opacity-50" : ""
               }`}
             >
@@ -110,9 +110,9 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
                 className="h-[18px] w-[18px] flex-none rounded-[5px]"
                 style={{ background: option.color }}
               />
-              <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text">{option.label}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-boardtree-text">{option.label}</span>
               {is_selected && (
-                <span className="flex-none text-brand-500">
+                <span className="flex-none text-boardtree-accent">
                   <CheckIcon size={14} />
                 </span>
               )}
@@ -122,7 +122,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
       </div>
 
       {onCreateOption && (
-        <div className="mt-1 flex items-center gap-1.5 border-t border-shell-border pt-2">
+        <div className="mt-1 flex items-center gap-1.5 border-t border-boardtree-border-soft pt-2">
           <input
             value={new_label}
             onChange={(event) => setNewLabel(event.target.value)}
@@ -133,14 +133,14 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
               }
             }}
             placeholder="Add an option"
-            className="min-w-0 flex-1 rounded-md border border-shell-border-strong bg-shell-hover px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+            className="min-w-0 flex-1 rounded-md border border-boardtree-border bg-boardtree-hover px-2 py-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent"
           />
           <button
             type="button"
             onClick={() => void handleCreate()}
             disabled={!new_label.trim() || is_creating}
             aria-label="Add option"
-            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-md bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
+            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-md bg-boardtree-accent text-white transition-colors hover:bg-boardtree-accent-hover disabled:opacity-40"
           >
             <PlusIcon size={14} />
           </button>
@@ -151,7 +151,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
         <button
           type="button"
           onClick={onClear}
-          className="mt-1 rounded-md px-1.5 py-1.5 text-left text-[12.5px] text-shell-text-faint transition-colors hover:bg-shell-hover hover:text-shell-text"
+          className="mt-1 rounded-md px-1.5 py-1.5 text-left text-[12.5px] text-boardtree-text-faint transition-colors hover:bg-boardtree-hover hover:text-boardtree-text"
         >
           Clear
         </button>
@@ -161,7 +161,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
         <button
           type="button"
           onClick={() => setIsEditingLabels(true)}
-          className="mt-1 rounded-md border-t border-shell-border px-1.5 pt-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:text-shell-text"
+          className="mt-1 rounded-md border-t border-boardtree-border-soft px-1.5 pt-2 text-left text-[12.5px] font-medium text-boardtree-text-secondary transition-colors hover:text-boardtree-text"
         >
           Edit Labels
         </button>

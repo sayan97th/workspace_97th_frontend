@@ -31,6 +31,13 @@ export type BoardColumn = {
   full_label?: string;
   /** Whether this column's header can be renamed inline (see {@link BoardTableProps.onRenameColumn}). Defaults to true when a rename handler is provided. */
   renamable?: boolean;
+  /**
+   * Rendering treatment for a `status`-kind column's cell — `"solid"`
+   * (default) fills the cell edge-to-edge; `"outline"` renders a small
+   * bordered pill instead, for Priority-style status columns (see
+   * `StatusPill`'s own `variant` prop, which this flows into).
+   */
+  pill_style?: "solid" | "outline";
 };
 
 /** A collapsible group of rows (e.g. "Active Contracts"). */

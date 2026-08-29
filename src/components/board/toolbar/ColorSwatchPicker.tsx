@@ -90,7 +90,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
         onClick={() => setIsOpen((current) => !current)}
         aria-label="Choose color"
         className={`h-[30px] w-[30px] flex-none rounded-[7px] border transition-colors ${
-          is_open ? "border-shell-text-muted" : "border-shell-border-strong hover:border-shell-text-muted"
+          is_open ? "border-boardtree-text-muted" : "border-boardtree-border hover:border-boardtree-text-muted"
         }`}
         style={{ background: color }}
       />
@@ -101,7 +101,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
           <div
             ref={grid_ref}
             data-board-menu-flyout
-            className="fixed z-[1001] grid grid-cols-6 gap-2 rounded-xl border border-shell-border-strong bg-shell-panel p-3 shadow-2xl shadow-black/50"
+            className="fixed z-[1001] grid grid-cols-6 gap-2 rounded-xl border border-boardtree-border bg-boardtree-surface p-3 shadow-2xl shadow-black/50"
             style={{
               width: GRID_WIDTH,
               top: position?.top ?? -9999,
@@ -124,7 +124,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
                   style={{
                     background: hex,
                     boxShadow: is_selected
-                      ? "0 0 0 2px var(--color-shell-panel), 0 0 0 4px var(--color-shell-text)"
+                      ? "0 0 0 2px var(--color-boardtree-surface), 0 0 0 4px var(--color-boardtree-text)"
                       : "none",
                   }}
                 />

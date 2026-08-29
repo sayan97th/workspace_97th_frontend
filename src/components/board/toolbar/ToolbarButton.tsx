@@ -20,8 +20,8 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
     const is_active = is_open || has_selection;
     const active_class =
       variant === "accent"
-        ? "bg-brand-500 text-white"
-        : "bg-shell-hover-strong text-shell-text";
+        ? "bg-boardtree-accent text-white"
+        : "bg-boardtree-hover-strong text-boardtree-text";
 
     return (
       <button
@@ -30,7 +30,7 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         onClick={onClick}
         aria-label={aria_label ?? label}
         className={`flex items-center gap-[7px] rounded-lg px-[11px] py-2 text-[13px] font-medium transition-colors ${
-          is_active ? active_class : "text-shell-text-secondary hover:bg-shell-hover"
+          is_active ? active_class : "text-boardtree-text-secondary hover:bg-boardtree-hover"
         }`}
       >
         <Icon />

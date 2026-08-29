@@ -62,24 +62,24 @@ function InlineFieldMenu<TOption>({
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
-        className={`flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border bg-shell-hover px-3 text-[13.5px] transition-colors ${
-          is_open ? "border-brand-500" : "border-shell-border-strong hover:border-shell-text-faint"
+        className={`flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border bg-boardtree-hover px-3 text-[13.5px] transition-colors ${
+          is_open ? "border-boardtree-accent" : "border-boardtree-border hover:border-boardtree-text-faint"
         }`}
       >
         <span className="flex min-w-0 flex-1 items-center gap-[9px] overflow-hidden">{renderValue()}</span>
         <ChevronDownIcon
           size={11}
-          className={`flex-none text-shell-text-muted transition-transform ${is_open ? "rotate-180" : ""}`}
+          className={`flex-none text-boardtree-text-muted transition-transform ${is_open ? "rotate-180" : ""}`}
         />
       </button>
 
       {is_open && (
         <div
-          className="absolute left-0 top-[calc(100%+5px)] z-[210] w-full min-w-[220px] overflow-y-auto rounded-[9px] border border-shell-border-strong bg-shell-panel p-1.5 shadow-2xl shadow-black/50"
+          className="absolute left-0 top-[calc(100%+5px)] z-[210] w-full min-w-[220px] overflow-y-auto rounded-[9px] border border-boardtree-border bg-boardtree-surface p-1.5 shadow-2xl shadow-black/50"
           style={{ maxHeight: menu_max_height }}
         >
           {menu_heading && (
-            <div className="px-2 pb-1 pt-1 text-[11.5px] font-semibold tracking-wide text-shell-text-faint">
+            <div className="px-2 pb-1 pt-1 text-[11.5px] font-semibold tracking-wide text-boardtree-text-faint">
               {menu_heading}
             </div>
           )}
@@ -92,8 +92,8 @@ function InlineFieldMenu<TOption>({
                   onSelect(option);
                   setIsOpen(false);
                 }}
-                className={`flex cursor-pointer items-center gap-[10px] rounded-md px-2 py-2 text-[13.5px] font-medium text-shell-text hover:bg-shell-hover ${
-                  selected ? "bg-brand-500/[0.16]" : ""
+                className={`flex cursor-pointer items-center gap-[10px] rounded-md px-2 py-2 text-[13.5px] font-medium text-boardtree-text hover:bg-boardtree-hover ${
+                  selected ? "bg-boardtree-accent/[0.16]" : ""
                 }`}
               >
                 {renderOption(option)}

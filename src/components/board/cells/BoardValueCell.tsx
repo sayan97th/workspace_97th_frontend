@@ -45,6 +45,8 @@ export type BoardValueCellProps = {
   onEditOptions?: BoardOptionActions;
   /** Whether the cell paints edge-to-edge (status columns). */
   bleed?: boolean;
+  /** Status-column pill treatment — `"outline"` renders a bordered pill (e.g. Priority) instead of the default full-bleed fill. See `BoardColumn.pill_style`. */
+  pill_style?: "solid" | "outline";
 };
 
 /**
@@ -102,7 +104,7 @@ const EditableSurface: React.FC<{
   <div
     onClick={onClick}
     className={`flex h-full w-full min-w-0 cursor-pointer items-center ${
-      bleed ? "" : "rounded-[4px] hover:bg-shell-hover/60"
+      bleed ? "" : "rounded-[4px] hover:bg-boardtree-hover/60"
     }`}
   >
     {children}
@@ -125,6 +127,7 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
   onAddOption,
   onEditOptions,
   bleed,
+  pill_style,
 }) => {
   switch (column.kind) {
     case "checkbox":
@@ -146,6 +149,7 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
           onAddOption={onAddOption}
           onEditOptions={onEditOptions}
           bleed={bleed}
+          pill_style={pill_style}
         />
       );
     case "tags":
@@ -221,7 +225,7 @@ const TextInputCell: React.FC<{
           }
         }}
         onBlur={commit}
-        className={`h-full w-full min-w-0 rounded-[4px] border border-brand-500 bg-shell-bg px-1.5 text-[12.5px] text-shell-text outline-none ${
+        className={`h-full w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 text-[12.5px] text-boardtree-text outline-none ${
           numeric ? "text-center" : ""
         }`}
       />
@@ -231,7 +235,7 @@ const TextInputCell: React.FC<{
   return (
     <EditableSurface onClick={startEditing}>
       {value != null && String(value) !== "" ? (
-        <span className={`min-w-0 truncate text-[12.5px] text-shell-text-secondary ${numeric ? "w-full text-center" : ""}`}>
+        <span className={`min-w-0 truncate text-[12.5px] text-boardtree-text-secondary ${numeric ? "w-full text-center" : ""}`}>
           {String(value)}
         </span>
       ) : (
@@ -271,7 +275,7 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
           setIsEditing(false);
         }}
         onBlur={() => setIsEditing(false)}
-        className="h-full w-full min-w-0 rounded-[4px] border border-brand-500 bg-shell-bg px-1.5 text-[12.5px] text-shell-text outline-none"
+        className="h-full w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 text-[12.5px] text-boardtree-text outline-none"
       />
     );
   }
@@ -284,7 +288,7 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
       }}
     >
       {typeof value === "string" && value ? (
-        <span className="text-[12.5px] text-shell-text-secondary">{formatDate(value)}</span>
+        <span className="text-[12.5px] text-boardtree-text-secondary">{formatDate(value)}</span>
       ) : (
         <span className="text-[12.5px] text-transparent">—</span>
       )}
@@ -318,7 +322,7 @@ const TimelineCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCel
     <>
       <EditableSurface onClick={popover.open}>
         {range ? (
-          <span className="truncate text-[12.5px] text-shell-text-secondary">
+          <span className="truncate text-[12.5px] text-boardtree-text-secondary">
             {formatShortDate(range.start)}
             {range.end !== range.start ? ` → ${formatShortDate(range.end)}` : " (milestone)"}
           </span>
@@ -328,30 +332,30 @@ const TimelineCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCel
       </EditableSurface>
       <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={230}>
         <div className="flex flex-col gap-2.5 p-3" onClick={(event) => event.stopPropagation()}>
-          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-shell-text-muted">
+          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-boardtree-text-muted">
             Start
             <input
               type="date"
               value={range?.start ?? ""}
               onChange={(event) => commitRange(event.target.value, range?.end ?? event.target.value)}
-              className="rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+              className="rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 py-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent"
             />
           </label>
-          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-shell-text-muted">
+          <label className="flex flex-col gap-1 text-[11.5px] font-semibold text-boardtree-text-muted">
             End
             <input
               type="date"
               value={range?.end ?? ""}
               disabled={!range}
               onChange={(event) => commitRange(range?.start ?? "", event.target.value)}
-              className="rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500 disabled:opacity-50"
+              className="rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 py-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent disabled:opacity-50"
             />
           </label>
           {range && (
             <button
               type="button"
               onClick={() => onCommit({ start: range.start, end: range.start })}
-              className="self-start text-[11.5px] font-semibold text-brand-500 hover:underline"
+              className="self-start text-[11.5px] font-semibold text-boardtree-accent hover:underline"
             >
               Set as milestone
             </button>
@@ -380,7 +384,7 @@ const CheckboxCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCel
       }}
       aria-label={checked ? "Uncheck" : "Check"}
       className="flex h-[18px] w-[18px] cursor-pointer items-center justify-center rounded"
-      style={checked ? { background: "#00c875" } : { border: "1.5px solid var(--color-shell-border-strong)" }}
+      style={checked ? { background: "#00c875" } : { border: "1.5px solid var(--color-boardtree-border)" }}
     >
       {checked && <CheckIcon size={11} className="text-white" />}
     </button>
@@ -412,7 +416,8 @@ const StatusCell: React.FC<{
   onAddOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   onEditOptions?: BoardOptionActions;
   bleed?: boolean;
-}> = ({ column, value, onCommit, onAddOption, onEditOptions, bleed }) => {
+  pill_style?: "solid" | "outline";
+}> = ({ column, value, onCommit, onAddOption, onEditOptions, bleed, pill_style = "solid" }) => {
   const popover = usePopoverAnchor();
   const options = column.options ?? [];
   const selected = typeof value === "string" ? value : null;
@@ -422,9 +427,13 @@ const StatusCell: React.FC<{
     <>
       <div className="h-full w-full cursor-pointer" onClick={popover.open}>
         {option ? (
-          <StatusPill label={option.label} bg={option.color} color="#ffffff" />
+          <StatusPill label={option.label} bg={option.color} color="#ffffff" variant={pill_style} />
         ) : (
-          <div className="flex h-full w-full cursor-pointer items-center justify-center bg-shell-panel-alt text-[12.5px] text-transparent hover:bg-shell-hover">
+          <div
+            className={`flex h-full w-full cursor-pointer items-center justify-center text-[12.5px] text-transparent hover:bg-boardtree-hover ${
+              bleed ? "bg-boardtree-panel-alt" : ""
+            }`}
+          >
             —
           </div>
         )}
@@ -545,8 +554,10 @@ const PeopleCell: React.FC<{
       </EditableSurface>
       <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={240}>
         <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto p-2" onClick={(event) => event.stopPropagation()}>
-          {people.length === 0 && (
-            <p className="px-1 py-3 text-center text-[12.5px] text-shell-text-faint">No members to assign.</p>
+          {people.length === 0 ? (
+            <p className="px-1 py-3 text-center text-[12.5px] text-boardtree-text-faint">No members to assign.</p>
+          ) : (
+            <p className="px-1.5 pb-1 text-[11px] font-medium text-boardtree-text-faint">Suggested people</p>
           )}
           {people.map((person, index) => {
             const is_selected = selected_ids.includes(String(person.id));
@@ -555,7 +566,7 @@ const PeopleCell: React.FC<{
                 key={person.id}
                 type="button"
                 onClick={() => toggle(String(person.id))}
-                className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
+                className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-boardtree-hover"
               >
                 <PersonAvatar
                   person={{
@@ -567,9 +578,9 @@ const PeopleCell: React.FC<{
                   }}
                   size={24}
                 />
-                <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text">{person.full_name}</span>
+                <span className="min-w-0 flex-1 truncate text-[13px] text-boardtree-text">{person.full_name}</span>
                 {is_selected && (
-                  <span className="flex-none text-brand-500">
+                  <span className="flex-none text-boardtree-accent">
                     <CheckIcon size={14} />
                   </span>
                 )}
@@ -579,6 +590,36 @@ const PeopleCell: React.FC<{
         </div>
       </BoardPopover>
     </>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress (computed, read-only — % of a row's direct subitems checked done)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A thin filled bar + trailing `NN%`, matching the design's Progress column.
+ * `percent === null` renders an em dash instead of a bar — a row with no
+ * subitems and no "done" checkbox of its own has nothing real to compute a
+ * percentage from, so this deliberately doesn't fabricate one (see
+ * `PROGRESS_COLUMN_ID` in `TableBoardView.tsx`).
+ */
+export const BoardProgressCell: React.FC<{ percent: number | null }> = ({ percent }) => {
+  if (percent === null) {
+    return <span className="text-[12.5px] text-transparent">—</span>;
+  }
+  return (
+    <div className="flex w-full items-center gap-2">
+      <div className="h-[6px] flex-1 overflow-hidden rounded-[3px] bg-boardtree-hover">
+        <div
+          className="h-[6px] rounded-[3px] bg-boardtree-accent transition-[width]"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <span className="w-8 flex-none text-right font-boardtree-mono text-[10.5px] text-boardtree-text-faint">
+        {percent}%
+      </span>
+    </div>
   );
 };
 
@@ -609,12 +650,12 @@ export const DependencyPickerList: React.FC<{
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search items…"
-          className="w-full rounded-[6px] border border-shell-border bg-shell-bg px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+          className="w-full rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 py-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent"
         />
       </div>
       <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto p-2 pt-1">
         {filtered_items.length === 0 && (
-          <p className="px-1 py-3 text-center text-[12.5px] text-shell-text-faint">
+          <p className="px-1 py-3 text-center text-[12.5px] text-boardtree-text-faint">
             {items.length === 0 ? "No other items to depend on yet." : "No matches."}
           </p>
         )}
@@ -625,14 +666,14 @@ export const DependencyPickerList: React.FC<{
               key={item.id}
               type="button"
               onClick={() => onToggle(item.id)}
-              className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
+              className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-boardtree-hover"
             >
-              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-shell-hover text-shell-text-muted">
+              <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-boardtree-hover text-boardtree-text-muted">
                 <LinkIcon size={12} />
               </span>
-              <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text">{item.name}</span>
+              <span className="min-w-0 flex-1 truncate text-[13px] text-boardtree-text">{item.name}</span>
               {is_selected && (
-                <span className="flex-none text-brand-500">
+                <span className="flex-none text-boardtree-accent">
                   <CheckIcon size={14} />
                 </span>
               )}
@@ -672,7 +713,7 @@ const DependencyCell: React.FC<{
             {visible.map((item) => (
               <span
                 key={item.id}
-                className="flex max-w-[110px] items-center gap-1 truncate rounded-full bg-shell-hover px-2 py-0.5 text-[11px] font-medium text-shell-text-secondary"
+                className="flex max-w-[110px] items-center gap-1 truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary"
               >
                 <LinkIcon size={10} className="flex-none" />
                 <span className="truncate">{item.name}</span>

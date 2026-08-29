@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckIcon, PlusIcon } from "@/icons/board-icons";
+import { boardTreeFontClassName } from "./board-tree-font";
 import InlineTitleEditor from "./InlineTitleEditor";
 import AddColumnMenu from "./AddColumnMenu";
 import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./types";
@@ -8,30 +9,50 @@ import { BOARD_ROW_HEIGHT_PX, type BoardColumn, type BoardTableProps } from "./t
 /** Width of the trailing "+" add-column header cell. */
 const ADD_COLUMN_WIDTH = 48;
 
-/** Left-most checkbox column width (kept out of the column config). */
-const CHECKBOX_WIDTH = 44;
+/**
+ * Forces every inline rename input's border/background to the boardtree
+ * palette via inline style (which always wins over `InlineTitleEditor`'s own
+ * `border-brand-500 bg-shell-bg` base classes, regardless of Tailwind's
+ * generated rule order) — that shared component is also used outside the
+ * board table (Kanban, view tabs), so its own default styling stays as-is
+ * and this override lives only at the call sites here.
+ */
+const INLINE_EDITOR_STYLE: React.CSSProperties = {
+  borderColor: "var(--color-boardtree-accent)",
+  background: "var(--color-boardtree-surface)",
+};
+
+/** Left-most checkbox column width (kept out of the column config) — matches the design's 36px checkbox gutter. */
+const CHECKBOX_WIDTH = 36;
 
 /** Row backgrounds pinned cells must paint explicitly so they stay opaque over columns scrolling underneath. */
-const HEADER_STICKY_BG = "var(--color-shell-panel-alt)";
-const ROW_STICKY_BG = "var(--color-shell-bg)";
-const STICKY_BOX_SHADOW = "1px 0 0 var(--color-shell-border-strong)";
-/** Background of the row whose detail drawer is open — a green-tinted mix over the row surface, reactive to the active theme. */
-const SELECTED_ROW_BG = "color-mix(in srgb, var(--color-shell-panel-alt) 78%, var(--color-success-500) 22%)";
-/** Background of a row checked for the selection action bar — a blue-tinted mix matching the checkbox's own accent, reactive to the active theme. Takes priority over {@link SELECTED_ROW_BG} when both apply. */
-const CHECKBOX_SELECTED_ROW_BG = "color-mix(in srgb, var(--color-shell-panel-alt) 84%, #0073ea 16%)";
+const HEADER_STICKY_BG = "var(--color-boardtree-panel-alt)";
+const ROW_STICKY_BG = "var(--color-boardtree-surface)";
+const STICKY_BOX_SHADOW = "1px 0 0 var(--color-boardtree-border)";
+/** Background of the row whose detail drawer is open — a faint accent-tinted mix over the row surface. */
+const SELECTED_ROW_BG = "color-mix(in srgb, var(--color-boardtree-surface) 85%, var(--color-boardtree-accent) 15%)";
+/** Background of a row checked for the selection action bar — matches the design's `#eaf0ff` selected-row tint exactly (light) / its dark counterpart. Takes priority over {@link SELECTED_ROW_BG} when both apply. */
+const CHECKBOX_SELECTED_ROW_BG = "var(--color-boardtree-selected)";
 
-const BoardCheckbox: React.FC<{ borderColor?: string; checked?: boolean; partial?: boolean; onClick?: (event: React.MouseEvent) => void }> = ({
-  borderColor = "var(--color-shell-border-strong)",
-  checked,
-  partial,
-  onClick,
-}) => (
+const BoardCheckbox: React.FC<{
+  borderColor?: string;
+  checked?: boolean;
+  partial?: boolean;
+  onClick?: (event: React.MouseEvent) => void;
+  size?: number;
+}> = ({ borderColor = "var(--color-boardtree-border)", checked, partial, onClick, size = 15 }) => (
   <span
     onClick={onClick}
-    className="flex h-[15px] w-[15px] flex-none cursor-pointer items-center justify-center rounded"
-    style={checked || partial ? { background: "#0073ea" } : { border: `1.5px solid ${borderColor}` }}
+    className="flex flex-none cursor-pointer items-center justify-center rounded-[3px] transition-colors"
+    style={{
+      width: size,
+      height: size,
+      ...(checked || partial
+        ? { background: "var(--color-boardtree-accent)" }
+        : { border: `1.5px solid ${borderColor}`, background: "var(--color-boardtree-surface)" }),
+    }}
   >
-    {checked && <CheckIcon size={10} className="text-white" />}
+    {checked && <CheckIcon size={Math.round(size * 0.66)} className="text-white" />}
     {partial && !checked && <span className="h-[2px] w-[7px] rounded-full bg-white" />}
   </span>
 );
@@ -48,7 +69,7 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pin
   const padding = column.bleed ? "" : "px-3";
   return (
     <div
-      className={`flex flex-none items-center ${alignment} ${padding} border-r border-shell-border`}
+      className={`flex flex-none items-center ${alignment} ${padding} border-r border-boardtree-border-soft`}
       style={{ width: column.width, ...pinStyle }}
     >
       {children}
@@ -57,11 +78,13 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pin
 };
 
 /** Width, in px, of the tree-guide slot: the curved branch connecting a subitem row to the trunk line above it. */
-const TREE_INDENT_PX = 26;
+const TREE_INDENT_PX = 30;
 /** Corner radius, in px, of that rounded branch. */
 const TREE_CURVE_RADIUS = 9;
 /** Height, in px, of the subitem panel's own mini column-header row. */
-const SUBITEM_HEADER_HEIGHT = 30;
+const SUBITEM_HEADER_HEIGHT = 34;
+/** Height, in px, of a subitem row — slightly shorter than a root row, mirroring the design. */
+const SUBITEM_ROW_HEIGHT_DELTA = 2;
 
 type TreeGuidesProps = {
   /** Whether this row is the last subitem among its siblings; a last row's branch stops at the curve instead of continuing down to the next row. */
@@ -74,10 +97,11 @@ type TreeGuidesProps = {
  * Draws the connector to the left of a subitem row: a smoothly rounded
  * branch (an SVG path, not a sharp right angle) off the trunk line running
  * down from the parent item, continuing on to the next subitem unless this
- * is the last one. Mirrors Monday's own subitem connectors, so a subitem's
- * place in the hierarchy reads at a glance instead of only being implied by
- * indentation. Subitems are exactly one level deep (they can't have their
- * own subitems), so this never needs to account for further nesting.
+ * is the last one. Mirrors the design's own subitem connectors, so a
+ * subitem's place in the hierarchy reads at a glance instead of only being
+ * implied by indentation. Subitems are exactly one level deep (they can't
+ * have their own subitems), so this never needs to account for further
+ * nesting.
  */
 const TreeGuides: React.FC<TreeGuidesProps> = ({ is_last, line_color, row_height }) => {
   const cx = TREE_INDENT_PX / 2;
@@ -123,11 +147,11 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
 
   return (
     <div
-      className="flex items-center border-t border-shell-border bg-shell-panel-alt"
+      className="flex items-center border-t border-boardtree-border-soft bg-boardtree-surface"
       style={{ borderLeft: `4px solid ${accent_color}`, height }}
     >
       <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }}>
-        <BoardCheckbox borderColor="var(--color-shell-border)" />
+        <BoardCheckbox borderColor="var(--color-boardtree-border)" />
       </div>
       {tree_guides}
       <input
@@ -146,7 +170,7 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
         }}
         onBlur={commit}
         placeholder="Item name"
-        className="mx-3 flex-1 rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1 text-[13px] text-shell-text outline-none"
+        className="mx-3 flex-1 rounded-[6px] border-2 border-boardtree-accent bg-boardtree-surface px-2 py-1 text-[13px] text-boardtree-text outline-none"
         style={{ maxWidth: 280 }}
       />
     </div>
@@ -154,9 +178,15 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
 };
 
 /**
- * Generic, reusable Monday-style board table. It owns group collapse state and
- * the fixed-column layout; callers supply the columns, grouped rows and a
- * `renderCell` function, so any future board view can reuse this shell.
+ * Generic, reusable Monday-style board table, skinned to match the
+ * client-approved "Table board tree subitems" design (see
+ * `design/desing_3/Table_board_tree_subitems.dc.html`). It owns group
+ * collapse state and the fixed-column layout; callers supply the columns,
+ * grouped rows and a `renderCell` function, so any future board view can
+ * reuse this shell. The design's own blue/IBM-Plex identity is scoped to
+ * this component via `boardTreeFontClassName` and the `--color-boardtree-*`
+ * tokens (see `globals.css`) rather than the app's shared shell tokens, so
+ * it doesn't bleed into the rest of the app.
  */
 function BoardTable<TRow>({
   columns,
@@ -198,6 +228,7 @@ function BoardTable<TRow>({
   const [add_column_anchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
   const [add_subitem_column_anchor, setAddSubitemColumnAnchor] = useState<HTMLElement | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
+  const subitem_row_height_px = Math.max(28, row_height_px - SUBITEM_ROW_HEIGHT_DELTA);
   const has_pinned_columns = pinnedColumnIds.length > 0;
   const tree_column_id = treeColumnId ?? columns[0]?.id;
   /** The subitem panel's own tree/name column — always its first column, mirroring how {@link tree_column_id} defaults for the parent table. */
@@ -248,7 +279,7 @@ function BoardTable<TRow>({
     ? { position: "sticky", left: 0, zIndex: 6, boxShadow: STICKY_BOX_SHADOW }
     : undefined;
 
-  /** Sticky style for a data column cell, or undefined when it isn't pinned. Bleed columns (Status/Partner) skip the background so their own full-bleed colour keeps showing. */
+  /** Sticky style for a data column cell, or undefined when it isn't pinned. Bleed columns (Status/Priority) skip the background so their own full-bleed colour keeps showing. */
   const getColumnPinStyle = (column: BoardColumn, background: string): React.CSSProperties | undefined => {
     const left = pinned_lefts[column.id];
     if (left === undefined) return undefined;
@@ -262,7 +293,10 @@ function BoardTable<TRow>({
   };
 
   return (
-    <div className="flex flex-col gap-[34px]" style={{ width: table_width, minWidth: "100%" }}>
+    <div
+      className={`${boardTreeFontClassName} flex flex-col gap-[30px]`}
+      style={{ width: table_width, minWidth: "100%" }}
+    >
       {groups.map((group) => {
         const is_expanded = !collapsed_group_ids[group.id];
         const is_empty = group.rows.length === 0;
@@ -271,42 +305,54 @@ function BoardTable<TRow>({
           : 0;
         const is_group_fully_selected = !is_empty && selected_row_count === group.rows.length;
         const is_group_partially_selected = selected_row_count > 0 && !is_group_fully_selected;
-        const tree_line_color = `color-mix(in srgb, ${group.accent_color} 55%, var(--color-shell-border-strong))`;
+        const tree_line_color = `color-mix(in srgb, ${group.accent_color} 60%, var(--color-boardtree-accent-soft))`;
+        const total_subitem_count = getChildren || getSubitemCount
+          ? group.rows.reduce((sum, row) => sum + (getSubitemCount?.(row) ?? getChildren?.(row)?.length ?? 0), 0)
+          : null;
 
         /**
          * Renders one subitem row using {@link subitemColumns} — a separate
          * column set from the parent table's own {@link columns}, mirroring
-         * monday.com's subitems living on an implicit separate sub-board.
+         * the design's subitems living on an implicit separate sub-board.
          * Subitems are exactly one level deep, so unlike the parent row
          * renderer below, this never recurses.
          */
         const renderSubitemRow = (row: TRow, is_last: boolean): React.ReactNode => {
           const row_id = getRowId(row);
           const is_drawer_open = selectedRowId === row_id;
-          const row_background = rowColors[row_id] ?? (is_drawer_open ? SELECTED_ROW_BG : undefined);
+          const is_checkbox_selected = selectedRowIds?.has(row_id) ?? false;
+          const row_background =
+            rowColors[row_id] ??
+            (is_checkbox_selected ? CHECKBOX_SELECTED_ROW_BG : is_drawer_open ? SELECTED_ROW_BG : undefined);
           const row_cell_colors = cellColors[row_id];
 
           return (
             <div
               key={row_id}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`flex items-stretch border-t border-shell-border transition-colors ${
-                row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
+              className={`flex items-stretch border-t border-boardtree-border-soft transition-colors ${
+                row_background ? "" : "bg-boardtree-surface hover:bg-boardtree-hover"
               } ${onRowClick ? "cursor-pointer" : ""}`}
               style={{
                 borderLeft: `3px solid ${group.accent_color}`,
+                height: subitem_row_height_px,
                 ...(row_background ? { background: row_background } : {}),
               }}
             >
               <div
-                className="flex flex-none items-center justify-center border-r border-shell-border"
+                onClick={(event) => event.stopPropagation()}
+                className="flex flex-none items-center justify-center border-r border-boardtree-border-soft"
                 style={{
                   width: CHECKBOX_WIDTH,
                   ...checkboxPinStyle,
                   ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
                 }}
               >
-                <BoardCheckbox />
+                <BoardCheckbox
+                  size={14}
+                  checked={is_checkbox_selected}
+                  onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
+                />
               </div>
               {subitemColumns.map((column) => {
                 const cell_background = row_cell_colors?.[column.id];
@@ -314,18 +360,18 @@ function BoardTable<TRow>({
                 return (
                   <div
                     key={column.id}
-                    className={`flex flex-none items-center border-r border-shell-border ${
+                    className={`flex flex-none items-center border-r border-boardtree-border-soft ${
                       column.align === "center" ? "justify-center" : "justify-start"
                     } ${column.bleed ? "" : "px-3"}`}
                     style={{
                       width: column.width,
-                      height: row_height_px,
+                      height: subitem_row_height_px,
                       ...(!column.bleed && cell_background ? { background: cell_background } : {}),
                     }}
                   >
                     {is_tree_column ? (
                       <div className="flex min-w-0 flex-1 items-center gap-1">
-                        <TreeGuides is_last={is_last} line_color={tree_line_color} row_height={row_height_px} />
+                        <TreeGuides is_last={is_last} line_color={tree_line_color} row_height={subitem_row_height_px} />
                         <div className="min-w-0 flex-1 truncate">{renderCell(row, column)}</div>
                       </div>
                     ) : (
@@ -344,7 +390,7 @@ function BoardTable<TRow>({
          * a subitem-scoped column), the subitem rows themselves, and the
          * "+ Add subitem" footer. No card border or background tint — a flat
          * continuation of the group, distinguished only by indentation, the
-         * curved connector, and its own header cap, matching monday.com's
+         * curved connector, and its own header cap, matching the design's
          * own subitem panel.
          */
         const renderSubitemsPanel = (parent_row_id: string, children: TRow[]): React.ReactNode => {
@@ -354,11 +400,11 @@ function BoardTable<TRow>({
           return (
             <div>
               <div
-                className="flex items-stretch border-t border-shell-border bg-shell-panel-alt"
+                className="flex items-stretch border-t border-boardtree-border bg-boardtree-panel-alt"
                 style={{ borderLeft: `3px solid ${group.accent_color}`, height: SUBITEM_HEADER_HEIGHT }}
               >
                 <div
-                  className="flex flex-none items-center justify-center border-r border-shell-border"
+                  className="flex flex-none items-center justify-center border-r border-boardtree-border-soft"
                   style={{
                     width: CHECKBOX_WIDTH,
                     ...checkboxPinStyle,
@@ -374,7 +420,7 @@ function BoardTable<TRow>({
                   return (
                     <div
                       key={column.id}
-                      className={`flex flex-none items-center border-r border-shell-border ${column.bleed ? "" : "px-3"}`}
+                      className={`flex flex-none items-center border-r border-boardtree-border-soft ${column.bleed ? "" : "px-3"}`}
                       style={{ width: column.width }}
                     >
                       {is_renamable && editing_column_id === editing_key ? (
@@ -385,7 +431,8 @@ function BoardTable<TRow>({
                             setEditingColumnId(null);
                           }}
                           onCancel={() => setEditingColumnId(null)}
-                          className="w-full min-w-0 text-[11px] font-semibold text-shell-text"
+                          className="w-full min-w-0 text-[11px] font-semibold text-boardtree-text"
+                          style={INLINE_EDITOR_STYLE}
                           aria_label="Rename column"
                         />
                       ) : (
@@ -398,8 +445,8 @@ function BoardTable<TRow>({
                                 }
                               : undefined
                           }
-                          className={`truncate text-[11px] font-semibold text-shell-text-muted ${
-                            is_renamable ? "cursor-pointer rounded-[4px] hover:text-shell-text" : ""
+                          className={`truncate text-[11px] font-semibold text-boardtree-text-muted ${
+                            is_renamable ? "cursor-pointer rounded-[4px] hover:text-boardtree-text" : ""
                           }`}
                           title={is_renamable ? "Rename column" : undefined}
                         >
@@ -411,7 +458,7 @@ function BoardTable<TRow>({
                 })}
                 {onAddSubitemColumn && (
                   <div
-                    className="flex flex-none items-center justify-center border-r border-shell-border"
+                    className="flex flex-none items-center justify-center border-r border-boardtree-border-soft"
                     style={{ width: ADD_COLUMN_WIDTH }}
                   >
                     <button
@@ -419,7 +466,7 @@ function BoardTable<TRow>({
                       onClick={(event) => setAddSubitemColumnAnchor(event.currentTarget)}
                       aria-label="Add subitem column"
                       title="Add column"
-                      className="flex h-[22px] w-[22px] items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                      className="flex h-[22px] w-[22px] items-center justify-center rounded-md text-boardtree-text-muted transition-colors hover:bg-boardtree-hover hover:text-boardtree-text"
                     >
                       <PlusIcon size={13} />
                     </button>
@@ -433,20 +480,22 @@ function BoardTable<TRow>({
                 (is_adding ? (
                   <AddItemInputRow
                     accent_color={group.accent_color}
-                    height={row_height_px}
+                    height={subitem_row_height_px}
                     onSubmit={(name) => onSubmitNewSubitem?.(parent_row_id, name)}
                     onCancel={() => onCancelAddSubitem?.()}
-                    tree_guides={<TreeGuides is_last line_color={tree_line_color} row_height={row_height_px} />}
+                    tree_guides={<TreeGuides is_last line_color={tree_line_color} row_height={subitem_row_height_px} />}
                   />
                 ) : (
                   <div
                     onClick={() => openAddSubitem(parent_row_id)}
-                    className="flex cursor-pointer items-center border-t border-shell-border bg-shell-bg hover:bg-shell-panel-alt"
-                    style={{ borderLeft: `3px solid ${group.accent_color}`, height: row_height_px }}
+                    className="flex cursor-pointer items-center border-t border-boardtree-border-soft bg-boardtree-surface hover:bg-boardtree-hover"
+                    style={{ borderLeft: `3px solid ${group.accent_color}`, height: subitem_row_height_px }}
                   >
                     <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }} />
-                    <TreeGuides is_last line_color={tree_line_color} row_height={row_height_px} />
-                    <div className="pl-3 text-[13px] text-shell-text-faint">+ Add subitem</div>
+                    <TreeGuides is_last line_color={tree_line_color} row_height={subitem_row_height_px} />
+                    <div className="pl-3 text-[12.5px] text-boardtree-text-faint hover:text-boardtree-accent">
+                      + Add subitem
+                    </div>
                   </div>
                 ))}
             </div>
@@ -477,18 +526,19 @@ function BoardTable<TRow>({
             <React.Fragment key={row_id}>
               <div
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
-                className={`group/row flex items-stretch border-t border-shell-border transition-colors ${
-                  row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
+                className={`group/row flex items-stretch border-t border-boardtree-border-soft transition-colors ${
+                  row_background ? "" : "bg-boardtree-surface hover:bg-boardtree-hover"
                 } ${onRowClick ? "cursor-pointer" : ""}`}
                 style={{
                   borderLeft: `4px solid ${group.accent_color}`,
+                  height: row_height_px,
                   ...(row_background ? { background: row_background } : {}),
                 }}
               >
                 {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. */}
                 <div
                   onClick={(event) => event.stopPropagation()}
-                  className="flex flex-none items-center justify-center border-r border-shell-border"
+                  className="flex flex-none items-center justify-center border-r border-boardtree-border-soft"
                   style={{
                     width: CHECKBOX_WIDTH,
                     ...checkboxPinStyle,
@@ -510,7 +560,7 @@ function BoardTable<TRow>({
                   return (
                     <div
                       key={column.id}
-                      className={`flex flex-none items-center border-r border-shell-border ${
+                      className={`flex flex-none items-center border-r border-boardtree-border-soft ${
                         column.align === "center" ? "justify-center" : "justify-start"
                       } ${column.bleed ? "" : "px-3"}`}
                       style={{
@@ -531,11 +581,16 @@ function BoardTable<TRow>({
                                 event.stopPropagation();
                                 toggleRow(row_id);
                               }}
-                              className="flex h-4 w-4 flex-none items-center justify-center rounded text-shell-text-muted transition-transform duration-150 hover:bg-shell-hover"
-                              style={{ transform: is_row_expanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+                              className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text-muted transition-colors hover:bg-boardtree-hover hover:text-boardtree-text"
                               aria-label={is_row_expanded ? "Collapse subitems" : "Expand subitems"}
                             >
-                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                              <svg
+                                width="11"
+                                height="11"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                style={{ transform: is_row_expanded ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 150ms" }}
+                              >
                                 <path
                                   d="M3 4.5 L6 7.5 L9 4.5"
                                   stroke="currentColor"
@@ -547,10 +602,18 @@ function BoardTable<TRow>({
                             </button>
                           )}
                           <div className="min-w-0 flex-1 truncate">{renderCell(row, column)}</div>
-                          {!is_row_expanded && subitem_count > 0 && (
-                            <span className="flex-none rounded-full bg-shell-panel-alt px-1.5 py-[1px] text-[11px] font-medium text-shell-text-muted">
-                              {subitem_count} Subitem{subitem_count === 1 ? "" : "s"}
-                            </span>
+                          {has_toggle && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleRow(row_id);
+                              }}
+                              className="flex-none rounded-full bg-boardtree-hover px-1.5 py-[1px] font-boardtree-mono text-[10.5px] font-medium text-boardtree-text-secondary transition-colors hover:bg-boardtree-selected"
+                              title={is_row_expanded ? "Collapse subitems" : "Expand subitems"}
+                            >
+                              {subitem_count}
+                            </button>
                           )}
                           {onAddSubitem && (
                             <button
@@ -559,11 +622,11 @@ function BoardTable<TRow>({
                                 event.stopPropagation();
                                 openAddSubitem(row_id);
                               }}
-                              className="flex h-4 w-4 flex-none items-center justify-center rounded text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover group-hover/row:opacity-100"
+                              className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint opacity-0 transition-opacity hover:bg-boardtree-hover hover:text-boardtree-accent group-hover/row:opacity-100"
                               aria-label="Add subitem"
                               title="Add subitem"
                             >
-                              <PlusIcon size={11} />
+                              <PlusIcon size={12} />
                             </button>
                           )}
                         </div>
@@ -584,22 +647,22 @@ function BoardTable<TRow>({
         return (
           <div key={group.id}>
             {/* Group header */}
-            <div className="flex items-center gap-[9px] px-0 pb-2.5 pt-0.5">
+            <div className="flex items-center gap-2 px-0 pb-2.5 pt-0.5">
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="flex h-[22px] w-[22px] items-center justify-center rounded-md transition-transform duration-150"
+                className="flex h-[20px] w-[20px] items-center justify-center rounded-md transition-transform duration-150"
                 style={{
                   color: group.accent_color,
                   transform: is_expanded ? "rotate(0deg)" : "rotate(-90deg)",
                 }}
                 aria-label={`Toggle ${group.name}`}
               >
-                <svg width="13" height="13" viewBox="0 0 12 12" fill="none">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                   <path
-                    d="M3 4.5 L6 7.5 L9 4.5"
+                    d="M3 4.5 L6 8 L9 4.5"
                     stroke="currentColor"
-                    strokeWidth="1.7"
+                    strokeWidth="1.8"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
@@ -613,22 +676,25 @@ function BoardTable<TRow>({
                     setEditingGroupId(null);
                   }}
                   onCancel={() => setEditingGroupId(null)}
-                  className="text-base font-bold tracking-[-0.01em]"
-                  style={{ color: group.accent_color, maxWidth: 320 }}
+                  className="text-[16px] font-semibold tracking-[-0.01em]"
+                  style={{ ...INLINE_EDITOR_STYLE, color: group.accent_color, maxWidth: 320 }}
                   aria_label="Rename table"
                 />
               ) : (
                 <span
                   onClick={onRenameGroup ? () => setEditingGroupId(group.id) : undefined}
-                  className={`rounded-[6px] border border-transparent px-2 py-1 text-base font-bold tracking-[-0.01em] ${
-                    onRenameGroup ? "cursor-pointer hover:border-shell-border hover:bg-shell-hover" : ""
+                  className={`rounded-[6px] border border-transparent px-2 py-1 text-[16px] font-semibold tracking-[-0.01em] ${
+                    onRenameGroup ? "cursor-pointer hover:border-boardtree-border hover:bg-boardtree-hover" : ""
                   }`}
                   style={{ color: group.accent_color }}
                 >
                   {group.name}
                 </span>
               )}
-              <span className="text-xs font-medium text-shell-text-faint">{group.rows.length}</span>
+              <span className="font-boardtree-mono text-[11px] text-boardtree-text-faint">
+                {group.rows.length} item{group.rows.length === 1 ? "" : "s"}
+                {total_subitem_count !== null ? ` · ${total_subitem_count} subitem${total_subitem_count === 1 ? "" : "s"}` : ""}
+              </span>
             </div>
 
             {is_expanded && (
@@ -641,11 +707,11 @@ function BoardTable<TRow>({
                 */}
                 {/* Column header row */}
                 <div
-                  className="flex items-stretch rounded-t-[7px] border-t border-shell-border bg-shell-panel-alt text-[12.5px] font-semibold text-shell-text-muted"
+                  className="flex items-stretch rounded-t-[8px] border-t border-boardtree-border bg-boardtree-surface text-[12.5px] font-medium text-boardtree-text-muted"
                   style={{ borderLeft: `4px solid ${group.accent_color}` }}
                 >
                   <div
-                    className="flex flex-none items-center justify-center rounded-tl-[7px] border-r border-shell-border py-[11px]"
+                    className="flex flex-none items-center justify-center rounded-tl-[8px] border-r border-boardtree-border-soft py-[11px]"
                     style={{
                       width: CHECKBOX_WIDTH,
                       ...checkboxPinStyle,
@@ -653,7 +719,7 @@ function BoardTable<TRow>({
                     }}
                   >
                     <BoardCheckbox
-                      borderColor="var(--color-shell-border-strong)"
+                      borderColor="var(--color-boardtree-border)"
                       checked={is_group_fully_selected}
                       partial={is_group_partially_selected}
                       onClick={
@@ -687,7 +753,8 @@ function BoardTable<TRow>({
                               setEditingColumnId(null);
                             }}
                             onCancel={() => setEditingColumnId(null)}
-                            className="w-full min-w-0 text-[12.5px] font-semibold text-shell-text"
+                            className="w-full min-w-0 text-[12.5px] font-medium text-boardtree-text"
+                            style={INLINE_EDITOR_STYLE}
                             aria_label="Rename column"
                           />
                         ) : (
@@ -701,7 +768,7 @@ function BoardTable<TRow>({
                                 : undefined
                             }
                             className={`truncate py-[11px] ${
-                              is_renamable ? "cursor-pointer rounded-[4px] hover:text-shell-text" : ""
+                              is_renamable ? "cursor-pointer rounded-[4px] hover:text-boardtree-text" : ""
                             }`}
                             title={is_renamable ? "Rename column" : undefined}
                           >
@@ -713,7 +780,7 @@ function BoardTable<TRow>({
                   })}
                   {onAddColumn && (
                     <div
-                      className="flex flex-none items-center justify-center border-r border-shell-border"
+                      className="flex flex-none items-center justify-center border-r border-boardtree-border-soft"
                       style={{ width: ADD_COLUMN_WIDTH }}
                     >
                       <button
@@ -721,7 +788,7 @@ function BoardTable<TRow>({
                         onClick={(event) => setAddColumnAnchor(event.currentTarget)}
                         aria-label="Add column"
                         title="Add column"
-                        className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                        className="flex h-[26px] w-[26px] items-center justify-center rounded-md text-boardtree-text-muted transition-colors hover:bg-boardtree-hover hover:text-boardtree-text"
                       >
                         <PlusIcon size={15} />
                       </button>
@@ -741,8 +808,8 @@ function BoardTable<TRow>({
                   ) : (
                     <div
                       onClick={onAddItem ? () => onAddItem(group.id) : undefined}
-                      className={`flex items-center border-t border-shell-border bg-shell-bg ${
-                        onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                      className={`flex items-center border-t border-boardtree-border-soft bg-boardtree-surface ${
+                        onAddItem ? "cursor-pointer hover:bg-boardtree-hover" : ""
                       }`}
                       style={{ borderLeft: `4px solid ${group.accent_color}`, height: row_height_px }}
                     >
@@ -750,9 +817,11 @@ function BoardTable<TRow>({
                         className="flex flex-none items-center justify-center"
                         style={{ width: CHECKBOX_WIDTH }}
                       >
-                        <BoardCheckbox borderColor="var(--color-shell-border)" />
+                        <BoardCheckbox borderColor="var(--color-boardtree-border)" />
                       </div>
-                      <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
+                      <div className="px-3 text-[13px] text-boardtree-text-faint hover:text-boardtree-accent">
+                        + Add item
+                      </div>
                     </div>
                   ))}
 
@@ -771,8 +840,8 @@ function BoardTable<TRow>({
                   ) : (
                     <div
                       onClick={onAddItem ? () => onAddItem(group.id) : undefined}
-                      className={`flex h-10 items-center border-t border-shell-border bg-shell-bg ${
-                        onAddItem ? "cursor-pointer hover:bg-shell-panel-alt" : ""
+                      className={`flex h-10 items-center rounded-b-[8px] border-t border-boardtree-border-soft bg-boardtree-surface ${
+                        onAddItem ? "cursor-pointer hover:bg-boardtree-hover" : ""
                       }`}
                       style={{ borderLeft: `4px solid ${group.accent_color}` }}
                     >
@@ -780,9 +849,11 @@ function BoardTable<TRow>({
                         className="flex flex-none items-center justify-center"
                         style={{ width: CHECKBOX_WIDTH }}
                       >
-                        <BoardCheckbox borderColor="var(--color-shell-border)" />
+                        <BoardCheckbox borderColor="var(--color-boardtree-border)" />
                       </div>
-                      <div className="px-3 text-[13px] text-shell-text-faint">+ Add item</div>
+                      <div className="px-3 text-[13px] text-boardtree-text-faint hover:text-boardtree-accent">
+                        + Add item
+                      </div>
                     </div>
                   ))}
               </div>
@@ -795,7 +866,7 @@ function BoardTable<TRow>({
         <button
           type="button"
           onClick={onAddGroup}
-          className="flex w-fit items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+          className="flex w-fit items-center gap-1.5 rounded-[7px] border border-boardtree-border px-2.5 py-1.5 text-[12.5px] font-medium text-boardtree-text-muted transition-colors hover:bg-boardtree-hover hover:text-boardtree-text"
         >
           <PlusIcon size={13} />
           Add new group

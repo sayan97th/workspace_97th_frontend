@@ -15,6 +15,7 @@ import {
   BoardItemDrawer,
   BoardKanban,
   BoardPopover,
+  BoardProgressCell,
   BoardShell,
   BoardTable,
   BoardToolbar,
@@ -113,6 +114,14 @@ export type WorkspaceViewProps = {
 const ITEM_COLUMN_ID = "name";
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
+/**
+ * Synthetic, computed-only column showing a root row's subitem-completion
+ * bar — the % of its direct subitems whose "done" checkbox is checked (see
+ * `subitem_done_column` below). Only appended to `board_columns` when the
+ * board actually has a subitem-scoped checkbox column to compute it from —
+ * no fabricated progress from unrelated status labels.
+ */
+const PROGRESS_COLUMN_ID = "progress";
 
 /** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
 const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
@@ -572,6 +581,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // view's arrows and Finish-to-Start auto-reschedule.
   const board_timeline_column = item_columns.find((c) => c.type === "timeline") ?? null;
   const board_dependency_column = item_columns.find((c) => c.type === "dependency") ?? null;
+  // Drives the Table view's computed "Progress" column (see
+  // `PROGRESS_COLUMN_ID`): the board's first subitem-scoped `checkbox`
+  // column, mirroring `board_done_column`'s "first checkbox column = done"
+  // convention one level down. A root row's progress is the % of its direct
+  // subitems checked off here — real data, not a fabricated guess from
+  // status labels — so the column only appears when a board actually has
+  // one.
+  const subitem_done_column = subitem_columns.find((c) => c.type === "checkbox") ?? null;
   // Every column beyond the six special slots above — rendered as generic
   // "Properties" on a Kanban card (a few, inline) and in the Kanban drawer
   // (the full set, with add/remove), mirroring how `board_columns` lists
@@ -608,6 +625,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       hideable: false,
       pinnable: false,
     };
+    const progress_column: BoardColumn | null = subitem_done_column
+      ? {
+          id: PROGRESS_COLUMN_ID,
+          label: "Progress",
+          width: 150,
+          hideable: true,
+          pinnable: false,
+          swatch: { accent_color: "#00c875", glyph: "Pr" },
+          full_label: "Progress",
+          renamable: false,
+        }
+      : null;
     return [
       item_column,
       chat_column,
@@ -619,11 +648,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         pinnable: c.pinnable,
         swatch: COLUMN_KIND_SWATCH[c.type],
         full_label: c.label,
-        bleed: c.type === "status",
+        // The same board-wide "Priority" status column Kanban gives a border
+        // accent to (see `board_priority_column` above) renders as a
+        // bordered, centered pill here instead of the default full-bleed
+        // fill, matching the design's Status vs. Priority treatment — so
+        // unlike a regular Status column it keeps the cell's own padding
+        // instead of bleeding edge-to-edge.
+        bleed: c.type === "status" && c.id !== board_priority_column?.id,
         align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
+        pill_style: (c.id === board_priority_column?.id ? "outline" : undefined) as "outline" | undefined,
       })),
+      ...(progress_column ? [progress_column] : []),
     ];
-  }, [item_columns, item_column_label]);
+  }, [item_columns, item_column_label, board_priority_column, subitem_done_column]);
 
   /**
    * The subitem panel's own, independent column set — a subitem's `name`
@@ -1447,7 +1484,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             value={row.name}
             onCommit={(name) => handleRenameItem(row.id, name)}
             onCancel={() => setEditingItemId(null)}
-            className="w-full min-w-0 text-[13.5px] font-medium text-shell-text"
+            className="w-full min-w-0 text-[13px] text-boardtree-text"
+            style={{ borderColor: "var(--color-boardtree-accent)", background: "var(--color-boardtree-surface)" }}
             aria_label="Rename item"
           />
         );
@@ -1458,7 +1496,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             event.stopPropagation();
             setEditingItemId(row.id);
           }}
-          className="-mx-1 min-w-0 cursor-text truncate rounded-[4px] px-1 text-[13.5px] font-medium text-shell-text hover:bg-shell-hover"
+          className="-mx-1 min-w-0 cursor-text truncate rounded-[4px] px-1 text-[13px] text-boardtree-text hover:bg-boardtree-hover"
           title="Click to rename"
         >
           {row.name}
@@ -1477,14 +1515,26 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           }}
           aria-label={has_comments ? `${row.comment_count} comments, open item` : "Open item comments"}
           title={has_comments ? `${row.comment_count} comments` : "Comments"}
-          className={`flex items-center gap-[3px] rounded-[4px] px-1 py-1 text-[11px] font-semibold transition-colors hover:bg-shell-hover ${
-            has_comments ? "text-shell-text-muted" : "text-shell-text-faint"
+          className={`flex items-center gap-[3px] rounded-[4px] px-1 py-1 text-[11px] font-semibold transition-colors hover:bg-boardtree-hover ${
+            has_comments ? "text-boardtree-text-muted" : "text-boardtree-text-faint"
           }`}
         >
           <RowChatIcon />
           {has_comments && row.comment_count}
         </button>
       );
+    }
+
+    if (column.id === PROGRESS_COLUMN_ID) {
+      const children = row.children ?? [];
+      let percent: number | null = null;
+      if (children.length > 0 && subitem_done_column) {
+        const done_count = children.filter((child) => child.values[String(subitem_done_column.id)] === true).length;
+        percent = Math.round((done_count / children.length) * 100);
+      } else if (children.length === 0 && board_done_column) {
+        percent = row.values[String(board_done_column.id)] === true ? 100 : 0;
+      }
+      return <BoardProgressCell percent={percent} />;
     }
 
     const column_dto = columns_by_id[column.id];
@@ -1501,7 +1551,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         value={row.values[column.id] ?? null}
         people={workspace_members}
         items={column_dto.type === "dependency" ? getDependencyCandidates(row, column_dto.id) : undefined}
-        bleed={column_dto.type === "status"}
+        bleed={column_dto.type === "status" && column.pill_style !== "outline"}
+        pill_style={column.pill_style}
         onCommit={(next) => handleUpdateCellValue(row.id, column.id, next)}
         onAddOption={has_options ? (opt) => handleAddColumnOption(column.id, opt) : undefined}
         onEditOptions={has_options ? makeOptionActions(column.id) : undefined}

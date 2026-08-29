@@ -25,7 +25,7 @@ const SelectablePersonAvatar: React.FC<SelectablePersonAvatarProps> = ({
   is_selected,
   onToggle,
   size = 44,
-  ring_color = "var(--color-shell-panel)",
+  ring_color = "var(--color-boardtree-surface)",
 }) => (
   <button
     type="button"
@@ -35,7 +35,7 @@ const SelectablePersonAvatar: React.FC<SelectablePersonAvatarProps> = ({
     style={{
       width: size,
       height: size,
-      background: is_selected ? "var(--color-brand-500)" : "transparent",
+      background: is_selected ? "var(--color-boardtree-accent)" : "transparent",
     }}
   >
     <PersonAvatar person={person} size={size - 4} className="border-2" style={{ borderColor: ring_color }} />
@@ -49,7 +49,7 @@ const SelectablePersonAvatar: React.FC<SelectablePersonAvatarProps> = ({
     ) : null}
     {is_selected ? (
       <span
-        className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 bg-brand-500"
+        className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 bg-boardtree-accent"
         style={{ borderColor: ring_color }}
       >
         <CheckIcon size={9} className="text-white" />

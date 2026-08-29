@@ -1,4 +1,4 @@
-export { default as BoardValueCell, DependencyPickerList } from "./BoardValueCell";
+export { default as BoardValueCell, DependencyPickerList, BoardProgressCell } from "./BoardValueCell";
 export type {
   BoardValueCellProps,
   BoardCellColumn,

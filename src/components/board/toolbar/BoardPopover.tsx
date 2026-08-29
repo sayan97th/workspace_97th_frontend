@@ -129,7 +129,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   return createPortal(
     <div
       ref={popover_ref}
-      className="fixed z-[1000] rounded-xl border border-shell-border bg-shell-panel text-shell-text shadow-2xl shadow-black/40"
+      className="fixed z-[1000] rounded-xl border border-boardtree-border-soft bg-boardtree-surface text-boardtree-text shadow-2xl shadow-black/40"
       style={{
         width: hug_content ? undefined : width,
         maxWidth: width,

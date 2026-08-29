@@ -9,6 +9,10 @@
   --font-*: initial;
   --font-outfit: var(--font-manrope), ui-sans-serif, sans-serif;
   --font-mono-accent: var(--font-roboto-mono), ui-monospace, monospace;
+  /* Board table's own typeface (see `board-tree-font.ts`) — scoped via the
+     `boardTreeFontClassName` wrapper class, not applied app-wide. */
+  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
+  --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
 
   --text-title-2xl: 72px;
   --text-title-2xl--line-height: 90px;
@@ -130,6 +134,31 @@
   --color-shell-text-faint: var(--color-gray-300);
   --color-shell-scrollbar-thumb: rgba(10, 23, 23, 0.16);
 
+  /* Board table ("boardtree") visual identity — the Table board view's own
+     look, matching the client-approved Claude Design mockup
+     (`design/desing_3/Table_board_tree_subitems.dc.html`) pixel-for-pixel in
+     light mode. Deliberately separate from `--color-shell-*`/`--color-brand-*`
+     above: the mockup's blue (#4f6bed) + IBM Plex Sans/Mono identity is scoped
+     to the board table (see `BoardTable.tsx`'s root wrapper), not applied
+     app-wide. `.dark` below defines a hand-tuned dark counterpart that keeps
+     the same hue relationships. */
+  --color-boardtree-bg: #f4f6fb;
+  --color-boardtree-surface: #ffffff;
+  --color-boardtree-panel-alt: #f7f8fc;
+  --color-boardtree-border: #e3e6ef;
+  --color-boardtree-border-soft: #eceef5;
+  --color-boardtree-hover: #f1f3f9;
+  --color-boardtree-hover-strong: #e6e9f5;
+  --color-boardtree-selected: #eaf0ff;
+  --color-boardtree-text: #1e2237;
+  --color-boardtree-text-secondary: #4a5068;
+  --color-boardtree-text-muted: #6b7189;
+  --color-boardtree-text-faint: #9aa0b6;
+  --color-boardtree-accent: #4f6bed;
+  --color-boardtree-accent-hover: #3a52c8;
+  --color-boardtree-accent-soft: #c3cef9;
+  --color-boardtree-scrollbar-thumb: rgba(30, 34, 55, 0.16);
+
   --z-index-1: 1;
   --z-index-2: 2;
   --z-index-9: 9;
@@ -203,6 +232,26 @@
   --color-shell-text-muted: #9aa4a5;
   --color-shell-text-faint: #7e8889;
   --color-shell-scrollbar-thumb: rgba(255, 255, 255, 0.12);
+
+  /* Dark counterpart for the boardtree tokens declared in @theme above —
+     keeps the mockup's blue accent + hue relationships rather than the
+     grayscale-only translation dark mode gets by default. */
+  --color-boardtree-bg: #0e1220;
+  --color-boardtree-surface: #171b2b;
+  --color-boardtree-panel-alt: #1a1f31;
+  --color-boardtree-border: rgba(255, 255, 255, 0.09);
+  --color-boardtree-border-soft: rgba(255, 255, 255, 0.06);
+  --color-boardtree-hover: rgba(255, 255, 255, 0.06);
+  --color-boardtree-hover-strong: rgba(255, 255, 255, 0.1);
+  --color-boardtree-selected: rgba(79, 107, 237, 0.18);
+  --color-boardtree-text: #e8eaf6;
+  --color-boardtree-text-secondary: #b7bcd6;
+  --color-boardtree-text-muted: #8b90ab;
+  --color-boardtree-text-faint: #666c8a;
+  --color-boardtree-accent: #7089ff;
+  --color-boardtree-accent-hover: #8ea0ff;
+  --color-boardtree-accent-soft: #2c3564;
+  --color-boardtree-scrollbar-thumb: rgba(255, 255, 255, 0.14);
 }
 
 /* Entrance animation for the board table's floating selection action bar

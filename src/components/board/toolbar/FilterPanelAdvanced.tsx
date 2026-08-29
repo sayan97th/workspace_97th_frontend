@@ -8,10 +8,10 @@ export type FilterPanelAdvancedProps<TRow> = {
 };
 
 const select_class =
-  "h-[38px] rounded-lg border border-shell-border-strong bg-shell-hover px-3 text-[13.5px] text-shell-text transition-colors hover:border-shell-text-faint focus:outline-none";
+  "h-[38px] rounded-lg border border-boardtree-border bg-boardtree-hover px-3 text-[13.5px] text-boardtree-text transition-colors hover:border-boardtree-text-faint focus:outline-none";
 
 /** Native <option> popups ignore the <select>'s Tailwind background, so it must be set explicitly here or the options render invisible (light text on the browser's default white dropdown). */
-const option_class = "bg-shell-panel text-shell-text";
+const option_class = "bg-boardtree-surface text-boardtree-text";
 
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
   return (
@@ -20,7 +20,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
         const is_value_disabled = row.condition === "is_empty" || row.condition === "is_not_empty";
         return (
           <div key={row.id} className="mb-2.5 flex items-center gap-3">
-            <span className="w-11 flex-none text-[13.5px] font-semibold text-shell-text-secondary">
+            <span className="w-11 flex-none text-[13.5px] font-semibold text-boardtree-text-secondary">
               {index === 0 ? "Where" : "And"}
             </span>
             <select
@@ -64,7 +64,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
             <button
               type="button"
               onClick={() => toolbar.removeAdvancedFilterRow(row.id)}
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text"
               aria-label="Remove filter"
             >
               <CloseIcon size={12} />
@@ -76,7 +76,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
       <button
         type="button"
         onClick={toolbar.addAdvancedFilterRow}
-        className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-[#7fb2ff] hover:text-[#a4c9ff]"
+        className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
       >
         <PlusIcon size={12} />
         New filter
