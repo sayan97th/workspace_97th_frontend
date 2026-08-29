@@ -124,4 +124,26 @@ export type BoardTableProps<TRow> = {
    * to hide the button (e.g. Client Hub's static mockup).
    */
   onAddColumn?: (type: AddableColumnType) => void;
+  /**
+   * A row's direct subitems, for Monday-style tree nesting — return
+   * `undefined`/an empty array for a row with no children. Omit entirely to
+   * keep every row flat (unchanged default behavior).
+   */
+  getChildren?: (row: TRow) => TRow[] | undefined;
+  /**
+   * A row's subitem count, shown as a "N Subitems" badge while the row is
+   * collapsed (even before its children are otherwise known). Defaults to
+   * `getChildren(row)?.length ?? 0` when omitted.
+   */
+  getSubitemCount?: (row: TRow) => number;
+  /** Which column hosts the expand caret, indentation and subitem badge. Defaults to the first column. */
+  treeColumnId?: string;
+  /** Clicking a row's static "+ Add subitem" footer opens its inline input (see {@link addingSubitemParentId}). Omit to hide the affordance entirely. */
+  onAddSubitem?: (parent_row_id: string) => void;
+  /** Row id whose "+ Add subitem" footer is currently showing its inline text input instead of the static label. */
+  addingSubitemParentId?: string | null;
+  /** Submits the inline add-subitem input: called with the parent row id and the trimmed, non-empty name the user typed. */
+  onSubmitNewSubitem?: (parent_row_id: string, name: string) => void;
+  /** Dismisses the inline add-subitem input without creating anything. */
+  onCancelAddSubitem?: () => void;
 };

@@ -117,6 +117,50 @@ const CHAT_COLUMN_ID = "comments";
 /** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
 const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
 
+/**
+ * `items` is a tree (each root's `children` holds its subitems, recursively),
+ * not a flat list — a subitem's id never appears at the top level. These
+ * three helpers let every per-item mutation handler (rename, edit a cell,
+ * delete, ...) find/update/remove an item regardless of how deep it's
+ * nested, without each handler having to walk the tree itself.
+ */
+const mapItemInTree = (
+  items: BoardItemDto[],
+  item_id: number,
+  updater: (item: BoardItemDto) => BoardItemDto
+): BoardItemDto[] =>
+  items.map((item) =>
+    item.id === item_id
+      ? updater(item)
+      : item.children.length
+        ? { ...item, children: mapItemInTree(item.children, item_id, updater) }
+        : item
+  );
+
+const removeItemFromTree = (items: BoardItemDto[], item_id: number): BoardItemDto[] =>
+  items
+    .filter((item) => item.id !== item_id)
+    .map((item) => (item.children.length ? { ...item, children: removeItemFromTree(item.children, item_id) } : item));
+
+const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
+  for (const item of items) {
+    if (item.id === item_id) return item;
+    const found = findItemInTree(item.children, item_id);
+    if (found) return found;
+  }
+  return undefined;
+};
+
+/** The direct parent of `item_id` in the tree, or undefined for a root item / an id not found. */
+const findParentInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
+  for (const item of items) {
+    if (item.children.some((child) => child.id === item_id)) return item;
+    const found = findParentInTree(item.children, item_id);
+    if (found) return found;
+  }
+  return undefined;
+};
+
 const getInitials = (full_name: string): string =>
   full_name
     .split(" ")
@@ -466,6 +510,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
+  const [adding_subitem_parent_id, setAddingSubitemParentId] = useState<string | null>(null);
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
@@ -755,12 +800,36 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // what's already known client-side. ──
   const handleRenameItem = async (item_id: number, name: string) => {
     const updated = await boardContentService.updateItem(board_id, item_id, { name });
-    setItems((current) => current.map((item) => (item.id === item_id ? { ...item, name: updated.name } : item)));
+    setItems((current) => mapItemInTree(current, item_id, (item) => ({ ...item, name: updated.name })));
     setEditingItemId(null);
   };
 
   // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
   const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
+
+  // ── Add subitem — mirrors `handleAddChecklistItem`'s dual-update shape:
+  // the new subitem is inserted straight into its parent's `children` array
+  // (found wherever it lives in the tree) and the parent's `subitem_count`
+  // is bumped, so the row's badge and expanded child list stay in sync
+  // without waiting on a refetch. ──
+  const handleOpenAddSubitem = (parent_item_id: string) => setAddingSubitemParentId(parent_item_id);
+
+  const handleSubmitNewSubitem = async (parent_item_id: string, name: string) => {
+    const created = await boardContentService.createItem(board_id, {
+      name,
+      parent_id: Number(parent_item_id),
+    });
+    setItems((current) =>
+      mapItemInTree(current, Number(parent_item_id), (parent) => ({
+        ...parent,
+        children: [...parent.children, created],
+        subitem_count: parent.subitem_count + 1,
+      }))
+    );
+    setAddingSubitemParentId(null);
+  };
+
+  const handleCancelAddSubitem = () => setAddingSubitemParentId(null);
 
   const handleSubmitNewItem = async (group_id: string, name: string) => {
     const created = await boardContentService.createItem(board_id, {
@@ -836,9 +905,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleUpdateCellValue = async (item_id: number, column_id: string, value: BoardItemValue) => {
     const previous = items;
     setItems((current) =>
-      current.map((item) =>
-        item.id === item_id ? { ...item, values: { ...item.values, [column_id]: value } } : item
-      )
+      mapItemInTree(current, item_id, (item) => ({ ...item, values: { ...item.values, [column_id]: value } }))
     );
     try {
       await boardContentService.updateItemValues(board_id, item_id, { [column_id]: value });
@@ -945,7 +1012,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `BoardDocView`'s autosave), so this just needs to write straight through. ──
   const handleUpdateItemDescription = (item_id: string, description: string) => {
     const previous = items;
-    setItems((current) => current.map((item) => (String(item.id) === item_id ? { ...item, description } : item)));
+    setItems((current) => mapItemInTree(current, Number(item_id), (item) => ({ ...item, description })));
     boardContentService.updateItem(board_id, Number(item_id), { description }).catch(() => setItems(previous));
   };
 
@@ -1131,7 +1198,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       return;
     }
     if (String(initial_open_item_id) === drawer.open_row_id) return;
-    const row = items.find((item) => item.id === initial_open_item_id);
+    // Deep links (e.g. a notification's `/boards/{id}/pulses/{id}`) can point
+    // at a subitem, which no longer sits at the top level of `items` — use
+    // the tree-aware lookup so opening one still works.
+    const row = findItemInTree(items, initial_open_item_id);
     if (!row) return;
     drawer.openRow(row);
     fetchItemDetail(String(row.id));
@@ -1198,7 +1268,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     if (selected_item_ids.size === 0) return;
     const moved = await boardContentService.moveItems(board_id, Array.from(selected_item_ids), target_group_id);
     const moved_by_id = new Map(moved.map((moved_item) => [moved_item.id, moved_item]));
-    setItems((current) => current.map((existing_item) => moved_by_id.get(existing_item.id) ?? existing_item));
+    // `moveItems` doesn't eager-load a moved item's subtree, so its response
+    // always carries `children: []` — merge in the server fields (group_id,
+    // position, ...) while keeping the item's already-loaded `children`/
+    // `subitem_count` intact, instead of replacing the whole cached item and
+    // visually dropping its subitems until the next refetch.
+    setItems((current) =>
+      current.map((existing_item) => {
+        const moved_item = moved_by_id.get(existing_item.id);
+        return moved_item
+          ? { ...moved_item, children: existing_item.children, subitem_count: existing_item.subitem_count }
+          : existing_item;
+      })
+    );
     clearSelection();
   };
 
@@ -2129,6 +2211,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRenameColumn={handleRenameColumn}
           onAddGroup={handleCreateGroup}
           onAddColumn={handleAddColumn}
+          getChildren={(row) => row.children}
+          getSubitemCount={(row) => row.subitem_count}
+          onAddSubitem={handleOpenAddSubitem}
+          addingSubitemParentId={adding_subitem_parent_id}
+          onSubmitNewSubitem={handleSubmitNewSubitem}
+          onCancelAddSubitem={handleCancelAddSubitem}
         />
       )}
 

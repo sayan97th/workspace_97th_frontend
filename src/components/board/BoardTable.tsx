@@ -141,13 +141,38 @@ function BoardTable<TRow>({
   onRenameColumn,
   onAddGroup,
   onAddColumn,
+  getChildren,
+  getSubitemCount,
+  treeColumnId,
+  onAddSubitem,
+  addingSubitemParentId = null,
+  onSubmitNewSubitem,
+  onCancelAddSubitem,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
+  const [expanded_row_ids, setExpandedRowIds] = useState<Record<string, boolean>>({});
   const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
   const [editing_column_id, setEditingColumnId] = useState<string | null>(null);
   const [add_column_anchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
+  const tree_column_id = treeColumnId ?? columns[0]?.id;
+
+  const toggleRow = (row_id: string) => {
+    setExpandedRowIds((prev) => ({ ...prev, [row_id]: !prev[row_id] }));
+  };
+
+  const openAddSubitem = (row_id: string) => {
+    setExpandedRowIds((prev) => ({ ...prev, [row_id]: true }));
+    onAddSubitem?.(row_id);
+  };
+
+  /**
+   * Extra left indent per subitem depth, added on top of the tree column's
+   * existing `px-3` padding (unlike {@link NavTreeRow}'s `indentFor`, which
+   * has no base padding of its own to build on).
+   */
+  const indentFor = (depth: number): number => depth * 20;
 
   /**
    * The table's real content width: the checkbox gutter, every column's fixed
@@ -208,6 +233,178 @@ function BoardTable<TRow>({
           : 0;
         const is_group_fully_selected = !is_empty && selected_row_count === group.rows.length;
         const is_group_partially_selected = selected_row_count > 0 && !is_group_fully_selected;
+
+        /**
+         * Renders one row, then (when expanded) recurses into its children at
+         * `depth + 1` — the same self-recursive-component-plus-depth-prop
+         * shape as `NavTreeRow`, adapted to a table row instead of a
+         * full-width sidebar block. A row's checkbox gutter is only
+         * interactive at `depth === 0`: subitems are never individually
+         * selectable for bulk actions (Duplicate/Move/Archive/Delete), which
+         * mirrors the backend only ever cascading those actions from a root.
+         */
+        const renderRow = (row: TRow, depth: number): React.ReactNode => {
+          const row_id = getRowId(row);
+          const is_drawer_open = selectedRowId === row_id;
+          const is_checkbox_selected = selectedRowIds?.has(row_id) ?? false;
+          const row_background =
+            rowColors[row_id] ??
+            (is_checkbox_selected ? CHECKBOX_SELECTED_ROW_BG : is_drawer_open ? SELECTED_ROW_BG : undefined);
+          const row_cell_colors = cellColors[row_id];
+          const children = getChildren?.(row);
+          const subitem_count = getSubitemCount?.(row) ?? children?.length ?? 0;
+          const has_toggle = subitem_count > 0 || Boolean(children?.length);
+          const is_row_expanded = expanded_row_ids[row_id] ?? false;
+          const row_border_left =
+            depth > 0
+              ? `3px solid color-mix(in srgb, ${group.accent_color} 45%, transparent)`
+              : `4px solid ${group.accent_color}`;
+
+          return (
+            <React.Fragment key={row_id}>
+              <div
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                className={`group/row flex items-stretch border-t border-shell-border transition-colors ${
+                  row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
+                } ${onRowClick ? "cursor-pointer" : ""}`}
+                style={{
+                  borderLeft: row_border_left,
+                  ...(row_background ? { background: row_background } : {}),
+                }}
+              >
+                {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. Subitems (depth > 0) render a plain spacer instead, so they can never enter bulk selection. */}
+                {depth > 0 ? (
+                  <div
+                    className="flex flex-none items-center justify-center border-r border-shell-border"
+                    style={{
+                      width: CHECKBOX_WIDTH,
+                      ...checkboxPinStyle,
+                      ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
+                    }}
+                  />
+                ) : (
+                  <div
+                    onClick={(event) => event.stopPropagation()}
+                    className="flex flex-none items-center justify-center border-r border-shell-border"
+                    style={{
+                      width: CHECKBOX_WIDTH,
+                      ...checkboxPinStyle,
+                      ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
+                    }}
+                  >
+                    <BoardCheckbox
+                      checked={is_checkbox_selected}
+                      onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
+                    />
+                  </div>
+                )}
+                {columns.map((column) => {
+                  const cell_background = row_cell_colors?.[column.id];
+                  const pin_style = getColumnPinStyle(
+                    column,
+                    cell_background ?? row_background ?? ROW_STICKY_BG
+                  );
+                  const is_tree_column = column.id === tree_column_id;
+                  return (
+                    <div
+                      key={column.id}
+                      className={`flex flex-none items-center border-r border-shell-border ${
+                        column.align === "center" ? "justify-center" : "justify-start"
+                      } ${column.bleed ? "" : "px-3"}`}
+                      style={{
+                        width: column.width,
+                        height: row_height_px,
+                        ...(!column.bleed && !pin_style && cell_background
+                          ? { background: cell_background }
+                          : {}),
+                        ...pin_style,
+                      }}
+                    >
+                      {is_tree_column ? (
+                        <div
+                          className="flex min-w-0 flex-1 items-center gap-1"
+                          style={{ marginLeft: indentFor(depth) }}
+                        >
+                          {has_toggle ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleRow(row_id);
+                              }}
+                              className="flex h-4 w-4 flex-none items-center justify-center rounded text-shell-text-muted transition-transform duration-150 hover:bg-shell-hover"
+                              style={{ transform: is_row_expanded ? "rotate(0deg)" : "rotate(-90deg)" }}
+                              aria-label={is_row_expanded ? "Collapse subitems" : "Expand subitems"}
+                            >
+                              <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                                <path
+                                  d="M3 4.5 L6 7.5 L9 4.5"
+                                  stroke="currentColor"
+                                  strokeWidth="1.7"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                />
+                              </svg>
+                            </button>
+                          ) : depth > 0 ? (
+                            <span className="w-4 flex-none" />
+                          ) : null}
+                          <div className="min-w-0 flex-1 truncate">{renderCell(row, column)}</div>
+                          {!is_row_expanded && subitem_count > 0 && (
+                            <span className="flex-none rounded-full bg-shell-panel-alt px-1.5 py-[1px] text-[11px] font-medium text-shell-text-muted">
+                              {subitem_count} Subitem{subitem_count === 1 ? "" : "s"}
+                            </span>
+                          )}
+                          {onAddSubitem && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openAddSubitem(row_id);
+                              }}
+                              className="flex h-4 w-4 flex-none items-center justify-center rounded text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover group-hover/row:opacity-100"
+                              aria-label="Add subitem"
+                              title="Add subitem"
+                            >
+                              <PlusIcon size={11} />
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        renderCell(row, column)
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {is_row_expanded && children?.map((child) => renderRow(child, depth + 1))}
+              {is_row_expanded && onAddSubitem && (
+                addingSubitemParentId === row_id ? (
+                  <AddItemInputRow
+                    accent_color={group.accent_color}
+                    height={row_height_px}
+                    onSubmit={(name) => onSubmitNewSubitem?.(row_id, name)}
+                    onCancel={() => onCancelAddSubitem?.()}
+                  />
+                ) : (
+                  <div
+                    onClick={() => openAddSubitem(row_id)}
+                    className="flex cursor-pointer items-center border-t border-shell-border bg-shell-bg hover:bg-shell-panel-alt"
+                    style={{ borderLeft: row_border_left, height: row_height_px }}
+                  >
+                    <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }} />
+                    <div
+                      className="text-[13px] text-shell-text-faint"
+                      style={{ paddingLeft: 12 + indentFor(depth + 1) }}
+                    >
+                      + Add subitem
+                    </div>
+                  </div>
+                )
+              )}
+            </React.Fragment>
+          );
+        };
 
         return (
           <div key={group.id}>
@@ -385,69 +582,7 @@ function BoardTable<TRow>({
                   ))}
 
                 {/* Rows */}
-                {group.rows.map((row) => {
-                  const row_id = getRowId(row);
-                  const is_drawer_open = selectedRowId === row_id;
-                  const is_checkbox_selected = selectedRowIds?.has(row_id) ?? false;
-                  const row_background =
-                    rowColors[row_id] ??
-                    (is_checkbox_selected ? CHECKBOX_SELECTED_ROW_BG : is_drawer_open ? SELECTED_ROW_BG : undefined);
-                  const row_cell_colors = cellColors[row_id];
-                  return (
-                    <div
-                      key={row_id}
-                      onClick={onRowClick ? () => onRowClick(row) : undefined}
-                      className={`flex items-stretch border-t border-shell-border transition-colors ${
-                        row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
-                      } ${onRowClick ? "cursor-pointer" : ""}`}
-                      style={{
-                        borderLeft: `4px solid ${group.accent_color}`,
-                        ...(row_background ? { background: row_background } : {}),
-                      }}
-                    >
-                      {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. */}
-                      <div
-                        onClick={(event) => event.stopPropagation()}
-                        className="flex flex-none items-center justify-center border-r border-shell-border"
-                        style={{
-                          width: CHECKBOX_WIDTH,
-                          ...checkboxPinStyle,
-                          ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
-                        }}
-                      >
-                        <BoardCheckbox
-                          checked={is_checkbox_selected}
-                          onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
-                        />
-                      </div>
-                      {columns.map((column) => {
-                        const cell_background = row_cell_colors?.[column.id];
-                        const pin_style = getColumnPinStyle(
-                          column,
-                          cell_background ?? row_background ?? ROW_STICKY_BG
-                        );
-                        return (
-                          <div
-                            key={column.id}
-                            className={`flex flex-none items-center border-r border-shell-border ${
-                              column.align === "center" ? "justify-center" : "justify-start"
-                            } ${column.bleed ? "" : "px-3"}`}
-                            style={{
-                              width: column.width,
-                              height: row_height_px,
-                              ...(!column.bleed && !pin_style && cell_background
-                                ? { background: cell_background }
-                                : {}),
-                              ...pin_style,
-                            }}
-                          >
-                            {renderCell(row, column)}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
+                {group.rows.map((row) => renderRow(row, 0))}
 
                 {/* Add-item footer */}
                 {!is_empty &&

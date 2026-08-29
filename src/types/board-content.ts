@@ -77,6 +77,8 @@ export type BoardItemDto = {
   id: number;
   board_id: number;
   group_id: number;
+  /** The item this is a subitem of, or null for a top-level (root) item. */
+  parent_id: number | null;
   name: string;
   /** Free-form item detail, edited from the item drawer — unlike column `values`, this is a first-class field on the item itself (like `name`), so it needs no backing column to exist. */
   description: string | null;
@@ -90,6 +92,16 @@ export type BoardItemDto = {
   checklist_total_count: number;
   /** Subtask checklist lines marked done — see {@link checklist_total_count}. */
   checklist_done_count: number;
+  /** Direct subitem count — powers the collapsed row's "N Subitems" badge. Only `getItems` returns a real count; other calls return 0. */
+  subitem_count: number;
+  /**
+   * This item's full subitem subtree, nested recursively. Only `getItems`
+   * populates this (as a tree of roots-with-children); every other call
+   * (create/rename/update value) returns an empty array. Children never flow
+   * through the table's filter/sort/search/group-by pipeline — they only
+   * ever render nested beneath their (visible, expanded) parent row.
+   */
+  children: BoardItemDto[];
 };
 
 /** One line of a board item's subtask checklist — see `BoardItemDto.checklist_total_count`. */
@@ -199,7 +211,10 @@ export type UpdateBoardGroupPayload = Partial<CreateBoardGroupPayload>;
 export type CreateBoardItemPayload = {
   name: string;
   description?: string | null;
-  group_id: number;
+  /** Required unless `parent_id` is given — a subitem inherits its group from its parent. */
+  group_id?: number;
+  /** Creates a subitem of this item instead of a top-level row. */
+  parent_id?: number;
   position?: number;
   values?: Record<string, BoardItemValue>;
 };
