@@ -56,11 +56,50 @@ const ColumnCell: React.FC<ColumnCellProps> = ({ column, children, isHeader, pin
   );
 };
 
+/** Width, in px, of the tree-guide slot: the curved branch connecting a subitem row to the trunk line above it. */
+const TREE_INDENT_PX = 26;
+/** Corner radius, in px, of that rounded branch. */
+const TREE_CURVE_RADIUS = 9;
+/** Height, in px, of the subitem panel's own mini column-header row. */
+const SUBITEM_HEADER_HEIGHT = 30;
+
+type TreeGuidesProps = {
+  /** Whether this row is the last subitem among its siblings; a last row's branch stops at the curve instead of continuing down to the next row. */
+  is_last: boolean;
+  line_color: string;
+  row_height: number;
+};
+
+/**
+ * Draws the connector to the left of a subitem row: a smoothly rounded
+ * branch (an SVG path, not a sharp right angle) off the trunk line running
+ * down from the parent item, continuing on to the next subitem unless this
+ * is the last one. Mirrors Monday's own subitem connectors, so a subitem's
+ * place in the hierarchy reads at a glance instead of only being implied by
+ * indentation. Subitems are exactly one level deep (they can't have their
+ * own subitems), so this never needs to account for further nesting.
+ */
+const TreeGuides: React.FC<TreeGuidesProps> = ({ is_last, line_color, row_height }) => {
+  const cx = TREE_INDENT_PX / 2;
+  const mid_y = row_height / 2;
+  const branch_path = `M ${cx} 0 L ${cx} ${mid_y - TREE_CURVE_RADIUS} Q ${cx} ${mid_y} ${cx + TREE_CURVE_RADIUS} ${mid_y} L ${TREE_INDENT_PX} ${mid_y}`;
+  return (
+    <div className="relative flex-none" style={{ width: TREE_INDENT_PX, height: row_height }} aria-hidden="true">
+      <svg width={TREE_INDENT_PX} height={row_height} className="absolute inset-0 overflow-visible">
+        <path d={branch_path} fill="none" stroke={line_color} strokeWidth={1.5} strokeLinecap="round" />
+        {!is_last && <line x1={cx} y1={mid_y} x2={cx} y2={row_height} stroke={line_color} strokeWidth={1.5} />}
+      </svg>
+    </div>
+  );
+};
+
 type AddItemInputRowProps = {
   accent_color: string;
   height: number;
   onSubmit: (name: string) => void;
   onCancel: () => void;
+  /** Tree connector rendered right after the checkbox gutter, when this input stands in for a subitem row rather than a top-level item. */
+  tree_guides?: React.ReactNode;
 };
 
 /**
@@ -68,7 +107,7 @@ type AddItemInputRowProps = {
  * place, when a group is actively adding a row — no popover/dialog. Enter
  * submits a non-empty name; Escape or blurring an empty input cancels.
  */
-const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height, onSubmit, onCancel }) => {
+const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height, onSubmit, onCancel, tree_guides }) => {
   const [value, setValue] = useState("");
   const input_ref = useRef<HTMLInputElement>(null);
 
@@ -90,6 +129,7 @@ const AddItemInputRow: React.FC<AddItemInputRowProps> = ({ accent_color, height,
       <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }}>
         <BoardCheckbox borderColor="var(--color-shell-border)" />
       </div>
+      {tree_guides}
       <input
         ref={input_ref}
         value={value}
@@ -148,15 +188,20 @@ function BoardTable<TRow>({
   addingSubitemParentId = null,
   onSubmitNewSubitem,
   onCancelAddSubitem,
+  subitemColumns = [],
+  onAddSubitemColumn,
 }: BoardTableProps<TRow>) {
   const [collapsed_group_ids, setCollapsedGroupIds] = useState<Record<string, boolean>>({});
   const [expanded_row_ids, setExpandedRowIds] = useState<Record<string, boolean>>({});
   const [editing_group_id, setEditingGroupId] = useState<string | null>(null);
   const [editing_column_id, setEditingColumnId] = useState<string | null>(null);
   const [add_column_anchor, setAddColumnAnchor] = useState<HTMLElement | null>(null);
+  const [add_subitem_column_anchor, setAddSubitemColumnAnchor] = useState<HTMLElement | null>(null);
   const row_height_px = BOARD_ROW_HEIGHT_PX[rowHeight];
   const has_pinned_columns = pinnedColumnIds.length > 0;
   const tree_column_id = treeColumnId ?? columns[0]?.id;
+  /** The subitem panel's own tree/name column — always its first column, mirroring how {@link tree_column_id} defaults for the parent table. */
+  const subitem_tree_column_id = subitemColumns[0]?.id;
 
   const toggleRow = (row_id: string) => {
     setExpandedRowIds((prev) => ({ ...prev, [row_id]: !prev[row_id] }));
@@ -166,13 +211,6 @@ function BoardTable<TRow>({
     setExpandedRowIds((prev) => ({ ...prev, [row_id]: true }));
     onAddSubitem?.(row_id);
   };
-
-  /**
-   * Extra left indent per subitem depth, added on top of the tree column's
-   * existing `px-3` padding (unlike {@link NavTreeRow}'s `indentFor`, which
-   * has no base padding of its own to build on).
-   */
-  const indentFor = (depth: number): number => depth * 20;
 
   /**
    * The table's real content width: the checkbox gutter, every column's fixed
@@ -233,17 +271,196 @@ function BoardTable<TRow>({
           : 0;
         const is_group_fully_selected = !is_empty && selected_row_count === group.rows.length;
         const is_group_partially_selected = selected_row_count > 0 && !is_group_fully_selected;
+        const tree_line_color = `color-mix(in srgb, ${group.accent_color} 55%, var(--color-shell-border-strong))`;
 
         /**
-         * Renders one row, then (when expanded) recurses into its children at
-         * `depth + 1` — the same self-recursive-component-plus-depth-prop
-         * shape as `NavTreeRow`, adapted to a table row instead of a
-         * full-width sidebar block. A row's checkbox gutter is only
-         * interactive at `depth === 0`: subitems are never individually
-         * selectable for bulk actions (Duplicate/Move/Archive/Delete), which
-         * mirrors the backend only ever cascading those actions from a root.
+         * Renders one subitem row using {@link subitemColumns} — a separate
+         * column set from the parent table's own {@link columns}, mirroring
+         * monday.com's subitems living on an implicit separate sub-board.
+         * Subitems are exactly one level deep, so unlike the parent row
+         * renderer below, this never recurses.
          */
-        const renderRow = (row: TRow, depth: number): React.ReactNode => {
+        const renderSubitemRow = (row: TRow, is_last: boolean): React.ReactNode => {
+          const row_id = getRowId(row);
+          const is_drawer_open = selectedRowId === row_id;
+          const row_background = rowColors[row_id] ?? (is_drawer_open ? SELECTED_ROW_BG : undefined);
+          const row_cell_colors = cellColors[row_id];
+
+          return (
+            <div
+              key={row_id}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+              className={`flex items-stretch border-t border-shell-border transition-colors ${
+                row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
+              } ${onRowClick ? "cursor-pointer" : ""}`}
+              style={{
+                borderLeft: `3px solid ${group.accent_color}`,
+                ...(row_background ? { background: row_background } : {}),
+              }}
+            >
+              <div
+                className="flex flex-none items-center justify-center border-r border-shell-border"
+                style={{
+                  width: CHECKBOX_WIDTH,
+                  ...checkboxPinStyle,
+                  ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
+                }}
+              >
+                <BoardCheckbox />
+              </div>
+              {subitemColumns.map((column) => {
+                const cell_background = row_cell_colors?.[column.id];
+                const is_tree_column = column.id === subitem_tree_column_id;
+                return (
+                  <div
+                    key={column.id}
+                    className={`flex flex-none items-center border-r border-shell-border ${
+                      column.align === "center" ? "justify-center" : "justify-start"
+                    } ${column.bleed ? "" : "px-3"}`}
+                    style={{
+                      width: column.width,
+                      height: row_height_px,
+                      ...(!column.bleed && cell_background ? { background: cell_background } : {}),
+                    }}
+                  >
+                    {is_tree_column ? (
+                      <div className="flex min-w-0 flex-1 items-center gap-1">
+                        <TreeGuides is_last={is_last} line_color={tree_line_color} row_height={row_height_px} />
+                        <div className="min-w-0 flex-1 truncate">{renderCell(row, column)}</div>
+                      </div>
+                    ) : (
+                      renderCell(row, column)
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        };
+
+        /**
+         * Wraps a row's direct subitems in their own mini-table: a column
+         * header specific to {@link subitemColumns} (with its own "+" to add
+         * a subitem-scoped column), the subitem rows themselves, and the
+         * "+ Add subitem" footer. No card border or background tint — a flat
+         * continuation of the group, distinguished only by indentation, the
+         * curved connector, and its own header cap, matching monday.com's
+         * own subitem panel.
+         */
+        const renderSubitemsPanel = (parent_row_id: string, children: TRow[]): React.ReactNode => {
+          const has_footer = Boolean(onAddSubitem);
+          const is_adding = addingSubitemParentId === parent_row_id;
+
+          return (
+            <div>
+              <div
+                className="flex items-stretch border-t border-shell-border bg-shell-panel-alt"
+                style={{ borderLeft: `3px solid ${group.accent_color}`, height: SUBITEM_HEADER_HEIGHT }}
+              >
+                <div
+                  className="flex flex-none items-center justify-center border-r border-shell-border"
+                  style={{
+                    width: CHECKBOX_WIDTH,
+                    ...checkboxPinStyle,
+                    ...(checkboxPinStyle ? { background: HEADER_STICKY_BG } : {}),
+                  }}
+                />
+                {subitemColumns.map((column) => {
+                  const is_renamable = Boolean(onRenameColumn) && column.renamable !== false;
+                  // Keyed by group *and* column, same as the parent header, so
+                  // clicking one panel's copy of a header doesn't also open
+                  // every other group's copy of the same (board-wide) column.
+                  const editing_key = `subitem::${group.id}::${column.id}`;
+                  return (
+                    <div
+                      key={column.id}
+                      className={`flex flex-none items-center border-r border-shell-border ${column.bleed ? "" : "px-3"}`}
+                      style={{ width: column.width }}
+                    >
+                      {is_renamable && editing_column_id === editing_key ? (
+                        <InlineTitleEditor
+                          value={column.label}
+                          onCommit={(label) => {
+                            onRenameColumn?.(column.id, label);
+                            setEditingColumnId(null);
+                          }}
+                          onCancel={() => setEditingColumnId(null)}
+                          className="w-full min-w-0 text-[11px] font-semibold text-shell-text"
+                          aria_label="Rename column"
+                        />
+                      ) : (
+                        <span
+                          onClick={
+                            is_renamable
+                              ? (event) => {
+                                  event.stopPropagation();
+                                  setEditingColumnId(editing_key);
+                                }
+                              : undefined
+                          }
+                          className={`truncate text-[11px] font-semibold text-shell-text-muted ${
+                            is_renamable ? "cursor-pointer rounded-[4px] hover:text-shell-text" : ""
+                          }`}
+                          title={is_renamable ? "Rename column" : undefined}
+                        >
+                          {column.label}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                {onAddSubitemColumn && (
+                  <div
+                    className="flex flex-none items-center justify-center border-r border-shell-border"
+                    style={{ width: ADD_COLUMN_WIDTH }}
+                  >
+                    <button
+                      type="button"
+                      onClick={(event) => setAddSubitemColumnAnchor(event.currentTarget)}
+                      aria-label="Add subitem column"
+                      title="Add column"
+                      className="flex h-[22px] w-[22px] items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                    >
+                      <PlusIcon size={13} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {children.map((child, index) => renderSubitemRow(child, index === children.length - 1))}
+
+              {has_footer &&
+                (is_adding ? (
+                  <AddItemInputRow
+                    accent_color={group.accent_color}
+                    height={row_height_px}
+                    onSubmit={(name) => onSubmitNewSubitem?.(parent_row_id, name)}
+                    onCancel={() => onCancelAddSubitem?.()}
+                    tree_guides={<TreeGuides is_last line_color={tree_line_color} row_height={row_height_px} />}
+                  />
+                ) : (
+                  <div
+                    onClick={() => openAddSubitem(parent_row_id)}
+                    className="flex cursor-pointer items-center border-t border-shell-border bg-shell-bg hover:bg-shell-panel-alt"
+                    style={{ borderLeft: `3px solid ${group.accent_color}`, height: row_height_px }}
+                  >
+                    <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }} />
+                    <TreeGuides is_last line_color={tree_line_color} row_height={row_height_px} />
+                    <div className="pl-3 text-[13px] text-shell-text-faint">+ Add subitem</div>
+                  </div>
+                ))}
+            </div>
+          );
+        };
+
+        /**
+         * Renders one root item row, then (when expanded) its subitems panel
+         * below it. A row's checkbox gutter opens the drawer's own selection;
+         * subitems are never part of this same bulk-selection scope, which
+         * mirrors the backend only ever cascading Duplicate/Move/Archive/
+         * Delete from a root.
+         */
+        const renderRow = (row: TRow): React.ReactNode => {
           const row_id = getRowId(row);
           const is_drawer_open = selectedRowId === row_id;
           const is_checkbox_selected = selectedRowIds?.has(row_id) ?? false;
@@ -255,10 +472,6 @@ function BoardTable<TRow>({
           const subitem_count = getSubitemCount?.(row) ?? children?.length ?? 0;
           const has_toggle = subitem_count > 0 || Boolean(children?.length);
           const is_row_expanded = expanded_row_ids[row_id] ?? false;
-          const row_border_left =
-            depth > 0
-              ? `3px solid color-mix(in srgb, ${group.accent_color} 45%, transparent)`
-              : `4px solid ${group.accent_color}`;
 
           return (
             <React.Fragment key={row_id}>
@@ -268,36 +481,25 @@ function BoardTable<TRow>({
                   row_background ? "" : "bg-shell-bg hover:bg-shell-panel-alt"
                 } ${onRowClick ? "cursor-pointer" : ""}`}
                 style={{
-                  borderLeft: row_border_left,
+                  borderLeft: `4px solid ${group.accent_color}`,
                   ...(row_background ? { background: row_background } : {}),
                 }}
               >
-                {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. Subitems (depth > 0) render a plain spacer instead, so they can never enter bulk selection. */}
-                {depth > 0 ? (
-                  <div
-                    className="flex flex-none items-center justify-center border-r border-shell-border"
-                    style={{
-                      width: CHECKBOX_WIDTH,
-                      ...checkboxPinStyle,
-                      ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
-                    }}
+                {/* The checkbox gutter never opens the row's detail drawer, unlike the rest of the row — it stops the click here before it can bubble up to the row's own onClick above. */}
+                <div
+                  onClick={(event) => event.stopPropagation()}
+                  className="flex flex-none items-center justify-center border-r border-shell-border"
+                  style={{
+                    width: CHECKBOX_WIDTH,
+                    ...checkboxPinStyle,
+                    ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
+                  }}
+                >
+                  <BoardCheckbox
+                    checked={is_checkbox_selected}
+                    onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
                   />
-                ) : (
-                  <div
-                    onClick={(event) => event.stopPropagation()}
-                    className="flex flex-none items-center justify-center border-r border-shell-border"
-                    style={{
-                      width: CHECKBOX_WIDTH,
-                      ...checkboxPinStyle,
-                      ...(checkboxPinStyle ? { background: row_background ?? ROW_STICKY_BG } : {}),
-                    }}
-                  >
-                    <BoardCheckbox
-                      checked={is_checkbox_selected}
-                      onClick={onToggleRowSelection ? () => onToggleRowSelection(row_id) : undefined}
-                    />
-                  </div>
-                )}
+                </div>
                 {columns.map((column) => {
                   const cell_background = row_cell_colors?.[column.id];
                   const pin_style = getColumnPinStyle(
@@ -321,11 +523,8 @@ function BoardTable<TRow>({
                       }}
                     >
                       {is_tree_column ? (
-                        <div
-                          className="flex min-w-0 flex-1 items-center gap-1"
-                          style={{ marginLeft: indentFor(depth) }}
-                        >
-                          {has_toggle ? (
+                        <div className="flex min-w-0 flex-1 items-center gap-1">
+                          {has_toggle && (
                             <button
                               type="button"
                               onClick={(event) => {
@@ -346,9 +545,7 @@ function BoardTable<TRow>({
                                 />
                               </svg>
                             </button>
-                          ) : depth > 0 ? (
-                            <span className="w-4 flex-none" />
-                          ) : null}
+                          )}
                           <div className="min-w-0 flex-1 truncate">{renderCell(row, column)}</div>
                           {!is_row_expanded && subitem_count > 0 && (
                             <span className="flex-none rounded-full bg-shell-panel-alt px-1.5 py-[1px] text-[11px] font-medium text-shell-text-muted">
@@ -377,31 +574,9 @@ function BoardTable<TRow>({
                   );
                 })}
               </div>
-              {is_row_expanded && children?.map((child) => renderRow(child, depth + 1))}
-              {is_row_expanded && onAddSubitem && (
-                addingSubitemParentId === row_id ? (
-                  <AddItemInputRow
-                    accent_color={group.accent_color}
-                    height={row_height_px}
-                    onSubmit={(name) => onSubmitNewSubitem?.(row_id, name)}
-                    onCancel={() => onCancelAddSubitem?.()}
-                  />
-                ) : (
-                  <div
-                    onClick={() => openAddSubitem(row_id)}
-                    className="flex cursor-pointer items-center border-t border-shell-border bg-shell-bg hover:bg-shell-panel-alt"
-                    style={{ borderLeft: row_border_left, height: row_height_px }}
-                  >
-                    <div className="flex flex-none items-center justify-center" style={{ width: CHECKBOX_WIDTH }} />
-                    <div
-                      className="text-[13px] text-shell-text-faint"
-                      style={{ paddingLeft: 12 + indentFor(depth + 1) }}
-                    >
-                      + Add subitem
-                    </div>
-                  </div>
-                )
-              )}
+              {is_row_expanded &&
+                (children?.length || onAddSubitem) &&
+                renderSubitemsPanel(row_id, children ?? [])}
             </React.Fragment>
           );
         };
@@ -582,7 +757,7 @@ function BoardTable<TRow>({
                   ))}
 
                 {/* Rows */}
-                {group.rows.map((row) => renderRow(row, 0))}
+                {group.rows.map((row) => renderRow(row))}
 
                 {/* Add-item footer */}
                 {!is_empty &&
@@ -633,6 +808,15 @@ function BoardTable<TRow>({
           is_open={add_column_anchor !== null}
           onClose={() => setAddColumnAnchor(null)}
           onSelectType={(type) => onAddColumn(type)}
+        />
+      )}
+
+      {onAddSubitemColumn && (
+        <AddColumnMenu
+          anchor_el={add_subitem_column_anchor}
+          is_open={add_subitem_column_anchor !== null}
+          onClose={() => setAddSubitemColumnAnchor(null)}
+          onSelectType={(type) => onAddSubitemColumn(type)}
         />
       )}
     </div>

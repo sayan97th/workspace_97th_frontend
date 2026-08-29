@@ -42,6 +42,9 @@ export type BoardColumnConfig = {
   options?: BoardColumnOption[];
 };
 
+/** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */
+export type BoardColumnScope = "item" | "subitem";
+
 export type BoardColumnDto = {
   id: number;
   board_id: number;
@@ -50,6 +53,7 @@ export type BoardColumnDto = {
   key: string;
   label: string;
   type: BoardColumnType;
+  scope: BoardColumnScope;
   position: number;
   width: number;
   config: BoardColumnConfig | null;
@@ -95,11 +99,13 @@ export type BoardItemDto = {
   /** Direct subitem count — powers the collapsed row's "N Subitems" badge. Only `getItems` returns a real count; other calls return 0. */
   subitem_count: number;
   /**
-   * This item's full subitem subtree, nested recursively. Only `getItems`
-   * populates this (as a tree of roots-with-children); every other call
-   * (create/rename/update value) returns an empty array. Children never flow
-   * through the table's filter/sort/search/group-by pipeline — they only
-   * ever render nested beneath their (visible, expanded) parent row.
+   * This item's direct subitems — only ever one level deep, since a subitem
+   * can't itself have subitems (mirroring monday.com's two-level item/subitem
+   * model; the backend rejects a `parent_id` that isn't already a root item).
+   * Only `getItems` populates this; every other call (create/rename/update
+   * value) returns an empty array. Children never flow through the table's
+   * filter/sort/search/group-by pipeline — they only ever render nested
+   * beneath their (visible, expanded) parent row.
    */
   children: BoardItemDto[];
 };
@@ -189,6 +195,8 @@ export type CreateBoardColumnPayload = {
   key: string;
   label: string;
   type: BoardColumnType;
+  /** Defaults to "item" server-side when omitted. Immutable after creation — not part of {@link UpdateBoardColumnPayload}. */
+  scope?: BoardColumnScope;
   position?: number;
   width?: number;
   config?: BoardColumnConfig | null;
@@ -196,7 +204,7 @@ export type CreateBoardColumnPayload = {
   pinnable?: boolean;
 };
 
-export type UpdateBoardColumnPayload = Partial<Omit<CreateBoardColumnPayload, "key">>;
+export type UpdateBoardColumnPayload = Partial<Omit<CreateBoardColumnPayload, "key" | "scope">>;
 
 export type CreateBoardGroupPayload = {
   /** Which tab (view) the new group belongs to. */

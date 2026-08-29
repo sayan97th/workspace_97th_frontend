@@ -125,9 +125,10 @@ export type BoardTableProps<TRow> = {
    */
   onAddColumn?: (type: AddableColumnType) => void;
   /**
-   * A row's direct subitems, for Monday-style tree nesting — return
-   * `undefined`/an empty array for a row with no children. Omit entirely to
-   * keep every row flat (unchanged default behavior).
+   * A root row's direct subitems (Monday-style — exactly one level deep, a
+   * subitem never has children of its own) — return `undefined`/an empty
+   * array for a row with none. Omit entirely to keep every row flat
+   * (unchanged default behavior).
    */
   getChildren?: (row: TRow) => TRow[] | undefined;
   /**
@@ -146,4 +147,15 @@ export type BoardTableProps<TRow> = {
   onSubmitNewSubitem?: (parent_row_id: string, name: string) => void;
   /** Dismisses the inline add-subitem input without creating anything. */
   onCancelAddSubitem?: () => void;
+  /**
+   * The subitem panel's own column set — independent from {@link columns},
+   * mirroring monday.com's subitems living on an implicit separate sub-board
+   * with their own columns rather than reusing the parent item's. Required
+   * for subitems to render at all; the first column is always the panel's
+   * tree/name column (its header always reads "Subitem", regardless of its
+   * actual `label`).
+   */
+  subitemColumns?: BoardColumn[];
+  /** Renders a trailing "+" button after the subitem panel's own last column header, mirroring {@link onAddColumn} but for `subitemColumns`. Omit to hide it. */
+  onAddSubitemColumn?: (type: AddableColumnType) => void;
 };

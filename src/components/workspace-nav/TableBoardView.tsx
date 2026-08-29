@@ -524,6 +524,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
     [columns]
   );
+  // Item and subitem rows draw from two independent column sets (mirroring
+  // monday.com's implicit subitem sub-board) — everything below that derives
+  // "the board's columns" (Kanban's structural lanes, the Table view's own
+  // header, the toolbar) should only ever see the item-scoped set; subitem
+  // columns are only ever consumed by the subitem panel further down.
+  const item_columns = useMemo(() => columns.filter((c) => c.scope === "item"), [columns]);
+  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
   const people_names_by_id = useMemo(
     () => Object.fromEntries(workspace_members.map((o) => [String(o.id), o.full_name])),
     [workspace_members]
@@ -540,20 +547,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // between lanes or an event onto a new day is an ordinary cell edit
   // (`handleUpdateCellValue`) — no separate "lane"/"event" concept to keep
   // in sync.
-  const board_status_column = columns.find((c) => c.type === "status") ?? null;
-  const board_label_column = columns.find((c) => c.type === "tags") ?? null;
-  const board_member_column = columns.find((c) => c.type === "people") ?? null;
+  const board_status_column = item_columns.find((c) => c.type === "status") ?? null;
+  const board_label_column = item_columns.find((c) => c.type === "tags") ?? null;
+  const board_member_column = item_columns.find((c) => c.type === "people") ?? null;
   // A Kanban card's priority pill/left-border accent — a second `status`
   // column (the first one is already spoken for by the lanes) labeled
   // "Priority", so a board opts in just by adding one with that label; no
   // new column type or schema change needed.
   const board_priority_column =
-    columns.find((c) => c.type === "status" && c.id !== board_status_column?.id && /priority/i.test(c.label)) ?? null;
+    item_columns.find((c) => c.type === "status" && c.id !== board_status_column?.id && /priority/i.test(c.label)) ?? null;
   // A Kanban card's "mark complete" toggle — the board's first `checkbox`
   // column, mirroring how `board_status_column` etc pick "the first column
   // of that type". Optional: cards render without a toggle until one exists.
-  const board_done_column = columns.find((c) => c.type === "checkbox") ?? null;
-  const date_columns = useMemo(() => columns.filter((c) => c.type === "date"), [columns]);
+  const board_done_column = item_columns.find((c) => c.type === "checkbox") ?? null;
+  const date_columns = useMemo(() => item_columns.filter((c) => c.type === "date"), [item_columns]);
   const board_date_column = date_columns[0] ?? null;
   const board_date_end_column = date_columns[1] ?? null;
   // The Gantt view's bars are driven by a `timeline` column instead — one
@@ -563,8 +570,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // one place so a drag/resize is one atomic write, not two column writes
   // that can race). The board's first `dependency` column drives the Gantt
   // view's arrows and Finish-to-Start auto-reschedule.
-  const board_timeline_column = columns.find((c) => c.type === "timeline") ?? null;
-  const board_dependency_column = columns.find((c) => c.type === "dependency") ?? null;
+  const board_timeline_column = item_columns.find((c) => c.type === "timeline") ?? null;
+  const board_dependency_column = item_columns.find((c) => c.type === "dependency") ?? null;
   // Every column beyond the six special slots above — rendered as generic
   // "Properties" on a Kanban card (a few, inline) and in the Kanban drawer
   // (the full set, with add/remove), mirroring how `board_columns` lists
@@ -580,8 +587,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         board_date_column?.id,
       ].filter((id): id is number => id != null)
     );
-    return columns.filter((c) => !excluded_column_ids.has(c.id));
-  }, [columns, board_status_column, board_label_column, board_member_column, board_priority_column, board_done_column, board_date_column]);
+    return item_columns.filter((c) => !excluded_column_ids.has(c.id));
+  }, [item_columns, board_status_column, board_label_column, board_member_column, board_priority_column, board_done_column, board_date_column]);
 
   const board_columns: BoardColumn[] = useMemo(() => {
     const item_column: BoardColumn = {
@@ -604,7 +611,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return [
       item_column,
       chat_column,
-      ...columns.map((c) => ({
+      ...item_columns.map((c) => ({
         id: String(c.id),
         label: c.label,
         width: c.width,
@@ -616,7 +623,52 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
       })),
     ];
-  }, [columns, item_column_label]);
+  }, [item_columns, item_column_label]);
+
+  /**
+   * The subitem panel's own, independent column set — a subitem's `name`
+   * field reuses the exact same {@link ITEM_COLUMN_ID}/`CHAT_COLUMN_ID`
+   * synthetic slots as a root row (both are plain fields on `BoardItemDto`
+   * regardless of nesting depth, so `renderCell`/`getColumnText` already
+   * handle them generically), followed by whichever real columns are scoped
+   * `"subitem"`. `BoardTable` overrides the tree column's displayed header
+   * label to "Subitem" for this set, so `item_column_label` isn't reused here.
+   */
+  const subitem_board_columns: BoardColumn[] = useMemo(() => {
+    const subitem_column: BoardColumn = {
+      id: ITEM_COLUMN_ID,
+      label: "Subitem",
+      width: 240,
+      swatch: { accent_color: "#7e5bef", glyph: "It" },
+      full_label: "Subitem",
+      pinnable: false,
+      hideable: false,
+      renamable: false,
+    };
+    const chat_column: BoardColumn = {
+      id: CHAT_COLUMN_ID,
+      label: "",
+      width: 56,
+      align: "center",
+      hideable: false,
+      pinnable: false,
+    };
+    return [
+      subitem_column,
+      chat_column,
+      ...subitem_columns.map((c) => ({
+        id: String(c.id),
+        label: c.label,
+        width: c.width,
+        hideable: c.hideable,
+        pinnable: false,
+        swatch: COLUMN_KIND_SWATCH[c.type],
+        full_label: c.label,
+        bleed: c.type === "status",
+        align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
+      })),
+    ];
+  }, [subitem_columns]);
 
   const default_groups: BoardGroupRow<BoardItemDto>[] = useMemo(
     () =>
@@ -645,8 +697,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   );
 
   const people_column_ids = useMemo(
-    () => columns.filter((c) => c.type === "people").map((c) => String(c.id)),
-    [columns]
+    () => item_columns.filter((c) => c.type === "people").map((c) => String(c.id)),
+    [item_columns]
   );
   const getPersonIds = useCallback(
     (row: BoardItemDto): string[] =>
@@ -671,7 +723,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const sort_options: BoardSortOption<BoardItemDto>[] = useMemo(
     () => [
       { id: ITEM_COLUMN_ID, label: "Name", getValue: (row) => row.name },
-      ...columns.map((c) => ({
+      ...item_columns.map((c) => ({
         id: String(c.id),
         label: c.label,
         swatch: COLUMN_KIND_SWATCH[c.type],
@@ -683,12 +735,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         },
       })),
     ],
-    [columns]
+    [item_columns]
   );
 
   const group_by_options: BoardGroupByOption<BoardItemDto>[] = useMemo(() => {
     const options: BoardGroupByOption<BoardItemDto>[] = [{ id: BOARD_DEFAULT_GROUP_BY_ID, label: "Default tables" }];
-    columns
+    item_columns
       .filter((c) => c.type === "status" && c.config?.options?.length)
       .forEach((c) => {
         const option_by_id = new Map((c.config?.options ?? []).map((o) => [o.id, o]));
@@ -702,11 +754,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         });
       });
     return options;
-  }, [columns]);
+  }, [item_columns]);
 
   const quick_filter_facets: BoardQuickFilterFacet<BoardItemDto>[] = useMemo(
     () =>
-      columns
+      item_columns
         .filter((c) => (c.type === "status" || c.type === "tags") && c.config?.options?.length)
         .map((c) => ({
           id: String(c.id),
@@ -718,7 +770,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             return value != null ? [String(value)] : [];
           },
         })),
-    [columns]
+    [item_columns]
   );
 
   const toolbar_config: BoardToolbarConfig<BoardItemDto> = useMemo(
@@ -886,6 +938,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       key: `${type.kind}_${Date.now()}`,
       label: type.label,
       type: type.kind,
+      width: type.default_width,
+      config,
+    });
+    setColumns((current) => [...current, created]);
+  };
+
+  // ── Mirrors `handleAddColumn`, but for the subitem panel's own "+" button —
+  // creates a `scope: "subitem"` column instead, which never appears on the
+  // parent item table. ──
+  const handleAddSubitemColumn = async (type: AddableColumnType, config?: BoardColumnConfig) => {
+    if (view_tabs.active_view_id == null) return;
+    const created = await boardContentService.createColumn(board_id, {
+      view_id: view_tabs.active_view_id,
+      key: `${type.kind}_${Date.now()}`,
+      label: type.label,
+      type: type.kind,
+      scope: "subitem",
       width: type.default_width,
       config,
     });
@@ -2217,6 +2286,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           addingSubitemParentId={adding_subitem_parent_id}
           onSubmitNewSubitem={handleSubmitNewSubitem}
           onCancelAddSubitem={handleCancelAddSubitem}
+          subitemColumns={subitem_board_columns}
+          onAddSubitemColumn={handleAddSubitemColumn}
         />
       )}
 
