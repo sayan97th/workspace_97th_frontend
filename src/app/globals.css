@@ -170,6 +170,30 @@
 }
 
 /*
+  `--font-boardtree-sans`/`-mono` (declared in the `@theme` block above) are
+  never usable as written: a custom property's value is substituted *once*,
+  at whichever element it's declared on — here that's the Tailwind-emitted
+  `:root` rule — and only then inherited down as that (possibly-invalid)
+  resolved value. `--font-boardtree-sans-family` (the real font, injected by
+  `next/font`'s module class in `board-tree-font.ts`) only exists on
+  `BoardTable`'s own wrapper div, several levels below `:root`, so at `:root`
+  it's undefined, `--font-boardtree-sans` computes to the guaranteed-invalid
+  value right there, and every descendant inherits that same invalid value —
+  redefining `--font-boardtree-sans-family` further down changes nothing,
+  since `--font-boardtree-sans` itself was already fixed at `:root`. The
+  `font-family: var(--font-boardtree-sans)` declaration is therefore always
+  invalid and silently discarded, and text falls through to the app's base
+  Manrope. Redeclaring the indirection on the *same selector* that also
+  carries the real font variable forces it to (re)resolve there instead.
+*/
+.font-boardtree-sans {
+  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
+}
+.font-boardtree-mono {
+  --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
+}
+
+/*
   The default border color has changed to `currentColor` in Tailwind CSS v4,
   so we've added these compatibility styles to make sure everything still
   looks the same as it did with Tailwind CSS v3.
