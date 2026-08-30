@@ -793,7 +793,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleDuplicateView = (id: number | string) => view_tabs.duplicateView(Number(id));
   const handleLockView = (id: number | string) => view_tabs.lockView(Number(id));
   const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) => view_tabs.reorderPersonalTabs(ordered_ids);
-  const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
+  const handleChangeViewEmoji = (id: number | string, emoji: string | null) => view_tabs.changeViewEmoji(Number(id), emoji);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
   // ── Rename item — used by Kanban's card-title inline editor. Only the name
@@ -1978,7 +1978,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onAddView: handleAddView,
         view_type_options: BOARD_VIEW_TYPES,
         onRenameView: handleRenameView,
-        onChangeIcon: handleChangeViewIcon,
+        onChangeEmoji: handleChangeViewEmoji,
         onDeleteView: handleDeleteView,
         onPinView: handlePinView,
         onDuplicateView: handleDuplicateView,

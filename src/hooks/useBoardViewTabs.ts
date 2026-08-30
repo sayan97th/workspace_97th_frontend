@@ -154,7 +154,7 @@ export type UseBoardViewTabsApi = {
   /** Creates a new tab, defaulting to a plain table when no kind is given (see `BoardViewTabs`'s "+" picker). */
   addView: (view_type?: BoardViewKind) => Promise<BoardViewDto>;
   renameView: (id: number, label: string) => Promise<void>;
-  changeViewIcon: (id: number, icon: string | null) => Promise<void>;
+  changeViewEmoji: (id: number, emoji: string | null) => Promise<void>;
   /** Saves a `doc`-type view's markdown — the Doc tab's autosave calls this directly (not `saveActiveView`, which is the filter/sort "save this view" action). */
   updateDocContent: (id: number, doc_content: string) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
@@ -171,7 +171,7 @@ export type UseBoardViewTabsApi = {
  * filter/sort/hidden-column/group-by state onto the toolbar (so a tab shows
  * genuinely different content, not just a different label), tracks whether
  * the toolbar has since drifted from what's saved, and wraps the
- * rename/icon/add/delete/save mutations against `boards/{board_id}/views`.
+ * rename/emoji/add/delete/save mutations against `boards/{board_id}/views`.
  *
  * Used by `TableBoardView`, the generic, DB-backed board engine every board
  * (including Client Hub) renders through — it composes `useBoardToolbar`
@@ -333,7 +333,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   const tabs: BoardViewTabItem[] = [...primary_views, ...secondary_views].map((v) => ({
     id: v.id,
     label: v.label,
-    icon: v.icon,
+    emoji: v.emoji,
     pinned: v.pinned,
     is_locked: v.is_locked,
   }));
@@ -366,7 +366,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   };
 
   const renameView = (id: number, label: string) => patchView(id, { label });
-  const changeViewIcon = (id: number, icon: string | null) => patchView(id, { icon });
+  const changeViewEmoji = (id: number, emoji: string | null) => patchView(id, { emoji });
   const updateDocContent = (id: number, doc_content: string) => patchView(id, { doc_content });
 
   const deleteView = async (id: number) => {
@@ -421,7 +421,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     selectView,
     addView,
     renameView,
-    changeViewIcon,
+    changeViewEmoji,
     updateDocContent,
     deleteView,
     saveActiveView,

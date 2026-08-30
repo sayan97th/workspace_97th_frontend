@@ -154,8 +154,8 @@ export type BoardViewDto = {
   doc_content: string | null;
   /** Chart type/data source/grouping for a `chart`-type view (see `BoardChartView`) — null/unused for every other kind. */
   chart_config: BoardChartConfig | null;
-  /** Key into `BOARD_VIEW_ICON_OPTIONS` (@/components/board/boardViewIcons); null renders the default per-position icon. */
-  icon: string | null;
+  /** A single emoji carried by the tab; null renders the default per-position icon. */
+  emoji: string | null;
   position: number;
   is_primary: boolean;
   /** Sorts ahead of unpinned tabs (behind the primary tab) whenever the viewer has no personal tab order saved. */
@@ -272,7 +272,7 @@ export type SaveBoardViewPayload = {
   label?: string;
   /** Only meaningful on creation — the backend ignores it on update (a view's type is immutable). Defaults to `"table"` when omitted. */
   view_type?: BoardViewKind;
-  icon?: string | null;
+  emoji?: string | null;
   position?: number;
   is_primary?: boolean;
   filter_state?: BoardFilterState | null;

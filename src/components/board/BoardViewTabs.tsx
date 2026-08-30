@@ -20,16 +20,15 @@ import {
 import { PinIcon, TableViewIcon } from "@/icons/board-icons";
 import AddBoardViewMenu from "./AddBoardViewMenu";
 import type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
-import BoardViewIconPicker from "./BoardViewIconPicker";
-import { getBoardViewIcon } from "./boardViewIcons";
+import BoardViewEmojiPicker from "./BoardViewEmojiPicker";
 import InlineTitleEditor from "./InlineTitleEditor";
 
 /** One clickable tab in the interactive tab bar (see {@link BoardViewTabsProps}). */
 export type BoardViewTabItem = {
   id: number | string;
   label: string;
-  /** Key into `BOARD_VIEW_ICON_OPTIONS`; null/undefined shows no icon (except the primary tab, which defaults to the table icon). */
-  icon?: string | null;
+  /** A single emoji carried by the tab; null/undefined shows no emoji (except the primary tab, which defaults to the table icon). */
+  emoji?: string | null;
   /** Sorts ahead of unpinned tabs whenever the viewer has no personal tab order saved. */
   pinned?: boolean;
   /** While locked, Rename/Duplicate/Delete are hidden — only Pin, Share, Unlock and Reorder remain. */
@@ -64,8 +63,8 @@ export type BoardViewTabsProps =
       view_type_options?: BoardViewTypeOption[];
       /** Renames a tab — wired to `PATCH /boards/{id}/views/{id}` by the caller. Omit to make tabs read-only. */
       onRenameView?: (id: number | string, label: string) => void;
-      /** Assigns (or clears, with `null`) a tab's icon. */
-      onChangeIcon?: (id: number | string, icon: string | null) => void;
+      /** Assigns (or clears, with `null`) a tab's emoji. */
+      onChangeEmoji?: (id: number | string, emoji: string | null) => void;
       /** Deletes a non-primary tab. Omit to hide the delete option. */
       onDeleteView?: (id: number | string) => void;
       /** Toggles whether a tab is pinned. Omit to hide the pin option. */
@@ -143,7 +142,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   onAddView,
   view_type_options,
   onRenameView,
-  onChangeIcon,
+  onChangeEmoji,
   onDeleteView,
   onPinView,
   onDuplicateView,
@@ -152,12 +151,12 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   onReorderPersonalTabs,
 }) => {
   const [editing_id, setEditingId] = useState<number | string | null>(null);
-  const [icon_picker_id, setIconPickerId] = useState<number | string | null>(null);
+  const [emoji_picker_id, setEmojiPickerId] = useState<number | string | null>(null);
   const [menu_id, setMenuId] = useState<number | string | null>(null);
   const [pending_delete_id, setPendingDeleteId] = useState<number | string | null>(null);
   const [share_view_id, setShareViewId] = useState<number | string | null>(null);
   const [is_view_type_menu_open, setIsViewTypeMenuOpen] = useState(false);
-  const icon_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const emoji_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const menu_button_refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const add_view_button_ref = useRef<HTMLButtonElement | null>(null);
 
@@ -268,7 +267,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         const is_active = tab.id === active_view_id;
         const is_primary = index === 0;
         const is_editing = editing_id === tab.id;
-        const Icon = getBoardViewIcon(tab.icon) ?? (is_primary ? TableViewIcon : null);
+        const has_emoji = Boolean(tab.emoji);
         const key = String(tab.id);
         const menu_items = buildMenuItems(tab, is_primary);
 
@@ -287,26 +286,32 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
               </span>
             )}
 
-            {onChangeIcon ? (
+            {onChangeEmoji ? (
               <button
                 ref={(el) => {
-                  icon_button_refs.current[key] = el;
+                  emoji_button_refs.current[key] = el;
                 }}
                 type="button"
-                aria-label="Change tab icon"
-                onClick={() => setIconPickerId(tab.id)}
+                aria-label="Change tab emoji"
+                onClick={() => setEmojiPickerId(tab.id)}
                 className={
-                  Icon
+                  has_emoji || is_primary
                     ? "flex flex-none items-center text-[#00c875]"
                     : "flex flex-none items-center text-shell-text-faint opacity-0 transition-opacity group-hover:opacity-100"
                 }
               >
-                {Icon ? <Icon size={13} /> : <PlusIcon size={11} />}
+                {has_emoji ? (
+                  <span className="text-[13px] leading-none not-italic">{tab.emoji}</span>
+                ) : is_primary ? (
+                  <TableViewIcon size={13} />
+                ) : (
+                  <PlusIcon size={11} />
+                )}
               </button>
             ) : (
-              Icon && (
+              (has_emoji || is_primary) && (
                 <span className="flex flex-none items-center text-[#00c875]">
-                  <Icon size={13} />
+                  {has_emoji ? <span className="text-[13px] leading-none not-italic">{tab.emoji}</span> : <TableViewIcon size={13} />}
                 </span>
               )
             )}
@@ -360,13 +365,13 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
               </button>
             )}
 
-            {onChangeIcon && (
-              <BoardViewIconPicker
-                anchor_el={icon_button_refs.current[key] ?? null}
-                is_open={icon_picker_id === tab.id}
-                onClose={() => setIconPickerId(null)}
-                current_icon={tab.icon ?? null}
-                onSelect={(icon_id) => onChangeIcon(tab.id, icon_id)}
+            {onChangeEmoji && (
+              <BoardViewEmojiPicker
+                anchor_el={emoji_button_refs.current[key] ?? null}
+                is_open={emoji_picker_id === tab.id}
+                onClose={() => setEmojiPickerId(null)}
+                current_emoji={tab.emoji ?? null}
+                onSelect={(emoji) => onChangeEmoji(tab.id, emoji)}
               />
             )}
 
