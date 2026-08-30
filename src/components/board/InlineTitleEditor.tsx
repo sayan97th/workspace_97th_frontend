@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
+import EmojiInsertButton from "./EmojiInsertButton";
 
 export type InlineTitleEditorProps = {
   /** The current value shown when the editor mounts. */
@@ -43,6 +44,11 @@ const InlineTitleEditor: React.FC<InlineTitleEditorProps> = ({
 }) => {
   const [draft, setDraft] = useState(value);
   const input_ref = useRef<HTMLInputElement>(null);
+  // Picking an emoji blurs this input (the picker's grid is a portaled
+  // element outside it), which would otherwise reach `onBlur` before the
+  // pick's own text update lands and commit/cancel the edit out from under
+  // it. Guards the blur handler while the popover is open instead.
+  const is_emoji_palette_open_ref = useRef(false);
 
   useEffect(() => {
     input_ref.current?.focus();
@@ -56,26 +62,47 @@ const InlineTitleEditor: React.FC<InlineTitleEditorProps> = ({
   };
 
   return (
-    <input
-      ref={input_ref}
-      value={draft}
-      onChange={(event) => setDraft(event.target.value)}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          commit();
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          onCancel();
-        }
-      }}
-      onBlur={commit}
-      placeholder={placeholder}
-      aria-label={aria_label}
-      className={`rounded-[6px] border border-brand-500 bg-shell-bg px-2 py-1 outline-none ${className}`}
-      style={style}
-    />
+    // The wrapper repeats the caller's `className` (rather than taking only
+    // the input) so a caller's layout classes (`flex-1 min-w-0`, `w-[120px]`,
+    // ...) still size this whole unit correctly inside its parent flex row —
+    // otherwise the input's own `flex-1` would only resolve against this
+    // wrapper's shrink-to-fit `inline-flex` box, not the row beyond it. The
+    // emoji button is positioned absolutely, so it never competes for the
+    // flex space this produces.
+    <span className={`relative inline-flex items-center ${className}`}>
+      <input
+        ref={input_ref}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+          }
+        }}
+        onBlur={() => {
+          if (!is_emoji_palette_open_ref.current) commit();
+        }}
+        placeholder={placeholder}
+        aria-label={aria_label}
+        className={`rounded-[6px] border border-brand-500 bg-shell-bg py-1 pl-2 pr-6 outline-none ${className}`}
+        style={style}
+      />
+      <EmojiInsertButton
+        input_ref={input_ref}
+        value={draft}
+        onChange={setDraft}
+        onOpenChange={(is_open) => {
+          is_emoji_palette_open_ref.current = is_open;
+        }}
+        size={12}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2"
+      />
+    </span>
   );
 };
 

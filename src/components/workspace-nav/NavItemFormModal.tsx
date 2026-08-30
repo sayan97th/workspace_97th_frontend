@@ -1,7 +1,8 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon } from "@/icons/workspace-icons";
+import EmojiInsertButton from "@/components/board/EmojiInsertButton";
 
 export type NavItemFormModalProps = {
   is_open: boolean;
@@ -28,6 +29,7 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
 }) => {
   const [label, setLabel] = useState(initial_label);
   const [is_saving, setIsSaving] = useState(false);
+  const input_ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (is_open) {
@@ -83,8 +85,9 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
           </button>
         </div>
 
-        <div className="px-[22px] py-5">
+        <div className="relative px-[22px] py-5">
           <input
+            ref={input_ref}
             type="text"
             value={label}
             onChange={(event) => setLabel(event.target.value)}
@@ -93,7 +96,14 @@ const NavItemFormModal: React.FC<NavItemFormModalProps> = ({
             }}
             placeholder={placeholder}
             autoFocus
-            className="w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-sm text-shell-text outline-none focus:border-brand-500/60"
+            className="w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt py-[11px] pl-[13px] pr-9 text-sm text-shell-text outline-none focus:border-brand-500/60"
+          />
+          <EmojiInsertButton
+            input_ref={input_ref}
+            value={label}
+            onChange={setLabel}
+            size={15}
+            className="absolute right-[30px] top-1/2 -translate-y-1/2"
           />
         </div>
 

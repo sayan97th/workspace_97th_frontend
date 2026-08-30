@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, type KeyboardEvent } from "react";
+import EmojiInsertButton from "../EmojiInsertButton";
 
 interface EditableNameProps {
   name: string;
@@ -24,6 +25,10 @@ const EditableName = ({
   onCommit,
 }: EditableNameProps) => {
   const input_ref = useRef<HTMLInputElement>(null);
+  // See the matching guard in `InlineTitleEditor`: picking an emoji blurs
+  // this input from a portaled element outside it, which would otherwise
+  // reach `onBlur`/`onCommit` before the pick's own text update lands.
+  const is_emoji_palette_open_ref = useRef(false);
 
   useEffect(() => {
     if (is_editing) {
@@ -44,15 +49,29 @@ const EditableName = ({
 
   if (is_editing) {
     return (
-      <input
-        ref={input_ref}
-        value={draft_value}
-        onChange={(event) => onDraftChange(event.target.value)}
-        onBlur={onCommit}
-        onKeyDown={handleKeyDown}
-        className={`absolute inset-0 z-20 box-border w-full rounded-[2px] border-2 border-[#4f6bed] bg-white text-[#1e2237] outline-none ${text_size_class}`}
-        style={{ paddingLeft: input_padding_left_px, paddingRight: 12 }}
-      />
+      <span className="absolute inset-0 z-20 flex items-center">
+        <input
+          ref={input_ref}
+          value={draft_value}
+          onChange={(event) => onDraftChange(event.target.value)}
+          onBlur={() => {
+            if (!is_emoji_palette_open_ref.current) onCommit();
+          }}
+          onKeyDown={handleKeyDown}
+          className={`box-border h-full w-full rounded-[2px] border-2 border-[#4f6bed] bg-white text-[#1e2237] outline-none ${text_size_class}`}
+          style={{ paddingLeft: input_padding_left_px, paddingRight: 28 }}
+        />
+        <EmojiInsertButton
+          input_ref={input_ref}
+          value={draft_value}
+          onChange={onDraftChange}
+          onOpenChange={(is_open) => {
+            is_emoji_palette_open_ref.current = is_open;
+          }}
+          size={13}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2"
+        />
+      </span>
     );
   }
 
