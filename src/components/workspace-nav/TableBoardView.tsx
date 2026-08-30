@@ -1020,6 +1020,93 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     }
   };
 
+  // ── Drag-and-drop reorder of root rows — a same-table reorder, or a drop
+  // into a *different* table at an arbitrary position (`source_ordered_ids`
+  // then also carries the vacated table's remaining order). Optimistically
+  // rewrites `items`' `group_id`/`position` for every touched row, persisted
+  // in one batched call, rolled back on failure like `handleUpdateCellValue`.
+  // Reordering doesn't otherwise resort `items` itself — `default_groups`
+  // only filters by `group_id`, so each row's relative position within its
+  // own group is what matters, not its absolute index in the flat array. ──
+  const handleReorderRow = async (args: {
+    row_id: string;
+    from_group_id: string;
+    to_group_id: string;
+    target_ordered_ids: string[];
+    source_ordered_ids?: string[];
+  }) => {
+    const { row_id, from_group_id, to_group_id, target_ordered_ids, source_ordered_ids } = args;
+    const previous = items;
+
+    setItems((current) => {
+      const by_id = new Map(current.map((item) => [String(item.id), item]));
+      const moved_item = by_id.get(row_id);
+      if (!moved_item) return current;
+
+      const next_target = target_ordered_ids
+        .map((id, index) => {
+          const item = id === row_id ? { ...moved_item, group_id: Number(to_group_id) } : by_id.get(id);
+          return item ? { ...item, position: index } : null;
+        })
+        .filter((item): item is BoardItemDto => item !== null);
+
+      const next_source = (source_ordered_ids ?? [])
+        .map((id, index) => {
+          const item = by_id.get(id);
+          return item ? { ...item, position: index } : null;
+        })
+        .filter((item): item is BoardItemDto => item !== null);
+
+      const touched_ids = new Set([...next_target, ...next_source].map((item) => String(item.id)));
+      const untouched = current.filter((item) => !touched_ids.has(String(item.id)));
+      return [...untouched, ...next_target, ...next_source];
+    });
+
+    try {
+      await boardContentService.reorderItems(board_id, {
+        scope: "root",
+        moved_item_id: Number(row_id),
+        target_group_id: Number(to_group_id),
+        target_ordered_ids: target_ordered_ids.map(Number),
+        ...(source_ordered_ids
+          ? { source_group_id: Number(from_group_id), source_ordered_ids: source_ordered_ids.map(Number) }
+          : {}),
+      });
+    } catch {
+      setItems(previous);
+    }
+  };
+
+  // ── Drag-and-drop reorder of subitems — always within their shared parent
+  // (subitems never change parent through this call), same optimistic/
+  // rollback shape as `handleReorderRow`. ──
+  const handleReorderSubitem = async (parent_row_id: string, ordered_row_ids: string[]) => {
+    const previous = items;
+
+    setItems((current) =>
+      mapItemInTree(current, Number(parent_row_id), (parent) => {
+        const children_by_id = new Map(parent.children.map((child) => [String(child.id), child]));
+        const next_children = ordered_row_ids
+          .map((id, index) => {
+            const child = children_by_id.get(id);
+            return child ? { ...child, position: index } : null;
+          })
+          .filter((child): child is BoardItemDto => child !== null);
+        return { ...parent, children: next_children };
+      })
+    );
+
+    try {
+      await boardContentService.reorderItems(board_id, {
+        scope: "subitem",
+        target_parent_id: Number(parent_row_id),
+        target_ordered_ids: ordered_row_ids.map(Number),
+      });
+    } catch {
+      setItems(previous);
+    }
+  };
+
   // ── Add option to a status/dropdown column, inline from its cell picker —
   // persists the option to the column's config and resolves to it (with its
   // generated id) so the cell can select it right away. ──
@@ -2339,6 +2426,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCancelAddSubitem={handleCancelAddSubitem}
           subitemColumns={subitem_board_columns}
           onAddSubitemColumn={handleAddSubitemColumn}
+          onReorderRow={handleReorderRow}
+          onReorderSubitem={handleReorderSubitem}
+          getColumnText={getColumnText}
         />
       )}
 

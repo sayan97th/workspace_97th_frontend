@@ -12,6 +12,7 @@ import type {
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
   CreateChecklistItemPayload,
+  ReorderBoardItemsPayload,
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
   UpdateBoardGroupPayload,
@@ -183,6 +184,16 @@ export const boardContentService = {
       item_ids,
       group_id,
     });
+    return response.items;
+  },
+
+  /**
+   * PATCH /api/boards/{board_id}/items/reorder — drag-and-drop reordering
+   * (same-table, cross-table, or within a subitem list), resequenced
+   * server-side in one transaction.
+   */
+  async reorderItems(board_id: number, payload: ReorderBoardItemsPayload): Promise<BoardItemDto[]> {
+    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/reorder`, payload);
     return response.items;
   },
 

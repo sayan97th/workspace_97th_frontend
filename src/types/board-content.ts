@@ -234,6 +234,30 @@ export type UpdateBoardItemPayload = {
   position?: number;
 };
 
+/**
+ * PATCH /api/boards/{board_id}/items/reorder — a drag-and-drop reorder.
+ * `"root"` resequences a table's root items, optionally moving the dragged
+ * one (`moved_item_id`) into a *different* table (`target_group_id`) at an
+ * arbitrary position; `source_group_id`/`source_ordered_ids` resequence the
+ * vacated table's remaining items on a cross-table move. `"subitem"`
+ * resequences one item's subitems — subitems never change parent through
+ * this endpoint.
+ */
+export type ReorderBoardItemsPayload =
+  | {
+      scope: "root";
+      moved_item_id: number;
+      target_group_id: number;
+      target_ordered_ids: number[];
+      source_group_id?: number;
+      source_ordered_ids?: number[];
+    }
+  | {
+      scope: "subitem";
+      target_parent_id: number;
+      target_ordered_ids: number[];
+    };
+
 export type CreateChecklistItemPayload = {
   label: string;
 };

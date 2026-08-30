@@ -165,4 +165,32 @@ export type BoardTableProps<TRow> = {
   subitemColumns?: BoardColumn[];
   /** Renders a trailing "+" button after the subitem panel's own last column header, mirroring {@link onAddColumn} but for `subitemColumns`. Omit to hide it. */
   onAddSubitemColumn?: (type: AddableColumnType) => void;
+  /**
+   * Dragging a root row and dropping it commits the new order here — either
+   * a same-table reorder (`from_group_id === to_group_id`) or a drop into a
+   * *different* table at an arbitrary position, in which case
+   * `source_ordered_ids` also carries the vacated table's remaining order.
+   * Omit to make root rows undraggable.
+   */
+  onReorderRow?: (args: {
+    row_id: string;
+    from_group_id: string;
+    to_group_id: string;
+    target_ordered_ids: string[];
+    source_ordered_ids?: string[];
+  }) => void;
+  /**
+   * Dragging a subitem and dropping it among its own siblings commits the
+   * new order here — subitems only ever reorder within their shared parent
+   * (no cross-parent drag, no promoting to a root row). Omit to make
+   * subitem rows undraggable.
+   */
+  onReorderSubitem?: (parent_row_id: string, ordered_row_ids: string[]) => void;
+  /**
+   * A row's plain-text value for a given column id — the same lookup a
+   * caller already uses for search/sort. Optional; when given, it also
+   * drives the subitem tree column's dynamic width (widening to fit the
+   * longest visible subitem name, mirroring the approved design).
+   */
+  getColumnText?: (row: TRow, column_id: string) => string;
 };
