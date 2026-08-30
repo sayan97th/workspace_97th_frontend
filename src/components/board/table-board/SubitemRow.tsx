@@ -1,0 +1,128 @@
+import EditableName from "./EditableName";
+import { CheckIcon, CommentIcon, DragHandleIcon } from "./icons";
+import OwnerCell from "./OwnerCell";
+import RailBar from "./RailBar";
+import StatusCell from "./StatusCell";
+import TreeConnector from "./TreeConnector";
+import type { BoardSubitem } from "./types";
+
+interface SubitemRowProps {
+  subitem: BoardSubitem;
+  name_column_width_px: number;
+  is_selected: boolean;
+  is_editing: boolean;
+  draft_name: string;
+  is_status_menu_open: boolean;
+  is_owner_menu_open: boolean;
+  is_dragged: boolean;
+  onToggleSelected: () => void;
+  onStartEdit: () => void;
+  onDraftChange: (value: string) => void;
+  onCommitEdit: () => void;
+  onOpenStatusMenu: () => void;
+  onPickStatus: (status: string) => void;
+  onOpenOwnerMenu: () => void;
+  onToggleOwner: (person_id: string) => void;
+  onClearOwners: () => void;
+  onCloseMenus: () => void;
+  onDragStart: () => void;
+  onDragOver: (event: React.DragEvent) => void;
+  onDragEnd: () => void;
+}
+
+const SubitemRow = ({
+  subitem,
+  name_column_width_px,
+  is_selected,
+  is_editing,
+  draft_name,
+  is_status_menu_open,
+  is_owner_menu_open,
+  is_dragged,
+  onToggleSelected,
+  onStartEdit,
+  onDraftChange,
+  onCommitEdit,
+  onOpenStatusMenu,
+  onPickStatus,
+  onOpenOwnerMenu,
+  onToggleOwner,
+  onClearOwners,
+  onCloseMenus,
+  onDragStart,
+  onDragOver,
+  onDragEnd,
+}: SubitemRowProps) => (
+  <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} className="flex min-w-[1020px] items-stretch" style={{ opacity: is_dragged ? 0.45 : 1 }}>
+    <RailBar variant="solid" />
+    <TreeConnector line_color="#4f6bed" height_px={21} />
+    <div className="w-[5px] flex-none bg-[#4f6bed]" />
+    <div
+      className="grid flex-1 border-b border-[#eef0f7] border-r border-[#dfe3ef]"
+      style={{ gridTemplateColumns: `34px ${name_column_width_px}px 52px 108px 156px 148px 44px 1fr`, background: is_selected ? "#eaf0ff" : "#ffffff" }}
+    >
+      <div className="flex h-10 items-center justify-center border-r border-[#eef0f7]">
+        <button
+          type="button"
+          onClick={onToggleSelected}
+          className={
+            is_selected
+              ? "flex h-3.5 w-3.5 items-center justify-center rounded-[3px] bg-[#4f6bed]"
+              : "h-3.5 w-3.5 rounded-[3px] border-[1.5px] border-[#ccd1de] bg-white hover:border-[#4f6bed]"
+          }
+        >
+          {is_selected && <CheckIcon size={9} />}
+        </button>
+      </div>
+
+      <div className="relative flex h-10 items-center gap-1.5 border-r border-[#eef0f7] py-0 pl-2 pr-3">
+        <div className="flex w-[11px] flex-none cursor-grab items-center text-[#d6dae6]">
+          <DragHandleIcon size={11} />
+        </div>
+        <EditableName
+          name={subitem.name}
+          is_editing={is_editing}
+          draft_value={draft_name}
+          text_size_class="text-[13px]"
+          input_padding_left_px={25}
+          onStartEdit={onStartEdit}
+          onDraftChange={onDraftChange}
+          onCommit={onCommitEdit}
+        />
+      </div>
+
+      <div className="flex h-10 items-center justify-center border-r border-[#eef0f7]">
+        <button type="button" className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+          <CommentIcon />
+        </button>
+      </div>
+
+      <OwnerCell
+        owner_ids={subitem.owner_ids}
+        is_menu_open={is_owner_menu_open}
+        avatar_size_px={25}
+        onOpenMenu={onOpenOwnerMenu}
+        onToggleOwner={onToggleOwner}
+        onClearOwners={onClearOwners}
+        onCloseMenu={onCloseMenus}
+        menu_top_offset_px={38}
+      />
+
+      <StatusCell
+        status={subitem.status}
+        is_menu_open={is_status_menu_open}
+        text_size_class="text-[12px]"
+        onOpenMenu={onOpenStatusMenu}
+        onPickStatus={onPickStatus}
+        onCloseMenu={onCloseMenus}
+        menu_top_offset_px={38}
+      />
+
+      <div className="flex h-10 items-center justify-center border-r border-[#eef0f7] text-xs text-[#4a5068]">{subitem.date || "—"}</div>
+      <div className="h-10" />
+      <div className="h-10" />
+    </div>
+  </div>
+);
+
+export default SubitemRow;
