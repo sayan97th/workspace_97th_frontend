@@ -11,9 +11,13 @@ const ProductTag: React.FC<ProductTagProps> = ({ label }) => (
   </span>
 );
 
-/** Neutral "+N" overflow badge shown after a truncated tag/avatar list. */
+/**
+ * Neutral "+N" overflow badge shown after a truncated tag/avatar list. Only
+ * used inside `BoardValueCell`'s cell editors, so it's on the boardtree
+ * palette rather than the app-wide shell tokens.
+ */
 export const OverflowBadge: React.FC<{ label: string }> = ({ label }) => (
-  <span className="rounded-md bg-shell-hover px-1.5 py-0.5 text-[11px] font-semibold text-shell-text-muted">
+  <span className="rounded-md bg-boardtree-hover px-1.5 py-0.5 text-[11px] font-semibold text-boardtree-text-muted">
     {label}
   </span>
 );

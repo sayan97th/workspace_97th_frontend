@@ -1,5 +1,5 @@
 import React from "react";
-import { AVATAR_GRADIENTS } from "./TeamAvatars";
+import { AVATAR_COLORS, AVATAR_GRADIENTS } from "./TeamAvatars";
 
 export type PersonAvatarStackPerson = {
   id: number | string;
@@ -15,6 +15,16 @@ export type PersonAvatarStackProps = {
   max_visible?: number;
   /** Text shown in place of the stack when `people` is empty. */
   empty_label?: string;
+  /**
+   * `"gradient"` (default) keeps the app-wide diagonal-gradient treatment.
+   * `"flat"` uses {@link AVATAR_COLORS}' solid fills instead, matching the
+   * "Table board tree subitems" design.
+   */
+  variant?: "gradient" | "flat";
+  /** Ring color around each avatar circle. Defaults to the shell panel background. */
+  ring_color?: string;
+  /** Override classes for the "+N" overflow badge. Defaults to the shell palette. */
+  overflow_class?: string;
 };
 
 const getInitials = (full_name: string): string =>
@@ -46,6 +56,9 @@ const PersonAvatarStack: React.FC<PersonAvatarStackProps> = ({
   size = 20,
   max_visible = 4,
   empty_label = "No owners assigned",
+  variant = "gradient",
+  ring_color = "var(--color-shell-panel)",
+  overflow_class = "bg-shell-panel-alt text-shell-text-secondary",
 }) => {
   if (people.length === 0) {
     return <span className="text-shell-text-faint">{empty_label}</span>;
@@ -53,6 +66,11 @@ const PersonAvatarStack: React.FC<PersonAvatarStackProps> = ({
 
   const visible = people.slice(0, max_visible);
   const overflow = people.length - visible.length;
+  const palette = variant === "flat" ? AVATAR_COLORS : AVATAR_GRADIENTS;
+  const backgroundStyleFor = (person_id: PersonAvatarStackPerson["id"]) =>
+    variant === "flat"
+      ? { backgroundColor: palette[hashId(person_id) % palette.length] }
+      : { background: palette[hashId(person_id) % palette.length] };
 
   return (
     <div className="flex items-center -space-x-1.5">
@@ -65,8 +83,8 @@ const PersonAvatarStack: React.FC<PersonAvatarStackProps> = ({
             width: size,
             height: size,
             fontSize: Math.max(8, Math.round(size * 0.4)),
-            background: AVATAR_GRADIENTS[hashId(person.id) % AVATAR_GRADIENTS.length],
-            borderColor: "var(--color-shell-panel)",
+            ...backgroundStyleFor(person.id),
+            borderColor: ring_color,
           }}
         >
           {getInitials(person.full_name)}
@@ -74,12 +92,12 @@ const PersonAvatarStack: React.FC<PersonAvatarStackProps> = ({
       ))}
       {overflow > 0 && (
         <span
-          className="flex flex-none items-center justify-center rounded-full border-2 bg-shell-panel-alt font-semibold text-shell-text-secondary"
+          className={`flex flex-none items-center justify-center rounded-full border-2 font-semibold ${overflow_class}`}
           style={{
             width: size,
             height: size,
             fontSize: Math.max(8, Math.round(size * 0.36)),
-            borderColor: "var(--color-shell-panel)",
+            borderColor: ring_color,
           }}
         >
           +{overflow}

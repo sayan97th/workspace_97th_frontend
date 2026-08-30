@@ -27,6 +27,36 @@ export const AVATAR_GRADIENTS = [
   "linear-gradient(135deg,#E0713B,#8A3A18)",
 ];
 
+/**
+ * Flat, solid-color counterpart to {@link AVATAR_GRADIENTS} — matches the
+ * client-approved "Table board tree subitems" design's avatar treatment
+ * (see `design/desing_3/Table_board_tree_subitems.dc.html`), which uses flat
+ * per-person hex fills rather than diagonal gradients. Same length and
+ * seed/hash indexing scheme as {@link AVATAR_GRADIENTS} so callers can swap
+ * palettes without changing how a person's color is picked.
+ */
+export const AVATAR_COLORS = [
+  "#4f6bed",
+  "#7b52c9",
+  "#2f9e78",
+  "#e0723f",
+  "#c94f7c",
+  "#3a8fc9",
+  "#b0393f",
+  "#5b7c99",
+  "#6b9c8a",
+  "#c6913b",
+  "#9c6ba0",
+  "#6b7c9c",
+  "#d13b7d",
+  "#3bb0c2",
+  "#e0913b",
+  "#4a8fe0",
+  "#5bb88a",
+  "#8a6be0",
+  "#c25b5b",
+];
+
 export type TeamAvatarsProps = {
   /** Number of avatars to render. */
   count: number;

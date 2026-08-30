@@ -547,7 +547,13 @@ const PeopleCell: React.FC<{
     <>
       <EditableSurface onClick={popover.open}>
         {selected.length > 0 ? (
-          <PersonAvatarStack people={selected} empty_label="—" />
+          <PersonAvatarStack
+            people={selected}
+            empty_label="—"
+            variant="flat"
+            ring_color="var(--color-boardtree-surface)"
+            overflow_class="bg-boardtree-hover text-boardtree-text-secondary"
+          />
         ) : (
           <span className="text-[12.5px] text-transparent">—</span>
         )}
@@ -577,6 +583,7 @@ const PeopleCell: React.FC<{
                     avatar_url: person.profile_photo_url ?? undefined,
                   }}
                   size={24}
+                  variant="flat"
                 />
                 <span className="min-w-0 flex-1 truncate text-[13px] text-boardtree-text">{person.full_name}</span>
                 {is_selected && (
