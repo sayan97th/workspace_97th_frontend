@@ -7,7 +7,15 @@ export interface Person {
 
 export type BoardStatus = string;
 
-export type BoardPriority = "" | "Low" | "Medium" | "High" | "Critical";
+/** A status/priority option's id, label and color — resolves a row's raw `status`/`priority` id into what {@link StatusCell}/{@link PriorityBadge} render. Real boards supply these from a column's `config.options`; the standalone preview supplies them from `constants.ts`. */
+export interface TableBoardOption {
+  id: string;
+  label: string;
+  color: string;
+}
+
+/** Freeform to match any real board's own priority-column option ids, rather than a fixed set. */
+export type BoardPriority = string;
 
 export interface BoardSubitem {
   id: string;

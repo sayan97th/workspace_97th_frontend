@@ -5,10 +5,14 @@ import OwnerCell from "./OwnerCell";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
 import StatusCell from "./StatusCell";
-import type { BoardItem } from "./types";
+import type { BoardItem, Person, TableBoardOption } from "./types";
 
 interface ItemRowProps {
   item: BoardItem;
+  group_color: string;
+  people: Person[];
+  status_options: TableBoardOption[];
+  priority_options: TableBoardOption[];
   is_open: boolean;
   is_selected: boolean;
   is_editing: boolean;
@@ -23,12 +27,13 @@ interface ItemRowProps {
   onDraftChange: (value: string) => void;
   onCommitEdit: () => void;
   onOpenStatusMenu: () => void;
-  onPickStatus: (status: string) => void;
+  onPickStatus: (option_id: string | null) => void;
   onOpenOwnerMenu: () => void;
   onToggleOwner: (person_id: string) => void;
   onClearOwners: () => void;
   onCloseMenus: () => void;
   onAddSubitem: () => void;
+  onCommentClick?: () => void;
   onDragStart: () => void;
   onDragOver: (event: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -36,6 +41,10 @@ interface ItemRowProps {
 
 const ItemRow = ({
   item,
+  group_color,
+  people,
+  status_options,
+  priority_options,
   is_open,
   is_selected,
   is_editing,
@@ -56,11 +65,13 @@ const ItemRow = ({
   onClearOwners,
   onCloseMenus,
   onAddSubitem,
+  onCommentClick,
   onDragStart,
   onDragOver,
   onDragEnd,
 }: ItemRowProps) => {
   const subitem_count = item.subitems.length;
+  const priority_option = priority_options.find((option) => option.id === item.priority) ?? null;
 
   return (
     <div
@@ -71,7 +82,7 @@ const ItemRow = ({
       className="flex min-w-[1020px] items-stretch"
       style={{ background: is_selected ? "#eaf0ff" : "#ffffff", opacity: is_dragged ? 0.45 : 1 }}
     >
-      <div className="w-[5px] flex-none bg-[#4f6bed]" />
+      <div className="w-[5px] flex-none" style={{ background: group_color }} />
       <div className={`flex-1 grid border-b border-[#eceef5] ${TREE_GROUP_GRID_COLUMNS}`}>
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
           <button
@@ -129,12 +140,17 @@ const ItemRow = ({
         </div>
 
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-          <button type="button" className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+          <button
+            type="button"
+            onClick={onCommentClick}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]"
+          >
             <CommentIcon />
           </button>
         </div>
 
         <OwnerCell
+          people={people}
           owner_ids={item.owner_ids}
           is_menu_open={is_owner_menu_open}
           avatar_size_px={27}
@@ -146,7 +162,8 @@ const ItemRow = ({
         />
 
         <StatusCell
-          status={item.status}
+          value={item.status}
+          options={status_options}
           is_menu_open={is_status_menu_open}
           text_size_class="text-[12.5px]"
           onOpenMenu={onOpenStatusMenu}
@@ -159,7 +176,7 @@ const ItemRow = ({
           {item.date || "—"}
         </div>
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-          <PriorityBadge priority={item.priority} />
+          <PriorityBadge option={priority_option} />
         </div>
         <div className="flex h-[42px] items-center gap-2 px-3.5">
           <ProgressBar progress_percent={progress_percent} />

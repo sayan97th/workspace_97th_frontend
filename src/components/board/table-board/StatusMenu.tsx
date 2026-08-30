@@ -1,17 +1,18 @@
 "use client";
 
 import { useRef } from "react";
-import { BOARD_STATUSES, getStatusBackground, getStatusForeground } from "./constants";
 import { EditPencilIcon } from "./icons";
+import type { TableBoardOption } from "./types";
 import { useOutsideClick } from "./useOutsideClick";
 
 interface StatusMenuProps {
-  onPickStatus: (status: string) => void;
+  options: TableBoardOption[];
+  onPickStatus: (option_id: string | null) => void;
   onClose: () => void;
   top_offset_px: number;
 }
 
-const StatusMenu = ({ onPickStatus, onClose, top_offset_px }: StatusMenuProps) => {
+const StatusMenu = ({ options, onPickStatus, onClose, top_offset_px }: StatusMenuProps) => {
   const menu_ref = useRef<HTMLDivElement>(null);
   useOutsideClick(menu_ref, true, onClose);
 
@@ -22,15 +23,21 @@ const StatusMenu = ({ onPickStatus, onClose, top_offset_px }: StatusMenuProps) =
       style={{ top: top_offset_px }}
     >
       <div className="grid grid-cols-3 gap-2">
-        {BOARD_STATUSES.map((status) => (
+        <button
+          type="button"
+          onClick={() => onPickStatus(null)}
+          className="flex h-[30px] items-center justify-center rounded text-[11.5px] font-medium hover:brightness-[1.07]"
+          style={{ background: "#c9ccd4", color: "#ffffff" }}
+        />
+        {options.map((option) => (
           <button
             type="button"
-            key={status || "none"}
-            onClick={() => onPickStatus(status)}
+            key={option.id}
+            onClick={() => onPickStatus(option.id)}
             className="flex h-[30px] items-center justify-center rounded text-[11.5px] font-medium hover:brightness-[1.07]"
-            style={{ background: getStatusBackground(status), color: getStatusForeground(status) }}
+            style={{ background: option.color, color: "#ffffff" }}
           >
-            {status}
+            {option.label}
           </button>
         ))}
       </div>

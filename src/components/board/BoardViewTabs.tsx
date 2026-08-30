@@ -17,7 +17,7 @@ import {
   ShareIcon,
   UnlockIcon,
 } from "@/icons/workspace-icons";
-import { KanbanViewIcon, PinIcon } from "@/icons/board-icons";
+import { PinIcon, TableViewIcon } from "@/icons/board-icons";
 import AddBoardViewMenu from "./AddBoardViewMenu";
 import type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
 import BoardViewIconPicker from "./BoardViewIconPicker";
@@ -28,7 +28,7 @@ import InlineTitleEditor from "./InlineTitleEditor";
 export type BoardViewTabItem = {
   id: number | string;
   label: string;
-  /** Key into `BOARD_VIEW_ICON_OPTIONS`; null/undefined shows no icon (except the primary tab, which defaults to the Kanban icon). */
+  /** Key into `BOARD_VIEW_ICON_OPTIONS`; null/undefined shows no icon (except the primary tab, which defaults to the table icon). */
   icon?: string | null;
   /** Sorts ahead of unpinned tabs whenever the viewer has no personal tab order saved. */
   pinned?: boolean;
@@ -102,7 +102,7 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
     <div className="flex items-center gap-0.5 border-b border-shell-border">
       <span className="-mb-px flex items-center gap-2 border-b-2 border-brand-500 px-3 py-[9px] text-[13.5px] font-semibold text-shell-text">
         <span className="text-[#00c875]">
-          <KanbanViewIcon />
+          <TableViewIcon />
         </span>
         {primary_label}
         <span className="text-shell-text-muted">
@@ -268,7 +268,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         const is_active = tab.id === active_view_id;
         const is_primary = index === 0;
         const is_editing = editing_id === tab.id;
-        const Icon = getBoardViewIcon(tab.icon) ?? (is_primary ? KanbanViewIcon : null);
+        const Icon = getBoardViewIcon(tab.icon) ?? (is_primary ? TableViewIcon : null);
         const key = String(tab.id);
         const menu_items = buildMenuItems(tab, is_primary);
 

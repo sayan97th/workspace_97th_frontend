@@ -346,12 +346,13 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   };
 
   const addView = async (view_type?: BoardViewKind): Promise<BoardViewDto> => {
-    // An omitted kind keeps the historical "View N" label; any real kind is
-    // labeled after itself (e.g. "Kanban"), de-duplicated against tabs
-    // already carrying that label.
-    const label = !view_type
-      ? `View ${views.length + 1}`
-      : dedupeLabel(getBoardViewTypeOption(view_type).label, views);
+    // Plain "table" (or omitted) keeps the historical "View N" label; any
+    // other kind is labeled after itself (e.g. "Kanban"), de-duplicated
+    // against tabs already carrying that label.
+    const label =
+      !view_type || view_type === "table"
+        ? `View ${views.length + 1}`
+        : dedupeLabel(getBoardViewTypeOption(view_type).label, views);
     const created = await boardContentService.createView(board_id, { label, view_type });
     setViews((current) => [...current, created]);
     setActiveViewId(created.id);

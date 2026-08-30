@@ -1,8 +1,9 @@
-import { PEOPLE } from "./constants";
 import Avatar from "./Avatar";
 import OwnerMenu from "./OwnerMenu";
+import type { Person } from "./types";
 
 interface OwnerCellProps {
+  people: Person[];
   owner_ids: string[];
   is_menu_open: boolean;
   avatar_size_px: number;
@@ -16,6 +17,7 @@ interface OwnerCellProps {
 const MAX_VISIBLE_AVATARS = 3;
 
 const OwnerCell = ({
+  people,
   owner_ids,
   is_menu_open,
   avatar_size_px,
@@ -25,6 +27,7 @@ const OwnerCell = ({
   onCloseMenu,
   menu_top_offset_px,
 }: OwnerCellProps) => {
+  const people_by_id = new Map(people.map((person) => [person.id, person]));
   const visible_owner_ids = owner_ids.slice(0, MAX_VISIBLE_AVATARS);
   const overflow_count = owner_ids.length - visible_owner_ids.length;
 
@@ -33,7 +36,7 @@ const OwnerCell = ({
       <button type="button" onClick={onOpenMenu} className="flex items-center pl-1.5">
         {visible_owner_ids.length ? (
           visible_owner_ids.map((person_id) => {
-            const person = PEOPLE[person_id];
+            const person = people_by_id.get(person_id);
             return (
               <Avatar
                 key={person_id}
@@ -63,6 +66,7 @@ const OwnerCell = ({
 
       {is_menu_open && (
         <OwnerMenu
+          people={people}
           owner_ids={owner_ids}
           onToggleOwner={onToggleOwner}
           onClearOwners={onClearOwners}

@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import { createInitialFlatItems, createInitialTreeItems, INITIAL_OPEN_IDS, INITIAL_SELECTED_IDS } from "./constants";
+import {
+  createInitialFlatItems,
+  createInitialTreeItems,
+  INITIAL_OPEN_IDS,
+  INITIAL_SELECTED_IDS,
+  PEOPLE_OPTIONS,
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
+} from "./constants";
 import type { ActiveBoardTab, BoardItem, BoardSimpleItem, BoardSubitem, DragParentId } from "./types";
 
 type TreeNode = BoardItem | BoardSubitem;
@@ -93,7 +101,8 @@ export const useTableBoard = () => {
     setStatusMenuId(null);
   }, []);
 
-  const setStatus = useCallback((node_id: string, status: string) => {
+  const setStatus = useCallback((node_id: string, option_id: string | null) => {
+    const status = option_id ?? "";
     setStatusMenuId(null);
     setTreeItems((current) => mapTreeNode(current, node_id, (node) => ({ ...node, status })));
     setFlatItems((current) => current.map((item) => (item.id === node_id ? { ...item, status } : item)));
@@ -210,6 +219,9 @@ export const useTableBoard = () => {
     setActiveTab,
     tree_items,
     flat_items,
+    people: PEOPLE_OPTIONS,
+    status_options: STATUS_OPTIONS,
+    priority_options: PRIORITY_OPTIONS,
     open_ids,
     selected_ids,
     editing_id,

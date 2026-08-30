@@ -5,6 +5,7 @@ import {
   FormViewIcon,
   GanttViewIcon,
   KanbanViewIcon,
+  TableViewIcon,
 } from "@/icons/board-icons";
 import { BoardGridIcon, DashboardIcon, FileIcon, type IconComponent } from "@/icons/workspace-icons";
 
@@ -15,12 +16,10 @@ import { BoardGridIcon, DashboardIcon, FileIcon, type IconComponent } from "@/ic
  * share a single source of truth without a circular import — mirrors
  * {@link import("./columnTypes").BoardColumnKind}'s role for column types.
  *
- * Must stay in sync with the backend's `App\Enums\BoardViewType`. The
- * backend enum still carries a legacy `table` value for old data, but the
- * frontend no longer offers or renders a Table view — an unrecognized or
- * legacy kind (including `table`) falls back to `BoardComingSoonView`.
+ * Must stay in sync with the backend's `App\Enums\BoardViewType`.
  */
 export type BoardViewKind =
+  | "table"
   | "kanban"
   | "gantt"
   | "chart"
@@ -54,6 +53,13 @@ export type BoardViewTypeOption = {
  * planned around (see {@link BoardViewTypeOption.is_available}).
  */
 export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
+  {
+    kind: "table",
+    label: "Table",
+    description: "Classic grid of items, grouped into tables",
+    Icon: TableViewIcon,
+    is_available: true,
+  },
   {
     kind: "kanban",
     label: "Kanban",
@@ -123,6 +129,6 @@ const BOARD_VIEW_TYPE_BY_KIND: Record<BoardViewKind, BoardViewTypeOption> = Obje
   BOARD_VIEW_TYPES.map((option) => [option.kind, option])
 ) as Record<BoardViewKind, BoardViewTypeOption>;
 
-/** Resolves a view kind to its picker metadata, falling back to `kanban` for any unrecognized or legacy (e.g. `table`) value. */
+/** Resolves a view kind to its picker metadata, falling back to `table` for any unrecognized value. */
 export const getBoardViewTypeOption = (kind: BoardViewKind | string | null | undefined): BoardViewTypeOption =>
-  (kind && BOARD_VIEW_TYPE_BY_KIND[kind as BoardViewKind]) || BOARD_VIEW_TYPE_BY_KIND.kanban;
+  (kind && BOARD_VIEW_TYPE_BY_KIND[kind as BoardViewKind]) || BOARD_VIEW_TYPE_BY_KIND.table;

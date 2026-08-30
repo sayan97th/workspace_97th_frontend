@@ -4,10 +4,13 @@ import OwnerCell from "./OwnerCell";
 import RailBar from "./RailBar";
 import StatusCell from "./StatusCell";
 import TreeConnector from "./TreeConnector";
-import type { BoardSubitem } from "./types";
+import type { BoardSubitem, Person, TableBoardOption } from "./types";
 
 interface SubitemRowProps {
   subitem: BoardSubitem;
+  group_color: string;
+  people: Person[];
+  status_options: TableBoardOption[];
   name_column_width_px: number;
   is_selected: boolean;
   is_editing: boolean;
@@ -20,11 +23,12 @@ interface SubitemRowProps {
   onDraftChange: (value: string) => void;
   onCommitEdit: () => void;
   onOpenStatusMenu: () => void;
-  onPickStatus: (status: string) => void;
+  onPickStatus: (option_id: string | null) => void;
   onOpenOwnerMenu: () => void;
   onToggleOwner: (person_id: string) => void;
   onClearOwners: () => void;
   onCloseMenus: () => void;
+  onCommentClick?: () => void;
   onDragStart: () => void;
   onDragOver: (event: React.DragEvent) => void;
   onDragEnd: () => void;
@@ -32,6 +36,9 @@ interface SubitemRowProps {
 
 const SubitemRow = ({
   subitem,
+  group_color,
+  people,
+  status_options,
   name_column_width_px,
   is_selected,
   is_editing,
@@ -49,14 +56,15 @@ const SubitemRow = ({
   onToggleOwner,
   onClearOwners,
   onCloseMenus,
+  onCommentClick,
   onDragStart,
   onDragOver,
   onDragEnd,
 }: SubitemRowProps) => (
   <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} className="flex min-w-[1020px] items-stretch" style={{ opacity: is_dragged ? 0.45 : 1 }}>
-    <RailBar variant="solid" />
-    <TreeConnector line_color="#4f6bed" height_px={21} />
-    <div className="w-[5px] flex-none bg-[#4f6bed]" />
+    <RailBar variant="solid" color={group_color} />
+    <TreeConnector line_color={group_color} height_px={21} />
+    <div className="w-[5px] flex-none" style={{ background: group_color }} />
     <div
       className="grid flex-1 border-b border-[#eef0f7] border-r border-[#dfe3ef]"
       style={{ gridTemplateColumns: `34px ${name_column_width_px}px 52px 108px 156px 148px 44px 1fr`, background: is_selected ? "#eaf0ff" : "#ffffff" }}
@@ -92,12 +100,17 @@ const SubitemRow = ({
       </div>
 
       <div className="flex h-10 items-center justify-center border-r border-[#eef0f7]">
-        <button type="button" className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+        <button
+          type="button"
+          onClick={onCommentClick}
+          className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]"
+        >
           <CommentIcon />
         </button>
       </div>
 
       <OwnerCell
+        people={people}
         owner_ids={subitem.owner_ids}
         is_menu_open={is_owner_menu_open}
         avatar_size_px={25}
@@ -109,7 +122,8 @@ const SubitemRow = ({
       />
 
       <StatusCell
-        status={subitem.status}
+        value={subitem.status}
+        options={status_options}
         is_menu_open={is_status_menu_open}
         text_size_class="text-[12px]"
         onOpenMenu={onOpenStatusMenu}

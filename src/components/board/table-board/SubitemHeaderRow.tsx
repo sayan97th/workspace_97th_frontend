@@ -1,14 +1,15 @@
 import RailBar from "./RailBar";
 
 interface SubitemHeaderRowProps {
+  group_color: string;
   name_column_width_px: number;
 }
 
-const SubitemHeaderRow = ({ name_column_width_px }: SubitemHeaderRowProps) => (
+const SubitemHeaderRow = ({ group_color, name_column_width_px }: SubitemHeaderRowProps) => (
   <div className="flex min-w-[1020px] items-stretch">
-    <RailBar variant="solid" />
+    <RailBar variant="solid" color={group_color} />
     <div className="w-[30px] flex-none" />
-    <div className="mt-2 w-[5px] flex-none rounded-tl-[5px] bg-[#4f6bed]" />
+    <div className="mt-2 w-[5px] flex-none rounded-tl-[5px]" style={{ background: group_color }} />
     <div
       className="mt-2 grid rounded-tr-[10px] border border-b-0 border-l-0 border-[#dfe3ef] bg-[#f7f8fc]"
       style={{ gridTemplateColumns: `34px ${name_column_width_px}px 52px 108px 156px 148px 44px 1fr` }}

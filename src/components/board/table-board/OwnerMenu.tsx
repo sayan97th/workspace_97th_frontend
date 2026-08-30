@@ -1,12 +1,13 @@
 "use client";
 
 import { useRef } from "react";
-import { PEOPLE } from "./constants";
-import { BellNotifyIcon, CheckIcon, CloseIcon, SparkleIcon } from "./icons";
-import { useOutsideClick } from "./useOutsideClick";
 import Avatar from "./Avatar";
+import { BellNotifyIcon, CheckIcon, CloseIcon, SparkleIcon } from "./icons";
+import type { Person } from "./types";
+import { useOutsideClick } from "./useOutsideClick";
 
 interface OwnerMenuProps {
+  people: Person[];
   owner_ids: string[];
   onToggleOwner: (person_id: string) => void;
   onClearOwners: () => void;
@@ -14,9 +15,10 @@ interface OwnerMenuProps {
   top_offset_px: number;
 }
 
-const OwnerMenu = ({ owner_ids, onToggleOwner, onClearOwners, onClose, top_offset_px }: OwnerMenuProps) => {
+const OwnerMenu = ({ people, owner_ids, onToggleOwner, onClearOwners, onClose, top_offset_px }: OwnerMenuProps) => {
   const menu_ref = useRef<HTMLDivElement>(null);
   useOutsideClick(menu_ref, true, onClose);
+  const people_by_id = new Map(people.map((person) => [person.id, person]));
 
   return (
     <div
@@ -29,7 +31,7 @@ const OwnerMenu = ({ owner_ids, onToggleOwner, onClearOwners, onClose, top_offse
           {owner_ids.length ? (
             owner_ids.map((person_id) => (
               <div key={person_id} className="flex items-center gap-1.5 rounded bg-[#eaf0ff] px-[7px] py-[3px] text-[11.5px] font-medium text-[#3a52c8]">
-                {PEOPLE[person_id]?.initials ?? person_id}
+                {people_by_id.get(person_id)?.initials ?? person_id}
               </div>
             ))
           ) : (
@@ -42,8 +44,9 @@ const OwnerMenu = ({ owner_ids, onToggleOwner, onClearOwners, onClose, top_offse
       </div>
 
       <div className="px-0.5 pb-1.5 pt-3 text-xs text-[#8b90a6]">Suggested people</div>
-      <div className="flex flex-col gap-0.5">
-        {Object.values(PEOPLE).map((person) => {
+      <div className="flex max-h-[240px] flex-col gap-0.5 overflow-y-auto">
+        {people.length === 0 && <div className="px-2 py-3 text-center text-[12.5px] text-[#a4aac2]">No members to assign.</div>}
+        {people.map((person) => {
           const is_assigned = owner_ids.includes(person.id);
           return (
             <button

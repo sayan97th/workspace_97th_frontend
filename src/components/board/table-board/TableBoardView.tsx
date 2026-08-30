@@ -5,7 +5,7 @@ import BoardToolbar from "./BoardToolbar";
 import BoardTopBar from "./BoardTopBar";
 import FlatGroupTable from "./FlatGroupTable";
 import TreeGroupTable from "./TreeGroupTable";
-import { useTableBoard } from "./useTableBoard";
+import { computeItemProgress, useTableBoard } from "./useTableBoard";
 
 const TableBoardView = () => {
   const board = useTableBoard();
@@ -37,7 +37,7 @@ const TableBoardView = () => {
           <div className="px-7 pt-[26px]">
             <BoardGroupHeading label="Checkout revamp" count_label={tree_group_count_label} accent_color="#4f6bed" chevron_direction="down" className="mb-2.5" />
             <div className="rounded-t-lg">
-              <TreeGroupTable board={board} />
+              <TreeGroupTable board={board} rows={board.tree_items} group_color="#4f6bed" onAddItem={board.addTreeItem} getProgress={computeItemProgress} />
             </div>
 
             <BoardGroupHeading label="Discovery" count_label={flat_group_count_label} accent_color="#2f9e78" chevron_direction="right" className="mb-2.5 mt-[30px]" />

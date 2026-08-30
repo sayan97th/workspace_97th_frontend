@@ -1,4 +1,4 @@
-import type { BoardItem, BoardPriority, BoardSimpleItem, Person } from "./types";
+import type { BoardItem, BoardSimpleItem, Person, TableBoardOption } from "./types";
 
 export const PEOPLE: Record<string, Person> = {
   AR: { id: "AR", initials: "AR", name: "Ana Rivas", avatar_bg: "#4f6bed" },
@@ -53,13 +53,30 @@ const STATUS_FOREGROUND: Record<string, string> = {
 export const getStatusBackground = (status: string): string => STATUS_BACKGROUND[status] || "#c9ccd4";
 export const getStatusForeground = (status: string): string => STATUS_FOREGROUND[status] || "#ffffff";
 
-export const PRIORITY_STYLES: Record<BoardPriority, { text_color: string; border_color: string; background_color: string }> = {
-  "": { text_color: "#9aa0b6", border_color: "#e6e9f2", background_color: "#ffffff" },
-  Low: { text_color: "#5b6180", border_color: "#e0e4ef", background_color: "#ffffff" },
-  Medium: { text_color: "#8a6d1f", border_color: "#f0dfae", background_color: "#fdf7e6" },
-  High: { text_color: "#5b3fbd", border_color: "#ddd4f6", background_color: "#f6f3ff" },
-  Critical: { text_color: "#b02f43", border_color: "#f4ced5", background_color: "#fdf2f4" },
-};
+/**
+ * `BOARD_STATUSES`/`getStatusBackground` as a plain {@link TableBoardOption}
+ * list — the shape `StatusCell`/`StatusMenu` actually render from, so the
+ * standalone preview (this file) and the real, backend-driven board (which
+ * builds the same shape from a real status column's `config.options`) share
+ * one component contract. A status id and its label are the same string here
+ * (there's no separate backing column in the mock), unlike the real board's
+ * server-generated option ids.
+ */
+export const STATUS_OPTIONS: TableBoardOption[] = BOARD_STATUSES.filter((status) => status !== "").map((status) => ({
+  id: status,
+  label: status,
+  color: getStatusBackground(status),
+}));
+
+export const PRIORITY_OPTIONS: TableBoardOption[] = [
+  { id: "Low", label: "Low", color: "#5b6180" },
+  { id: "Medium", label: "Medium", color: "#8a6d1f" },
+  { id: "High", label: "High", color: "#5b3fbd" },
+  { id: "Critical", label: "Critical", color: "#b02f43" },
+];
+
+/** {@link PEOPLE} as a plain array — the shape `OwnerCell`/`OwnerMenu` render from. See {@link STATUS_OPTIONS}'s own doc for why. */
+export const PEOPLE_OPTIONS: Person[] = Object.values(PEOPLE);
 
 export const TREE_GROUP_GRID_COLUMNS = "grid-cols-[36px_minmax(260px,1fr)_56px_108px_156px_148px_132px_156px]";
 

@@ -1,18 +1,24 @@
-import { PRIORITY_STYLES } from "./constants";
-import type { BoardPriority } from "./types";
+import type { TableBoardOption } from "./types";
 
 interface PriorityBadgeProps {
-  priority: BoardPriority;
+  option: TableBoardOption | null;
 }
 
-const PriorityBadge = ({ priority }: PriorityBadgeProps) => {
-  const style = PRIORITY_STYLES[priority] ?? PRIORITY_STYLES[""];
+/** An outlined pill tinted from the option's own color — mirrors `BoardValueCell`'s `pill_style: "outline"` treatment for a priority-style status column, so the badge works for any real board's own priority option colors rather than a fixed palette. */
+const PriorityBadge = ({ option }: PriorityBadgeProps) => {
+  if (!option) {
+    return (
+      <div className="rounded-[4px] border border-[#e6e9f2] bg-white px-[9px] py-[3px] text-[11.5px] font-medium text-[#9aa0b6]">
+        —
+      </div>
+    );
+  }
   return (
     <div
       className="rounded-[4px] border px-[9px] py-[3px] text-[11.5px] font-medium"
-      style={{ color: style.text_color, borderColor: style.border_color, background: style.background_color }}
+      style={{ color: option.color, borderColor: `${option.color}55`, background: `${option.color}14` }}
     >
-      {priority || "—"}
+      {option.label}
     </div>
   );
 };

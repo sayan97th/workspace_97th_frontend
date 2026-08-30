@@ -59,6 +59,7 @@ import {
   LinkIcon,
   PlusIcon,
   RowChatIcon,
+  TableViewIcon,
 } from "@/icons/board-icons";
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
@@ -66,6 +67,11 @@ import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { workspaceService } from "@/services/workspace.service";
+import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
+import BoardGroupHeading from "@/components/board/table-board/BoardGroupHeading";
+import { tableBoardFontClassName } from "@/components/board/table-board/table-board-font";
+import TreeGroupTable, { type TableBoardTreeInteraction } from "@/components/board/table-board/TreeGroupTable";
+import type { BoardItem as TableBoardItem, BoardSubitem as TableBoardSubitem, DragParentId } from "@/components/board/table-board/types";
 import type {
   BoardColumnConfig,
   BoardColumnDto,
@@ -491,6 +497,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_column_label] = useState(node.item_column_label ?? "Item");
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
 
+  // ── Table view (tree/subitems) — purely local UI state, mirroring the
+  // standalone preview's own `useTableBoard` hook (open/selected rows,
+  // inline rename, which row's Status/Owner menu is open, drag state). Real
+  // persistence goes through the same `handleUpdateCellValue`/
+  // `handleRenameItem`/`mapItemInTree` every other view already uses. ──
+  const [table_open_ids, setTableOpenIds] = useState<Record<string, boolean>>({});
+  const [table_selected_ids, setTableSelectedIds] = useState<Record<string, boolean>>({});
+  const [table_editing_id, setTableEditingId] = useState<string | null>(null);
+  const [table_draft_name, setTableDraftName] = useState("");
+  const [table_status_menu_id, setTableStatusMenuId] = useState<string | null>(null);
+  const [table_owner_menu_id, setTableOwnerMenuId] = useState<string | null>(null);
+  const [table_drag, setTableDrag] = useState<{ node_id: string; parent_id: DragParentId } | null>(null);
+  const table_drag_start_items_ref = useRef<BoardItemDto[] | null>(null);
+
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
     [columns]
@@ -538,6 +558,43 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // view's arrows and Finish-to-Start auto-reschedule.
   const board_timeline_column = item_columns.find((c) => c.type === "timeline") ?? null;
   const board_dependency_column = item_columns.find((c) => c.type === "dependency") ?? null;
+
+  // ── Table view — every subitem-scoped column, split out the same way
+  // `item_columns` is above. Subitems live in their own implicit sub-board
+  // (mirroring monday.com), so their Status/Owner/Date cells read from these
+  // columns instead of the root-item ones. ──
+  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
+  const subitem_status_column = useMemo(() => subitem_columns.find((c) => c.type === "status") ?? null, [subitem_columns]);
+  const subitem_member_column = useMemo(() => subitem_columns.find((c) => c.type === "people") ?? null, [subitem_columns]);
+  const subitem_date_column = useMemo(() => subitem_columns.find((c) => c.type === "date") ?? null, [subitem_columns]);
+  // Drives the Progress column: the fraction of a row's direct subitems
+  // marked done, or (for a row with no subitems) whether the row's own
+  // `board_done_column` checkbox is set.
+  const subitem_done_column = useMemo(() => subitem_columns.find((c) => c.type === "checkbox") ?? null, [subitem_columns]);
+
+  const table_status_options = useMemo(
+    () => (board_status_column?.config?.options ?? []).filter((o) => o.is_active !== false).map((o) => ({ id: o.id, label: o.label, color: o.color })),
+    [board_status_column]
+  );
+  const table_subitem_status_options = useMemo(
+    () => (subitem_status_column?.config?.options ?? []).filter((o) => o.is_active !== false).map((o) => ({ id: o.id, label: o.label, color: o.color })),
+    [subitem_status_column]
+  );
+  const table_priority_options = useMemo(
+    () => (board_priority_column?.config?.options ?? []).filter((o) => o.is_active !== false).map((o) => ({ id: o.id, label: o.label, color: o.color })),
+    [board_priority_column]
+  );
+  /** The full assignable roster, flat-color avatars matching the design (see `PersonAvatar`'s own `variant="flat"` doc). */
+  const table_people = useMemo(
+    () =>
+      workspace_members.map((member, index) => ({
+        id: String(member.id),
+        name: member.full_name,
+        initials: getInitials(member.full_name),
+        avatar_bg: AVATAR_COLORS[index % AVATAR_COLORS.length],
+      })),
+    [workspace_members]
+  );
   // Every column beyond the six special slots above — rendered as generic
   // "Properties" on a Kanban card (a few, inline) and in the Kanban drawer
   // (the full set, with add/remove), mirroring how `board_columns` lists
@@ -1150,7 +1207,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `board_priority_column`/`board_done_column`/`board_date_column`/
   // `board_date_end_column` are declared earlier in this component (right
   // after `columns_by_id`) — see the comment there.
-  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "kanban";
+  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const active_doc_view = view_tabs.active_view;
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
@@ -1366,6 +1423,234 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const created = await boardContentService.createGroup(board_id, { view_id: view_tabs.active_view_id, name: "Board" });
     setGroups((current) => [...current, created]);
     return created;
+  };
+
+  // ── Table view (tree/subitems) ──────────────────────────────────────────
+  // Adapts a real `BoardItemDto` (root or subitem) into the plain shape
+  // `TreeGroupTable`/`ItemRow`/`SubitemRow` render — the same shape the
+  // standalone preview's own mock data already uses, so those components
+  // need no real-vs-mock branching of their own.
+  const adaptTableSubitem = (item: BoardItemDto): TableBoardSubitem => ({
+    id: String(item.id),
+    name: item.name,
+    owner_ids: subitem_member_column ? asStringArray(item.values[String(subitem_member_column.id)]) : [],
+    status: subitem_status_column ? String(item.values[String(subitem_status_column.id)] ?? "") : "",
+    date: subitem_date_column && typeof item.values[String(subitem_date_column.id)] === "string" ? formatDate(item.values[String(subitem_date_column.id)] as string) : "",
+  });
+
+  const adaptTableItem = (item: BoardItemDto): TableBoardItem => ({
+    id: String(item.id),
+    name: item.name,
+    owner_ids: board_member_column ? asStringArray(item.values[String(board_member_column.id)]) : [],
+    status: board_status_column ? String(item.values[String(board_status_column.id)] ?? "") : "",
+    date: board_date_column && typeof item.values[String(board_date_column.id)] === "string" ? formatDate(item.values[String(board_date_column.id)] as string) : "",
+    priority: board_priority_column ? String(item.values[String(board_priority_column.id)] ?? "") : "",
+    subitems: item.children.map(adaptTableSubitem),
+  });
+
+  /** The Progress column: % of a row's direct subitems marked done, or (a row with none) whether its own `board_done_column` checkbox is set. Mirrors the design's own `computeItemProgress` fallback for a row with neither. */
+  const computeTableProgress = (item: BoardItemDto): number => {
+    if (item.children.length > 0 && subitem_done_column) {
+      const done_count = item.children.filter((child) => child.values[String(subitem_done_column.id)] === true).length;
+      return Math.round((done_count / item.children.length) * 100);
+    }
+    if (item.children.length === 0 && board_done_column) {
+      return item.values[String(board_done_column.id)] === true ? 100 : 0;
+    }
+    return 0;
+  };
+
+  const toggleTableOpen = (node_id: string) => setTableOpenIds((current) => ({ ...current, [node_id]: !current[node_id] }));
+  const toggleTableSelected = (node_id: string) => setTableSelectedIds((current) => ({ ...current, [node_id]: !current[node_id] }));
+  const closeTableMenus = () => {
+    setTableStatusMenuId(null);
+    setTableOwnerMenuId(null);
+  };
+  const openTableStatusMenu = (node_id: string) => {
+    setTableStatusMenuId((current) => (current === node_id ? null : node_id));
+    setTableOwnerMenuId(null);
+  };
+  const openTableOwnerMenu = (node_id: string) => {
+    setTableOwnerMenuId((current) => (current === node_id ? null : node_id));
+    setTableStatusMenuId(null);
+  };
+  const startTableEdit = (node_id: string, current_name: string) => {
+    setTableEditingId(node_id);
+    setTableDraftName(current_name);
+    closeTableMenus();
+  };
+  const commitTableEdit = () => {
+    const node_id = table_editing_id;
+    setTableEditingId(null);
+    if (!node_id) return;
+    const trimmed = table_draft_name.trim() || "Untitled";
+    void handleRenameItem(Number(node_id), trimmed);
+  };
+
+  /** A root item vs. a subitem needs its own column for Status/Owner (see `subitem_status_column`/`subitem_member_column` above) — resolved once here from the real tree rather than duplicated in every caller below. */
+  const findTableColumn = (node_id: string, root_column: BoardColumnDto | null, subitem_column: BoardColumnDto | null): BoardColumnDto | null => {
+    const node = findItemInTree(items, Number(node_id));
+    return node?.parent_id == null ? root_column : subitem_column;
+  };
+
+  const setTableStatus = (node_id: string, option_id: string | null) => {
+    setTableStatusMenuId(null);
+    const column = findTableColumn(node_id, board_status_column, subitem_status_column);
+    if (!column) return;
+    void handleUpdateCellValue(Number(node_id), String(column.id), option_id);
+  };
+
+  const toggleTableOwner = (node_id: string, person_id: string) => {
+    const node = findItemInTree(items, Number(node_id));
+    const column = findTableColumn(node_id, board_member_column, subitem_member_column);
+    if (!node || !column) return;
+    const current_ids = asStringArray(node.values[String(column.id)]);
+    const next = current_ids.includes(person_id) ? current_ids.filter((id) => id !== person_id) : [...current_ids, person_id];
+    void handleUpdateCellValue(Number(node_id), String(column.id), next.length ? next : null);
+  };
+
+  const clearTableOwners = (node_id: string) => {
+    const column = findTableColumn(node_id, board_member_column, subitem_member_column);
+    if (!column) return;
+    void handleUpdateCellValue(Number(node_id), String(column.id), null);
+  };
+
+  /** "+ Add item" — scoped to whichever table (group) it was clicked from, unlike the toolbar's own "New item" button (always the first table). */
+  const handleAddTableItem = async (group_id: number) => {
+    const created = await boardContentService.createItem(board_id, { name: "New item", group_id });
+    setItems((current) => [...current, created]);
+    setTableEditingId(String(created.id));
+    setTableDraftName("New item");
+  };
+
+  const handleAddTableSubitem = async (parent_item_id: string) => {
+    const created = await boardContentService.createItem(board_id, { name: "New subitem", parent_id: Number(parent_item_id) });
+    setItems((current) =>
+      mapItemInTree(current, Number(parent_item_id), (item) => ({
+        ...item,
+        children: [...item.children, created],
+        subitem_count: item.subitem_count + 1,
+      }))
+    );
+    setTableOpenIds((current) => ({ ...current, [parent_item_id]: true }));
+    setTableEditingId(String(created.id));
+    setTableDraftName("New subitem");
+  };
+
+  /** "+ Add new group" (table) — a real board's own tables, distinct from Kanban's status-column lanes. */
+  const handleAddTableGroup = async () => {
+    if (view_tabs.active_view_id == null) return;
+    const created = await boardContentService.createGroup(board_id, {
+      view_id: view_tabs.active_view_id,
+      name: `Table ${groups.length + 1}`,
+      accent_color: COLUMN_OPTION_PALETTE[groups.length % COLUMN_OPTION_PALETTE.length],
+    });
+    setGroups((current) => [...current, created]);
+  };
+
+  // ── Drag reorder — mirrors the preview's own live-reorder-while-hovering
+  // model (see `useTableBoard`'s `handleDragOver`), just persisted at drag
+  // end instead of staying purely local. `table_drag_start_items_ref` snapshots
+  // `items` at drag start so a failed persist can roll back to it, since the
+  // live reorder already happened incrementally across many dragover events
+  // by the time the drop fires. ──
+  const handleTableDragStart = (node_id: string, parent_id: DragParentId) => {
+    table_drag_start_items_ref.current = items;
+    setTableDrag({ node_id, parent_id });
+  };
+
+  const handleTableDragOver = (event: React.DragEvent, over_id: string, parent_id: DragParentId) => {
+    event.preventDefault();
+    if (!table_drag || table_drag.node_id === over_id || table_drag.parent_id !== parent_id) return;
+    const dragged_id = table_drag.node_id;
+
+    if (parent_id === "ROOT") {
+      setItems((current) => {
+        const from_index = current.findIndex((item) => String(item.id) === dragged_id);
+        const to_index = current.findIndex((item) => String(item.id) === over_id);
+        if (from_index < 0 || to_index < 0) return current;
+        const next = current.slice();
+        const [moved] = next.splice(from_index, 1);
+        next.splice(to_index, 0, moved);
+        return next;
+      });
+      return;
+    }
+
+    setItems((current) =>
+      mapItemInTree(current, Number(parent_id), (item) => {
+        const from_index = item.children.findIndex((child) => String(child.id) === dragged_id);
+        const to_index = item.children.findIndex((child) => String(child.id) === over_id);
+        if (from_index < 0 || to_index < 0) return item;
+        const next_children = item.children.slice();
+        const [moved] = next_children.splice(from_index, 1);
+        next_children.splice(to_index, 0, moved);
+        return { ...item, children: next_children };
+      })
+    );
+  };
+
+  const handleTableDragEnd = () => {
+    const drag = table_drag;
+    const previous = table_drag_start_items_ref.current;
+    table_drag_start_items_ref.current = null;
+    setTableDrag(null);
+    if (!drag) return;
+
+    if (drag.parent_id === "ROOT") {
+      const item = items.find((candidate) => String(candidate.id) === drag.node_id);
+      if (!item) return;
+      const target_ordered_ids = items.filter((candidate) => candidate.group_id === item.group_id).map((candidate) => candidate.id);
+      boardContentService
+        .reorderItems(board_id, { scope: "root", moved_item_id: item.id, target_group_id: item.group_id, target_ordered_ids })
+        .catch(() => previous && setItems(previous));
+      return;
+    }
+
+    const parent = findItemInTree(items, Number(drag.parent_id));
+    if (!parent) return;
+    boardContentService
+      .reorderItems(board_id, { scope: "subitem", target_parent_id: parent.id, target_ordered_ids: parent.children.map((child) => child.id) })
+      .catch(() => previous && setItems(previous));
+  };
+
+  const table_progress_by_id = useMemo(
+    () => new Map(items.map((item) => [String(item.id), computeTableProgress(item)])),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [items, subitem_done_column, board_done_column]
+  );
+
+  const table_board_interaction: TableBoardTreeInteraction = {
+    open_ids: table_open_ids,
+    selected_ids: table_selected_ids,
+    editing_id: table_editing_id,
+    draft_name: table_draft_name,
+    status_menu_id: table_status_menu_id,
+    owner_menu_id: table_owner_menu_id,
+    dragged_node_id: table_drag?.node_id ?? null,
+    people: table_people,
+    status_options: table_status_options,
+    subitem_status_options: table_subitem_status_options,
+    priority_options: table_priority_options,
+    toggleItemOpen: toggleTableOpen,
+    toggleSelected: toggleTableSelected,
+    startEditing: startTableEdit,
+    updateDraftName: setTableDraftName,
+    commitEdit: commitTableEdit,
+    openStatusMenu: openTableStatusMenu,
+    openOwnerMenu: openTableOwnerMenu,
+    setStatus: setTableStatus,
+    toggleOwner: toggleTableOwner,
+    clearOwners: clearTableOwners,
+    closeMenus: closeTableMenus,
+    addSubitem: (item_id) => void handleAddTableSubitem(item_id),
+    handleDragStart: handleTableDragStart,
+    handleDragOver: handleTableDragOver,
+    handleDragEnd: handleTableDragEnd,
+    onCommentClick: (node_id) => {
+      const row = findItemInTree(items, Number(node_id));
+      if (row) handleRowClick(row);
+    },
   };
 
   const handleMoveKanbanCard = (row_id: string, lane_id: string) => {
@@ -1736,7 +2021,54 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         </div>
       )}
 
-      {active_view_type === "kanban" ? (
+      {active_view_type === "table" ? (
+        toolbar.groups.length === 0 ? (
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
+              <TableViewIcon size={26} />
+            </span>
+            <h2 className="text-lg font-semibold text-shell-text">Set up your table</h2>
+            <p className="text-[13.5px] text-shell-text-muted">Add a table to start tracking items.</p>
+            <button
+              type="button"
+              onClick={() => void handleAddTableGroup()}
+              className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+            >
+              <PlusIcon size={13} />
+              Add table
+            </button>
+          </div>
+        ) : (
+          <div className={tableBoardFontClassName}>
+            {toolbar.groups.map((group) => (
+              <div key={group.id} className="mb-[30px] last:mb-0">
+                <BoardGroupHeading
+                  label={group.name}
+                  count_label={`${group.rows.length} item${group.rows.length === 1 ? "" : "s"}`}
+                  accent_color={group.accent_color}
+                  chevron_direction="down"
+                  className="mb-2.5"
+                />
+                <TreeGroupTable
+                  board={table_board_interaction}
+                  rows={group.rows.map(adaptTableItem)}
+                  group_color={group.accent_color}
+                  onAddItem={() => void handleAddTableItem(Number(group.id))}
+                  getProgress={(item) => table_progress_by_id.get(item.id) ?? 0}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => void handleAddTableGroup()}
+              className="flex w-fit items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+            >
+              <PlusIcon size={13} />
+              Add new group
+            </button>
+          </div>
+        )
+      ) : active_view_type === "kanban" ? (
         board_status_column ? (
           <BoardKanban<BoardItemDto>
             lanes={kanban_lanes}

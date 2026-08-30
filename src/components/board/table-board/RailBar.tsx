@@ -2,18 +2,19 @@ type RailBarVariant = "solid" | "faded" | "gap";
 
 interface RailBarProps {
   variant: RailBarVariant;
+  /** The owning group/table's accent color — defaults to the design's original blue for callers that don't (yet) know their group's color. */
+  color?: string;
 }
 
-const RAIL_BACKGROUND: Record<RailBarVariant, string> = {
-  solid: "#4f6bed",
-  gap: "#c3cef9",
-  faded: "linear-gradient(#4f6bed, #c3cef9 70%)",
-};
+const RailBar = ({ variant, color = "#4f6bed" }: RailBarProps) => {
+  const background =
+    variant === "solid" ? color : variant === "gap" ? `color-mix(in srgb, ${color} 35%, white)` : `linear-gradient(${color}, color-mix(in srgb, ${color} 35%, white) 70%)`;
 
-const RailBar = ({ variant }: RailBarProps) => (
-  <div className="relative w-[5px] flex-none">
-    <div className="absolute -top-px -bottom-px left-[3.5px] w-[1.5px]" style={{ background: RAIL_BACKGROUND[variant] }} />
-  </div>
-);
+  return (
+    <div className="relative w-[5px] flex-none">
+      <div className="absolute -top-px -bottom-px left-[3.5px] w-[1.5px]" style={{ background }} />
+    </div>
+  );
+};
 
 export default RailBar;

@@ -1,4 +1,4 @@
-import { PEOPLE, TREE_GROUP_GRID_COLUMNS, getStatusBackground, getStatusForeground } from "./constants";
+import { PEOPLE, PRIORITY_OPTIONS, TREE_GROUP_GRID_COLUMNS, getStatusBackground, getStatusForeground } from "./constants";
 import { CommentIcon } from "./icons";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
@@ -55,7 +55,7 @@ const FlatGroupTable = ({ items, onAddItem }: FlatGroupTableProps) => (
             </div>
             <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5] text-[12.5px] text-[#4a5068]">{item.date || "—"}</div>
             <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-              <PriorityBadge priority={item.priority} />
+              <PriorityBadge option={PRIORITY_OPTIONS.find((option) => option.id === item.priority) ?? null} />
             </div>
             <div className="flex h-[42px] items-center gap-2 px-3.5">
               <ProgressBar progress_percent={item.progress} fill_color="#2f9e78" show_label={false} />
