@@ -1,4 +1,3 @@
-import { TableViewIcon } from "@/icons/board-icons";
 import {
   BoardGridIcon,
   ChatBubbleIcon,
@@ -29,7 +28,6 @@ export type BoardViewIconOption = {
  * a new icon only has to be added here to be usable everywhere.
  */
 export const BOARD_VIEW_ICON_OPTIONS: BoardViewIconOption[] = [
-  { id: "table", label: "Table", Icon: TableViewIcon },
   { id: "chart", label: "Chart", Icon: DashboardIcon },
   { id: "clock", label: "Timeline", Icon: ClockIcon },
   { id: "person", label: "Person", Icon: PersonIcon },

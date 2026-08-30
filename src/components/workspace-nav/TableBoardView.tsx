@@ -15,11 +15,8 @@ import {
   BoardItemDrawer,
   BoardKanban,
   BoardPopover,
-  BoardProgressCell,
   BoardShell,
-  BoardTable,
   BoardToolbar,
-  BoardValueCell,
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
   COLUMN_OPTION_PALETTE,
@@ -32,7 +29,6 @@ import {
   KanbanCardMembers,
   KanbanItemDrawer,
   PersonAvatarStack,
-  SelectionActionBar,
   parseIsoDate,
   useBoardDiscussionDrawer,
   useBoardItemDrawer,
@@ -53,36 +49,20 @@ import {
   type BoardSortOption,
   type BoardToolbarConfig,
   type BoardViewKind,
-  type SelectionActionBarAction,
 } from "@/components/board";
 import {
   AttachmentIcon,
   CalendarViewIcon,
   CheckIcon,
-  DownloadIcon,
   GanttViewIcon,
   KanbanViewIcon,
   LinkIcon,
   PlusIcon,
   RowChatIcon,
 } from "@/icons/board-icons";
-import {
-  AiSummaryIcon,
-  AppsGridIcon,
-  ArchiveIcon,
-  ChevronRightIcon,
-  DeleteIcon,
-  DuplicateIcon,
-  FolderIcon,
-  MoreDotsIcon,
-  MoveToIcon,
-  RefreshIcon,
-} from "@/icons/workspace-icons";
-import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
-import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
-import { downloadCsv } from "@/lib/csv-export";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { workspaceService } from "@/services/workspace.service";
@@ -114,14 +94,6 @@ export type WorkspaceViewProps = {
 const ITEM_COLUMN_ID = "name";
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
-/**
- * Synthetic, computed-only column showing a root row's subitem-completion
- * bar — the % of its direct subitems whose "done" checkbox is checked (see
- * `subitem_done_column` below). Only appended to `board_columns` when the
- * board actually has a subitem-scoped checkbox column to compute it from —
- * no fabricated progress from unrelated status labels.
- */
-const PROGRESS_COLUMN_ID = "progress";
 
 /** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
 const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
@@ -358,7 +330,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     return (
       <BoardShell
         header={{ title: node.label, is_favorite: node.is_favorite, invite_count: access.length, info, onInviteClick: () => setIsInviteOpen(true) }}
-        tabs={{ primary_label: "Main table", views: [] }}
+        tabs={{ primary_label: "Main board", views: [] }}
       >
         <BoardLoadingSpinner />
       </BoardShell>
@@ -371,7 +343,6 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         key={node.id}
         node={node}
         breadcrumb={breadcrumb}
-        workspace_slug={workspace_slug}
         board_type={board_type}
         info={info}
         invite_count={access.length}
@@ -412,7 +383,6 @@ export default TableBoardView;
 type TableBoardBodyProps = {
   node: BoardDetail;
   breadcrumb: string[];
-  workspace_slug: string;
   board_type: BoardType;
   info: BoardHeaderInfo;
   invite_count: number;
@@ -496,7 +466,6 @@ const GanttRowLabel: React.FC<{
 const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   node,
   breadcrumb,
-  workspace_slug,
   info,
   invite_count,
   onInviteClick,
@@ -518,28 +487,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [items, setItems] = useState(initial_items);
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
-  const [adding_item_group_id, setAddingItemGroupId] = useState<string | null>(null);
-  const [adding_subitem_parent_id, setAddingSubitemParentId] = useState<string | null>(null);
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
-  const [item_column_label, setItemColumnLabel] = useState(node.item_column_label ?? "Item");
+  const [item_column_label] = useState(node.item_column_label ?? "Item");
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
-
-  // ── Selection action bar — row checkboxes, independent of the drawer's own `selectedRowId` ──
-  const [selected_item_ids, setSelectedItemIds] = useState<Set<number>>(() => new Set());
-  const [move_to_anchor_el, setMoveToAnchorEl] = useState<HTMLButtonElement | null>(null);
-  const [is_bulk_delete_confirm_open, setIsBulkDeleteConfirmOpen] = useState(false);
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
     [columns]
   );
-  // Item and subitem rows draw from two independent column sets (mirroring
-  // monday.com's implicit subitem sub-board) — everything below that derives
-  // "the board's columns" (Kanban's structural lanes, the Table view's own
-  // header, the toolbar) should only ever see the item-scoped set; subitem
-  // columns are only ever consumed by the subitem panel further down.
+  // Every root-item-scoped column — drives Kanban's structural lanes and the toolbar.
   const item_columns = useMemo(() => columns.filter((c) => c.scope === "item"), [columns]);
-  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
   const people_names_by_id = useMemo(
     () => Object.fromEntries(workspace_members.map((o) => [String(o.id), o.full_name])),
     [workspace_members]
@@ -581,14 +538,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // view's arrows and Finish-to-Start auto-reschedule.
   const board_timeline_column = item_columns.find((c) => c.type === "timeline") ?? null;
   const board_dependency_column = item_columns.find((c) => c.type === "dependency") ?? null;
-  // Drives the Table view's computed "Progress" column (see
-  // `PROGRESS_COLUMN_ID`): the board's first subitem-scoped `checkbox`
-  // column, mirroring `board_done_column`'s "first checkbox column = done"
-  // convention one level down. A root row's progress is the % of its direct
-  // subitems checked off here — real data, not a fabricated guess from
-  // status labels — so the column only appears when a board actually has
-  // one.
-  const subitem_done_column = subitem_columns.find((c) => c.type === "checkbox") ?? null;
   // Every column beyond the six special slots above — rendered as generic
   // "Properties" on a Kanban card (a few, inline) and in the Kanban drawer
   // (the full set, with add/remove), mirroring how `board_columns` lists
@@ -625,18 +574,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       hideable: false,
       pinnable: false,
     };
-    const progress_column: BoardColumn | null = subitem_done_column
-      ? {
-          id: PROGRESS_COLUMN_ID,
-          label: "Progress",
-          width: 150,
-          hideable: true,
-          pinnable: false,
-          swatch: { accent_color: "#00c875", glyph: "Pr" },
-          full_label: "Progress",
-          renamable: false,
-        }
-      : null;
     return [
       item_column,
       chat_column,
@@ -658,54 +595,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
         pill_style: (c.id === board_priority_column?.id ? "outline" : undefined) as "outline" | undefined,
       })),
-      ...(progress_column ? [progress_column] : []),
     ];
-  }, [item_columns, item_column_label, board_priority_column, subitem_done_column]);
-
-  /**
-   * The subitem panel's own, independent column set — a subitem's `name`
-   * field reuses the exact same {@link ITEM_COLUMN_ID}/`CHAT_COLUMN_ID`
-   * synthetic slots as a root row (both are plain fields on `BoardItemDto`
-   * regardless of nesting depth, so `renderCell`/`getColumnText` already
-   * handle them generically), followed by whichever real columns are scoped
-   * `"subitem"`. `BoardTable` overrides the tree column's displayed header
-   * label to "Subitem" for this set, so `item_column_label` isn't reused here.
-   */
-  const subitem_board_columns: BoardColumn[] = useMemo(() => {
-    const subitem_column: BoardColumn = {
-      id: ITEM_COLUMN_ID,
-      label: "Subitem",
-      width: 240,
-      swatch: { accent_color: "#7e5bef", glyph: "It" },
-      full_label: "Subitem",
-      pinnable: false,
-      hideable: false,
-      renamable: false,
-    };
-    const chat_column: BoardColumn = {
-      id: CHAT_COLUMN_ID,
-      label: "",
-      width: 56,
-      align: "center",
-      hideable: false,
-      pinnable: false,
-    };
-    return [
-      subitem_column,
-      chat_column,
-      ...subitem_columns.map((c) => ({
-        id: String(c.id),
-        label: c.label,
-        width: c.width,
-        hideable: c.hideable,
-        pinnable: false,
-        swatch: COLUMN_KIND_SWATCH[c.type],
-        full_label: c.label,
-        bleed: c.type === "status",
-        align: (c.type === "checkbox" || c.type === "number" ? "center" : undefined) as "center" | undefined,
-      })),
-    ];
-  }, [subitem_columns]);
+  }, [item_columns, item_column_label, board_priority_column]);
 
   const default_groups: BoardGroupRow<BoardItemDto>[] = useMemo(
     () =>
@@ -848,88 +739,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleChangeViewIcon = (id: number | string, icon: string | null) => view_tabs.changeViewIcon(Number(id), icon);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
-  // ── Add group (table) — one click appends a new table at the bottom of the active tab, no popover. Rename it inline afterward via the group title. ──
-  const handleCreateGroup = async () => {
-    if (view_tabs.active_view_id == null) return;
-    const created = await boardContentService.createGroup(board_id, {
-      view_id: view_tabs.active_view_id,
-      name: "New group",
-    });
-    setGroups((current) => [...current, created]);
-  };
-
-  // ── Rename table (group) — inline input in place of the group's title, no popover ──
-  const handleRenameGroup = async (group_id: string, name: string) => {
-    const updated = await boardContentService.updateGroup(board_id, Number(group_id), { name });
-    setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g)));
-  };
-
-  // ── Rename column — inline input in place of the column header, no popover ──
-  //
-  // Every data column is a real `board_columns` row, renamed through the board
-  // content API. The first "Item" column is the exception: it isn't a column
-  // row (it's the item's own name), so its custom label lives on the board
-  // (nav item) itself and is renamed through the workspace API.
-  const handleRenameColumn = async (column_id: string, label: string) => {
-    if (column_id === ITEM_COLUMN_ID) {
-      const { workspaceService } = await import("@/services/workspace.service");
-      const updated = await workspaceService.updateNavItem(workspace_slug, board_id, {
-        item_column_label: label,
-      });
-      setItemColumnLabel(updated.item_column_label ?? "Item");
-      return;
-    }
-    const updated = await boardContentService.updateColumn(board_id, Number(column_id), { label });
-    setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
-  };
-
-  // ── Rename item — click the item name to swap it for an inline input, mirroring
-  // group/column rename. Only the name field is merged back in (not the whole
-  // server item) so a stale `comment_count`/`values` response can't clobber
-  // what's already known client-side. ──
+  // ── Rename item — used by Kanban's card-title inline editor. Only the name
+  // field is merged back in (not the whole server item) so a stale
+  // `comment_count`/`values` response can't clobber what's already known
+  // client-side. ──
   const handleRenameItem = async (item_id: number, name: string) => {
     const updated = await boardContentService.updateItem(board_id, item_id, { name });
     setItems((current) => mapItemInTree(current, item_id, (item) => ({ ...item, name: updated.name })));
     setEditingItemId(null);
   };
-
-  // ── Add item — inline input in place of the table's "+ Add item" row, no popover ──
-  const handleOpenAddItem = (group_id: string) => setAddingItemGroupId(group_id);
-
-  // ── Add subitem — mirrors `handleAddChecklistItem`'s dual-update shape:
-  // the new subitem is inserted straight into its parent's `children` array
-  // (found wherever it lives in the tree) and the parent's `subitem_count`
-  // is bumped, so the row's badge and expanded child list stay in sync
-  // without waiting on a refetch. ──
-  const handleOpenAddSubitem = (parent_item_id: string) => setAddingSubitemParentId(parent_item_id);
-
-  const handleSubmitNewSubitem = async (parent_item_id: string, name: string) => {
-    const created = await boardContentService.createItem(board_id, {
-      name,
-      parent_id: Number(parent_item_id),
-    });
-    setItems((current) =>
-      mapItemInTree(current, Number(parent_item_id), (parent) => ({
-        ...parent,
-        children: [...parent.children, created],
-        subitem_count: parent.subitem_count + 1,
-      }))
-    );
-    setAddingSubitemParentId(null);
-  };
-
-  const handleCancelAddSubitem = () => setAddingSubitemParentId(null);
-
-  const handleSubmitNewItem = async (group_id: string, name: string) => {
-    const created = await boardContentService.createItem(board_id, {
-      name,
-      group_id: Number(group_id),
-    });
-    setItems((current) => [...current, created]);
-    setAddingItemGroupId(null);
-  };
-
-  const handleCancelAddItem = () => setAddingItemGroupId(null);
 
   // ── "New item" toolbar button — always inserts at the very top of the first table ──
   const handleNewItemAtTop = async () => {
@@ -981,26 +799,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setColumns((current) => [...current, created]);
   };
 
-  // ── Mirrors `handleAddColumn`, but for the subitem panel's own "+" button —
-  // creates a `scope: "subitem"` column instead, which never appears on the
-  // parent item table. ──
-  const handleAddSubitemColumn = async (type: AddableColumnType, config?: BoardColumnConfig) => {
-    if (view_tabs.active_view_id == null) return;
-    const created = await boardContentService.createColumn(board_id, {
-      view_id: view_tabs.active_view_id,
-      key: `${type.kind}_${Date.now()}`,
-      label: type.label,
-      type: type.kind,
-      scope: "subitem",
-      width: type.default_width,
-      config,
-    });
-    setColumns((current) => [...current, created]);
-  };
-
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
-  // item), the same as deleting a column from the Table view's header. ──
+  // item). ──
   const handleRemoveKanbanProperty = async (column_id: string) => {
     await boardContentService.deleteColumn(board_id, Number(column_id));
     setColumns((current) => current.filter((c) => String(c.id) !== column_id));
@@ -1015,93 +816,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
     try {
       await boardContentService.updateItemValues(board_id, item_id, { [column_id]: value });
-    } catch {
-      setItems(previous);
-    }
-  };
-
-  // ── Drag-and-drop reorder of root rows — a same-table reorder, or a drop
-  // into a *different* table at an arbitrary position (`source_ordered_ids`
-  // then also carries the vacated table's remaining order). Optimistically
-  // rewrites `items`' `group_id`/`position` for every touched row, persisted
-  // in one batched call, rolled back on failure like `handleUpdateCellValue`.
-  // Reordering doesn't otherwise resort `items` itself — `default_groups`
-  // only filters by `group_id`, so each row's relative position within its
-  // own group is what matters, not its absolute index in the flat array. ──
-  const handleReorderRow = async (args: {
-    row_id: string;
-    from_group_id: string;
-    to_group_id: string;
-    target_ordered_ids: string[];
-    source_ordered_ids?: string[];
-  }) => {
-    const { row_id, from_group_id, to_group_id, target_ordered_ids, source_ordered_ids } = args;
-    const previous = items;
-
-    setItems((current) => {
-      const by_id = new Map(current.map((item) => [String(item.id), item]));
-      const moved_item = by_id.get(row_id);
-      if (!moved_item) return current;
-
-      const next_target = target_ordered_ids
-        .map((id, index) => {
-          const item = id === row_id ? { ...moved_item, group_id: Number(to_group_id) } : by_id.get(id);
-          return item ? { ...item, position: index } : null;
-        })
-        .filter((item): item is BoardItemDto => item !== null);
-
-      const next_source = (source_ordered_ids ?? [])
-        .map((id, index) => {
-          const item = by_id.get(id);
-          return item ? { ...item, position: index } : null;
-        })
-        .filter((item): item is BoardItemDto => item !== null);
-
-      const touched_ids = new Set([...next_target, ...next_source].map((item) => String(item.id)));
-      const untouched = current.filter((item) => !touched_ids.has(String(item.id)));
-      return [...untouched, ...next_target, ...next_source];
-    });
-
-    try {
-      await boardContentService.reorderItems(board_id, {
-        scope: "root",
-        moved_item_id: Number(row_id),
-        target_group_id: Number(to_group_id),
-        target_ordered_ids: target_ordered_ids.map(Number),
-        ...(source_ordered_ids
-          ? { source_group_id: Number(from_group_id), source_ordered_ids: source_ordered_ids.map(Number) }
-          : {}),
-      });
-    } catch {
-      setItems(previous);
-    }
-  };
-
-  // ── Drag-and-drop reorder of subitems — always within their shared parent
-  // (subitems never change parent through this call), same optimistic/
-  // rollback shape as `handleReorderRow`. ──
-  const handleReorderSubitem = async (parent_row_id: string, ordered_row_ids: string[]) => {
-    const previous = items;
-
-    setItems((current) =>
-      mapItemInTree(current, Number(parent_row_id), (parent) => {
-        const children_by_id = new Map(parent.children.map((child) => [String(child.id), child]));
-        const next_children = ordered_row_ids
-          .map((id, index) => {
-            const child = children_by_id.get(id);
-            return child ? { ...child, position: index } : null;
-          })
-          .filter((child): child is BoardItemDto => child !== null);
-        return { ...parent, children: next_children };
-      })
-    );
-
-    try {
-      await boardContentService.reorderItems(board_id, {
-        scope: "subitem",
-        target_parent_id: Number(parent_row_id),
-        target_ordered_ids: ordered_row_ids.map(Number),
-      });
     } catch {
       setItems(previous);
     }
@@ -1189,7 +903,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           label: "Details",
           accent_color: "#00c875",
           rows: [
-            { label: "Table", value: group?.name ?? "—" },
+            { label: "Group", value: group?.name ?? "—" },
             { label: "Created by", value: detail?.creator?.full_name ?? "Loading…" },
             { label: "Created at", value: detail ? formatDate(detail.created_at) : "Loading…" },
           ],
@@ -1401,137 +1115,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, initial_open_item_id]);
 
-  // ── Selection action bar — bulk actions over the rows checked in the table's checkbox gutter ──
-  const toggleItemSelection = (row_id: string) => {
-    const id = Number(row_id);
-    setSelectedItemIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  // Toggles every *currently visible* row of one table (respecting the toolbar's active search/filters), not the group's full row set.
-  const toggleGroupSelection = (group_id: string) => {
-    const group_row_ids = (toolbar.groups.find((g) => g.id === group_id)?.rows ?? []).map((row) => row.id);
-    setSelectedItemIds((current) => {
-      const all_selected = group_row_ids.length > 0 && group_row_ids.every((id) => current.has(id));
-      const next = new Set(current);
-      group_row_ids.forEach((id) => (all_selected ? next.delete(id) : next.add(id)));
-      return next;
-    });
-  };
-
-  const clearSelection = () => setSelectedItemIds(new Set());
-
-  // BoardTable's row ids are strings (`getRowId`); `selected_item_ids` itself stays numeric so bulk API calls don't need to re-parse it.
-  const selected_item_ids_as_strings = useMemo(
-    () => new Set(Array.from(selected_item_ids, String)),
-    [selected_item_ids]
-  );
-
-  const handleBulkDuplicate = async () => {
-    if (selected_item_ids.size === 0) return;
-    const created = await boardContentService.duplicateItems(board_id, Array.from(selected_item_ids));
-    setItems((current) => [...current, ...created]);
-    clearSelection();
-  };
-
-  const handleBulkArchive = async () => {
-    if (selected_item_ids.size === 0) return;
-    const archived_ids = new Set(selected_item_ids);
-    await boardContentService.archiveItems(board_id, Array.from(archived_ids));
-    setItems((current) => current.filter((existing_item) => !archived_ids.has(existing_item.id)));
-    if (drawer.open_row_id && archived_ids.has(Number(drawer.open_row_id))) handleDrawerClose();
-    clearSelection();
-  };
-
-  const handleBulkDelete = async () => {
-    const deleted_ids = new Set(selected_item_ids);
-    await boardContentService.deleteItems(board_id, Array.from(deleted_ids));
-    setItems((current) => current.filter((existing_item) => !deleted_ids.has(existing_item.id)));
-    if (drawer.open_row_id && deleted_ids.has(Number(drawer.open_row_id))) handleDrawerClose();
-    clearSelection();
-    setIsBulkDeleteConfirmOpen(false);
-  };
-
-  const handleBulkMove = async (target_group_id: number) => {
-    setMoveToAnchorEl(null);
-    if (selected_item_ids.size === 0) return;
-    const moved = await boardContentService.moveItems(board_id, Array.from(selected_item_ids), target_group_id);
-    const moved_by_id = new Map(moved.map((moved_item) => [moved_item.id, moved_item]));
-    // `moveItems` doesn't eager-load a moved item's subtree, so its response
-    // always carries `children: []` — merge in the server fields (group_id,
-    // position, ...) while keeping the item's already-loaded `children`/
-    // `subitem_count` intact, instead of replacing the whole cached item and
-    // visually dropping its subitems until the next refetch.
-    setItems((current) =>
-      current.map((existing_item) => {
-        const moved_item = moved_by_id.get(existing_item.id);
-        return moved_item
-          ? { ...moved_item, children: existing_item.children, subitem_count: existing_item.subitem_count }
-          : existing_item;
-      })
-    );
-    clearSelection();
-  };
-
-  // Client-side CSV export — the checked rows' visible column values, formatted the same way the toolbar's own search reads them.
-  const handleBulkExport = () => {
-    const export_columns = board_columns.filter((column) => column.id !== ITEM_COLUMN_ID && column.id !== CHAT_COLUMN_ID);
-    const selected_rows = items.filter((existing_item) => selected_item_ids.has(existing_item.id));
-    const headers = [item_column_label, ...export_columns.map((column) => column.full_label ?? column.label)];
-    const rows = selected_rows.map((row) => [row.name, ...export_columns.map((column) => getColumnText(row, column.id))]);
-    const file_slug = node.label.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "board";
-    downloadCsv(`${file_slug}-export.csv`, headers, rows);
-  };
-
-  const move_to_menu_items: AnchoredMenuItem[] = groups.map((group) => ({
-    key: String(group.id),
-    label: group.name,
-    icon: <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: group.accent_color }} />,
-    onClick: () => void handleBulkMove(group.id),
-  }));
-
-  const selection_bar_actions: SelectionActionBarAction[] = [
-    { key: "duplicate", label: "Duplicate", icon: <DuplicateIcon size={16} />, onClick: () => void handleBulkDuplicate() },
-    { key: "export", label: "Export", icon: <DownloadIcon size={16} />, onClick: handleBulkExport },
-    { key: "archive", label: "Archive", icon: <ArchiveIcon size={16} />, onClick: () => void handleBulkArchive() },
-    {
-      key: "delete",
-      label: "Delete",
-      icon: <DeleteIcon size={16} />,
-      danger: true,
-      onClick: () => setIsBulkDeleteConfirmOpen(true),
-    },
-    {
-      key: "convert",
-      label: "Convert",
-      icon: <RefreshIcon size={16} />,
-      disabled: true,
-      disabled_reason: "Coming soon",
-      onClick: () => {},
-    },
-    { key: "move-to", label: "Move to", icon: <MoveToIcon size={16} />, onClick: (anchor_el) => setMoveToAnchorEl(anchor_el) },
-    {
-      key: "sidekick",
-      label: "Sidekick",
-      icon: <AiSummaryIcon size={16} />,
-      disabled: true,
-      disabled_reason: "Coming soon",
-      onClick: () => {},
-    },
-    {
-      key: "apps",
-      label: "Apps",
-      icon: <AppsGridIcon size={16} />,
-      disabled: true,
-      disabled_reason: "Coming soon",
-      onClick: () => {},
-    },
-  ];
-
   /**
    * Valid predecessor candidates for `row`'s Dependency cell: every other
    * item on this tab except `row` itself and anything already reachable
@@ -1563,95 +1146,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return items.filter((item) => !unreachable.has(item.id)).map((item) => ({ id: String(item.id), name: item.name }));
   };
 
-  const renderCell = (row: BoardItemDto, column: BoardColumn): React.ReactNode => {
-    if (column.id === ITEM_COLUMN_ID) {
-      if (editing_item_id === row.id) {
-        return (
-          <InlineTitleEditor
-            value={row.name}
-            onCommit={(name) => handleRenameItem(row.id, name)}
-            onCancel={() => setEditingItemId(null)}
-            className="w-full min-w-0 text-[13px] text-boardtree-text"
-            style={{ borderColor: "var(--color-boardtree-accent)", background: "var(--color-boardtree-surface)" }}
-            aria_label="Rename item"
-          />
-        );
-      }
-      return (
-        <span
-          onClick={(event) => {
-            event.stopPropagation();
-            setEditingItemId(row.id);
-          }}
-          className="-mx-1 min-w-0 cursor-text truncate rounded-[4px] px-1 text-[13px] text-boardtree-text hover:bg-boardtree-hover"
-          title="Click to rename"
-        >
-          {row.name}
-        </span>
-      );
-    }
-
-    if (column.id === CHAT_COLUMN_ID) {
-      const has_comments = row.comment_count > 0;
-      return (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            handleRowClick(row);
-          }}
-          aria-label={has_comments ? `${row.comment_count} comments, open item` : "Open item comments"}
-          title={has_comments ? `${row.comment_count} comments` : "Comments"}
-          className={`flex items-center gap-[3px] rounded-[4px] px-1 py-1 text-[11px] font-semibold transition-colors hover:bg-boardtree-hover ${
-            has_comments ? "text-boardtree-text-muted" : "text-boardtree-text-faint"
-          }`}
-        >
-          <RowChatIcon />
-          {has_comments && row.comment_count}
-        </button>
-      );
-    }
-
-    if (column.id === PROGRESS_COLUMN_ID) {
-      const children = row.children ?? [];
-      let percent: number | null = null;
-      if (children.length > 0 && subitem_done_column) {
-        const done_count = children.filter((child) => child.values[String(subitem_done_column.id)] === true).length;
-        percent = Math.round((done_count / children.length) * 100);
-      } else if (children.length === 0 && board_done_column) {
-        percent = row.values[String(board_done_column.id)] === true ? 100 : 0;
-      }
-      return <BoardProgressCell percent={percent} />;
-    }
-
-    const column_dto = columns_by_id[column.id];
-    if (!column_dto) return null;
-
-    const has_options = column_dto.type === "status" || column_dto.type === "tags";
-    return (
-      <BoardValueCell
-        column={{
-          id: String(column_dto.id),
-          kind: column_dto.type,
-          options: column_dto.config?.options ?? undefined,
-        }}
-        value={row.values[column.id] ?? null}
-        people={workspace_members}
-        items={column_dto.type === "dependency" ? getDependencyCandidates(row, column_dto.id) : undefined}
-        bleed={column_dto.type === "status" && column.pill_style !== "outline"}
-        pill_style={column.pill_style}
-        onCommit={(next) => handleUpdateCellValue(row.id, column.id, next)}
-        onAddOption={has_options ? (opt) => handleAddColumnOption(column.id, opt) : undefined}
-        onEditOptions={has_options ? makeOptionActions(column.id) : undefined}
-      />
-    );
-  };
-
   // `board_status_column`/`board_label_column`/`board_member_column`/
   // `board_priority_column`/`board_done_column`/`board_date_column`/
   // `board_date_end_column` are declared earlier in this component (right
   // after `columns_by_id`) — see the comment there.
-  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
+  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "kanban";
   const active_doc_view = view_tabs.active_view;
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
@@ -2211,16 +1710,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
         )
       }
-      selectionBar={
-        active_view_type === "table" && selected_item_ids.size > 0 ? (
-          <SelectionActionBar
-            selected_count={selected_item_ids.size}
-            item_noun={item_column_label}
-            actions={selection_bar_actions}
-            onClose={clearSelection}
-          />
-        ) : undefined
-      }
     >
       {view_tabs.is_dirty && (
         <div className="mb-3 flex items-center gap-2">
@@ -2375,61 +1864,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardFileGalleryView board_id={board_id} view_id={active_doc_view.id} />
       ) : active_view_type === "chart" && view_tabs.active_view_id != null ? (
         <BoardChartView board_id={board_id} view_id={view_tabs.active_view_id} />
-      ) : active_view_type !== "table" ? (
-        <BoardComingSoonView view_type={active_view_type} />
-      ) : groups.length === 0 ? (
-        <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
-            <FolderIcon size={26} />
-          </span>
-          <h2 className="text-lg font-semibold text-shell-text">No tables yet</h2>
-          <p className="text-[13.5px] text-shell-text-muted">
-            Add your first table to start adding items to this board.
-          </p>
-          <button
-            type="button"
-            onClick={handleCreateGroup}
-            className="flex items-center gap-1.5 rounded-[7px] border border-shell-border px-2.5 py-1.5 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-          >
-            <PlusIcon size={13} />
-            Add new group
-          </button>
-        </div>
       ) : (
-        <BoardTable<BoardItemDto>
-          columns={toolbar.visible_columns}
-          groups={toolbar.groups}
-          getRowId={(row) => String(row.id)}
-          renderCell={renderCell}
-          rowHeight={toolbar.row_height}
-          pinnedColumnIds={toolbar.pinned_column_ids}
-          rowColors={toolbar.row_colors}
-          cellColors={toolbar.cell_colors}
-          onRowClick={handleRowClick}
-          selectedRowId={drawer.open_row_id}
-          selectedRowIds={selected_item_ids_as_strings}
-          onToggleRowSelection={toggleItemSelection}
-          onToggleGroupSelection={toggleGroupSelection}
-          onAddItem={handleOpenAddItem}
-          addingItemGroupId={adding_item_group_id}
-          onSubmitNewItem={handleSubmitNewItem}
-          onCancelAddItem={handleCancelAddItem}
-          onRenameGroup={handleRenameGroup}
-          onRenameColumn={handleRenameColumn}
-          onAddGroup={handleCreateGroup}
-          onAddColumn={handleAddColumn}
-          getChildren={(row) => row.children}
-          getSubitemCount={(row) => row.subitem_count}
-          onAddSubitem={handleOpenAddSubitem}
-          addingSubitemParentId={adding_subitem_parent_id}
-          onSubmitNewSubitem={handleSubmitNewSubitem}
-          onCancelAddSubitem={handleCancelAddSubitem}
-          subitemColumns={subitem_board_columns}
-          onAddSubitemColumn={handleAddSubitemColumn}
-          onReorderRow={handleReorderRow}
-          onReorderSubitem={handleReorderSubitem}
-          getColumnText={getColumnText}
-        />
+        <BoardComingSoonView view_type={active_view_type} />
       )}
 
       {active_view_type === "kanban" ? (
@@ -2545,26 +1981,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       <BoardDiscussionDrawer drawer={discussion_drawer} />
-
-      <AnchoredMenu
-        anchor_el={move_to_anchor_el}
-        is_open={move_to_anchor_el !== null}
-        onClose={() => setMoveToAnchorEl(null)}
-        title="Move to table"
-        items={move_to_menu_items}
-        width={220}
-        align="end"
-      />
-
-      <ConfirmActionModal
-        is_open={is_bulk_delete_confirm_open}
-        title={`Delete ${selected_item_ids.size} ${item_column_label}${selected_item_ids.size > 1 ? "s" : ""}?`}
-        description="This can't be undone from here. Deleted items are removed from every table view."
-        confirm_label="Delete"
-        danger
-        onConfirm={handleBulkDelete}
-        onClose={() => setIsBulkDeleteConfirmOpen(false)}
-      />
     </BoardShell>
   );
 };
