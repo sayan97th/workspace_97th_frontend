@@ -1,6 +1,7 @@
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
 import AddSubitemRow from "./AddSubitemRow";
 import ItemRow from "./ItemRow";
+import RailBar from "./RailBar";
 import SubitemHeaderRow from "./SubitemHeaderRow";
 import SubitemRow from "./SubitemRow";
 import { computeItemProgress, type UseTaskBoardReturn } from "./useTaskBoard";
@@ -98,7 +99,10 @@ const TreeGroupTable = ({ board }: TreeGroupTableProps) => (
               ))}
 
               <AddSubitemRow onAddSubitem={() => board.addSubitem(item.id)} />
-              <div className="h-4 min-w-[1020px]" />
+              <div className="flex min-w-[1020px] items-stretch">
+                <RailBar variant="gap" />
+                <div className="h-4 flex-1" />
+              </div>
             </>
           )}
         </div>

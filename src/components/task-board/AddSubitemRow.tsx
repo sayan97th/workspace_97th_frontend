@@ -1,3 +1,4 @@
+import RailBar from "./RailBar";
 import TreeConnector from "./TreeConnector";
 
 interface AddSubitemRowProps {
@@ -6,6 +7,7 @@ interface AddSubitemRowProps {
 
 const AddSubitemRow = ({ onAddSubitem }: AddSubitemRowProps) => (
   <div className="flex min-w-[1020px] items-stretch">
+    <RailBar variant="faded" />
     <TreeConnector line_color="#c3cef9" height_px={20} />
     <div className="w-[5px] flex-none rounded-bl-[5px] bg-[#c3cef9]" />
     <div className="grid flex-1 grid-cols-[34px_1fr] rounded-br-[10px] border-b border-r border-[#dfe3ef] bg-white">

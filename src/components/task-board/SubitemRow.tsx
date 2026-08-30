@@ -1,6 +1,7 @@
 import EditableName from "./EditableName";
 import { CheckIcon, CommentIcon, DragHandleIcon } from "./icons";
 import OwnerCell from "./OwnerCell";
+import RailBar from "./RailBar";
 import StatusCell from "./StatusCell";
 import TreeConnector from "./TreeConnector";
 import type { BoardSubitem } from "./types";
@@ -53,6 +54,7 @@ const SubitemRow = ({
   onDragEnd,
 }: SubitemRowProps) => (
   <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} className="flex min-w-[1020px] items-stretch" style={{ opacity: is_dragged ? 0.45 : 1 }}>
+    <RailBar variant="solid" />
     <TreeConnector line_color="#4f6bed" height_px={21} />
     <div className="w-[5px] flex-none bg-[#4f6bed]" />
     <div

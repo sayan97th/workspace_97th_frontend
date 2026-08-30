@@ -1,9 +1,12 @@
+import RailBar from "./RailBar";
+
 interface SubitemHeaderRowProps {
   name_column_width_px: number;
 }
 
 const SubitemHeaderRow = ({ name_column_width_px }: SubitemHeaderRowProps) => (
   <div className="flex min-w-[1020px] items-stretch">
+    <RailBar variant="solid" />
     <div className="w-[30px] flex-none" />
     <div className="mt-2 w-[5px] flex-none rounded-tl-[5px] bg-[#4f6bed]" />
     <div
