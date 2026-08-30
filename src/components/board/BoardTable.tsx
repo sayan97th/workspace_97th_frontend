@@ -622,7 +622,7 @@ function BoardTable<TRow>({
                                 event.stopPropagation();
                                 openAddSubitem(row_id);
                               }}
-                              className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint opacity-0 transition-opacity hover:bg-boardtree-hover hover:text-boardtree-accent group-hover/row:opacity-100"
+                              className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint transition-colors hover:bg-boardtree-hover hover:text-boardtree-accent"
                               aria-label="Add subitem"
                               title="Add subitem"
                             >
