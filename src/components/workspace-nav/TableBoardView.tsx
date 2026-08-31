@@ -72,7 +72,7 @@ import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
 import BoardGroupHeading from "@/components/board/table-board/BoardGroupHeading";
 import { tableBoardFontClassName } from "@/components/board/table-board/table-board-font";
 import TreeGroupTable, { type TableBoardTreeInteraction } from "@/components/board/table-board/TreeGroupTable";
-import type { BoardItem as TableBoardItem, BoardSubitem as TableBoardSubitem, DragParentId } from "@/components/board/table-board/types";
+import type { BoardItem as TableBoardItem, BoardSubitem as TableBoardSubitem, DragParentId, TableBoardColumn } from "@/components/board/table-board/types";
 import type {
   BoardColumnConfig,
   BoardColumnDto,
@@ -620,6 +620,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ].filter((id): id is number => id != null)
     );
     return item_columns.filter((c) => !excluded_column_ids.has(c.id));
+  }, [item_columns, board_status_column, board_label_column, board_member_column, board_priority_column, board_done_column, board_date_column]);
+
+  // Same exclusion set as `other_kanban_columns`, reshaped for the Table
+  // view's own trailing "+" header button (`TreeGroupTable`'s `columns`
+  // prop) — every user-addable column beyond the six fixed slots.
+  const other_table_columns = useMemo<TableBoardColumn[]>(() => {
+    const excluded_column_ids = new Set(
+      [
+        board_status_column?.id,
+        board_label_column?.id,
+        board_member_column?.id,
+        board_priority_column?.id,
+        board_done_column?.id,
+        board_date_column?.id,
+      ].filter((id): id is number => id != null)
+    );
+    return item_columns
+      .filter((c) => !excluded_column_ids.has(c.id))
+      .map((c) => ({ id: String(c.id), kind: c.type, label: c.label, width: c.width, options: c.config?.options }));
   }, [item_columns, board_status_column, board_label_column, board_member_column, board_priority_column, board_done_column, board_date_column]);
 
   const board_columns: BoardColumn[] = useMemo(() => {
@@ -1457,6 +1476,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     priority: board_priority_column ? String(item.values[String(board_priority_column.id)] ?? "") : "",
     subitems: item.children.map(adaptTableSubitem),
     comment_count: item.comment_count,
+    values: item.values,
   });
 
   /** The Progress column: % of a row's direct subitems marked done, or (a row with none) whether its own `board_done_column` checkbox is set. Mirrors the design's own `computeItemProgress` fallback for a row with neither. */
@@ -1674,6 +1694,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     onCreateSubitemStatusOption: subitem_status_column
       ? (option) => handleAddColumnOption(String(subitem_status_column.id), option)
       : undefined,
+    // Trailing "+" header button — every item-scoped column beyond the six
+    // fixed slots above. Subitems have their own, separately-scoped columns
+    // with no add-column UI yet, so `apply_dynamic_to_subitems` stays false
+    // rather than showing these item columns' cells on subitem rows too.
+    columns: other_table_columns,
+    people_cell_options: workspace_members,
+    onAddColumn: (type) => void handleAddColumn(type),
+    onCommitCellValue: (node_id, column_id, value) => void handleUpdateCellValue(Number(node_id), column_id, value),
+    onAddColumnOption: handleAddColumnOption,
+    makeColumnOptionActions: makeOptionActions,
+    apply_dynamic_to_subitems: false,
     toggleItemOpen: toggleTableOpen,
     toggleSelected: toggleTableSelected,
     startEditing: startTableEdit,
@@ -2083,7 +2114,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </button>
           </div>
         ) : (
-          <div className={tableBoardFontClassName}>
+          <div className={`${tableBoardFontClassName} overflow-x-auto`}>
             {toolbar.groups.map((group) => (
               <div key={group.id} className="mb-[30px] last:mb-0">
                 <BoardGroupHeading

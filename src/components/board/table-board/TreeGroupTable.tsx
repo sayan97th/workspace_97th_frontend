@@ -75,6 +75,14 @@ export interface TableBoardTreeInteraction {
   onCommitCellValue?: (node_id: string, column_id: string, value: BoardCellValue) => void;
   onAddColumnOption?: (column_id: string, option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   makeColumnOptionActions?: (column_id: string) => BoardOptionActions;
+  /**
+   * Whether a subitem row also shows cells for the item-scoped `columns`
+   * above. Defaults to true (the standalone preview's columns aren't
+   * scoped, so sharing them across item/subitem rows is harmless there); a
+   * real board sets this to false since its dynamic columns are genuinely
+   * item-scoped and have no meaning on a subitem row.
+   */
+  apply_dynamic_to_subitems?: boolean;
 }
 
 interface TreeGroupTableProps {
@@ -112,6 +120,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
           makeOptionActions: board.makeColumnOptionActions,
         }
       : null;
+  const subitem_dynamic_bag = board.apply_dynamic_to_subitems === false ? null : dynamic_bag;
 
   return (
   <div>
@@ -215,7 +224,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                   onDragStart={() => board.handleDragStart(subitem.id, item.id)}
                   onDragOver={(event) => board.handleDragOver(event, subitem.id, item.id)}
                   onDragEnd={board.handleDragEnd}
-                  dynamic={dynamic_bag}
+                  dynamic={subitem_dynamic_bag}
                 />
               ))}
 

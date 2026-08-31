@@ -11,3 +11,5 @@ export { default as OptionPicker } from "./OptionPicker";
 export type { OptionPickerProps, BoardCellOption, BoardOptionActions } from "./OptionPicker";
 export { default as EditLabelsPanel } from "./EditLabelsPanel";
 export type { EditLabelsPanelProps } from "./EditLabelsPanel";
+export { default as StatusOptionGrid } from "./StatusOptionGrid";
+export type { StatusOptionGridProps } from "./StatusOptionGrid";

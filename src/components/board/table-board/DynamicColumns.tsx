@@ -76,7 +76,7 @@ export const DynamicColumnCells: React.FC<{
   return (
     <div className="grid flex-none border-b border-[#eceef5]" style={{ gridTemplateColumns: computeExtraColumnsTemplate(bag.columns) }}>
       {bag.columns.map((column) => (
-        <div key={column.id} className={`${height_class} border-r border-[#eceef5] px-1.5`}>
+        <div key={column.id} className={`flex items-center justify-center ${height_class} border-r border-[#eceef5]`}>
           <BoardValueCell
             column={{ id: column.id, kind: column.kind, options: column.options }}
             value={values?.[column.id] ?? null}
@@ -84,6 +84,7 @@ export const DynamicColumnCells: React.FC<{
             onCommit={(value) => bag.onCommit(node_id, column.id, value)}
             onAddOption={column.options ? (option) => bag.onAddOption(column.id, option) : undefined}
             onEditOptions={column.options ? bag.makeOptionActions(column.id) : undefined}
+            bleed={column.kind === "status"}
           />
         </div>
       ))}

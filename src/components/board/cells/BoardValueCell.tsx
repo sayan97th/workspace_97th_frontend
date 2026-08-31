@@ -8,6 +8,7 @@ import PersonAvatarStack from "../PersonAvatarStack";
 import PersonAvatar from "../PersonAvatar";
 import BoardPopover from "../toolbar/BoardPopover";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
+import StatusOptionGrid from "./StatusOptionGrid";
 
 export type { BoardCellOption, BoardOptionActions };
 
@@ -438,17 +439,12 @@ const StatusCell: React.FC<{
           </div>
         )}
       </div>
-      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={240}>
-        <OptionPicker
+      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={470}>
+        <StatusOptionGrid
           options={options}
-          selected_ids={selected ? [selected] : []}
-          multi={false}
-          onToggle={(option_id) => {
+          selected_id={selected}
+          onPick={(option_id) => {
             onCommit(option_id === selected ? null : option_id);
-            popover.close();
-          }}
-          onClear={() => {
-            onCommit(null);
             popover.close();
           }}
           onCreateOption={onAddOption}

@@ -34,7 +34,7 @@ const TableBoardView = () => {
         <>
           <BoardToolbar summary_label={summary_label} onAddItem={board.addTreeItem} />
 
-          <div className="px-7 pt-[26px]">
+          <div className="overflow-x-auto px-7 pt-[26px]">
             <BoardGroupHeading label="Checkout revamp" count_label={tree_group_count_label} accent_color="#4f6bed" chevron_direction="down" className="mb-2.5" />
             <div className="rounded-t-lg">
               <TreeGroupTable board={board} rows={board.tree_items} group_color="#4f6bed" onAddItem={board.addTreeItem} getProgress={computeItemProgress} />
