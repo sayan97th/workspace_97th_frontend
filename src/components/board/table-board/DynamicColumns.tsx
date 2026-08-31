@@ -23,6 +23,17 @@ export const computeExtraColumnsTemplate = (columns: TableBoardColumn[]): string
   columns.map((column) => `${column.width}px`).join(" ");
 
 /**
+ * Extra pixel width a row needs to line up with dynamically-added columns
+ * plus the trailing "+" button — for rows (footers, filler bars) that don't
+ * render {@link DynamicColumnCells}/{@link AddColumnFiller} themselves but
+ * still need to span the same total width as item rows do, so a group's
+ * background/border styling reaches all the way to the last column instead
+ * of stopping short at the fixed-column width.
+ */
+export const computeDynamicColumnsExtraWidthPx = (columns: TableBoardColumn[] | undefined, show_add_button: boolean): number =>
+  (columns ?? []).reduce((total, column) => total + column.width, 0) + (show_add_button ? ADD_COLUMN_BUTTON_WIDTH_PX : 0);
+
+/**
  * The dynamic columns' header cells plus the trailing "+" button that opens
  * {@link AddColumnMenu} — appended after a group table's fixed header. Owns
  * its own popover anchor so each group can open its own menu instance.

@@ -2,7 +2,7 @@ import type { AddableColumnType } from "@/components/board/columnTypes";
 import type { BoardCellOption, BoardCellPerson, BoardCellValue } from "@/components/board/cells/BoardValueCell";
 import type { BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
-import { DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
+import { computeDynamicColumnsExtraWidthPx, DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
 import AddSubitemRow from "./AddSubitemRow";
 import ItemRow from "./ItemRow";
 import RailBar from "./RailBar";
@@ -121,10 +121,12 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
         }
       : null;
   const subitem_dynamic_bag = board.apply_dynamic_to_subitems === false ? null : dynamic_bag;
+  const extra_width_px = computeDynamicColumnsExtraWidthPx(board.columns, !!board.onAddColumn);
+  const row_min_width_style = extra_width_px > 0 ? { minWidth: 1020 + extra_width_px } : undefined;
 
   return (
   <div>
-    <div className="flex min-w-[1020px] items-stretch bg-white">
+    <div className="flex min-w-[1020px] items-stretch bg-white" style={row_min_width_style}>
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group_color }} />
       <div className={`grid flex-1 border-b border-[#e3e6ef] ${TREE_GROUP_GRID_COLUMNS}`}>
         <div className="h-[38px] border-r border-[#eceef5]" />
@@ -228,8 +230,8 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                 />
               ))}
 
-              <AddSubitemRow group_color={group_color} onAddSubitem={() => board.addSubitem(item.id)} />
-              <div className="flex min-w-[1020px] items-stretch">
+              <AddSubitemRow group_color={group_color} onAddSubitem={() => board.addSubitem(item.id)} extra_width_px={extra_width_px} />
+              <div className="flex min-w-[1020px] items-stretch" style={row_min_width_style}>
                 <RailBar variant="gap" color={group_color} />
                 <div className="h-4 flex-1" />
               </div>
@@ -239,7 +241,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
       );
     })}
 
-    <div className="flex min-w-[1020px] items-stretch bg-white">
+    <div className="flex min-w-[1020px] items-stretch bg-white" style={row_min_width_style}>
       <div className="w-[5px] flex-none rounded-bl-[3px]" style={{ background: `color-mix(in srgb, ${group_color} 35%, white)` }} />
       <div className="grid flex-1 grid-cols-[36px_1fr] border-t border-[#eceef5]">
         <div className="flex h-10 items-center justify-center border-r border-[#eceef5]">

@@ -3,7 +3,7 @@ import type { BoardCellOption, BoardCellPerson, BoardCellValue } from "@/compone
 import type { BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import { PEOPLE, PRIORITY_OPTIONS, TREE_GROUP_GRID_COLUMNS, getStatusBackground, getStatusForeground } from "./constants";
-import { AddColumnFiller, DynamicColumnCells, DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
+import { AddColumnFiller, computeDynamicColumnsExtraWidthPx, DynamicColumnCells, DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
 import type { BoardSimpleItem, TableBoardColumn } from "./types";
@@ -34,11 +34,13 @@ const FlatGroupTable = ({
     columns && onCommitCellValue && onAddColumnOption && makeColumnOptionActions
       ? { columns, people: people_cell_options ?? [], onCommit: onCommitCellValue, onAddOption: onAddColumnOption, makeOptionActions: makeColumnOptionActions }
       : null;
+  const extra_width_px = computeDynamicColumnsExtraWidthPx(columns, !!onAddColumn);
+  const row_min_width_style = extra_width_px > 0 ? { minWidth: 1020 + extra_width_px } : undefined;
 
   return (
-  <div className="rounded-lg bg-white shadow-[0_1px_2px_rgba(30,34,55,0.05)]">
+  <div className="w-fit rounded-lg bg-white shadow-[0_1px_2px_rgba(30,34,55,0.05)]" style={row_min_width_style}>
     {onAddColumn && (
-      <div className="flex min-w-[1020px] items-stretch">
+      <div className="flex min-w-[1020px] items-stretch" style={row_min_width_style}>
         <div className={`grid flex-1 border-b border-[#eceef5] ${TREE_GROUP_GRID_COLUMNS}`}>
           <div className="h-[38px] border-r border-[#eceef5]" />
           <div className="flex h-[38px] items-center px-3 text-[12.5px] font-medium text-[#6b7189]">Item</div>
@@ -56,7 +58,7 @@ const FlatGroupTable = ({
     {items.map((item) => {
       const owner = PEOPLE[item.owner_id];
       return (
-        <div key={item.id} className="flex min-w-[1020px] items-stretch">
+        <div key={item.id} className="flex min-w-[1020px] items-stretch" style={row_min_width_style}>
           <div className="w-[5px] flex-none bg-[#2f9e78]" />
           <div className={`grid flex-1 border-b border-[#eceef5] ${TREE_GROUP_GRID_COLUMNS}`}>
             <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
@@ -107,7 +109,7 @@ const FlatGroupTable = ({
       );
     })}
 
-    <div className="flex min-w-[1020px] items-stretch">
+    <div className="flex min-w-[1020px] items-stretch" style={row_min_width_style}>
       <div className="w-[5px] flex-none rounded-bl-[3px] bg-[#bfe4d5]" />
       <div className="grid flex-1 grid-cols-[36px_1fr]">
         <div className="flex h-10 items-center justify-center border-r border-[#eceef5]">

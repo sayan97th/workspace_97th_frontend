@@ -4,12 +4,14 @@ import TreeConnector from "./TreeConnector";
 interface AddSubitemRowProps {
   group_color: string;
   onAddSubitem: () => void;
+  /** Extra width (dynamically-added columns + "+" button) so this row's rounded/bordered box reaches as far right as item rows do — see {@link import("./DynamicColumns").computeDynamicColumnsExtraWidthPx}. */
+  extra_width_px?: number;
 }
 
-const AddSubitemRow = ({ group_color, onAddSubitem }: AddSubitemRowProps) => {
+const AddSubitemRow = ({ group_color, onAddSubitem, extra_width_px = 0 }: AddSubitemRowProps) => {
   const faded_color = `color-mix(in srgb, ${group_color} 35%, white)`;
   return (
-    <div className="flex min-w-[1020px] items-stretch">
+    <div className="flex min-w-[1020px] items-stretch" style={extra_width_px > 0 ? { minWidth: 1020 + extra_width_px } : undefined}>
       <RailBar variant="faded" color={group_color} />
       <TreeConnector line_color={faded_color} height_px={20} />
       <div className="w-[5px] flex-none rounded-bl-[5px]" style={{ background: faded_color }} />
