@@ -1,6 +1,7 @@
 import { formatDistanceToNowStrict } from "date-fns";
 import { AVATAR_GRADIENTS } from "@/components/board/TeamAvatars";
 import { BOARD_CONDITIONAL_COLOR_PALETTE } from "@/components/board/toolbar/types";
+import { getUserInitials } from "@/lib/user";
 import type { NotificationCategory, WorkspaceNotification } from "@/data/notifications-data";
 
 /**
@@ -9,7 +10,7 @@ import type { NotificationCategory, WorkspaceNotification } from "@/data/notific
  */
 export type NotificationDto = {
   id: string;
-  actor: { name: string; id: number | null };
+  actor: { name: string; id: number | null; avatar_url?: string | null };
   action_label: string;
   action_target: string;
   board: { id: number; name: string } | null;
@@ -33,7 +34,9 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     id: dto.id,
     actor: {
       name: dto.actor.name,
+      initials: getUserInitials({ full_name: dto.actor.name }),
       avatar_gradient: AVATAR_GRADIENTS[actor_seed % AVATAR_GRADIENTS.length],
+      avatar_url: dto.actor.avatar_url ?? undefined,
     },
     action_label: dto.action_label,
     action_target: dto.action_target,

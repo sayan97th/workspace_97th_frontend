@@ -5,7 +5,9 @@ import Toast from "./Toast";
 export type ToastItem = {
   id: string;
   actor_name: string;
+  actor_initials: string;
   avatar_gradient: string;
+  avatar_url?: string;
   action_label: string;
   action_target: string;
   board_name?: string;
@@ -24,7 +26,7 @@ const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 const TOAST_DURATION_MS = 6000;
 
 /**
- * Renders a stack of Slack-style pop-up alerts in the top-right corner and
+ * Renders a stack of Slack-style pop-up alerts in the bottom-right corner and
  * exposes `useToast().showToast()` to trigger one. Mounted once in the admin
  * layout so every page under it can raise a toast, most notably
  * `useNotifications` on every incoming `.new_notification` websocket event.
@@ -56,7 +58,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="pointer-events-none fixed right-4 top-16 z-[999] flex flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-4 right-4 z-[999] flex flex-col-reverse gap-2">
         {toasts.map((toast) => (
           <div key={toast.id} className="pointer-events-auto">
             <Toast toast={toast} onDismiss={dismissToast} />

@@ -14,7 +14,8 @@ type ToastProps = {
  * straight to where the notification was generated, and a close button.
  */
 const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
-  const { id, actor_name, avatar_gradient, action_label, action_target, board_name, link } = toast;
+  const { id, actor_name, actor_initials, avatar_gradient, avatar_url, action_label, action_target, board_name, link } =
+    toast;
 
   const handleView = () => {
     toast.onAction?.();
@@ -23,11 +24,22 @@ const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
 
   return (
     <div className="flex w-[360px] gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt p-[13px] shadow-lg">
-      <span
-        className="h-[30px] w-[30px] flex-none rounded-full"
-        style={{ background: avatar_gradient }}
-        aria-hidden="true"
-      />
+      {avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={avatar_url}
+          alt={actor_name}
+          className="h-[30px] w-[30px] flex-none rounded-full object-cover"
+        />
+      ) : (
+        <span
+          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full text-xs font-bold text-white"
+          style={{ background: avatar_gradient }}
+          aria-hidden="true"
+        >
+          {actor_initials}
+        </span>
+      )}
 
       <span className="min-w-0 flex-1">
         <span className="block text-[13px] leading-[1.5] text-shell-text-secondary">

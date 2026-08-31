@@ -55,7 +55,9 @@ export function useNotifications() {
 
         showToast({
           actor_name: notification.actor.name,
+          actor_initials: notification.actor.initials,
           avatar_gradient: notification.actor.avatar_gradient,
+          avatar_url: notification.actor.avatar_url,
           action_label: notification.action_label,
           action_target: notification.action_target,
           board_name: notification.board.name || undefined,

@@ -20,8 +20,12 @@ export type NotificationTab = {
 /** The person who triggered the notification. */
 export type NotificationActor = {
   name: string;
-  /** Tailwind gradient utilities used to paint the circular avatar. */
+  /** Up to two uppercase initials, shown when there is no `avatar_url`. */
+  initials: string;
+  /** Tailwind gradient utilities used to paint the circular avatar fallback. */
   avatar_gradient: string;
+  /** Real uploaded profile photo, when available — preferred over the initials fallback. */
+  avatar_url?: string;
 };
 
 /** The board a notification is scoped to. */
