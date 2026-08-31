@@ -7,6 +7,7 @@ import ProductTag, { OverflowBadge } from "../ProductTag";
 import PersonAvatarStack from "../PersonAvatarStack";
 import PersonAvatar from "../PersonAvatar";
 import BoardPopover from "../toolbar/BoardPopover";
+import DateCalendarPanel from "../table-board/DateCalendarPanel";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
 import StatusOptionGrid from "./StatusOptionGrid";
 
@@ -79,11 +80,8 @@ const formatShortDate = (value: string): string => {
   return !date ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-/** Normalizes any stored date value to the YYYY-MM-DD an <input type="date"> expects. */
-const toDateInputValue = (value: BoardCellValue): string => {
-  if (typeof value !== "string" || !value) return "";
-  const date = parseIsoDateLocal(value);
-  if (!date) return "";
+/** Formats a `Date` back into the `YYYY-MM-DD` a date column stores. */
+const formatIsoDateLocal = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -254,46 +252,28 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
   value,
   onCommit,
 }) => {
-  const [is_editing, setIsEditing] = useState(false);
-  const input_ref = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (is_editing) input_ref.current?.focus();
-  }, [is_editing]);
-
-  if (is_editing) {
-    return (
-      <input
-        ref={input_ref}
-        type="date"
-        defaultValue={toDateInputValue(value)}
-        onClick={(event) => event.stopPropagation()}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") setIsEditing(false);
-        }}
-        onChange={(event) => {
-          onCommit(event.target.value || null);
-          setIsEditing(false);
-        }}
-        onBlur={() => setIsEditing(false)}
-        className="h-full w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 text-[12.5px] text-boardtree-text outline-none"
-      />
-    );
-  }
+  const popover = usePopoverAnchor();
+  const date_value = typeof value === "string" && value ? parseIsoDateLocal(value) : null;
 
   return (
-    <EditableSurface
-      onClick={(event) => {
-        event.stopPropagation();
-        setIsEditing(true);
-      }}
-    >
-      {typeof value === "string" && value ? (
-        <span className="text-[12.5px] text-boardtree-text-secondary">{formatDate(value)}</span>
-      ) : (
-        <span className="text-[12.5px] text-transparent">—</span>
-      )}
-    </EditableSurface>
+    <>
+      <EditableSurface onClick={popover.open}>
+        {typeof value === "string" && value ? (
+          <span className="text-[12.5px] text-boardtree-text-secondary">{formatDate(value)}</span>
+        ) : (
+          <span className="text-[12.5px] text-transparent">—</span>
+        )}
+      </EditableSurface>
+      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={300}>
+        <DateCalendarPanel
+          value={date_value}
+          onChange={(date) => {
+            onCommit(formatIsoDateLocal(date));
+            popover.close();
+          }}
+        />
+      </BoardPopover>
+    </>
   );
 };
 
