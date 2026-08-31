@@ -6,6 +6,8 @@ import { BOARD_CONDITIONAL_COLOR_PALETTE } from "./types";
 export type ColorSwatchPickerProps = {
   color: string;
   onSelect: (color: string) => void;
+  /** Trigger button size in pixels (it's square). Defaults to 30. */
+  size?: number;
 };
 
 const VIEWPORT_MARGIN = 8;
@@ -23,7 +25,7 @@ const GRID_WIDTH = 222;
  * and dismiss itself (same convention as `MenuFlyout`). Used by Conditional
  * coloring's per-rule color picker and Edit Labels' per-label recolor swatch.
  */
-const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }) => {
+const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, size = 30 }) => {
   const [is_open, setIsOpen] = useState(false);
   const button_ref = useRef<HTMLButtonElement>(null);
   const grid_ref = useRef<HTMLDivElement>(null);
@@ -89,10 +91,10 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect }
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         aria-label="Choose color"
-        className={`h-[30px] w-[30px] flex-none rounded-[7px] border transition-colors ${
+        className={`flex-none rounded-[7px] border transition-colors ${
           is_open ? "border-boardtree-text-muted" : "border-boardtree-border hover:border-boardtree-text-muted"
         }`}
-        style={{ background: color }}
+        style={{ background: color, height: size, width: size }}
       />
 
       {is_open &&

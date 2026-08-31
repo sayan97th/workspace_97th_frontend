@@ -21,18 +21,22 @@ export type BoardOptionActions = {
 export type EditLabelsPanelProps = {
   options: BoardCellOption[];
   actions: BoardOptionActions;
-  /** Same creation contract as {@link OptionPickerProps.onCreateOption} — reused so "+ New label" behaves identically to the picker's "Add an option". */
+  /** Same creation contract as {@link OptionPickerProps.onCreateOption} — reused so the "New label" chip behaves identically to the picker's "Add an option". */
   onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   /** Returns to the plain picker view (the "Apply" button). */
   onDone: () => void;
 };
 
+/** Compact trigger size for each chip's recolor swatch — smaller than {@link ColorSwatchPicker}'s own 30px default, which reads as oversized against a chip's ~13px label text. */
+const CHIP_SWATCH_SIZE_PX = 18;
+
 /**
  * Monday-style "Edit Labels" management view for a status/dropdown column's
- * `config.options` — rename, recolor, add a description, deactivate, or
- * delete any label, plus append new ones. Swapped in place of
- * {@link "./OptionPicker"} inside the same popover, so it shares its width
- * and outside-click/Escape handling.
+ * `config.options`, laid out as a grid of chips (rather than one row per
+ * label) so it stays compact once a column has many options. Rename,
+ * recolor, add a description, deactivate, or delete any label, plus append
+ * new ones. Swapped in place of {@link "./OptionPicker"} inside the same
+ * popover, so it shares its width and outside-click/Escape handling.
  */
 const EditLabelsPanel: React.FC<EditLabelsPanelProps> = ({ options, actions, onCreateOption, onDone }) => {
   const [editing_label_id, setEditingLabelId] = useState<string | null>(null);
@@ -40,10 +44,11 @@ const EditLabelsPanel: React.FC<EditLabelsPanelProps> = ({ options, actions, onC
   const [description_draft, setDescriptionDraft] = useState("");
   const [menu_target, setMenuTarget] = useState<{ id: string; anchor: HTMLElement } | null>(null);
   const [pending_delete_id, setPendingDeleteId] = useState<string | null>(null);
-  const [new_label, setNewLabel] = useState("");
   const [is_creating, setIsCreating] = useState(false);
 
   const pending_delete = options.find((option) => option.id === pending_delete_id) ?? null;
+  const editing_description_option = options.find((option) => option.id === editing_description_id) ?? null;
+  const next_new_option_color = COLUMN_OPTION_PALETTE[options.length % COLUMN_OPTION_PALETTE.length];
 
   const startDescriptionEditor = (option: BoardCellOption) => {
     setDescriptionDraft(option.description ?? "");
@@ -51,109 +56,71 @@ const EditLabelsPanel: React.FC<EditLabelsPanelProps> = ({ options, actions, onC
     setMenuTarget(null);
   };
 
-  const commitDescription = (option_id: string) => {
+  const commitDescription = () => {
+    if (!editing_description_option) return;
     const trimmed = description_draft.trim();
-    actions.onSetDescription(option_id, trimmed === "" ? null : trimmed);
+    actions.onSetDescription(editing_description_option.id, trimmed === "" ? null : trimmed);
     setEditingDescriptionId(null);
   };
 
-  const handleCreate = async () => {
-    const label = new_label.trim();
-    if (!label || !onCreateOption || is_creating) return;
-    setIsCreating(true);
-    const color = COLUMN_OPTION_PALETTE[options.length % COLUMN_OPTION_PALETTE.length];
-    const created = await onCreateOption({ label, color });
+  const handleCreate = async (label: string) => {
+    if (!onCreateOption) return;
+    await onCreateOption({ label, color: next_new_option_color });
     setIsCreating(false);
-    if (created) setNewLabel("");
   };
 
   return (
-    <div className="flex flex-col gap-1 p-2" onClick={(event) => event.stopPropagation()}>
-      <div className="px-1 pb-1 pt-0.5 text-[11.5px] font-semibold tracking-wide text-shell-text-faint">
-        Edit Labels
-      </div>
+    <div className="flex flex-col gap-3 p-3" onClick={(event) => event.stopPropagation()}>
+      <div className="px-0.5 text-[11.5px] font-semibold tracking-wide text-shell-text-faint">Edit Labels</div>
 
-      <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto">
+      <div className="grid max-h-[320px] grid-cols-2 gap-2 overflow-y-auto pr-0.5">
         {options.map((option) => {
           const is_active = option.is_active !== false;
           const is_editing_label = editing_label_id === option.id;
-          const is_editing_description = editing_description_id === option.id;
 
           return (
-            <div key={option.id} className={`rounded-md px-1.5 py-1 ${is_active ? "" : "opacity-50"}`}>
-              <div className="flex items-center gap-2">
-                <ColorSwatchPicker color={option.color} onSelect={(color) => actions.onRecolor(option.id, color)} />
+            <div
+              key={option.id}
+              className={`flex items-center gap-1.5 rounded-lg border border-shell-border-strong bg-shell-hover px-1.5 py-1.5 ${
+                is_active ? "" : "opacity-50"
+              }`}
+            >
+              <ColorSwatchPicker
+                color={option.color}
+                onSelect={(color) => actions.onRecolor(option.id, color)}
+                size={CHIP_SWATCH_SIZE_PX}
+              />
 
-                {is_editing_label ? (
-                  <InlineTitleEditor
-                    value={option.label}
-                    onCommit={(label) => {
-                      actions.onRename(option.id, label);
-                      setEditingLabelId(null);
-                    }}
-                    onCancel={() => setEditingLabelId(null)}
-                    className="min-w-0 flex-1 text-[13px] text-shell-text"
-                    aria_label="Label name"
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setEditingLabelId(option.id)}
-                    className="min-w-0 flex-1 truncate rounded-md px-1.5 py-1.5 text-left text-[13px] text-shell-text hover:bg-shell-hover"
-                  >
-                    {option.label}
-                    {!is_active && <span className="ml-1.5 text-[11px] font-medium text-shell-text-faint">(inactive)</span>}
-                  </button>
-                )}
-
+              {is_editing_label ? (
+                <InlineTitleEditor
+                  value={option.label}
+                  onCommit={(label) => {
+                    actions.onRename(option.id, label);
+                    setEditingLabelId(null);
+                  }}
+                  onCancel={() => setEditingLabelId(null)}
+                  className="min-w-0 flex-1 text-[12.5px] text-shell-text"
+                  aria_label="Label name"
+                />
+              ) : (
                 <button
                   type="button"
-                  onClick={(event) => setMenuTarget({ id: option.id, anchor: event.currentTarget })}
-                  aria-label={`More actions for ${option.label}`}
-                  className="flex h-[26px] w-[26px] flex-none items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                  onClick={() => setEditingLabelId(option.id)}
+                  className="min-w-0 flex-1 truncate text-left text-[12.5px] text-shell-text"
                 >
-                  <MoreDotsIcon size={14} />
+                  {option.label}
+                  {!is_active && <span className="ml-1 text-[10.5px] font-medium text-shell-text-faint">(inactive)</span>}
                 </button>
-              </div>
-
-              {is_editing_description ? (
-                <div className="ml-[38px] mt-1 flex flex-col gap-1.5">
-                  <textarea
-                    autoFocus
-                    value={description_draft}
-                    onChange={(event) => setDescriptionDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        event.preventDefault();
-                        setEditingDescriptionId(null);
-                      }
-                    }}
-                    placeholder="Describe this label…"
-                    rows={2}
-                    className="w-full resize-none rounded-md border border-shell-border-strong bg-shell-hover px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
-                  />
-                  <div className="flex items-center justify-end gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setEditingDescriptionId(null)}
-                      className="rounded-md px-2 py-1 text-[12px] font-medium text-shell-text-faint hover:bg-shell-hover"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => commitDescription(option.id)}
-                      className="rounded-md bg-brand-500 px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-brand-600"
-                    >
-                      Save
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                option.description && (
-                  <p className="ml-[38px] mt-0.5 truncate text-[11.5px] text-shell-text-faint">{option.description}</p>
-                )
               )}
+
+              <button
+                type="button"
+                onClick={(event) => setMenuTarget({ id: option.id, anchor: event.currentTarget })}
+                aria-label={`More actions for ${option.label}`}
+                className="flex h-5 w-5 flex-none items-center justify-center rounded text-shell-text-muted transition-colors hover:bg-shell-panel hover:text-shell-text"
+              >
+                <MoreDotsIcon size={12} />
+              </button>
 
               <MenuFlyout
                 anchor_el={menu_target?.id === option.id ? menu_target.anchor : null}
@@ -205,38 +172,78 @@ const EditLabelsPanel: React.FC<EditLabelsPanelProps> = ({ options, actions, onC
             </div>
           );
         })}
+
+        {onCreateOption &&
+          (is_creating ? (
+            <div className="flex items-center gap-1.5 rounded-lg border border-brand-500 bg-shell-hover px-1.5 py-1.5">
+              <span
+                className="flex-none rounded-[5px]"
+                style={{ background: next_new_option_color, height: CHIP_SWATCH_SIZE_PX, width: CHIP_SWATCH_SIZE_PX }}
+              />
+              <InlineTitleEditor
+                value=""
+                onCommit={(label) => void handleCreate(label)}
+                onCancel={() => setIsCreating(false)}
+                select_on_focus={false}
+                placeholder="Label name"
+                className="min-w-0 flex-1 text-[12.5px] text-shell-text"
+                aria_label="New label name"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsCreating(true)}
+              className="flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-shell-border-strong px-1.5 py-1.5 text-[12.5px] font-medium text-shell-text-faint transition-colors hover:border-brand-500 hover:text-brand-200"
+            >
+              <PlusIcon size={12} />
+              New label
+            </button>
+          ))}
       </div>
 
-      {onCreateOption && (
-        <div className="mt-1 flex items-center gap-1.5 border-t border-shell-border pt-2">
-          <input
-            value={new_label}
-            onChange={(event) => setNewLabel(event.target.value)}
+      {editing_description_option && (
+        <div className="flex flex-col gap-1.5 rounded-lg border border-shell-border-strong bg-shell-hover p-2.5">
+          <p className="text-[11px] font-medium text-shell-text-faint">
+            Description for <span className="text-shell-text">{editing_description_option.label}</span>
+          </p>
+          <textarea
+            autoFocus
+            value={description_draft}
+            onChange={(event) => setDescriptionDraft(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
+              if (event.key === "Escape") {
                 event.preventDefault();
-                void handleCreate();
+                setEditingDescriptionId(null);
               }
             }}
-            placeholder="New label"
-            className="min-w-0 flex-1 rounded-md border border-shell-border-strong bg-shell-hover px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+            placeholder="Describe this label…"
+            rows={2}
+            className="w-full resize-none rounded-md border border-shell-border-strong bg-shell-panel px-2 py-1.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
           />
-          <button
-            type="button"
-            onClick={() => void handleCreate()}
-            disabled={!new_label.trim() || is_creating}
-            aria-label="Add new label"
-            className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-md bg-brand-500 text-white transition-colors hover:bg-brand-600 disabled:opacity-40"
-          >
-            <PlusIcon size={14} />
-          </button>
+          <div className="flex items-center justify-end gap-1.5">
+            <button
+              type="button"
+              onClick={() => setEditingDescriptionId(null)}
+              className="rounded-md px-2 py-1 text-[12px] font-medium text-shell-text-faint hover:bg-shell-panel"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={commitDescription}
+              className="rounded-md bg-brand-500 px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-brand-600"
+            >
+              Save
+            </button>
+          </div>
         </div>
       )}
 
       <button
         type="button"
         onClick={onDone}
-        className="mt-1 rounded-md bg-brand-500 px-1.5 py-2 text-center text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+        className="self-center rounded-lg bg-brand-500 px-6 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
       >
         Apply
       </button>
