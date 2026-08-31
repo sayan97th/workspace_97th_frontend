@@ -1,16 +1,58 @@
+import type { AddableColumnType } from "@/components/board/columnTypes";
+import type { BoardCellOption, BoardCellPerson, BoardCellValue } from "@/components/board/cells/BoardValueCell";
+import type { BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import { PEOPLE, PRIORITY_OPTIONS, TREE_GROUP_GRID_COLUMNS, getStatusBackground, getStatusForeground } from "./constants";
+import { AddColumnFiller, DynamicColumnCells, DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
-import type { BoardSimpleItem } from "./types";
+import type { BoardSimpleItem, TableBoardColumn } from "./types";
 
 interface FlatGroupTableProps {
   items: BoardSimpleItem[];
   onAddItem: () => void;
+  /** Same contract as {@link import("./TreeGroupTable").TableBoardTreeInteraction}'s dynamic-column fields — supplying `onAddColumn` renders the "+" header button; omit to keep the fixed column set with no "+" button. */
+  columns?: TableBoardColumn[];
+  people_cell_options?: BoardCellPerson[];
+  onAddColumn?: (type: AddableColumnType) => void;
+  onCommitCellValue?: (node_id: string, column_id: string, value: BoardCellValue) => void;
+  onAddColumnOption?: (column_id: string, option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  makeColumnOptionActions?: (column_id: string) => BoardOptionActions;
 }
 
-const FlatGroupTable = ({ items, onAddItem }: FlatGroupTableProps) => (
+const FlatGroupTable = ({
+  items,
+  onAddItem,
+  columns,
+  people_cell_options,
+  onAddColumn,
+  onCommitCellValue,
+  onAddColumnOption,
+  makeColumnOptionActions,
+}: FlatGroupTableProps) => {
+  const dynamic_bag: DynamicColumnsBag | null =
+    columns && onCommitCellValue && onAddColumnOption && makeColumnOptionActions
+      ? { columns, people: people_cell_options ?? [], onCommit: onCommitCellValue, onAddOption: onAddColumnOption, makeOptionActions: makeColumnOptionActions }
+      : null;
+
+  return (
   <div className="rounded-lg bg-white shadow-[0_1px_2px_rgba(30,34,55,0.05)]">
+    {onAddColumn && (
+      <div className="flex min-w-[1020px] items-stretch">
+        <div className={`grid flex-1 border-b border-[#eceef5] ${TREE_GROUP_GRID_COLUMNS}`}>
+          <div className="h-[38px] border-r border-[#eceef5]" />
+          <div className="flex h-[38px] items-center px-3 text-[12.5px] font-medium text-[#6b7189]">Item</div>
+          <div className="h-[38px] border-r border-[#eceef5]" />
+          <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Owner</div>
+          <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Status</div>
+          <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Date</div>
+          <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Priority</div>
+          <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Progress</div>
+        </div>
+        <DynamicColumnHeaderCells columns={columns ?? []} onAddColumn={onAddColumn} height_class="h-[38px]" />
+      </div>
+    )}
+
     {items.map((item) => {
       const owner = PEOPLE[item.owner_id];
       return (
@@ -59,6 +101,8 @@ const FlatGroupTable = ({ items, onAddItem }: FlatGroupTableProps) => (
               <ProgressBar progress_percent={item.progress} fill_color="#2f9e78" show_label={false} />
             </div>
           </div>
+          {dynamic_bag && <DynamicColumnCells node_id={item.id} values={item.values} bag={dynamic_bag} height_class="h-[42px]" />}
+          {dynamic_bag && <AddColumnFiller height_class="h-[42px]" />}
         </div>
       );
     })}
@@ -75,6 +119,7 @@ const FlatGroupTable = ({ items, onAddItem }: FlatGroupTableProps) => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default FlatGroupTable;

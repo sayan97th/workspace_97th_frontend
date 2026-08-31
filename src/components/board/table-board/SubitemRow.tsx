@@ -1,5 +1,6 @@
 import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
+import { AddColumnFiller, DynamicColumnCells, type DynamicColumnsBag } from "./DynamicColumns";
 import DateCell from "./DateCell";
 import EditableName from "./EditableName";
 import { CheckIcon, DragHandleIcon } from "./icons";
@@ -42,6 +43,8 @@ interface SubitemRowProps {
   onDragStart: () => void;
   onDragOver: (event: React.DragEvent) => void;
   onDragEnd: () => void;
+  /** Dynamically-added columns' cells for this row — omit (or pass null) to render none. */
+  dynamic?: DynamicColumnsBag | null;
 }
 
 const SubitemRow = ({
@@ -76,6 +79,7 @@ const SubitemRow = ({
   onDragStart,
   onDragOver,
   onDragEnd,
+  dynamic,
 }: SubitemRowProps) => (
   <div draggable onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} className="flex min-w-[1020px] items-stretch" style={{ opacity: is_dragged ? 0.45 : 1 }}>
     <RailBar variant="solid" color={group_color} />
@@ -158,6 +162,8 @@ const SubitemRow = ({
       <div className="h-10" />
       <div className="h-10" />
     </div>
+    {dynamic && <DynamicColumnCells node_id={subitem.id} values={subitem.values} bag={dynamic} height_class="h-10" />}
+    {dynamic && <AddColumnFiller height_class="h-10" />}
   </div>
 );
 

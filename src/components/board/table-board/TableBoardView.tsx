@@ -41,7 +41,16 @@ const TableBoardView = () => {
             </div>
 
             <BoardGroupHeading label="Discovery" count_label={flat_group_count_label} accent_color="#2f9e78" chevron_direction="right" className="mb-2.5 mt-[30px]" />
-            <FlatGroupTable items={board.flat_items} onAddItem={board.addFlatItem} />
+            <FlatGroupTable
+              items={board.flat_items}
+              onAddItem={board.addFlatItem}
+              columns={board.columns}
+              people_cell_options={board.people_cell_options}
+              onAddColumn={board.onAddColumn}
+              onCommitCellValue={board.onCommitCellValue}
+              onAddColumnOption={board.onAddColumnOption}
+              makeColumnOptionActions={board.makeColumnOptionActions}
+            />
           </div>
         </>
       )}

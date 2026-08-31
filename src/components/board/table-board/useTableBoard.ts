@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import type { AddableColumnType } from "../columnTypes";
+import type { BoardCellOption, BoardCellPerson, BoardCellValue } from "../cells/BoardValueCell";
+import type { BoardOptionActions } from "../cells/OptionPicker";
 import {
   createInitialFlatItems,
   createInitialTreeItems,
@@ -10,7 +13,7 @@ import {
   PRIORITY_OPTIONS,
   STATUS_OPTIONS,
 } from "./constants";
-import type { ActiveBoardTab, BoardItem, BoardSimpleItem, BoardSubitem, DragParentId } from "./types";
+import type { ActiveBoardTab, BoardItem, BoardSimpleItem, BoardSubitem, DragParentId, TableBoardColumn } from "./types";
 
 type TreeNode = BoardItem | BoardSubitem;
 
@@ -72,6 +75,8 @@ export const useTableBoard = () => {
   const [owner_menu_id, setOwnerMenuId] = useState<string | null>(null);
   const [date_menu_id, setDateMenuId] = useState<string | null>(null);
   const [drag_state, setDragState] = useState<{ node_id: string; parent_id: DragParentId } | null>(null);
+  /** Columns added at runtime via the trailing "+" header button — shared across both groups, like a real board's columns. */
+  const [columns, setColumns] = useState<TableBoardColumn[]>([]);
 
   const next_id_ref = useRef(0);
   const generateId = useCallback((prefix: string): string => {
@@ -222,6 +227,84 @@ export const useTableBoard = () => {
     [drag_state]
   );
 
+  /** Adds a new dynamic column of the chosen type, auto-numbering its label ("Status 1", "Status 2"…) when the plain name is already taken — mirrors Monday's own default naming. */
+  const addColumn = useCallback(
+    (type: AddableColumnType) => {
+      const new_id = generateId("col");
+      setColumns((current) => {
+        const existing_labels = new Set(current.map((column) => column.label));
+        let label = type.label;
+        if (existing_labels.has(label)) {
+          let suffix = 1;
+          while (existing_labels.has(`${type.label} ${suffix}`)) suffix += 1;
+          label = `${type.label} ${suffix}`;
+        }
+        const column: TableBoardColumn = {
+          id: new_id,
+          kind: type.kind,
+          label,
+          width: type.default_width,
+          options: type.has_options ? [] : undefined,
+        };
+        return [...current, column];
+      });
+    },
+    [generateId]
+  );
+
+  /** Persists a dynamic column's cell value for any row — item, subitem, or flat item. */
+  const setCellValue = useCallback((node_id: string, column_id: string, value: BoardCellValue) => {
+    setTreeItems((current) =>
+      mapTreeNode(current, node_id, (node) => ({ ...node, values: { ...node.values, [column_id]: value } }))
+    );
+    setFlatItems((current) =>
+      current.map((item) => (item.id === node_id ? { ...item, values: { ...item.values, [column_id]: value } } : item))
+    );
+  }, []);
+
+  /** Adds a new option to a Status/Dropdown column and resolves to it, so the cell that requested it can select it immediately. */
+  const addColumnOption = useCallback(
+    (column_id: string, option: { label: string; color: string }): Promise<BoardCellOption | null> => {
+      const created: BoardCellOption = { id: generateId("opt"), label: option.label, color: option.color, is_active: true };
+      setColumns((current) =>
+        current.map((column) => (column.id === column_id ? { ...column, options: [...(column.options ?? []), created] } : column))
+      );
+      return Promise.resolve(created);
+    },
+    [generateId]
+  );
+
+  /** Builds the rename/recolor/delete/deactivate/describe actions {@link OptionPicker}'s "Edit Labels" footer needs for one Status/Dropdown column's options. */
+  const makeColumnOptionActions = useCallback((column_id: string): BoardOptionActions => {
+    const updateOption = (option_id: string, updater: (option: BoardCellOption) => BoardCellOption) => {
+      setColumns((current) =>
+        current.map((column) =>
+          column.id !== column_id
+            ? column
+            : { ...column, options: (column.options ?? []).map((option) => (option.id === option_id ? updater(option) : option)) }
+        )
+      );
+    };
+    return {
+      onRename: (option_id, label) => updateOption(option_id, (option) => ({ ...option, label })),
+      onRecolor: (option_id, color) => updateOption(option_id, (option) => ({ ...option, color })),
+      onDelete: (option_id) =>
+        setColumns((current) =>
+          current.map((column) =>
+            column.id !== column_id ? column : { ...column, options: (column.options ?? []).filter((option) => option.id !== option_id) }
+          )
+        ),
+      onToggleActive: (option_id) => updateOption(option_id, (option) => ({ ...option, is_active: option.is_active === false })),
+      onSetDescription: (option_id, description) => updateOption(option_id, (option) => ({ ...option, description })),
+    };
+  }, []);
+
+  /** {@link PEOPLE_OPTIONS} reshaped into what {@link BoardValueCell}'s People cell expects. */
+  const people_cell_options = useMemo<BoardCellPerson[]>(
+    () => PEOPLE_OPTIONS.map((person) => ({ id: person.id, full_name: person.name })),
+    []
+  );
+
   const total_subitem_count = useMemo(
     () => tree_items.reduce((total, item) => total + item.subitems.length, 0),
     [tree_items]
@@ -237,8 +320,14 @@ export const useTableBoard = () => {
     tree_items,
     flat_items,
     people: PEOPLE_OPTIONS,
+    people_cell_options,
     status_options: STATUS_OPTIONS,
     priority_options: PRIORITY_OPTIONS,
+    columns,
+    onAddColumn: addColumn,
+    onCommitCellValue: setCellValue,
+    onAddColumnOption: addColumnOption,
+    makeColumnOptionActions,
     open_ids,
     selected_ids,
     editing_id,

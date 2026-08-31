@@ -1,11 +1,14 @@
-import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
+import type { AddableColumnType } from "@/components/board/columnTypes";
+import type { BoardCellOption, BoardCellPerson, BoardCellValue } from "@/components/board/cells/BoardValueCell";
+import type { BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
+import { DynamicColumnHeaderCells, type DynamicColumnsBag } from "./DynamicColumns";
 import AddSubitemRow from "./AddSubitemRow";
 import ItemRow from "./ItemRow";
 import RailBar from "./RailBar";
 import SubitemHeaderRow from "./SubitemHeaderRow";
 import SubitemRow from "./SubitemRow";
-import type { BoardItem, DragParentId, Person, TableBoardOption } from "./types";
+import type { BoardItem, DragParentId, Person, TableBoardColumn, TableBoardOption } from "./types";
 
 /**
  * The subset of {@link import("./useTableBoard").UseTableBoardReturn} this
@@ -59,6 +62,19 @@ export interface TableBoardTreeInteraction {
   handleDragEnd: () => void;
   /** Opens a row's detail/comments — omit to keep the chat icon inert (the standalone preview has nowhere to open it to). */
   onCommentClick?: (node_id: string) => void;
+  /**
+   * Columns added at runtime via the trailing "+" header button. Omit (along
+   * with the other `*Column*`/`onAddColumn` fields below) to render the
+   * table's original fixed Owner/Status/Date/Priority/Progress set with no
+   * "+" button at all — e.g. a caller that doesn't support this yet.
+   */
+  columns?: TableBoardColumn[];
+  /** {@link BoardCellPerson}-shaped people list for dynamic People columns. Defaults to an empty list. */
+  people_cell_options?: BoardCellPerson[];
+  onAddColumn?: (type: AddableColumnType) => void;
+  onCommitCellValue?: (node_id: string, column_id: string, value: BoardCellValue) => void;
+  onAddColumnOption?: (column_id: string, option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  makeColumnOptionActions?: (column_id: string) => BoardOptionActions;
 }
 
 interface TreeGroupTableProps {
@@ -85,7 +101,19 @@ const computeNameColumnWidth = (names: string[]): number => {
   return Math.min(MAX_NAME_COLUMN_PX, Math.max(MIN_NAME_COLUMN_PX, Math.round(longest_length * 6.9) + 53));
 };
 
-const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: TreeGroupTableProps) => (
+const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: TreeGroupTableProps) => {
+  const dynamic_bag: DynamicColumnsBag | null =
+    board.columns && board.onCommitCellValue && board.onAddColumnOption && board.makeColumnOptionActions
+      ? {
+          columns: board.columns,
+          people: board.people_cell_options ?? [],
+          onCommit: board.onCommitCellValue,
+          onAddOption: board.onAddColumnOption,
+          makeOptionActions: board.makeColumnOptionActions,
+        }
+      : null;
+
+  return (
   <div>
     <div className="flex min-w-[1020px] items-stretch bg-white">
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group_color }} />
@@ -97,8 +125,11 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
         <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Status</div>
         <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Date</div>
         <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Priority</div>
-        <div className="flex h-[38px] items-center justify-center text-[12.5px] font-medium text-[#6b7189]">Progress</div>
+        <div className="flex h-[38px] items-center justify-center border-r border-[#eceef5] text-[12.5px] font-medium text-[#6b7189]">Progress</div>
       </div>
+      {board.onAddColumn && (
+        <DynamicColumnHeaderCells columns={board.columns ?? []} onAddColumn={board.onAddColumn} height_class="h-[38px]" />
+      )}
     </div>
 
     {rows.map((item) => {
@@ -143,6 +174,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
             onDragStart={() => board.handleDragStart(item.id, "ROOT")}
             onDragOver={(event) => board.handleDragOver(event, item.id, "ROOT")}
             onDragEnd={board.handleDragEnd}
+            dynamic={dynamic_bag}
           />
 
           {is_open && (
@@ -183,6 +215,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                   onDragStart={() => board.handleDragStart(subitem.id, item.id)}
                   onDragOver={(event) => board.handleDragOver(event, subitem.id, item.id)}
                   onDragEnd={board.handleDragEnd}
+                  dynamic={dynamic_bag}
                 />
               ))}
 
@@ -209,6 +242,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default TreeGroupTable;

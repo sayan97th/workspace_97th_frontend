@@ -1,6 +1,7 @@
 import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
+import { AddColumnFiller, DynamicColumnCells, type DynamicColumnsBag } from "./DynamicColumns";
 import DateCell from "./DateCell";
 import EditableName from "./EditableName";
 import { ChevronDownIcon, ChevronRightIcon, DragHandleIcon, PlusCircleIcon, CheckIcon } from "./icons";
@@ -47,6 +48,8 @@ interface ItemRowProps {
   onDragStart: () => void;
   onDragOver: (event: React.DragEvent) => void;
   onDragEnd: () => void;
+  /** Dynamically-added columns' cells for this row — omit (or pass null) to render none. */
+  dynamic?: DynamicColumnsBag | null;
 }
 
 const ItemRow = ({
@@ -85,6 +88,7 @@ const ItemRow = ({
   onDragStart,
   onDragOver,
   onDragEnd,
+  dynamic,
 }: ItemRowProps) => {
   const subitem_count = item.subitems.length;
   const priority_option = priority_options.find((option) => option.id === item.priority) ?? null;
@@ -202,6 +206,8 @@ const ItemRow = ({
           <ProgressBar progress_percent={progress_percent} />
         </div>
       </div>
+      {dynamic && <DynamicColumnCells node_id={item.id} values={item.values} bag={dynamic} height_class="h-[42px]" />}
+      {dynamic && <AddColumnFiller height_class="h-[42px]" />}
     </div>
   );
 };
