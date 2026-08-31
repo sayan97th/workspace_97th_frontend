@@ -71,11 +71,7 @@ const OwnerMenu = ({ people, owner_ids, onToggleOwner, onClearOwners, onClose, t
         <BellNotifyIcon />
         Assignees will be notified
       </div>
-      <div className="mt-2.5 h-px bg-[#eceef5]" />
-      <button type="button" className="flex h-[38px] w-full items-center justify-center gap-2 text-[13px] text-[#4a5068] hover:text-[#4f6bed]">
-        <SparkleIcon />
-        Auto-assign people
-      </button>
+
     </div>
   );
 };
