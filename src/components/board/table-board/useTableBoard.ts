@@ -70,6 +70,7 @@ export const useTableBoard = () => {
   const [draft_name, setDraftName] = useState("");
   const [status_menu_id, setStatusMenuId] = useState<string | null>(null);
   const [owner_menu_id, setOwnerMenuId] = useState<string | null>(null);
+  const [date_menu_id, setDateMenuId] = useState<string | null>(null);
   const [drag_state, setDragState] = useState<{ node_id: string; parent_id: DragParentId } | null>(null);
 
   const next_id_ref = useRef(0);
@@ -89,16 +90,25 @@ export const useTableBoard = () => {
   const closeMenus = useCallback(() => {
     setStatusMenuId(null);
     setOwnerMenuId(null);
+    setDateMenuId(null);
   }, []);
 
   const openStatusMenu = useCallback((node_id: string) => {
     setStatusMenuId((current) => (current === node_id ? null : node_id));
     setOwnerMenuId(null);
+    setDateMenuId(null);
   }, []);
 
   const openOwnerMenu = useCallback((node_id: string) => {
     setOwnerMenuId((current) => (current === node_id ? null : node_id));
     setStatusMenuId(null);
+    setDateMenuId(null);
+  }, []);
+
+  const openDateMenu = useCallback((node_id: string) => {
+    setDateMenuId((current) => (current === node_id ? null : node_id));
+    setStatusMenuId(null);
+    setOwnerMenuId(null);
   }, []);
 
   const setStatus = useCallback((node_id: string, option_id: string | null) => {
@@ -106,6 +116,12 @@ export const useTableBoard = () => {
     setStatusMenuId(null);
     setTreeItems((current) => mapTreeNode(current, node_id, (node) => ({ ...node, status })));
     setFlatItems((current) => current.map((item) => (item.id === node_id ? { ...item, status } : item)));
+  }, []);
+
+  const setDate = useCallback((node_id: string, date: string) => {
+    setDateMenuId(null);
+    setTreeItems((current) => mapTreeNode(current, node_id, (node) => ({ ...node, date })));
+    setFlatItems((current) => current.map((item) => (item.id === node_id ? { ...item, date } : item)));
   }, []);
 
   const toggleOwner = useCallback((node_id: string, person_id: string) => {
@@ -127,6 +143,7 @@ export const useTableBoard = () => {
     setDraftName(current_name);
     setStatusMenuId(null);
     setOwnerMenuId(null);
+    setDateMenuId(null);
   }, []);
 
   const updateDraftName = useCallback((value: string) => {
@@ -228,6 +245,7 @@ export const useTableBoard = () => {
     draft_name,
     status_menu_id,
     owner_menu_id,
+    date_menu_id,
     dragged_node_id: drag_state?.node_id ?? null,
     total_subitem_count,
     selected_count,
@@ -236,7 +254,9 @@ export const useTableBoard = () => {
     closeMenus,
     openStatusMenu,
     openOwnerMenu,
+    openDateMenu,
     setStatus,
+    setDate,
     toggleOwner,
     clearOwners,
     startEditing,

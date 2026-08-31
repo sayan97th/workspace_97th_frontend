@@ -1,6 +1,7 @@
 import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
+import DateCell from "./DateCell";
 import EditableName from "./EditableName";
 import { ChevronDownIcon, ChevronRightIcon, DragHandleIcon, PlusCircleIcon, CheckIcon } from "./icons";
 import OwnerCell from "./OwnerCell";
@@ -25,6 +26,7 @@ interface ItemRowProps {
   draft_name: string;
   is_status_menu_open: boolean;
   is_owner_menu_open: boolean;
+  is_date_menu_open: boolean;
   is_dragged: boolean;
   progress_percent: number;
   onToggleOpen: () => void;
@@ -34,6 +36,8 @@ interface ItemRowProps {
   onCommitEdit: () => void;
   onOpenStatusMenu: () => void;
   onPickStatus: (option_id: string | null) => void;
+  onOpenDateMenu: () => void;
+  onPickDate: (date_string: string) => void;
   onOpenOwnerMenu: () => void;
   onToggleOwner: (person_id: string) => void;
   onClearOwners: () => void;
@@ -60,6 +64,7 @@ const ItemRow = ({
   draft_name,
   is_status_menu_open,
   is_owner_menu_open,
+  is_date_menu_open,
   is_dragged,
   progress_percent,
   onToggleOpen,
@@ -69,6 +74,8 @@ const ItemRow = ({
   onCommitEdit,
   onOpenStatusMenu,
   onPickStatus,
+  onOpenDateMenu,
+  onPickDate,
   onOpenOwnerMenu,
   onToggleOwner,
   onClearOwners,
@@ -178,9 +185,16 @@ const ItemRow = ({
           onCreateOption={onCreateStatusOption}
         />
 
-        <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5] text-[12.5px] text-[#4a5068]">
-          {item.date || "—"}
-        </div>
+        <DateCell
+          value={item.date}
+          is_menu_open={is_date_menu_open}
+          text_size_class="text-[12.5px]"
+          border_color="#eceef5"
+          onOpenMenu={onOpenDateMenu}
+          onPickDate={onPickDate}
+          onCloseMenu={onCloseMenus}
+          menu_top_offset_px={40}
+        />
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
           <PriorityBadge option={priority_option} />
         </div>

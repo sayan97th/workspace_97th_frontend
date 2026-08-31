@@ -1,5 +1,6 @@
 import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
+import DateCell from "./DateCell";
 import EditableName from "./EditableName";
 import { CheckIcon, DragHandleIcon } from "./icons";
 import OwnerCell from "./OwnerCell";
@@ -23,6 +24,7 @@ interface SubitemRowProps {
   draft_name: string;
   is_status_menu_open: boolean;
   is_owner_menu_open: boolean;
+  is_date_menu_open: boolean;
   is_dragged: boolean;
   onToggleSelected: () => void;
   onStartEdit: () => void;
@@ -30,6 +32,8 @@ interface SubitemRowProps {
   onCommitEdit: () => void;
   onOpenStatusMenu: () => void;
   onPickStatus: (option_id: string | null) => void;
+  onOpenDateMenu: () => void;
+  onPickDate: (date_string: string) => void;
   onOpenOwnerMenu: () => void;
   onToggleOwner: (person_id: string) => void;
   onClearOwners: () => void;
@@ -54,6 +58,7 @@ const SubitemRow = ({
   draft_name,
   is_status_menu_open,
   is_owner_menu_open,
+  is_date_menu_open,
   is_dragged,
   onToggleSelected,
   onStartEdit,
@@ -61,6 +66,8 @@ const SubitemRow = ({
   onCommitEdit,
   onOpenStatusMenu,
   onPickStatus,
+  onOpenDateMenu,
+  onPickDate,
   onOpenOwnerMenu,
   onToggleOwner,
   onClearOwners,
@@ -138,7 +145,16 @@ const SubitemRow = ({
         onCreateOption={onCreateStatusOption}
       />
 
-      <div className="flex h-10 items-center justify-center border-r border-[#eef0f7] text-xs text-[#4a5068]">{subitem.date || "—"}</div>
+      <DateCell
+        value={subitem.date}
+        is_menu_open={is_date_menu_open}
+        text_size_class="text-xs"
+        border_color="#eef0f7"
+        onOpenMenu={onOpenDateMenu}
+        onPickDate={onPickDate}
+        onCloseMenu={onCloseMenus}
+        menu_top_offset_px={38}
+      />
       <div className="h-10" />
       <div className="h-10" />
     </div>

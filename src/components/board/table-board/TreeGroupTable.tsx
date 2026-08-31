@@ -21,6 +21,7 @@ export interface TableBoardTreeInteraction {
   draft_name: string;
   status_menu_id: string | null;
   owner_menu_id: string | null;
+  date_menu_id: string | null;
   dragged_node_id: string | null;
   people: Person[];
   status_options: TableBoardOption[];
@@ -46,7 +47,9 @@ export interface TableBoardTreeInteraction {
   commitEdit: () => void;
   openStatusMenu: (node_id: string) => void;
   openOwnerMenu: (node_id: string) => void;
+  openDateMenu: (node_id: string) => void;
   setStatus: (node_id: string, option_id: string | null) => void;
+  setDate: (node_id: string, date: string) => void;
   toggleOwner: (node_id: string, person_id: string) => void;
   clearOwners: (node_id: string) => void;
   closeMenus: () => void;
@@ -119,6 +122,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
             draft_name={board.draft_name}
             is_status_menu_open={board.status_menu_id === item.id}
             is_owner_menu_open={board.owner_menu_id === item.id}
+            is_date_menu_open={board.date_menu_id === item.id}
             is_dragged={board.dragged_node_id === item.id}
             progress_percent={getProgress(item)}
             onToggleOpen={() => board.toggleItemOpen(item.id)}
@@ -128,6 +132,8 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
             onCommitEdit={board.commitEdit}
             onOpenStatusMenu={() => board.openStatusMenu(item.id)}
             onPickStatus={(option_id) => board.setStatus(item.id, option_id)}
+            onOpenDateMenu={() => board.openDateMenu(item.id)}
+            onPickDate={(date) => board.setDate(item.id, date)}
             onOpenOwnerMenu={() => board.openOwnerMenu(item.id)}
             onToggleOwner={(person_id) => board.toggleOwner(item.id, person_id)}
             onClearOwners={() => board.clearOwners(item.id)}
@@ -159,6 +165,7 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                   draft_name={board.draft_name}
                   is_status_menu_open={board.status_menu_id === subitem.id}
                   is_owner_menu_open={board.owner_menu_id === subitem.id}
+                  is_date_menu_open={board.date_menu_id === subitem.id}
                   is_dragged={board.dragged_node_id === subitem.id}
                   onToggleSelected={() => board.toggleSelected(subitem.id)}
                   onStartEdit={() => board.startEditing(subitem.id, subitem.name)}
@@ -166,6 +173,8 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                   onCommitEdit={board.commitEdit}
                   onOpenStatusMenu={() => board.openStatusMenu(subitem.id)}
                   onPickStatus={(option_id) => board.setStatus(subitem.id, option_id)}
+                  onOpenDateMenu={() => board.openDateMenu(subitem.id)}
+                  onPickDate={(date) => board.setDate(subitem.id, date)}
                   onOpenOwnerMenu={() => board.openOwnerMenu(subitem.id)}
                   onToggleOwner={(person_id) => board.toggleOwner(subitem.id, person_id)}
                   onClearOwners={() => board.clearOwners(subitem.id)}

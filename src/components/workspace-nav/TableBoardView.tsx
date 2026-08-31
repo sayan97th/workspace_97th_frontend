@@ -30,6 +30,7 @@ import {
   KanbanItemDrawer,
   PersonAvatarStack,
   parseIsoDate,
+  toIsoDate,
   useBoardDiscussionDrawer,
   useBoardItemDrawer,
   useBoardToolbar,
@@ -508,6 +509,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [table_draft_name, setTableDraftName] = useState("");
   const [table_status_menu_id, setTableStatusMenuId] = useState<string | null>(null);
   const [table_owner_menu_id, setTableOwnerMenuId] = useState<string | null>(null);
+  const [table_date_menu_id, setTableDateMenuId] = useState<string | null>(null);
   const [table_drag, setTableDrag] = useState<{ node_id: string; parent_id: DragParentId } | null>(null);
   const table_drag_start_items_ref = useRef<BoardItemDto[] | null>(null);
 
@@ -1474,14 +1476,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const closeTableMenus = () => {
     setTableStatusMenuId(null);
     setTableOwnerMenuId(null);
+    setTableDateMenuId(null);
   };
   const openTableStatusMenu = (node_id: string) => {
     setTableStatusMenuId((current) => (current === node_id ? null : node_id));
     setTableOwnerMenuId(null);
+    setTableDateMenuId(null);
   };
   const openTableOwnerMenu = (node_id: string) => {
     setTableOwnerMenuId((current) => (current === node_id ? null : node_id));
     setTableStatusMenuId(null);
+    setTableDateMenuId(null);
+  };
+  const openTableDateMenu = (node_id: string) => {
+    setTableDateMenuId((current) => (current === node_id ? null : node_id));
+    setTableStatusMenuId(null);
+    setTableOwnerMenuId(null);
   };
   const startTableEdit = (node_id: string, current_name: string) => {
     setTableEditingId(node_id);
@@ -1507,6 +1517,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const column = findTableColumn(node_id, board_status_column, subitem_status_column);
     if (!column) return;
     void handleUpdateCellValue(Number(node_id), String(column.id), option_id);
+  };
+
+  /** `DateCell`'s picker gives back a "Sep 17, 2026"-style display string (see its own `formatBoardDate`) — reparsed here into the `YYYY-MM-DD` the column actually stores, mirroring `formatDate`'s inverse. */
+  const setTableDate = (node_id: string, date_string: string) => {
+    setTableDateMenuId(null);
+    const column = findTableColumn(node_id, board_date_column, subitem_date_column);
+    if (!column) return;
+    const parsed = new Date(date_string);
+    if (Number.isNaN(parsed.getTime())) return;
+    void handleUpdateCellValue(Number(node_id), String(column.id), toIsoDate(parsed));
   };
 
   const toggleTableOwner = (node_id: string, person_id: string) => {
@@ -1636,6 +1656,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     draft_name: table_draft_name,
     status_menu_id: table_status_menu_id,
     owner_menu_id: table_owner_menu_id,
+    date_menu_id: table_date_menu_id,
     dragged_node_id: table_drag?.node_id ?? null,
     people: table_people,
     status_options: table_status_options,
@@ -1660,7 +1681,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     commitEdit: commitTableEdit,
     openStatusMenu: openTableStatusMenu,
     openOwnerMenu: openTableOwnerMenu,
+    openDateMenu: openTableDateMenu,
     setStatus: setTableStatus,
+    setDate: setTableDate,
     toggleOwner: toggleTableOwner,
     clearOwners: clearTableOwners,
     closeMenus: closeTableMenus,

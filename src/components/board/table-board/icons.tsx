@@ -113,6 +113,19 @@ export const EditPencilIcon = ({ size = 15, ...rest }: IconProps) => (
   </svg>
 );
 
+export const ChevronLeftIcon = ({ size = 12, ...rest }: IconProps) => (
+  <svg viewBox="0 0 12 12" width={size} height={size} {...rest}>
+    <path d="M7.5 3 L4 6 L7.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const ClockIcon = ({ size = 14, ...rest }: IconProps) => (
+  <svg viewBox="0 0 16 16" width={size} height={size} {...rest}>
+    <circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M8 4.6 V8 L10.4 9.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const PlusIcon = ({ size = 14, ...rest }: IconProps) => (
   <svg viewBox="0 0 14 14" width={size} height={size} {...rest}>
     <path d="M7 2.5 V11.5 M2.5 7 H11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
