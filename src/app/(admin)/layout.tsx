@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
+import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 
@@ -31,15 +32,17 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
-      <AppTopBar />
-      <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
-        <AppSidebar />
-        <Backdrop />
-        <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
-          {children}
-        </main>
+    <ToastProvider>
+      <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
+        <AppTopBar />
+        <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+          <AppSidebar />
+          <Backdrop />
+          <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
