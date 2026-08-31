@@ -1,3 +1,4 @@
+import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
 import AddSubitemRow from "./AddSubitemRow";
 import ItemRow from "./ItemRow";
@@ -26,6 +27,18 @@ export interface TableBoardTreeInteraction {
   /** A subitem row's own Status options — independent from {@link status_options}, mirroring the real board's separate item/subitem column scopes. Defaults to `status_options` when the caller has no separate subitem-scope status column (e.g. the standalone preview). */
   subitem_status_options?: TableBoardOption[];
   priority_options: TableBoardOption[];
+  /** Every status option including inactive ones, with description. Feeds the "Edit Labels" panel. Omit to leave the panel showing only what {@link status_options} has (no description/inactive support). */
+  status_options_full?: BoardCellOption[];
+  /** Same as {@link status_options_full}, for a subitem row's own status column. Defaults to `status_options_full` when omitted. */
+  subitem_status_options_full?: BoardCellOption[];
+  /** Rename/recolor/delete/deactivate/describe an existing status option. Supplying this unlocks the "Edit Labels" footer link on the root-item Status menu; omit to keep it hidden (e.g. the standalone preview, which has no editing backend). */
+  status_option_actions?: BoardOptionActions;
+  /** Same as {@link status_option_actions}, for a subitem row's own status column. Defaults to `status_option_actions` when omitted. */
+  subitem_status_option_actions?: BoardOptionActions;
+  /** Creates a new status option and resolves to it with its persisted id, shared with the "Edit Labels" panel's own "+ New label" field. */
+  onCreateStatusOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  /** Same as {@link onCreateStatusOption}, for a subitem row's own status column. Defaults to `onCreateStatusOption` when omitted. */
+  onCreateSubitemStatusOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   toggleItemOpen: (node_id: string) => void;
   toggleSelected: (node_id: string) => void;
   startEditing: (node_id: string, current_name: string) => void;
@@ -97,6 +110,9 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
             people={board.people}
             status_options={board.status_options}
             priority_options={board.priority_options}
+            status_full_options={board.status_options_full}
+            status_option_actions={board.status_option_actions}
+            onCreateStatusOption={board.onCreateStatusOption}
             is_open={is_open}
             is_selected={!!board.selected_ids[item.id]}
             is_editing={board.editing_id === item.id}
@@ -134,6 +150,9 @@ const TreeGroupTable = ({ board, rows, group_color, onAddItem, getProgress }: Tr
                   group_color={group_color}
                   people={board.people}
                   status_options={board.subitem_status_options ?? board.status_options}
+                  status_full_options={board.subitem_status_options_full ?? board.status_options_full}
+                  status_option_actions={board.subitem_status_option_actions ?? board.status_option_actions}
+                  onCreateStatusOption={board.onCreateSubitemStatusOption ?? board.onCreateStatusOption}
                   name_column_width_px={name_column_width_px}
                   is_selected={!!board.selected_ids[subitem.id]}
                   is_editing={board.editing_id === subitem.id}

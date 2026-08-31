@@ -1,3 +1,4 @@
+import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import EditableName from "./EditableName";
 import { CheckIcon, DragHandleIcon } from "./icons";
@@ -12,6 +13,10 @@ interface SubitemRowProps {
   group_color: string;
   people: Person[];
   status_options: TableBoardOption[];
+  /** Passed straight through to the Status cell's {@link StatusCell}. See its own doc for each. */
+  status_full_options?: BoardCellOption[];
+  status_option_actions?: BoardOptionActions;
+  onCreateStatusOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   name_column_width_px: number;
   is_selected: boolean;
   is_editing: boolean;
@@ -40,6 +45,9 @@ const SubitemRow = ({
   group_color,
   people,
   status_options,
+  status_full_options,
+  status_option_actions,
+  onCreateStatusOption,
   name_column_width_px,
   is_selected,
   is_editing,
@@ -125,6 +133,9 @@ const SubitemRow = ({
         onPickStatus={onPickStatus}
         onCloseMenu={onCloseMenus}
         menu_top_offset_px={38}
+        full_options={status_full_options}
+        option_actions={status_option_actions}
+        onCreateOption={onCreateStatusOption}
       />
 
       <div className="flex h-10 items-center justify-center border-r border-[#eef0f7] text-xs text-[#4a5068]">{subitem.date || "—"}</div>

@@ -75,6 +75,12 @@ const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-label={title}
+      // Reuses `MenuFlyout`'s own escape-hatch attribute (see its doc) so a parent
+      // menu/popover's outside-click detection treats a click in here as "inside"
+      // instead of unmounting the menu (this dialog included) out from under itself
+      // before the click on Confirm/Cancel ever fires. Opened from a menu whenever
+      // a destructive row (e.g. "Delete label") needs one more confirmation.
+      data-board-menu-flyout
       className="fixed inset-0 z-[420] flex items-center justify-center p-6"
     >
       <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={onClose} aria-hidden="true" />

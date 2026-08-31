@@ -584,6 +584,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     () => (board_priority_column?.config?.options ?? []).filter((o) => o.is_active !== false).map((o) => ({ id: o.id, label: o.label, color: o.color })),
     [board_priority_column]
   );
+  // Unfiltered. The "Edit Labels" panel, unlike the picker grid above,
+  // needs to see inactive options too, so it can show/toggle them.
+  const table_status_options_full = useMemo(() => board_status_column?.config?.options ?? [], [board_status_column]);
+  const table_subitem_status_options_full = useMemo(
+    () => subitem_status_column?.config?.options ?? [],
+    [subitem_status_column]
+  );
   /** The full assignable roster, flat-color avatars matching the design (see `PersonAvatar`'s own `variant="flat"` doc). */
   const table_people = useMemo(
     () =>
@@ -1634,6 +1641,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     status_options: table_status_options,
     subitem_status_options: table_subitem_status_options,
     priority_options: table_priority_options,
+    status_options_full: table_status_options_full,
+    subitem_status_options_full: table_subitem_status_options_full,
+    status_option_actions: board_status_column ? makeOptionActions(String(board_status_column.id)) : undefined,
+    subitem_status_option_actions: subitem_status_column
+      ? makeOptionActions(String(subitem_status_column.id))
+      : undefined,
+    onCreateStatusOption: board_status_column
+      ? (option) => handleAddColumnOption(String(board_status_column.id), option)
+      : undefined,
+    onCreateSubitemStatusOption: subitem_status_column
+      ? (option) => handleAddColumnOption(String(subitem_status_column.id), option)
+      : undefined,
     toggleItemOpen: toggleTableOpen,
     toggleSelected: toggleTableSelected,
     startEditing: startTableEdit,

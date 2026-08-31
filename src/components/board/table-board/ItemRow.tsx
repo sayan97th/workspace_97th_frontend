@@ -1,3 +1,4 @@
+import type { BoardCellOption, BoardOptionActions } from "@/components/board/cells/OptionPicker";
 import CommentCountButton from "./CommentCountButton";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
 import EditableName from "./EditableName";
@@ -14,6 +15,10 @@ interface ItemRowProps {
   people: Person[];
   status_options: TableBoardOption[];
   priority_options: TableBoardOption[];
+  /** Passed straight through to the Status cell's {@link StatusCell}. See its own doc for each. */
+  status_full_options?: BoardCellOption[];
+  status_option_actions?: BoardOptionActions;
+  onCreateStatusOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
   is_open: boolean;
   is_selected: boolean;
   is_editing: boolean;
@@ -46,6 +51,9 @@ const ItemRow = ({
   people,
   status_options,
   priority_options,
+  status_full_options,
+  status_option_actions,
+  onCreateStatusOption,
   is_open,
   is_selected,
   is_editing,
@@ -165,6 +173,9 @@ const ItemRow = ({
           onPickStatus={onPickStatus}
           onCloseMenu={onCloseMenus}
           menu_top_offset_px={40}
+          full_options={status_full_options}
+          option_actions={status_option_actions}
+          onCreateOption={onCreateStatusOption}
         />
 
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5] text-[12.5px] text-[#4a5068]">
