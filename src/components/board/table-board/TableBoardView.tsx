@@ -4,6 +4,7 @@ import BoardGroupHeading from "./BoardGroupHeading";
 import BoardToolbar from "./BoardToolbar";
 import BoardTopBar from "./BoardTopBar";
 import FlatGroupTable from "./FlatGroupTable";
+import StickyHorizontalScroll from "./StickyHorizontalScroll";
 import TreeGroupTable from "./TreeGroupTable";
 import { computeItemProgress, useTableBoard } from "./useTableBoard";
 
@@ -34,7 +35,7 @@ const TableBoardView = () => {
         <>
           <BoardToolbar summary_label={summary_label} onAddItem={board.addTreeItem} />
 
-          <div className="overflow-x-auto px-7 pt-[26px]">
+          <StickyHorizontalScroll className="px-7 pt-[26px]" scrollbarClassName="bg-[#f4f6fb]/90 backdrop-blur-sm">
             <BoardGroupHeading label="Checkout revamp" count_label={tree_group_count_label} accent_color="#4f6bed" chevron_direction="down" className="mb-2.5" />
             <div className="rounded-t-lg">
               <TreeGroupTable board={board} rows={board.tree_items} group_color="#4f6bed" onAddItem={board.addTreeItem} getProgress={computeItemProgress} />
@@ -51,7 +52,7 @@ const TableBoardView = () => {
               onAddColumnOption={board.onAddColumnOption}
               makeColumnOptionActions={board.makeColumnOptionActions}
             />
-          </div>
+          </StickyHorizontalScroll>
         </>
       )}
     </div>

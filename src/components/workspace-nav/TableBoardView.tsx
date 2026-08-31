@@ -70,6 +70,7 @@ import { boardInvitationService } from "@/services/board-invitation.service";
 import { workspaceService } from "@/services/workspace.service";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
 import BoardGroupHeading from "@/components/board/table-board/BoardGroupHeading";
+import StickyHorizontalScroll from "@/components/board/table-board/StickyHorizontalScroll";
 import { tableBoardFontClassName } from "@/components/board/table-board/table-board-font";
 import TreeGroupTable, { type TableBoardTreeInteraction } from "@/components/board/table-board/TreeGroupTable";
 import type { BoardItem as TableBoardItem, BoardSubitem as TableBoardSubitem, DragParentId, TableBoardColumn } from "@/components/board/table-board/types";
@@ -2114,7 +2115,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </button>
           </div>
         ) : (
-          <div className={`${tableBoardFontClassName} overflow-x-auto`}>
+          <StickyHorizontalScroll className={tableBoardFontClassName} scrollbarClassName="bg-shell-bg/90 backdrop-blur-sm">
             {toolbar.groups.map((group) => (
               <div key={group.id} className="mb-[30px] last:mb-0">
                 <BoardGroupHeading
@@ -2141,7 +2142,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               <PlusIcon size={13} />
               Add new group
             </button>
-          </div>
+          </StickyHorizontalScroll>
         )
       ) : active_view_type === "kanban" ? (
         board_status_column ? (
