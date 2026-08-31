@@ -1,5 +1,6 @@
+import CommentCountButton from "./CommentCountButton";
 import EditableName from "./EditableName";
-import { CheckIcon, CommentIcon, DragHandleIcon } from "./icons";
+import { CheckIcon, DragHandleIcon } from "./icons";
 import OwnerCell from "./OwnerCell";
 import RailBar from "./RailBar";
 import StatusCell from "./StatusCell";
@@ -100,13 +101,7 @@ const SubitemRow = ({
       </div>
 
       <div className="flex h-10 items-center justify-center border-r border-[#eef0f7]">
-        <button
-          type="button"
-          onClick={onCommentClick}
-          className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]"
-        >
-          <CommentIcon />
-        </button>
+        <CommentCountButton comment_count={subitem.comment_count} onClick={onCommentClick} />
       </div>
 
       <OwnerCell

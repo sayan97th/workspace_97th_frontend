@@ -1,5 +1,5 @@
+import CommentCountButton from "./CommentCountButton";
 import { PEOPLE, PRIORITY_OPTIONS, TREE_GROUP_GRID_COLUMNS, getStatusBackground, getStatusForeground } from "./constants";
-import { CommentIcon } from "./icons";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
 import type { BoardSimpleItem } from "./types";
@@ -29,9 +29,7 @@ const FlatGroupTable = ({ items, onAddItem }: FlatGroupTableProps) => (
               <div className="text-[13.5px] font-medium text-[#1e2237]">{item.name}</div>
             </div>
             <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-              <button type="button" className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#2f9e78]">
-                <CommentIcon />
-              </button>
+              <CommentCountButton comment_count={item.comment_count} accent_color="#2f9e78" />
             </div>
             <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
               {owner ? (

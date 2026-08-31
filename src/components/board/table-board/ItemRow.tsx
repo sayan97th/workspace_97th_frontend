@@ -1,6 +1,7 @@
+import CommentCountButton from "./CommentCountButton";
 import { TREE_GROUP_GRID_COLUMNS } from "./constants";
 import EditableName from "./EditableName";
-import { ChevronDownIcon, ChevronRightIcon, CommentIcon, DragHandleIcon, PlusCircleIcon, CheckIcon } from "./icons";
+import { ChevronDownIcon, ChevronRightIcon, DragHandleIcon, PlusCircleIcon, CheckIcon } from "./icons";
 import OwnerCell from "./OwnerCell";
 import PriorityBadge from "./PriorityBadge";
 import ProgressBar from "./ProgressBar";
@@ -140,13 +141,7 @@ const ItemRow = ({
         </div>
 
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-          <button
-            type="button"
-            onClick={onCommentClick}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]"
-          >
-            <CommentIcon />
-          </button>
+          <CommentCountButton comment_count={item.comment_count} onClick={onCommentClick} />
         </div>
 
         <OwnerCell

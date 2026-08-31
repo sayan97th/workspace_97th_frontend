@@ -23,6 +23,8 @@ export interface BoardSubitem {
   owner_ids: string[];
   status: BoardStatus;
   date: string;
+  /** Total comments (including replies) on this subitem — powers the row chat icon's count badge. */
+  comment_count: number;
 }
 
 export interface BoardItem {
@@ -33,6 +35,8 @@ export interface BoardItem {
   date: string;
   priority: BoardPriority;
   subitems: BoardSubitem[];
+  /** Total comments (including replies) on this item — powers the row chat icon's count badge. */
+  comment_count: number;
 }
 
 export interface BoardSimpleItem {
@@ -43,6 +47,8 @@ export interface BoardSimpleItem {
   date: string;
   priority: BoardPriority;
   progress: number;
+  /** Total comments (including replies) on this item — powers the row chat icon's count badge. */
+  comment_count: number;
 }
 
 export type DragParentId = "ROOT" | string;

@@ -1436,6 +1436,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     owner_ids: subitem_member_column ? asStringArray(item.values[String(subitem_member_column.id)]) : [],
     status: subitem_status_column ? String(item.values[String(subitem_status_column.id)] ?? "") : "",
     date: subitem_date_column && typeof item.values[String(subitem_date_column.id)] === "string" ? formatDate(item.values[String(subitem_date_column.id)] as string) : "",
+    comment_count: item.comment_count,
   });
 
   const adaptTableItem = (item: BoardItemDto): TableBoardItem => ({
@@ -1446,6 +1447,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     date: board_date_column && typeof item.values[String(board_date_column.id)] === "string" ? formatDate(item.values[String(board_date_column.id)] as string) : "",
     priority: board_priority_column ? String(item.values[String(board_priority_column.id)] ?? "") : "",
     subitems: item.children.map(adaptTableSubitem),
+    comment_count: item.comment_count,
   });
 
   /** The Progress column: % of a row's direct subitems marked done, or (a row with none) whether its own `board_done_column` checkbox is set. Mirrors the design's own `computeItemProgress` fallback for a row with neither. */

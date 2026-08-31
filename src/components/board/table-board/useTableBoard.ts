@@ -157,7 +157,7 @@ export const useTableBoard = () => {
         current.map((item) =>
           item.id !== item_id
             ? item
-            : { ...item, subitems: [...item.subitems, { id: new_id, name: "New subitem", owner_ids: [], status: "", date: "" }] }
+            : { ...item, subitems: [...item.subitems, { id: new_id, name: "New subitem", owner_ids: [], status: "", date: "", comment_count: 0 }] }
         )
       );
       setOpenIds((current) => ({ ...current, [item_id]: true }));
@@ -169,14 +169,14 @@ export const useTableBoard = () => {
 
   const addTreeItem = useCallback(() => {
     const new_id = generateId("new-item");
-    setTreeItems((current) => [...current, { id: new_id, name: "New item", owner_ids: [], status: "", date: "", priority: "", subitems: [] }]);
+    setTreeItems((current) => [...current, { id: new_id, name: "New item", owner_ids: [], status: "", date: "", priority: "", subitems: [], comment_count: 0 }]);
     setEditingId(new_id);
     setDraftName("New item");
   }, [generateId]);
 
   const addFlatItem = useCallback(() => {
     const new_id = generateId("new-flat");
-    setFlatItems((current) => [...current, { id: new_id, name: "New item", owner_id: "", status: "", date: "", priority: "", progress: 0 }]);
+    setFlatItems((current) => [...current, { id: new_id, name: "New item", owner_id: "", status: "", date: "", priority: "", progress: 0, comment_count: 0 }]);
   }, [generateId]);
 
   const handleDragStart = useCallback((node_id: string, parent_id: DragParentId) => {

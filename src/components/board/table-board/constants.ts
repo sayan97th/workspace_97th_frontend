@@ -88,10 +88,11 @@ export const createInitialTreeItems = (): BoardItem[] => [
     status: "Working on it",
     date: "Sep 17, 2026",
     priority: "High",
+    comment_count: 4,
     subitems: [
-      { id: "i1-s1", name: "Card tokenization spike", owner_ids: ["AR"], status: "Done", date: "Sep 8, 2026" },
-      { id: "i1-s2", name: "Apple Pay / Google Pay sheet", owner_ids: ["LM", "DK", "MR"], status: "Working on it", date: "Sep 19, 2026" },
-      { id: "i1-s3", name: "Saved cards empty state", owner_ids: [], status: "", date: "" },
+      { id: "i1-s1", name: "Card tokenization spike", owner_ids: ["AR"], status: "Done", date: "Sep 8, 2026", comment_count: 2 },
+      { id: "i1-s2", name: "Apple Pay / Google Pay sheet", owner_ids: ["LM", "DK", "MR"], status: "Working on it", date: "Sep 19, 2026", comment_count: 0 },
+      { id: "i1-s3", name: "Saved cards empty state", owner_ids: [], status: "", date: "", comment_count: 0 },
     ],
   },
   {
@@ -101,11 +102,12 @@ export const createInitialTreeItems = (): BoardItem[] => [
     status: "Stuck",
     date: "Sep 24, 2026",
     priority: "Critical",
+    comment_count: 0,
     subitems: [
-      { id: "i2-s1", name: "Email-only identity step", owner_ids: ["LM", "JS"], status: "Working on it", date: "Sep 22, 2026" },
-      { id: "i2-s2", name: "Merge guest order on signup", owner_ids: ["DK"], status: "", date: "" },
-      { id: "i2-s3", name: "Fraud review threshold", owner_ids: [], status: "Stuck", date: "Sep 30, 2026" },
-      { id: "i2-s4", name: "Legal copy review", owner_ids: ["MR", "TP"], status: "", date: "" },
+      { id: "i2-s1", name: "Email-only identity step", owner_ids: ["LM", "JS"], status: "Working on it", date: "Sep 22, 2026", comment_count: 1 },
+      { id: "i2-s2", name: "Merge guest order on signup", owner_ids: ["DK"], status: "", date: "", comment_count: 0 },
+      { id: "i2-s3", name: "Fraud review threshold", owner_ids: [], status: "Stuck", date: "Sep 30, 2026", comment_count: 3 },
+      { id: "i2-s4", name: "Legal copy review", owner_ids: ["MR", "TP"], status: "", date: "", comment_count: 0 },
     ],
   },
   {
@@ -115,9 +117,10 @@ export const createInitialTreeItems = (): BoardItem[] => [
     status: "Working on it",
     date: "Oct 02, 2026",
     priority: "Medium",
+    comment_count: 1,
     subitems: [
-      { id: "i3-s1", name: "Provider evaluation", owner_ids: ["DK"], status: "Done", date: "Sep 5, 2026" },
-      { id: "i3-s2", name: "Fallback manual entry", owner_ids: ["AR", "MR"], status: "Working on it", date: "Oct 01, 2026" },
+      { id: "i3-s1", name: "Provider evaluation", owner_ids: ["DK"], status: "Done", date: "Sep 5, 2026", comment_count: 0 },
+      { id: "i3-s2", name: "Fallback manual entry", owner_ids: ["AR", "MR"], status: "Working on it", date: "Oct 01, 2026", comment_count: 0 },
     ],
   },
   {
@@ -127,13 +130,14 @@ export const createInitialTreeItems = (): BoardItem[] => [
     status: "Done",
     date: "Aug 29, 2026",
     priority: "Low",
+    comment_count: 0,
     subitems: [],
   },
 ];
 
 export const createInitialFlatItems = (): BoardSimpleItem[] => [
-  { id: "b1", name: "Post-purchase survey", owner_id: "MR", status: "Working on it", date: "Oct 09, 2026", priority: "Low", progress: 35 },
-  { id: "b2", name: "Churn interview round 2", owner_id: "AR", status: "", date: "", priority: "Medium", progress: 10 },
+  { id: "b1", name: "Post-purchase survey", owner_id: "MR", status: "Working on it", date: "Oct 09, 2026", priority: "Low", progress: 35, comment_count: 2 },
+  { id: "b2", name: "Churn interview round 2", owner_id: "AR", status: "", date: "", priority: "Medium", progress: 10, comment_count: 0 },
 ];
 
 export const INITIAL_OPEN_IDS: Record<string, boolean> = { i1: true, i3: true };
