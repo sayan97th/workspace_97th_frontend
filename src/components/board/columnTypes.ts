@@ -15,7 +15,12 @@ export type BoardColumnKind =
   | "number"
   | "checkbox"
   | "timeline"
-  | "dependency";
+  | "dependency"
+  | "label"
+  | "progress"
+  | "long_text"
+  | "phone"
+  | "email";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -28,6 +33,11 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   checkbox: { accent_color: "#17a2b8", glyph: "Ck" },
   timeline: { accent_color: "#ff642e", glyph: "Tl" },
   dependency: { accent_color: "#7f5347", glyph: "De" },
+  label: { accent_color: "#5b3fbd", glyph: "◇" },
+  progress: { accent_color: "#4f6bed", glyph: "%" },
+  long_text: { accent_color: "#e8b23a", glyph: "¶", glyph_text_color: "#3a2a00" },
+  phone: { accent_color: "#f2a53c", glyph: "☎", glyph_text_color: "#3a2a00" },
+  email: { accent_color: "#f2662a", glyph: "@" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */
@@ -49,9 +59,17 @@ export type AddableColumnType = {
 };
 
 /**
- * The ordered list of column types the Add-column menu offers. Note "Dropdown"
- * maps to the engine's multi-select `tags` kind — the board already renders and
- * filters `tags` as a colour-coded, multi-value picker, i.e. exactly a dropdown.
+ * The ordered list of column types the Add-column menu offers, in the order
+ * and grouping of monday.com's own picker. "Dropdown" and "Tags" both map to
+ * the engine's multi-select `tags` kind — the board already renders and
+ * filters `tags` as a colour-coded, multi-value picker, so the two menu
+ * entries just seed a differently-labeled column of that same kind (mirrors
+ * how "Status" and "Priority" both create ordinary `status`-kind columns,
+ * distinguished only by their label). "Label" maps to the `label` kind — a
+ * single-select pill like Status, but rendered as an outline badge instead of
+ * a filled one (see `BoardColumn::TYPE_LABEL` on the API side). "Dependency"
+ * isn't part of the design this menu was modeled on, but stays listed since
+ * it already powers the Gantt view's arrows/auto-reschedule.
  */
 export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
   {
@@ -67,8 +85,8 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     kind: "tags",
     label: "Dropdown",
     description: "Pick one or more labels from a list",
-    swatch: COLUMN_KIND_SWATCH.tags,
-    default_width: 200,
+    swatch: { accent_color: "#2f9e78", glyph: "▾" },
+    default_width: 180,
     section: "essentials",
     has_options: true,
   },
@@ -91,6 +109,33 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     has_options: false,
   },
   {
+    kind: "label",
+    label: "Label",
+    description: "A single outline badge from a colour-coded list",
+    swatch: COLUMN_KIND_SWATCH.label,
+    default_width: 132,
+    section: "essentials",
+    has_options: true,
+  },
+  {
+    kind: "progress",
+    label: "Progress",
+    description: "A manually-set 0-100% value",
+    swatch: COLUMN_KIND_SWATCH.progress,
+    default_width: 156,
+    section: "essentials",
+    has_options: false,
+  },
+  {
+    kind: "timeline",
+    label: "Timeline",
+    description: "A start and end date — drives the Gantt view",
+    swatch: COLUMN_KIND_SWATCH.timeline,
+    default_width: 190,
+    section: "essentials",
+    has_options: false,
+  },
+  {
     kind: "people",
     label: "People",
     description: "Assign board members",
@@ -109,20 +154,47 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     has_options: false,
   },
   {
+    kind: "long_text",
+    label: "Long text",
+    description: "A multi-line note",
+    swatch: COLUMN_KIND_SWATCH.long_text,
+    default_width: 240,
+    section: "essentials",
+    has_options: false,
+  },
+  {
+    kind: "phone",
+    label: "Phone",
+    description: "Store a phone number",
+    swatch: COLUMN_KIND_SWATCH.phone,
+    default_width: 150,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "email",
+    label: "Email",
+    description: "Store an email address",
+    swatch: COLUMN_KIND_SWATCH.email,
+    default_width: 190,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "tags",
+    label: "Tags",
+    description: "Colour-coded hashtag labels",
+    swatch: { accent_color: "#12c46b", glyph: "#" },
+    default_width: 180,
+    section: "super_useful",
+    has_options: true,
+  },
+  {
     kind: "checkbox",
     label: "Checkbox",
     description: "A simple done / not-done toggle",
     swatch: COLUMN_KIND_SWATCH.checkbox,
     default_width: 110,
-    section: "super_useful",
-    has_options: false,
-  },
-  {
-    kind: "timeline",
-    label: "Timeline",
-    description: "A start and end date — drives the Gantt view",
-    swatch: COLUMN_KIND_SWATCH.timeline,
-    default_width: 190,
     section: "super_useful",
     has_options: false,
   },

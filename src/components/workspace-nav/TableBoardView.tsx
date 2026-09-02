@@ -755,13 +755,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const group_by_options: BoardGroupByOption<BoardItemDto>[] = useMemo(() => {
     const options: BoardGroupByOption<BoardItemDto>[] = [{ id: BOARD_DEFAULT_GROUP_BY_ID, label: "Default tables" }];
     item_columns
-      .filter((c) => c.type === "status" && c.config?.options?.length)
+      .filter((c) => (c.type === "status" || c.type === "label") && c.config?.options?.length)
       .forEach((c) => {
         const option_by_id = new Map((c.config?.options ?? []).map((o) => [o.id, o]));
         options.push({
           id: String(c.id),
           label: `By ${c.label}`,
-          swatch: COLUMN_KIND_SWATCH.status,
+          swatch: COLUMN_KIND_SWATCH[c.type],
           getGroupKey: (row) => String(row.values[String(c.id)] ?? "none"),
           getGroupLabel: (key) => option_by_id.get(key)?.label ?? "No status",
           getGroupColor: (key) => option_by_id.get(key)?.color ?? "#c4c4c4",
@@ -773,7 +773,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const quick_filter_facets: BoardQuickFilterFacet<BoardItemDto>[] = useMemo(
     () =>
       item_columns
-        .filter((c) => (c.type === "status" || c.type === "tags") && c.config?.options?.length)
+        .filter((c) => (c.type === "status" || c.type === "tags" || c.type === "label") && c.config?.options?.length)
         .map((c) => ({
           id: String(c.id),
           label: c.label,

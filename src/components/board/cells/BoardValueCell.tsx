@@ -151,6 +151,21 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
           pill_style={pill_style}
         />
       );
+    // A single-select colored pill like Status, but always rendered as an
+    // outline badge unless the caller explicitly asks for a filled one — see
+    // `BoardColumn::TYPE_LABEL` on the API side.
+    case "label":
+      return (
+        <StatusCell
+          column={column}
+          value={value}
+          onCommit={onCommit}
+          onAddOption={onAddOption}
+          onEditOptions={onEditOptions}
+          bleed={bleed}
+          pill_style={pill_style ?? "outline"}
+        />
+      );
     case "tags":
       return (
         <DropdownCell
@@ -163,6 +178,14 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
       );
     case "people":
       return <PeopleCell value={value} people={people} onCommit={onCommit} />;
+    case "progress":
+      return <ProgressInputCell value={value} onCommit={onCommit} />;
+    case "long_text":
+      return <LongTextCell value={value} onCommit={onCommit} />;
+    case "phone":
+      return <TextInputCell value={value} onCommit={onCommit} input_type="tel" />;
+    case "email":
+      return <TextInputCell value={value} onCommit={onCommit} input_type="email" />;
     case "text":
     default:
       return <TextInputCell value={value} onCommit={onCommit} />;
@@ -179,7 +202,9 @@ const TextInputCell: React.FC<{
   value: BoardCellValue;
   onCommit: (value: BoardCellValue) => void;
   numeric?: boolean;
-}> = ({ value, onCommit, numeric }) => {
+  /** Native `<input>` type — `"tel"`/`"email"` for the Phone/Email column kinds, matching the browser's own keyboard/validation hints without a separate cell implementation. */
+  input_type?: "text" | "tel" | "email";
+}> = ({ value, onCommit, numeric, input_type = "text" }) => {
   const [is_editing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const input_ref = useRef<HTMLInputElement>(null);
@@ -210,6 +235,7 @@ const TextInputCell: React.FC<{
     return (
       <input
         ref={input_ref}
+        type={numeric ? "text" : input_type}
         value={draft}
         inputMode={numeric ? "decimal" : undefined}
         onChange={(event) => setDraft(event.target.value)}
@@ -241,6 +267,71 @@ const TextInputCell: React.FC<{
         <span className="text-[12.5px] text-transparent">—</span>
       )}
     </EditableSurface>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Long text (multi-line — same family as Text, but edits in a textarea)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const LongTextCell: React.FC<{
+  value: BoardCellValue;
+  onCommit: (value: BoardCellValue) => void;
+}> = ({ value, onCommit }) => {
+  const popover = usePopoverAnchor();
+  const [draft, setDraft] = useState("");
+  const textarea_ref = useRef<HTMLTextAreaElement>(null);
+
+  const openEditor = (event: React.MouseEvent) => {
+    setDraft(value == null ? "" : String(value));
+    popover.open(event);
+  };
+
+  useEffect(() => {
+    if (popover.is_open) textarea_ref.current?.focus();
+  }, [popover.is_open]);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed !== (value == null ? "" : String(value))) onCommit(trimmed === "" ? null : trimmed);
+    popover.close();
+  };
+
+  return (
+    <>
+      <EditableSurface onClick={openEditor}>
+        {value != null && String(value) !== "" ? (
+          <span className="min-w-0 truncate text-[12.5px] text-boardtree-text-secondary">{String(value)}</span>
+        ) : (
+          <span className="text-[12.5px] text-transparent">—</span>
+        )}
+      </EditableSurface>
+      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={commit} align="start" width={280}>
+        <div className="flex flex-col gap-2 p-2.5" onClick={(event) => event.stopPropagation()}>
+          <textarea
+            ref={textarea_ref}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.preventDefault();
+                popover.close();
+              }
+            }}
+            rows={5}
+            placeholder="Write a note…"
+            className="w-full resize-none rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 py-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent"
+          />
+          <button
+            type="button"
+            onClick={commit}
+            className="self-end rounded-[6px] bg-boardtree-accent px-2.5 py-1 text-[11.5px] font-semibold text-white"
+          >
+            Save
+          </button>
+        </div>
+      </BoardPopover>
+    </>
   );
 };
 
@@ -603,6 +694,75 @@ export const BoardProgressCell: React.FC<{ percent: number | null }> = ({ percen
         {percent}%
       </span>
     </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Progress (manual — a plain 0-100 number the user types, distinct from the
+// board's built-in, always-computed Progress column that reuses BoardProgressCell above)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const clampPercent = (raw: number): number => Math.max(0, Math.min(100, Math.round(raw)));
+
+const ProgressInputCell: React.FC<{
+  value: BoardCellValue;
+  onCommit: (value: BoardCellValue) => void;
+}> = ({ value, onCommit }) => {
+  const [is_editing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const input_ref = useRef<HTMLInputElement>(null);
+  const percent = typeof value === "number" ? clampPercent(value) : null;
+
+  useEffect(() => {
+    if (is_editing) input_ref.current?.focus();
+  }, [is_editing]);
+
+  const startEditing = (event: React.MouseEvent) => {
+    event.stopPropagation();
+    setDraft(percent === null ? "" : String(percent));
+    setIsEditing(true);
+  };
+
+  const commit = () => {
+    setIsEditing(false);
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (percent !== null) onCommit(null);
+      return;
+    }
+    const parsed = Number(trimmed);
+    if (Number.isNaN(parsed)) return; // ignore non-numeric input
+    const next = clampPercent(parsed);
+    if (next !== percent) onCommit(next);
+  };
+
+  if (is_editing) {
+    return (
+      <input
+        ref={input_ref}
+        value={draft}
+        inputMode="decimal"
+        onChange={(event) => setDraft(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setIsEditing(false);
+          }
+        }}
+        onBlur={commit}
+        className="h-full w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 text-center text-[12.5px] text-boardtree-text outline-none"
+      />
+    );
+  }
+
+  return (
+    <EditableSurface onClick={startEditing}>
+      <BoardProgressCell percent={percent} />
+    </EditableSurface>
   );
 };
 
