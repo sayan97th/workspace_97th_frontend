@@ -1,0 +1,17 @@
+/* Styles scoped to the /test/task-board sandbox view. Not imported anywhere else. */
+
+.task-board-root {
+  font-family: var(--task-board-font-sans), system-ui, sans-serif;
+}
+
+.task-board-root .font-mono {
+  font-family: var(--task-board-font-mono), ui-monospace, monospace;
+}
+
+.task-board-scroll {
+  scrollbar-width: none;
+}
+
+.task-board-scroll::-webkit-scrollbar {
+  display: none;
+}
