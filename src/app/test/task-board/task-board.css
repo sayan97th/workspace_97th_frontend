@@ -9,9 +9,24 @@
 }
 
 .task-board-scroll {
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: #c4cadb transparent;
 }
 
 .task-board-scroll::-webkit-scrollbar {
-  display: none;
+  width: 9px;
+  height: 9px;
+}
+
+.task-board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.task-board-scroll::-webkit-scrollbar-thumb {
+  background: #c4cadb;
+  border-radius: 5px;
+}
+
+.task-board-scroll::-webkit-scrollbar-thumb:hover {
+  background: #a9b0c8;
 }

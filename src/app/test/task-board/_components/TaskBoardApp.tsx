@@ -1,18 +1,16 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import { useTaskBoard } from "../_hooks/useTaskBoard";
 import { computeNameColWidth } from "../_lib/layout_utils";
 import BoardHeader from "./toolbar/BoardHeader";
 import BoardToolbar from "./toolbar/BoardToolbar";
-import BoardScrollbar from "./toolbar/BoardScrollbar";
 import GroupSection from "./group/GroupSection";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 
 export default function TaskBoardApp() {
   const { state, actions, summary_text } = useTaskBoard();
-  const scroll_ref = useRef<HTMLDivElement | null>(null);
 
   const name_col_width = useMemo(() => {
     const all_names = state.groups.flatMap((g) => g.items.map((it) => it.name));
@@ -24,8 +22,8 @@ export default function TaskBoardApp() {
       <BoardHeader board_title="Q3 Delivery Board" />
       <BoardToolbar summary_text={summary_text} onNewItem={() => state.groups[0] && actions.addItem(state.groups[0].key)} />
 
-      <div className="relative min-h-0 flex-1">
-        <div ref={scroll_ref} className="task-board-scroll h-full overflow-auto px-7 pb-[60px]">
+      <div className="min-h-0 flex-1">
+        <div className="task-board-scroll h-full overflow-auto px-7 pb-[60px]">
           <div className="h-[26px]" />
           {state.groups.map((group, index) => (
             <GroupSection
@@ -47,7 +45,6 @@ export default function TaskBoardApp() {
             Add new group
           </button>
         </div>
-        <BoardScrollbar scroll_ref={scroll_ref} />
       </div>
 
       {state.label_editor_kind === "status" && (
