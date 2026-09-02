@@ -5,6 +5,8 @@ import type { TaskBoardGroup, TaskBoardItem, TaskBoardNode } from "../../_types/
 import { subGridTemplate } from "../../_lib/layout_utils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
+import TreeBar from "./TreeBar";
+import TreeHook from "./TreeHook";
 
 interface SubitemRowProps {
   sub: TaskBoardNode;
@@ -64,10 +66,9 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         )}
       </div>
 
-      <div className="relative w-[30px] flex-none">
-        <div className="absolute -left-[1.5px] -top-px h-[21px] w-[31.5px] rounded-bl-[9px] border-b-[1.5px] border-l-[1.5px]" style={{ borderColor: group.color }} />
-      </div>
-      <div className="w-[5px] flex-none" style={{ background: group.color }} />
+      <TreeBar variant="thin" color={group.color} />
+      <TreeHook color={group.color} />
+      <TreeBar variant="thick" color={group.color} />
 
       <div
         className="flex-1 border-r border-b border-[#eef0f7]"

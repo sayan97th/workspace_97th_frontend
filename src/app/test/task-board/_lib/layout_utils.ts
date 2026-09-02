@@ -39,6 +39,7 @@ export function subMinWidth(
   sub_base_columns: ColumnDef[],
   sub_custom_columns: ColumnDef[]
 ): number {
-  const sub_total = 30 + 5 + 34 + sub_name_col_width + 52 + columnsWidthSum(sub_base_columns) + columnsWidthSum(sub_custom_columns) + 44;
+  // 5 (trunk) + 30 (hook) + 5 (thick bar) precede the 34/52-leading content grid.
+  const sub_total = 5 + 30 + 5 + 34 + sub_name_col_width + 52 + columnsWidthSum(sub_base_columns) + columnsWidthSum(sub_custom_columns) + 44;
   return Math.max(main_min_width, sub_total);
 }

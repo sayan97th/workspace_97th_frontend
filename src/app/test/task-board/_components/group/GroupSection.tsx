@@ -9,6 +9,7 @@ import ItemRow from "../rows/ItemRow";
 import SubitemHeaderRow from "../rows/SubitemHeaderRow";
 import SubitemRow from "../rows/SubitemRow";
 import AddSubitemRow from "../rows/AddSubitemRow";
+import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
 
@@ -50,8 +51,10 @@ export default function GroupSection({ group, group_index, group_count, name_col
                     {sorted_subs.map((sub) => (
                       <SubitemRow key={sub.id} sub={sub} item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
                     ))}
-                    <AddSubitemRow min_width={sub_min_width} accent={group.color} onAdd={() => actions.addSubitem(item.id)} />
-                    <div style={{ minWidth: sub_min_width, height: 14 }} />
+                    <AddSubitemRow min_width={sub_min_width} color={group.color} tint={group.tint} onAdd={() => actions.addSubitem(item.id)} />
+                    <div className="flex items-stretch" style={{ minWidth: sub_min_width, height: 16 }}>
+                      <TreeBar variant="gap" color={group.color} tint={group.tint} />
+                    </div>
                   </>
                 )}
               </Fragment>

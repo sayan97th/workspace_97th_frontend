@@ -5,6 +5,7 @@ import type { TaskBoardGroup, TaskBoardItem } from "../../_types/board.types";
 import { mainGridTemplate } from "../../_lib/layout_utils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
+import TreeBar from "./TreeBar";
 
 interface ItemRowProps {
   item: TaskBoardItem;
@@ -70,7 +71,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         )}
       </div>
 
-      <div className="w-[5px] flex-none" style={{ background: group.color }} />
+      <TreeBar variant="thick" color={group.color} />
 
       <div className="flex-1 border-b border-[#eceef5]" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">

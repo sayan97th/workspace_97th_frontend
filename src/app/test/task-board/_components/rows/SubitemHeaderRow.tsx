@@ -5,6 +5,7 @@ import type { TaskBoardGroup, TaskBoardItem } from "../../_types/board.types";
 import { subGridTemplate } from "../../_lib/layout_utils";
 import ColumnHeaderCell from "../group/ColumnHeaderCell";
 import ColumnPicker from "../menus/ColumnPicker";
+import TreeBar from "./TreeBar";
 
 interface SubitemHeaderRowProps {
   item: TaskBoardItem;
@@ -24,8 +25,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
 
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
+      <TreeBar variant="thin" color={group.color} />
       <div className="w-[30px] flex-none" />
-      <div className="w-[5px] flex-none" style={{ background: group.color, marginTop: 8 }} />
+      <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
       <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-[#dfe3ef] bg-[#f7f8fc]" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
         <div className="h-9 border-r border-[#e7eaf3]" />
 
