@@ -4,21 +4,10 @@ export const MONTH_SHORT_NAMES = [
 
 export const WEEKDAY_SHORT_NAMES = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-/** Parses the board's stored date string (e.g. "Sep 17, 2026") into a Date, or null when empty/unparseable. */
-export const parseBoardDate = (value: string): Date | null => {
-  if (!value.trim()) return null;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-/** Formats a Date back into the board's stored date string shape, matching the existing mock data (e.g. "Sep 17, 2026"). */
-export const formatBoardDate = (date: Date): string =>
-  date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-
 export const formatInputDate = (date: Date): string =>
   `${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}/${date.getFullYear()}`;
 
-/** Parses the menu's editable MM/DD/YYYY text field into a Date, or null while the text isn't a complete date yet. */
+/** Parses the calendar panel's editable MM/DD/YYYY text field into a Date, or null while the text isn't a complete date yet. */
 export const parseInputDate = (value: string): Date | null => {
   const match = value.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (!match) return null;

@@ -60,6 +60,12 @@ export const ChevronRightIcon: React.FC<IconProps> = ({ className, size = 11 }) 
   </svg>
 );
 
+export const ChevronLeftIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 12 12" fill="none">
+    <path d="M7.5 3 L4.5 6 L7.5 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const ChevronDownIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path d="M3 5.5 L8 10.5 L13 5.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />

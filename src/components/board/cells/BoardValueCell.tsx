@@ -7,7 +7,7 @@ import ProductTag, { OverflowBadge } from "../ProductTag";
 import PersonAvatarStack from "../PersonAvatarStack";
 import PersonAvatar from "../PersonAvatar";
 import BoardPopover from "../toolbar/BoardPopover";
-import DateCalendarPanel from "../table-board/DateCalendarPanel";
+import DateCalendarPanel from "./DateCalendarPanel";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
 import StatusOptionGrid from "./StatusOptionGrid";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, ClockIcon } from "@/icons/workspace-icons";
 import {
   MONTH_SHORT_NAMES,
   WEEKDAY_SHORT_NAMES,
@@ -8,8 +9,7 @@ import {
   formatInputDate,
   isSameDay,
   parseInputDate,
-} from "./dateUtils";
-import { ChevronLeftIcon, ChevronRightIcon, ClockIcon } from "./icons";
+} from "./dateCalendarUtils";
 
 export interface DateCalendarPanelProps {
   /** The currently selected date, or `null` when unset. */
@@ -21,10 +21,8 @@ export interface DateCalendarPanelProps {
 const YEAR_OPTIONS = Array.from({ length: 41 }, (_, index) => new Date().getFullYear() - 20 + index);
 
 /**
- * The month/year selectors + day grid shared by every "Date"-type cell across
- * the table board — the tree table's fixed Date column ({@link DateMenu})
- * and any dynamically-added Date column (`BoardValueCell`'s date editor).
- * Each caller supplies its own positioning/chrome/outside-click handling and
+ * The month/year selectors + day grid behind `BoardValueCell`'s date editor.
+ * The caller supplies its own positioning/chrome/outside-click handling and
  * mounts this fresh on open, so it owns no state beyond what's needed to
  * navigate the calendar before a pick is committed.
  */

@@ -19,11 +19,10 @@ export type StatusOptionGridProps = {
 
 /**
  * The Monday-style Status picker: a grid of solid colour pills (a blank grey
- * one first, for "no status") plus an "Edit Labels" footer. Shared by the
- * fixed Status column ({@link "../table-board/StatusMenu"}) and any
- * dynamically-added Status column ({@link "./BoardValueCell"}'s own
- * `StatusCell`), so every Status cell across the app renders identically
- * regardless of which column it belongs to.
+ * one first, for "no status") plus an "Edit Labels" footer. Shared by every
+ * Status column across the app ({@link "./BoardValueCell"}'s own
+ * `StatusCell`), so every Status cell renders identically regardless of
+ * which column it belongs to.
  */
 const StatusOptionGrid: React.FC<StatusOptionGridProps> = ({
   options,
