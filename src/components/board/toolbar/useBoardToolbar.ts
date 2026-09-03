@@ -93,6 +93,11 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       ...current,
       { id: createId(), column_id: null, condition: null, value: "" },
     ]);
+  const addAdvancedFilterRowForColumn = (column_id: string) =>
+    setAdvancedFilterRows((current) => [
+      ...current,
+      { id: createId(), column_id, condition: null, value: "" },
+    ]);
   const removeAdvancedFilterRow = (id: string) =>
     setAdvancedFilterRows((current) => current.filter((row) => row.id !== id));
   const updateAdvancedFilterRow = (id: string, patch: Partial<BoardAdvancedFilterRow>) =>
@@ -215,6 +220,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     setFilterMode,
     advanced_filter_rows,
     addAdvancedFilterRow,
+    addAdvancedFilterRowForColumn,
     removeAdvancedFilterRow,
     updateAdvancedFilterRow,
     clearAdvancedFilters,

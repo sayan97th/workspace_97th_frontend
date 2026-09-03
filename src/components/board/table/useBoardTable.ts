@@ -67,6 +67,16 @@ export interface UseBoardTableConfig {
   onDeleteNode?: (node_id: string) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
+  /** Column-header menu — see `ColumnMenu.tsx`. Each acts on an *existing* column id, so it's called alongside the local mutation (no round trip needed first), mirroring `onRenameGroup`/`onRemoveGroup`. */
+  onRenameColumn?: (group_key: string, scope: ColumnScope, column_id: string, title: string) => void;
+  onDeleteColumn?: (group_key: string, scope: ColumnScope, column_id: string) => void;
+  onUpdateColumnSettings?: (
+    group_key: string,
+    scope: ColumnScope,
+    column_id: string,
+    patch: { width?: number; hideable?: boolean; pinnable?: boolean }
+  ) => void;
+  onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
 }
 
 export interface BoardTableState {
@@ -565,14 +575,20 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const setPickerQuery = useCallback((value: string) => setState((s) => ({ ...s, picker_query: value })), []);
 
   const addColumn = useCallback(
-    (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => {
+    (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
       setState((s) => {
         const list_key = columnListKey(scope);
         const id = nextId("col");
         const column: ColumnDef = { id, title: label, kind, width: default_width };
         return {
           ...s,
-          groups: s.groups.map((g) => (g.key !== group_key ? g : { ...g, [list_key]: [...(g[list_key as keyof BoardTableGroup] as ColumnDef[]), column] })),
+          groups: s.groups.map((g) => {
+            if (g.key !== group_key) return g;
+            const current = g[list_key as keyof BoardTableGroup] as ColumnDef[];
+            const insert_at = after_column_id ? current.findIndex((c) => c.id === after_column_id) : -1;
+            const next = insert_at < 0 ? current.concat(column) : [...current.slice(0, insert_at + 1), column, ...current.slice(insert_at + 1)];
+            return { ...g, [list_key]: next };
+          }),
           open_picker_key: null,
         };
       });
@@ -596,6 +612,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         }),
       };
     });
+    config_ref.current.onRenameColumn?.(group_key, scope, column_id, title);
   }, []);
 
   const renameItemTitle = useCallback((group_key: string, scope: ColumnScope, title: string) => {
@@ -614,21 +631,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         open_column_menu_key: null,
       };
     });
+    config_ref.current.onDeleteColumn?.(group_key, scope, column_id);
   }, []);
 
   const duplicateColumn = useCallback(
     (group_key: string, scope: ColumnScope, column_id: string) => {
       setState((s) => {
         const list_key = columnListKey(scope);
+        const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
         return {
           ...s,
           groups: s.groups.map((g) => {
             if (g.key !== group_key) return g;
-            const list = g[list_key as keyof BoardTableGroup] as ColumnDef[];
-            const original = list.find((c) => c.id === column_id);
+            const base = g[base_key as keyof BoardTableGroup] as ColumnDef[];
+            const custom = g[list_key as keyof BoardTableGroup] as ColumnDef[];
+            const original = base.find((c) => c.id === column_id) ?? custom.find((c) => c.id === column_id);
             if (!original) return g;
             const copy: ColumnDef = { ...original, id: nextId("col"), title: `${original.title} (copy)` };
-            return { ...g, [list_key]: list.concat(copy) };
+            return { ...g, [list_key]: custom.concat(copy) };
           }),
           open_column_menu_key: null,
         };
@@ -636,6 +656,61 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     },
     [nextId]
   );
+
+  const changeColumnKind = useCallback((group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => {
+    setState((s) => {
+      const list_key = columnListKey(scope);
+      const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
+      const patch = (c: ColumnDef) => (c.id === column_id ? { ...c, kind, width: default_width, options: undefined } : c);
+      return {
+        ...s,
+        groups: s.groups.map((g) =>
+          g.key !== group_key
+            ? g
+            : {
+                ...g,
+                [base_key]: (g[base_key as keyof BoardTableGroup] as ColumnDef[]).map(patch),
+                [list_key]: (g[list_key as keyof BoardTableGroup] as ColumnDef[]).map(patch),
+              }
+        ),
+        open_column_menu_key: null,
+      };
+    });
+    config_ref.current.onChangeColumnKind?.(group_key, scope, column_id, kind, default_width);
+  }, []);
+
+  const updateColumnSettings = useCallback(
+    (group_key: string, scope: ColumnScope, column_id: string, patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => {
+      setState((s) => {
+        if (patch.width == null) return s;
+        const list_key = columnListKey(scope);
+        const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
+        const apply = (c: ColumnDef) => (c.id === column_id ? { ...c, width: patch.width! } : c);
+        return {
+          ...s,
+          groups: s.groups.map((g) =>
+            g.key !== group_key
+              ? g
+              : {
+                  ...g,
+                  [base_key]: (g[base_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
+                  [list_key]: (g[list_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
+                }
+          ),
+        };
+      });
+      config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
+    },
+    []
+  );
+
+  const collapseAllGroups = useCallback(() => {
+    setState((s) => ({
+      ...s,
+      collapsed_groups: Object.fromEntries(s.groups.map((g) => [g.key, true])),
+      open_column_menu_key: null,
+    }));
+  }, []);
 
   const setSort = useCallback((scope_key: string, column_id: string, direction: "asc" | "desc" | null) => {
     setState((s) => ({ ...s, sort: direction ? { scope_key, column_id, direction } : null, open_column_menu_key: null }));
@@ -805,6 +880,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameItemTitle,
       deleteColumn,
       duplicateColumn,
+      changeColumnKind,
+      updateColumnSettings,
+      collapseAllGroups,
       setSort,
       openCellMenu,
       closeCellMenu,
@@ -838,7 +916,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, deleteColumn, duplicateColumn, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink,

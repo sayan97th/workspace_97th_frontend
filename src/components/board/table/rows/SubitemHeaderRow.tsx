@@ -14,14 +14,15 @@ interface SubitemHeaderRowProps {
   min_width: number;
   state: BoardTableState;
   actions: BoardTableActions;
+  onRequestColumnFilter?: (column_id: string) => void;
+  onRequestGroupByColumn?: (column_id: string) => void;
 }
 
-export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions }: SubitemHeaderRowProps) {
+export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: SubitemHeaderRowProps) {
   const scope_key_of = (column_id: string) => `sub|${item.id}|${column_id}`;
   const sort_scope = `sub:${item.id}`;
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const picker_key = `pick:sub|${item.id}`;
-  const custom_ids = new Set(group.sub_custom_columns.map((c) => c.id));
 
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
@@ -45,6 +46,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
           onCloseMenu={actions.closeColumnMenu}
           onRename={(title) => actions.renameItemTitle(group.key, "sub", title)}
           onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
+          onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => {}}
           onDelete={() => {}}
         />
@@ -57,7 +59,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            can_delete={custom_ids.has(col.id)}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options }}
+            can_delete={true}
+            is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}
             is_hovered={state.hover_head_key === scope_key_of(col.id)}
@@ -67,7 +71,22 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onCloseMenu={actions.closeColumnMenu}
             onRename={(title) => actions.renameColumn(group.key, "sub", col.id, title)}
             onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
+            onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "sub", col.id, patch)}
+            onEditLabels={
+              col.kind === "status"
+                ? () => actions.openLabelEditor("status")
+                : col.kind === "label" || col.kind === "dropdown"
+                ? () => actions.openLabelEditor("label")
+                : col.kind === "tags"
+                ? () => actions.openTagEditor()
+                : undefined
+            }
+            onRequestFilter={() => onRequestColumnFilter?.(col.id)}
+            onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
+            onCollapseAll={actions.collapseAllGroups}
             onDuplicate={() => actions.duplicateColumn(group.key, "sub", col.id)}
+            onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "sub", kind, label, width, col.id)}
+            onChangeType={(kind, width) => actions.changeColumnKind(group.key, "sub", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "sub", col.id)}
           />
         ))}

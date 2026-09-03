@@ -47,10 +47,42 @@ export interface BoardTableProps {
    * adding into `custom_columns` instead).
    */
   onAddColumn?: (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => Promise<void>;
+  /**
+   * Column-header menu — "Duplicate column"/"Add column to the right" both
+   * create a *new* column id, so they follow this same handshake (skip local
+   * mutation, let the resync effect off `config.initial_groups` bring the new
+   * column in once the caller's own list re-renders) rather than the
+   * config-callback-inside-hook pattern `onRenameColumn`/`onDeleteColumn`/
+   * `onUpdateColumnSettings`/`onChangeColumnKind` use (see `UseBoardTableConfig`).
+   */
+  onDuplicateColumn?: (group_key: string, scope: ColumnScope, column_id: string) => Promise<void>;
+  onAddColumnRight?: (
+    group_key: string,
+    scope: ColumnScope,
+    after_column_id: string,
+    kind: ColumnKind,
+    label: string,
+    default_width: number
+  ) => Promise<void>;
+  /** Column menu's "Filter"/"Group by" rows — bridges to the board's toolbar (a sibling of `BoardTable`, not a descendant), which owns Filter/Sort/GroupBy state. Omitted, those rows still render but are no-ops. */
+  onRequestColumnFilter?: (column_id: string) => void;
+  onRequestGroupByColumn?: (column_id: string) => void;
 }
 
 /** The "Main table" board view: a Monday-style grid of groups, tree rows and subitems with rich per-column cell editing. Mirrors `BoardKanban`'s role as the generic shell for its own view kind. */
-export default function BoardTable({ board_title = "Main table", embedded = false, config, onCreateItem, onCreateSubitem, onCreateGroup, onAddColumn }: BoardTableProps) {
+export default function BoardTable({
+  board_title = "Main table",
+  embedded = false,
+  config,
+  onCreateItem,
+  onCreateSubitem,
+  onCreateGroup,
+  onAddColumn,
+  onDuplicateColumn,
+  onAddColumnRight,
+  onRequestColumnFilter,
+  onRequestGroupByColumn,
+}: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
 
   const addItemReal = useCallback(
@@ -78,16 +110,36 @@ export default function BoardTable({ board_title = "Main table", embedded = fals
   }, [onCreateGroup, base_actions]);
 
   const addColumnReal = useCallback(
-    (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => {
+    (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
+      if (after_column_id) {
+        if (!onAddColumnRight) return base_actions.addColumn(group_key, scope, kind, label, default_width, after_column_id);
+        void onAddColumnRight(group_key, scope, after_column_id, kind, label, default_width);
+        return;
+      }
       if (!onAddColumn) return base_actions.addColumn(group_key, scope, kind, label, default_width);
       void onAddColumn(group_key, scope, kind, label, default_width);
     },
-    [onAddColumn, base_actions]
+    [onAddColumn, onAddColumnRight, base_actions]
+  );
+
+  const duplicateColumnReal = useCallback(
+    (group_key: string, scope: ColumnScope, column_id: string) => {
+      if (!onDuplicateColumn) return base_actions.duplicateColumn(group_key, scope, column_id);
+      void onDuplicateColumn(group_key, scope, column_id);
+    },
+    [onDuplicateColumn, base_actions]
   );
 
   const actions = useMemo(
-    () => ({ ...base_actions, addItem: addItemReal, addSubitem: addSubitemReal, addGroup: addGroupReal, addColumn: addColumnReal }),
-    [base_actions, addItemReal, addSubitemReal, addGroupReal, addColumnReal]
+    () => ({
+      ...base_actions,
+      addItem: addItemReal,
+      addSubitem: addSubitemReal,
+      addGroup: addGroupReal,
+      addColumn: addColumnReal,
+      duplicateColumn: duplicateColumnReal,
+    }),
+    [base_actions, addItemReal, addSubitemReal, addGroupReal, addColumnReal, duplicateColumnReal]
   );
 
   const name_col_width = useMemo(() => {
@@ -107,6 +159,8 @@ export default function BoardTable({ board_title = "Main table", embedded = fals
           name_col_width={name_col_width}
           state={state}
           actions={actions}
+          onRequestColumnFilter={onRequestColumnFilter}
+          onRequestGroupByColumn={onRequestGroupByColumn}
         />
       ))}
       <button

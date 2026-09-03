@@ -838,7 +838,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleAddColumn = async (
     type: Pick<AddableColumnType, "kind" | "label" | "default_width">,
     scope: BoardColumnScope = "item",
-    config?: BoardColumnConfig
+    config?: BoardColumnConfig,
+    position?: number
   ) => {
     if (view_tabs.active_view_id == null) return;
     // `key` must be unique per tab and match `^[a-z0-9_]+$` — the kind plus a
@@ -851,6 +852,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       scope,
       width: type.default_width,
       config,
+      position,
     });
     setColumns((current) => [...current, created]);
   };
@@ -865,6 +867,45 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ever needing to know the engine's own type vocabulary. ──
   const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
     handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item");
+
+  // ── Column-header menu — "Duplicate column"/"Add column to the right" both
+  // create a new column id, so (like `handleAddTableColumn` above) they await
+  // the real API call and let the resync effect off `table_config.initial_groups`
+  // bring the new column in, rather than mutating `BoardTable`'s local state. ──
+  const handleDuplicateTableColumn = async (_group_key: string, _scope: TableColumnScope, column_id: string) => {
+    const created = await boardContentService.duplicateColumn(board_id, Number(column_id), false);
+    setColumns((current) => [...current, created]);
+  };
+
+  const handleAddColumnRight = async (
+    _group_key: string,
+    scope: TableColumnScope,
+    after_column_id: string,
+    kind: TableColumnKind,
+    label: string,
+    width: number
+  ) => {
+    const after = columns_by_id[after_column_id];
+    await handleAddColumn(
+      { kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width },
+      scope === "sub" ? "subitem" : "item",
+      undefined,
+      after ? after.position + 1 : undefined
+    );
+  };
+
+  // ── Column-header menu's "Filter"/"Group by" rows — bridge into the
+  // toolbar's own Filter/Group-by state, which `BoardTable` (a sibling of the
+  // toolbar, not a descendant) has no access to on its own. ──
+  const handleRequestColumnFilter = (column_id: string) => {
+    toolbar.setFilterMode("advanced");
+    toolbar.addAdvancedFilterRowForColumn(column_id);
+    toolbar.openPanel("filter");
+  };
+
+  const handleRequestGroupByColumn = (column_id: string) => {
+    toolbar.setGroupByOptionId(column_id);
+  };
 
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
@@ -1305,6 +1346,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .deleteGroup(board_id, Number(group_key))
           .then(() => setGroups((current) => current.filter((g) => g.id !== Number(group_key))));
       },
+      onRenameColumn: (_group_key, _scope, column_id, title) =>
+        void boardContentService
+          .updateColumn(board_id, Number(column_id), { label: title })
+          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
+      onDeleteColumn: (_group_key, _scope, column_id) => void handleRemoveKanbanProperty(column_id),
+      onUpdateColumnSettings: (_group_key, _scope, column_id, patch) =>
+        void boardContentService
+          .updateColumn(board_id, Number(column_id), patch)
+          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
+      onChangeColumnKind: (_group_key, _scope, column_id, kind, default_width) =>
+        void boardContentService
+          .updateColumn(board_id, Number(column_id), { type: TABLE_KIND_TO_ENGINE_KIND[kind], width: default_width })
+          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [table_groups, table_people, board_id]
@@ -1921,6 +1975,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCreateSubitem={handleCreateTableSubitem}
           onCreateGroup={handleCreateTableGroup}
           onAddColumn={handleAddTableColumn}
+          onDuplicateColumn={handleDuplicateTableColumn}
+          onAddColumnRight={handleAddColumnRight}
+          onRequestColumnFilter={handleRequestColumnFilter}
+          onRequestGroupByColumn={handleRequestGroupByColumn}
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (

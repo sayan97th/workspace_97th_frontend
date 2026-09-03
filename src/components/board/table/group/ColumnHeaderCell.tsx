@@ -1,13 +1,17 @@
 "use client";
 
 import ColumnMenu from "../menus/ColumnMenu";
+import type { ColumnKind, StatusDef } from "../types";
 
 interface ColumnHeaderCellProps {
   scoped_key: string;
   title: string;
   height: number;
+  /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[] };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
+  is_group_by_eligible?: boolean;
   is_menu_open: boolean;
   is_hovered: boolean;
   onEnter: () => void;
@@ -16,14 +20,22 @@ interface ColumnHeaderCellProps {
   onCloseMenu: () => void;
   onRename: (title: string) => void;
   onSort: (dir: "asc" | "desc" | null) => void;
+  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
+  onEditLabels?: () => void;
+  onRequestFilter?: () => void;
+  onRequestGroupBy?: () => void;
+  onCollapseAll: () => void;
   onDuplicate: () => void;
+  onAddColumnRight?: (kind: ColumnKind, label: string, default_width: number) => void;
+  onChangeType?: (kind: ColumnKind, default_width: number) => void;
   onDelete: () => void;
   className?: string;
 }
 
 export default function ColumnHeaderCell({
-  title, height, can_delete, sort_dir, is_menu_open, is_hovered,
-  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onSort, onDuplicate, onDelete, className,
+  title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered,
+  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onSort, onUpdateSettings, onEditLabels,
+  onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
   return (
@@ -60,7 +72,25 @@ export default function ColumnHeaderCell({
         <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
       </button>
       {is_menu_open && (
-        <ColumnMenu title={title} can_delete={can_delete} sort_dir={sort_dir} onRename={onRename} onSort={onSort} onDuplicate={onDuplicate} onDelete={onDelete} onClose={onCloseMenu} />
+        <ColumnMenu
+          title={title}
+          column={column}
+          can_delete={can_delete}
+          sort_dir={sort_dir}
+          is_group_by_eligible={!!is_group_by_eligible}
+          onRename={onRename}
+          onSort={onSort}
+          onUpdateSettings={onUpdateSettings ?? (() => {})}
+          onEditLabels={onEditLabels}
+          onRequestFilter={onRequestFilter ?? (() => {})}
+          onRequestGroupBy={onRequestGroupBy ?? (() => {})}
+          onCollapseAll={onCollapseAll}
+          onDuplicate={onDuplicate}
+          onAddColumnRight={onAddColumnRight ?? (() => {})}
+          onChangeType={onChangeType ?? (() => {})}
+          onDelete={onDelete}
+          onClose={onCloseMenu}
+        />
       )}
     </div>
   );

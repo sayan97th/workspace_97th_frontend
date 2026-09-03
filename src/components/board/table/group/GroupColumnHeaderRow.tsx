@@ -12,14 +12,15 @@ interface GroupColumnHeaderRowProps {
   min_width: number;
   state: BoardTableState;
   actions: BoardTableActions;
+  onRequestColumnFilter?: (column_id: string) => void;
+  onRequestGroupByColumn?: (column_id: string) => void;
 }
 
-export default function GroupColumnHeaderRow({ group, name_col_width, min_width, state, actions }: GroupColumnHeaderRowProps) {
+export default function GroupColumnHeaderRow({ group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: GroupColumnHeaderRowProps) {
   const scope_key_of = (column_id: string) => `main|${group.key}|${column_id}`;
   const sort_scope = `main:${group.key}`;
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const picker_key = `pick:main|${group.key}`;
-  const custom_ids = new Set(group.custom_columns.map((c) => c.id));
 
   return (
     <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-white " style={{ minWidth: min_width }}>
@@ -42,6 +43,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onCloseMenu={actions.closeColumnMenu}
           onRename={(title) => actions.renameItemTitle(group.key, "main", title)}
           onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
+          onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => { }}
           onDelete={() => { }}
         />
@@ -54,7 +56,9 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={38}
-            can_delete={custom_ids.has(col.id)}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options }}
+            can_delete={true}
+            is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}
             is_hovered={state.hover_head_key === scope_key_of(col.id)}
@@ -64,7 +68,22 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             onCloseMenu={actions.closeColumnMenu}
             onRename={(title) => actions.renameColumn(group.key, "main", col.id, title)}
             onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
+            onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "main", col.id, patch)}
+            onEditLabels={
+              col.kind === "status"
+                ? () => actions.openLabelEditor("status")
+                : col.kind === "label" || col.kind === "dropdown"
+                ? () => actions.openLabelEditor("label")
+                : col.kind === "tags"
+                ? () => actions.openTagEditor()
+                : undefined
+            }
+            onRequestFilter={() => onRequestColumnFilter?.(col.id)}
+            onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
+            onCollapseAll={actions.collapseAllGroups}
             onDuplicate={() => actions.duplicateColumn(group.key, "main", col.id)}
+            onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "main", kind, label, width, col.id)}
+            onChangeType={(kind, width) => actions.changeColumnKind(group.key, "main", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "main", col.id)}
           />
         ))}

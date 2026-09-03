@@ -105,6 +105,7 @@ export type BoardViewSyncToolbar = {
   hidden_column_ids: string[];
   pinned_column_ids: string[];
   row_height: BoardRowHeight;
+  group_by_option_id: string;
 
   setSearchQuery: (value: string) => void;
   setAllSearchColumns: (selected: boolean) => void;
@@ -298,6 +299,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       pinned_column_ids: toolbar.pinned_column_ids,
       row_height: toolbar.row_height,
       conditional_color_rules: withoutIds(toolbar.conditional_color_rules),
+      group_by_option_id: toolbar.group_by_option_id,
     }) !==
       stableStringify({
         filter_state: {
@@ -309,6 +311,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
         pinned_column_ids: active_view.pinned_column_ids ?? [],
         row_height: active_view.row_height,
         conditional_color_rules: withoutIds(active_view.conditional_color_rules ?? []),
+        group_by_option_id: active_view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
       });
 
   const saveActiveView = async () => {
@@ -320,6 +323,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       pinned_column_ids: toolbar.pinned_column_ids,
       conditional_color_rules: toolbar.conditional_color_rules,
       row_height: toolbar.row_height,
+      group_by_option_id: toolbar.group_by_option_id,
     });
     setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
   };

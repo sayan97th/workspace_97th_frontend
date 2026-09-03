@@ -164,6 +164,8 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   setFilterMode: (mode: BoardFilterMode) => void;
   advanced_filter_rows: BoardAdvancedFilterRow[];
   addAdvancedFilterRow: () => void;
+  /** Same as {@link addAdvancedFilterRow}, but pre-selects `column_id` — the column-header menu's "Filter" row uses this to open Advanced Filters with the clicked column ready to configure. */
+  addAdvancedFilterRowForColumn: (column_id: string) => void;
   removeAdvancedFilterRow: (id: string) => void;
   updateAdvancedFilterRow: (id: string, patch: Partial<BoardAdvancedFilterRow>) => void;
   clearAdvancedFilters: () => void;

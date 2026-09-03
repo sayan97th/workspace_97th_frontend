@@ -63,6 +63,15 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/columns/${column_id}`);
   },
 
+  /** POST /api/boards/{board_id}/columns/{column_id}/duplicate — column menu's "Duplicate column". */
+  async duplicateColumn(board_id: number, column_id: number, with_values: boolean): Promise<BoardColumnDto> {
+    const response = await apiClient.post<{ column: BoardColumnDto }>(
+      `/api/boards/${board_id}/columns/${column_id}/duplicate`,
+      { with_values }
+    );
+    return response.column;
+  },
+
   /** GET /api/boards/{board_id}/groups — a tab's tables (any number, 1…N), scoped to `view_id`, defaulting to the board's primary tab. */
   async getGroups(board_id: number, view_id?: number | null): Promise<BoardGroupDto[]> {
     const query = view_id ? `?view_id=${view_id}` : "";

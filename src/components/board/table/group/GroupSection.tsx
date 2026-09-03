@@ -21,9 +21,11 @@ interface GroupSectionProps {
   name_col_width: number;
   state: BoardTableState;
   actions: BoardTableActions;
+  onRequestColumnFilter?: (column_id: string) => void;
+  onRequestGroupByColumn?: (column_id: string) => void;
 }
 
-export default function GroupSection({ group, group_index, group_count, name_col_width, state, actions }: GroupSectionProps) {
+export default function GroupSection({ group, group_index, group_count, name_col_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: GroupSectionProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
   const sorted_items = applySort(group.items, state.sort, `main:${group.key}`, group.base_columns.concat(group.custom_columns));
@@ -34,7 +36,15 @@ export default function GroupSection({ group, group_index, group_count, name_col
 
       {!is_collapsed && (
         <div>
-          <GroupColumnHeaderRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
+          <GroupColumnHeaderRow
+            group={group}
+            name_col_width={name_col_width}
+            min_width={min_width}
+            state={state}
+            actions={actions}
+            onRequestColumnFilter={onRequestColumnFilter}
+            onRequestGroupByColumn={onRequestGroupByColumn}
+          />
 
           {sorted_items.map((item) => {
             const is_open = !!state.open_map[item.id];
@@ -48,7 +58,16 @@ export default function GroupSection({ group, group_index, group_count, name_col
 
                 {is_open && item.subs.length > 0 && (
                   <>
-                    <SubitemHeaderRow item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
+                    <SubitemHeaderRow
+                      item={item}
+                      group={group}
+                      name_col_width={sub_name_col_width}
+                      min_width={sub_min_width}
+                      state={state}
+                      actions={actions}
+                      onRequestColumnFilter={onRequestColumnFilter}
+                      onRequestGroupByColumn={onRequestGroupByColumn}
+                    />
                     {sorted_subs.map((sub) => (
                       <SubitemRow key={sub.id} sub={sub} item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
                     ))}
