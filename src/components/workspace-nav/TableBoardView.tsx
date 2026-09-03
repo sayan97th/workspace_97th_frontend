@@ -21,6 +21,7 @@ import {
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
   COLUMN_OPTION_PALETTE,
+  TABLE_KIND_TO_ENGINE_KIND,
   DependencyPickerList,
   GanttChart,
   InlineTitleEditor,
@@ -55,6 +56,8 @@ import {
   type BoardToolbarConfig,
   type BoardViewKind,
   type ColumnDef as TableColumnDef,
+  type ColumnKind as TableColumnKind,
+  type ColumnScope as TableColumnScope,
   type PersonDef as TablePersonDef,
   type UseBoardTableConfig,
 } from "@/components/board";
@@ -78,6 +81,7 @@ import { workspaceService } from "@/services/workspace.service";
 import type {
   BoardColumnConfig,
   BoardColumnDto,
+  BoardColumnScope,
   BoardGroupDto,
   BoardItemDetailDto,
   BoardItemDto,
@@ -826,8 +830,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // typed column is appended to the board (status columns get default options
   // seeded server-side, unless the caller supplies its own `config` — e.g.
   // the Kanban "set up your board" flow, which seeds Monday-style lane
-  // labels instead). ──
-  const handleAddColumn = async (type: AddableColumnType, config?: BoardColumnConfig) => {
+  // labels instead). `scope` defaults to "item" (the Kanban drawer's own
+  // "add property" call site only ever adds item-scoped columns); the Table
+  // view's own "+" gallery (see `handleAddTableColumn` below) passes it
+  // explicitly to also support its subitem header's "+" button. ──
+  const handleAddColumn = async (
+    type: Pick<AddableColumnType, "kind" | "label" | "default_width">,
+    scope: BoardColumnScope = "item",
+    config?: BoardColumnConfig
+  ) => {
     if (view_tabs.active_view_id == null) return;
     // `key` must be unique per tab and match `^[a-z0-9_]+$` — the kind plus a
     // timestamp satisfies both without a round-trip to check for collisions.
@@ -836,11 +847,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       key: `${type.kind}_${Date.now()}`,
       label: type.label,
       type: type.kind,
+      scope,
       width: type.default_width,
       config,
     });
     setColumns((current) => [...current, created]);
   };
+
+  // ── Add column — the Table view's own "+" gallery (`ColumnPicker`, main or
+  // subitem header) speaks the Table package's own `ColumnKind` vocabulary
+  // (e.g. "longtext"/"dropdown"), not the engine's `BoardColumnKind`
+  // ("long_text"/"tags") `handleAddColumn` above expects — see
+  // `TABLE_COLUMN_KIND`'s doc comment for why the two differ. `TABLE_KIND_TO_ENGINE_KIND`
+  // (the reverse of `TABLE_COLUMN_KIND`) bridges that, so `BoardTable`'s
+  // `onAddColumn` prop can hand this straight to `handleAddColumn` without the
+  // Table package ever needing to know the engine's own type vocabulary. ──
+  const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
+    handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item");
 
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
@@ -1608,7 +1631,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       label: option.label,
       color: option.color,
     }));
-    void handleAddColumn(status_type, { options });
+    void handleAddColumn(status_type, "item", { options });
   };
 
   // Guards `kanban_core_columns_bootstrap` below to at most one run per
@@ -1647,7 +1670,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           { label: "High", color: "#ff642e" },
           { label: "Urgent", color: "#e2445c" },
         ].map((option, index) => ({ id: `opt_${Date.now()}_${index}`, ...option }));
-        void handleAddColumn({ ...priority_type, label: "Priority" }, { options: priority_options });
+        void handleAddColumn({ ...priority_type, label: "Priority" }, "item", { options: priority_options });
       }
     }
     if (!board_label_column) {
@@ -1892,6 +1915,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCreateItem={handleCreateTableItem}
           onCreateSubitem={handleCreateTableSubitem}
           onCreateGroup={handleCreateTableGroup}
+          onAddColumn={handleAddTableColumn}
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (

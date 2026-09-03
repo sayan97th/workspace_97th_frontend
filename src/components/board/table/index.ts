@@ -18,3 +18,4 @@ export type {
   OpenMenus,
 } from "./types";
 export { buildInitialGroups } from "./mockData";
+export { TABLE_KIND_TO_ENGINE_KIND } from "./constants";

@@ -1,4 +1,5 @@
 import type { ColumnKind, PersonDef, StatusDef, TagDef } from "./types";
+import type { BoardColumnKind } from "../columnTypes";
 
 export const GROUP_PALETTE = [
   "#4f6bed", "#2f9e78", "#a25ddc", "#e2b203", "#0086c0", "#e04455",
@@ -88,6 +89,33 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "tags", label: "Tags", mark: "#", accent: "#12c46b", section: "Super useful", default_width: 180 },
   { kind: "checkbox", label: "Checkbox", mark: "✓", accent: "#12c46b", section: "Super useful", default_width: 110 },
 ];
+
+/**
+ * This package's own `ColumnKind` → the generic board engine's `BoardColumnKind`
+ * (`../columnTypes`, the vocabulary `boardContentService.createColumn` and the
+ * rest of the engine's API layer speak) — used when a column picked from the
+ * "+" gallery here (`COLUMN_TYPE_GALLERY`) must be persisted through
+ * `TableBoardView`'s `onAddColumn`. "dropdown" and "tags" both collapse onto
+ * the engine's single multi-select `tags` kind (see `COLUMN_TYPE_GALLERY`'s own
+ * two entries for why); the reverse, lossy-on-that-one-distinction mapping is
+ * `TABLE_COLUMN_KIND` in `TableBoardView.tsx`.
+ */
+export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
+  text: "text",
+  longtext: "long_text",
+  number: "number",
+  status: "status",
+  label: "label",
+  date: "date",
+  timeline: "timeline",
+  people: "people",
+  progress: "progress",
+  dropdown: "tags",
+  tags: "tags",
+  checkbox: "checkbox",
+  phone: "phone",
+  email: "email",
+};
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];
 export const ARRAY_VALUE_KINDS: ColumnKind[] = ["people", "dropdown", "tags"];

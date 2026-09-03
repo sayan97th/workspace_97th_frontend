@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useMemo } from "react";
-import { useBoardTable, type UseBoardTableConfig } from "./useBoardTable";
+import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
+import type { ColumnKind } from "./types";
 import { computeNameColWidth } from "./layoutUtils";
 import { boardTreeFontClassName } from "../board-tree-font";
 import TableHeader from "./toolbar/TableHeader";
@@ -35,10 +36,21 @@ export interface BoardTableProps {
   onCreateItem?: (group_key: string) => Promise<string>;
   onCreateSubitem?: (item_id: string) => Promise<string>;
   onCreateGroup?: () => Promise<{ key: string; title: string }>;
+  /**
+   * Persists a column picked from the "+" gallery (`ColumnPicker`, main-table
+   * or subitem header). Once the caller's real create call resolves and its
+   * own column list updates, the new column reaches `BoardTable` again as
+   * part of `config.initial_groups` (`base_columns`) — `useBoardTable`'s
+   * resync effect picks it up automatically, so no local-id handshake is
+   * needed here (unlike `onCreateItem`/`onCreateSubitem`/`onCreateGroup`).
+   * Omitted, `addColumn` stays local-only (the standalone demo behavior,
+   * adding into `custom_columns` instead).
+   */
+  onAddColumn?: (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => Promise<void>;
 }
 
 /** The "Main table" board view: a Monday-style grid of groups, tree rows and subitems with rich per-column cell editing. Mirrors `BoardKanban`'s role as the generic shell for its own view kind. */
-export default function BoardTable({ board_title = "Main table", embedded = false, config, onCreateItem, onCreateSubitem, onCreateGroup }: BoardTableProps) {
+export default function BoardTable({ board_title = "Main table", embedded = false, config, onCreateItem, onCreateSubitem, onCreateGroup, onAddColumn }: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
 
   const addItemReal = useCallback(
@@ -65,9 +77,17 @@ export default function BoardTable({ board_title = "Main table", embedded = fals
     return "";
   }, [onCreateGroup, base_actions]);
 
+  const addColumnReal = useCallback(
+    (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => {
+      if (!onAddColumn) return base_actions.addColumn(group_key, scope, kind, label, default_width);
+      void onAddColumn(group_key, scope, kind, label, default_width);
+    },
+    [onAddColumn, base_actions]
+  );
+
   const actions = useMemo(
-    () => ({ ...base_actions, addItem: addItemReal, addSubitem: addSubitemReal, addGroup: addGroupReal }),
-    [base_actions, addItemReal, addSubitemReal, addGroupReal]
+    () => ({ ...base_actions, addItem: addItemReal, addSubitem: addSubitemReal, addGroup: addGroupReal, addColumn: addColumnReal }),
+    [base_actions, addItemReal, addSubitemReal, addGroupReal, addColumnReal]
   );
 
   const name_col_width = useMemo(() => {
