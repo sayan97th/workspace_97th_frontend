@@ -442,7 +442,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
             {properties.columns.length > 0 && (
               <div className="mb-3 flex flex-col gap-1.5">
                 {properties.columns.map((column) => {
-                  const has_options = column.kind === "status" || column.kind === "tags" || column.kind === "label";
+                  const has_options = column.kind === "status" || column.kind === "tags" || column.kind === "dropdown" || column.kind === "label";
                   return (
                     <div
                       key={column.id}

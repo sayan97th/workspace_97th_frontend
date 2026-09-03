@@ -166,7 +166,11 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
           pill_style={pill_style ?? "outline"}
         />
       );
+    // "dropdown" is `tags`' sibling kind — same multi-select chip picker, no
+    // search box or free-form tag creation (see `BoardColumn::TYPE_DROPDOWN`
+    // on the API side).
     case "tags":
+    case "dropdown":
       return (
         <DropdownCell
           column={column}

@@ -2,7 +2,7 @@ import type { BoardColumnKind } from "../columnTypes";
 import type { ChartKind } from "./types";
 
 /** Column kinds a chart can group/split by — a small, discrete value domain. Mirrors the backend's `ChartDataService::CHARTABLE_GROUP_TYPES`. */
-export const CHARTABLE_GROUP_COLUMN_TYPES: BoardColumnKind[] = ["status", "tags", "people", "date", "checkbox"];
+export const CHARTABLE_GROUP_COLUMN_TYPES: BoardColumnKind[] = ["status", "tags", "dropdown", "people", "date", "checkbox"];
 
 /** Column kinds a chart can sum/average. */
 export const CHARTABLE_VALUE_COLUMN_TYPES: BoardColumnKind[] = ["number"];

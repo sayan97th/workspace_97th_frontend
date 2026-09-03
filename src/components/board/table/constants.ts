@@ -95,10 +95,8 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
  * (`../columnTypes`, the vocabulary `boardContentService.createColumn` and the
  * rest of the engine's API layer speak) — used when a column picked from the
  * "+" gallery here (`COLUMN_TYPE_GALLERY`) must be persisted through
- * `TableBoardView`'s `onAddColumn`. "dropdown" and "tags" both collapse onto
- * the engine's single multi-select `tags` kind (see `COLUMN_TYPE_GALLERY`'s own
- * two entries for why); the reverse, lossy-on-that-one-distinction mapping is
- * `TABLE_COLUMN_KIND` in `TableBoardView.tsx`.
+ * `TableBoardView`'s `onAddColumn`. The reverse mapping is `TABLE_COLUMN_KIND`
+ * in `TableBoardView.tsx`.
  */
 export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   text: "text",
@@ -110,7 +108,7 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   timeline: "timeline",
   people: "people",
   progress: "progress",
-  dropdown: "tags",
+  dropdown: "dropdown",
   tags: "tags",
   checkbox: "checkbox",
   phone: "phone",

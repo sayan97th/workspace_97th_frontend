@@ -12,6 +12,7 @@ export type BoardColumnKind =
   | "people"
   | "date"
   | "tags"
+  | "dropdown"
   | "number"
   | "checkbox"
   | "timeline"
@@ -29,6 +30,7 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   people: { accent_color: "#a358df", glyph: "Pp" },
   date: { accent_color: "#2b76e5", glyph: "Da" },
   tags: { accent_color: "#7e5bef", glyph: "Dp" },
+  dropdown: { accent_color: "#2f9e78", glyph: "▾" },
   number: { accent_color: "#fdab3d", glyph: "#", glyph_text_color: "#3a2a00" },
   checkbox: { accent_color: "#17a2b8", glyph: "Ck" },
   timeline: { accent_color: "#ff642e", glyph: "Tl" },
@@ -60,16 +62,14 @@ export type AddableColumnType = {
 
 /**
  * The ordered list of column types the Add-column menu offers, in the order
- * and grouping of monday.com's own picker. "Dropdown" and "Tags" both map to
- * the engine's multi-select `tags` kind — the board already renders and
- * filters `tags` as a colour-coded, multi-value picker, so the two menu
- * entries just seed a differently-labeled column of that same kind (mirrors
- * how "Status" and "Priority" both create ordinary `status`-kind columns,
- * distinguished only by their label). "Label" maps to the `label` kind — a
- * single-select pill like Status, but rendered as an outline badge instead of
- * a filled one (see `BoardColumn::TYPE_LABEL` on the API side). "Dependency"
- * isn't part of the design this menu was modeled on, but stays listed since
- * it already powers the Gantt view's arrows/auto-reschedule.
+ * and grouping of monday.com's own picker. "Dropdown" maps to its own
+ * `dropdown` kind — a chip multi-select from the column's fixed option list,
+ * with no search box or free-form "create tag" affordance (see
+ * `BoardColumn::TYPE_DROPDOWN` on the API side). "Label" maps to the `label`
+ * kind — a single-select pill like Status, but rendered as an outline badge
+ * instead of a filled one (see `BoardColumn::TYPE_LABEL` on the API side).
+ * "Dependency" isn't part of the design this menu was modeled on, but stays
+ * listed since it already powers the Gantt view's arrows/auto-reschedule.
  */
 export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
   {
@@ -82,10 +82,10 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     has_options: true,
   },
   {
-    kind: "tags",
+    kind: "dropdown",
     label: "Dropdown",
     description: "Pick one or more labels from a list",
-    swatch: { accent_color: "#2f9e78", glyph: "▾" },
+    swatch: COLUMN_KIND_SWATCH.dropdown,
     default_width: 180,
     section: "essentials",
     has_options: true,

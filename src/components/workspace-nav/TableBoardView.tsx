@@ -124,6 +124,7 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   people: "people",
   date: "date",
   tags: "tags",
+  dropdown: "dropdown",
   number: "number",
   checkbox: "checkbox",
   timeline: "timeline",
@@ -139,12 +140,7 @@ const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
 
 /** `null` for a column kind the Table view has no cell renderer for (currently just `dependency`) — filtered out of `table_base_columns`/`table_sub_base_columns`. */
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
-  // A `tags` column flagged with the "dropdown" config variant (see
-  // `BoardColumnConfig`) gets the Table view's dedicated Dropdown cell — a
-  // chip multi-select with no search box — instead of the generic Tags cell;
-  // every other engine feature still just sees an ordinary `tags` column.
-  const is_dropdown_variant = column.type === "tags" && column.config?.variant === "dropdown";
-  const kind = is_dropdown_variant ? "dropdown" : TABLE_COLUMN_KIND[column.type];
+  const kind = TABLE_COLUMN_KIND[column.type];
   if (!kind) return null;
   return { id: String(column.id), title: column.label, kind, width: column.width, options: toTableOptions(column) };
 };
@@ -861,21 +857,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   // ── Add column — the Table view's own "+" gallery (`ColumnPicker`, main or
   // subitem header) speaks the Table package's own `ColumnKind` vocabulary
-  // (e.g. "longtext"/"dropdown"), not the engine's `BoardColumnKind`
-  // ("long_text"/"tags") `handleAddColumn` above expects — see
-  // `TABLE_COLUMN_KIND`'s doc comment for why the two differ. `TABLE_KIND_TO_ENGINE_KIND`
-  // (the reverse of `TABLE_COLUMN_KIND`) bridges that, so `BoardTable`'s
-  // `onAddColumn` prop can hand this straight to `handleAddColumn` without the
-  // Table package ever needing to know the engine's own type vocabulary. ──
+  // (e.g. "longtext"), not the engine's `BoardColumnKind` ("long_text")
+  // `handleAddColumn` above expects — see `TABLE_COLUMN_KIND`'s doc comment
+  // for why the two differ. `TABLE_KIND_TO_ENGINE_KIND` (the reverse of
+  // `TABLE_COLUMN_KIND`) bridges that, so `BoardTable`'s `onAddColumn` prop
+  // can hand this straight to `handleAddColumn` without the Table package
+  // ever needing to know the engine's own type vocabulary. ──
   const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
-    handleAddColumn(
-      { kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width },
-      scope === "sub" ? "subitem" : "item",
-      // A fresh "Dropdown" column starts with no options ("No labels yet" in
-      // its cell picker) and carries the config variant that tells
-      // `toTableColumnDef` apart from an ordinary Tags column.
-      kind === "dropdown" ? { options: [], variant: "dropdown" } : undefined
-    );
+    handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item");
 
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
