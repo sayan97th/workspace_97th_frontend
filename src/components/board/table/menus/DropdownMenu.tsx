@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { StatusDef } from "../types";
 import PopoverPanel from "./PopoverPanel";
 
@@ -7,14 +8,24 @@ interface DropdownMenuProps {
   onToggle: (id: string) => void;
   onClear: () => void;
   onClose: () => void;
+  /** Appends a new option to this column's list — the "New label" + Add row. */
+  onAddOption: (label: string) => void;
 }
 
-export default function DropdownMenu({ options, selected, onToggle, onClear, onClose }: DropdownMenuProps) {
+export default function DropdownMenu({ options, selected, onToggle, onClear, onClose, onAddOption }: DropdownMenuProps) {
+  const [draft, setDraft] = useState("");
   const visible = options.filter((d) => d.label);
+
+  const submitDraft = () => {
+    const label = draft.trim();
+    if (!label) return;
+    onAddOption(label);
+    setDraft("");
+  };
+
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[260px] -translate-x-1/2 p-3">
       <div className="flex flex-col gap-0.5">
-        {visible.length === 0 && <div className="px-1 pb-1.5 pt-0.5 text-[12px] text-[#a4aac2]">No options yet.</div>}
         {visible.map((def) => {
           const is_on = selected.includes(def.id);
           return (
@@ -37,8 +48,33 @@ export default function DropdownMenu({ options, selected, onToggle, onClear, onC
           );
         })}
       </div>
-      <div className="my-2.5 h-px bg-[#eceef5]" />
-      <button type="button" onClick={onClear} className="pt-0.5 text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
+      {visible.length === 0 && (
+        <div className="px-[3px] pb-1.5 pt-0.5 text-[12px] text-[#a4aac2]">No labels yet. Create the first one below.</div>
+      )}
+      <div className="mt-2.5 h-px bg-[#eceef5]" />
+      <div className="mt-[11px] flex items-center gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submitDraft();
+            }
+          }}
+          placeholder="New label"
+          className="h-[30px] min-w-0 flex-1 rounded-[6px] border border-[#dfe3ef] px-[9px] font-[inherit] text-[12.5px] text-[#262b45] outline-none"
+        />
+        <button
+          type="button"
+          onClick={submitDraft}
+          disabled={!draft.trim()}
+          className="flex h-[30px] flex-none items-center rounded-[6px] bg-[#4f6bed] px-[13px] text-[12.5px] font-medium text-white hover:bg-[#3a52c8] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-[#4f6bed]"
+        >
+          Add
+        </button>
+      </div>
+      <button type="button" onClick={onClear} className="mt-[9px] px-0.5 text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
         Clear value
       </button>
     </PopoverPanel>

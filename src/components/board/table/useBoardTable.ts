@@ -56,6 +56,14 @@ export interface UseBoardTableConfig {
   status_defs?: StatusDef[];
   onRenameNode?: (node_id: string, name: string) => void;
   onCellValueChange?: (node_id: string, column_id: string, value: CellValue) => void;
+  /**
+   * Appends a new option to a real Dropdown column's `options`, inline from
+   * its own cell picker (the "New label" + Add row) — resolves once
+   * persisted; the board's next `initial_groups` sync then reflects it.
+   * Omitted (the standalone demo), the option is added to the shared,
+   * local-only `label_defs` palette instead, mirroring `addLabelDef`.
+   */
+  onAddColumnOption?: (column_id: string, option: { label: string; color: string }) => Promise<unknown>;
   onDeleteNode?: (node_id: string) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
@@ -689,6 +697,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, label_defs: s.label_defs.filter((d) => d.id !== id) }));
   }, []);
 
+  /**
+   * Dropdown cell's own inline "New label" + Add row. A real column persists
+   * through `onAddColumnOption` and picks up the confirmed option once the
+   * board's `initial_groups` re-syncs; a column with no persisted options of
+   * its own (the standalone demo) instead appends to the shared `label_defs`
+   * palette, exactly like `addLabelDef`.
+   */
+  const addColumnOption = useCallback((column_id: string, option: { label: string; color: string }) => {
+    const label = option.label.trim();
+    if (!label) return;
+    const on_add_option = config_ref.current.onAddColumnOption;
+    if (on_add_option) {
+      void on_add_option(column_id, { label, color: option.color });
+      return;
+    }
+    setState((s) => ({ ...s, label_defs: s.label_defs.concat({ id: nextId("lb"), label, color: option.color }) }));
+  }, [nextId]);
+
   const openTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: true, ...closeAllMenus })), []);
   const closeTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: false })), []);
 
@@ -795,6 +821,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameLabelDef,
       setLabelDefColor,
       deleteLabelDef,
+      addColumnOption,
       openTagEditor,
       closeTagEditor,
       addTagDef,
@@ -813,7 +840,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, deleteColumn, duplicateColumn, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, openTagEditor, closeTagEditor, addTagDef,
+      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink,
     ]
   );

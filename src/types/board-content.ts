@@ -40,6 +40,15 @@ export type BoardColumnOption = {
 
 export type BoardColumnConfig = {
   options?: BoardColumnOption[];
+  /**
+   * Marks a `tags`-typed column as a "Dropdown" column (a chip multi-select
+   * with no search box) rather than an ordinary free-form Tags column — the
+   * two share the same underlying engine type (so charts/filters/Kanban
+   * treat them identically), distinguished only by this config flag and the
+   * Table view's own cell picker UI. See `toTableColumnDef` in
+   * `TableBoardView.tsx`.
+   */
+  variant?: "dropdown";
 };
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */

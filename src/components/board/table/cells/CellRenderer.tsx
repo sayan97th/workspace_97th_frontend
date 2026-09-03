@@ -3,6 +3,7 @@
 import type { CellValue, ColumnDef, StatusDef } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, pillColors } from "../colorUtils";
+import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import StatusMenu from "../menus/StatusMenu";
@@ -245,9 +246,16 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   if (column.kind === "dropdown") {
     const defs = column.options ?? state.label_defs;
     const selected = asArray(value);
+    // `overflow-hidden` stays on the button (below), not the wrapping div —
+    // there it would also clip `DropdownMenu`, which renders as that div's
+    // other child and needs to overflow past the cell's edges.
     return (
-      <div className="relative flex flex-1 items-center gap-1.5 overflow-hidden px-2.5">
-        <button type="button" onClick={openMenu} className="flex flex-1 items-center gap-1.5 overflow-hidden">
+      <div className="relative flex flex-1 items-center gap-1.5 px-2.5">
+        {/* `h-full` keeps the button clickable when there are no chips yet —
+            without it, `items-center` on the wrapping div shrinks the button
+            to its (empty) content height, leaving nothing for a click to
+            actually hit. */}
+        <button type="button" onClick={openMenu} className="flex h-full flex-1 items-center gap-1.5 overflow-hidden">
           {selected.map((entry) => {
             const def = findDef(defs, entry);
             return (
@@ -264,6 +272,9 @@ export default function CellRenderer({ node_id, column, values, state, actions }
             onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
             onClear={() => actions.clearCellValue(node_id, column.id)}
             onClose={actions.closeCellMenu}
+            onAddOption={(label) =>
+              actions.addColumnOption(column.id, { label, color: DROPDOWN_OPTION_COLORS[defs.length % DROPDOWN_OPTION_COLORS.length] })
+            }
           />
         )}
       </div>
@@ -278,9 +289,12 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const is_real_column = Boolean(column.options);
     const defs = column.options ?? state.tag_defs;
     const selected = asArray(value);
+    // See the Dropdown cell's own comment above — `overflow-hidden` stays off
+    // this wrapping div so `TagsMenu` isn't clipped either.
     return (
-      <div className="relative flex flex-1 items-center gap-2.5 overflow-hidden px-2.5">
-        <button type="button" onClick={openMenu} className="flex flex-1 items-center gap-2.5 overflow-hidden">
+      <div className="relative flex flex-1 items-center gap-2.5 px-2.5">
+        {/* See the Dropdown cell's own comment above — same fix, same reason. */}
+        <button type="button" onClick={openMenu} className="flex h-full flex-1 items-center gap-2.5 overflow-hidden">
           {selected.map((entry) => {
             const def = findDef(defs, entry);
             return (

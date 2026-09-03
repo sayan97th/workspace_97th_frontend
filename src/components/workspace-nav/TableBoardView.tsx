@@ -139,7 +139,12 @@ const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
 
 /** `null` for a column kind the Table view has no cell renderer for (currently just `dependency`) — filtered out of `table_base_columns`/`table_sub_base_columns`. */
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
-  const kind = TABLE_COLUMN_KIND[column.type];
+  // A `tags` column flagged with the "dropdown" config variant (see
+  // `BoardColumnConfig`) gets the Table view's dedicated Dropdown cell — a
+  // chip multi-select with no search box — instead of the generic Tags cell;
+  // every other engine feature still just sees an ordinary `tags` column.
+  const is_dropdown_variant = column.type === "tags" && column.config?.variant === "dropdown";
+  const kind = is_dropdown_variant ? "dropdown" : TABLE_COLUMN_KIND[column.type];
   if (!kind) return null;
   return { id: String(column.id), title: column.label, kind, width: column.width, options: toTableOptions(column) };
 };
@@ -863,7 +868,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `onAddColumn` prop can hand this straight to `handleAddColumn` without the
   // Table package ever needing to know the engine's own type vocabulary. ──
   const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
-    handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item");
+    handleAddColumn(
+      { kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width },
+      scope === "sub" ? "subitem" : "item",
+      // A fresh "Dropdown" column starts with no options ("No labels yet" in
+      // its cell picker) and carries the config variant that tells
+      // `toTableColumnDef` apart from an ordinary Tags column.
+      kind === "dropdown" ? { options: [], variant: "dropdown" } : undefined
+    );
 
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
@@ -1275,8 +1287,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
    * `BoardTable`'s own `onCreateItem`/`onCreateSubitem`/`onCreateGroup`
    * props), which await the real API call first — see `BoardTableProps`'s
    * own doc comment for why. Column-structure management (add/rename/delete
-   * a column, the status/label/tags option editors) stays local-only for
-   * now; only picking an *existing* option persists, via `onCellValueChange`.
+   * a column, the status/label editors) stays local-only for now; picking an
+   * *existing* option persists via `onCellValueChange`, and appending a new
+   * one inline from the Dropdown cell's own picker persists via
+   * `onAddColumnOption` (both funnel into the same `handleAddColumnOption`
+   * used by the Kanban drawer's Priority/Project fields).
    */
   const table_config: UseBoardTableConfig = useMemo(
     () => ({
@@ -1285,6 +1300,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
+      onAddColumnOption: (column_id, option) => handleAddColumnOption(column_id, option),
       onDeleteNode: (node_id) => {
         void boardContentService
           .deleteItem(board_id, Number(node_id))
