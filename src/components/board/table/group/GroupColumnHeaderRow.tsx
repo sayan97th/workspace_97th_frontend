@@ -22,7 +22,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
   const custom_ids = new Set(group.custom_columns.map((c) => c.id));
 
   return (
-    <div className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-white shadow-[0_7px_14px_-10px_rgba(30,34,55,0.30)]" style={{ minWidth: min_width }}>
+    <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-white " style={{ minWidth: min_width }}>
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-b border-[#e3e6ef]" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
@@ -42,8 +42,8 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onCloseMenu={actions.closeColumnMenu}
           onRename={(title) => actions.renameItemTitle(group.key, "main", title)}
           onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
-          onDuplicate={() => {}}
-          onDelete={() => {}}
+          onDuplicate={() => { }}
+          onDelete={() => { }}
         />
 
         <div className="h-[38px] border-r border-[#eceef5]" />

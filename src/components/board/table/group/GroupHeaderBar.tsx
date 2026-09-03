@@ -21,11 +21,11 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
   const sub_count = group.items.reduce((a, it) => a + it.subs.length, 0);
 
   return (
-    <div className="sticky top-0 z-[60] flex h-10 items-end bg-[#f4f6fb] pb-2" style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}>
+    <div className="top-0 z-[60] flex h-10 items-end  pb-2" style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}>
       <div
         onMouseEnter={() => actions.setHoverGroup(group.key)}
         onMouseLeave={() => actions.setHoverGroup(null)}
-        className="sticky left-0 flex w-max items-center gap-2"
+        className="left-0 flex w-max items-center gap-2"
       >
         <div className="relative -ml-[27px] flex-none">
           <button
