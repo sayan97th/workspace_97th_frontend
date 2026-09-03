@@ -1,0 +1,30 @@
+/*
+ * Styles scoped to `BoardTable`'s root wrapper (see `table-board-root` in
+ * BoardTable.tsx). Typography comes from `boardTreeFontClassName`
+ * (../board-tree-font) instead of a class here, so this file only owns the
+ * scrollbar treatment, themed via the `--color-boardtree-scrollbar-thumb`
+ * token declared in `globals.css` (light/dark variants already defined there).
+ */
+
+.table-board-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-boardtree-scrollbar-thumb) transparent;
+}
+
+.table-board-scroll::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.table-board-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-board-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-boardtree-scrollbar-thumb);
+  border-radius: 5px;
+}
+
+.table-board-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--color-boardtree-text-faint);
+}
