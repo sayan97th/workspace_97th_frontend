@@ -1,6 +1,7 @@
 export { default as BoardTable } from "./BoardTable";
+export type { BoardTableProps } from "./BoardTable";
 export { useBoardTable } from "./useBoardTable";
-export type { BoardTableState, BoardTableActions, ColumnScope } from "./useBoardTable";
+export type { BoardTableState, BoardTableActions, UseBoardTableConfig, ColumnScope } from "./useBoardTable";
 export type {
   ColumnKind,
   ColumnDef,

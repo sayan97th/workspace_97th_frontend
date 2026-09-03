@@ -4,7 +4,7 @@ import PopoverPanel from "./PopoverPanel";
 
 interface StatusMenuProps {
   status_defs: StatusDef[];
-  onPick: (label: string) => void;
+  onPick: (id: string) => void;
   onEditLabels: () => void;
   onClose: () => void;
 }
@@ -17,7 +17,7 @@ export default function StatusMenu({ status_defs, onPick, onEditLabels, onClose 
           <button
             type="button"
             key={def.id}
-            onClick={() => onPick(def.label)}
+            onClick={() => onPick(def.id)}
             className="flex h-[30px] items-center justify-center rounded-[4px] text-[11.5px] font-medium hover:brightness-[1.07]"
             style={{ background: def.color, color: contrastFg(def.color) }}
           >

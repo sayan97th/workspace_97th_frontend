@@ -1,7 +1,8 @@
-import { PEOPLE } from "../constants";
+import type { PersonDef } from "../types";
 import PopoverPanel from "./PopoverPanel";
 
 interface PeopleMenuProps {
+  people: PersonDef[];
   selected: string[];
   query: string;
   onQueryChange: (value: string) => void;
@@ -10,8 +11,8 @@ interface PeopleMenuProps {
   onClose: () => void;
 }
 
-export default function PeopleMenu({ selected, query, onQueryChange, onToggle, onClear, onClose }: PeopleMenuProps) {
-  const filtered = PEOPLE.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
+export default function PeopleMenu({ people, selected, query, onQueryChange, onToggle, onClear, onClose }: PeopleMenuProps) {
+  const filtered = people.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[300px] -translate-x-1/2 p-3">
       <div className="mb-2.5 flex h-8 items-center gap-[7px] rounded-[6px] border border-[#dfe3ef] px-[9px] focus-within:border-[#4f6bed]">

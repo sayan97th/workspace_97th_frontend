@@ -5,7 +5,7 @@ import PopoverPanel from "./PopoverPanel";
 interface LabelMenuProps {
   label_defs: StatusDef[];
   selected: string[];
-  onPick: (label: string) => void;
+  onPick: (id: string) => void;
   onClear: () => void;
   onClose: () => void;
 }
@@ -18,12 +18,12 @@ export default function LabelMenu({ label_defs, selected, onPick, onClear, onClo
         {options.length === 0 && <div className="px-1 pb-1.5 pt-0.5 text-[12px] text-[#a4aac2]">No labels yet.</div>}
         {options.map((def) => {
           const pill = pillColors(def.color);
-          const is_on = selected.includes(def.label);
+          const is_on = selected.includes(def.id);
           return (
             <button
               type="button"
               key={def.id}
-              onClick={() => onPick(def.label)}
+              onClick={() => onPick(def.id)}
               className="flex items-center gap-2.5 rounded-[6px] px-[7px] py-1.5 hover:bg-[#f4f6fb]"
             >
               <span className="rounded-[4px] border px-2.5 py-0.5 text-[11.5px] font-medium" style={{ color: pill.fg, borderColor: pill.bd, background: pill.bg }}>

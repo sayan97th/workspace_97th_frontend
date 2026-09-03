@@ -4,7 +4,7 @@ import PopoverPanel from "./PopoverPanel";
 interface DropdownMenuProps {
   options: StatusDef[];
   selected: string[];
-  onToggle: (label: string) => void;
+  onToggle: (id: string) => void;
   onClear: () => void;
   onClose: () => void;
 }
@@ -16,12 +16,12 @@ export default function DropdownMenu({ options, selected, onToggle, onClear, onC
       <div className="flex flex-col gap-0.5">
         {visible.length === 0 && <div className="px-1 pb-1.5 pt-0.5 text-[12px] text-[#a4aac2]">No options yet.</div>}
         {visible.map((def) => {
-          const is_on = selected.includes(def.label);
+          const is_on = selected.includes(def.id);
           return (
             <button
               type="button"
               key={def.id}
-              onClick={() => onToggle(def.label)}
+              onClick={() => onToggle(def.id)}
               className="flex items-center gap-2.5 rounded-[6px] px-[7px] py-1.5 hover:bg-[#f4f6fb]"
             >
               <span className="rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def.color }}>{def.label}</span>

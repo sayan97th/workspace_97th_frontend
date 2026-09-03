@@ -5,6 +5,7 @@ import {
   FormViewIcon,
   GanttViewIcon,
   KanbanViewIcon,
+  TableViewIcon,
 } from "@/icons/board-icons";
 import { BoardGridIcon, DashboardIcon, FileIcon, type IconComponent } from "@/icons/workspace-icons";
 
@@ -18,10 +19,6 @@ import { BoardGridIcon, DashboardIcon, FileIcon, type IconComponent } from "@/ic
  * Must stay in sync with the backend's `App\Enums\BoardViewType`.
  */
 export type BoardViewKind =
-  // "table" is kept only because the backend's `App\Enums\BoardViewType` and
-  // existing saved views can still carry it; the frontend has no Table
-  // renderer any more (see `getBoardViewTypeOption`'s fallback below) and
-  // never offers it from the "+" picker (it's absent from `BOARD_VIEW_TYPES`).
   | "table"
   | "kanban"
   | "gantt"
@@ -51,12 +48,18 @@ export type BoardViewTypeOption = {
 
 /**
  * The ordered list of view kinds the "+" tab-bar picker offers, matching
- * Monday's own "Board views" menu. `table` is intentionally absent — the
- * frontend no longer has a Table view. `kanban` is fully implemented; the
- * rest are reserved categories a board can already be planned around (see
- * {@link BoardViewTypeOption.is_available}).
+ * Monday's own "Board views" menu. `table` and `kanban` are fully
+ * implemented; the rest are reserved categories a board can already be
+ * planned around (see {@link BoardViewTypeOption.is_available}).
  */
 export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
+  {
+    kind: "table",
+    label: "Table",
+    description: "Rows and columns, grouped into tables",
+    Icon: TableViewIcon,
+    is_available: true,
+  },
   {
     kind: "kanban",
     label: "Kanban",
@@ -126,6 +129,6 @@ const BOARD_VIEW_TYPE_BY_KIND: Record<BoardViewKind, BoardViewTypeOption> = Obje
   BOARD_VIEW_TYPES.map((option) => [option.kind, option])
 ) as Record<BoardViewKind, BoardViewTypeOption>;
 
-/** Resolves a view kind to its picker metadata, falling back to `kanban` for any unrecognized value (including the retired `table` kind). */
+/** Resolves a view kind to its picker metadata, falling back to `table` for any unrecognized value. */
 export const getBoardViewTypeOption = (kind: BoardViewKind | string | null | undefined): BoardViewTypeOption =>
-  (kind && BOARD_VIEW_TYPE_BY_KIND[kind as BoardViewKind]) || BOARD_VIEW_TYPE_BY_KIND.kanban;
+  (kind && BOARD_VIEW_TYPE_BY_KIND[kind as BoardViewKind]) || BOARD_VIEW_TYPE_BY_KIND.table;

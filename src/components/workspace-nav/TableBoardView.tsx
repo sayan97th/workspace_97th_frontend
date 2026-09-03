@@ -16,6 +16,7 @@ import {
   BoardKanban,
   BoardPopover,
   BoardShell,
+  BoardTable,
   BoardToolbar,
   ChangeBoardTypeModal,
   COLUMN_KIND_SWATCH,
@@ -48,9 +49,16 @@ import {
   type BoardPersonOption,
   type BoardQuickFilterFacet,
   type BoardSortOption,
+  type BoardTableGroup,
+  type BoardTableItem,
+  type BoardTableNode,
   type BoardToolbarConfig,
   type BoardViewKind,
+  type ColumnDef as TableColumnDef,
+  type PersonDef as TablePersonDef,
+  type UseBoardTableConfig,
 } from "@/components/board";
+import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
 import {
   AttachmentIcon,
   CalendarViewIcon,
@@ -98,6 +106,39 @@ const CHAT_COLUMN_ID = "comments";
 
 /** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
 const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
+
+/**
+ * The Table view's own `ColumnKind` enum (`@/components/board/table`) is
+ * almost, but not quite, the engine's `BoardColumnType`: `"long_text"` here
+ * is `"longtext"` there, and `"dependency"` (Gantt-only, no Table cell
+ * renderer) has no counterpart at all.
+ */
+const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["kind"]>> = {
+  text: "text",
+  long_text: "longtext",
+  status: "status",
+  people: "people",
+  date: "date",
+  tags: "tags",
+  number: "number",
+  checkbox: "checkbox",
+  timeline: "timeline",
+  label: "label",
+  progress: "progress",
+  phone: "phone",
+  email: "email",
+};
+
+/** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
+const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
+  column.config?.options?.map((option) => ({ id: option.id, label: option.label, color: option.color }));
+
+/** `null` for a column kind the Table view has no cell renderer for (currently just `dependency`) — filtered out of `table_base_columns`/`table_sub_base_columns`. */
+const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
+  const kind = TABLE_COLUMN_KIND[column.type];
+  if (!kind) return null;
+  return { id: String(column.id), title: column.label, kind, width: column.width, options: toTableOptions(column) };
+};
 
 /**
  * `items` is a tree (each root's `children` holds its subitems, recursively),
@@ -1152,13 +1193,115 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `board_priority_column`/`board_done_column`/`board_date_column`/
   // `board_date_end_column` are declared earlier in this component (right
   // after `columns_by_id`) — see the comment there.
-  // No Table renderer exists any more, so a freshly-loaded board (no active
-  // view yet) and a legacy view still carrying the retired `"table"` kind
-  // both fall back to Kanban instead.
-  const raw_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "kanban";
-  const active_view_type: BoardViewKind = raw_view_type === "table" ? "kanban" : raw_view_type;
+  // A freshly-loaded board (no active view yet) opens on the Table ("Main
+  // table") view, mirroring monday.com's own default.
+  const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const active_doc_view = view_tabs.active_view;
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
+
+  // ── Table view — every subitem-scoped column, mirroring `item_columns` above. ──
+  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
+
+  const table_people: TablePersonDef[] = useMemo(
+    () =>
+      workspace_members.map((member, index) => ({
+        id: String(member.id),
+        name: member.full_name,
+        initials: getInitials(member.full_name),
+        color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+      })),
+    [workspace_members]
+  );
+
+  const table_base_columns = useMemo(
+    () => item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
+    [item_columns]
+  );
+  const table_sub_base_columns = useMemo(
+    () => subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
+    [subitem_columns]
+  );
+
+  const adaptTableNode = (item: BoardItemDto): BoardTableNode => ({ id: String(item.id), name: item.name, values: item.values });
+  const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
+
+  const table_groups: BoardTableGroup[] = useMemo(
+    () =>
+      toolbar.groups.map((g) => ({
+        key: g.id,
+        title: g.name,
+        color: g.accent_color,
+        tint: g.accent_color,
+        item_title: item_column_label,
+        sub_title: "Subitem",
+        base_columns: table_base_columns,
+        sub_base_columns: table_sub_base_columns,
+        custom_columns: [],
+        sub_custom_columns: [],
+        items: g.rows.map(adaptTableItem),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label]
+  );
+
+  /**
+   * Bridges `BoardTable` to this component's own real handlers — rename,
+   * cell edits and group rename/delete persist immediately; row/subitem/
+   * group *creation* instead goes through `handleCreateTableItem`/
+   * `handleCreateTableSubitem`/`handleCreateTableGroup` below (passed as
+   * `BoardTable`'s own `onCreateItem`/`onCreateSubitem`/`onCreateGroup`
+   * props), which await the real API call first — see `BoardTableProps`'s
+   * own doc comment for why. Column-structure management (add/rename/delete
+   * a column, the status/label/tags option editors) stays local-only for
+   * now; only picking an *existing* option persists, via `onCellValueChange`.
+   */
+  const table_config: UseBoardTableConfig = useMemo(
+    () => ({
+      initial_groups: table_groups,
+      people: table_people,
+      onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
+      onCellValueChange: (node_id, column_id, value) =>
+        void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
+      onDeleteNode: (node_id) => {
+        void boardContentService
+          .deleteItem(board_id, Number(node_id))
+          .then(() => setItems((current) => removeItemFromTree(current, Number(node_id))));
+      },
+      onRenameGroup: (group_key, title) => {
+        void boardContentService
+          .updateGroup(board_id, Number(group_key), { name: title })
+          .then((updated) => setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g))));
+      },
+      onRemoveGroup: (group_key) => {
+        void boardContentService
+          .deleteGroup(board_id, Number(group_key))
+          .then(() => setGroups((current) => current.filter((g) => g.id !== Number(group_key))));
+      },
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [table_groups, table_people, board_id]
+  );
+
+  const handleCreateTableItem = async (group_key: string): Promise<string> => {
+    const created = await boardContentService.createItem(board_id, { name: "New item", group_id: Number(group_key) });
+    setItems((current) => [...current, created]);
+    return String(created.id);
+  };
+
+  const handleCreateTableSubitem = async (item_id: string): Promise<string> => {
+    const created = await boardContentService.createItem(board_id, { name: "New subitem", parent_id: Number(item_id) });
+    setItems((current) => mapItemInTree(current, Number(item_id), (item) => ({ ...item, children: [...item.children, created] })));
+    return String(created.id);
+  };
+
+  const handleCreateTableGroup = async (): Promise<{ key: string; title: string }> => {
+    const created = await boardContentService.createGroup(board_id, {
+      view_id: view_tabs.active_view_id as number,
+      name: "New group",
+    });
+    setGroups((current) => [...current, created]);
+    return { key: String(created.id), title: created.name };
+  };
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
     if (!board_status_column) return [];
@@ -1742,7 +1885,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         </div>
       )}
 
-      {active_view_type === "kanban" ? (
+      {active_view_type === "table" ? (
+        <BoardTable
+          embedded
+          config={table_config}
+          onCreateItem={handleCreateTableItem}
+          onCreateSubitem={handleCreateTableSubitem}
+          onCreateGroup={handleCreateTableGroup}
+        />
+      ) : active_view_type === "kanban" ? (
         board_status_column ? (
           <BoardKanban<BoardItemDto>
             lanes={kanban_lanes}

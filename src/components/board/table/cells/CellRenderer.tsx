@@ -1,10 +1,9 @@
 "use client";
 
-import type { CellValue, ColumnDef } from "../types";
+import type { CellValue, ColumnDef, StatusDef } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, pillColors } from "../colorUtils";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
-import { PEOPLE } from "../constants";
 import AvatarBadge from "../menus/AvatarBadge";
 import StatusMenu from "../menus/StatusMenu";
 import LabelMenu from "../menus/LabelMenu";
@@ -28,6 +27,17 @@ function asString(v: CellValue): string {
 }
 function asArray(v: CellValue): string[] {
   return Array.isArray(v) ? v : [];
+}
+
+/**
+ * Looks up a status/label/dropdown/tags option by its stored value. Real
+ * (API-backed) columns store an option's `id`; the mock demo data instead
+ * stores its `label` text directly, so `findDef` tries both — matching by id
+ * first keeps a real board correct even if a label happens to collide with
+ * another option's id.
+ */
+function findDef(defs: StatusDef[], value: string): StatusDef | undefined {
+  return defs.find((d) => d.id === value) ?? defs.find((d) => d.label === value);
 }
 
 export default function CellRenderer({ node_id, column, values, state, actions }: CellRendererProps) {
@@ -84,17 +94,18 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "status") {
-    const def = state.status_defs.find((d) => d.label === value);
+    const defs = column.options ?? state.status_defs;
+    const def = findDef(defs, asString(value));
     const bg = def?.color || "#c9ccd4";
     return (
       <div className="relative flex-1">
         <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center text-[12.5px] font-medium" style={{ background: bg, color: contrastFg(bg) }}>
-          {asString(value)}
+          {def?.label ?? asString(value)}
         </button>
         {is_menu_open && (
           <StatusMenu
-            status_defs={state.status_defs}
-            onPick={(label) => actions.setCellValue(node_id, column.id, label)}
+            status_defs={defs}
+            onPick={(id) => actions.setCellValue(node_id, column.id, id)}
             onEditLabels={() => actions.openLabelEditor("status")}
             onClose={actions.closeCellMenu}
           />
@@ -104,22 +115,23 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "label") {
-    const label = asString(value);
-    const pill = pillColors(state.label_defs.find((d) => d.label === label)?.color || "");
+    const defs = column.options ?? state.label_defs;
+    const def = findDef(defs, asString(value));
+    const pill = pillColors(def?.color || "");
     return (
       <div className="relative flex-1">
         <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center">
-          {label && (
+          {def && (
             <span className="rounded-[4px] border px-2.5 py-0.5 text-[11.5px] font-medium" style={{ color: pill.fg, borderColor: pill.bd, background: pill.bg }}>
-              {label}
+              {def.label}
             </span>
           )}
         </button>
         {is_menu_open && (
           <LabelMenu
-            label_defs={state.label_defs}
-            selected={label ? [label] : []}
-            onPick={(l) => actions.setCellValue(node_id, column.id, l)}
+            label_defs={defs}
+            selected={def ? [def.id] : []}
+            onPick={(id) => actions.setCellValue(node_id, column.id, id)}
             onClear={() => actions.clearCellValue(node_id, column.id)}
             onClose={actions.closeCellMenu}
           />
@@ -179,7 +191,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center">
           <div className="flex items-center pl-[7px]">
             {owner_ids.slice(0, 3).map((id) => {
-              const person = PEOPLE.find((p) => p.id === id);
+              const person = state.people.find((p) => p.id === id);
               return <AvatarBadge key={id} initials={person?.initials || id} color={person?.color || "#9aa0b6"} />;
             })}
             {owner_ids.length > 3 && (
@@ -194,6 +206,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         </button>
         {is_menu_open && (
           <PeopleMenu
+            people={state.people}
             selected={owner_ids}
             query={state.people_query}
             onQueryChange={actions.setPeopleQuery}
@@ -230,24 +243,25 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "dropdown") {
+    const defs = column.options ?? state.label_defs;
     const selected = asArray(value);
     return (
       <div className="relative flex flex-1 items-center gap-1.5 overflow-hidden px-2.5">
         <button type="button" onClick={openMenu} className="flex flex-1 items-center gap-1.5 overflow-hidden">
-          {selected.map((label) => {
-            const def = state.label_defs.find((d) => d.label === label);
+          {selected.map((entry) => {
+            const def = findDef(defs, entry);
             return (
-              <span key={label} className="flex-none whitespace-nowrap rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def?.color || "#9aa0b6" }}>
-                {label}
+              <span key={entry} className="flex-none whitespace-nowrap rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def?.color || "#9aa0b6" }}>
+                {def?.label ?? entry}
               </span>
             );
           })}
         </button>
         {is_menu_open && (
           <DropdownMenu
-            options={state.label_defs}
+            options={defs}
             selected={selected}
-            onToggle={(label) => actions.toggleArrayValue(node_id, column.id, label)}
+            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
             onClear={() => actions.clearCellValue(node_id, column.id)}
             onClose={actions.closeCellMenu}
           />
@@ -257,34 +271,44 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "tags") {
+    // Real per-column tag options come from `column.options` (read/select
+    // only in this pass); the mock demo's own global palette (`state.tag_defs`)
+    // also supports creating new tags inline, since it isn't backed by a
+    // real column that would need persisting.
+    const is_real_column = Boolean(column.options);
+    const defs = column.options ?? state.tag_defs;
     const selected = asArray(value);
     return (
       <div className="relative flex flex-1 items-center gap-2.5 overflow-hidden px-2.5">
         <button type="button" onClick={openMenu} className="flex flex-1 items-center gap-2.5 overflow-hidden">
-          {selected.map((label) => {
-            const def = state.tag_defs.find((t) => t.label === label);
+          {selected.map((entry) => {
+            const def = findDef(defs, entry);
             return (
-              <span key={label} className="flex-none whitespace-nowrap text-[12px] font-medium" style={{ color: def?.color || "#9aa0b6" }}>
-                {label}
+              <span key={entry} className="flex-none whitespace-nowrap text-[12px] font-medium" style={{ color: def?.color || "#9aa0b6" }}>
+                {def?.label ?? entry}
               </span>
             );
           })}
         </button>
         {is_menu_open && (
           <TagsMenu
-            tag_defs={state.tag_defs}
+            tag_defs={defs}
             selected={selected}
             query={state.tag_query}
             onQueryChange={actions.setTagQuery}
-            onToggle={(label) => actions.toggleArrayValue(node_id, column.id, label)}
-            onCreateTag={() => {
-              const label = state.tag_query.trim();
-              if (!label) return;
-              actions.addTagDef(label);
-              actions.toggleArrayValue(node_id, column.id, label);
-              actions.setTagQuery("");
-            }}
-            onManageTags={actions.openTagEditor}
+            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
+            onCreateTag={
+              is_real_column
+                ? undefined
+                : () => {
+                    const label = state.tag_query.trim();
+                    if (!label) return;
+                    actions.addTagDef(label);
+                    actions.toggleArrayValue(node_id, column.id, label);
+                    actions.setTagQuery("");
+                  }
+            }
+            onManageTags={is_real_column ? undefined : actions.openTagEditor}
             onClose={actions.closeCellMenu}
           />
         )}

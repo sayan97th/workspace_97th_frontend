@@ -6,9 +6,10 @@ interface TagsMenuProps {
   selected: string[];
   query: string;
   onQueryChange: (value: string) => void;
-  onToggle: (label: string) => void;
-  onCreateTag: () => void;
-  onManageTags: () => void;
+  onToggle: (id: string) => void;
+  /** Omitted for a real per-column tag set — creating tags there isn't wired to the backend yet, so the affordance is hidden rather than shown with no effect. */
+  onCreateTag?: () => void;
+  onManageTags?: () => void;
   onClose: () => void;
 }
 
@@ -29,12 +30,12 @@ export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onT
       />
       <div className="flex max-h-[236px] flex-col gap-0.5 overflow-y-auto">
         {filtered.map((tag) => {
-          const is_on = selected.includes(tag.label);
+          const is_on = selected.includes(tag.id);
           return (
             <button
               type="button"
               key={tag.id}
-              onClick={() => onToggle(tag.label)}
+              onClick={() => onToggle(tag.id)}
               className="flex items-center gap-2.5 rounded-[5px] px-2.5 py-1.5 hover:brightness-[0.96]"
               style={{ background: is_on ? `${tag.color}1a` : "transparent" }}
             >
@@ -47,18 +48,22 @@ export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onT
         })}
       </div>
       {filtered.length === 0 && <div className="px-1.5 pb-1.5 pt-1.5 text-[12.5px] text-[#a4aac2]">No tags found</div>}
-      <button
-        type="button"
-        disabled={!can_create}
-        onClick={onCreateTag}
-        className="my-2.5 flex h-8 w-full items-center justify-center rounded-[5px] bg-[#eeeff5] text-[12.5px] hover:brightness-[0.98] disabled:cursor-default disabled:opacity-50"
-        style={{ color: can_create ? "#4f6bed" : "#a4aac2" }}
-      >
-        + Create new tag
-      </button>
-      <button type="button" onClick={onManageTags} className="flex h-[30px] w-full items-center justify-center text-[12.5px] text-[#2074d4] hover:underline">
-        Manage tags
-      </button>
+      {onCreateTag && (
+        <button
+          type="button"
+          disabled={!can_create}
+          onClick={onCreateTag}
+          className="my-2.5 flex h-8 w-full items-center justify-center rounded-[5px] bg-[#eeeff5] text-[12.5px] hover:brightness-[0.98] disabled:cursor-default disabled:opacity-50"
+          style={{ color: can_create ? "#4f6bed" : "#a4aac2" }}
+        >
+          + Create new tag
+        </button>
+      )}
+      {onManageTags && (
+        <button type="button" onClick={onManageTags} className="flex h-[30px] w-full items-center justify-center text-[12.5px] text-[#2074d4] hover:underline">
+          Manage tags
+        </button>
+      )}
     </PopoverPanel>
   );
 }

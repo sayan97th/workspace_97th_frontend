@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CellValue,
   ColumnDef,
   ColumnKind,
   DragState,
+  PersonDef,
   SortState,
   StatusDef,
   TagDef,
@@ -19,6 +20,7 @@ import {
   DEFAULT_STATUS_DEFS,
   DEFAULT_TAG_DEFS,
   GROUP_PALETTE,
+  PEOPLE,
   STATUS_PALETTE,
 } from "./constants";
 import {
@@ -35,8 +37,33 @@ import {
 
 export type ColumnScope = "main" | "sub";
 
+/**
+ * Bridges `BoardTable` to a real, API-backed board. Omitted entirely, the
+ * hook behaves exactly like the standalone demo (mock data, no persistence).
+ * Passed in (see `TableBoardView.tsx`), `initial_groups`/`people`/
+ * `status_defs` seed the hook's local state from real data and re-sync it
+ * whenever the caller's data changes, while the `on*` callbacks fire
+ * alongside the matching local update so the change is also persisted.
+ * Structural creation (add item/subitem/group) instead goes through the
+ * `preset_id`/`preset_key` parameters on `addItem`/`addSubitem`/`addGroup`
+ * below — the caller awaits the real API call first and only then adds the
+ * row locally under its real id, so no local-id-to-real-id reconciliation is
+ * ever needed.
+ */
+export interface UseBoardTableConfig {
+  initial_groups?: BoardTableGroup[];
+  people?: PersonDef[];
+  status_defs?: StatusDef[];
+  onRenameNode?: (node_id: string, name: string) => void;
+  onCellValueChange?: (node_id: string, column_id: string, value: CellValue) => void;
+  onDeleteNode?: (node_id: string) => void;
+  onRenameGroup?: (group_key: string, title: string) => void;
+  onRemoveGroup?: (group_key: string) => void;
+}
+
 export interface BoardTableState {
   groups: BoardTableGroup[];
+  people: PersonDef[];
   open_map: Record<string, boolean>;
   collapsed_groups: Record<string, boolean>;
   selected_map: Record<string, boolean>;
@@ -66,12 +93,16 @@ export interface BoardTableState {
   copied_row_id: string | null;
 }
 
-function initialState(): BoardTableState {
+function initialState(config: UseBoardTableConfig): BoardTableState {
+  const is_controlled = Boolean(config.initial_groups);
   return {
-    groups: buildInitialGroups(),
-    open_map: { i1: true, i3: true },
+    groups: config.initial_groups ?? buildInitialGroups(),
+    people: config.people ?? PEOPLE,
+    // A real board's rows load collapsed and unselected — only the mock demo
+    // opens/selects a couple of rows up front to show the tree off at a glance.
+    open_map: is_controlled ? {} : { i1: true, i3: true },
     collapsed_groups: {},
-    selected_map: { "i3-s2": true },
+    selected_map: is_controlled ? {} : { "i3-s2": true },
     editing_id: null,
     edit_draft: "",
     editing_group_key: null,
@@ -88,7 +119,7 @@ function initialState(): BoardTableState {
     picker_query: "",
     people_query: "",
     tag_query: "",
-    status_defs: DEFAULT_STATUS_DEFS.slice(),
+    status_defs: config.status_defs ?? DEFAULT_STATUS_DEFS.slice(),
     label_defs: DEFAULT_LABEL_DEFS.slice(),
     tag_defs: DEFAULT_TAG_DEFS.slice(),
     label_editor_kind: null,
@@ -108,13 +139,41 @@ const closeAllMenus = {
   open_picker_key: null,
 };
 
-export function useBoardTable() {
-  const [state, setState] = useState<BoardTableState>(initialState);
+export function useBoardTable(config: UseBoardTableConfig = {}) {
+  const [state, setState] = useState<BoardTableState>(() => initialState(config));
   const seq_ref = useRef(0);
   const nextId = useCallback((prefix: string) => {
     seq_ref.current += 1;
     return `${prefix}-n${seq_ref.current}`;
   }, []);
+
+  // Latest-value ref so the `on*` callbacks below always call the caller's
+  // current config without forcing every action creator to depend on (and
+  // therefore be recreated whenever) `config` itself.
+  const config_ref = useRef(config);
+  config_ref.current = config;
+  // Same latest-value pattern, so a `useCallback([])`-memoized action can read
+  // the current state synchronously (e.g. to know which node it's committing
+  // a rename for) without depending on — and being recreated by — `state`.
+  const state_ref = useRef(state);
+  state_ref.current = state;
+
+  // Re-syncs local state whenever the caller's real data changes underneath
+  // it (a refetch, another viewer's edit, ...) — skipped while a rename or
+  // drag is in flight so an in-flight local edit can't get yanked out from
+  // under the user, mirroring `BoardKanban`'s own re-sync guard.
+  useEffect(() => {
+    if (!config.initial_groups) return;
+    setState((s) => (s.editing_id || s.drag ? s : { ...s, groups: config.initial_groups! }));
+  }, [config.initial_groups]);
+
+  useEffect(() => {
+    if (config.people) setState((s) => ({ ...s, people: config.people! }));
+  }, [config.people]);
+
+  useEffect(() => {
+    if (config.status_defs) setState((s) => ({ ...s, status_defs: config.status_defs! }));
+  }, [config.status_defs]);
 
   // ---- expand / select / edit -------------------------------------------------
 
@@ -139,11 +198,11 @@ export function useBoardTable() {
   }, []);
 
   const commitEditName = useCallback(() => {
-    setState((s) => {
-      if (!s.editing_id) return s;
-      const name = (s.edit_draft || "").trim() || "Untitled";
-      return { ...s, editing_id: null, groups: updateNodeById<BoardTableNode>(s.groups, s.editing_id, (n) => ({ ...n, name })) };
-    });
+    const editing_id = state_ref.current.editing_id;
+    if (!editing_id) return;
+    const name = (state_ref.current.edit_draft || "").trim() || "Untitled";
+    setState((s) => ({ ...s, editing_id: null, groups: updateNodeById<BoardTableNode>(s.groups, editing_id, (n) => ({ ...n, name })) }));
+    config_ref.current.onRenameNode?.(editing_id, name);
   }, []);
 
   const cancelEditName = useCallback(() => {
@@ -159,15 +218,15 @@ export function useBoardTable() {
   }, []);
 
   const commitGroupRename = useCallback(() => {
-    setState((s) => {
-      if (!s.editing_group_key) return s;
-      const title = (s.group_draft || "").trim() || "Untitled group";
-      return {
-        ...s,
-        editing_group_key: null,
-        groups: s.groups.map((g) => (g.key === s.editing_group_key ? { ...g, title } : g)),
-      };
-    });
+    const editing_group_key = state_ref.current.editing_group_key;
+    if (!editing_group_key) return;
+    const title = (state_ref.current.group_draft || "").trim() || "Untitled group";
+    setState((s) => ({
+      ...s,
+      editing_group_key: null,
+      groups: s.groups.map((g) => (g.key === editing_group_key ? { ...g, title } : g)),
+    }));
+    config_ref.current.onRenameGroup?.(editing_group_key, title);
   }, []);
 
   const cancelGroupRename = useCallback(() => {
@@ -181,17 +240,20 @@ export function useBoardTable() {
       ...s,
       groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: value } })),
     }));
+    config_ref.current.onCellValueChange?.(node_id, column_id, value);
   }, []);
 
   const toggleArrayValue = useCallback((node_id: string, column_id: string, option: string) => {
+    let next_value: string[] = [];
     setState((s) => ({
       ...s,
       groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => {
         const current = (n.values[column_id] as string[]) || [];
-        const next = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
-        return { ...n, values: { ...n.values, [column_id]: next } };
+        next_value = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
+        return { ...n, values: { ...n.values, [column_id]: next_value } };
       }),
     }));
+    config_ref.current.onCellValueChange?.(node_id, column_id, next_value.length ? next_value : null);
   }, []);
 
   const clearCellValue = useCallback((node_id: string, column_id: string) => {
@@ -200,6 +262,7 @@ export function useBoardTable() {
       groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: undefined } })),
       open_cell_menu_key: null,
     }));
+    config_ref.current.onCellValueChange?.(node_id, column_id, null);
   }, []);
 
   // ---- row menu / structural item ops -------------------------------------
@@ -210,9 +273,16 @@ export function useBoardTable() {
 
   const closeRowMenu = useCallback(() => setState((s) => ({ ...s, open_row_menu_id: null })), []);
 
+  /**
+   * `preset_id` lets a real-data caller await the row's real backend id
+   * *before* it ever appears locally (see `UseBoardTableConfig`'s own doc
+   * comment), so it's addressable by real handlers (rename, cell edits) from
+   * the moment it's inserted — no separate local-id-to-real-id reconciliation
+   * step. Omitted, a local id is generated exactly like the standalone demo.
+   */
   const addItem = useCallback(
-    (group_key: string) => {
-      const id = nextId("item");
+    (group_key: string, preset_id?: string) => {
+      const id = preset_id ?? nextId("item");
       setState((s) => ({
         ...s,
         groups: insertItemIntoGroup(s.groups, group_key, { id, name: "New item", values: { owner: [], status: "" }, subs: [] }),
@@ -220,13 +290,14 @@ export function useBoardTable() {
         edit_draft: "New item",
         collapsed_groups: { ...s.collapsed_groups, [group_key]: false },
       }));
+      return id;
     },
     [nextId]
   );
 
   const addSubitem = useCallback(
-    (item_id: string) => {
-      const id = nextId(item_id);
+    (item_id: string, preset_id?: string) => {
+      const id = preset_id ?? nextId(item_id);
       setState((s) => ({
         ...s,
         groups: insertSubIntoItem(s.groups, item_id, { id, name: "New subitem", values: { owner: [], status: "" } }),
@@ -234,12 +305,14 @@ export function useBoardTable() {
         editing_id: id,
         edit_draft: "New subitem",
       }));
+      return id;
     },
     [nextId]
   );
 
   const deleteNode = useCallback((id: string) => {
     setState((s) => ({ ...s, groups: removeNodeById(s.groups, id).groups, open_row_menu_id: null, selected_map: { ...s.selected_map, [id]: false } }));
+    config_ref.current.onDeleteNode?.(id);
   }, []);
 
   const createBelow = useCallback(
@@ -363,27 +436,31 @@ export function useBoardTable() {
   }, []);
   const closeGroupMenu = useCallback(() => setState((s) => ({ ...s, open_group_menu_key: null })), []);
 
-  const addGroup = useCallback(() => {
-    setState((s) => {
-      const color = GROUP_PALETTE[s.groups.length % GROUP_PALETTE.length];
-      const key = `g${nextId("grp")}`;
-      const template = s.groups[0];
-      const new_group: BoardTableGroup = {
-        key,
-        title: "New group",
-        color,
-        tint: color,
-        item_title: "Item",
-        sub_title: "Subitem",
-        base_columns: template ? template.base_columns.map((c) => ({ ...c })) : [],
-        sub_base_columns: template ? template.sub_base_columns.map((c) => ({ ...c })) : [],
-        custom_columns: [],
-        sub_custom_columns: [],
-        items: [],
-      };
-      return { ...s, groups: s.groups.concat(new_group), open_group_menu_key: null };
-    });
-  }, [nextId]);
+  const addGroup = useCallback(
+    (preset_key?: string, preset_title?: string) => {
+      const key = preset_key ?? `g${nextId("grp")}`;
+      setState((s) => {
+        const color = GROUP_PALETTE[s.groups.length % GROUP_PALETTE.length];
+        const template = s.groups[0];
+        const new_group: BoardTableGroup = {
+          key,
+          title: preset_title ?? "New group",
+          color,
+          tint: color,
+          item_title: "Item",
+          sub_title: "Subitem",
+          base_columns: template ? template.base_columns.map((c) => ({ ...c })) : [],
+          sub_base_columns: template ? template.sub_base_columns.map((c) => ({ ...c })) : [],
+          custom_columns: [],
+          sub_custom_columns: [],
+          items: [],
+        };
+        return { ...s, groups: s.groups.concat(new_group), open_group_menu_key: null };
+      });
+      return key;
+    },
+    [nextId]
+  );
 
   const duplicateGroup = useCallback(
     (key: string, with_items: boolean) => {
@@ -434,6 +511,7 @@ export function useBoardTable() {
 
   const removeGroup = useCallback((key: string) => {
     setState((s) => ({ ...s, groups: s.groups.filter((g) => g.key !== key), open_group_menu_key: null }));
+    config_ref.current.onRemoveGroup?.(key);
   }, []);
 
   const selectAllInGroup = useCallback((key: string) => {
