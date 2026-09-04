@@ -155,6 +155,12 @@ export interface BoardTableState {
   label_defs: StatusDef[];
   tag_defs: TagDef[];
   label_editor_kind: "status" | "label" | null;
+  /**
+   * The real column being edited, when the editor was opened from a real
+   * (API-backed) column's cell — see `openLabelEditor`. Null for the
+   * standalone mock demo's shared `status_defs`/`label_defs` palette.
+   */
+  label_editor_column_id: string | null;
   tag_editor_open: boolean;
   drag: DragState | null;
   sort: SortState | null;
@@ -191,6 +197,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     label_defs: DEFAULT_LABEL_DEFS.slice(),
     tag_defs: DEFAULT_TAG_DEFS.slice(),
     label_editor_kind: null,
+    label_editor_column_id: null,
     tag_editor_open: false,
     drag: null,
     sort: null,
@@ -823,8 +830,22 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   // ---- status / label / tag editors -----------------------------------------
 
-  const openLabelEditor = useCallback((kind: "status" | "label") => setState((s) => ({ ...s, label_editor_kind: kind, ...closeAllMenus })), []);
-  const closeLabelEditor = useCallback(() => setState((s) => ({ ...s, label_editor_kind: null })), []);
+  /**
+   * `column_id` names the real column being edited (a status/label cell on
+   * an API-backed board) so the editor can persist through
+   * `addColumnOption`/`renameColumnOption`/`recolorColumnOption`/
+   * `deleteColumnOption` — the same column-option persistence path the
+   * Dropdown cell already uses — instead of the shared, unpersisted
+   * `status_defs`/`label_defs` mock-demo fallback. Omitted (or naming a
+   * column with no `options` of its own), `BoardTable` falls back to that
+   * shared palette.
+   */
+  const openLabelEditor = useCallback(
+    (kind: "status" | "label", column_id: string | null = null) =>
+      setState((s) => ({ ...s, label_editor_kind: kind, label_editor_column_id: column_id, ...closeAllMenus })),
+    []
+  );
+  const closeLabelEditor = useCallback(() => setState((s) => ({ ...s, label_editor_kind: null, label_editor_column_id: null })), []);
 
   const addStatusDef = useCallback(() => {
     setState((s) => {

@@ -107,7 +107,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
           <StatusMenu
             status_defs={defs}
             onPick={(id) => actions.setCellValue(node_id, column.id, id)}
-            onEditLabels={() => actions.openLabelEditor("status")}
+            onEditLabels={() => actions.openLabelEditor("status", column.id)}
             onClose={actions.closeCellMenu}
           />
         )}

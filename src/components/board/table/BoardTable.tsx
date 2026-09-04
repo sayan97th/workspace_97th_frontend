@@ -2,7 +2,8 @@
 
 import { useCallback, useMemo } from "react";
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
-import type { ColumnKind } from "./types";
+import type { ColumnDef, ColumnKind } from "./types";
+import { STATUS_PALETTE } from "./constants";
 import { computeNameColWidth } from "./layoutUtils";
 import { boardTreeFontClassName } from "../board-tree-font";
 import TableHeader from "./toolbar/TableHeader";
@@ -147,6 +148,27 @@ export default function BoardTable({
     return computeNameColWidth(all_names);
   }, [state.groups]);
 
+  /**
+   * The real column the status/label editor is currently open for (see
+   * `CellRenderer`'s `openLabelEditor(kind, column.id)` call) — found across
+   * every group's four column lists since a column definition is the same
+   * logical entity everywhere it's rendered. `options !== undefined` marks a
+   * real, API-backed column (own persisted option set); a mock-demo column
+   * never sets it, so the editor below falls back to the shared palette.
+   */
+  const label_editor_column: ColumnDef | undefined = useMemo(() => {
+    const column_id = state.label_editor_column_id;
+    if (!column_id) return undefined;
+    for (const g of state.groups) {
+      for (const list of [g.base_columns, g.custom_columns, g.sub_base_columns, g.sub_custom_columns]) {
+        const found = list.find((c) => c.id === column_id);
+        if (found) return found;
+      }
+    }
+    return undefined;
+  }, [state.groups, state.label_editor_column_id]);
+  const is_real_label_editor_column = label_editor_column?.options !== undefined;
+
   const grid = (
     <>
       {!embedded && <div className="h-[26px]" />}
@@ -176,7 +198,22 @@ export default function BoardTable({
 
   const modals = (
     <>
-      {state.label_editor_kind === "status" && (
+      {state.label_editor_kind === "status" && (is_real_label_editor_column ? (
+        <LabelEditorModal
+          title="Edit status labels"
+          defs={label_editor_column!.options!}
+          onRename={(id, label) => actions.renameColumnOption(label_editor_column!.id, id, label)}
+          onColor={(id, color) => actions.recolorColumnOption(label_editor_column!.id, id, color)}
+          onDelete={(id) => actions.deleteColumnOption(label_editor_column!.id, id)}
+          onAdd={() =>
+            actions.addColumnOption(label_editor_column!.id, {
+              label: "New status",
+              color: STATUS_PALETTE[label_editor_column!.options!.length % STATUS_PALETTE.length],
+            })
+          }
+          onClose={actions.closeLabelEditor}
+        />
+      ) : (
         <LabelEditorModal
           title="Edit status labels"
           defs={state.status_defs}
@@ -186,8 +223,23 @@ export default function BoardTable({
           onAdd={actions.addStatusDef}
           onClose={actions.closeLabelEditor}
         />
-      )}
-      {state.label_editor_kind === "label" && (
+      ))}
+      {state.label_editor_kind === "label" && (is_real_label_editor_column ? (
+        <LabelEditorModal
+          title="Edit labels"
+          defs={label_editor_column!.options!}
+          onRename={(id, label) => actions.renameColumnOption(label_editor_column!.id, id, label)}
+          onColor={(id, color) => actions.recolorColumnOption(label_editor_column!.id, id, color)}
+          onDelete={(id) => actions.deleteColumnOption(label_editor_column!.id, id)}
+          onAdd={() =>
+            actions.addColumnOption(label_editor_column!.id, {
+              label: "New label",
+              color: STATUS_PALETTE[label_editor_column!.options!.length % STATUS_PALETTE.length],
+            })
+          }
+          onClose={actions.closeLabelEditor}
+        />
+      ) : (
         <LabelEditorModal
           title="Edit labels"
           defs={state.label_defs}
@@ -197,7 +249,7 @@ export default function BoardTable({
           onAdd={actions.addLabelDef}
           onClose={actions.closeLabelEditor}
         />
-      )}
+      ))}
       {state.tag_editor_open && (
         <TagManagerModal
           tag_defs={state.tag_defs}
