@@ -30,10 +30,10 @@ const resolveTheme = (mode: ThemeMode): ResolvedTheme =>
   mode === "system" ? getSystemTheme() : mode;
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // The workspace shell ships dark-only today, so new visitors keep that look
-  // until they opt into Light or System default themselves.
-  const [theme_mode, setThemeModeState] = useState<ThemeMode>("dark");
-  const [resolved_theme, setResolvedTheme] = useState<ResolvedTheme>("dark");
+  // Light is the default look for new visitors until they opt into
+  // Dark or System themselves.
+  const [theme_mode, setThemeModeState] = useState<ThemeMode>("light");
+  const [resolved_theme, setResolvedTheme] = useState<ResolvedTheme>("light");
   const [is_initialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const initial_mode: ThemeMode =
       saved_mode === "light" || saved_mode === "dark" || saved_mode === "system"
         ? saved_mode
-        : "dark";
+        : "light";
 
     setThemeModeState(initial_mode);
     setResolvedTheme(resolveTheme(initial_mode));
