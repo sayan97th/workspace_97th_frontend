@@ -41,7 +41,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
       <input
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
-        className="h-full w-full bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
+        title={asString(value)}
+        className="h-full w-full truncate bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
       />
     );
   }
@@ -63,7 +64,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         inputMode="numeric"
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value.replace(/[^0-9.-]/g, ""))}
-        className="h-full w-full bg-transparent px-2.5 text-center font-mono text-[12px] text-boardtree-text outline-none"
+        title={asString(value)}
+        className="h-full w-full truncate bg-transparent px-2.5 text-center font-mono text-[12px] text-boardtree-text outline-none"
       />
     );
   }
@@ -89,8 +91,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const bg = def?.color || "#c9ccd4";
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center text-[12.5px] font-medium" style={{ background: bg, color: contrastFg(bg) }}>
-          {def?.label ?? asString(value)}
+        <button type="button" onClick={openMenu} title={def?.label ?? asString(value)} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-[12.5px] font-medium" style={{ background: bg, color: contrastFg(bg) }}>
+          <span className="truncate">{def?.label ?? asString(value)}</span>
         </button>
         {is_menu_open && (
           <StatusMenu
@@ -110,9 +112,9 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const pill = pillColors(def?.color || "");
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center">
+        <button type="button" onClick={openMenu} title={def?.label} className="flex h-full w-full min-w-0 items-center justify-center px-2">
           {def && (
-            <span className="rounded-[4px] border px-2.5 py-0.5 text-[11.5px] font-medium" style={{ color: pill.fg, borderColor: pill.bd, background: pill.bg }}>
+            <span className="max-w-full truncate rounded-[4px] border px-2.5 py-0.5 text-[11.5px] font-medium" style={{ color: pill.fg, borderColor: pill.bd, background: pill.bg }}>
               {def.label}
             </span>
           )}
@@ -134,8 +136,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const iso = asString(value);
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center text-[12.5px] text-boardtree-text-secondary">
-          {iso ? fmtDate(iso) : "—"}
+        <button type="button" onClick={openMenu} title={iso ? fmtDate(iso) : undefined} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-[12.5px] text-boardtree-text-secondary">
+          <span className="truncate">{iso ? fmtDate(iso) : "—"}</span>
         </button>
         {is_menu_open && (
           <DateMenu
@@ -156,10 +158,11 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         <button
           type="button"
           onClick={openMenu}
-          className="flex h-6 w-full items-center justify-center rounded-full border text-[11.5px] font-medium"
+          title={start_iso ? fmtRange(start_iso, end_iso || start_iso) : undefined}
+          className="flex h-6 w-full min-w-0 items-center justify-center rounded-full border px-2 text-[11.5px] font-medium"
           style={{ background: start_iso ? "var(--color-boardtree-accent-surface)" : "var(--color-boardtree-bg)", borderColor: start_iso ? "var(--color-boardtree-accent-soft)" : "var(--color-boardtree-border-soft)", color: "var(--color-boardtree-accent-hover)" }}
         >
-          {start_iso ? fmtRange(start_iso, end_iso || start_iso) : "—"}
+          <span className="truncate">{start_iso ? fmtRange(start_iso, end_iso || start_iso) : "—"}</span>
         </button>
         {is_menu_open && (
           <TimelineMenu
