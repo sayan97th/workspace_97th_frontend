@@ -1331,6 +1331,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
       onAddColumnOption: (column_id, option) => handleAddColumnOption(column_id, option),
+      // Dropdown cell's inline "Edit labels" mode (`DropdownMenu.tsx`) —
+      // rename/recolor/delete all funnel through the same `patchColumnOptions`
+      // helper the Kanban drawer's Priority/Project `makeOptionActions` use.
+      onRenameColumnOption: (column_id, option_id, label) =>
+        void patchColumnOptions(column_id, (options) => options.map((o) => (o.id === option_id ? { ...o, label } : o))),
+      onRecolorColumnOption: (column_id, option_id, color) =>
+        void patchColumnOptions(column_id, (options) => options.map((o) => (o.id === option_id ? { ...o, color } : o))),
+      onDeleteColumnOption: (column_id, option_id) =>
+        void patchColumnOptions(column_id, (options) => options.filter((o) => o.id !== option_id)),
       onDeleteNode: (node_id) => {
         void boardContentService
           .deleteItem(board_id, Number(node_id))

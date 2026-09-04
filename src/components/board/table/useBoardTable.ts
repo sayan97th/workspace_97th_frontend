@@ -37,6 +37,39 @@ import {
 
 export type ColumnScope = "main" | "sub";
 
+/** Every column list a `BoardTableGroup` carries — a dropdown's own `options` live on whichever one actually holds the column. */
+const COLUMN_LIST_KEYS: Array<keyof Pick<BoardTableGroup, "base_columns" | "custom_columns" | "sub_base_columns" | "sub_custom_columns">> = [
+  "base_columns",
+  "custom_columns",
+  "sub_base_columns",
+  "sub_custom_columns",
+];
+
+/**
+ * Applies `updater` to the one column matching `column_id`, wherever it lives
+ * across every group's four column lists — a column definition (including
+ * its `options`) is the same logical entity in every group/tab, so an option
+ * edit/delete/add needs to land everywhere that column is rendered, not just
+ * the group the triggering cell happened to be in (unlike a per-group action
+ * such as `renameColumn`, which only patches the group named by its caller).
+ */
+function mapColumnInAllGroups(groups: BoardTableGroup[], column_id: string, updater: (column: ColumnDef) => ColumnDef): BoardTableGroup[] {
+  return groups.map((g) => {
+    let changed = false;
+    const patch: Partial<BoardTableGroup> = {};
+    for (const list_key of COLUMN_LIST_KEYS) {
+      const list = g[list_key];
+      const index = list.findIndex((c) => c.id === column_id);
+      if (index < 0) continue;
+      changed = true;
+      const next_list = list.slice();
+      next_list[index] = updater(list[index]);
+      patch[list_key] = next_list;
+    }
+    return changed ? { ...g, ...patch } : g;
+  });
+}
+
 /**
  * Bridges `BoardTable` to a real, API-backed board. Omitted entirely, the
  * hook behaves exactly like the standalone demo (mock data, no persistence).
@@ -64,6 +97,12 @@ export interface UseBoardTableConfig {
    * local-only `label_defs` palette instead, mirroring `addLabelDef`.
    */
   onAddColumnOption?: (column_id: string, option: { label: string; color: string }) => Promise<unknown>;
+  /** Renames one of a real column's own existing options — see `onAddColumnOption`'s own doc comment for the add case. */
+  onRenameColumnOption?: (column_id: string, option_id: string, label: string) => void;
+  /** Recolors one of a real column's own existing options. */
+  onRecolorColumnOption?: (column_id: string, option_id: string, color: string) => void;
+  /** Permanently removes one of a real column's own existing options. */
+  onDeleteColumnOption?: (column_id: string, option_id: string) => void;
   onDeleteNode?: (node_id: string) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
@@ -579,7 +618,12 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setState((s) => {
         const list_key = columnListKey(scope);
         const id = nextId("col");
-        const column: ColumnDef = { id, title: label, kind, width: default_width };
+        // A dropdown column's options are always its own — never the shared,
+        // board-wide `label_defs` palette another dropdown column might be
+        // using — so it starts with a real (empty) array of its own rather
+        // than `undefined`, which would read as "no options set yet, fall
+        // back to something shared" everywhere `column.options` is consulted.
+        const column: ColumnDef = { id, title: label, kind, width: default_width, options: kind === "dropdown" ? [] : undefined };
         return {
           ...s,
           groups: s.groups.map((g) => {
@@ -775,9 +819,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   /**
    * Dropdown cell's own inline "New label" + Add row. A real column persists
    * through `onAddColumnOption` and picks up the confirmed option once the
-   * board's `initial_groups` re-syncs; a column with no persisted options of
-   * its own (the standalone demo) instead appends to the shared `label_defs`
-   * palette, exactly like `addLabelDef`.
+   * board's `initial_groups` re-syncs; the standalone demo instead appends
+   * straight to that column's own local `options` array (every dropdown
+   * column owns one — see `addColumn` — so this never touches another
+   * column's list).
    */
   const addColumnOption = useCallback((column_id: string, option: { label: string; color: string }) => {
     const label = option.label.trim();
@@ -787,8 +832,54 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       void on_add_option(column_id, { label, color: option.color });
       return;
     }
-    setState((s) => ({ ...s, label_defs: s.label_defs.concat({ id: nextId("lb"), label, color: option.color }) }));
+    const new_option: StatusDef = { id: nextId("opt"), label, color: option.color };
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, options: (c.options ?? []).concat(new_option) })),
+    }));
   }, [nextId]);
+
+  /**
+   * Renames one of a dropdown column's own existing options, in place —
+   * `DropdownMenu`'s own inline "Edit labels" mode. Mirrors `renameColumn`'s
+   * local-mutation-plus-callback pattern (unlike `addColumnOption`, this acts
+   * on an *existing* id, so there's no server-generated-id handshake to wait
+   * on before it's safe to show locally).
+   */
+  const renameColumnOption = useCallback((column_id: string, option_id: string, label: string) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        options: (c.options ?? []).map((o) => (o.id === option_id ? { ...o, label } : o)),
+      })),
+    }));
+    config_ref.current.onRenameColumnOption?.(column_id, option_id, label);
+  }, []);
+
+  /** Recolors one of a dropdown column's own existing options — see `renameColumnOption`. */
+  const recolorColumnOption = useCallback((column_id: string, option_id: string, color: string) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        options: (c.options ?? []).map((o) => (o.id === option_id ? { ...o, color } : o)),
+      })),
+    }));
+    config_ref.current.onRecolorColumnOption?.(column_id, option_id, color);
+  }, []);
+
+  /** Permanently deletes one of a dropdown column's own existing options — see `renameColumnOption`. */
+  const deleteColumnOption = useCallback((column_id: string, option_id: string) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        options: (c.options ?? []).filter((o) => o.id !== option_id),
+      })),
+    }));
+    config_ref.current.onDeleteColumnOption?.(column_id, option_id);
+  }, []);
 
   const openTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: true, ...closeAllMenus })), []);
   const closeTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: false })), []);
@@ -900,6 +991,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setLabelDefColor,
       deleteLabelDef,
       addColumnOption,
+      renameColumnOption,
+      recolorColumnOption,
+      deleteColumnOption,
       openTagEditor,
       closeTagEditor,
       addTagDef,
@@ -918,7 +1012,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, openTagEditor, closeTagEditor, addTagDef,
+      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink,
     ]
   );

@@ -72,11 +72,15 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             onEditLabels={
               col.kind === "status"
                 ? () => actions.openLabelEditor("status")
-                : col.kind === "label" || col.kind === "dropdown"
+                : col.kind === "label"
                 ? () => actions.openLabelEditor("label")
                 : col.kind === "tags"
                 ? () => actions.openTagEditor()
                 : undefined
+              // Dropdown deliberately has no header "Edit labels" entry —
+              // its options are per-column (see `ColumnDef.options`), so
+              // editing/deleting them happens inline in each cell's own
+              // `DropdownMenu` popover instead of a shared modal.
             }
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}

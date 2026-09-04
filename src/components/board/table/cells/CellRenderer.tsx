@@ -244,7 +244,10 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "dropdown") {
-    const defs = column.options ?? state.label_defs;
+    // Never falls back to the shared `label_defs` palette (unlike `label`
+    // below) — every dropdown column owns its own, independent option list,
+    // starting empty, so two dropdown columns never show/edit the same set.
+    const defs = column.options ?? [];
     const selected = asArray(value);
     // `overflow-hidden` stays on the button (below), not the wrapping div —
     // there it would also clip `DropdownMenu`, which renders as that div's
@@ -275,6 +278,9 @@ export default function CellRenderer({ node_id, column, values, state, actions }
             onAddOption={(label) =>
               actions.addColumnOption(column.id, { label, color: DROPDOWN_OPTION_COLORS[defs.length % DROPDOWN_OPTION_COLORS.length] })
             }
+            onRenameOption={(id, label) => actions.renameColumnOption(column.id, id, label)}
+            onRecolorOption={(id, color) => actions.recolorColumnOption(column.id, id, color)}
+            onDeleteOption={(id) => actions.deleteColumnOption(column.id, id)}
           />
         )}
       </div>
