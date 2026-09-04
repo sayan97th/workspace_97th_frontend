@@ -20,6 +20,7 @@ interface SubitemHeaderRowProps {
 
 export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: SubitemHeaderRowProps) {
   const scope_key_of = (column_id: string) => `sub|${item.id}|${column_id}`;
+  const sub_title_key = `sub-title:${item.id}`;
   const sort_scope = `sub:${item.id}`;
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const picker_key = `pick:sub|${item.id}`;
@@ -33,18 +34,24 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
         <div className="h-9 border-r border-boardtree-border-soft" />
 
         <ColumnHeaderCell
-          scoped_key="sub-title"
+          scoped_key={sub_title_key}
           title={group.sub_title}
           height={36}
           can_delete={false}
           sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === "__name" ? state.sort.direction : null}
-          is_menu_open={state.open_column_menu_key === "sub-title:" + item.id}
-          is_hovered={state.hover_head_key === "sub-title:" + item.id}
-          onEnter={() => actions.setHoverHead("sub-title:" + item.id)}
+          is_menu_open={state.open_column_menu_key === sub_title_key}
+          is_hovered={state.hover_head_key === sub_title_key}
+          is_editing={state.editing_column?.scoped_key === sub_title_key}
+          draft={state.column_draft}
+          onEnter={() => actions.setHoverHead(sub_title_key)}
           onLeave={() => actions.setHoverHead(null)}
-          onOpenMenu={() => actions.openColumnMenu("sub-title:" + item.id)}
+          onOpenMenu={() => actions.openColumnMenu(sub_title_key)}
           onCloseMenu={actions.closeColumnMenu}
           onRename={(title) => actions.renameItemTitle(group.key, "sub", title)}
+          onStartRename={() => actions.startColumnRename(sub_title_key, group.key, "sub", null, group.sub_title)}
+          onDraftChange={actions.updateColumnDraft}
+          onCommitRename={actions.commitColumnRename}
+          onCancelRename={actions.cancelColumnRename}
           onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => {}}
@@ -65,11 +72,17 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}
             is_hovered={state.hover_head_key === scope_key_of(col.id)}
+            is_editing={state.editing_column?.scoped_key === scope_key_of(col.id)}
+            draft={state.column_draft}
             onEnter={() => actions.setHoverHead(scope_key_of(col.id))}
             onLeave={() => actions.setHoverHead(null)}
             onOpenMenu={() => actions.openColumnMenu(scope_key_of(col.id))}
             onCloseMenu={actions.closeColumnMenu}
             onRename={(title) => actions.renameColumn(group.key, "sub", col.id, title)}
+            onStartRename={() => actions.startColumnRename(scope_key_of(col.id), group.key, "sub", col.id, col.title)}
+            onDraftChange={actions.updateColumnDraft}
+            onCommitRename={actions.commitColumnRename}
+            onCancelRename={actions.cancelColumnRename}
             onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
             onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "sub", col.id, patch)}
             onResizePreview={(width) => actions.resizeColumnPreview(group.key, "sub", col.id, width)}

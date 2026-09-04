@@ -148,6 +148,9 @@ export interface BoardTableState {
   edit_draft: string;
   editing_group_key: string | null;
   group_draft: string;
+  /** The header cell currently in inline-rename mode, identified by its `scoped_key` (see `ColumnHeaderCell`) — null for both real columns and the item-title/sub-title virtual columns when none is being edited. */
+  editing_column: { scoped_key: string; group_key: string; scope: ColumnScope; column_id: string | null } | null;
+  column_draft: string;
   hover_row_id: string | null;
   hover_group_key: string | null;
   hover_head_key: string | null;
@@ -190,6 +193,8 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     edit_draft: "",
     editing_group_key: null,
     group_draft: "",
+    editing_column: null,
+    column_draft: "",
     hover_row_id: null,
     hover_group_key: null,
     hover_head_key: null,
@@ -746,6 +751,39 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     }));
   }, []);
 
+  /**
+   * Click-to-rename on a header cell's title (see `ColumnHeaderCell`) —
+   * `column_id` is null for the item-title/sub-title virtual columns, which
+   * commit through `renameItemTitle` instead of `renameColumn`. Mirrors
+   * `startGroupRename`'s own pattern: centralized editing state (rather than
+   * local component state) so only one thing is ever mid-rename, and the
+   * owning column menu is closed if it happened to be open.
+   */
+  const startColumnRename = useCallback((scoped_key: string, group_key: string, scope: ColumnScope, column_id: string | null, title: string) => {
+    setState((s) => ({ ...s, editing_column: { scoped_key, group_key, scope, column_id }, column_draft: title, open_column_menu_key: null }));
+  }, []);
+
+  const updateColumnDraft = useCallback((value: string) => {
+    setState((s) => ({ ...s, column_draft: value }));
+  }, []);
+
+  const commitColumnRename = useCallback(() => {
+    const editing_column = state_ref.current.editing_column;
+    if (!editing_column) return;
+    const title = (state_ref.current.column_draft || "").trim() || "Untitled column";
+    setState((s) => ({ ...s, editing_column: null }));
+    const { group_key, scope, column_id } = editing_column;
+    if (column_id) {
+      renameColumn(group_key, scope, column_id, title);
+    } else {
+      renameItemTitle(group_key, scope, title);
+    }
+  }, [renameColumn, renameItemTitle]);
+
+  const cancelColumnRename = useCallback(() => {
+    setState((s) => ({ ...s, editing_column: null }));
+  }, []);
+
   const deleteColumn = useCallback((group_key: string, scope: ColumnScope, column_id: string) => {
     setState((s) => {
       const list_key = columnListKey(scope);
@@ -1061,6 +1099,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addColumn,
       renameColumn,
       renameItemTitle,
+      startColumnRename,
+      updateColumnDraft,
+      commitColumnRename,
+      cancelColumnRename,
       deleteColumn,
       duplicateColumn,
       changeColumnKind,
@@ -1104,7 +1146,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,

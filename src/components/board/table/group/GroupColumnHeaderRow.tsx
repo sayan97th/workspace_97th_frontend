@@ -18,6 +18,7 @@ interface GroupColumnHeaderRowProps {
 
 export default function GroupColumnHeaderRow({ group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: GroupColumnHeaderRowProps) {
   const scope_key_of = (column_id: string) => `main|${group.key}|${column_id}`;
+  const item_title_key = `item-title:${group.key}`;
   const sort_scope = `main:${group.key}`;
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const picker_key = `pick:main|${group.key}`;
@@ -30,18 +31,24 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
         <div className="h-[38px] border-r border-boardtree-border-soft" />
 
         <ColumnHeaderCell
-          scoped_key="item-title"
+          scoped_key={item_title_key}
           title={group.item_title}
           height={38}
           can_delete={false}
           sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === "__name" ? state.sort.direction : null}
-          is_menu_open={state.open_column_menu_key === "item-title:" + group.key}
-          is_hovered={state.hover_head_key === "item-title:" + group.key}
-          onEnter={() => actions.setHoverHead("item-title:" + group.key)}
+          is_menu_open={state.open_column_menu_key === item_title_key}
+          is_hovered={state.hover_head_key === item_title_key}
+          is_editing={state.editing_column?.scoped_key === item_title_key}
+          draft={state.column_draft}
+          onEnter={() => actions.setHoverHead(item_title_key)}
           onLeave={() => actions.setHoverHead(null)}
-          onOpenMenu={() => actions.openColumnMenu("item-title:" + group.key)}
+          onOpenMenu={() => actions.openColumnMenu(item_title_key)}
           onCloseMenu={actions.closeColumnMenu}
           onRename={(title) => actions.renameItemTitle(group.key, "main", title)}
+          onStartRename={() => actions.startColumnRename(item_title_key, group.key, "main", null, group.item_title)}
+          onDraftChange={actions.updateColumnDraft}
+          onCommitRename={actions.commitColumnRename}
+          onCancelRename={actions.cancelColumnRename}
           onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => { }}
@@ -62,11 +69,17 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}
             is_hovered={state.hover_head_key === scope_key_of(col.id)}
+            is_editing={state.editing_column?.scoped_key === scope_key_of(col.id)}
+            draft={state.column_draft}
             onEnter={() => actions.setHoverHead(scope_key_of(col.id))}
             onLeave={() => actions.setHoverHead(null)}
             onOpenMenu={() => actions.openColumnMenu(scope_key_of(col.id))}
             onCloseMenu={actions.closeColumnMenu}
             onRename={(title) => actions.renameColumn(group.key, "main", col.id, title)}
+            onStartRename={() => actions.startColumnRename(scope_key_of(col.id), group.key, "main", col.id, col.title)}
+            onDraftChange={actions.updateColumnDraft}
+            onCommitRename={actions.commitColumnRename}
+            onCancelRename={actions.cancelColumnRename}
             onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
             onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "main", col.id, patch)}
             onResizePreview={(width) => actions.resizeColumnPreview(group.key, "main", col.id, width)}

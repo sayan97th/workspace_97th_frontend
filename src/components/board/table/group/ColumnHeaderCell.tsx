@@ -15,11 +15,20 @@ interface ColumnHeaderCellProps {
   is_group_by_eligible?: boolean;
   is_menu_open: boolean;
   is_hovered: boolean;
+  /** Whether this cell's title is currently the one being inline-edited (click-to-rename). */
+  is_editing: boolean;
+  /** The in-progress title text while `is_editing` — owned by the caller (see `useBoardTable`'s `column_draft`). */
+  draft: string;
   onEnter: () => void;
   onLeave: () => void;
   onOpenMenu: () => void;
   onCloseMenu: () => void;
   onRename: (title: string) => void;
+  /** Click on the title turns it into an editable input. */
+  onStartRename: () => void;
+  onDraftChange: (value: string) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
   onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the item-title/sub-title virtual columns, which aren't resizable. */
@@ -36,8 +45,9 @@ interface ColumnHeaderCellProps {
 }
 
 export default function ColumnHeaderCell({
-  title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered,
-  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onSort, onUpdateSettings, onResizePreview, onEditLabels,
+  title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
+  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
+  onSort, onUpdateSettings, onResizePreview, onEditLabels,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -59,13 +69,29 @@ export default function ColumnHeaderCell({
           {sort_dir === "desc" && <svg viewBox="0 0 14 14" width="11" height="11"><path d="M7 11.4 L11.2 6 H2.8 Z" fill="currentColor" /></svg>}
         </button>
       )}
-      <button
-        type="button"
-        onClick={onOpenMenu}
-        className="max-w-full truncate rounded-[5px] px-1.5 py-1 text-[12.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text"
-      >
-        {title}
-      </button>
+      {is_editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onFocus={(e) => e.target.select()}
+          onBlur={onCommitRename}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+            if (e.key === "Escape") onCancelRename();
+          }}
+          className="min-w-0 flex-1 rounded-[5px] border border-boardtree-accent bg-boardtree-surface px-1.5 py-1 text-[12.5px] font-medium text-boardtree-text outline-none"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={onStartRename}
+          title="Click to rename"
+          className="max-w-full truncate rounded-[5px] px-1.5 py-1 text-[12.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text"
+        >
+          {title}
+        </button>
+      )}
       <button
         type="button"
         onClick={onOpenMenu}
