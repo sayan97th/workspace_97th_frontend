@@ -29,7 +29,7 @@ export default function PeopleMenu({ people, selected, query, onQueryChange, onT
         />
       </div>
       <div className="px-0.5 pb-[7px] text-[12px] text-[#8b90a6]">People in this account</div>
-      <div className="flex flex-col gap-0.5">
+      <div className="shell-scrollbar flex max-h-[236px] flex-col gap-0.5 overflow-y-auto">
         {filtered.map((person) => {
           const is_on = selected.includes(person.id);
           return (
@@ -51,8 +51,8 @@ export default function PeopleMenu({ people, selected, query, onQueryChange, onT
             </button>
           );
         })}
+        {filtered.length === 0 && <div className="px-2 py-1 text-[12.5px] text-[#9aa0b6]">No people found</div>}
       </div>
-      {filtered.length === 0 && <div className="px-2 py-1 text-[12.5px] text-[#9aa0b6]">No people found</div>}
       <button type="button" onClick={onClear} className="pt-2.5 text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
         Clear value
       </button>
