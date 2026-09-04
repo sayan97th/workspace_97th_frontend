@@ -301,14 +301,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const toggleArrayValue = useCallback((node_id: string, column_id: string, option: string) => {
-    let next_value: string[] = [];
+    // Computed synchronously from `state_ref` up front (mirroring `commitEditName`'s
+    // own pattern below) rather than inside the `setState` updater — React doesn't
+    // guarantee that updater runs before the `onCellValueChange` call right after it,
+    // so a value captured via an outer-scope variable mutated inside the updater can
+    // still be at its unset initial value when read here, silently sending a stale
+    // (effectively empty) value to the backend on every toggle.
+    const node = findNode(state_ref.current.groups, node_id);
+    const current = (node?.values[column_id] as string[]) || [];
+    const next_value = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
     setState((s) => ({
       ...s,
-      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => {
-        const current = (n.values[column_id] as string[]) || [];
-        next_value = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
-        return { ...n, values: { ...n.values, [column_id]: next_value } };
-      }),
+      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: next_value } })),
     }));
     config_ref.current.onCellValueChange?.(node_id, column_id, next_value.length ? next_value : null);
   }, []);
