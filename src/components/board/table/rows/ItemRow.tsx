@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
 import { mainGridTemplate } from "../layoutUtils";
@@ -28,6 +29,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const convert_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.filter((it) => it.id !== item.id).map((it) => ({ id: it.id, label: it.name })));
 
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
+  const menu_btn_ref = useRef<HTMLButtonElement>(null);
 
   return (
     <div
@@ -42,6 +44,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
     >
       <div className="absolute -left-[27px] top-2 z-[120]">
         <button
+          ref={menu_btn_ref}
           type="button"
           onClick={(e) => { e.stopPropagation(); actions.openRowMenu(item.id); }}
           className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
@@ -52,7 +55,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         {is_row_menu_open && (
           <RowMenu
             is_sub={false}
-            panel_style={{ top: 28 }}
+            anchor_el={menu_btn_ref.current}
             move_targets={move_targets}
             convert_targets={convert_targets}
             copied={state.copied_row_id === item.id}

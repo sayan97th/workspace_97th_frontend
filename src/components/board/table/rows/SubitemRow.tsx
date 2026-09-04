@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "../types";
 import { subGridTemplate } from "../layoutUtils";
@@ -27,6 +28,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
 
   const move_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.map((it) => ({ id: it.id, label: it.name, current: it.id === item.id })));
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
+  const menu_btn_ref = useRef<HTMLButtonElement>(null);
 
   return (
     <div
@@ -37,6 +39,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
     >
       <div className="absolute -left-[27px] top-2 z-[120]">
         <button
+          ref={menu_btn_ref}
           type="button"
           onClick={(e) => { e.stopPropagation(); actions.openRowMenu(sub.id); }}
           className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
@@ -47,7 +50,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         {is_row_menu_open && (
           <RowMenu
             is_sub
-            panel_style={{ top: 28 }}
+            anchor_el={menu_btn_ref.current}
             move_targets={move_targets}
             convert_targets={[]}
             copied={state.copied_row_id === sub.id}
