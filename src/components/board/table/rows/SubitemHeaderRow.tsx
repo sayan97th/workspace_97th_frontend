@@ -29,8 +29,8 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
       <TreeBar variant="thin" color={group.color} />
       <div className="w-[30px] flex-none" />
       <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
-      <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-[#dfe3ef] bg-[#f7f8fc]" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
-        <div className="h-9 border-r border-[#e7eaf3]" />
+      <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-boardtree-border bg-boardtree-panel-alt" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
+        <div className="h-9 border-r border-boardtree-border-soft" />
 
         <ColumnHeaderCell
           scoped_key="sub-title"
@@ -51,7 +51,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
           onDelete={() => {}}
         />
 
-        <div className="h-9 border-r border-[#e7eaf3]" />
+        <div className="h-9 border-r border-boardtree-border-soft" />
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => (
           <ColumnHeaderCell
@@ -96,7 +96,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
         ))}
 
         <div className="relative flex h-9 items-center justify-center">
-          <button type="button" onClick={() => actions.openPicker(picker_key)} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#6b7189] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+          <button type="button" onClick={() => actions.openPicker(picker_key)} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
             <svg viewBox="0 0 14 14" width="14" height="14"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           {state.open_picker_key === picker_key && (

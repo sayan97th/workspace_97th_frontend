@@ -157,6 +157,11 @@
   --color-boardtree-accent: #4f6bed;
   --color-boardtree-accent-hover: #3a52c8;
   --color-boardtree-accent-soft: #c3cef9;
+  --color-boardtree-accent-surface: #eef1ff;
+  --color-boardtree-danger: #b02f43;
+  --color-boardtree-danger-hover: #fdf2f4;
+  --color-boardtree-track: #e9ecf4;
+  --color-boardtree-ring: rgba(30, 34, 55, 0.55);
   --color-boardtree-scrollbar-thumb: rgba(30, 34, 55, 0.16);
 
   --z-index-1: 1;
@@ -275,6 +280,11 @@
   --color-boardtree-accent: #7089ff;
   --color-boardtree-accent-hover: #8ea0ff;
   --color-boardtree-accent-soft: #2c3564;
+  --color-boardtree-accent-surface: rgba(112, 137, 255, 0.16);
+  --color-boardtree-danger: #ff8599;
+  --color-boardtree-danger-hover: rgba(255, 90, 110, 0.16);
+  --color-boardtree-track: rgba(255, 255, 255, 0.08);
+  --color-boardtree-ring: rgba(255, 255, 255, 0.75);
   --color-boardtree-scrollbar-thumb: rgba(255, 255, 255, 0.14);
 }
 

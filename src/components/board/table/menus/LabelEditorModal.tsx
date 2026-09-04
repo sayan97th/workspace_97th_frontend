@@ -19,10 +19,10 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[rgba(30,34,55,0.35)]" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-[420px] flex-col rounded-[14px] bg-white shadow-[0_24px_60px_rgba(30,34,55,0.30)]">
-        <div className="flex items-center justify-between border-b border-[#eceef5] px-5 py-4">
-          <div className="text-[15px] font-semibold text-[#1e2237]">{title}</div>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-[#6b7189] hover:bg-[#f1f3f9]">
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-[420px] flex-col rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+        <div className="flex items-center justify-between border-b border-boardtree-border-soft px-5 py-4">
+          <div className="text-[15px] font-semibold text-boardtree-text">{title}</div>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover">
             <svg viewBox="0 0 14 14" width="12" height="12"><path d="M2.6 2.6 L11.4 11.4 M11.4 2.6 L2.6 11.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>
         </div>
@@ -36,14 +36,14 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
                 style={{ background: def.color }}
               />
               {color_picker_id === def.id && (
-                <div className="absolute left-9 top-8 z-10 grid w-[168px] grid-cols-6 gap-1.5 rounded-[10px] border border-[#e3e6ef] bg-white p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)]">
+                <div className="absolute left-9 top-8 z-10 grid w-[168px] grid-cols-6 gap-1.5 rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
                   {STATUS_PALETTE.map((color) => (
                     <button
                       type="button"
                       key={color}
                       onClick={() => { onColor(def.id, color); setColorPickerId(null); }}
                       className="h-5 w-5 rounded-[4px]"
-                      style={{ background: color, boxShadow: color === def.color ? "0 0 0 2px rgba(30,34,55,0.55)" : "none" }}
+                      style={{ background: color, boxShadow: color === def.color ? "0 0 0 2px var(--color-boardtree-ring)" : "none" }}
                     />
                   ))}
                 </div>
@@ -51,19 +51,19 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
               <input
                 value={def.label}
                 onChange={(e) => onRename(def.id, e.target.value)}
-                className="h-8 flex-1 rounded-[6px] border border-transparent px-2 text-[13px] text-[#262b45] outline-none hover:border-[#e3e6ef] focus:border-[#4f6bed]"
+                className="h-8 flex-1 rounded-[6px] border border-transparent px-2 text-[13px] text-boardtree-text outline-none hover:border-boardtree-border focus:border-boardtree-accent"
               />
-              <button type="button" onClick={() => onDelete(def.id)} className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-[#a4aac2] hover:bg-[#fdf2f4] hover:text-[#b02f43]">
+              <button type="button" onClick={() => onDelete(def.id)} className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger">
                 <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             </div>
           ))}
-          <button type="button" onClick={onAdd} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-[7px] border border-dashed border-[#d3d8e6] text-[13px] text-[#6b7189] hover:border-[#4f6bed] hover:text-[#4f6bed]">
+          <button type="button" onClick={onAdd} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-[7px] border border-dashed border-boardtree-border text-[13px] text-boardtree-text-muted hover:border-boardtree-accent hover:text-boardtree-accent">
             + Add new
           </button>
         </div>
-        <div className="flex justify-end border-t border-[#eceef5] px-5 py-3.5">
-          <button type="button" onClick={onClose} className="rounded-[7px] bg-[#4f6bed] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#3a52c8]">
+        <div className="flex justify-end border-t border-boardtree-border-soft px-5 py-3.5">
+          <button type="button" onClick={onClose} className="rounded-[7px] bg-boardtree-accent px-4 py-2 text-[13px] font-medium text-white hover:bg-boardtree-accent-hover">
             Done
           </button>
         </div>

@@ -28,7 +28,7 @@ export default function TableToolbar({ summary_text, onNewItem }: TableToolbarPr
         Group by
       </button>
       <div className="flex-1" />
-      <div className="font-mono text-[11.5px] tracking-wide text-[#8b90a6]">{summary_text}</div>
+      <div className="font-mono text-[11.5px] tracking-wide text-boardtree-text-muted">{summary_text}</div>
     </div>
   );
 }

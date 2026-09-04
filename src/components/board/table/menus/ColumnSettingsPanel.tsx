@@ -14,7 +14,7 @@ interface ColumnSettingsPanelProps {
   onEditLabels: () => void;
 }
 
-const ROW = "flex h-[34px] w-full items-center justify-between gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-[#262b45]";
+const ROW = "flex h-[34px] w-full items-center justify-between gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text";
 
 export default function ColumnSettingsPanel({
   width, hideable, pinnable, can_edit_labels, onWidthChange, onHideableChange, onPinnableChange, onEditLabels,
@@ -28,8 +28,8 @@ export default function ColumnSettingsPanel({
   };
 
   return (
-    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[10px] border border-[#e3e6ef] bg-white p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)]">
-      <label className="flex items-center justify-between gap-2.5 px-1 pb-2 text-[13px] text-[#262b45]">
+    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
+      <label className="flex items-center justify-between gap-2.5 px-1 pb-2 text-[13px] text-boardtree-text">
         <span>Width</span>
         <input
           type="number"
@@ -41,24 +41,24 @@ export default function ColumnSettingsPanel({
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           }}
-          className="h-8 w-20 rounded-[6px] border border-[#dfe3ef] px-2 text-[13px] text-[#262b45] outline-none focus:border-[#4f6bed]"
+          className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
         />
       </label>
 
-      <button type="button" onClick={() => onHideableChange(!hideable)} className={`${ROW} hover:bg-[#f1f3f9]`}>
+      <button type="button" onClick={() => onHideableChange(!hideable)} className={`${ROW} hover:bg-boardtree-hover`}>
         <span>Hideable</span>
         <ToggleSwitch is_on={hideable} size="sm" />
       </button>
 
-      <button type="button" onClick={() => onPinnableChange(!pinnable)} className={`${ROW} hover:bg-[#f1f3f9]`}>
+      <button type="button" onClick={() => onPinnableChange(!pinnable)} className={`${ROW} hover:bg-boardtree-hover`}>
         <span>Pinnable</span>
         <ToggleSwitch is_on={pinnable} size="sm" />
       </button>
 
       {can_edit_labels && (
         <>
-          <div className="my-1 h-px bg-[#eceef5]" />
-          <button type="button" onClick={onEditLabels} className={`${ROW} hover:bg-[#f1f3f9]`}>
+          <div className="my-1 h-px bg-boardtree-border-soft" />
+          <button type="button" onClick={onEditLabels} className={`${ROW} hover:bg-boardtree-hover`}>
             <span>Edit labels</span>
           </button>
         </>

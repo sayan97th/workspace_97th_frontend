@@ -13,7 +13,7 @@ export default function DateMenu({ selected_iso, accent, onPick, onClear, onClos
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[268px] -translate-x-1/2 p-3">
       <CalendarGrid selected_iso={selected_iso} accent={accent} onPick={onPick} />
-      <button type="button" onClick={onClear} className="pt-[11px] text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
+      <button type="button" onClick={onClear} className="pt-[11px] text-[12px] text-boardtree-text-muted hover:text-boardtree-accent">
         Clear date
       </button>
     </PopoverPanel>

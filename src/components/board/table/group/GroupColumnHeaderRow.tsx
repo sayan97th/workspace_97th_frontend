@@ -23,11 +23,11 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
   const picker_key = `pick:main|${group.key}`;
 
   return (
-    <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-white " style={{ minWidth: min_width }}>
+    <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width }}>
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
 
-      <div className="flex-1 border-b border-[#e3e6ef]" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="h-[38px] border-r border-[#eceef5]" />
+      <div className="flex-1 border-b border-boardtree-border" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
+        <div className="h-[38px] border-r border-boardtree-border-soft" />
 
         <ColumnHeaderCell
           scoped_key="item-title"
@@ -48,7 +48,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onDelete={() => { }}
         />
 
-        <div className="h-[38px] border-r border-[#eceef5]" />
+        <div className="h-[38px] border-r border-boardtree-border-soft" />
 
         {group.base_columns.concat(group.custom_columns).map((col) => (
           <ColumnHeaderCell
@@ -93,7 +93,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
         ))}
 
         <div className="relative flex h-[38px] items-center justify-center">
-          <button type="button" onClick={() => actions.openPicker(picker_key)} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#6b7189] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+          <button type="button" onClick={() => actions.openPicker(picker_key)} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
             <svg viewBox="0 0 14 14" width="14" height="14"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           {state.open_picker_key === picker_key && (

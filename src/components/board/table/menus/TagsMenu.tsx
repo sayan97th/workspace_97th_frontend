@@ -26,7 +26,7 @@ export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onT
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Add tags"
-        className="mb-2.5 h-8 w-full border-b border-[#e3e6ef] px-1 text-[13px] text-[#262b45] outline-none"
+        className="mb-2.5 h-8 w-full border-b border-boardtree-border px-1 text-[13px] text-boardtree-text outline-none"
       />
       <div className="flex max-h-[236px] flex-col gap-0.5 overflow-y-auto">
         {filtered.map((tag) => {
@@ -47,20 +47,20 @@ export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onT
           );
         })}
       </div>
-      {filtered.length === 0 && <div className="px-1.5 pb-1.5 pt-1.5 text-[12.5px] text-[#a4aac2]">No tags found</div>}
+      {filtered.length === 0 && <div className="px-1.5 pb-1.5 pt-1.5 text-[12.5px] text-boardtree-text-faint">No tags found</div>}
       {onCreateTag && (
         <button
           type="button"
           disabled={!can_create}
           onClick={onCreateTag}
-          className="my-2.5 flex h-8 w-full items-center justify-center rounded-[5px] bg-[#eeeff5] text-[12.5px] hover:brightness-[0.98] disabled:cursor-default disabled:opacity-50"
-          style={{ color: can_create ? "#4f6bed" : "#a4aac2" }}
+          className="my-2.5 flex h-8 w-full items-center justify-center rounded-[5px] bg-boardtree-hover-strong text-[12.5px] hover:brightness-[0.98] disabled:cursor-default disabled:opacity-50"
+          style={{ color: can_create ? "var(--color-boardtree-accent)" : "var(--color-boardtree-text-faint)" }}
         >
           + Create new tag
         </button>
       )}
       {onManageTags && (
-        <button type="button" onClick={onManageTags} className="flex h-[30px] w-full items-center justify-center text-[12.5px] text-[#2074d4] hover:underline">
+        <button type="button" onClick={onManageTags} className="flex h-[30px] w-full items-center justify-center text-[12.5px] text-boardtree-accent hover:underline">
           Manage tags
         </button>
       )}

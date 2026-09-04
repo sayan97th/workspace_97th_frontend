@@ -34,27 +34,27 @@ export default function TimelineMenu({ start_iso, end_iso, onChange, onClear, on
           type="button"
           onClick={() => setActiveEdge("start")}
           className="flex-1 rounded-[7px] border px-[9px] py-[5px] text-left"
-          style={{ borderColor: active_edge === "start" ? "#4f6bed" : "#e6e9f2", background: active_edge === "start" ? "#eef1ff" : "#fff" }}
+          style={{ borderColor: active_edge === "start" ? "var(--color-boardtree-accent)" : "var(--color-boardtree-border)", background: active_edge === "start" ? "var(--color-boardtree-accent-surface)" : "var(--color-boardtree-surface)" }}
         >
-          <div className="text-[9.5px] uppercase tracking-wide text-[#a4aac2]">Start</div>
-          <div className="text-[12.5px] text-[#262b45]">{fmtDateShort(start_iso) || "—"}</div>
+          <div className="text-[9.5px] uppercase tracking-wide text-boardtree-text-faint">Start</div>
+          <div className="text-[12.5px] text-boardtree-text">{fmtDateShort(start_iso) || "—"}</div>
         </button>
         <button
           type="button"
           onClick={() => setActiveEdge("end")}
           className="flex-1 rounded-[7px] border px-[9px] py-[5px] text-left"
-          style={{ borderColor: active_edge === "end" ? "#4f6bed" : "#e6e9f2", background: active_edge === "end" ? "#eef1ff" : "#fff" }}
+          style={{ borderColor: active_edge === "end" ? "var(--color-boardtree-accent)" : "var(--color-boardtree-border)", background: active_edge === "end" ? "var(--color-boardtree-accent-surface)" : "var(--color-boardtree-surface)" }}
         >
-          <div className="text-[9.5px] uppercase tracking-wide text-[#a4aac2]">End</div>
-          <div className="text-[12.5px] text-[#262b45]">{fmtDateShort(end_iso) || "—"}</div>
+          <div className="text-[9.5px] uppercase tracking-wide text-boardtree-text-faint">End</div>
+          <div className="text-[12.5px] text-boardtree-text">{fmtDateShort(end_iso) || "—"}</div>
         </button>
       </div>
       <CalendarGrid range_start_iso={start_iso} range_end_iso={end_iso} onPick={pick} />
       <div className="flex items-center justify-between pt-[11px]">
-        <button type="button" onClick={onClear} className="text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
+        <button type="button" onClick={onClear} className="text-[12px] text-boardtree-text-muted hover:text-boardtree-accent">
           Clear dates
         </button>
-        <div className="text-[11px] text-[#b6bbcd]">{active_edge === "start" ? "Pick a start date" : "Pick an end date"}</div>
+        <div className="text-[11px] text-boardtree-text-faint">{active_edge === "start" ? "Pick a start date" : "Pick an end date"}</div>
       </div>
     </PopoverPanel>
   );

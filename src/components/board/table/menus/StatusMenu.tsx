@@ -25,11 +25,11 @@ export default function StatusMenu({ status_defs, onPick, onEditLabels, onClose 
           </button>
         ))}
       </div>
-      <div className="my-3.5 h-px bg-[#eceef5]" />
+      <div className="my-3.5 h-px bg-boardtree-border-soft" />
       <button
         type="button"
         onClick={onEditLabels}
-        className="flex h-10 w-full items-center justify-center gap-2 text-[13px] text-[#4a5068] hover:text-[#4f6bed]"
+        className="flex h-10 w-full items-center justify-center gap-2 text-[13px] text-boardtree-text-secondary hover:text-boardtree-accent"
       >
         <svg viewBox="0 0 16 16" width="15" height="15"><path d="M10.6 2.4 L13.6 5.4 L5.6 13.4 L2.4 13.6 L2.6 10.4 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
         Edit Labels

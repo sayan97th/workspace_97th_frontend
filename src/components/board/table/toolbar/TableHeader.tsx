@@ -14,7 +14,7 @@ export default function TableHeader({ board_title }: TableHeaderProps) {
         <div className="flex items-center gap-[18px] text-[13.5px] text-boardtree-text-secondary">
           <span>Integrations</span>
           <span>Automations</span>
-          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-[#dfe3ee] text-[11px] font-semibold text-[#5b6180]">MR</div>
+          <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-boardtree-hover-strong text-[11px] font-semibold text-boardtree-text-secondary">MR</div>
         </div>
       </div>
       <div className="mt-3.5 flex items-center gap-[22px] text-[13.5px]">

@@ -50,7 +50,7 @@ export default function DropdownMenu({
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[260px] -translate-x-1/2 p-3">
       <div className="mb-1.5 flex items-center justify-between px-0.5">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-[#a4aac2]">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-boardtree-text-faint">
           {is_editing ? "Edit labels" : "Select an option"}
         </span>
         <button
@@ -58,7 +58,7 @@ export default function DropdownMenu({
           onClick={toggleEditing}
           title={is_editing ? "Done editing" : "Edit labels"}
           className={`flex h-6 w-6 flex-none items-center justify-center rounded-[5px] ${
-            is_editing ? "bg-[#dfe4f6] text-[#4f6bed]" : "text-[#8b90a6] hover:bg-[#f1f3f9] hover:text-[#4f6bed]"
+            is_editing ? "bg-boardtree-hover-strong text-boardtree-accent" : "text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent"
           }`}
         >
           <svg viewBox="0 0 16 16" width="13" height="13">
@@ -78,14 +78,14 @@ export default function DropdownMenu({
                 style={{ background: def.color }}
               />
               {color_picker_id === def.id && (
-                <div className="absolute left-8 top-7 z-10 grid w-[152px] grid-cols-6 gap-1.5 rounded-[9px] border border-[#e3e6ef] bg-white p-2 shadow-[0_16px_44px_rgba(30,34,55,0.22)]">
+                <div className="absolute left-8 top-7 z-10 grid w-[152px] grid-cols-6 gap-1.5 rounded-[9px] border border-boardtree-border bg-boardtree-surface p-2 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
                   {DROPDOWN_OPTION_COLORS.map((color) => (
                     <button
                       type="button"
                       key={color}
                       onClick={() => { onRecolorOption(def.id, color); setColorPickerId(null); }}
                       className="h-5 w-5 rounded-[4px]"
-                      style={{ background: color, boxShadow: color === def.color ? "0 0 0 2px rgba(30,34,55,0.55)" : "none" }}
+                      style={{ background: color, boxShadow: color === def.color ? "0 0 0 2px var(--color-boardtree-ring)" : "none" }}
                     />
                   ))}
                 </div>
@@ -93,12 +93,12 @@ export default function DropdownMenu({
               <input
                 value={def.label}
                 onChange={(e) => onRenameOption(def.id, e.target.value)}
-                className="h-7 flex-1 rounded-[6px] border border-transparent px-1.5 text-[12.5px] text-[#262b45] outline-none hover:border-[#e3e6ef] focus:border-[#4f6bed]"
+                className="h-7 flex-1 rounded-[6px] border border-transparent px-1.5 text-[12.5px] text-boardtree-text outline-none hover:border-boardtree-border focus:border-boardtree-accent"
               />
               <button
                 type="button"
                 onClick={() => onDeleteOption(def.id)}
-                className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#fdf2f4] hover:text-[#b02f43]"
+                className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger"
               >
                 <svg viewBox="0 0 16 16" width="13" height="13">
                   <path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
@@ -110,25 +110,25 @@ export default function DropdownMenu({
               type="button"
               key={def.id}
               onClick={() => onToggle(def.id)}
-              className="flex items-center gap-2.5 rounded-[6px] px-[7px] py-1.5 hover:bg-[#f4f6fb]"
+              className="flex items-center gap-2.5 rounded-[6px] px-[7px] py-1.5 hover:bg-boardtree-hover"
             >
               <span className="rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def.color }}>{def.label}</span>
               <span className="flex-1" />
               {selected.includes(def.id) ? (
-                <span className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-[#4f6bed]">
+                <span className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-boardtree-accent">
                   <svg viewBox="0 0 14 14" width="11" height="11"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
                 </span>
               ) : (
-                <span className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-[#ccd1de] bg-white" />
+                <span className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-boardtree-border bg-boardtree-surface" />
               )}
             </button>
           )
         )}
       </div>
       {visible.length === 0 && (
-        <div className="px-[3px] pb-1.5 pt-0.5 text-[12px] text-[#a4aac2]">No labels yet. Create the first one below.</div>
+        <div className="px-[3px] pb-1.5 pt-0.5 text-[12px] text-boardtree-text-faint">No labels yet. Create the first one below.</div>
       )}
-      <div className="mt-2.5 h-px bg-[#eceef5]" />
+      <div className="mt-2.5 h-px bg-boardtree-border-soft" />
       <div className="mt-[11px] flex items-center gap-2">
         <input
           value={draft}
@@ -140,19 +140,19 @@ export default function DropdownMenu({
             }
           }}
           placeholder="New label"
-          className="h-[30px] min-w-0 flex-1 rounded-[6px] border border-[#dfe3ef] px-[9px] font-[inherit] text-[12.5px] text-[#262b45] outline-none"
+          className="h-[30px] min-w-0 flex-1 rounded-[6px] border border-boardtree-border px-[9px] font-[inherit] text-[12.5px] text-boardtree-text outline-none"
         />
         <button
           type="button"
           onClick={submitDraft}
           disabled={!draft.trim()}
-          className="flex h-[30px] flex-none items-center rounded-[6px] bg-[#4f6bed] px-[13px] text-[12.5px] font-medium text-white hover:bg-[#3a52c8] disabled:cursor-default disabled:opacity-40 disabled:hover:bg-[#4f6bed]"
+          className="flex h-[30px] flex-none items-center rounded-[6px] bg-boardtree-accent px-[13px] text-[12.5px] font-medium text-white hover:bg-boardtree-accent-hover disabled:cursor-default disabled:opacity-40 disabled:hover:bg-boardtree-accent"
         >
           Add
         </button>
       </div>
       {!is_editing && (
-        <button type="button" onClick={onClear} className="mt-[9px] px-0.5 text-[12px] text-[#8b90a6] hover:text-[#4f6bed]">
+        <button type="button" onClick={onClear} className="mt-[9px] px-0.5 text-[12px] text-boardtree-text-muted hover:text-boardtree-accent">
           Clear value
         </button>
       )}

@@ -31,8 +31,8 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openGroupMenu(group.key); }}
-            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-[#6b7189] hover:bg-[#e6eaf6]"
-            style={{ background: is_menu_open ? "#dfe4f6" : "transparent", opacity: is_hovered || is_menu_open ? 1 : 0, pointerEvents: is_hovered || is_menu_open ? "auto" : "none" }}
+            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong"
+            style={{ background: is_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_menu_open ? 1 : 0, pointerEvents: is_hovered || is_menu_open ? "auto" : "none" }}
           >
             <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
           </button>
@@ -74,7 +74,7 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "Escape") actions.cancelGroupRename();
             }}
-            className="min-w-[180px] rounded-[4px] border border-[#4f6bed] bg-white px-1.5 py-px text-[16px] font-semibold outline-none"
+            className="min-w-[180px] rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 py-px text-[16px] font-semibold outline-none"
             style={{ color: group.color }}
           />
         ) : (
@@ -82,13 +82,13 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
             type="button"
             onClick={() => actions.startGroupRename(group.key, group.title)}
             title="Click to rename"
-            className="-mx-1.5 cursor-text rounded-[4px] border border-transparent px-1.5 py-px text-[16px] font-semibold hover:border-[#d7dbe8] hover:bg-white"
+            className="-mx-1.5 cursor-text rounded-[4px] border border-transparent px-1.5 py-px text-[16px] font-semibold hover:border-boardtree-border hover:bg-boardtree-surface"
             style={{ color: group.color }}
           >
             {group.title}
           </button>
         )}
-        <div className="font-mono text-[11px] text-[#9aa0b6]">
+        <div className="font-mono text-[11px] text-boardtree-text-faint">
           {group.items.length} items{sub_count ? ` · ${sub_count} subitems` : ""}
         </div>
       </div>

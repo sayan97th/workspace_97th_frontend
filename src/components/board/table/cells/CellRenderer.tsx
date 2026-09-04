@@ -52,7 +52,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
       <input
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
-        className="h-full w-full bg-transparent px-3 font-[inherit] text-[12.5px] text-[#262b45] outline-none"
+        className="h-full w-full bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
       />
     );
   }
@@ -63,7 +63,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
         placeholder="Add text"
-        className="box-border h-full w-full resize-none bg-transparent px-3 py-1.5 font-[inherit] text-[12.5px] leading-[15px] text-[#4a5068] outline-none"
+        className="box-border h-full w-full resize-none bg-transparent px-3 py-1.5 font-[inherit] text-[12.5px] leading-[15px] text-boardtree-text-secondary outline-none"
       />
     );
   }
@@ -74,7 +74,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         inputMode="numeric"
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value.replace(/[^0-9.-]/g, ""))}
-        className="h-full w-full bg-transparent px-2.5 text-center font-mono text-[12px] text-[#262b45] outline-none"
+        className="h-full w-full bg-transparent px-2.5 text-center font-mono text-[12px] text-boardtree-text outline-none"
       />
     );
   }
@@ -84,11 +84,11 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     return (
       <button type="button" onClick={() => actions.setCellValue(node_id, column.id, !checked)} className="flex h-full w-full items-center justify-center">
         {checked ? (
-          <span className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-[#4f6bed]">
+          <span className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-boardtree-accent">
             <svg viewBox="0 0 14 14" width="11" height="11"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
           </span>
         ) : (
-          <span className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-[#ccd1de] bg-white" />
+          <span className="h-[17px] w-[17px] rounded-[4px] border-[1.5px] border-boardtree-border bg-boardtree-surface" />
         )}
       </button>
     );
@@ -145,7 +145,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const iso = asString(value);
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center text-[12.5px] text-[#4a5068]">
+        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center text-[12.5px] text-boardtree-text-secondary">
           {iso ? fmtDate(iso) : "—"}
         </button>
         {is_menu_open && (
@@ -168,7 +168,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
           type="button"
           onClick={openMenu}
           className="flex h-6 w-full items-center justify-center rounded-full border text-[11.5px] font-medium"
-          style={{ background: start_iso ? "#dfe4fb" : "#f4f6fb", borderColor: start_iso ? "#c3cef9" : "#eceef5", color: "#3a52c8" }}
+          style={{ background: start_iso ? "var(--color-boardtree-accent-surface)" : "var(--color-boardtree-bg)", borderColor: start_iso ? "var(--color-boardtree-accent-soft)" : "var(--color-boardtree-border-soft)", color: "var(--color-boardtree-accent-hover)" }}
         >
           {start_iso ? fmtRange(start_iso, end_iso || start_iso) : "—"}
         </button>
@@ -196,12 +196,12 @@ export default function CellRenderer({ node_id, column, values, state, actions }
               return <AvatarBadge key={id} initials={person?.initials || id} color={person?.color || "#9aa0b6"} />;
             })}
             {owner_ids.length > 3 && (
-              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-white bg-[#eef1f9] text-[9.5px] font-semibold text-[#5b6180]">
+              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-boardtree-surface bg-boardtree-hover text-[9.5px] font-semibold text-boardtree-text-secondary">
                 +{owner_ids.length - 3}
               </div>
             )}
             {owner_ids.length === 0 && (
-              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-[1.5px] border-dashed border-[#d3d8e6] text-[12px] text-[#b6bbcd]">+</div>
+              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-[1.5px] border-dashed border-boardtree-border text-[12px] text-boardtree-text-faint">+</div>
             )}
           </div>
         </button>
@@ -222,14 +222,14 @@ export default function CellRenderer({ node_id, column, values, state, actions }
 
   if (column.kind === "progress") {
     const pct = Number(asString(value) || 0);
-    const bar_color = pct >= 100 ? "#12c46b" : pct > 0 ? "#f2a53c" : "#e9ecf4";
+    const bar_color = pct >= 100 ? "#12c46b" : pct > 0 ? "#f2a53c" : "var(--color-boardtree-track)";
     return (
       <div className="relative flex flex-1 items-center gap-2 px-3.5">
         <button type="button" onClick={openMenu} className="flex flex-1 items-center gap-2">
-          <div className="h-1.5 flex-1 overflow-hidden rounded-[3px] bg-[#e9ecf4]">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-[3px] bg-boardtree-track">
             <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: bar_color }} />
           </div>
-          <div className="w-8 flex-none text-right font-mono text-[10.5px] text-[#8b90a6]">{pct}%</div>
+          <div className="w-8 flex-none text-right font-mono text-[10.5px] text-boardtree-text-muted">{pct}%</div>
         </button>
         {is_menu_open && (
           <ProgressMenu

@@ -16,7 +16,7 @@ export default function PopoverPanel({ onClose, className, style, children }: Po
     <div
       ref={panel_ref}
       onClick={(e) => e.stopPropagation()}
-      className={`absolute z-[70] rounded-[10px] border border-[#e3e6ef] bg-white text-left shadow-[0_16px_40px_rgba(30,34,55,0.20)] ${className || ""}`}
+      className={`absolute z-[70] rounded-[10px] border border-boardtree-border bg-boardtree-surface text-left shadow-[0_16px_40px_rgba(30,34,55,0.20)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5)] ${className || ""}`}
       style={style}
     >
       {children}
