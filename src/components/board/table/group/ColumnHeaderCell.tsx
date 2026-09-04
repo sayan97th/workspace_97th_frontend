@@ -1,6 +1,7 @@
 "use client";
 
 import ColumnMenu from "../menus/ColumnMenu";
+import ColumnResizeHandle from "./ColumnResizeHandle";
 import type { ColumnKind, StatusDef } from "../types";
 
 interface ColumnHeaderCellProps {
@@ -21,6 +22,8 @@ interface ColumnHeaderCellProps {
   onRename: (title: string) => void;
   onSort: (dir: "asc" | "desc" | null) => void;
   onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
+  /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the item-title/sub-title virtual columns, which aren't resizable. */
+  onResizePreview?: (width: number) => void;
   onEditLabels?: () => void;
   onRequestFilter?: () => void;
   onRequestGroupBy?: () => void;
@@ -34,7 +37,7 @@ interface ColumnHeaderCellProps {
 
 export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered,
-  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onSort, onUpdateSettings, onEditLabels,
+  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onSort, onUpdateSettings, onResizePreview, onEditLabels,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -90,6 +93,13 @@ export default function ColumnHeaderCell({
           onChangeType={onChangeType ?? (() => {})}
           onDelete={onDelete}
           onClose={onCloseMenu}
+        />
+      )}
+      {column && onUpdateSettings && (
+        <ColumnResizeHandle
+          width={column.width}
+          onResize={(width) => onResizePreview?.(width)}
+          onResizeEnd={(width) => onUpdateSettings({ width })}
         />
       )}
     </div>

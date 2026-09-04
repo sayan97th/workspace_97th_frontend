@@ -72,6 +72,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onRename={(title) => actions.renameColumn(group.key, "sub", col.id, title)}
             onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
             onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "sub", col.id, patch)}
+            onResizePreview={(width) => actions.resizeColumnPreview(group.key, "sub", col.id, width)}
             onEditLabels={
               col.kind === "status"
                 ? () => actions.openLabelEditor("status")

@@ -671,6 +671,22 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const columnListKey = (scope: ColumnScope) => (scope === "main" ? "custom_columns" : "sub_custom_columns");
 
+  /** Patches one column's `width` wherever it lives in `group_key`'s base/custom column list — the shared write both `updateColumnSettings` and the live resize-drag preview apply to local state. */
+  const applyColumnWidth = (groups: BoardTableGroup[], group_key: string, scope: ColumnScope, column_id: string, width: number): BoardTableGroup[] => {
+    const list_key = columnListKey(scope);
+    const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
+    const apply = (c: ColumnDef) => (c.id === column_id ? { ...c, width } : c);
+    return groups.map((g) =>
+      g.key !== group_key
+        ? g
+        : {
+            ...g,
+            [base_key]: (g[base_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
+            [list_key]: (g[list_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
+          }
+    );
+  };
+
   const openPicker = useCallback((scoped_key: string) => {
     setState((s) => ({ ...s, ...closeAllMenus, open_picker_key: s.open_picker_key === scoped_key ? null : scoped_key, picker_query: "" }));
   }, []);
@@ -789,28 +805,22 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const updateColumnSettings = useCallback(
     (group_key: string, scope: ColumnScope, column_id: string, patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => {
-      setState((s) => {
-        if (patch.width == null) return s;
-        const list_key = columnListKey(scope);
-        const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
-        const apply = (c: ColumnDef) => (c.id === column_id ? { ...c, width: patch.width! } : c);
-        return {
-          ...s,
-          groups: s.groups.map((g) =>
-            g.key !== group_key
-              ? g
-              : {
-                  ...g,
-                  [base_key]: (g[base_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
-                  [list_key]: (g[list_key as keyof BoardTableGroup] as ColumnDef[]).map(apply),
-                }
-          ),
-        };
-      });
+      setState((s) => (patch.width == null ? s : { ...s, groups: applyColumnWidth(s.groups, group_key, scope, column_id, patch.width!) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
     []
   );
+
+  /**
+   * Local-only width update fired on every pointer move of a column-header
+   * resize drag, so the grid tracks the cursor smoothly without a network
+   * request per pixel. The drag's final width is committed — local state
+   * again plus the real `onUpdateColumnSettings` persistence call — through
+   * `updateColumnSettings` on pointer-up.
+   */
+  const resizeColumnPreview = useCallback((group_key: string, scope: ColumnScope, column_id: string, width: number) => {
+    setState((s) => ({ ...s, groups: applyColumnWidth(s.groups, group_key, scope, column_id, width) }));
+  }, []);
 
   const collapseAllGroups = useCallback(() => {
     setState((s) => ({
@@ -1055,6 +1065,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       duplicateColumn,
       changeColumnKind,
       updateColumnSettings,
+      resizeColumnPreview,
       collapseAllGroups,
       setSort,
       openCellMenu,
@@ -1093,7 +1104,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,

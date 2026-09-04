@@ -120,3 +120,7 @@ export const ARRAY_VALUE_KINDS: ColumnKind[] = ["people", "dropdown", "tags"];
 
 export const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const DAY_OF_WEEK_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** Shared clamp for a column's `width`, whether set from the header menu's numeric input or by dragging its resize handle. */
+export const MIN_COLUMN_WIDTH = 40;
+export const MAX_COLUMN_WIDTH = 600;

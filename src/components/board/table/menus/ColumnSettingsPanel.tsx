@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
+import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH } from "../constants";
 
 interface ColumnSettingsPanelProps {
   width: number;
@@ -23,7 +24,7 @@ export default function ColumnSettingsPanel({
 
   const commitWidth = () => {
     const parsed = Number(draft);
-    if (Number.isFinite(parsed) && parsed >= 40 && parsed <= 600) onWidthChange(Math.round(parsed));
+    if (Number.isFinite(parsed) && parsed >= MIN_COLUMN_WIDTH && parsed <= MAX_COLUMN_WIDTH) onWidthChange(Math.round(parsed));
     else setDraft(String(width));
   };
 
@@ -33,8 +34,8 @@ export default function ColumnSettingsPanel({
         <span>Width</span>
         <input
           type="number"
-          min={40}
-          max={600}
+          min={MIN_COLUMN_WIDTH}
+          max={MAX_COLUMN_WIDTH}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commitWidth}
