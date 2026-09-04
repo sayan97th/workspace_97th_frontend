@@ -828,6 +828,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     ]);
   };
 
+  /**
+   * Inserts a freshly created (or duplicated) column into local state at its
+   * backend-assigned `position`, shifting every other same-scope column
+   * whose `position` moved up to make room — mirrors the shift
+   * `BoardColumnController::store`/`duplicate` already apply server-side.
+   * Without this, `columns` (whose array order — not `position` — drives
+   * render order, see `handleReorderTableItems`'s doc comment below for the
+   * same convention on `items`) would just get the new column appended, so
+   * it always rendered last regardless of where the backend actually placed
+   * it. When `created` has the next free position (a plain append, no
+   * `after_column_id`), no sibling qualifies for the shift and this is
+   * equivalent to the old `[...current, created]`.
+   */
+  const insertColumnAtPosition = (current: BoardColumnDto[], created: BoardColumnDto): BoardColumnDto[] => {
+    const shifted = current.map((column) =>
+      column.scope === created.scope && column.position >= created.position
+        ? { ...column, position: column.position + 1 }
+        : column
+    );
+    const insert_index = shifted.findIndex(
+      (column) => column.scope === created.scope && column.position > created.position
+    );
+    return insert_index === -1
+      ? [...shifted, created]
+      : [...shifted.slice(0, insert_index), created, ...shifted.slice(insert_index)];
+  };
+
   // ── Add column — "+" header button opens the reusable AddColumnMenu; a new
   // typed column is appended to the board (status columns get default options
   // seeded server-side, unless the caller supplies its own `config` — e.g.
@@ -855,7 +882,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       config,
       position,
     });
-    setColumns((current) => [...current, created]);
+    setColumns((current) => insertColumnAtPosition(current, created));
   };
 
   // ── Add column — the Table view's own "+" gallery (`ColumnPicker`, main or
@@ -875,7 +902,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // bring the new column in, rather than mutating `BoardTable`'s local state. ──
   const handleDuplicateTableColumn = async (_group_key: string, _scope: TableColumnScope, column_id: string) => {
     const created = await boardContentService.duplicateColumn(board_id, Number(column_id), false);
-    setColumns((current) => [...current, created]);
+    setColumns((current) => insertColumnAtPosition(current, created));
   };
 
   const handleAddColumnRight = async (
