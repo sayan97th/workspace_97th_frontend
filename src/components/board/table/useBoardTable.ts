@@ -7,6 +7,7 @@ import type {
   ColumnKind,
   DragState,
   PersonDef,
+  ReorderPayload,
   SortState,
   StatusDef,
   TagDef,
@@ -104,6 +105,16 @@ export interface UseBoardTableConfig {
   /** Permanently removes one of a real column's own existing options. */
   onDeleteColumnOption?: (column_id: string, option_id: string) => void;
   onDeleteNode?: (node_id: string) => void;
+  /**
+   * Fires once per completed drag that actually changed a list's order — a
+   * table's own root items reordered within their group, or one item's
+   * subitems reordered within it (see `ReorderPayload`). The local drag
+   * reorder (`onDragOver`) has already applied optimistically by the time
+   * this fires; a real board persists it server-side (`reorderItems`) and,
+   * on failure, rolls the local order back through its own `initial_groups`.
+   * Omitted, a drag still reorders locally but nothing is ever persisted.
+   */
+  onReorderItems?: (payload: ReorderPayload) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
   /** Column-header menu — see `ColumnMenu.tsx`. Each acts on an *existing* column id, so it's called alongside the local mutation (no round trip needed first), mirroring `onRenameGroup`/`onRemoveGroup`. */
@@ -466,7 +477,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const setHoverHead = useCallback((key: string | null) => setState((s) => ({ ...s, hover_head_key: key })), []);
 
   const onDragStart = useCallback((node_id: string, parent_id: string) => {
-    setState((s) => ({ ...s, drag: { node_id, parent_id } }));
+    setState((s) => {
+      const origin_order =
+        parent_id === "ROOT"
+          ? (s.groups.find((g) => g.items.some((it) => it.id === node_id))?.items.map((it) => it.id) ?? [])
+          : (findItem(s.groups, parent_id)?.subs.map((sub) => sub.id) ?? []);
+      return { ...s, drag: { node_id, parent_id, origin_order } };
+    });
   }, []);
 
   const onDragOver = useCallback((over_id: string, over_parent_id: string) => {
@@ -488,7 +505,34 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     });
   }, []);
 
-  const onDragEnd = useCallback(() => setState((s) => ({ ...s, drag: null })), []);
+  /**
+   * Compares the dragged list's final order against the snapshot `onDragStart`
+   * captured and, when a drop actually moved something, reports it through
+   * `onReorderItems` — computed from `state_ref` (mirrors `commitEditName`'s
+   * read-before-`setState` pattern) since the comparison needs the drag's
+   * list *before* `setState` below clears it.
+   */
+  const onDragEnd = useCallback(() => {
+    const drag = state_ref.current.drag;
+    if (drag) {
+      const is_root = drag.parent_id === "ROOT";
+      const owning_group = is_root ? state_ref.current.groups.find((g) => g.items.some((it) => it.id === drag.node_id)) : undefined;
+      const final_order = is_root
+        ? (owning_group?.items.map((it) => it.id) ?? [])
+        : (findItem(state_ref.current.groups, drag.parent_id)?.subs.map((sub) => sub.id) ?? []);
+      const changed =
+        final_order.length > 0 &&
+        (final_order.length !== drag.origin_order.length || final_order.some((id, index) => id !== drag.origin_order[index]));
+
+      if (changed) {
+        const payload: ReorderPayload = is_root
+          ? { scope: "root", moved_id: drag.node_id, group_key: owning_group!.key, ordered_ids: final_order }
+          : { scope: "subitem", moved_id: drag.node_id, parent_id: drag.parent_id, ordered_ids: final_order };
+        config_ref.current.onReorderItems?.(payload);
+      }
+    }
+    setState((s) => ({ ...s, drag: null }));
+  }, []);
 
   // ---- group menu / structural group ops -----------------------------------
 

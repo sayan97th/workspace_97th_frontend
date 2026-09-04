@@ -59,6 +59,7 @@ import {
   type ColumnKind as TableColumnKind,
   type ColumnScope as TableColumnScope,
   type PersonDef as TablePersonDef,
+  type ReorderPayload as TableReorderPayload,
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
@@ -1309,6 +1310,54 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label]
   );
 
+  // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
+  // drag-and-drop (`useBoardTable`'s `onDragEnd`) to `board_items.position` via
+  // the reorder endpoint. `items` is physically reordered (not just its
+  // `position` fields patched) so the new order survives an unrelated re-render
+  // — every derived list feeding the Table view (`toolbar.groups` → `table_groups`)
+  // renders rows in `items`' own array order, not sorted by `position`. On
+  // failure the previous `items` snapshot is restored, which — through that
+  // same derivation chain — resyncs `useBoardTable`'s local order back too. ──
+  const handleReorderTableItems = (payload: TableReorderPayload) => {
+    const previous_items = items;
+    const ordered_ids = payload.ordered_ids.map(Number);
+
+    if (payload.scope === "root") {
+      const group_id = Number(payload.group_key);
+      setItems((current) => {
+        const by_id = new Map(current.map((item) => [item.id, item]));
+        const reordered = ordered_ids.map((id) => by_id.get(id)).filter((item): item is BoardItemDto => Boolean(item));
+        let cursor = 0;
+        return current.map((item) =>
+          item.group_id === group_id && ordered_ids.includes(item.id) ? { ...reordered[cursor++], position: cursor - 1 } : item
+        );
+      });
+      void boardContentService
+        .reorderItems(board_id, {
+          scope: "root",
+          moved_item_id: Number(payload.moved_id),
+          target_group_id: group_id,
+          target_ordered_ids: ordered_ids,
+        })
+        .catch(() => setItems(previous_items));
+    } else {
+      const parent_id = Number(payload.parent_id);
+      setItems((current) =>
+        mapItemInTree(current, parent_id, (item) => {
+          const by_id = new Map(item.children.map((child) => [child.id, child]));
+          const reordered = ordered_ids
+            .map((id) => by_id.get(id))
+            .filter((child): child is BoardItemDto => Boolean(child))
+            .map((child, index) => ({ ...child, position: index }));
+          return { ...item, children: reordered };
+        })
+      );
+      void boardContentService
+        .reorderItems(board_id, { scope: "subitem", target_parent_id: parent_id, target_ordered_ids: ordered_ids })
+        .catch(() => setItems(previous_items));
+    }
+  };
+
   /**
    * Bridges `BoardTable` to this component's own real handlers — rename,
    * cell edits and group rename/delete persist immediately; row/subitem/
@@ -1345,6 +1394,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .deleteItem(board_id, Number(node_id))
           .then(() => setItems((current) => removeItemFromTree(current, Number(node_id))));
       },
+      onReorderItems: handleReorderTableItems,
       onRenameGroup: (group_key, title) => {
         void boardContentService
           .updateGroup(board_id, Number(group_key), { name: title })

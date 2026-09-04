@@ -92,7 +92,29 @@ export interface SortState {
 export interface DragState {
   node_id: string;
   parent_id: string;
+  /**
+   * The id order of the dragged node's list (its group's `items`, or its
+   * parent's `subs`) captured at drag start — compared against that same
+   * list's order at drag end so `onDragEnd` only reports a reorder (and thus
+   * only persists one) when the drop actually changed something.
+   */
+  origin_order: string[];
 }
+
+/** Which list of rows got reordered — a table's own root items, or one item's subitems. */
+export type ReorderScope = "root" | "subitem";
+
+/**
+ * Reported by `onDragEnd` once a drag has actually changed a list's order,
+ * for a real board to persist server-side (see `UseBoardTableConfig.onReorderItems`).
+ * `ordered_ids` is that list's full id order after the drop, in display order
+ * top-to-bottom — root items never change group through drag-and-drop (each
+ * row only ever reorders within its own group's list), so `group_key`/
+ * `parent_id` name the *same* list `moved_id` already belonged to.
+ */
+export type ReorderPayload =
+  | { scope: "root"; moved_id: string; group_key: string; ordered_ids: string[] }
+  | { scope: "subitem"; moved_id: string; parent_id: string; ordered_ids: string[] };
 
 /** Which popover/picker/menu is open, addressed by a scoped string key. */
 export interface OpenMenus {
