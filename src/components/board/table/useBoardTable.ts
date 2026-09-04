@@ -127,6 +127,15 @@ export interface UseBoardTableConfig {
     patch: { width?: number; hideable?: boolean; pinnable?: boolean }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
+  /**
+   * Opens a real board's comments drawer for one row (item or subitem) —
+   * fired by the row's message-icon button (see `ItemRow`/`SubitemRow`).
+   * The table engine itself has no comments UI of its own, so this just
+   * hands the node id up to the caller, which owns the actual drawer (e.g.
+   * `useBoardItemDrawer`) and resolves the row from its own real data.
+   * Omitted (the standalone demo), the button renders but stays inert.
+   */
+  onOpenComments?: (node_id: string) => void;
 }
 
 export interface BoardTableState {
@@ -975,6 +984,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const closeAllOverlays = useCallback(() => setState((s) => ({ ...s, ...closeAllMenus })), []);
 
+  const openComments = useCallback((node_id: string) => {
+    config_ref.current.onOpenComments?.(node_id);
+  }, []);
+
   const copyRowLink = useCallback((id: string) => {
     setState((s) => ({ ...s, copied_row_id: id }));
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -1071,6 +1084,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setTagQuery,
       closeAllOverlays,
       copyRowLink,
+      openComments,
     }),
     [
       toggleItemOpen, toggleSelected, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
@@ -1082,7 +1096,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
-      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink,
+      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,
     ]
   );
 

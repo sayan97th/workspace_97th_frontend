@@ -54,6 +54,8 @@ export interface BoardTableNode {
   id: string;
   name: string;
   values: Record<string, CellValue>;
+  /** Total comments posted on this row (item or subitem) — drives the message-icon badge in `ItemRow`/`SubitemRow`. Undefined for the standalone mock demo, which has no backing comments drawer. */
+  comment_count?: number;
 }
 
 export interface BoardTableItem extends BoardTableNode {

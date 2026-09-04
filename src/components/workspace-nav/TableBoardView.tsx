@@ -1288,7 +1288,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [subitem_columns]
   );
 
-  const adaptTableNode = (item: BoardItemDto): BoardTableNode => ({ id: String(item.id), name: item.name, values: item.values });
+  const adaptTableNode = (item: BoardItemDto): BoardTableNode => ({
+    id: String(item.id),
+    name: item.name,
+    values: item.values,
+    comment_count: item.comment_count,
+  });
   const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
 
   const table_groups: BoardTableGroup[] = useMemo(
@@ -1418,9 +1423,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void boardContentService
           .updateColumn(board_id, Number(column_id), { type: TABLE_KIND_TO_ENGINE_KIND[kind], width: default_width })
           .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
+      // The row's message-icon button only knows its own node id — look the
+      // real row (item or subitem) up in the tree and reuse the same
+      // `handleRowClick` every other view's row click already goes through,
+      // so opening comments from the Table view stays in sync with the
+      // drawer's URL/deep-link handling instead of duplicating it.
+      onOpenComments: (node_id) => {
+        const row = findItemInTree(items, Number(node_id));
+        if (row) handleRowClick(row);
+      },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [table_groups, table_people, board_id]
+    [table_groups, table_people, board_id, items]
   );
 
   const handleCreateTableItem = async (group_key: string): Promise<string> => {

@@ -131,9 +131,18 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         </div>
 
         <div className="flex h-[42px] items-center justify-center border-r border-[#eceef5]">
-          <div className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.openComments(item.id); }}
+            className="relative flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-[#a4aac2] hover:bg-[#eef1f9] hover:text-[#4f6bed]"
+          >
             <svg viewBox="0 0 18 18" width="16" height="16"><path d="M2.2 8.1 a6.4 5.4 0 1 1 3.4 4.8 L2.4 13.9 l1 -3 a5.2 5.2 0 0 1 -1.2 -2.8 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9 5.9 V10.1 M6.9 8 H11.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-          </div>
+            {!!item.comment_count && (
+              <span className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-[#4f6bed] px-[3px] text-[9px] font-bold leading-none text-white">
+                {item.comment_count > 99 ? "99+" : item.comment_count}
+              </span>
+            )}
+          </button>
         </div>
 
         {group.base_columns.concat(group.custom_columns).map((col) => (
