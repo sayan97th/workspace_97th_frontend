@@ -89,7 +89,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="relative flex h-[42px] items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3">
+        <div className="flex h-[42px] items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3">
           <div className="flex w-3 flex-none cursor-grab items-center justify-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
           </div>
@@ -100,25 +100,25 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               <svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
             )}
           </button>
-          {is_editing ? (
-            <input
-              autoFocus
-              value={state.edit_draft}
-              onChange={(e) => actions.updateEditDraft(e.target.value)}
-              onBlur={actions.commitEditName}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") actions.cancelEditName();
-              }}
-              className="absolute left-0 top-0 h-full w-full border-2 border-boardtree-accent px-3 pl-10 text-[13.5px] font-medium text-boardtree-text outline-none"
-            />
-          ) : (
-            <div className="flex min-w-0 flex-1 items-center">
+          <div className="flex min-w-0 flex-1 items-center">
+            {is_editing ? (
+              <input
+                autoFocus
+                value={state.edit_draft}
+                onChange={(e) => actions.updateEditDraft(e.target.value)}
+                onBlur={actions.commitEditName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") actions.cancelEditName();
+                }}
+                className="h-[34px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface px-1.5 text-[13.5px] font-medium text-boardtree-text outline-none"
+              />
+            ) : (
               <span onClick={() => actions.startEditName(item.id, item.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
                 {item.name}
               </span>
-            </div>
-          )}
+            )}
+          </div>
           {item.subs.length > 0 && (
             <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[9px] bg-boardtree-hover px-[7px] py-0.5 font-mono text-[10.5px] text-boardtree-text-secondary">
               {item.subs.length}

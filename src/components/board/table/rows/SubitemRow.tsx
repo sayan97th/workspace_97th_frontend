@@ -93,29 +93,29 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </button>
         </div>
 
-        <div className="relative flex h-10 items-center gap-1.5 border-r border-boardtree-border-soft pl-2 pr-3">
+        <div className="flex h-10 items-center gap-1.5 border-r border-boardtree-border-soft pl-2 pr-3">
           <div className="flex w-[11px] flex-none cursor-grab items-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="11"><circle cx="1.5" cy="3" r="1" fill="currentColor" /><circle cx="4.5" cy="3" r="1" fill="currentColor" /><circle cx="1.5" cy="7" r="1" fill="currentColor" /><circle cx="4.5" cy="7" r="1" fill="currentColor" /><circle cx="1.5" cy="11" r="1" fill="currentColor" /><circle cx="4.5" cy="11" r="1" fill="currentColor" /></svg>
           </div>
-          {is_editing ? (
-            <input
-              autoFocus
-              value={state.edit_draft}
-              onChange={(e) => actions.updateEditDraft(e.target.value)}
-              onBlur={actions.commitEditName}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                if (e.key === "Escape") actions.cancelEditName();
-              }}
-              className="absolute left-0 top-0 h-full w-full border-2 border-boardtree-accent px-3 pl-[25px] text-[13px] text-boardtree-text outline-none"
-            />
-          ) : (
-            <div className="flex min-w-0 flex-1 items-center">
+          <div className="flex min-w-0 flex-1 items-center">
+            {is_editing ? (
+              <input
+                autoFocus
+                value={state.edit_draft}
+                onChange={(e) => actions.updateEditDraft(e.target.value)}
+                onBlur={actions.commitEditName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                  if (e.key === "Escape") actions.cancelEditName();
+                }}
+                className="h-[32px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface px-1.5 text-[13px] text-boardtree-text outline-none"
+              />
+            ) : (
               <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
                 {sub.name}
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         <div className="flex h-10 items-center justify-center border-r border-boardtree-border-soft">
