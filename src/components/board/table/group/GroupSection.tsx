@@ -9,6 +9,7 @@ import ItemRow from "../rows/ItemRow";
 import SubitemHeaderRow from "../rows/SubitemHeaderRow";
 import SubitemRow from "../rows/SubitemRow";
 import AddSubitemRow from "../rows/AddSubitemRow";
+import AddItemRow from "../rows/AddItemRow";
 import GroupSummaryRow from "../rows/GroupSummaryRow";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
@@ -80,6 +81,8 @@ export default function GroupSection({ group, group_index, group_count, name_col
               </Fragment>
             );
           })}
+
+          <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
 
           <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
         </div>
