@@ -28,7 +28,7 @@ export default function ColumnSettingsPanel({
   };
 
   return (
-    <div className="absolute left-[266px] top-[-6px] z-10 w-[220px] rounded-[10px] border border-[#e3e6ef] bg-white p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)]">
+    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[10px] border border-[#e3e6ef] bg-white p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)]">
       <label className="flex items-center justify-between gap-2.5 px-1 pb-2 text-[13px] text-[#262b45]">
         <span>Width</span>
         <input
