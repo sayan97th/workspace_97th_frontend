@@ -1,4 +1,5 @@
 import type { ColumnDef, StatusDef, BoardTableItem } from "./types";
+import { findDef } from "./colorUtils";
 
 export interface StatusSegment {
   key: string;
@@ -14,10 +15,6 @@ export interface ColumnSummary {
   sum_value: string;
 }
 
-function statusColorOf(label: string, status_defs: StatusDef[]): string {
-  return status_defs.find((def) => def.label === label)?.color || "#c9ccd4";
-}
-
 function numberValueOf(item: BoardTableItem, column_id: string): number {
   const raw = item.values[column_id];
   if (typeof raw !== "string") return 0;
@@ -30,17 +27,18 @@ export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, sta
   const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, segments: [], sum_value: "0" };
 
   if (column.kind === "status") {
+    const defs = column.options ?? status_defs;
     const counts: Record<string, number> = {};
     items.forEach((item) => {
       const value = item.values[column.id];
-      const label = typeof value === "string" ? value : "";
-      if (label) counts[label] = (counts[label] || 0) + 1;
+      const raw_value = typeof value === "string" ? value : "";
+      if (raw_value) counts[raw_value] = (counts[raw_value] || 0) + 1;
     });
     const total = items.length || 1;
-    const segments = Object.keys(counts).map((label) => ({
-      key: label,
-      width_pct: Math.round((counts[label] / total) * 100),
-      background: statusColorOf(label, status_defs),
+    const segments = Object.keys(counts).map((raw_value) => ({
+      key: raw_value,
+      width_pct: Math.round((counts[raw_value] / total) * 100),
+      background: findDef(defs, raw_value)?.color || "#c9ccd4",
     }));
     return { ...base, is_status: true, segments };
   }

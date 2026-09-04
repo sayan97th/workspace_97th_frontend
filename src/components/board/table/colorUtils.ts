@@ -1,3 +1,16 @@
+import type { StatusDef } from "./types";
+
+/**
+ * Looks up a status/label/dropdown/tags option by its stored value. Real
+ * (API-backed) columns store an option's `id`; the mock demo data instead
+ * stores its `label` text directly, so `findDef` tries both — matching by id
+ * first keeps a real board correct even if a label happens to collide with
+ * another option's id.
+ */
+export function findDef(defs: StatusDef[], value: string): StatusDef | undefined {
+  return defs.find((d) => d.id === value) ?? defs.find((d) => d.label === value);
+}
+
 /** Lightens a hex color toward white by `mix` (0..1). Mirrors the design's tint formula. */
 export function tintOf(hex: string, mix = 0.72): string {
   const h = String(hex || "").replace("#", "");

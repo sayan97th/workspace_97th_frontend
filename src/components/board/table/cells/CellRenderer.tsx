@@ -1,8 +1,8 @@
 "use client";
 
-import type { CellValue, ColumnDef, StatusDef } from "../types";
+import type { CellValue, ColumnDef } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import { contrastFg, pillColors } from "../colorUtils";
+import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
 import AvatarBadge from "../menus/AvatarBadge";
@@ -28,17 +28,6 @@ function asString(v: CellValue): string {
 }
 function asArray(v: CellValue): string[] {
   return Array.isArray(v) ? v : [];
-}
-
-/**
- * Looks up a status/label/dropdown/tags option by its stored value. Real
- * (API-backed) columns store an option's `id`; the mock demo data instead
- * stores its `label` text directly, so `findDef` tries both — matching by id
- * first keeps a real board correct even if a label happens to collide with
- * another option's id.
- */
-function findDef(defs: StatusDef[], value: string): StatusDef | undefined {
-  return defs.find((d) => d.id === value) ?? defs.find((d) => d.label === value);
 }
 
 export default function CellRenderer({ node_id, column, values, state, actions }: CellRendererProps) {
