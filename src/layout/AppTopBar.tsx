@@ -13,7 +13,7 @@ import InviteMembersModal, {
   type InviteMembersResult,
   type InviteMembersSubmission,
 } from "./InviteMembersModal";
-import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
+import { useWorkspaces } from "@/context/WorkspaceContext";
 import { invitationService } from "@/services/invitation.service";
 import { useNotifications } from "@/hooks/useNotifications";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
@@ -32,17 +33,19 @@ export default function AdminLayout({
   }
 
   return (
-    <ToastProvider>
-      <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
-        <AppTopBar />
-        <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
-          <AppSidebar />
-          <Backdrop />
-          <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
-            {children}
-          </main>
+    <WorkspaceProvider>
+      <ToastProvider>
+        <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
+          <AppTopBar />
+          <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+            <AppSidebar />
+            <Backdrop />
+            <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-    </ToastProvider>
+      </ToastProvider>
+    </WorkspaceProvider>
   );
 }

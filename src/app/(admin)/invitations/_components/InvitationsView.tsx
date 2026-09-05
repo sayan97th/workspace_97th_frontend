@@ -9,7 +9,7 @@ import {
   canManageWorkspaceInvitations,
   useInvitations,
 } from "@/components/invitations";
-import { useWorkspaces } from "@/components/workspace-nav/useWorkspaces";
+import { useWorkspaces } from "@/context/WorkspaceContext";
 import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { ChevronRightIcon, PlusIcon } from "@/icons/workspace-icons";

@@ -24,8 +24,6 @@ export type { WorkspacePrivacyPickerProps } from "./WorkspacePrivacyPicker";
 
 export { default as useWorkspaceNav } from "./useWorkspaceNav";
 export type { WorkspaceNavApi } from "./useWorkspaceNav";
-export { default as useWorkspaces } from "./useWorkspaces";
-export type { WorkspacesApi } from "./useWorkspaces";
 
 export { VIEW_REGISTRY, getViewComponent } from "./view-registry";
 export {

@@ -1,9 +1,9 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
 import type { CreateWorkspacePayload, UpdateWorkspacePayload } from "@/types/workspace";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
-import { mapWorkspaceToBrowse } from "./helpers";
+import { mapWorkspaceToBrowse } from "@/components/workspace-nav/helpers";
 
 export type WorkspacesApi = {
   workspaces: BrowseWorkspace[];
@@ -27,12 +27,23 @@ export type WorkspacesApi = {
   reload: () => Promise<void>;
 };
 
+const WorkspaceContext = createContext<WorkspacesApi | undefined>(undefined);
+
 /**
- * Fetches the workspace catalog from the API and derives the switcher's
- * recent / mine lists. Config-in / API-out, mirroring the board & teams kits so
- * the sidebar (and any future top-bar switcher) stays presentational.
+ * Single source of truth for "which workspace is active". Fetches the
+ * workspace catalog from the API and derives the switcher's recent / mine
+ * lists, mirroring the board & teams kits so the sidebar (and any future
+ * top-bar switcher) stays presentational.
+ *
+ * This used to be a plain hook (`useWorkspaces`) called independently by the
+ * sidebar, top bar, and invitations page — each holding its own copy of
+ * `active_workspace_id`. Switching workspaces from the sidebar only updated
+ * the sidebar's copy, so the top bar (and anything else reading the old
+ * hook) stayed on the previous workspace until a full page reload remounted
+ * everything. Hoisting the state into one provider fixes that: every
+ * consumer now reads/writes the same active workspace.
  */
-export function useWorkspaces(): WorkspacesApi {
+export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [workspaces, setWorkspaces] = useState<BrowseWorkspace[]>([]);
   const [active_workspace_id, setActiveWorkspaceId] = useState<string | undefined>();
   const [is_loading, setIsLoading] = useState(true);
@@ -117,13 +128,15 @@ export function useWorkspaces(): WorkspacesApi {
   /** Drops a workspace from local state, falling back active selection to the home
    * workspace (or the first remaining one) when the removed workspace was active. */
   const dropWorkspaceFromState = useCallback((workspace_slug: string) => {
-    setWorkspaces((prev) => prev.filter((workspace) => workspace.id !== workspace_slug));
-    setActiveWorkspaceId((current) => {
-      if (current !== workspace_slug) return current;
-      const remaining = workspaces.filter((workspace) => workspace.id !== workspace_slug);
-      return (remaining.find((workspace) => workspace.is_home) ?? remaining[0])?.id;
+    setWorkspaces((prev) => {
+      const remaining = prev.filter((workspace) => workspace.id !== workspace_slug);
+      setActiveWorkspaceId((current) => {
+        if (current !== workspace_slug) return current;
+        return (remaining.find((workspace) => workspace.is_home) ?? remaining[0])?.id;
+      });
+      return remaining;
     });
-  }, [workspaces]);
+  }, []);
 
   const leaveWorkspace = useCallback(
     async (workspace_slug: string) => {
@@ -141,21 +154,49 @@ export function useWorkspaces(): WorkspacesApi {
     [dropWorkspaceFromState]
   );
 
-  return {
-    workspaces,
-    active_workspace,
-    active_workspace_slug: active_workspace_id,
-    recent_workspaces,
-    my_workspaces,
-    is_loading,
-    error,
-    selectWorkspace,
-    createWorkspace,
-    updateWorkspace,
-    leaveWorkspace,
-    deleteWorkspace,
-    reload: load,
-  };
-}
+  const value = useMemo<WorkspacesApi>(
+    () => ({
+      workspaces,
+      active_workspace,
+      active_workspace_slug: active_workspace_id,
+      recent_workspaces,
+      my_workspaces,
+      is_loading,
+      error,
+      selectWorkspace,
+      createWorkspace,
+      updateWorkspace,
+      leaveWorkspace,
+      deleteWorkspace,
+      reload: load,
+    }),
+    [
+      workspaces,
+      active_workspace,
+      active_workspace_id,
+      recent_workspaces,
+      my_workspaces,
+      is_loading,
+      error,
+      selectWorkspace,
+      createWorkspace,
+      updateWorkspace,
+      leaveWorkspace,
+      deleteWorkspace,
+      load,
+    ]
+  );
+
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+};
+
+/** Reads the active workspace / catalog shared by the whole admin shell. */
+export const useWorkspaces = (): WorkspacesApi => {
+  const context = useContext(WorkspaceContext);
+  if (!context) {
+    throw new Error("useWorkspaces must be used within a WorkspaceProvider");
+  }
+  return context;
+};
 
 export default useWorkspaces;

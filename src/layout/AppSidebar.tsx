@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { useSidebar } from "../context/SidebarContext";
-import useWorkspaces from "@/components/workspace-nav/useWorkspaces";
+import { useWorkspaces } from "@/context/WorkspaceContext";
 import useWorkspaceNav from "@/components/workspace-nav/useWorkspaceNav";
 import NavTree from "@/components/workspace-nav/NavTree";
 import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsButton";
