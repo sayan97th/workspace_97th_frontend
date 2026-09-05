@@ -537,6 +537,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   const [item_column_label] = useState(node.item_column_label ?? "Item");
+  const [item_column_width, setItemColumnWidth] = useState<number | null>(node.item_column_width ?? null);
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
 
   const columns_by_id = useMemo(
@@ -1410,6 +1411,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     () => ({
       initial_groups: table_groups,
       people: table_people,
+      initial_item_column_width: item_column_width,
+      // Like `item_column_label`, the item-title column isn't a real `board_columns`
+      // row, so its resized width persists on the board itself (`item_column_width`)
+      // rather than through `onUpdateColumnSettings`.
+      onResizeItemColumn: (width) => {
+        setItemColumnWidth(width);
+        void workspaceService.updateNavItem(node.workspace.slug, board_id, { item_column_width: width });
+      },
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
@@ -1468,7 +1477,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [table_groups, table_people, board_id, items]
+    [table_groups, table_people, board_id, items, item_column_width, node.workspace.slug]
   );
 
   const handleCreateTableItem = async (group_key: string): Promise<string> => {

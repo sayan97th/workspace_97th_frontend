@@ -143,10 +143,16 @@ export default function BoardTable({
     [base_actions, addItemReal, addSubitemReal, addGroupReal, addColumnReal, duplicateColumnReal]
   );
 
+  /**
+   * `state.item_column_width` is set once the user drags the Item column's own
+   * resize handle (or a real board loads with one already persisted) — until
+   * then this still auto-sizes from the longest item name, exactly as before.
+   */
   const name_col_width = useMemo(() => {
+    if (state.item_column_width != null) return state.item_column_width;
     const all_names = state.groups.flatMap((g) => g.items.map((it) => it.name));
     return computeNameColWidth(all_names);
-  }, [state.groups]);
+  }, [state.groups, state.item_column_width]);
 
   /**
    * The real column the status/label editor is currently open for (see

@@ -134,6 +134,20 @@ export interface UseBoardTableConfig {
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
   /**
+   * Persisted width (px) for the item-title virtual column (the "Item"/"Task"
+   * header spanning the name + person cells) — undefined for the standalone
+   * demo, which always auto-sizes instead (see `BoardTable`'s `name_col_width`).
+   * Null means the real board has never had this column resized yet, so it
+   * still auto-sizes until the user drags its handle for the first time.
+   */
+  initial_item_column_width?: number | null;
+  /**
+   * Persists the item-title column's resized width — the real-board analogue
+   * of `onUpdateColumnSettings`, needed separately because this column isn't a
+   * real `board_columns` row (it lives on the board itself, like `item_column_label`).
+   */
+  onResizeItemColumn?: (width: number) => void;
+  /**
    * Opens a real board's comments drawer for one row (item or subitem) —
    * fired by the row's message-icon button (see `ItemRow`/`SubitemRow`).
    * The table engine itself has no comments UI of its own, so this just
@@ -183,6 +197,8 @@ export interface BoardTableState {
   drag: DragState | null;
   sort: SortState | null;
   copied_row_id: string | null;
+  /** Explicit width (px) for the item-title virtual column, once the user has dragged its resize handle — null falls back to `BoardTable`'s auto-sizing from the longest item name. */
+  item_column_width: number | null;
 }
 
 function initialState(config: UseBoardTableConfig): BoardTableState {
@@ -222,6 +238,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     drag: null,
     sort: null,
     copied_row_id: null,
+    item_column_width: config.initial_item_column_width ?? null,
   };
 }
 
@@ -269,6 +286,15 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.status_defs) setState((s) => ({ ...s, status_defs: config.status_defs! }));
   }, [config.status_defs]);
+
+  // `initial_item_column_width` is legitimately `null` (a real board that's
+  // never had this column resized), so the resync guard checks for the key
+  // being passed at all rather than truthiness — mirrors the other resync
+  // effects' pattern of skipping entirely for the standalone demo.
+  useEffect(() => {
+    if (config.initial_item_column_width === undefined) return;
+    setState((s) => ({ ...s, item_column_width: config.initial_item_column_width ?? null }));
+  }, [config.initial_item_column_width]);
 
   // ---- expand / select / edit -------------------------------------------------
 
@@ -873,6 +899,17 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, groups: applyColumnWidth(s.groups, group_key, scope, column_id, width) }));
   }, []);
 
+  /** Local-only width preview for the item-title virtual column, fired on every pointer move — mirrors `resizeColumnPreview`, but board-wide rather than per-group since `name_col_width` is shared across every `GroupSection` (see `BoardTable`). */
+  const resizeItemColumnPreview = useCallback((width: number) => {
+    setState((s) => ({ ...s, item_column_width: width }));
+  }, []);
+
+  /** Commits the item-title column's resize-drag on pointer-up — local state plus real persistence through `onResizeItemColumn`, mirroring `updateColumnSettings`. */
+  const commitItemColumnResize = useCallback((width: number) => {
+    setState((s) => ({ ...s, item_column_width: width }));
+    config_ref.current.onResizeItemColumn?.(width);
+  }, []);
+
   const collapseAllGroups = useCallback(() => {
     setState((s) => ({
       ...s,
@@ -1122,6 +1159,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       changeColumnKind,
       updateColumnSettings,
       resizeColumnPreview,
+      resizeItemColumnPreview,
+      commitItemColumnResize,
       collapseAllGroups,
       setSort,
       openCellMenu,
@@ -1160,7 +1199,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,

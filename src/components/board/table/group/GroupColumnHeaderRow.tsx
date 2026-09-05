@@ -53,6 +53,9 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => { }}
           onDelete={() => { }}
+          resizable_width={name_col_width}
+          onResizePreview={(width) => actions.resizeItemColumnPreview(width)}
+          onResizeEnd={(width) => actions.commitItemColumnResize(width)}
           className="col-span-2"
         />
 

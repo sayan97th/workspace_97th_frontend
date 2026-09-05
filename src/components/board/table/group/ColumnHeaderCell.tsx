@@ -33,8 +33,16 @@ interface ColumnHeaderCellProps {
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
   onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
-  /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the item-title/sub-title virtual columns, which aren't resizable. */
+  /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
+  /**
+   * Current width for the item-title virtual column's own resize handle —
+   * that column has no `column` prop (see above), so it can't read its width
+   * off one the way a real column does. Omitted for every other header cell.
+   */
+  resizable_width?: number;
+  /** Fired once on the item-title column's resize-drag end, with the final width — the virtual-column analogue of `onUpdateSettings`'s `width` patch. */
+  onResizeEnd?: (width: number) => void;
   onEditLabels?: () => void;
   onRequestFilter?: () => void;
   onRequestGroupBy?: () => void;
@@ -49,7 +57,7 @@ interface ColumnHeaderCellProps {
 export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
-  onSort, onUpdateSettings, onResizePreview, onEditLabels,
+  onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -139,11 +147,11 @@ export default function ColumnHeaderCell({
           onClose={onCloseMenu}
         />
       )}
-      {column && onUpdateSettings && (
+      {((column && onUpdateSettings) || (resizable_width !== undefined && onResizeEnd)) && (
         <ColumnResizeHandle
-          width={column.width}
+          width={column ? column.width : resizable_width!}
           onResize={(width) => onResizePreview?.(width)}
-          onResizeEnd={(width) => onUpdateSettings({ width })}
+          onResizeEnd={(width) => (column ? onUpdateSettings!({ width }) : onResizeEnd!(width))}
         />
       )}
     </div>

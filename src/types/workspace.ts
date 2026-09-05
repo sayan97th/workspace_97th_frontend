@@ -47,6 +47,8 @@ export type WorkspaceNavNode = {
   board_type: BoardType;
   /** Custom name for the board's first (item name) column; null falls back to "Item". */
   item_column_label: string | null;
+  /** Custom width (px) for the board's first (item name) column, persisted from its resize handle; null falls back to auto-sizing from the longest item name. */
+  item_column_width: number | null;
   is_favorite: boolean;
   /** Total updates (top-level + replies) on the board's discussion feed; only populated on {@link BoardDetail} (0 elsewhere). */
   comments_count: number;
@@ -126,6 +128,7 @@ export type UpdateNavItemPayload = {
   display_style?: string | null;
   board_type?: BoardType;
   item_column_label?: string | null;
+  item_column_width?: number | null;
   is_favorite?: boolean;
 };
 
