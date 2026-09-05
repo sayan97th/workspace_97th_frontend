@@ -208,6 +208,18 @@ export type CreateBoardColumnPayload = {
 
 export type UpdateBoardColumnPayload = Partial<Omit<CreateBoardColumnPayload, "key" | "scope">>;
 
+/**
+ * PATCH /api/boards/{board_id}/columns/reorder — a column-header
+ * drag-and-drop reorder within one scope (main table header or subitem
+ * header). `view_id` defaults to the board's primary tab server-side when
+ * omitted, mirroring every other per-tab column endpoint.
+ */
+export type ReorderBoardColumnsPayload = {
+  scope: BoardColumnScope;
+  view_id?: number;
+  ordered_ids: number[];
+};
+
 export type CreateBoardGroupPayload = {
   /** Which tab (view) the new group belongs to. */
   view_id: number;

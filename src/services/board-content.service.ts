@@ -13,6 +13,7 @@ import type {
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
   CreateChecklistItemPayload,
+  ReorderBoardColumnsPayload,
   ReorderBoardItemsPayload,
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
@@ -63,6 +64,16 @@ export const boardContentService = {
   /** DELETE /api/boards/{board_id}/columns/{column_id} */
   async deleteColumn(board_id: number, column_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/columns/${column_id}`);
+  },
+
+  /**
+   * PATCH /api/boards/{board_id}/columns/reorder — column-header
+   * drag-and-drop reordering (main table or subitem header), resequenced
+   * server-side in one transaction, mirroring `reorderItems`.
+   */
+  async reorderColumns(board_id: number, payload: ReorderBoardColumnsPayload): Promise<BoardColumnDto[]> {
+    const response = await apiClient.patch<{ data: BoardColumnDto[] }>(`/api/boards/${board_id}/columns/reorder`, payload);
+    return response.data;
   },
 
   /** POST /api/boards/{board_id}/columns/{column_id}/duplicate — column menu's "Duplicate column". */

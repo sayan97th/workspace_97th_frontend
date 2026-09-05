@@ -108,6 +108,11 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "sub", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "sub", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "sub", col.id)}
+            is_draggable
+            is_dragging={state.column_drag?.column_id === col.id}
+            onColumnDragStart={() => actions.onColumnDragStart(group.key, "sub", col.id)}
+            onColumnDragOver={() => actions.onColumnDragOver(col.id)}
+            onColumnDragEnd={actions.onColumnDragEnd}
           />
         ))}
 

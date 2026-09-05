@@ -38,6 +38,37 @@ import {
 
 export type ColumnScope = "main" | "sub";
 
+/**
+ * In-flight column-header drag — the column-reorder analogue of `DragState`
+ * (row drag). `origin_order` snapshots the dragged column's merged
+ * base+custom id order (within `group_key`'s `scope`) at drag start, so
+ * `onColumnDragEnd` can tell whether the drop actually changed anything
+ * before reporting a `ReorderColumnsPayload`.
+ */
+export interface ColumnDragState {
+  column_id: string;
+  group_key: string;
+  scope: ColumnScope;
+  origin_order: string[];
+}
+
+/**
+ * Reported by `onColumnDragEnd` once a column-header drag has actually
+ * changed a scope's column order, for a real board to persist server-side
+ * (see `UseBoardTableConfig.onReorderColumns`) — the column-header analogue
+ * of `ReorderPayload` for rows. `ordered_ids` is that scope's full column id
+ * order after the drop, left-to-right. Column order is shared across every
+ * group rendering the same scope (every group's header shows the same
+ * columns), so `group_key` only names which group's header the drag started
+ * in, not a per-group order.
+ */
+export type ReorderColumnsPayload = {
+  scope: ColumnScope;
+  moved_id: string;
+  group_key: string;
+  ordered_ids: string[];
+};
+
 /** Every column list a `BoardTableGroup` carries — a dropdown's own `options` live on whichever one actually holds the column. */
 const COLUMN_LIST_KEYS: Array<keyof Pick<BoardTableGroup, "base_columns" | "custom_columns" | "sub_base_columns" | "sub_custom_columns">> = [
   "base_columns",
@@ -120,6 +151,17 @@ export interface UseBoardTableConfig {
    * Omitted, a drag still reorders locally but nothing is ever persisted.
    */
   onReorderItems?: (payload: ReorderPayload) => void;
+  /**
+   * Fires once per completed column-header drag that actually changed a
+   * scope's column order (main table header or subitem header) — the
+   * column-header analogue of `onReorderItems`. The local drag reorder
+   * (`onColumnDragOver`) has already applied optimistically by the time this
+   * fires; a real board persists it server-side (`reorderColumns`) and, on
+   * failure, rolls the local order back through its own `initial_groups`.
+   * Omitted, a column drag still reorders locally but nothing is ever
+   * persisted.
+   */
+  onReorderColumns?: (payload: ReorderColumnsPayload) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
   /**
@@ -229,6 +271,8 @@ export interface BoardTableState {
   label_editor_column_id: string | null;
   tag_editor_open: boolean;
   drag: DragState | null;
+  /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
+  column_drag: ColumnDragState | null;
   sort: SortState | null;
   copied_row_id: string | null;
   /** Explicit width (px) for the item-title virtual column, once the user has dragged its resize handle — null falls back to `BoardTable`'s auto-sizing from the longest item name. */
@@ -272,6 +316,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     label_editor_column_id: null,
     tag_editor_open: false,
     drag: null,
+    column_drag: null,
     sort: null,
     copied_row_id: null,
     item_column_width: config.initial_item_column_width ?? null,
@@ -313,7 +358,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   // under the user, mirroring `BoardKanban`'s own re-sync guard.
   useEffect(() => {
     if (!config.initial_groups) return;
-    setState((s) => (s.editing_id || s.drag ? s : { ...s, groups: config.initial_groups! }));
+    setState((s) => (s.editing_id || s.drag || s.column_drag ? s : { ...s, groups: config.initial_groups! }));
   }, [config.initial_groups]);
 
   useEffect(() => {
@@ -973,6 +1018,73 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onResizeSubColumn?.(width);
   }, []);
 
+  // ---- column-header drag-and-drop reordering --------------------------------
+
+  /** A group's merged base+custom column list for `scope`, in display order — the same concatenation every column-header row already renders (see `GroupColumnHeaderRow`/`SubitemHeaderRow`). */
+  const mergedColumnsOf = (group: BoardTableGroup, scope: ColumnScope): ColumnDef[] => {
+    const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
+    const list_key = columnListKey(scope);
+    return (group[base_key as keyof BoardTableGroup] as ColumnDef[]).concat(group[list_key as keyof BoardTableGroup] as ColumnDef[]);
+  };
+
+  const onColumnDragStart = useCallback((group_key: string, scope: ColumnScope, column_id: string) => {
+    setState((s) => {
+      const group = findGroup(s.groups, group_key);
+      if (!group) return s;
+      return { ...s, column_drag: { column_id, group_key, scope, origin_order: mergedColumnsOf(group, scope).map((c) => c.id) } };
+    });
+  }, []);
+
+  /**
+   * Column order is shared across every group rendering the same scope
+   * (every group's header shows the same column set), so the reorder is
+   * applied to every group's own base/custom lists in lockstep — not just
+   * the group the drag started in — mirroring how `table_base_columns` is
+   * one shared array in `TableBoardView`. A group missing either column
+   * (the mock demo's per-group `custom_columns` can differ) is left alone.
+   */
+  const onColumnDragOver = useCallback((over_column_id: string) => {
+    setState((s) => {
+      const drag = s.column_drag;
+      if (!drag || drag.column_id === over_column_id) return s;
+      const { scope } = drag;
+      const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
+      const list_key = columnListKey(scope);
+      return {
+        ...s,
+        groups: s.groups.map((g) => {
+          const merged = mergedColumnsOf(g, scope);
+          if (!merged.some((c) => c.id === drag.column_id) || !merged.some((c) => c.id === over_column_id)) return g;
+          const reordered = reorderWithinList(merged, drag.column_id, over_column_id);
+          const base_ids = new Set((g[base_key as keyof BoardTableGroup] as ColumnDef[]).map((c) => c.id));
+          return { ...g, [base_key]: reordered.filter((c) => base_ids.has(c.id)), [list_key]: reordered.filter((c) => !base_ids.has(c.id)) };
+        }),
+      };
+    });
+  }, []);
+
+  /**
+   * Compares the dragged scope's final column order against the snapshot
+   * `onColumnDragStart` captured and, when a drop actually moved something,
+   * reports it through `onReorderColumns` — mirrors `onDragEnd`'s own
+   * read-before-`setState` pattern for row drags.
+   */
+  const onColumnDragEnd = useCallback(() => {
+    const drag = state_ref.current.column_drag;
+    if (drag) {
+      const group = findGroup(state_ref.current.groups, drag.group_key);
+      const final_order = group ? mergedColumnsOf(group, drag.scope).map((c) => c.id) : [];
+      const changed =
+        final_order.length > 0 &&
+        (final_order.length !== drag.origin_order.length || final_order.some((id, index) => id !== drag.origin_order[index]));
+
+      if (changed) {
+        config_ref.current.onReorderColumns?.({ scope: drag.scope, moved_id: drag.column_id, group_key: drag.group_key, ordered_ids: final_order });
+      }
+    }
+    setState((s) => ({ ...s, column_drag: null }));
+  }, []);
+
   const collapseAllGroups = useCallback(() => {
     const collapsed_groups = Object.fromEntries(state_ref.current.groups.map((g) => [g.key, true]));
     setState((s) => ({ ...s, collapsed_groups, open_column_menu_key: null }));
@@ -1224,6 +1336,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       commitItemColumnResize,
       resizeSubColumnPreview,
       commitSubColumnResize,
+      onColumnDragStart,
+      onColumnDragOver,
+      onColumnDragEnd,
       collapseAllGroups,
       setSort,
       openCellMenu,
@@ -1262,7 +1377,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,

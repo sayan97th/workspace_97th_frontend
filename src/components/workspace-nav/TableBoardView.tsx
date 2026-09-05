@@ -59,6 +59,7 @@ import {
   type ColumnKind as TableColumnKind,
   type ColumnScope as TableColumnScope,
   type PersonDef as TablePersonDef,
+  type ReorderColumnsPayload as TableReorderColumnsPayload,
   type ReorderPayload as TableReorderPayload,
   type UseBoardTableConfig,
 } from "@/components/board";
@@ -1417,6 +1418,35 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   /**
+   * Column-header drag-and-drop reordering — persists the Table view's own
+   * column drag-and-drop (`useBoardTable`'s `onColumnDragEnd`) to
+   * `board_columns.position` via the reorder endpoint. Mirrors
+   * `handleReorderTableItems`'s own optimistic-reorder-then-rollback shape:
+   * `columns` is physically reordered (not just its `position` fields
+   * patched) so the new order survives an unrelated re-render, since
+   * `table_base_columns`/`table_sub_base_columns` render columns in
+   * `columns`' own array order, not sorted by `position`.
+   */
+  const handleReorderTableColumns = (payload: TableReorderColumnsPayload) => {
+    const previous_columns = columns;
+    const engine_scope: BoardColumnScope = payload.scope === "sub" ? "subitem" : "item";
+    const ordered_ids = payload.ordered_ids.map(Number);
+
+    setColumns((current) => {
+      const by_id = new Map(current.map((column) => [column.id, column]));
+      const reordered = ordered_ids.map((id) => by_id.get(id)).filter((column): column is BoardColumnDto => Boolean(column));
+      let cursor = 0;
+      return current.map((column) =>
+        column.scope === engine_scope && ordered_ids.includes(column.id) ? { ...reordered[cursor++], position: cursor - 1 } : column
+      );
+    });
+
+    void boardContentService
+      .reorderColumns(board_id, { scope: engine_scope, view_id: view_tabs.active_view_id ?? undefined, ordered_ids })
+      .catch(() => setColumns(previous_columns));
+  };
+
+  /**
    * Bridges `BoardTable` to this component's own real handlers — rename,
    * cell edits and group rename/delete persist immediately; row/subitem/
    * group *creation* instead goes through `handleCreateTableItem`/
@@ -1476,6 +1506,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .then(() => setItems((current) => removeItemFromTree(current, Number(node_id))));
       },
       onReorderItems: handleReorderTableItems,
+      onReorderColumns: handleReorderTableColumns,
       onRenameGroup: (group_key, title) => {
         void boardContentService
           .updateGroup(board_id, Number(group_key), { name: title })

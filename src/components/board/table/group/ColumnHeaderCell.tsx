@@ -52,6 +52,13 @@ interface ColumnHeaderCellProps {
   onChangeType?: (kind: ColumnKind, default_width: number) => void;
   onDelete: () => void;
   className?: string;
+  /** Whether this cell can be picked up and dragged to reorder columns — omitted for the item-title/sub-title virtual columns, which stay pinned first. */
+  is_draggable?: boolean;
+  /** Whether this cell is the one currently being dragged — fades it, mirroring `ItemRow`/`SubitemRow`'s own drag opacity. */
+  is_dragging?: boolean;
+  onColumnDragStart?: () => void;
+  onColumnDragOver?: () => void;
+  onColumnDragEnd?: () => void;
 }
 
 export default function ColumnHeaderCell({
@@ -59,6 +66,7 @@ export default function ColumnHeaderCell({
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
+  is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
   const title_input_ref = useRef<HTMLInputElement>(null);
@@ -70,9 +78,22 @@ export default function ColumnHeaderCell({
     <div
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
+      draggable={is_draggable}
+      onDragStart={is_draggable ? onColumnDragStart : undefined}
+      onDragOver={is_draggable ? (e) => { e.preventDefault(); onColumnDragOver?.(); } : undefined}
+      onDragEnd={is_draggable ? onColumnDragEnd : undefined}
       className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-border-soft ${className || ""}`}
-      style={{ height }}
+      style={{ height, opacity: is_dragging ? 0.45 : 1 }}
     >
+      {is_draggable && (
+        <span
+          title="Drag to reorder column"
+          className="flex w-3 flex-none cursor-grab items-center justify-center text-boardtree-text-faint"
+          style={{ opacity: is_hovered || is_menu_open ? 1 : 0 }}
+        >
+          <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
+        </span>
+      )}
       {show_sort_badge && (
         <button
           type="button"

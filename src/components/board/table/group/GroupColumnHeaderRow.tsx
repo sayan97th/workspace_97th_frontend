@@ -105,6 +105,11 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "main", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "main", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "main", col.id)}
+            is_draggable
+            is_dragging={state.column_drag?.column_id === col.id}
+            onColumnDragStart={() => actions.onColumnDragStart(group.key, "main", col.id)}
+            onColumnDragOver={() => actions.onColumnDragOver(col.id)}
+            onColumnDragEnd={actions.onColumnDragEnd}
           />
         ))}
 
