@@ -60,6 +60,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             move_targets={move_targets}
             convert_targets={[]}
             copied={state.copied_row_id === sub.id}
+            is_priority={!!sub.is_priority}
             onOpen={() => {}}
             onCopyLink={() => actions.copyRowLink(sub.id)}
             onCreateBelow={() => actions.createBelow(sub.id)}
@@ -68,6 +69,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             onMoveTo={(target_id) => actions.convertItemToSub(sub.id, target_id)}
             onConvertToItem={() => actions.convertSubToItem(sub.id)}
             onConvertToSubOf={() => {}}
+            onTogglePriority={() => actions.toggleNodePriority(sub.id)}
             onArchive={() => actions.deleteNode(sub.id)}
             onDelete={() => actions.deleteNode(sub.id)}
             onClose={actions.closeRowMenu}
@@ -133,6 +135,23 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               </span>
             )}
           </div>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(sub.id); }}
+            title={sub.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
+            className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+            style={{ color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: sub.is_priority || is_hovered ? 1 : 0, pointerEvents: sub.is_priority || is_hovered ? "auto" : "none" }}
+          >
+            <svg viewBox="0 0 16 16" width="12" height="12">
+              <path
+                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                fill={sub.is_priority ? "currentColor" : "none"}
+                stroke={sub.is_priority ? "none" : "currentColor"}
+                strokeWidth={sub.is_priority ? undefined : "1.2"}
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         </div>
 
         <div className="flex h-10 items-center justify-center border-r border-boardtree-border-soft">

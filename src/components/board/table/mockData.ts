@@ -38,12 +38,13 @@ export function buildInitialGroups(): BoardTableGroup[] {
         {
           id: "i1",
           name: "Payment method selector",
+          is_priority: true,
           values: {
             owner: ["AR", "LM"], status: "Working on it", date: "2026-09-17", priority: "High", progress: "60",
             notes: "Blocked on PSP contract sign-off", est: "18", sprint: "S-24", updated: "2026-08-28",
           },
           subs: [
-            { id: "i1-s1", name: "Card tokenization spike", values: { owner: ["AR"], status: "Done", date: "2026-09-08" } },
+            { id: "i1-s1", name: "Card tokenization spike", is_priority: true, values: { owner: ["AR"], status: "Done", date: "2026-09-08" } },
             { id: "i1-s2", name: "Apple Pay / Google Pay sheet", values: { owner: ["LM", "DK", "MR"], status: "Working on it", date: "2026-09-19" } },
             { id: "i1-s3", name: "Saved cards empty state", values: { owner: [], status: "", date: "" } },
           ],

@@ -127,6 +127,12 @@ export interface UseBoardTableConfig {
   onRenameNode?: (node_id: string, name: string) => void;
   onCellValueChange?: (node_id: string, column_id: string, value: CellValue) => void;
   /**
+   * Row star / row menu's "Mark as priority" toggle for a single item or
+   * subitem — the per-row counterpart of `onToggleGroupPriority`, persisted
+   * server-side the same way so it's shared across every viewer.
+   */
+  onToggleNodePriority?: (node_id: string, is_priority: boolean) => void;
+  /**
    * Appends a new option to a real Dropdown column's `options`, inline from
    * its own cell picker (the "New label" + Add row) — resolves once
    * persisted; the board's next `initial_groups` sync then reflects it.
@@ -446,6 +452,16 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const cancelGroupRename = useCallback(() => {
     setState((s) => ({ ...s, editing_group_key: null }));
+  }, []);
+
+  const toggleNodePriority = useCallback((node_id: string) => {
+    const next_is_priority = !findNode(state_ref.current.groups, node_id)?.is_priority;
+    setState((s) => ({
+      ...s,
+      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, is_priority: next_is_priority })),
+      open_row_menu_id: null,
+    }));
+    config_ref.current.onToggleNodePriority?.(node_id, next_is_priority);
   }, []);
 
   // ---- cell values --------------------------------------------------------
@@ -1295,6 +1311,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       deleteNode,
       createBelow,
       duplicateNode,
+      toggleNodePriority,
       moveItemToGroup,
       convertSubToItem,
       convertItemToSub,
@@ -1373,7 +1390,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [
       toggleItemOpen, toggleSelected, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
-      clearCellValue, openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, moveItemToGroup,
+      clearCellValue, openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, moveItemToGroup,
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,

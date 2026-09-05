@@ -66,6 +66,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             convert_targets={convert_targets}
             copied={state.copied_row_id === item.id}
             onOpen={() => {}}
+            is_priority={!!item.is_priority}
             onCopyLink={() => actions.copyRowLink(item.id)}
             onCreateBelow={() => actions.createBelow(item.id)}
             onAddSubitem={() => actions.addSubitem(item.id)}
@@ -73,6 +74,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             onMoveTo={(target_id) => actions.moveItemToGroup(item.id, target_id)}
             onConvertToItem={() => {}}
             onConvertToSubOf={(target_id) => actions.convertItemToSub(item.id, target_id)}
+            onTogglePriority={() => actions.toggleNodePriority(item.id)}
             onArchive={() => actions.deleteNode(item.id)}
             onDelete={() => actions.deleteNode(item.id)}
             onClose={actions.closeRowMenu}
@@ -136,11 +138,23 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               </span>
             )}
           </div>
-          {group.is_priority && (
-            <span title="Priority client — this task's client is flagged high-end" className="flex-none text-[#fdab3d]">
-              <svg viewBox="0 0 16 16" width="12" height="12"><path d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z" fill="currentColor" /></svg>
-            </span>
-          )}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
+            title={item.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
+            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+            style={{ color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: item.is_priority || is_hovered ? 1 : 0, pointerEvents: item.is_priority || is_hovered ? "auto" : "none" }}
+          >
+            <svg viewBox="0 0 16 16" width="13" height="13">
+              <path
+                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                fill={item.is_priority ? "currentColor" : "none"}
+                stroke={item.is_priority ? "none" : "currentColor"}
+                strokeWidth={item.is_priority ? undefined : "1.2"}
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
           {item.subs.length > 0 && (
             <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[9px] bg-boardtree-hover px-[7px] py-0.5 font-mono text-[10.5px] text-boardtree-text-secondary">
               {item.subs.length}

@@ -1346,6 +1346,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     name: item.name,
     values: item.values,
     comment_count: item.comment_count,
+    is_priority: item.is_priority,
   });
   const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
 
@@ -1521,6 +1522,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void boardContentService
           .updateGroup(board_id, Number(group_key), { is_priority })
           .then((updated) => setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g))));
+      },
+      onToggleNodePriority: (node_id, is_priority) => {
+        void boardContentService
+          .updateItem(board_id, Number(node_id), { is_priority })
+          .then((updated) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, is_priority: updated.is_priority }))));
       },
       onRenameColumn: (_group_key, _scope, column_id, title) =>
         void boardContentService

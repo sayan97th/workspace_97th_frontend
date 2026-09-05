@@ -16,6 +16,7 @@ interface RowMenuProps {
   move_targets: RowMenuTarget[];
   convert_targets: RowMenuTarget[];
   copied: boolean;
+  is_priority: boolean;
   onOpen: () => void;
   onCopyLink: () => void;
   onCreateBelow: () => void;
@@ -24,6 +25,7 @@ interface RowMenuProps {
   onMoveTo: (target_id: string) => void;
   onConvertToItem: () => void;
   onConvertToSubOf: (target_id: string) => void;
+  onTogglePriority: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -47,8 +49,8 @@ const CHEVRON_ICON = (
  * hover-gap for the cursor to fall out of on the way to the submenu.
  */
 export default function RowMenu({
-  is_sub, anchor_el, move_targets, convert_targets, copied,
-  onOpen, onCopyLink, onCreateBelow, onAddSubitem, onDuplicate, onMoveTo, onConvertToItem, onConvertToSubOf,
+  is_sub, anchor_el, move_targets, convert_targets, copied, is_priority,
+  onOpen, onCopyLink, onCreateBelow, onAddSubitem, onDuplicate, onMoveTo, onConvertToItem, onConvertToSubOf, onTogglePriority,
   onArchive, onDelete, onClose,
 }: RowMenuProps) {
   const [open_submenu, setOpenSubmenu] = useState<SubmenuKey | null>(null);
@@ -78,6 +80,21 @@ export default function RowMenu({
             </span>
             <span className="flex-1 text-left">{is_sub ? "Copy subitem link" : "Copy item link"}</span>
             {copied && <span className="text-[11.5px] text-boardtree-accent">copied</span>}
+          </button>
+
+          <button type="button" onClick={() => { onTogglePriority(); onClose(); }} className={ROW_ITEM}>
+            <span className="flex w-4 items-center justify-center" style={{ color: is_priority ? "#fdab3d" : "var(--color-boardtree-text-muted)" }}>
+              <svg viewBox="0 0 16 16" width="15" height="15">
+                <path
+                  d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                  fill={is_priority ? "currentColor" : "none"}
+                  stroke={is_priority ? "none" : "currentColor"}
+                  strokeWidth={is_priority ? undefined : "1.2"}
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="flex-1 text-left">{is_priority ? "Unmark as priority" : "Mark as priority"}</span>
           </button>
 
           {move_targets.length > 0 && (

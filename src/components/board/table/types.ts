@@ -56,6 +56,8 @@ export interface BoardTableNode {
   values: Record<string, CellValue>;
   /** Total comments posted on this row (item or subitem) — drives the message-icon badge in `ItemRow`/`SubitemRow`. Undefined for the standalone mock demo, which has no backing comments drawer. */
   comment_count?: number;
+  /** Flags this individual row (item or subitem) as a priority row — the per-row counterpart of `BoardTableGroup.is_priority`, independent of any per-item Status/Priority column. Renders a star next to the row's name in `ItemRow`/`SubitemRow`. */
+  is_priority?: boolean;
 }
 
 export interface BoardTableItem extends BoardTableNode {

@@ -89,6 +89,8 @@ export type BoardItemDto = {
   /** Free-form item detail, edited from the item drawer — unlike column `values`, this is a first-class field on the item itself (like `name`), so it needs no backing column to exist. */
   description: string | null;
   position: number;
+  /** Flags this individual item (or subitem) as a priority row — the per-row counterpart of `BoardGroupDto.is_priority`, independent of any per-item Status/Priority column. */
+  is_priority: boolean;
   values: Record<string, BoardItemValue>;
   /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
   comment_count: number;
@@ -257,6 +259,7 @@ export type CreateBoardItemPayload = {
   /** Creates a subitem of this item instead of a top-level row. */
   parent_id?: number;
   position?: number;
+  is_priority?: boolean;
   values?: Record<string, BoardItemValue>;
 };
 
@@ -265,6 +268,7 @@ export type UpdateBoardItemPayload = {
   description?: string | null;
   group_id?: number;
   position?: number;
+  is_priority?: boolean;
 };
 
 /**
