@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
 import GroupMenu from "../menus/GroupMenu";
+import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface GroupHeaderBarProps {
   group: BoardTableGroup;
@@ -19,6 +21,11 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
   const is_menu_open = state.open_group_menu_key === group.key;
   const is_editing = state.editing_group_key === group.key;
   const sub_count = group.items.reduce((a, it) => a + it.subs.length, 0);
+  const title_input_ref = useRef<HTMLInputElement>(null);
+  // Picking an emoji blurs the title input (the picker's grid is a portaled
+  // element outside it), which would otherwise reach `onBlur` before the
+  // pick's own text update lands and commit the rename out from under it.
+  const is_emoji_palette_open_ref = useRef(false);
 
   return (
     <div className="top-0 z-[60] flex h-10 items-end  pb-2" style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}>
@@ -65,18 +72,29 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
         </button>
 
         {is_editing ? (
-          <input
-            autoFocus
-            value={state.group_draft}
-            onChange={(e) => actions.updateGroupDraft(e.target.value)}
-            onBlur={actions.commitGroupRename}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              if (e.key === "Escape") actions.cancelGroupRename();
-            }}
-            className="min-w-[180px] rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-1.5 py-px text-[16px] font-semibold outline-none"
-            style={{ color: group.color }}
-          />
+          <span className="relative inline-flex items-center">
+            <input
+              ref={title_input_ref}
+              autoFocus
+              value={state.group_draft}
+              onChange={(e) => actions.updateGroupDraft(e.target.value)}
+              onBlur={() => { if (!is_emoji_palette_open_ref.current) actions.commitGroupRename(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") actions.cancelGroupRename();
+              }}
+              className="min-w-[180px] rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-px pl-1.5 pr-7 text-[16px] font-semibold outline-none"
+              style={{ color: group.color }}
+            />
+            <EmojiInsertButton
+              input_ref={title_input_ref}
+              value={state.group_draft}
+              onChange={actions.updateGroupDraft}
+              onOpenChange={(is_open) => { is_emoji_palette_open_ref.current = is_open; }}
+              size={14}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
+            />
+          </span>
         ) : (
           <button
             type="button"

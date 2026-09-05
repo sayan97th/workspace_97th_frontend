@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import TreeHook from "./TreeHook";
+import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface SubitemRowProps {
   sub: BoardTableNode;
@@ -29,6 +30,11 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const move_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.map((it) => ({ id: it.id, label: it.name, current: it.id === item.id })));
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
+  const name_input_ref = useRef<HTMLInputElement>(null);
+  // Picking an emoji blurs the name input (the picker's grid is a portaled
+  // element outside it), which would otherwise reach `onBlur` before the
+  // pick's own text update lands and commit the edit out from under it.
+  const is_emoji_palette_open_ref = useRef(false);
 
   return (
     <div
@@ -99,17 +105,28 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </div>
           <div className="flex min-w-0 flex-1 items-center">
             {is_editing ? (
-              <input
-                autoFocus
-                value={state.edit_draft}
-                onChange={(e) => actions.updateEditDraft(e.target.value)}
-                onBlur={actions.commitEditName}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                  if (e.key === "Escape") actions.cancelEditName();
-                }}
-                className="h-[32px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface px-1.5 text-[13px] text-boardtree-text outline-none"
-              />
+              <span className="relative flex min-w-0 flex-1 items-center">
+                <input
+                  ref={name_input_ref}
+                  autoFocus
+                  value={state.edit_draft}
+                  onChange={(e) => actions.updateEditDraft(e.target.value)}
+                  onBlur={() => { if (!is_emoji_palette_open_ref.current) actions.commitEditName(); }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    if (e.key === "Escape") actions.cancelEditName();
+                  }}
+                  className="h-[32px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-6 text-[13px] text-boardtree-text outline-none"
+                />
+                <EmojiInsertButton
+                  input_ref={name_input_ref}
+                  value={state.edit_draft}
+                  onChange={actions.updateEditDraft}
+                  onOpenChange={(is_open) => { is_emoji_palette_open_ref.current = is_open; }}
+                  size={12}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2"
+                />
+              </span>
             ) : (
               <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
                 {sub.name}

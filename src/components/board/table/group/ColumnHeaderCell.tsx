@@ -1,7 +1,9 @@
 "use client";
 
+import { useRef } from "react";
 import ColumnMenu from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
+import EmojiInsertButton from "../../EmojiInsertButton";
 import type { ColumnKind, StatusDef } from "../types";
 
 interface ColumnHeaderCellProps {
@@ -51,6 +53,11 @@ export default function ColumnHeaderCell({
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
+  const title_input_ref = useRef<HTMLInputElement>(null);
+  // Picking an emoji blurs the title input (the picker's grid is a portaled
+  // element outside it), which would otherwise reach `onBlur` before the
+  // pick's own text update lands and commit the rename out from under it.
+  const is_emoji_palette_open_ref = useRef(false);
   return (
     <div
       onMouseEnter={onEnter}
@@ -70,18 +77,29 @@ export default function ColumnHeaderCell({
         </button>
       )}
       {is_editing ? (
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          onFocus={(e) => e.target.select()}
-          onBlur={onCommitRename}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-            if (e.key === "Escape") onCancelRename();
-          }}
-          className="min-w-0 flex-1 rounded-[5px] border border-boardtree-accent bg-boardtree-surface px-1.5 py-1 text-[12.5px] font-medium text-boardtree-text outline-none"
-        />
+        <span className="relative flex min-w-0 flex-1 items-center">
+          <input
+            ref={title_input_ref}
+            autoFocus
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value)}
+            onFocus={(e) => e.target.select()}
+            onBlur={() => { if (!is_emoji_palette_open_ref.current) onCommitRename(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") onCancelRename();
+            }}
+            className="min-w-0 flex-1 rounded-[5px] border border-boardtree-accent bg-boardtree-surface py-1 pl-1.5 pr-6 text-[12.5px] font-medium text-boardtree-text outline-none"
+          />
+          <EmojiInsertButton
+            input_ref={title_input_ref}
+            value={draft}
+            onChange={onDraftChange}
+            onOpenChange={(is_open) => { is_emoji_palette_open_ref.current = is_open; }}
+            size={12}
+            className="absolute right-1 top-1/2 -translate-y-1/2"
+          />
+        </span>
       ) : (
         <button
           type="button"
