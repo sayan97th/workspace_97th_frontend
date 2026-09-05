@@ -46,6 +46,11 @@ const COLUMN_LIST_KEYS: Array<keyof Pick<BoardTableGroup, "base_columns" | "cust
   "sub_custom_columns",
 ];
 
+/** The keys of every group currently flagged `true` in a `collapsed_groups` map — the wire format `onCollapsedGroupsChange` persists (see its own doc comment for why only the collapsed ones are sent). */
+function collapsedGroupKeys(collapsed_groups: Record<string, boolean>): string[] {
+  return Object.keys(collapsed_groups).filter((key) => collapsed_groups[key]);
+}
+
 /**
  * Applies `updater` to the one column matching `column_id`, wherever it lives
  * across every group's four column lists — a column definition (including
@@ -123,6 +128,26 @@ export interface UseBoardTableConfig {
    * it drives) is shared across every viewer, not just a local UI state.
    */
   onToggleGroupPriority?: (group_key: string, is_priority: boolean) => void;
+  /**
+   * Persisted collapse/expand state for every group (table) on this view,
+   * keyed the same way `BoardTableState.collapsed_groups` is — undefined for
+   * the standalone demo, which always starts fully expanded. A real board
+   * loads back whichever tables the viewer had collapsed the last time they
+   * visited, so a board with dozens or hundreds of tables lands exactly where
+   * they left it instead of every table snapping open again.
+   */
+  initial_collapsed_groups?: Record<string, boolean>;
+  /**
+   * Persists the viewer's collapsed/expanded set — fired by
+   * `toggleGroupCollapsed`/`collapseAllGroups`/`expandAllGroups` with the
+   * *entire* resulting set of collapsed group keys (not just the one that
+   * changed), mirroring `onResizeItemColumn`'s "always send the final value"
+   * style rather than a diff. Sending the full set keeps a bulk action
+   * (`collapseAllGroups`) correct in one call, and stays cheap even with
+   * hundreds of tables since only the (typically few) *collapsed* ones are
+   * ever included — an expanded table costs nothing to represent.
+   */
+  onCollapsedGroupsChange?: (collapsed_group_keys: string[]) => void;
   /** Column-header menu — see `ColumnMenu.tsx`. Each acts on an *existing* column id, so it's called alongside the local mutation (no round trip needed first), mirroring `onRenameGroup`/`onRemoveGroup`. */
   onRenameColumn?: (group_key: string, scope: ColumnScope, column_id: string, title: string) => void;
   onDeleteColumn?: (group_key: string, scope: ColumnScope, column_id: string) => void;
@@ -220,7 +245,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     // A real board's rows load collapsed and unselected — only the mock demo
     // opens/selects a couple of rows up front to show the tree off at a glance.
     open_map: is_controlled ? {} : { i1: true, i3: true },
-    collapsed_groups: {},
+    collapsed_groups: config.initial_collapsed_groups ?? {},
     selected_map: is_controlled ? {} : { "i3-s2": true },
     editing_id: null,
     edit_draft: "",
@@ -313,6 +338,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, sub_column_width: config.initial_sub_column_width ?? null }));
   }, [config.initial_sub_column_width]);
 
+  useEffect(() => {
+    if (config.initial_collapsed_groups === undefined) return;
+    setState((s) => ({ ...s, collapsed_groups: config.initial_collapsed_groups! }));
+  }, [config.initial_collapsed_groups]);
+
   // ---- expand / select / edit -------------------------------------------------
 
   const toggleItemOpen = useCallback((id: string) => {
@@ -324,7 +354,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const toggleGroupCollapsed = useCallback((key: string) => {
-    setState((s) => ({ ...s, collapsed_groups: { ...s.collapsed_groups, [key]: !s.collapsed_groups[key] } }));
+    const collapsed_groups = { ...state_ref.current.collapsed_groups, [key]: !state_ref.current.collapsed_groups[key] };
+    setState((s) => ({ ...s, collapsed_groups }));
+    config_ref.current.onCollapsedGroupsChange?.(collapsedGroupKeys(collapsed_groups));
   }, []);
 
   const startEditName = useCallback((id: string, current_name: string) => {
@@ -709,7 +741,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     });
   }, []);
 
-  const expandAllGroups = useCallback(() => setState((s) => ({ ...s, collapsed_groups: {}, open_group_menu_key: null })), []);
+  const expandAllGroups = useCallback(() => {
+    setState((s) => ({ ...s, collapsed_groups: {}, open_group_menu_key: null }));
+    config_ref.current.onCollapsedGroupsChange?.([]);
+  }, []);
 
   const setAllSubsOpen = useCallback((key: string, value: boolean) => {
     setState((s) => {
@@ -939,11 +974,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const collapseAllGroups = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      collapsed_groups: Object.fromEntries(s.groups.map((g) => [g.key, true])),
-      open_column_menu_key: null,
-    }));
+    const collapsed_groups = Object.fromEntries(state_ref.current.groups.map((g) => [g.key, true]));
+    setState((s) => ({ ...s, collapsed_groups, open_column_menu_key: null }));
+    config_ref.current.onCollapsedGroupsChange?.(collapsedGroupKeys(collapsed_groups));
   }, []);
 
   const setSort = useCallback((scope_key: string, column_id: string, direction: "asc" | "desc" | null) => {

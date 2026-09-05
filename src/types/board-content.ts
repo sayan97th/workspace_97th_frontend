@@ -219,6 +219,24 @@ export type CreateBoardGroupPayload = {
 
 export type UpdateBoardGroupPayload = Partial<CreateBoardGroupPayload>;
 
+/**
+ * `GET /api/boards/{board_id}/groups` — a tab's tables plus the authenticated
+ * viewer's own collapsed/expanded state for them, if they've ever saved one
+ * for this tab. Only the *collapsed* ids are ever sent, so this stays a small
+ * payload even for a tab with hundreds of tables.
+ */
+export type BoardGroupsIndexDto = {
+  groups: BoardGroupDto[];
+  collapsed_group_ids: number[];
+};
+
+/** `PUT /api/boards/{board_id}/groups/collapsed-state` — saves the viewer's own collapsed/expanded set for one tab's tables. */
+export type UpdateGroupCollapseStatePayload = {
+  /** Which tab (view) this collapse state applies to. Defaults to the board's primary tab server-side when omitted. */
+  view_id?: number;
+  collapsed_group_ids: number[];
+};
+
 export type CreateBoardItemPayload = {
   name: string;
   description?: string | null;

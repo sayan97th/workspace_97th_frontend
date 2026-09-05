@@ -330,6 +330,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     items: BoardItemDto[];
     views: BoardViewDto[];
     personal_order: number[] | null;
+    collapsed_group_ids: number[];
   } | null>(null);
   const [has_error, setHasError] = useState(false);
 
@@ -347,8 +348,17 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       boardContentService.getItems(node.id, active_view_id),
       boardContentService.getViews(node.id),
     ])
-      .then(([columns, groups, items, views]) => {
-        if (!cancelled) setLoaded({ columns, groups, items, views: views.views, personal_order: views.personal_order });
+      .then(([columns, groups_index, items, views]) => {
+        if (!cancelled) {
+          setLoaded({
+            columns,
+            groups: groups_index.groups,
+            items,
+            views: views.views,
+            personal_order: views.personal_order,
+            collapsed_group_ids: groups_index.collapsed_group_ids,
+          });
+        }
       })
       .catch(() => {
         if (!cancelled) setHasError(true);
@@ -402,6 +412,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         initial_views={loaded.views}
         initial_active_view_id={active_view_id ?? null}
         initial_personal_order={loaded.personal_order}
+        initial_collapsed_group_ids={loaded.collapsed_group_ids}
         initial_open_item_id={initial_open_item_id ?? null}
       />
       <ChangeBoardTypeModal
@@ -443,6 +454,8 @@ type TableBoardBodyProps = {
   initial_views: BoardViewDto[];
   initial_active_view_id: number | null;
   initial_personal_order: number[] | null;
+  /** Ids of this tab's tables the viewer had collapsed the last time they visited — see `useBoardTable`'s `initial_collapsed_groups`. */
+  initial_collapsed_group_ids: number[];
   initial_open_item_id: number | null;
 };
 
@@ -524,6 +537,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_views,
   initial_active_view_id,
   initial_personal_order,
+  initial_collapsed_group_ids,
   initial_open_item_id,
 }) => {
   const router = useRouter();
@@ -539,6 +553,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_column_label] = useState(node.item_column_label ?? "Item");
   const [item_column_width, setItemColumnWidth] = useState<number | null>(node.item_column_width ?? null);
   const [sub_item_column_width, setSubItemColumnWidth] = useState<number | null>(node.sub_item_column_width ?? null);
+  // Keyed the same way `useBoardTable`'s own `collapsed_groups` state is
+  // (`board_groups.id` as a string) — this whole component remounts on every
+  // tab switch (see `TableBoardView`'s loading-spinner branch), so seeding
+  // this once from `initial_collapsed_group_ids` is enough to pick up a
+  // different tab's own saved collapse state without a separate resync effect.
+  const [collapsed_group_map] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(initial_collapsed_group_ids.map((id) => [String(id), true]))
+  );
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
 
   const columns_by_id = useMemo(
@@ -1425,6 +1447,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         setSubItemColumnWidth(width);
         void workspaceService.updateNavItem(node.workspace.slug, board_id, { sub_item_column_width: width });
       },
+      initial_collapsed_groups: collapsed_group_map,
+      // Tables (groups) are scoped per tab, so the viewer's collapsed set is
+      // saved against the active tab rather than the board as a whole — see
+      // `BoardGroupController::updateCollapsedState`.
+      onCollapsedGroupsChange: (collapsed_group_keys) => {
+        void boardContentService.updateGroupCollapseState(board_id, {
+          view_id: view_tabs.active_view_id ?? undefined,
+          collapsed_group_ids: collapsed_group_keys.map(Number),
+        });
+      },
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
@@ -1483,7 +1515,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [table_groups, table_people, board_id, items, item_column_width, sub_item_column_width, node.workspace.slug]
+    [table_groups, table_people, board_id, items, item_column_width, sub_item_column_width, collapsed_group_map, view_tabs.active_view_id, node.workspace.slug]
   );
 
   const handleCreateTableItem = async (group_key: string): Promise<string> => {

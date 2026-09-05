@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   BoardColumnDto,
   BoardGroupDto,
+  BoardGroupsIndexDto,
   BoardItemChecklistItemDto,
   BoardItemDetailDto,
   BoardItemDto,
@@ -18,6 +19,7 @@ import type {
   UpdateBoardGroupPayload,
   UpdateBoardItemPayload,
   UpdateChecklistItemPayload,
+  UpdateGroupCollapseStatePayload,
 } from "@/types/board-content";
 
 /**
@@ -72,11 +74,13 @@ export const boardContentService = {
     return response.column;
   },
 
-  /** GET /api/boards/{board_id}/groups — a tab's tables (any number, 1…N), scoped to `view_id`, defaulting to the board's primary tab. */
-  async getGroups(board_id: number, view_id?: number | null): Promise<BoardGroupDto[]> {
+  /** GET /api/boards/{board_id}/groups — a tab's tables (any number, 1…N) plus the viewer's own collapsed/expanded state for them, scoped to `view_id`, defaulting to the board's primary tab. */
+  async getGroups(board_id: number, view_id?: number | null): Promise<BoardGroupsIndexDto> {
     const query = view_id ? `?view_id=${view_id}` : "";
-    const response = await apiClient.get<{ data: BoardGroupDto[] }>(`/api/boards/${board_id}/groups${query}`);
-    return response.data;
+    const response = await apiClient.get<{ data: BoardGroupDto[]; collapsed_group_ids: number[] }>(
+      `/api/boards/${board_id}/groups${query}`
+    );
+    return { groups: response.data, collapsed_group_ids: response.collapsed_group_ids };
   },
 
   /** POST /api/boards/{board_id}/groups — add a new table to the board. */
@@ -97,6 +101,21 @@ export const boardContentService = {
   /** DELETE /api/boards/{board_id}/groups/{group_id} — cascades to its items. */
   async deleteGroup(board_id: number, group_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/groups/${group_id}`);
+  },
+
+  /**
+   * PUT /api/boards/{board_id}/groups/collapsed-state — saves the viewer's own
+   * collapsed/expanded set for this tab's tables (group headers, toggled from
+   * `GroupHeaderBar`/`CollapsedGroupSummaryRow`), so it's restored the next
+   * time they open this tab. Only the *collapsed* ids are ever sent, keeping
+   * this cheap even for a tab with hundreds of tables.
+   */
+  async updateGroupCollapseState(board_id: number, payload: UpdateGroupCollapseStatePayload): Promise<number[]> {
+    const response = await apiClient.put<{ collapsed_group_ids: number[] }>(
+      `/api/boards/${board_id}/groups/collapsed-state`,
+      payload
+    );
+    return response.collapsed_group_ids;
   },
 
   /** POST /api/boards/{board_id}/groups/{group_id}/duplicate — group menu's "Duplicate this group". The response only carries the new group itself (no items), so a `with_items` duplicate still needs a follow-up `getItems` to pick up the copied rows under their real ids. */
