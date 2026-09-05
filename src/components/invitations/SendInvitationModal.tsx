@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { invitationService } from "@/services/invitation.service";
-import type { WorkspaceMembershipRole } from "@/types/invitation";
+import type { WorkspaceInvitationCandidate, WorkspaceMembershipRole } from "@/types/invitation";
 import type { ApiError } from "@/types/auth";
-import { CheckIcon, CloseIcon, CrownIcon, EyeIcon, InviteIcon, MemberIcon } from "@/icons/workspace-icons";
+import { CheckIcon, CloseIcon, CrownIcon, EyeIcon, InviteIcon, MemberIcon, SearchIcon } from "@/icons/workspace-icons";
+import CreatorAvatar from "@/components/content/CreatorAvatar";
+import { gradientForId, initialsFromName } from "@/components/workspace-manage/creatorAvatar";
+
+/** How long to wait after the last keystroke before searching the "pool of users". */
+const CANDIDATE_SEARCH_DEBOUNCE_MS = 250;
+
+/** Minimum characters typed before the "pool of users" autocomplete fires — mirrors the backend's own floor. */
+const CANDIDATE_MIN_SEARCH_LENGTH = 2;
 
 const ROLE_OPTIONS: Array<{ value: WorkspaceMembershipRole; label: string; hint: string; Icon: typeof CrownIcon }> = [
   { value: "owner", label: "Owner", hint: "Full access", Icon: CrownIcon },
@@ -40,6 +48,21 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
   const [send_success, setSendSuccess] = useState(false);
   const [show_confirm, setShowConfirm] = useState(false);
 
+  // "Pool of users" autocomplete: lets an owner/admin pick a known teammate
+  // (e.g. Amanda) instead of having to know and type her exact email address.
+  const [candidates, setCandidates] = useState<WorkspaceInvitationCandidate[]>([]);
+  const [is_searching_candidates, setIsSearchingCandidates] = useState(false);
+  const [show_candidates, setShowCandidates] = useState(false);
+  const [selected_candidate, setSelectedCandidate] = useState<WorkspaceInvitationCandidate | null>(null);
+  const search_debounce_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const search_request_id_ref = useRef(0);
+
+  useEffect(() => {
+    return () => {
+      if (search_debounce_ref.current) clearTimeout(search_debounce_ref.current);
+    };
+  }, []);
+
   if (!is_open) return null;
 
   const resetAndClose = () => {
@@ -48,7 +71,47 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
     setSendError(null);
     setSendSuccess(false);
     setShowConfirm(false);
+    setCandidates([]);
+    setShowCandidates(false);
+    setSelectedCandidate(null);
     onClose();
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setSelectedCandidate(null);
+
+    if (search_debounce_ref.current) clearTimeout(search_debounce_ref.current);
+
+    const search_term = value.trim();
+    if (search_term.length < CANDIDATE_MIN_SEARCH_LENGTH) {
+      setCandidates([]);
+      setIsSearchingCandidates(false);
+      setShowCandidates(false);
+      return;
+    }
+
+    setShowCandidates(true);
+    setIsSearchingCandidates(true);
+    const request_id = ++search_request_id_ref.current;
+
+    search_debounce_ref.current = setTimeout(async () => {
+      try {
+        const results = await invitationService.searchAvailableUsers(workspace_slug, search_term);
+        if (request_id === search_request_id_ref.current) setCandidates(results);
+      } catch {
+        if (request_id === search_request_id_ref.current) setCandidates([]);
+      } finally {
+        if (request_id === search_request_id_ref.current) setIsSearchingCandidates(false);
+      }
+    }, CANDIDATE_SEARCH_DEBOUNCE_MS);
+  };
+
+  const handleSelectCandidate = (candidate: WorkspaceInvitationCandidate) => {
+    setEmail(candidate.email);
+    setSelectedCandidate(candidate);
+    setShowCandidates(false);
+    setCandidates([]);
   };
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -84,7 +147,7 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
             </div>
             <div>
               <h2 className="text-base font-semibold text-shell-text">Invite a Team Member</h2>
-              <p className="text-xs text-shell-text-muted">They will receive an email with a sign-up link.</p>
+              <p className="text-xs text-shell-text-muted">Search for someone already on the platform, or invite by email.</p>
             </div>
           </div>
           <button
@@ -108,21 +171,97 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            <div className="relative">
               <label htmlFor="invite_email" className="mb-1.5 block text-sm font-medium text-shell-text-secondary">
-                Email address
+                Teammate or email address
               </label>
-              <input
-                id="invite_email"
-                type="email"
-                required
-                autoFocus
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="colleague@company.com"
-                disabled={is_sending || send_success}
-                className="h-11 w-full rounded-lg border border-shell-border-strong bg-shell-bg px-4 text-sm text-shell-text placeholder:text-shell-text-muted outline-none focus:border-brand-400 disabled:opacity-60"
-              />
+              <div className="relative">
+                <SearchIcon
+                  size={14}
+                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-shell-text-muted"
+                />
+                <input
+                  id="invite_email"
+                  type="email"
+                  role="combobox"
+                  aria-expanded={show_candidates}
+                  aria-autocomplete="list"
+                  required
+                  autoFocus
+                  autoComplete="off"
+                  value={email}
+                  onChange={(event) => handleEmailChange(event.target.value)}
+                  onFocus={() => {
+                    if (candidates.length > 0 || email.trim().length >= CANDIDATE_MIN_SEARCH_LENGTH) {
+                      setShowCandidates(true);
+                    }
+                  }}
+                  onBlur={() => window.setTimeout(() => setShowCandidates(false), 150)}
+                  placeholder="Search by name or email…"
+                  disabled={is_sending || send_success}
+                  className="h-11 w-full rounded-lg border border-shell-border-strong bg-shell-bg pl-10 pr-4 text-sm text-shell-text placeholder:text-shell-text-muted outline-none focus:border-brand-400 disabled:opacity-60"
+                />
+              </div>
+
+              {selected_candidate && (
+                <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-brand-400/30 bg-brand-500/10 px-3 py-2">
+                  <CreatorAvatar
+                    initials={initialsFromName(selected_candidate.full_name)}
+                    gradient_from={gradientForId(selected_candidate.id)[0]}
+                    gradient_to={gradientForId(selected_candidate.id)[1]}
+                    photo_url={selected_candidate.profile_photo_url}
+                    title={selected_candidate.full_name}
+                    size={22}
+                  />
+                  <span className="min-w-0 flex-1 text-xs">
+                    <span className="block truncate font-medium text-shell-text">{selected_candidate.full_name}</span>
+                  </span>
+                  <CheckIcon size={14} className="flex-none text-brand-400" />
+                </div>
+              )}
+
+              {show_candidates && (
+                <div className="absolute z-10 mt-1.5 w-full overflow-hidden rounded-lg border border-shell-border-strong bg-shell-panel shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+                  {is_searching_candidates ? (
+                    <p className="px-4 py-3 text-xs text-shell-text-muted">Searching…</p>
+                  ) : candidates.length === 0 ? (
+                    <p className="px-4 py-3 text-xs text-shell-text-muted">
+                      No matching teammates — you can still invite this email address directly.
+                    </p>
+                  ) : (
+                    <ul className="max-h-56 overflow-y-auto py-1">
+                      {candidates.map((candidate) => (
+                        <li key={candidate.id}>
+                          <button
+                            type="button"
+                            // onMouseDown (not onClick) fires before the input's onBlur closes the list.
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              handleSelectCandidate(candidate);
+                            }}
+                            className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-shell-hover"
+                          >
+                            <CreatorAvatar
+                              initials={initialsFromName(candidate.full_name)}
+                              gradient_from={gradientForId(candidate.id)[0]}
+                              gradient_to={gradientForId(candidate.id)[1]}
+                              photo_url={candidate.profile_photo_url}
+                              title={candidate.full_name}
+                              size={26}
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-shell-text">
+                                {candidate.full_name}
+                              </span>
+                              <span className="block truncate text-xs text-shell-text-muted">{candidate.email}</span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>

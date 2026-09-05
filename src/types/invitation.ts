@@ -64,6 +64,19 @@ export type WorkspaceInvitationListQuery = {
   per_page?: number;
 };
 
+/**
+ * A platform user offered up by the "pool of users" autocomplete on the
+ * invite-member form, from `GET /api/workspaces/{slug}/invitations/available-users`.
+ * Picking one just fills in their email — sending the invitation still goes
+ * through the normal {@link WorkspaceInvitation} flow.
+ */
+export type WorkspaceInvitationCandidate = {
+  id: number;
+  full_name: string;
+  email: string;
+  profile_photo_url: string | null;
+};
+
 /** One email that was NOT invited, and why. */
 export type SkippedInvitation = {
   email: string;

@@ -5,6 +5,7 @@ import type {
   AcceptInvitationPayload,
   InvitationPreview,
   InviteWorkspaceMembersResult,
+  WorkspaceInvitationCandidate,
   WorkspaceInvitationListQuery,
   WorkspaceInvitationsPage,
   WorkspaceMembershipRole,
@@ -93,6 +94,18 @@ export const invitationService = {
       `/api/workspaces/${workspace_slug}/invitations`,
       { emails: [email], role }
     );
+  },
+
+  /**
+   * GET /api/workspaces/{slug}/invitations/available-users — the "pool of
+   * users" autocomplete for the invite-member form: platform users matching
+   * `search` who aren't already a member of this workspace.
+   */
+  async searchAvailableUsers(workspace_slug: string, search: string): Promise<WorkspaceInvitationCandidate[]> {
+    const response = await apiClient.get<{ data: WorkspaceInvitationCandidate[] }>(
+      `/api/workspaces/${workspace_slug}/invitations/available-users?search=${encodeURIComponent(search)}`
+    );
+    return response.data;
   },
 
   /** DELETE /api/workspaces/{slug}/invitations/{id} — revokes a still-pending invitation. */

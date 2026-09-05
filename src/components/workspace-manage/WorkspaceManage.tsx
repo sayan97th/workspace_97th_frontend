@@ -274,7 +274,11 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
         {active_tab === "content" && <WorkspaceManageContent />}
         {active_tab === "permissions" && <WorkspaceManagePermissions />}
         {active_tab === "collaborators" && (
-          <WorkspaceManageCollaborators key={collaborators_refresh_key} workspace_slug={workspace.slug} />
+          <WorkspaceManageCollaborators
+            key={collaborators_refresh_key}
+            workspace_slug={workspace.slug}
+            can_manage_workspace={can_manage_workspace}
+          />
         )}
       </div>
 
