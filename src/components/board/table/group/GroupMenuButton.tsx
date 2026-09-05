@@ -46,7 +46,7 @@ export default function GroupMenuButton({ group, group_index, group_count, state
           onSelectAll={() => actions.selectAllInGroup(group.key)}
           onExpandSubitems={() => actions.setAllSubsOpen(group.key, true)}
           onCollapseSubitems={() => actions.setAllSubsOpen(group.key, false)}
-          onAddGroup={actions.addGroup}
+          onAddGroup={() => actions.addGroup(group.key)}
           onDuplicate={(with_items) => actions.duplicateGroup(group.key, with_items)}
           onMove={(dir) => actions.moveGroupByKey(group.key, dir)}
           onRename={() => actions.startGroupRename(group.key, group.title)}

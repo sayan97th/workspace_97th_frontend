@@ -36,7 +36,14 @@ export interface BoardTableProps {
    */
   onCreateItem?: (group_key: string) => Promise<string>;
   onCreateSubitem?: (item_id: string) => Promise<string>;
-  onCreateGroup?: () => Promise<{ key: string; title: string }>;
+  /**
+   * `after_group_key` is the group whose "..." menu the "Add group" row was
+   * clicked from (see `GroupMenuButton`) — the new table should be persisted
+   * and rendered directly below it, not appended to the end. Omitted (the
+   * toolbar's own "Add new group" button, below the last table), the caller
+   * should append as before.
+   */
+  onCreateGroup?: (after_group_key?: string) => Promise<{ key: string; title: string }>;
   /**
    * Group menu's "Duplicate this group" — clones the group (and, when
    * `with_items` is true, its whole item/subitem subtree) server-side, so
@@ -115,11 +122,14 @@ export default function BoardTable({
     [onCreateSubitem, base_actions]
   );
 
-  const addGroupReal = useCallback(() => {
-    if (!onCreateGroup) return base_actions.addGroup();
-    void onCreateGroup().then(({ key, title }) => base_actions.addGroup(key, title));
-    return "";
-  }, [onCreateGroup, base_actions]);
+  const addGroupReal = useCallback(
+    (after_group_key?: string) => {
+      if (!onCreateGroup) return base_actions.addGroup(after_group_key);
+      void onCreateGroup(after_group_key).then(({ key, title }) => base_actions.addGroup(after_group_key, key, title));
+      return "";
+    },
+    [onCreateGroup, base_actions]
+  );
 
   const duplicateGroupReal = useCallback(
     (group_key: string, with_items: boolean) => {

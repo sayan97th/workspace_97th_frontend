@@ -1567,12 +1567,42 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return String(created.id);
   };
 
-  const handleCreateTableGroup = async (): Promise<{ key: string; title: string }> => {
+  /**
+   * Inserts a freshly created group into local state at its backend-assigned
+   * `position`, shifting every other group whose `position` moved up to make
+   * room — mirrors the shift `BoardGroupController::store()` already applies
+   * server-side (see `insertColumnAtPosition` above for the same convention
+   * on columns). Without this, `groups` (whose array order — not `position`
+   * — drives render order) would just get the new group appended, so it
+   * always rendered last regardless of where the backend actually placed it.
+   * When `created` has the next free position (a plain append, no
+   * `after_group_key`), no sibling qualifies for the shift and this is
+   * equivalent to the old `[...current, created]`.
+   */
+  const insertGroupAtPosition = (current: BoardGroupDto[], created: BoardGroupDto): BoardGroupDto[] => {
+    const shifted = current.map((group) =>
+      group.position >= created.position ? { ...group, position: group.position + 1 } : group
+    );
+    const insert_index = shifted.findIndex((group) => group.position > created.position);
+    return insert_index === -1
+      ? [...shifted, created]
+      : [...shifted.slice(0, insert_index), created, ...shifted.slice(insert_index)];
+  };
+
+  // ── Group menu's "Add group" — `after_group_key` is the group whose "..."
+  // menu the row was clicked from, so the new table is persisted right after
+  // it (rather than always at the end): the backend shifts every group at or
+  // past that position to make room (see `BoardGroupController::store()`),
+  // and `insertGroupAtPosition` mirrors that locally. Omitted (the toolbar's
+  // own "Add new group" button), it just appends as before. ──
+  const handleCreateTableGroup = async (after_group_key?: string): Promise<{ key: string; title: string }> => {
+    const after = after_group_key ? groups.find((group) => String(group.id) === after_group_key) : undefined;
     const created = await boardContentService.createGroup(board_id, {
       view_id: view_tabs.active_view_id as number,
       name: "New group",
+      position: after ? after.position + 1 : undefined,
     });
-    setGroups((current) => [...current, created]);
+    setGroups((current) => insertGroupAtPosition(current, created));
     return { key: String(created.id), title: created.name };
   };
 

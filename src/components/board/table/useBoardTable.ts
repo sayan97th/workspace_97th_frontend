@@ -705,7 +705,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const closeGroupMenu = useCallback(() => setState((s) => ({ ...s, open_group_menu_key: null })), []);
 
   const addGroup = useCallback(
-    (preset_key?: string, preset_title?: string) => {
+    (after_group_key?: string, preset_key?: string, preset_title?: string) => {
       const key = preset_key ?? `g${nextId("grp")}`;
       setState((s) => {
         const color = GROUP_PALETTE[s.groups.length % GROUP_PALETTE.length];
@@ -724,7 +724,14 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
           sub_custom_columns: [],
           items: [],
         };
-        return { ...s, groups: s.groups.concat(new_group), open_group_menu_key: null };
+        // Menu-triggered "Add group" passes `after_group_key` (the group the
+        // menu was opened on) so the new table lands directly below it,
+        // rather than always at the end — the toolbar's own "Add new group"
+        // button omits it, which still appends as before.
+        const after_index = after_group_key ? s.groups.findIndex((g) => g.key === after_group_key) : -1;
+        const insert_index = after_index === -1 ? s.groups.length : after_index + 1;
+        const groups = [...s.groups.slice(0, insert_index), new_group, ...s.groups.slice(insert_index)];
+        return { ...s, groups, open_group_menu_key: null };
       });
       return key;
     },
