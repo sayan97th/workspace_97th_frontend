@@ -49,7 +49,12 @@ export default function GroupSection({ group, group_index, group_count, name_col
 
           {sorted_items.map((item) => {
             const is_open = !!state.open_map[item.id];
-            const sub_name_col_width = computeSubNameColWidth(item.subs.map((s) => s.name));
+            // `state.sub_column_width` is set once the user drags the Subitem column's
+            // own resize handle (or a real board loads with one already persisted) —
+            // until then this still auto-sizes per item from its own longest subitem
+            // name, exactly as before (see `BoardTable`'s `name_col_width` for the
+            // Item column's identical fallback).
+            const sub_name_col_width = state.sub_column_width ?? computeSubNameColWidth(item.subs.map((s) => s.name));
             const sub_min_width = subMinWidth(min_width, sub_name_col_width, group.sub_base_columns, group.sub_custom_columns);
             const sorted_subs = applySort(item.subs, state.sort, `sub:${item.id}`, group.sub_base_columns.concat(group.sub_custom_columns));
 

@@ -148,6 +148,15 @@ export interface UseBoardTableConfig {
    */
   onResizeItemColumn?: (width: number) => void;
   /**
+   * Persisted width (px) for the subitem-title virtual column, board-wide
+   * across every item's subitem tree — the subitem-tree analogue of
+   * `initial_item_column_width`. Null means it still auto-sizes per item
+   * from that item's own longest subitem name (see `computeSubNameColWidth`).
+   */
+  initial_sub_column_width?: number | null;
+  /** Persists the subitem-title column's resized width — the subitem-tree analogue of `onResizeItemColumn`. */
+  onResizeSubColumn?: (width: number) => void;
+  /**
    * Opens a real board's comments drawer for one row (item or subitem) —
    * fired by the row's message-icon button (see `ItemRow`/`SubitemRow`).
    * The table engine itself has no comments UI of its own, so this just
@@ -199,6 +208,8 @@ export interface BoardTableState {
   copied_row_id: string | null;
   /** Explicit width (px) for the item-title virtual column, once the user has dragged its resize handle — null falls back to `BoardTable`'s auto-sizing from the longest item name. */
   item_column_width: number | null;
+  /** Explicit width (px) for the subitem-title virtual column, once the user has dragged its resize handle — null falls back to `GroupSection`'s per-item auto-sizing from that item's longest subitem name. */
+  sub_column_width: number | null;
 }
 
 function initialState(config: UseBoardTableConfig): BoardTableState {
@@ -239,6 +250,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     sort: null,
     copied_row_id: null,
     item_column_width: config.initial_item_column_width ?? null,
+    sub_column_width: config.initial_sub_column_width ?? null,
   };
 }
 
@@ -295,6 +307,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     if (config.initial_item_column_width === undefined) return;
     setState((s) => ({ ...s, item_column_width: config.initial_item_column_width ?? null }));
   }, [config.initial_item_column_width]);
+
+  useEffect(() => {
+    if (config.initial_sub_column_width === undefined) return;
+    setState((s) => ({ ...s, sub_column_width: config.initial_sub_column_width ?? null }));
+  }, [config.initial_sub_column_width]);
 
   // ---- expand / select / edit -------------------------------------------------
 
@@ -910,6 +927,17 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onResizeItemColumn?.(width);
   }, []);
 
+  /** Local-only width preview for the subitem-title virtual column — see `resizeItemColumnPreview`, applied board-wide the same way. */
+  const resizeSubColumnPreview = useCallback((width: number) => {
+    setState((s) => ({ ...s, sub_column_width: width }));
+  }, []);
+
+  /** Commits the subitem-title column's resize-drag on pointer-up — see `commitItemColumnResize`. */
+  const commitSubColumnResize = useCallback((width: number) => {
+    setState((s) => ({ ...s, sub_column_width: width }));
+    config_ref.current.onResizeSubColumn?.(width);
+  }, []);
+
   const collapseAllGroups = useCallback(() => {
     setState((s) => ({
       ...s,
@@ -1161,6 +1189,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       resizeColumnPreview,
       resizeItemColumnPreview,
       commitItemColumnResize,
+      resizeSubColumnPreview,
+      commitSubColumnResize,
       collapseAllGroups,
       setSort,
       openCellMenu,
@@ -1199,7 +1229,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,

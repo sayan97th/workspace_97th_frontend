@@ -56,6 +56,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => {}}
           onDelete={() => {}}
+          resizable_width={name_col_width}
+          onResizePreview={(width) => actions.resizeSubColumnPreview(width)}
+          onResizeEnd={(width) => actions.commitSubColumnResize(width)}
           className="col-span-2"
         />
 
