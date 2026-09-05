@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, ReactSmileyIcon } from "@/icons/drawer-icons";
+import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
@@ -57,16 +58,23 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
+  const textarea_ref = useRef<HTMLTextAreaElement>(null);
   const is_update = variant === "update";
   const has_draft = value.trim().length > 0;
   const show_mention_picker = mention_target === target && mention_matches.length > 0;
   const show_emoji_palette = emoji_palette_target === target;
+
+  // Mac's own emoji-picker chord (Control + Command + Space), scoped to this
+  // composer's own textarea so it opens this draft's palette rather than
+  // whichever one last toggled.
+  useEmojiShortcut(textarea_ref, () => onToggleEmojiPalette(target));
 
   return (
     <div className={`flex ${is_update ? "gap-[11px]" : "gap-2.5"}`}>
       <PersonAvatar person={avatar_person} size={is_update ? 34 : 27} className="mt-0.5" />
       <div className="relative flex-1">
         <textarea
+          ref={textarea_ref}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}

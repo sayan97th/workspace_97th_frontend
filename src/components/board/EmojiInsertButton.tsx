@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import { ReactSmileyIcon } from "@/icons/drawer-icons";
 import { spliceTextAtCursor } from "@/utils/insertTextAtCursor";
+import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import EmojiPalette from "./drawer/EmojiPalette";
 
 export type EmojiInsertButtonProps = {
@@ -53,6 +54,15 @@ const EmojiInsertButton: React.FC<EmojiInsertButtonProps> = ({ input_ref, value,
     setIsOpen(false);
     onOpenChange?.(false);
   };
+
+  // Mirrors the trigger button's own `onMouseDown` cursor capture, so the
+  // Mac emoji-picker chord (Control + Command + Space) inserts at the caret
+  // just like clicking the smiley does, instead of always at the end.
+  const openFromShortcut = () => {
+    cursor_ref.current = input_ref.current?.selectionStart ?? value.length;
+    open();
+  };
+  useEmojiShortcut(input_ref, openFromShortcut);
 
   const handlePick = (emoji: string) => {
     const { next_text, next_cursor } = spliceTextAtCursor(value, emoji, cursor_ref.current);
