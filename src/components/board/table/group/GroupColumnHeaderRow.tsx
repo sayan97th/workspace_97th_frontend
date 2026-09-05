@@ -53,9 +53,8 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => { }}
           onDelete={() => { }}
+          className="col-span-2"
         />
-
-        <div className="h-[38px] border-r border-boardtree-border-soft" />
 
         {group.base_columns.concat(group.custom_columns).map((col) => (
           <ColumnHeaderCell

@@ -56,9 +56,8 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => {}}
           onDelete={() => {}}
+          className="col-span-2"
         />
-
-        <div className="h-9 border-r border-boardtree-border-soft" />
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => (
           <ColumnHeaderCell
