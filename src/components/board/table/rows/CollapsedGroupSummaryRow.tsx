@@ -40,7 +40,7 @@ export default function CollapsedGroupSummaryRow({ group, group_index, group_cou
           return (
             <div
               key={col.id}
-              className="flex flex-col items-center justify-center gap-1 border-l border-boardtree-border-soft px-2.5"
+              className="flex min-w-0 flex-col items-center justify-center gap-1 border-l border-boardtree-border-soft px-2.5"
               style={{ height: ROW_HEIGHT }}
             >
               <div className="max-w-full truncate text-[10.5px] font-medium uppercase tracking-wide text-boardtree-text-faint">{col.title}</div>
@@ -55,7 +55,9 @@ export default function CollapsedGroupSummaryRow({ group, group_index, group_cou
 
               {summary.is_number && (
                 <>
-                  <div className="font-mono text-[13px] text-boardtree-text-secondary">{summary.sum_value}</div>
+                  <div className="w-full truncate text-center font-mono text-[13px] text-boardtree-text-secondary" title={summary.sum_value}>
+                    {summary.sum_value}
+                  </div>
                   <div className="text-[10.5px] text-boardtree-text-faint">sum</div>
                 </>
               )}

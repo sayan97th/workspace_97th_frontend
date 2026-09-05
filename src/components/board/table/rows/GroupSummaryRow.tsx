@@ -29,7 +29,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
           return (
             <div
               key={col.id}
-              className="flex h-[46px] flex-col items-center justify-center gap-0.5 border-r border-boardtree-border-soft bg-boardtree-surface px-2.5"
+              className="flex h-[46px] min-w-0 flex-col items-center justify-center gap-0.5 border-r border-boardtree-border-soft bg-boardtree-surface px-2.5"
               style={{ borderTop: "1px solid var(--color-boardtree-border)", borderBottom: "1px solid var(--color-boardtree-border)" }}
             >
               {summary.is_status && summary.segments.length > 0 && (
@@ -41,7 +41,9 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
               )}
               {summary.is_number && (
                 <>
-                  <div className="font-mono text-[13px] text-boardtree-text-secondary">{summary.sum_value}</div>
+                  <div className="w-full truncate text-center font-mono text-[13px] text-boardtree-text-secondary" title={summary.sum_value}>
+                    {summary.sum_value}
+                  </div>
                   <div className="text-[10.5px] text-boardtree-text-faint">sum</div>
                 </>
               )}
