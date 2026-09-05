@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
-import GroupMenu from "../menus/GroupMenu";
+import GroupMenuButton from "./GroupMenuButton";
 import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface GroupHeaderLeftProps {
@@ -12,15 +12,17 @@ interface GroupHeaderLeftProps {
   group_count: number;
   state: BoardTableState;
   actions: BoardTableActions;
+  /** Set to false when the caller renders the "..." menu button itself (e.g. the collapsed
+   *  group's summary card renders it outside its `overflow-hidden` card). Defaults to true. */
+  show_menu_button?: boolean;
 }
 
 /** The interactive left-hand cluster shared by the expanded group header (`GroupHeaderBar`)
  *  and the collapsed group's summary card (`CollapsedGroupSummaryRow`): group menu, collapse
  *  toggle, editable title, item/subitem count, and the priority-client flag. */
-export default function GroupHeaderLeft({ group, group_index, group_count, state, actions }: GroupHeaderLeftProps) {
+export default function GroupHeaderLeft({ group, group_index, group_count, state, actions, show_menu_button = true }: GroupHeaderLeftProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const is_hovered = state.hover_group_key === group.key;
-  const is_menu_open = state.open_group_menu_key === group.key;
   const is_editing = state.editing_group_key === group.key;
   const sub_count = group.items.reduce((a, it) => a + it.subs.length, 0);
   const title_input_ref = useRef<HTMLInputElement>(null);
@@ -35,40 +37,17 @@ export default function GroupHeaderLeft({ group, group_index, group_count, state
       onMouseLeave={() => actions.setHoverGroup(null)}
       className="left-0 flex w-max items-center gap-2"
     >
-      <div className="relative -ml-[27px] flex-none">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); actions.openGroupMenu(group.key); }}
-          className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong"
-          style={{ background: is_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_menu_open ? 1 : 0, pointerEvents: is_hovered || is_menu_open ? "auto" : "none" }}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
-        </button>
-        {is_menu_open && (
-          <GroupMenu
-            panel_style={{ top: 28 }}
-            is_collapsed={is_collapsed}
-            is_first={group_index === 0}
-            is_last={group_index === group_count - 1}
-            current_color={group.color}
-            is_priority={group.is_priority}
-            onExpandThis={() => actions.toggleGroupCollapsed(group.key)}
-            onExpandAllGroups={actions.expandAllGroups}
-            onSelectAll={() => actions.selectAllInGroup(group.key)}
-            onExpandSubitems={() => actions.setAllSubsOpen(group.key, true)}
-            onCollapseSubitems={() => actions.setAllSubsOpen(group.key, false)}
-            onAddGroup={actions.addGroup}
-            onDuplicate={(with_items) => actions.duplicateGroup(group.key, with_items)}
-            onMove={(dir) => actions.moveGroupByKey(group.key, dir)}
-            onRename={() => actions.startGroupRename(group.key, group.title)}
-            onChangeColor={(color) => actions.setGroupColor(group.key, color)}
-            onTogglePriority={() => actions.togglePriority(group.key)}
-            onDelete={() => actions.removeGroup(group.key)}
-            onArchive={() => actions.removeGroup(group.key)}
-            onClose={actions.closeGroupMenu}
-          />
-        )}
-      </div>
+      {show_menu_button && (
+        <GroupMenuButton
+          group={group}
+          group_index={group_index}
+          group_count={group_count}
+          state={state}
+          actions={actions}
+          is_visible={is_hovered}
+          className="-ml-[27px]"
+        />
+      )}
 
       <button type="button" onClick={() => actions.toggleGroupCollapsed(group.key)} className="flex items-center" style={{ color: group.color, transform: is_collapsed ? "rotate(-90deg)" : "none" }}>
         <svg viewBox="0 0 12 12" width="12" height="12"><path d="M3 4.5 L6 8 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
