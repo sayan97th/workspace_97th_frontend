@@ -16,6 +16,34 @@ export const parseInputDate = (value: string): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+/** Formats a Date's time-of-day into the calendar panel's editable "9:00AM" text field. */
+export const formatInputTime = (date: Date): string => {
+  const raw_hours = date.getHours();
+  const minutes = date.getMinutes();
+  const period = raw_hours >= 12 ? "PM" : "AM";
+  const hours = raw_hours % 12 || 12;
+  return `${hours}:${String(minutes).padStart(2, "0")}${period}`;
+};
+
+/** Parses the calendar panel's editable time text field ("9:00 AM", "9:00pm", "14:30") into hours/minutes, or null while the text isn't a complete time yet. */
+export const parseInputTime = (value: string): { hours: number; minutes: number } | null => {
+  const match = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(value.trim());
+  if (!match) return null;
+  const [, hour_str, minute_str, period_str] = match;
+  const minutes = minute_str ? Number(minute_str) : 0;
+  if (minutes > 59) return null;
+
+  let hours = Number(hour_str);
+  if (period_str) {
+    if (hours < 1 || hours > 12) return null;
+    hours = hours % 12;
+    if (period_str.toLowerCase() === "pm") hours += 12;
+  } else if (hours > 23) {
+    return null;
+  }
+  return { hours, minutes };
+};
+
 export const isSameDay = (a: Date, b: Date): boolean =>
   a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 

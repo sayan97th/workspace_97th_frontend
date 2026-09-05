@@ -1,7 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { DOW_CELLS, buildCalendarDays, monthLabelOf, monthOf, shiftMonth, type MonthCursor } from "../dateUtils";
+import { ClockIcon } from "@/icons/workspace-icons";
+import {
+  DOW_CELLS,
+  buildCalendarDays,
+  combineDateTime,
+  fmtTimeInput,
+  isoOf,
+  monthLabelOf,
+  monthOf,
+  parseTimeInput,
+  shiftMonth,
+  splitDateTime,
+  type MonthCursor,
+} from "../dateUtils";
 
 interface CalendarGridProps {
   selected_iso?: string;
@@ -9,14 +22,28 @@ interface CalendarGridProps {
   range_end_iso?: string;
   accent?: string;
   onPick: (iso: string) => void;
+  /** Shows the "Today" shortcut and an optional time-of-day field above the day grid — the single-date picker (DateMenu) opts into these; the range picker (Timeline) doesn't. */
+  show_today_and_time?: boolean;
 }
 
-export default function CalendarGrid({ selected_iso, range_start_iso, range_end_iso, accent = "var(--color-boardtree-accent)", onPick }: CalendarGridProps) {
-  const [cursor, setCursor] = useState<MonthCursor>(() => monthOf(range_start_iso || selected_iso));
+const DEFAULT_HOUR = 9;
+
+export default function CalendarGrid({
+  selected_iso,
+  range_start_iso,
+  range_end_iso,
+  accent = "var(--color-boardtree-accent)",
+  onPick,
+  show_today_and_time = false,
+}: CalendarGridProps) {
+  const { date_iso: selected_date_iso, time: selected_time } = splitDateTime(selected_iso);
+  const [cursor, setCursor] = useState<MonthCursor>(() => monthOf(range_start_iso || selected_date_iso));
+  const [show_time, setShowTime] = useState(!!selected_time);
+  const [time_text, setTimeText] = useState(() => (selected_time ? fmtTimeInput(selected_time.hours, selected_time.minutes) : ""));
   const days = buildCalendarDays(cursor);
 
   const styleFor = (iso: string) => {
-    const is_selected = selected_iso === iso;
+    const is_selected = selected_date_iso === iso;
     const is_edge = range_start_iso === iso || (!!range_end_iso && range_end_iso === iso);
     const is_inside = !!range_start_iso && !!range_end_iso && iso > range_start_iso && iso < range_end_iso;
     const day = days.find((d) => d.iso === iso)!;
@@ -27,8 +54,75 @@ export default function CalendarGrid({ selected_iso, range_start_iso, range_end_
     return { bg: "transparent", fg: "var(--color-boardtree-text)", weight: "400" };
   };
 
+  const pickDate = (date_iso: string) => {
+    if (!show_time) {
+      onPick(date_iso);
+      return;
+    }
+    const time = parseTimeInput(time_text) ?? selected_time ?? { hours: DEFAULT_HOUR, minutes: 0 };
+    setTimeText(fmtTimeInput(time.hours, time.minutes));
+    onPick(combineDateTime(date_iso, time));
+  };
+
+  const pickToday = () => {
+    const today = new Date();
+    const today_iso = isoOf(today.getFullYear(), today.getMonth(), today.getDate());
+    setCursor(monthOf(today_iso));
+    pickDate(today_iso);
+  };
+
+  const toggleTime = () => {
+    if (show_time) {
+      setShowTime(false);
+      setTimeText("");
+      if (selected_date_iso) onPick(selected_date_iso);
+      return;
+    }
+    setShowTime(true);
+    const time = selected_time ?? { hours: DEFAULT_HOUR, minutes: 0 };
+    setTimeText(fmtTimeInput(time.hours, time.minutes));
+    if (selected_date_iso) onPick(combineDateTime(selected_date_iso, time));
+  };
+
+  const handleTimeChange = (raw_value: string) => {
+    setTimeText(raw_value);
+    const time = parseTimeInput(raw_value);
+    if (!time || !selected_date_iso) return;
+    onPick(combineDateTime(selected_date_iso, time));
+  };
+
   return (
     <div>
+      {show_today_and_time && (
+        <div className="flex items-center justify-between pb-2">
+          <button
+            type="button"
+            onClick={pickToday}
+            className="rounded-[6px] border border-boardtree-border px-2.5 py-1 text-[12px] font-medium text-boardtree-text-muted hover:border-boardtree-accent hover:text-boardtree-accent"
+          >
+            Today
+          </button>
+          <button
+            type="button"
+            onClick={toggleTime}
+            aria-pressed={show_time}
+            title="Set time"
+            className={`flex h-6 w-6 items-center justify-center rounded-[6px] ${show_time ? "text-white" : "text-boardtree-text-muted hover:bg-boardtree-hover"}`}
+            style={show_time ? { background: accent } : undefined}
+          >
+            <ClockIcon size={14} />
+          </button>
+        </div>
+      )}
+      {show_today_and_time && show_time && (
+        <input
+          type="text"
+          value={time_text}
+          onChange={(event) => handleTimeChange(event.target.value)}
+          placeholder="9:00AM"
+          className="mb-2 h-8 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[12.5px] text-boardtree-text focus:border-boardtree-accent focus:outline-none"
+        />
+      )}
       <div className="flex items-center justify-between px-0.5 pb-2">
         <button
           type="button"
@@ -58,7 +152,7 @@ export default function CalendarGrid({ selected_iso, range_start_iso, range_end_
             <button
               type="button"
               key={day.iso}
-              onClick={() => onPick(day.iso)}
+              onClick={() => pickDate(day.iso)}
               className="flex h-[30px] items-center justify-center rounded-[6px] text-[12px] hover:shadow-[inset_0_0_0_1px_var(--color-boardtree-accent)]"
               style={{ background: s.bg, color: s.fg, fontWeight: s.weight }}
             >

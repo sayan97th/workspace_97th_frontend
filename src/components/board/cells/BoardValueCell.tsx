@@ -61,17 +61,22 @@ export type BoardValueCellProps = {
  * and the Gantt view's own `parseIsoDate`.
  */
 const parseIsoDateLocal = (value: string): Date | null => {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/.exec(value);
   if (!match) return null;
-  const [, year, month, day] = match;
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  const [, year, month, day, hour, minute] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day), hour ? Number(hour) : 0, minute ? Number(minute) : 0);
   return Number.isNaN(date.getTime()) ? null : date;
 };
+
+/** Whether a stored date value also carries a `THH:mm` time-of-day, i.e. the user opted into setting a time. */
+const hasTimeComponent = (value: string): boolean => /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value);
 
 const formatDate = (value: string): string => {
   const date = parseIsoDateLocal(value);
   if (!date) return value;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const date_label = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  if (!hasTimeComponent(value)) return date_label;
+  return `${date_label}, ${date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
 };
 
 /** `Mar 4` — no year, for the tighter Timeline cell pill. */
@@ -80,12 +85,16 @@ const formatShortDate = (value: string): string => {
   return !date ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 };
 
-/** Formats a `Date` back into the `YYYY-MM-DD` a date column stores. */
-const formatIsoDateLocal = (date: Date): string => {
+/** Formats a `Date` back into what a date column stores: `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` when a time was opted into. */
+const formatIsoDateLocal = (date: Date, has_time: boolean): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  const date_part = `${year}-${month}-${day}`;
+  if (!has_time) return date_part;
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${date_part}T${hours}:${minutes}`;
 };
 
 const asTimelineValue = (value: BoardCellValue): BoardCellTimelineValue | null =>
@@ -349,6 +358,7 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
 }) => {
   const popover = usePopoverAnchor();
   const date_value = typeof value === "string" && value ? parseIsoDateLocal(value) : null;
+  const has_time = typeof value === "string" && value ? hasTimeComponent(value) : false;
 
   return (
     <>
@@ -362,10 +372,8 @@ const DateCell: React.FC<{ value: BoardCellValue; onCommit: (value: BoardCellVal
       <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={300}>
         <DateCalendarPanel
           value={date_value}
-          onChange={(date) => {
-            onCommit(formatIsoDateLocal(date));
-            popover.close();
-          }}
+          has_time={has_time}
+          onChange={(date, next_has_time) => onCommit(formatIsoDateLocal(date, next_has_time))}
         />
       </BoardPopover>
     </>

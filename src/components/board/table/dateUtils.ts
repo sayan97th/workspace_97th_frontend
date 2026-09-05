@@ -7,9 +7,50 @@ export function isoOf(year: number, month: number, day: number): string {
 }
 
 export function fmtDate(iso: string | undefined): string {
-  const parts = String(iso || "").split("-");
+  const { date_iso, time } = splitDateTime(iso);
+  const parts = date_iso.split("-");
   if (parts.length !== 3) return "";
-  return `${MONTH_LABELS[Number(parts[1]) - 1]} ${Number(parts[2])}, ${parts[0]}`;
+  const date_label = `${MONTH_LABELS[Number(parts[1]) - 1]} ${Number(parts[2])}, ${parts[0]}`;
+  return time ? `${date_label}, ${fmtTimeInput(time.hours, time.minutes)}` : date_label;
+}
+
+/** Splits a possibly time-bearing date column value ("YYYY-MM-DD" or "YYYY-MM-DDTHH:mm") into its date and time parts. */
+export function splitDateTime(value: string | undefined): { date_iso: string; time: { hours: number; minutes: number } | null } {
+  const match = /^(\d{4}-\d{2}-\d{2})(?:T(\d{2}):(\d{2}))?/.exec(String(value || ""));
+  if (!match) return { date_iso: "", time: null };
+  const [, date_iso, hour_str, minute_str] = match;
+  return { date_iso, time: hour_str ? { hours: Number(hour_str), minutes: Number(minute_str) } : null };
+}
+
+/** Combines a date-only iso with an optional time-of-day into what a date column stores. */
+export function combineDateTime(date_iso: string, time: { hours: number; minutes: number } | null): string {
+  return time ? `${date_iso}T${pad2(time.hours)}:${pad2(time.minutes)}` : date_iso;
+}
+
+/** Formats an hours/minutes pair into the calendar's editable "9:00AM" time text — spaceless, matching how the user types it. */
+export function fmtTimeInput(hours: number, minutes: number): string {
+  const period = hours >= 12 ? "PM" : "AM";
+  const twelve_hour = hours % 12 || 12;
+  return `${twelve_hour}:${pad2(minutes)}${period}`;
+}
+
+/** Parses the calendar's editable time text ("9:00 AM", "9:00pm", "14:30") into hours/minutes, or null while incomplete/invalid. */
+export function parseTimeInput(value: string): { hours: number; minutes: number } | null {
+  const match = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i.exec(value.trim());
+  if (!match) return null;
+  const [, hour_str, minute_str, period_str] = match;
+  const minutes = minute_str ? Number(minute_str) : 0;
+  if (minutes > 59) return null;
+
+  let hours = Number(hour_str);
+  if (period_str) {
+    if (hours < 1 || hours > 12) return null;
+    hours = hours % 12;
+    if (period_str.toLowerCase() === "pm") hours += 12;
+  } else if (hours > 23) {
+    return null;
+  }
+  return { hours, minutes };
 }
 
 export function fmtDateShort(iso: string | undefined): string {
