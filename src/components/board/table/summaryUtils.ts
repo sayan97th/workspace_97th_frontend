@@ -1,5 +1,6 @@
 import type { ColumnDef, StatusDef, BoardTableItem } from "./types";
 import { findDef } from "./colorUtils";
+import { fmtRange, parseRangeValue } from "./dateUtils";
 
 export interface StatusSegment {
   key: string;
@@ -11,8 +12,10 @@ export interface ColumnSummary {
   column_id: string;
   is_status: boolean;
   is_number: boolean;
+  is_timeline: boolean;
   segments: StatusSegment[];
   sum_value: string;
+  range_label: string;
 }
 
 function numberValueOf(item: BoardTableItem, column_id: string): number {
@@ -22,9 +25,33 @@ function numberValueOf(item: BoardTableItem, column_id: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function rangeValueOf(item: BoardTableItem, column_id: string): string {
+  const raw = item.values[column_id];
+  return typeof raw === "string" ? raw : "";
+}
+
+/** Widest span covering every item's timeline range in a column: the earliest start and the latest end (falling back to that same item's start when it has no end yet). */
+function widestRangeOf(items: BoardTableItem[], column_id: string): { start_iso: string; end_iso: string } {
+  let start_iso = "";
+  let end_iso = "";
+  items.forEach((item) => {
+    const parsed = parseRangeValue(rangeValueOf(item, column_id));
+    if (!parsed.start_iso) return;
+    const item_end_iso = parsed.end_iso || parsed.start_iso;
+    if (!start_iso || parsed.start_iso < start_iso) start_iso = parsed.start_iso;
+    if (!end_iso || item_end_iso > end_iso) end_iso = item_end_iso;
+  });
+  return { start_iso, end_iso };
+}
+
 /** Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row. */
 export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
-  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, segments: [], sum_value: "0" };
+  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", range_label: "" };
+
+  if (column.kind === "timeline") {
+    const { start_iso, end_iso } = widestRangeOf(items, column.id);
+    return { ...base, is_timeline: true, range_label: start_iso ? fmtRange(start_iso, end_iso) : "" };
+  }
 
   if (column.kind === "status") {
     const defs = column.options ?? status_defs;

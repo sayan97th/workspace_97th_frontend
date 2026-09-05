@@ -11,6 +11,7 @@ import SubitemRow from "../rows/SubitemRow";
 import AddSubitemRow from "../rows/AddSubitemRow";
 import AddItemRow from "../rows/AddItemRow";
 import GroupSummaryRow from "../rows/GroupSummaryRow";
+import CollapsedGroupSummaryRow from "../rows/CollapsedGroupSummaryRow";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
@@ -33,7 +34,11 @@ export default function GroupSection({ group, group_index, group_count, name_col
 
   return (
     <div style={{ marginTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
-      <GroupHeaderBar group={group} group_index={group_index} group_count={group_count} min_width={min_width} state={state} actions={actions} />
+      {is_collapsed ? (
+        <CollapsedGroupSummaryRow group={group} group_index={group_index} group_count={group_count} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
+      ) : (
+        <GroupHeaderBar group={group} group_index={group_index} group_count={group_count} min_width={min_width} state={state} actions={actions} />
+      )}
 
       {!is_collapsed && (
         <div>
