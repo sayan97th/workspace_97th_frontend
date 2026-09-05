@@ -653,6 +653,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         id: String(g.id),
         name: g.name,
         accent_color: g.accent_color,
+        is_priority: g.is_priority,
         rows: items.filter((item) => item.group_id === g.id),
       })),
     [groups, items]
@@ -1330,6 +1331,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         title: g.name,
         color: g.accent_color,
         tint: g.accent_color,
+        is_priority: !!g.is_priority,
         item_title: item_column_label,
         sub_title: "Subitem",
         base_columns: table_base_columns,
@@ -1436,6 +1438,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void boardContentService
           .deleteGroup(board_id, Number(group_key))
           .then(() => setGroups((current) => current.filter((g) => g.id !== Number(group_key))));
+      },
+      onToggleGroupPriority: (group_key, is_priority) => {
+        void boardContentService
+          .updateGroup(board_id, Number(group_key), { is_priority })
+          .then((updated) => setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g))));
       },
       onRenameColumn: (_group_key, _scope, column_id, title) =>
         void boardContentService

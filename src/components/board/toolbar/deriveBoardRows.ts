@@ -107,10 +107,15 @@ export function deriveBoardRows<TRow>(
   let groups: BoardGroup<TRow>[];
 
   if (state.group_by_option_id === BOARD_DEFAULT_GROUP_BY_ID) {
-    groups = config.default_groups.map((group) => ({
-      ...group,
-      rows: group.rows.filter(matchesEverything),
-    }));
+    groups = config.default_groups
+      .map((group) => ({
+        ...group,
+        rows: group.rows.filter(matchesEverything),
+      }))
+      // Priority-client groups always render first (their tasks "above
+      // all"), preserving relative order otherwise — `sort` is stable, so
+      // this only ever moves priority groups up, never reshuffles ties.
+      .sort((a, b) => Number(!!b.is_priority) - Number(!!a.is_priority));
   } else {
     const option = config.group_by_options.find((o) => o.id === state.group_by_option_id);
     const buckets = new Map<string, TRow[]>();

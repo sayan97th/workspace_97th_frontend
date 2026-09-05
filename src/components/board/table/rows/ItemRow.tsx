@@ -136,6 +136,11 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               </span>
             )}
           </div>
+          {group.is_priority && (
+            <span title="Priority client — this task's client is flagged high-end" className="flex-none text-[#fdab3d]">
+              <svg viewBox="0 0 16 16" width="12" height="12"><path d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z" fill="currentColor" /></svg>
+            </span>
+          )}
           {item.subs.length > 0 && (
             <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[9px] bg-boardtree-hover px-[7px] py-0.5 font-mono text-[10.5px] text-boardtree-text-secondary">
               {item.subs.length}

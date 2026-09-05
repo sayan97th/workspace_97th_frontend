@@ -117,6 +117,12 @@ export interface UseBoardTableConfig {
   onReorderItems?: (payload: ReorderPayload) => void;
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
+  /**
+   * Group menu / header star's "Mark as priority client" toggle — persists
+   * server-side so the flag (and the "their tasks sort above all" ordering
+   * it drives) is shared across every viewer, not just a local UI state.
+   */
+  onToggleGroupPriority?: (group_key: string, is_priority: boolean) => void;
   /** Column-header menu — see `ColumnMenu.tsx`. Each acts on an *existing* column id, so it's called alongside the local mutation (no round trip needed first), mirroring `onRenameGroup`/`onRemoveGroup`. */
   onRenameColumn?: (group_key: string, scope: ColumnScope, column_id: string, title: string) => void;
   onDeleteColumn?: (group_key: string, scope: ColumnScope, column_id: string) => void;
@@ -573,6 +579,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
           title: preset_title ?? "New group",
           color,
           tint: color,
+          is_priority: false,
           item_title: "Item",
           sub_title: "Subitem",
           base_columns: template ? template.base_columns.map((c) => ({ ...c })) : [],
@@ -633,6 +640,12 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const setGroupColor = useCallback((key: string, color: string) => {
     setState((s) => ({ ...s, groups: s.groups.map((g) => (g.key === key ? { ...g, color, tint: color } : g)), open_group_menu_key: null }));
+  }, []);
+
+  const togglePriority = useCallback((key: string) => {
+    const next_is_priority = !findGroup(state_ref.current.groups, key)?.is_priority;
+    setState((s) => ({ ...s, groups: s.groups.map((g) => (g.key === key ? { ...g, is_priority: next_is_priority } : g)), open_group_menu_key: null }));
+    config_ref.current.onToggleGroupPriority?.(key, next_is_priority);
   }, []);
 
   const removeGroup = useCallback((key: string) => {
@@ -1087,6 +1100,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       duplicateGroup,
       moveGroupByKey,
       setGroupColor,
+      togglePriority,
       removeGroup,
       selectAllInGroup,
       expandAllGroups,
@@ -1144,7 +1158,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
       clearCellValue, openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, moveItemToGroup,
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
-      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, removeGroup, selectAllInGroup,
+      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,

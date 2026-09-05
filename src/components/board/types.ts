@@ -43,6 +43,13 @@ export type BoardGroup<TRow> = {
   name: string;
   /** Accent colour for the group caret, title and the left row border. */
   accent_color: string;
+  /**
+   * Marks this group as a priority client — separate from any per-item
+   * Status/Priority column, this flags the whole client as high-end so its
+   * tasks sort above every other group's (see `deriveBoardRows`). Undefined
+   * for a "group by column" bucket, which has no client of its own.
+   */
+  is_priority?: boolean;
   rows: TRow[];
 };
 

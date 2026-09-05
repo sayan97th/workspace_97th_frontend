@@ -10,6 +10,7 @@ interface GroupMenuProps {
   is_first: boolean;
   is_last: boolean;
   current_color: string;
+  is_priority: boolean;
   onExpandThis: () => void;
   onExpandAllGroups: () => void;
   onSelectAll: () => void;
@@ -20,6 +21,7 @@ interface GroupMenuProps {
   onMove: (dir: "top" | "up" | "down" | "bottom") => void;
   onRename: () => void;
   onChangeColor: (color: string) => void;
+  onTogglePriority: () => void;
   onDelete: () => void;
   onArchive: () => void;
   onClose: () => void;
@@ -28,9 +30,9 @@ interface GroupMenuProps {
 const ROW_ITEM = "flex h-[34px] items-center gap-2.5 rounded-[6px] px-2 text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 
 export default function GroupMenu({
-  panel_style, is_collapsed, is_first, is_last, current_color,
+  panel_style, is_collapsed, is_first, is_last, current_color, is_priority,
   onExpandThis, onExpandAllGroups, onSelectAll, onExpandSubitems, onCollapseSubitems, onAddGroup,
-  onDuplicate, onMove, onRename, onChangeColor, onDelete, onArchive, onClose,
+  onDuplicate, onMove, onRename, onChangeColor, onTogglePriority, onDelete, onArchive, onClose,
 }: GroupMenuProps) {
   const [sub, setSub] = useState<"dup" | "move" | "color" | null>(null);
   const moves: { key: "top" | "up" | "down" | "bottom"; label: string; disabled: boolean }[] = [
@@ -85,6 +87,21 @@ export default function GroupMenu({
             <svg viewBox="0 0 16 16" width="15" height="15"><circle cx="8" cy="8" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M8 5.4 V10.6 M5.4 8 H10.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
           </span>
           <span className="flex-1 text-left">Add group</span>
+        </button>
+
+        <button type="button" onMouseEnter={() => setSub(null)} onClick={() => { onTogglePriority(); onClose(); }} className={ROW_ITEM}>
+          <span className="flex w-4 items-center justify-center" style={{ color: is_priority ? "#fdab3d" : "var(--color-boardtree-text-muted)" }}>
+            <svg viewBox="0 0 16 16" width="15" height="15">
+              <path
+                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                fill={is_priority ? "currentColor" : "none"}
+                stroke={is_priority ? "none" : "currentColor"}
+                strokeWidth={is_priority ? undefined : "1.2"}
+                strokeLinejoin="round"
+              />
+            </svg>
+          </span>
+          <span className="flex-1 text-left">{is_priority ? "Unmark as priority client" : "Mark as priority client"}</span>
         </button>
 
         <div className="relative" onMouseEnter={() => setSub("dup")}>

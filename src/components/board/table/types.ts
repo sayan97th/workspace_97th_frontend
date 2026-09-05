@@ -67,6 +67,8 @@ export interface BoardTableGroup {
   title: string;
   color: string;
   tint: string;
+  /** Flags this group as a priority client — separate from any per-item Status/Priority column, this marks the whole client as high-end so their tasks sort and render above everyone else's. */
+  is_priority: boolean;
   items: BoardTableItem[];
   item_title: string;
   sub_title: string;

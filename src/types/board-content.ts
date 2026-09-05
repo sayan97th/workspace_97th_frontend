@@ -68,6 +68,8 @@ export type BoardGroupDto = {
   board_view_id: number;
   name: string;
   accent_color: string;
+  /** Flags this group as a priority client — separate from any per-item Status/Priority column, this marks the whole client as high-end so their tasks sort above everyone else's. */
+  is_priority: boolean;
   position: number;
 };
 
@@ -211,6 +213,7 @@ export type CreateBoardGroupPayload = {
   view_id: number;
   name: string;
   accent_color?: string;
+  is_priority?: boolean;
   position?: number;
 };
 

@@ -50,6 +50,7 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
               is_first={group_index === 0}
               is_last={group_index === group_count - 1}
               current_color={group.color}
+              is_priority={group.is_priority}
               onExpandThis={() => actions.toggleGroupCollapsed(group.key)}
               onExpandAllGroups={actions.expandAllGroups}
               onSelectAll={() => actions.selectAllInGroup(group.key)}
@@ -60,6 +61,7 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
               onMove={(dir) => actions.moveGroupByKey(group.key, dir)}
               onRename={() => actions.startGroupRename(group.key, group.title)}
               onChangeColor={(color) => actions.setGroupColor(group.key, color)}
+              onTogglePriority={() => actions.togglePriority(group.key)}
               onDelete={() => actions.removeGroup(group.key)}
               onArchive={() => actions.removeGroup(group.key)}
               onClose={actions.closeGroupMenu}
@@ -109,6 +111,30 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
         <div className="font-mono text-[11px] text-boardtree-text-faint">
           {group.items.length} items{sub_count ? ` · ${sub_count} subitems` : ""}
         </div>
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); actions.togglePriority(group.key); }}
+          title={group.is_priority ? "Unmark as priority client" : "Mark as priority client — their tasks sort above everyone else's"}
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+          style={{ color: group.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: group.is_priority || is_hovered ? 1 : 0, pointerEvents: group.is_priority || is_hovered ? "auto" : "none" }}
+        >
+          <svg viewBox="0 0 16 16" width="15" height="15">
+            <path
+              d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+              fill={group.is_priority ? "currentColor" : "none"}
+              stroke={group.is_priority ? "none" : "currentColor"}
+              strokeWidth={group.is_priority ? undefined : "1.2"}
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+
+        {group.is_priority && (
+          <span className="flex-none rounded-[9px] bg-[#fdab3d1a] px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-[#b9760a]">
+            Priority client
+          </span>
+        )}
       </div>
     </div>
   );
