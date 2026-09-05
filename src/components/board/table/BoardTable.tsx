@@ -38,6 +38,16 @@ export interface BoardTableProps {
   onCreateSubitem?: (item_id: string) => Promise<string>;
   onCreateGroup?: () => Promise<{ key: string; title: string }>;
   /**
+   * Group menu's "Duplicate this group" — clones the group (and, when
+   * `with_items` is true, its whole item/subitem subtree) server-side, so
+   * — like `onDuplicateColumn` below — this awaits the real API call and
+   * lets the caller's own `groups`/`items` state (and so `initial_groups`)
+   * bring the copies in under their real ids, rather than mutating
+   * `BoardTable`'s local state with fabricated ones that later 404 on edit.
+   * Omitted, `duplicateGroup` stays local-only (the standalone demo behavior).
+   */
+  onDuplicateGroup?: (group_key: string, with_items: boolean) => Promise<void>;
+  /**
    * Persists a column picked from the "+" gallery (`ColumnPicker`, main-table
    * or subitem header). Once the caller's real create call resolves and its
    * own column list updates, the new column reaches `BoardTable` again as
@@ -78,6 +88,7 @@ export default function BoardTable({
   onCreateItem,
   onCreateSubitem,
   onCreateGroup,
+  onDuplicateGroup,
   onAddColumn,
   onDuplicateColumn,
   onAddColumnRight,
@@ -110,6 +121,14 @@ export default function BoardTable({
     return "";
   }, [onCreateGroup, base_actions]);
 
+  const duplicateGroupReal = useCallback(
+    (group_key: string, with_items: boolean) => {
+      if (!onDuplicateGroup) return base_actions.duplicateGroup(group_key, with_items);
+      void onDuplicateGroup(group_key, with_items);
+    },
+    [onDuplicateGroup, base_actions]
+  );
+
   const addColumnReal = useCallback(
     (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
       if (after_column_id) {
@@ -137,10 +156,11 @@ export default function BoardTable({
       addItem: addItemReal,
       addSubitem: addSubitemReal,
       addGroup: addGroupReal,
+      duplicateGroup: duplicateGroupReal,
       addColumn: addColumnReal,
       duplicateColumn: duplicateColumnReal,
     }),
-    [base_actions, addItemReal, addSubitemReal, addGroupReal, addColumnReal, duplicateColumnReal]
+    [base_actions, addItemReal, addSubitemReal, addGroupReal, duplicateGroupReal, addColumnReal, duplicateColumnReal]
   );
 
   /**

@@ -99,6 +99,15 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/groups/${group_id}`);
   },
 
+  /** POST /api/boards/{board_id}/groups/{group_id}/duplicate — group menu's "Duplicate this group". The response only carries the new group itself (no items), so a `with_items` duplicate still needs a follow-up `getItems` to pick up the copied rows under their real ids. */
+  async duplicateGroup(board_id: number, group_id: number, with_items: boolean): Promise<BoardGroupDto> {
+    const response = await apiClient.post<{ group: BoardGroupDto }>(
+      `/api/boards/${board_id}/groups/${group_id}/duplicate`,
+      { with_items }
+    );
+    return response.group;
+  },
+
   /** GET /api/boards/{board_id}/items — scoped to `view_id` (a tab), defaulting to the board's primary tab, optionally narrowed by a server-side `search` term. */
   async getItems(board_id: number, view_id?: number | null, search?: string): Promise<BoardItemDto[]> {
     const params = new URLSearchParams();

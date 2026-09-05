@@ -1507,6 +1507,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return { key: String(created.id), title: created.name };
   };
 
+  // ── Group menu's "Duplicate this group" — like `handleDuplicateTableColumn`
+  // above, awaits the real API call rather than mutating `BoardTable`'s local
+  // state, since a locally-fabricated copy's items would carry fake ids that
+  // 404 the moment a cell edit tries to persist against them. The duplicate
+  // response only carries the new group itself, so a `with_items` duplicate
+  // needs a follow-up `getItems` to pick up the copied rows under their real
+  // backend ids. ──
+  const handleDuplicateTableGroup = async (group_key: string, with_items: boolean) => {
+    const created = await boardContentService.duplicateGroup(board_id, Number(group_key), with_items);
+    setGroups((current) => [...current, created]);
+    if (with_items) {
+      const refreshed = await boardContentService.getItems(board_id, view_tabs.active_view_id);
+      setItems(refreshed);
+    }
+  };
+
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
     if (!board_status_column) return [];
     const column_id = String(board_status_column.id);
@@ -2096,6 +2112,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCreateItem={handleCreateTableItem}
           onCreateSubitem={handleCreateTableSubitem}
           onCreateGroup={handleCreateTableGroup}
+          onDuplicateGroup={handleDuplicateTableGroup}
           onAddColumn={handleAddTableColumn}
           onDuplicateColumn={handleDuplicateTableColumn}
           onAddColumnRight={handleAddColumnRight}
