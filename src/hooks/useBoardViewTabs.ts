@@ -50,12 +50,21 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   advanced_filter_rows: [],
 };
 
+/**
+ * A saved rule's `value` can likewise come back as `null` (same root cause as
+ * `search_query` above) — `evaluateCondition` always calls `.trim()` on it, so
+ * any row replayed onto the toolbar needs the empty-string default restored.
+ */
+const withDefaultValues = <T extends { value: string }>(rows: T[]): T[] =>
+  rows.map((row) => ({ ...row, value: row.value ?? "" }));
+
 const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilterState => {
   const base = filter_state ?? EMPTY_FILTER_STATE;
   return {
     ...base,
     search_query: base.search_query ?? "",
     quick_filter_selections: Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
+    advanced_filter_rows: withDefaultValues(base.advanced_filter_rows ?? []),
   };
 };
 
@@ -245,7 +254,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     const filter_state = normalizeFilterState(pending_view.filter_state);
     const wanted_filters = filter_state.advanced_filter_rows;
     const wanted_sorts = pending_view.sort_state ?? [];
-    const wanted_colors = pending_view.conditional_color_rules ?? [];
+    const wanted_colors = withDefaultValues(pending_view.conditional_color_rules ?? []);
 
     // Not all placeholder rows have landed in toolbar state yet — wait for the render where they have.
     if (
@@ -310,7 +319,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
         hidden_column_ids: active_view.hidden_column_ids ?? [],
         pinned_column_ids: active_view.pinned_column_ids ?? [],
         row_height: active_view.row_height,
-        conditional_color_rules: withoutIds(active_view.conditional_color_rules ?? []),
+        conditional_color_rules: withoutIds(withDefaultValues(active_view.conditional_color_rules ?? [])),
         group_by_option_id: active_view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
       });
 

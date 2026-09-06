@@ -39,8 +39,8 @@ export const evaluateCondition = (
   condition: BoardAdvancedFilterCondition,
   value: string
 ): boolean => {
-  const haystack = text.trim().toLowerCase();
-  const needle = value.trim().toLowerCase();
+  const haystack = (text ?? "").trim().toLowerCase();
+  const needle = (value ?? "").trim().toLowerCase();
   switch (condition) {
     case "equals":
       return haystack === needle;
