@@ -146,6 +146,14 @@ export interface UseBoardTableConfig {
   onRecolorColumnOption?: (column_id: string, option_id: string, color: string) => void;
   /** Permanently removes one of a real column's own existing options. */
   onDeleteColumnOption?: (column_id: string, option_id: string) => void;
+  /**
+   * People cell picker's bottom toggle — flips whether assigning someone on
+   * this column notifies them (in-app + email), persisted to the real
+   * column's `config.notify_on_assignment`. Omitted (the standalone demo,
+   * which has no backing notification pipeline), the toggle itself never
+   * renders — see `ColumnDef.notify_on_assignment`.
+   */
+  onToggleColumnNotifyOnAssignment?: (column_id: string) => void;
   onDeleteNode?: (node_id: string) => void;
   /**
    * Fires once per completed drag that actually changed a list's order — a
@@ -1253,6 +1261,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onDeleteColumnOption?.(column_id, option_id);
   }, []);
 
+  /**
+   * Flips a people column's `notify_on_assignment` preference — the People
+   * cell picker's bottom toggle. Mirrors `renameColumnOption`'s local-mutation-
+   * plus-callback pattern: the column is shared across every table (group), so
+   * `mapColumnInAllGroups` flips it everywhere it's rendered, and a real board
+   * persists it server-side; the standalone demo just flips it locally.
+   */
+  const toggleColumnNotifyOnAssignment = useCallback((column_id: string) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        notify_on_assignment: !(c.notify_on_assignment ?? true),
+      })),
+    }));
+    config_ref.current.onToggleColumnNotifyOnAssignment?.(column_id);
+  }, []);
+
   const openTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: true, ...closeAllMenus })), []);
   const closeTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: false })), []);
 
@@ -1384,6 +1410,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumnOption,
       recolorColumnOption,
       deleteColumnOption,
+      toggleColumnNotifyOnAssignment,
       openTagEditor,
       closeTagEditor,
       addTagDef,
@@ -1403,7 +1430,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, openTagEditor, closeTagEditor, addTagDef,
+      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,
     ]
   );

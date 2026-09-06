@@ -144,7 +144,16 @@ const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
   const kind = TABLE_COLUMN_KIND[column.type];
   if (!kind) return null;
-  return { id: String(column.id), title: column.label, kind, width: column.width, options: toTableOptions(column) };
+  return {
+    id: String(column.id),
+    title: column.label,
+    kind,
+    width: column.width,
+    options: toTableOptions(column),
+    // Only a people column's picker ever reads this, but setting it
+    // regardless of `type` is harmless and matches `options` above.
+    notify_on_assignment: column.config?.notify_on_assignment ?? true,
+  };
 };
 
 /**
@@ -1017,6 +1026,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id, columns_by_id]
   );
 
+  // ── People cell picker's bottom toggle — flips whether assigning someone
+  // on this column notifies them, persisted to the column's own
+  // `config.notify_on_assignment` the same read-modify-write way as
+  // `patchColumnOptions` above. ──
+  const handleToggleColumnNotifyOnAssignment = useCallback(
+    async (column_id: string) => {
+      const column = columns_by_id[column_id];
+      if (!column) return;
+      const next_value = !(column.config?.notify_on_assignment ?? true);
+      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+        config: { ...(column.config ?? {}), notify_on_assignment: next_value },
+      });
+      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    },
+    [board_id, columns_by_id]
+  );
+
   const makeOptionActions = (column_id: string): BoardOptionActions => ({
     onRename: (option_id, label) =>
       void patchColumnOptions(column_id, (options) =>
@@ -1501,6 +1527,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void patchColumnOptions(column_id, (options) => options.map((o) => (o.id === option_id ? { ...o, color } : o))),
       onDeleteColumnOption: (column_id, option_id) =>
         void patchColumnOptions(column_id, (options) => options.filter((o) => o.id !== option_id)),
+      onToggleColumnNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
       onDeleteNode: (node_id) => {
         void boardContentService
           .deleteItem(board_id, Number(node_id))

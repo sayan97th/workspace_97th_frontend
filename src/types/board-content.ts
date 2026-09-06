@@ -40,6 +40,8 @@ export type BoardColumnOption = {
 
 export type BoardColumnConfig = {
   options?: BoardColumnOption[];
+  /** People columns only: whether assigning someone here notifies them (in-app + email). Defaults to `true` server-side when unset. Edited from the People cell picker's bottom toggle. */
+  notify_on_assignment?: boolean;
 };
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */

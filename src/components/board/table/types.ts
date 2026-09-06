@@ -32,6 +32,13 @@ export interface ColumnDef {
    * hook's shared board-wide `status_defs`/`label_defs`/`tag_defs`.
    */
   options?: StatusDef[];
+  /**
+   * People kind only: whether assigning someone on this column notifies them
+   * (in-app toast + email) — the People cell picker's bottom toggle, backed
+   * by the real column's `config.notify_on_assignment`. Defaults to `true`
+   * (undefined) for the mock demo, which has no backing notification pipeline.
+   */
+  notify_on_assignment?: boolean;
 }
 
 export interface StatusDef {

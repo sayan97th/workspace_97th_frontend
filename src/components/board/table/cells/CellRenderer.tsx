@@ -206,6 +206,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
             onToggle={(person_id) => actions.toggleArrayValue(node_id, column.id, person_id)}
             onClear={() => actions.clearCellValue(node_id, column.id)}
             onClose={actions.closeCellMenu}
+            notify_on_assignment={column.notify_on_assignment}
+            onToggleNotifyOnAssignment={() => actions.toggleColumnNotifyOnAssignment(column.id)}
           />
         )}
       </div>

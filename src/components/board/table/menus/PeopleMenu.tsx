@@ -1,5 +1,6 @@
 import type { PersonDef } from "../types";
 import PopoverPanel from "./PopoverPanel";
+import ToggleSwitch from "../../toolbar/ToggleSwitch";
 
 interface PeopleMenuProps {
   people: PersonDef[];
@@ -9,9 +10,23 @@ interface PeopleMenuProps {
   onToggle: (person_id: string) => void;
   onClear: () => void;
   onClose: () => void;
+  /** Whether assigning someone on this column currently notifies them — undefined hides the toggle entirely (the mock demo, which has no backing notification pipeline). */
+  notify_on_assignment?: boolean;
+  /** Flips this column's `notify_on_assignment` preference — omitted alongside `notify_on_assignment` for the mock demo. */
+  onToggleNotifyOnAssignment?: () => void;
 }
 
-export default function PeopleMenu({ people, selected, query, onQueryChange, onToggle, onClear, onClose }: PeopleMenuProps) {
+export default function PeopleMenu({
+  people,
+  selected,
+  query,
+  onQueryChange,
+  onToggle,
+  onClear,
+  onClose,
+  notify_on_assignment,
+  onToggleNotifyOnAssignment,
+}: PeopleMenuProps) {
   const filtered = people.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[300px] -translate-x-1/2 p-3">
@@ -56,6 +71,19 @@ export default function PeopleMenu({ people, selected, query, onQueryChange, onT
       <button type="button" onClick={onClear} className="pt-2.5 text-[12px] text-boardtree-text-muted hover:text-boardtree-accent">
         Clear value
       </button>
+      {notify_on_assignment !== undefined && (
+        <>
+          <div className="my-2.5 h-px bg-boardtree-border-soft" />
+          <button
+            type="button"
+            onClick={onToggleNotifyOnAssignment}
+            className="flex w-full items-center justify-between gap-2.5 rounded-[6px] px-1 py-1 text-left text-[12.5px] text-boardtree-text hover:bg-boardtree-hover"
+          >
+            <span>Notify assigned people</span>
+            <ToggleSwitch is_on={notify_on_assignment} size="sm" />
+          </button>
+        </>
+      )}
     </PopoverPanel>
   );
 }
