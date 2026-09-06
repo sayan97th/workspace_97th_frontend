@@ -246,6 +246,17 @@ export interface UseBoardTableConfig {
    * Omitted (the standalone demo), the button renders but stays inert.
    */
   onOpenComments?: (node_id: string) => void;
+  /**
+   * Row density preset from the board toolbar's "Item height" control
+   * (`OverflowControl`/`toolbar.row_height`) — read-only here, `BoardTable`
+   * never mutates it back. Omitted (the standalone demo), rows render at
+   * the default `"single"` height.
+   */
+  row_height?: "single" | "double" | "triple";
+  /** Row-id → color, from the toolbar's Conditional coloring rules scoped to "row" — see `row_height`'s own doc comment for the same read-only, toolbar-owned pattern. */
+  row_colors?: Record<string, string>;
+  /** Row-id → column-id → color, from the toolbar's Conditional coloring rules scoped to "cell". */
+  cell_colors?: Record<string, Record<string, string>>;
 }
 
 export interface BoardTableState {
@@ -293,6 +304,12 @@ export interface BoardTableState {
   item_column_width: number | null;
   /** Explicit width (px) for the subitem-title virtual column, once the user has dragged its resize handle — null falls back to `GroupSection`'s per-item auto-sizing from that item's longest subitem name. */
   sub_column_width: number | null;
+  /** Row density preset — see `UseBoardTableConfig.row_height`'s own doc comment. */
+  row_height: "single" | "double" | "triple";
+  /** Row-id → color — see `UseBoardTableConfig.row_colors`'s own doc comment. */
+  row_colors: Record<string, string>;
+  /** Row-id → column-id → color — see `UseBoardTableConfig.cell_colors`'s own doc comment. */
+  cell_colors: Record<string, Record<string, string>>;
 }
 
 function initialState(config: UseBoardTableConfig): BoardTableState {
@@ -335,6 +352,9 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     copied_row_id: null,
     item_column_width: config.initial_item_column_width ?? null,
     sub_column_width: config.initial_sub_column_width ?? null,
+    row_height: config.row_height ?? "single",
+    row_colors: config.row_colors ?? {},
+    cell_colors: config.cell_colors ?? {},
   };
 }
 
@@ -382,6 +402,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.status_defs) setState((s) => ({ ...s, status_defs: config.status_defs! }));
   }, [config.status_defs]);
+
+  useEffect(() => {
+    if (config.row_height) setState((s) => ({ ...s, row_height: config.row_height! }));
+  }, [config.row_height]);
+
+  useEffect(() => {
+    if (config.row_colors) setState((s) => ({ ...s, row_colors: config.row_colors! }));
+  }, [config.row_colors]);
+
+  useEffect(() => {
+    if (config.cell_colors) setState((s) => ({ ...s, cell_colors: config.cell_colors! }));
+  }, [config.cell_colors]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key

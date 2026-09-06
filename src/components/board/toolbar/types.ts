@@ -176,6 +176,8 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   removeSortRule: (id: string) => void;
   updateSortRule: (id: string, patch: Partial<BoardSortRule>) => void;
   clearSort: () => void;
+  /** Replaces `sort_rules` with a single rule for `column_id`/`direction`, or clears it when either is null — see the grid's column-header sort arrow bridge in `TableBoardView.tsx`. */
+  setSingleSort: (column_id: string | null, direction: BoardSortDirection | null) => void;
 
   hidden_column_ids: string[];
   toggleColumnHidden: (id: string) => void;

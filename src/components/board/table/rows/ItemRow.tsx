@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
-import { mainGridTemplate } from "../layoutUtils";
+import { ROW_HEIGHT_PX, mainGridTemplate } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
@@ -25,6 +25,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const is_hovered = state.hover_row_id === item.id;
   const is_row_menu_open = state.open_row_menu_id === item.id;
   const is_dragging = state.drag?.node_id === item.id;
+  const row_h = ROW_HEIGHT_PX[state.row_height];
+  const row_color = state.row_colors[item.id];
 
   const move_targets: RowMenuTarget[] = state.groups.map((g) => ({ id: g.key, label: g.title, current: g.key === group.key }));
   const convert_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.filter((it) => it.id !== item.id).map((it) => ({ id: it.id, label: it.name })));
@@ -40,7 +42,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   return (
     <div
       className="relative flex items-stretch"
-      style={{ minWidth: min_width, background: is_selected ? "var(--color-boardtree-selected)" : "var(--color-boardtree-surface)", opacity: is_dragging ? 0.45 : 1 }}
+      style={{ minWidth: min_width, background: is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)"), opacity: is_dragging ? 0.45 : 1 }}
       draggable
       onDragStart={() => actions.onDragStart(item.id, "ROOT")}
       onDragOver={(e) => { e.preventDefault(); actions.onDragOver(item.id, "ROOT"); }}
@@ -85,7 +87,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
       <TreeBar variant="thick" color={group.color} />
 
       <div className="flex-1 border-b border-boardtree-border-soft" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex h-[42px] items-center justify-center border-r border-boardtree-border-soft">
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
           <button type="button" onClick={() => actions.toggleSelected(item.id)} className="flex items-center justify-center">
             {is_selected ? (
               <span className="flex h-[15px] w-[15px] items-center justify-center rounded-[3px] bg-boardtree-accent">
@@ -97,7 +99,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="flex h-[42px] items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3">
+        <div className="flex items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3" style={{ height: row_h }}>
           <div className="flex w-3 flex-none cursor-grab items-center justify-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
           </div>
@@ -133,7 +135,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 />
               </span>
             ) : (
-              <span onClick={() => actions.startEditName(item.id, item.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
+              <span
+                onClick={() => actions.startEditName(item.id, item.name)}
+                className={`max-w-full cursor-text rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text ${
+                  state.row_height === "triple" ? "line-clamp-3 whitespace-normal" : state.row_height === "double" ? "line-clamp-2 whitespace-normal" : "truncate"
+                }`}
+              >
                 {item.name}
               </span>
             )}
@@ -169,7 +176,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="flex h-[42px] items-center justify-center border-r border-boardtree-border-soft">
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openComments(item.id); }}
@@ -185,13 +192,17 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         </div>
 
         {group.base_columns.concat(group.custom_columns).map((col) => (
-          <div key={col.id} className="relative flex h-[42px] items-stretch border-r border-boardtree-border-soft">
+          <div
+            key={col.id}
+            className="relative flex items-stretch border-r border-boardtree-border-soft"
+            style={{ height: row_h, background: state.cell_colors[item.id]?.[col.id] }}
+          >
             <CellRenderer node_id={item.id} column={col} values={item.values} state={state} actions={actions} />
           </div>
         ))}
 
-        <div className="h-[42px]" />
-        <div className="h-[42px]" />
+        <div style={{ height: row_h }} />
+        <div style={{ height: row_h }} />
       </div>
     </div>
   );

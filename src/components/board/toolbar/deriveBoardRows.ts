@@ -67,7 +67,13 @@ export function deriveBoardRows<TRow>(
   const matchesSearch = (row: TRow) => {
     const query = state.search_query.trim().toLowerCase();
     if (!query) return true;
-    const haystack = state.search_column_ids
+    // Empty `search_column_ids` means "no restriction, search every column"
+    // — matching how every sibling list (`hidden_column_ids`,
+    // `pinned_column_ids`, ...) treats an empty selection as the permissive
+    // default rather than "select nothing". Searching zero columns would
+    // otherwise make every query match nothing, always.
+    const column_ids = state.search_column_ids.length ? state.search_column_ids : config.columns.map((c) => c.id);
+    const haystack = column_ids
       .map((column_id) => config.getColumnText(row, column_id))
       .join(" ")
       .toLowerCase();

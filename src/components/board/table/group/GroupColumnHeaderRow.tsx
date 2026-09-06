@@ -14,14 +14,44 @@ interface GroupColumnHeaderRowProps {
   actions: BoardTableActions;
   onRequestColumnFilter?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
+  /** See `BoardTable`'s own doc comment — when provided, the header sort arrow reads/writes through this instead of `state.sort`/`actions.setSort`. */
+  onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
+  active_sort_column_id?: string | null;
+  active_sort_direction?: "asc" | "desc" | null;
 }
 
-export default function GroupColumnHeaderRow({ group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: GroupColumnHeaderRowProps) {
+export default function GroupColumnHeaderRow({
+  group,
+  name_col_width,
+  min_width,
+  state,
+  actions,
+  onRequestColumnFilter,
+  onRequestGroupByColumn,
+  onRequestColumnSort,
+  active_sort_column_id = null,
+  active_sort_direction = null,
+}: GroupColumnHeaderRowProps) {
   const scope_key_of = (column_id: string) => `main|${group.key}|${column_id}`;
   const item_title_key = `item-title:${group.key}`;
   const sort_scope = `main:${group.key}`;
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const picker_key = `pick:main|${group.key}`;
+  // When the caller supplies `onRequestColumnSort`, the toolbar's own
+  // `sort_rules` is the single source of sort truth for the main table (see
+  // `BoardTable`'s own doc comment); omitted, this falls back to
+  // `useBoardTable`'s local `state.sort`, matching the standalone demo.
+  const use_sort_bridge = !!onRequestColumnSort;
+  const sortDirFor = (column_id: string): "asc" | "desc" | null =>
+    use_sort_bridge
+      ? active_sort_column_id === column_id
+        ? active_sort_direction
+        : null
+      : state.sort?.scope_key === sort_scope && state.sort.column_id === column_id
+        ? state.sort.direction
+        : null;
+  const requestSort = (column_id: string, direction: "asc" | "desc" | null) =>
+    use_sort_bridge ? onRequestColumnSort!(column_id, direction) : actions.setSort(sort_scope, column_id, direction);
 
   return (
     <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width }}>
@@ -35,7 +65,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           title={group.item_title}
           height={38}
           can_delete={false}
-          sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === "__name" ? state.sort.direction : null}
+          sort_dir={sortDirFor("__name")}
           is_menu_open={state.open_column_menu_key === item_title_key}
           is_hovered={state.hover_head_key === item_title_key}
           is_editing={state.editing_column?.scoped_key === item_title_key}
@@ -49,7 +79,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
           onDraftChange={actions.updateColumnDraft}
           onCommitRename={actions.commitColumnRename}
           onCancelRename={actions.cancelColumnRename}
-          onSort={(dir) => actions.setSort(sort_scope, "__name", dir)}
+          onSort={(dir) => requestSort("__name", dir)}
           onCollapseAll={actions.collapseAllGroups}
           onDuplicate={() => { }}
           onDelete={() => { }}
@@ -68,7 +98,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             column={{ id: col.id, kind: col.kind, width: col.width, options: col.options }}
             can_delete={true}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
-            sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
+            sort_dir={sortDirFor(col.id)}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}
             is_hovered={state.hover_head_key === scope_key_of(col.id)}
             is_editing={state.editing_column?.scoped_key === scope_key_of(col.id)}
@@ -82,7 +112,7 @@ export default function GroupColumnHeaderRow({ group, name_col_width, min_width,
             onDraftChange={actions.updateColumnDraft}
             onCommitRename={actions.commitColumnRename}
             onCancelRename={actions.cancelColumnRename}
-            onSort={(dir) => actions.setSort(sort_scope, col.id, dir)}
+            onSort={(dir) => requestSort(col.id, dir)}
             onUpdateSettings={(patch) => actions.updateColumnSettings(group.key, "main", col.id, patch)}
             onResizePreview={(width) => actions.resizeColumnPreview(group.key, "main", col.id, width)}
             onEditLabels={

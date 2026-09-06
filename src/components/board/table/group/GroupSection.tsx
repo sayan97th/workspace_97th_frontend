@@ -25,9 +25,24 @@ interface GroupSectionProps {
   actions: BoardTableActions;
   onRequestColumnFilter?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
+  onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
+  active_sort_column_id?: string | null;
+  active_sort_direction?: "asc" | "desc" | null;
 }
 
-export default function GroupSection({ group, group_index, group_count, name_col_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn }: GroupSectionProps) {
+export default function GroupSection({
+  group,
+  group_index,
+  group_count,
+  name_col_width,
+  state,
+  actions,
+  onRequestColumnFilter,
+  onRequestGroupByColumn,
+  onRequestColumnSort,
+  active_sort_column_id = null,
+  active_sort_direction = null,
+}: GroupSectionProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
   const sorted_items = applySort(group.items, state.sort, `main:${group.key}`, group.base_columns.concat(group.custom_columns));
@@ -50,6 +65,9 @@ export default function GroupSection({ group, group_index, group_count, name_col
             actions={actions}
             onRequestColumnFilter={onRequestColumnFilter}
             onRequestGroupByColumn={onRequestGroupByColumn}
+            onRequestColumnSort={onRequestColumnSort}
+            active_sort_column_id={active_sort_column_id}
+            active_sort_direction={active_sort_direction}
           />
 
           {sorted_items.map((item) => {

@@ -85,6 +85,19 @@ export interface BoardTableProps {
   /** Column menu's "Filter"/"Group by" rows — bridges to the board's toolbar (a sibling of `BoardTable`, not a descendant), which owns Filter/Sort/GroupBy state. Omitted, those rows still render but are no-ops. */
   onRequestColumnFilter?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
+  /**
+   * Main-table column-header sort arrow — bridges into the same toolbar
+   * (`toolbar.sort_rules` is the single source of sort truth), mirroring
+   * `onRequestColumnFilter`/`onRequestGroupByColumn`. `column_id` is
+   * `"__name"` for the item-title virtual column. Omitted, the main table's
+   * header sort falls back to `useBoardTable`'s own local `state.sort` (the
+   * standalone demo behavior) — subitem headers always use that local sort,
+   * since subitem columns have no toolbar-level equivalent.
+   */
+  onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
+  /** The toolbar's currently active sort column/direction, for the main table's header arrow to reflect — see `onRequestColumnSort`. Ignored (and `state.sort` used instead) when `onRequestColumnSort` is omitted. */
+  active_sort_column_id?: string | null;
+  active_sort_direction?: "asc" | "desc" | null;
 }
 
 /** The "Main table" board view: a Monday-style grid of groups, tree rows and subitems with rich per-column cell editing. Mirrors `BoardKanban`'s role as the generic shell for its own view kind. */
@@ -101,6 +114,9 @@ export default function BoardTable({
   onAddColumnRight,
   onRequestColumnFilter,
   onRequestGroupByColumn,
+  onRequestColumnSort,
+  active_sort_column_id = null,
+  active_sort_direction = null,
 }: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
 
@@ -219,6 +235,9 @@ export default function BoardTable({
           actions={actions}
           onRequestColumnFilter={onRequestColumnFilter}
           onRequestGroupByColumn={onRequestGroupByColumn}
+          onRequestColumnSort={onRequestColumnSort}
+          active_sort_column_id={active_sort_column_id}
+          active_sort_direction={active_sort_direction}
         />
       ))}
       <button

@@ -121,6 +121,14 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const updateSortRule = (id: string, patch: Partial<BoardSortRule>) =>
     setSortRules((current) => current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule)));
   const clearSort = () => setSortRules([]);
+  /**
+   * Replaces `sort_rules` wholesale with a single rule for `column_id`, or
+   * clears it entirely when `column_id`/`direction` is null — the toolbar
+   * equivalent of the grid's own single-column click-to-sort header arrow,
+   * so clicking it and using the Sort panel always agree on one state.
+   */
+  const setSingleSort = (column_id: string | null, direction: BoardSortDirection | null) =>
+    setSortRules(column_id && direction ? [{ id: createId(), sort_option_id: column_id, direction, join_operator: "and" }] : []);
 
   const toggleColumnHidden = (id: string) =>
     setHiddenColumnIds((current) =>
@@ -231,6 +239,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     removeSortRule,
     updateSortRule,
     clearSort,
+    setSingleSort,
 
     hidden_column_ids,
     toggleColumnHidden,

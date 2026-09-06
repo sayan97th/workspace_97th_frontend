@@ -1,5 +1,10 @@
 import type { ColumnDef } from "./types";
 
+/** Row height (px) per "Item height" preset — item rows. */
+export const ROW_HEIGHT_PX = { single: 42, double: 60, triple: 84 } as const;
+/** Row height (px) per "Item height" preset — subitem rows, which start a touch shorter than item rows at every tier (mirrors the existing single-height 42px/40px split). */
+export const SUB_ROW_HEIGHT_PX = { single: 40, double: 56, triple: 78 } as const;
+
 export function computeNameColWidth(names: string[]): number {
   const longest = names.reduce((a, n) => Math.max(a, (n || "").length), 0);
   return Math.min(420, Math.max(280, Math.round(longest * 7.2) + 96));

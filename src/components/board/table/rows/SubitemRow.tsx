@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "../types";
-import { subGridTemplate } from "../layoutUtils";
+import { SUB_ROW_HEIGHT_PX, subGridTemplate } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
@@ -26,6 +26,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const is_hovered = state.hover_row_id === sub.id;
   const is_row_menu_open = state.open_row_menu_id === sub.id;
   const is_dragging = state.drag?.node_id === sub.id;
+  const row_h = SUB_ROW_HEIGHT_PX[state.row_height];
 
   const move_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.map((it) => ({ id: it.id, label: it.name, current: it.id === item.id })));
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
@@ -89,7 +90,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id); }}
         onDragEnd={actions.onDragEnd}
       >
-        <div className="flex h-10 items-center justify-center border-r border-boardtree-border-soft">
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
           <button type="button" onClick={() => actions.toggleSelected(sub.id)} className="flex items-center justify-center">
             {is_selected ? (
               <span className="flex h-[14px] w-[14px] items-center justify-center rounded-[3px] bg-boardtree-accent">
@@ -101,7 +102,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </button>
         </div>
 
-        <div className="flex h-10 items-center gap-1.5 border-r border-boardtree-border-soft pl-2 pr-3">
+        <div className="flex items-center gap-1.5 border-r border-boardtree-border-soft pl-2 pr-3" style={{ height: row_h }}>
           <div className="flex w-[11px] flex-none cursor-grab items-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="11"><circle cx="1.5" cy="3" r="1" fill="currentColor" /><circle cx="4.5" cy="3" r="1" fill="currentColor" /><circle cx="1.5" cy="7" r="1" fill="currentColor" /><circle cx="4.5" cy="7" r="1" fill="currentColor" /><circle cx="1.5" cy="11" r="1" fill="currentColor" /><circle cx="4.5" cy="11" r="1" fill="currentColor" /></svg>
           </div>
@@ -154,7 +155,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </button>
         </div>
 
-        <div className="flex h-10 items-center justify-center border-r border-boardtree-border-soft">
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openComments(sub.id); }}
@@ -170,13 +171,13 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => (
-          <div key={col.id} className="relative flex h-10 items-stretch border-r border-boardtree-border-soft">
+          <div key={col.id} className="relative flex items-stretch border-r border-boardtree-border-soft" style={{ height: row_h }}>
             <CellRenderer node_id={sub.id} column={col} values={sub.values} state={state} actions={actions} />
           </div>
         ))}
 
-        <div className="h-10" />
-        <div className="h-10" />
+        <div style={{ height: row_h }} />
+        <div style={{ height: row_h }} />
       </div>
     </div>
   );

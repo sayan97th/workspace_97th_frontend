@@ -970,6 +970,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     toolbar.setGroupByOptionId(column_id);
   };
 
+  // ── Grid column-header sort arrow — bridges into the toolbar's own
+  // `sort_rules` (the same state the Sort panel reads/writes) instead of
+  // `useBoardTable`'s local `state.sort`, so the two never disagree. The
+  // item-title column's synthetic `"__name"` id (see `GroupColumnHeaderRow`)
+  // maps to the toolbar's real `ITEM_COLUMN_ID`. ──
+  const handleRequestColumnSort = (column_id: string, direction: "asc" | "desc" | null) => {
+    toolbar.setSingleSort(direction ? (column_id === "__name" ? ITEM_COLUMN_ID : column_id) : null, direction);
+  };
+  const active_sort_rule = toolbar.sort_rules[0];
+  const active_sort_column_id = active_sort_rule ? (active_sort_rule.sort_option_id === ITEM_COLUMN_ID ? "__name" : active_sort_rule.sort_option_id) : null;
+  const active_sort_direction = active_sort_rule?.sort_option_id ? active_sort_rule.direction : null;
+
   // ── Remove a property from the Kanban drawer's generic "Properties"
   // section — deletes the backing column outright (and its values on every
   // item). ──
@@ -1358,10 +1370,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [workspace_members]
   );
 
-  const table_base_columns = useMemo(
-    () => item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
-    [item_columns]
-  );
+  // Hide/Pin columns come from the board toolbar (`toolbar.hidden_column_ids`/
+  // `pinned_column_ids`) — hidden columns are dropped and pinned ones moved
+  // to the front (right after the Item column), matching monday.com's own
+  // "freeze to the left" behavior. Every row/header component downstream
+  // (`ItemRow`, `GroupColumnHeaderRow`, `layoutUtils.mainGridTemplate`, ...)
+  // renders columns by iterating this array in order with no pin-specific
+  // logic of its own, so reordering here is all pinning needs.
+  const table_base_columns = useMemo(() => {
+    const all = item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null);
+    const visible = all.filter((c) => !toolbar.hidden_column_ids.includes(c.id));
+    const pinned = visible.filter((c) => toolbar.pinned_column_ids.includes(c.id));
+    const rest = visible.filter((c) => !toolbar.pinned_column_ids.includes(c.id));
+    return [...pinned, ...rest];
+  }, [item_columns, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
   const table_sub_base_columns = useMemo(
     () => subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
     [subitem_columns]
@@ -1504,6 +1526,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         setSubItemColumnWidth(width);
         void workspaceService.updateNavItem(node.workspace.slug, board_id, { sub_item_column_width: width });
       },
+      // Item height + Conditional coloring are owned entirely by the board
+      // toolbar (`OverflowControl`/`ConditionalColoringPanel`) — `BoardTable`
+      // only reads them to render, it never mutates them back.
+      row_height: toolbar.row_height,
+      row_colors: toolbar.row_colors,
+      cell_colors: toolbar.cell_colors,
       initial_collapsed_groups: collapsed_group_map,
       // Tables (groups) are scoped per tab, so the viewer's collapsed set is
       // saved against the active tab rather than the board as a whole — see
@@ -1579,7 +1607,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [table_groups, table_people, board_id, items, item_column_width, sub_item_column_width, collapsed_group_map, view_tabs.active_view_id, node.workspace.slug]
+    [
+      table_groups,
+      table_people,
+      board_id,
+      items,
+      item_column_width,
+      sub_item_column_width,
+      collapsed_group_map,
+      view_tabs.active_view_id,
+      node.workspace.slug,
+      toolbar.row_height,
+      toolbar.row_colors,
+      toolbar.cell_colors,
+    ]
   );
 
   const handleCreateTableItem = async (group_key: string): Promise<string> => {
@@ -2244,6 +2285,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onAddColumnRight={handleAddColumnRight}
           onRequestColumnFilter={handleRequestColumnFilter}
           onRequestGroupByColumn={handleRequestGroupByColumn}
+          onRequestColumnSort={handleRequestColumnSort}
+          active_sort_column_id={active_sort_column_id}
+          active_sort_direction={active_sort_direction}
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (
