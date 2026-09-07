@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
 import { computeSubNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
@@ -16,6 +16,16 @@ import GroupSkeletonRows from "../rows/GroupSkeletonRows";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
+
+/**
+ * How many of a loaded table's rows get mounted into the DOM per reveal —
+ * see the `visible_count` state below. A table like a "Done" bucket can
+ * hold 1,000+ items; mounting every `ItemRow` (each a grid of cells, drag
+ * handlers, hover state, ...) the instant its data loads is what actually
+ * freezes the page — separate from, and downstream of, `is_items_loaded`'s
+ * own network-level lazy loading.
+ */
+const RENDER_CHUNK_SIZE = 50;
 
 interface GroupSectionProps {
   group: BoardTableGroup;
@@ -77,6 +87,35 @@ export default function GroupSection({
     return () => observer.disconnect();
   }, [is_items_loaded, group.key, actions]);
 
+  // Mounts a loaded table's rows in chunks rather than all at once — the
+  // same "reveal more as the viewer scrolls near it" idea as the fetch
+  // trigger above, one level deeper (DOM rendering instead of network
+  // fetching). `load_more_ref`'s sentinel sits right after the currently
+  // mounted rows, so as it scrolls near the viewport this fires again with
+  // the next chunk, and the sentinel itself moves further down — repeating
+  // until every row is mounted. Rebuilt per `visible_count` change (cheap:
+  // just a fresh `IntersectionObserver` on the same or a moved sentinel)
+  // rather than reused, so it always reflects the current reveal state
+  // instead of risking a stale observer on a since-unmounted sentinel.
+  const [visible_count, setVisibleCount] = useState(RENDER_CHUNK_SIZE);
+  const has_more_rows = visible_count < sorted_items.length;
+  const load_more_ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!is_items_loaded || !has_more_rows) return;
+    const node = load_more_ref.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setVisibleCount((count) => count + RENDER_CHUNK_SIZE);
+      },
+      { rootMargin: "1000px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [is_items_loaded, has_more_rows, visible_count]);
+
   return (
     <div ref={section_ref} style={{ marginTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
@@ -112,7 +151,7 @@ export default function GroupSection({
             />
           ) : (
             <>
-              {sorted_items.map((item) => {
+              {sorted_items.slice(0, visible_count).map((item) => {
                 const is_open = !!state.open_map[item.id];
                 // `state.sub_column_width` is set once the user drags the Subitem column's
                 // own resize handle (or a real board loads with one already persisted) —
@@ -151,6 +190,20 @@ export default function GroupSection({
                   </Fragment>
                 );
               })}
+
+              {has_more_rows && (
+                <div ref={load_more_ref}>
+                  <GroupSkeletonRows
+                    name_col_width={name_col_width}
+                    min_width={min_width}
+                    base_columns={group.base_columns}
+                    custom_columns={group.custom_columns}
+                    color={group.color}
+                    row_height={state.row_height}
+                    item_count={2}
+                  />
+                </div>
+              )}
 
               <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
 
