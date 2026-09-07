@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
 import { computeSubNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
@@ -12,6 +12,7 @@ import AddSubitemRow from "../rows/AddSubitemRow";
 import AddItemRow from "../rows/AddItemRow";
 import GroupSummaryRow from "../rows/GroupSummaryRow";
 import CollapsedGroupSummaryRow from "../rows/CollapsedGroupSummaryRow";
+import GroupSkeletonRows from "../rows/GroupSkeletonRows";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
@@ -46,9 +47,38 @@ export default function GroupSection({
   const is_collapsed = !!state.collapsed_groups[group.key];
   const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
   const sorted_items = applySort(group.items, state.sort, `main:${group.key}`, group.base_columns.concat(group.custom_columns));
+  const is_items_loaded = group.is_items_loaded !== false;
+
+  // Lazily requests this table's real rows (`actions.requestGroupItems`)
+  // the moment it scrolls near the viewport, instead of every table in the
+  // tab fetching its items up front — see `GroupSkeletonRows` for what
+  // renders in the meantime. A generous `rootMargin` prefetches ahead of
+  // the actual scroll position so tables are usually already loaded by the
+  // time they're visible. No-ops (and never observes) once loaded, and for
+  // every non-lazy caller (the standalone demo, Kanban/Calendar/Gantt's own
+  // eager-loaded tabs) whose groups never set `is_items_loaded` at all.
+  const section_ref = useRef<HTMLDivElement>(null);
+  const has_requested_ref = useRef(false);
+  useEffect(() => {
+    if (is_items_loaded || has_requested_ref.current) return;
+    const node = section_ref.current;
+    if (!node) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || has_requested_ref.current) return;
+        has_requested_ref.current = true;
+        actions.requestGroupItems(group.key);
+        observer.disconnect();
+      },
+      { rootMargin: "800px 0px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [is_items_loaded, group.key, actions]);
 
   return (
-    <div style={{ marginTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
+    <div ref={section_ref} style={{ marginTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
         <CollapsedGroupSummaryRow group={group} group_index={group_index} group_count={group_count} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
       ) : (
@@ -70,49 +100,63 @@ export default function GroupSection({
             active_sort_direction={active_sort_direction}
           />
 
-          {sorted_items.map((item) => {
-            const is_open = !!state.open_map[item.id];
-            // `state.sub_column_width` is set once the user drags the Subitem column's
-            // own resize handle (or a real board loads with one already persisted) —
-            // until then this still auto-sizes per item from its own longest subitem
-            // name, exactly as before (see `BoardTable`'s `name_col_width` for the
-            // Item column's identical fallback).
-            const sub_name_col_width = state.sub_column_width ?? computeSubNameColWidth(item.subs.map((s) => s.name));
-            const sub_min_width = subMinWidth(min_width, sub_name_col_width, group.sub_base_columns, group.sub_custom_columns);
-            const sorted_subs = applySort(item.subs, state.sort, `sub:${item.id}`, group.sub_base_columns.concat(group.sub_custom_columns));
+          {!is_items_loaded ? (
+            <GroupSkeletonRows
+              name_col_width={name_col_width}
+              min_width={min_width}
+              base_columns={group.base_columns}
+              custom_columns={group.custom_columns}
+              color={group.color}
+              row_height={state.row_height}
+              item_count={group.item_count}
+            />
+          ) : (
+            <>
+              {sorted_items.map((item) => {
+                const is_open = !!state.open_map[item.id];
+                // `state.sub_column_width` is set once the user drags the Subitem column's
+                // own resize handle (or a real board loads with one already persisted) —
+                // until then this still auto-sizes per item from its own longest subitem
+                // name, exactly as before (see `BoardTable`'s `name_col_width` for the
+                // Item column's identical fallback).
+                const sub_name_col_width = state.sub_column_width ?? computeSubNameColWidth(item.subs.map((s) => s.name));
+                const sub_min_width = subMinWidth(min_width, sub_name_col_width, group.sub_base_columns, group.sub_custom_columns);
+                const sorted_subs = applySort(item.subs, state.sort, `sub:${item.id}`, group.sub_base_columns.concat(group.sub_custom_columns));
 
-            return (
-              <Fragment key={item.id}>
-                <ItemRow item={item} group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
+                return (
+                  <Fragment key={item.id}>
+                    <ItemRow item={item} group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
 
-                {is_open && item.subs.length > 0 && (
-                  <>
-                    <SubitemHeaderRow
-                      item={item}
-                      group={group}
-                      name_col_width={sub_name_col_width}
-                      min_width={sub_min_width}
-                      state={state}
-                      actions={actions}
-                      onRequestColumnFilter={onRequestColumnFilter}
-                      onRequestGroupByColumn={onRequestGroupByColumn}
-                    />
-                    {sorted_subs.map((sub) => (
-                      <SubitemRow key={sub.id} sub={sub} item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
-                    ))}
-                    <AddSubitemRow min_width={sub_min_width} color={group.color} tint={group.tint} onAdd={() => actions.addSubitem(item.id)} />
-                    <div className="flex items-stretch" style={{ minWidth: sub_min_width, height: 16 }}>
-                      <TreeBar variant="gap" color={group.color} tint={group.tint} />
-                    </div>
-                  </>
-                )}
-              </Fragment>
-            );
-          })}
+                    {is_open && item.subs.length > 0 && (
+                      <>
+                        <SubitemHeaderRow
+                          item={item}
+                          group={group}
+                          name_col_width={sub_name_col_width}
+                          min_width={sub_min_width}
+                          state={state}
+                          actions={actions}
+                          onRequestColumnFilter={onRequestColumnFilter}
+                          onRequestGroupByColumn={onRequestGroupByColumn}
+                        />
+                        {sorted_subs.map((sub) => (
+                          <SubitemRow key={sub.id} sub={sub} item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
+                        ))}
+                        <AddSubitemRow min_width={sub_min_width} color={group.color} tint={group.tint} onAdd={() => actions.addSubitem(item.id)} />
+                        <div className="flex items-stretch" style={{ minWidth: sub_min_width, height: 16 }}>
+                          <TreeBar variant="gap" color={group.color} tint={group.tint} />
+                        </div>
+                      </>
+                    )}
+                  </Fragment>
+                );
+              })}
 
-          <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
+              <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
 
-          <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
+              <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
+            </>
+          )}
         </div>
       )}
     </div>

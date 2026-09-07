@@ -138,11 +138,21 @@ export const boardContentService = {
     return response.group;
   },
 
-  /** GET /api/boards/{board_id}/items — scoped to `view_id` (a tab), defaulting to the board's primary tab, optionally narrowed by a server-side `search` term. */
-  async getItems(board_id: number, view_id?: number | null, search?: string): Promise<BoardItemDto[]> {
+  /**
+   * GET /api/boards/{board_id}/items — scoped to `view_id` (a tab),
+   * defaulting to the board's primary tab, optionally narrowed by a
+   * server-side `search` term.
+   *
+   * `group_ids`, when given, narrows the response to just those tables
+   * (groups) — used by `GroupSection`'s lazy per-table loading so opening a
+   * tab with many/large tables doesn't fetch every row up front. Omitted,
+   * every table in the tab is returned, unchanged from before.
+   */
+  async getItems(board_id: number, view_id?: number | null, search?: string, group_ids?: number[]): Promise<BoardItemDto[]> {
     const params = new URLSearchParams();
     if (view_id) params.set("view_id", String(view_id));
     if (search) params.set("search", search);
+    group_ids?.forEach((group_id) => params.append("group_ids[]", String(group_id)));
     const query = params.toString() ? `?${params.toString()}` : "";
     const response = await apiClient.get<{ data: BoardItemDto[] }>(`/api/boards/${board_id}/items${query}`);
     return response.data;

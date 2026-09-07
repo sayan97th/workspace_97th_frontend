@@ -89,7 +89,12 @@ export default function GroupHeaderLeft({ group, group_index, group_count, state
         </button>
       )}
       <div className="font-mono text-[11px] text-boardtree-text-faint">
-        {group.items.length} items{sub_count ? ` · ${sub_count} subitems` : ""}
+        {/* While this table's rows haven't loaded yet (see `GroupSection`'s lazy
+         *  loading), `group.items` is a placeholder empty array — `item_count`
+         *  (known independently, from the backend's own count) keeps this
+         *  showing the real number instead of flashing "0 items". */}
+        {group.is_items_loaded === false ? (group.item_count ?? 0) : group.items.length} items
+        {sub_count ? ` · ${sub_count} subitems` : ""}
       </div>
 
       <button

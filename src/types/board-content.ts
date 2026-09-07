@@ -73,6 +73,13 @@ export type BoardGroupDto = {
   /** Flags this group as a priority client — separate from any per-item Status/Priority column, this marks the whole client as high-end so their tasks sort above everyone else's. */
   is_priority: boolean;
   position: number;
+  /**
+   * Root item count (excludes subitems/archived), independent of whether
+   * this table's actual rows have been fetched yet — see `GroupSection`'s
+   * lazy per-table loading, which uses this to size a table's "N items"
+   * label and its loading skeleton before `getItems` resolves.
+   */
+  item_count: number;
 };
 
 /** A `timeline`-type column's value — both `YYYY-MM-DD`. */

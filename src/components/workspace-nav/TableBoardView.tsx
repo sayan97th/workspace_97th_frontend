@@ -342,6 +342,15 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     views: BoardViewDto[];
     personal_order: number[] | null;
     collapsed_group_ids: number[];
+    /**
+     * Ids of every group whose items are already present in `items` above —
+     * every group for a non-`"table"` tab (Kanban/Calendar/Gantt still need
+     * the whole tab up front for their own aggregation), or none yet for a
+     * `"table"` tab, which loads each table's rows lazily instead (see
+     * `GroupSection`). Threaded into `TableBoardBody` as
+     * `initial_loaded_group_ids`.
+     */
+    loaded_group_ids: number[];
   } | null>(null);
   const [has_error, setHasError] = useState(false);
 
@@ -353,13 +362,28 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     // Each tab (view) has its own independent columns/groups/items, so the
     // fetch is re-run on every tab switch, not just on board change — see
     // `active_view_id` in the dependency array below.
+    //
+    // `items` is deliberately NOT part of this first batch: a `"table"` tab
+    // can hold 100+ tables (groups), and fetching every one's rows up front
+    // is exactly the slow-load problem `GroupSection`'s lazy per-table
+    // loading exists to avoid. Once `columns`/`groups`/`views` resolve, the
+    // active tab's own `view_type` decides whether items are still fetched
+    // eagerly here (every other view kind, which needs the full set for its
+    // own board-wide aggregation) or left for `GroupSection` to request
+    // table-by-table as the viewer scrolls.
     Promise.all([
       boardContentService.getColumns(node.id, active_view_id),
       boardContentService.getGroups(node.id, active_view_id),
-      boardContentService.getItems(node.id, active_view_id),
       boardContentService.getViews(node.id),
     ])
-      .then(([columns, groups_index, items, views]) => {
+      .then(async ([columns, groups_index, views]) => {
+        const active_view =
+          views.views.find((view) => view.id === active_view_id) ??
+          views.views.find((view) => view.is_primary) ??
+          views.views[0];
+        const is_lazy_table_view = (active_view?.view_type ?? "table") === "table";
+        const items = is_lazy_table_view ? [] : await boardContentService.getItems(node.id, active_view_id);
+
         if (!cancelled) {
           setLoaded({
             columns,
@@ -368,6 +392,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
             views: views.views,
             personal_order: views.personal_order,
             collapsed_group_ids: groups_index.collapsed_group_ids,
+            loaded_group_ids: is_lazy_table_view ? [] : groups_index.groups.map((group) => group.id),
           });
         }
       })
@@ -422,6 +447,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         initial_columns={loaded.columns}
         initial_groups={loaded.groups}
         initial_items={loaded.items}
+        initial_loaded_group_ids={loaded.loaded_group_ids}
         initial_views={loaded.views}
         initial_active_view_id={active_view_id ?? null}
         initial_personal_order={loaded.personal_order}
@@ -467,6 +493,8 @@ type TableBoardBodyProps = {
   initial_columns: BoardColumnDto[];
   initial_groups: BoardGroupDto[];
   initial_items: BoardItemDto[];
+  /** Ids of every group whose items are already present in `initial_items` — see `loaded.loaded_group_ids`'s own doc comment in `TableBoardView`. */
+  initial_loaded_group_ids: number[];
   initial_views: BoardViewDto[];
   initial_active_view_id: number | null;
   initial_personal_order: number[] | null;
@@ -553,6 +581,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_columns,
   initial_groups,
   initial_items,
+  initial_loaded_group_ids,
   initial_views,
   initial_active_view_id,
   initial_personal_order,
@@ -863,6 +892,116 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) => view_tabs.reorderPersonalTabs(ordered_ids);
   const handleChangeViewEmoji = (id: number | string, emoji: string | null) => view_tabs.changeViewEmoji(Number(id), emoji);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
+
+  // ── Lazy per-table item loading (Table view only) — see `GroupSection`'s
+  // `IntersectionObserver` and `loaded.loaded_group_ids`'s own doc comment
+  // in `TableBoardView`. `loaded_group_ids` is the set of groups whose rows
+  // are already merged into `items`; `loading_group_ids_ref` is a ref (not
+  // state) purely to de-dupe in-flight requests without forcing a re-render
+  // per request. ──
+  const [loaded_group_ids, setLoadedGroupIds] = useState<Set<number>>(() => new Set(initial_loaded_group_ids));
+  const loading_group_ids_ref = useRef<Set<number>>(new Set());
+  const is_all_items_loaded = useMemo(
+    () => groups.length > 0 && groups.every((group) => loaded_group_ids.has(group.id)),
+    [groups, loaded_group_ids]
+  );
+
+  /** Merges freshly-fetched rows into `items` by id — shared by `requestGroupItems` (one table) and `loadAllRemainingGroups` (several at once). */
+  const mergeFetchedItems = useCallback((fetched: BoardItemDto[]) => {
+    setItems((current) => {
+      const by_id = new Map(current.map((item) => [item.id, item]));
+      fetched.forEach((item) => by_id.set(item.id, item));
+      return Array.from(by_id.values());
+    });
+  }, []);
+
+  /** `useBoardTable`'s `onRequestGroupItems` — fired by a table's own `GroupSection` once it scrolls near the viewport. No-ops if that table is already loaded or has a fetch in flight. */
+  const requestGroupItems = useCallback(
+    (group_key: string) => {
+      const group_id = Number(group_key);
+      if (loaded_group_ids.has(group_id) || loading_group_ids_ref.current.has(group_id)) return;
+      loading_group_ids_ref.current.add(group_id);
+      boardContentService
+        .getItems(board_id, view_tabs.active_view_id, undefined, [group_id])
+        .then((fetched) => {
+          mergeFetchedItems(fetched);
+          setLoadedGroupIds((current) => new Set(current).add(group_id));
+        })
+        .catch(() => {})
+        .finally(() => loading_group_ids_ref.current.delete(group_id));
+    },
+    [board_id, view_tabs.active_view_id, loaded_group_ids, mergeFetchedItems]
+  );
+
+  /**
+   * Correctness fallback for search/sort/filter/"group by column" — those
+   * are computed client-side over `items` by `useBoardToolbar`, which
+   * silently under-counts any table `GroupSection` hasn't lazy-loaded yet.
+   * Fetches every remaining not-yet-loaded table in one request the moment
+   * any of those features becomes active (see the effect below), so results
+   * are always computed over the whole tab rather than whatever happened to
+   * have scrolled into view.
+   */
+  const loadAllRemainingGroups = useCallback(() => {
+    const missing_ids = groups
+      .map((group) => group.id)
+      .filter((id) => !loaded_group_ids.has(id) && !loading_group_ids_ref.current.has(id));
+    if (!missing_ids.length) return;
+    missing_ids.forEach((id) => loading_group_ids_ref.current.add(id));
+    boardContentService
+      .getItems(board_id, view_tabs.active_view_id, undefined, missing_ids)
+      .then((fetched) => {
+        mergeFetchedItems(fetched);
+        setLoadedGroupIds((current) => {
+          const next = new Set(current);
+          missing_ids.forEach((id) => next.add(id));
+          return next;
+        });
+      })
+      .catch(() => {})
+      .finally(() => missing_ids.forEach((id) => loading_group_ids_ref.current.delete(id)));
+  }, [groups, loaded_group_ids, board_id, view_tabs.active_view_id, mergeFetchedItems]);
+
+  // Whenever search/filter/sort/"group by column" becomes active, those
+  // features need every table's rows to be correct — trigger the fallback
+  // above rather than letting them silently operate over just the tables
+  // that happen to have scrolled into view so far.
+  useEffect(() => {
+    const is_narrowed =
+      toolbar.search_query.trim() !== "" ||
+      toolbar.selected_person_ids.length > 0 ||
+      Object.values(toolbar.quick_filter_selections).some((ids) => ids.length > 0) ||
+      toolbar.advanced_filter_rows.some((row) => row.column_id && row.condition) ||
+      toolbar.sort_rules.some((rule) => rule.sort_option_id) ||
+      toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID;
+    if (is_narrowed) loadAllRemainingGroups();
+  }, [
+    toolbar.search_query,
+    toolbar.selected_person_ids,
+    toolbar.quick_filter_selections,
+    toolbar.advanced_filter_rows,
+    toolbar.sort_rules,
+    toolbar.group_by_option_id,
+    loadAllRemainingGroups,
+  ]);
+
+  // Item-detail deep link (`/boards/{id}/pulses/{item_id}`) into a table
+  // that hasn't lazy-loaded yet: the drawer-sync effect below (which reads
+  // `items` via `findItemInTree`) would otherwise silently never open it
+  // until that table happens to scroll into view on its own. Resolving the
+  // item directly tells us which table it belongs to, so that one table can
+  // be requested immediately regardless of where it sits in the tab.
+  const requested_deep_link_item_ref = useRef<number | null>(null);
+  useEffect(() => {
+    if (!initial_open_item_id || is_all_items_loaded) return;
+    if (requested_deep_link_item_ref.current === initial_open_item_id) return;
+    if (findItemInTree(items, initial_open_item_id)) return;
+    requested_deep_link_item_ref.current = initial_open_item_id;
+    boardContentService
+      .getItem(board_id, initial_open_item_id)
+      .then((detail) => requestGroupItems(String(detail.group_id)))
+      .catch(() => {});
+  }, [initial_open_item_id, is_all_items_loaded, items, board_id, requestGroupItems]);
 
   // ── Rename item — used by Kanban's card-title inline editor. Only the name
   // field is merged back in (not the whole server item) so a stale
@@ -1439,24 +1578,41 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   });
   const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
 
+  // Looked up (rather than threaded through `toolbar.groups`'s generic,
+  // Kanban/Calendar-shared `BoardGroup<TRow>` type) so `is_items_loaded`/
+  // `item_count` stay a Table-view-only concern — see `groups_by_id` below.
+  const groups_by_id = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
+
   const table_groups: BoardTableGroup[] = useMemo(
     () =>
-      toolbar.groups.map((g) => ({
-        key: g.id,
-        title: g.name,
-        color: g.accent_color,
-        tint: g.accent_color,
-        is_priority: !!g.is_priority,
-        item_title: item_column_label,
-        sub_title: "Subitem",
-        base_columns: table_base_columns,
-        sub_base_columns: table_sub_base_columns,
-        custom_columns: [],
-        sub_custom_columns: [],
-        items: g.rows.map(adaptTableItem),
-      })),
+      toolbar.groups.map((g) => {
+        const group_id = Number(g.id);
+        // `is_all_items_loaded` covers both the eager (non-`"table"` view,
+        // or a search/filter/sort/group-by fallback) case and a "group by
+        // column" bucket, whose synthetic `g.id` isn't a real group id at
+        // all — at that point every table's rows are already loaded anyway
+        // (see `loadAllRemainingGroups`'s effect), so this is always `true`
+        // by the time it would matter.
+        const is_items_loaded = is_all_items_loaded || loaded_group_ids.has(group_id);
+        return {
+          key: g.id,
+          title: g.name,
+          color: g.accent_color,
+          tint: g.accent_color,
+          is_priority: !!g.is_priority,
+          item_title: item_column_label,
+          sub_title: "Subitem",
+          base_columns: table_base_columns,
+          sub_base_columns: table_sub_base_columns,
+          custom_columns: [],
+          sub_custom_columns: [],
+          items: g.rows.map(adaptTableItem),
+          is_items_loaded,
+          item_count: groups_by_id.get(group_id)?.item_count ?? g.rows.length,
+        };
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label]
+    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, groups_by_id]
   );
 
   // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
@@ -1646,6 +1802,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         const row = findItemInTree(items, Number(node_id));
         if (row) handleRowClick(row);
       },
+      onRequestGroupItems: requestGroupItems,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
@@ -1661,6 +1818,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.row_height,
       toolbar.row_colors,
       toolbar.cell_colors,
+      requestGroupItems,
     ]
   );
 
@@ -1712,6 +1870,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       position: after ? after.position + 1 : undefined,
     });
     setGroups((current) => insertGroupAtPosition(current, created));
+    // A freshly created table has no rows yet — nothing to lazy-load.
+    setLoadedGroupIds((current) => new Set(current).add(created.id));
     return { key: String(created.id), title: created.name };
   };
 
@@ -1720,15 +1880,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // state, since a locally-fabricated copy's items would carry fake ids that
   // 404 the moment a cell edit tries to persist against them. The duplicate
   // response only carries the new group itself, so a `with_items` duplicate
-  // needs a follow-up `getItems` to pick up the copied rows under their real
-  // backend ids. ──
+  // needs a follow-up scoped `getItems` (just this one new group, consistent
+  // with the lazy per-table loading model — not a whole-tab refetch) to pick
+  // up the copied rows under their real backend ids. ──
   const handleDuplicateTableGroup = async (group_key: string, with_items: boolean) => {
     const created = await boardContentService.duplicateGroup(board_id, Number(group_key), with_items);
     setGroups((current) => [...current, created]);
     if (with_items) {
-      const refreshed = await boardContentService.getItems(board_id, view_tabs.active_view_id);
-      setItems(refreshed);
+      const fetched = await boardContentService.getItems(board_id, view_tabs.active_view_id, undefined, [created.id]);
+      mergeFetchedItems(fetched);
     }
+    setLoadedGroupIds((current) => new Set(current).add(created.id));
   };
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {

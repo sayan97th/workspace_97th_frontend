@@ -247,6 +247,17 @@ export interface UseBoardTableConfig {
    */
   onOpenComments?: (node_id: string) => void;
   /**
+   * Fired at most once per table (group) whose `is_items_loaded` is
+   * `false`, when `GroupSection`'s own `IntersectionObserver` sees it
+   * scroll near the viewport — the caller resolves this by fetching that
+   * table's rows (`boardContentService.getItems(..., [group_id])`) and
+   * merging them into whatever real data feeds `initial_groups`, which
+   * flips `is_items_loaded` to `true` once it re-syncs. Omitted (the
+   * standalone demo, and any caller whose groups don't set
+   * `is_items_loaded` in the first place), this never fires.
+   */
+  onRequestGroupItems?: (group_key: string) => void;
+  /**
    * Row density preset from the board toolbar's "Item height" control
    * (`OverflowControl`/`toolbar.row_height`) — read-only here, `BoardTable`
    * never mutates it back. Omitted (the standalone demo), rows render at
@@ -1340,6 +1351,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onOpenComments?.(node_id);
   }, []);
 
+  /** `GroupSection`'s `IntersectionObserver` trigger — see `UseBoardTableConfig.onRequestGroupItems`'s own doc comment. */
+  const requestGroupItems = useCallback((group_key: string) => {
+    config_ref.current.onRequestGroupItems?.(group_key);
+  }, []);
+
   const copyRowLink = useCallback((id: string) => {
     setState((s) => ({ ...s, copied_row_id: id }));
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -1452,6 +1468,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       closeAllOverlays,
       copyRowLink,
       openComments,
+      requestGroupItems,
     }),
     [
       toggleItemOpen, toggleSelected, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
@@ -1463,7 +1480,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, openTagEditor, closeTagEditor, addTagDef,
-      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments,
+      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, requestGroupItems,
     ]
   );
 

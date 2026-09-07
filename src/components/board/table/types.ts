@@ -85,6 +85,21 @@ export interface BoardTableGroup {
   custom_columns: ColumnDef[];
   sub_base_columns: ColumnDef[];
   sub_custom_columns: ColumnDef[];
+  /**
+   * Whether this table's `items` have actually been fetched yet — undefined
+   * (and `true`) for every caller that doesn't lazy-load (the standalone
+   * mock demo, and Kanban/Calendar/Gantt's own eager-loaded tabs). `false`
+   * means `items` is a placeholder (empty) and `GroupSection` should render
+   * `GroupSkeletonRows` instead, triggering `actions.requestGroupItems` once
+   * this table scrolls near the viewport.
+   */
+  is_items_loaded?: boolean;
+  /**
+   * This table's real root item count, known independently of whether its
+   * rows have loaded yet (see `is_items_loaded`) — sizes the "N items"
+   * label and the loading skeleton's row count before `items` is populated.
+   */
+  item_count?: number;
 }
 
 export interface PersonDef {
