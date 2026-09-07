@@ -92,6 +92,7 @@ import type {
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
+import type { BoardImportCommitResponse } from "@/types/board-import";
 import type { BoardDetail, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
@@ -961,6 +962,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       .catch(() => {})
       .finally(() => missing_ids.forEach((id) => loading_group_ids_ref.current.delete(id)));
   }, [groups, loaded_group_ids, board_id, view_tabs.active_view_id, mergeFetchedItems]);
+
+  /**
+   * Board options menu's "More actions" > "Import items" — fired once the
+   * wizard has actually written rows. A bulk import can create new columns,
+   * a brand-new table, and/or many items in one go, so rather than trying to
+   * patch all of that into local state piecemeal, this just re-fetches
+   * `columns`/`groups` outright and force-refetches the target table's own
+   * items (bypassing `requestGroupItems`'s "already loaded" guard, which
+   * would otherwise no-op for a table the viewer already had open).
+   */
+  const handleImportItems = useCallback(
+    (result: BoardImportCommitResponse) => {
+      boardContentService.getColumns(board_id, view_tabs.active_view_id).then(setColumns).catch(() => {});
+      boardContentService
+        .getGroups(board_id, view_tabs.active_view_id)
+        .then((groups_index) => setGroups(groups_index.groups))
+        .catch(() => {});
+      boardContentService
+        .getItems(board_id, view_tabs.active_view_id, undefined, [result.group_id])
+        .then((fetched) => {
+          mergeFetchedItems(fetched);
+          setLoadedGroupIds((current) => new Set(current).add(result.group_id));
+        })
+        .catch(() => {});
+    },
+    [board_id, view_tabs.active_view_id, mergeFetchedItems]
+  );
 
   // Whenever search/filter/sort/"group by column" becomes active, those
   // features need every table's rows to be correct — trigger the fallback
@@ -2440,6 +2468,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onArchive: handleArchiveBoard,
           onUnarchive: handleUnarchiveBoard,
           onDelete: handleDeleteBoard,
+          onImportItems: handleImportItems,
         },
       }}
       tabs={{

@@ -27,11 +27,13 @@ import { CommentIcon, DownloadIcon } from "@/icons/board-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
 import { boardOptionsService } from "@/services/board-options.service";
 import type { BoardAccessEntry } from "@/types/board-invitation";
+import type { BoardImportCommitResponse } from "@/types/board-import";
 import type { BoardType } from "@/types/workspace";
 import BoardActivityLogDrawer from "./BoardActivityLogDrawer";
 import BoardPermissionsModal from "./BoardPermissionsModal";
 import BoardTrashModal from "./BoardTrashModal";
 import GiveFeedbackModal from "./GiveFeedbackModal";
+import ImportItemsModal from "./import/ImportItemsModal";
 import RenameBoardModal from "./RenameBoardModal";
 
 export type BoardOptionsMenuProps = {
@@ -59,6 +61,8 @@ export type BoardOptionsMenuProps = {
   onRename: (label: string) => Promise<void>;
   /** Duplicates the whole board (every tab, its columns/groups/items) and navigates to the copy. */
   onDuplicate: () => Promise<void>;
+  /** "More actions" > "Import items" — fired once a bulk import has actually written rows, so the caller can refresh its columns/groups/items. */
+  onImportItems: (result: BoardImportCommitResponse) => void;
   /** Archives the board in place — the board stays open, its menu just flips to "Restore from archive". */
   onArchive: () => Promise<void>;
   /** Un-archives the board in place, from either "Restore from archive" or the trash panel's Archive tab. */
@@ -71,8 +75,7 @@ type ConfirmKind = "archive" | "delete" | null;
 
 /**
  * The board header's "..." options menu — every row from the approved
- * design except the AI-powered ones (out of scope here) and "Import items"
- * (left as a placeholder for a follow-up). Built on the generic
+ * design except the AI-powered ones (out of scope here). Built on the generic
  * {@link AnchoredMenu} primitive, the same way {@link WorkspaceOptionsMenu}
  * is, and owns every one of its own sub-panels (rename/permissions/activity
  * log/trash/feedback/confirm dialogs) the same self-contained way
@@ -98,12 +101,14 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   onArchive,
   onUnarchive,
   onDelete,
+  onImportItems,
 }) => {
   const [is_rename_open, setIsRenameOpen] = useState(false);
   const [is_permissions_open, setIsPermissionsOpen] = useState(false);
   const [is_activity_log_open, setIsActivityLogOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [is_feedback_open, setIsFeedbackOpen] = useState(false);
+  const [is_import_open, setIsImportOpen] = useState(false);
   const [confirm_kind, setConfirmKind] = useState<ConfirmKind>(null);
   const [is_duplicating, setIsDuplicating] = useState(false);
   const [is_fullscreen, setIsFullscreen] = useState(false);
@@ -176,7 +181,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
         { key: "save-template", label: "Save as a template", icon: <ReportIcon />, onClick: () => { }, disabled: true },
         { key: "build-report", label: "Build a report from board", icon: <ReportIcon />, onClick: () => { }, disabled: true },
         { key: "export-excel", label: "Export board to Excel", icon: <DownloadIcon />, onClick: () => void handleExport() },
-        { key: "import-items", label: "Import items", icon: <ImportIcon />, onClick: () => { }, disabled: true },
+        { key: "import-items", label: "Import items", icon: <ImportIcon />, onClick: () => setIsImportOpen(true) },
         {
           key: "duplicate-board",
           label: is_duplicating ? "Duplicating…" : "Duplicate board",
@@ -234,6 +239,14 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
         is_open={is_feedback_open}
         onClose={() => setIsFeedbackOpen(false)}
         onSubmit={(message) => boardOptionsService.submitFeedback(message, board_id)}
+      />
+
+      <ImportItemsModal
+        is_open={is_import_open}
+        onClose={() => setIsImportOpen(false)}
+        board_id={board_id}
+        view_id={view_id ?? null}
+        onImported={onImportItems}
       />
 
       <ConfirmActionModal
