@@ -26,8 +26,10 @@ export type WorkspaceNavApi = {
 /**
  * Fetches and mutates a single workspace's navigation tree. All CRUD actions
  * round-trip to the API and then reload the tree so the sidebar stays in sync
- * with the server (the source of truth). Group expand/collapse state is kept
- * locally and defaults to open, preserving user toggles across reloads.
+ * with the server (the source of truth). Group expand/collapse state defaults
+ * to open, is kept locally for a snappy toggle, and is persisted per user via
+ * `PUT .../navigation/collapsed-state` so it's remembered across reloads and
+ * devices (see {@link WorkspaceNavCollapseState} on the API).
  */
 export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNavApi {
   const [tree, setTree] = useState<WorkspaceNavNode[]>([]);
@@ -40,12 +42,12 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     setIsLoading(true);
     setError(null);
     try {
-      const data = await workspaceService.getNavigationTree(workspace_slug);
+      const { data, collapsed_group_ids } = await workspaceService.getNavigationTree(workspace_slug);
       setTree(data);
       setExpandedGroupIds((prev) => {
         const next = { ...prev };
         for (const group_id of collectGroupIds(data)) {
-          if (next[group_id] === undefined) next[group_id] = true;
+          if (next[group_id] === undefined) next[group_id] = !collapsed_group_ids.includes(Number(group_id));
         }
         return next;
       });
@@ -60,9 +62,20 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     void load();
   }, [load]);
 
-  const toggleGroup = useCallback((group_id: string) => {
-    setExpandedGroupIds((prev) => ({ ...prev, [group_id]: !prev[group_id] }));
-  }, []);
+  const toggleGroup = useCallback(
+    (group_id: string) => {
+      if (!workspace_slug) return;
+      setExpandedGroupIds((prev) => {
+        const next = { ...prev, [group_id]: !prev[group_id] };
+        const collapsed_group_ids = Object.entries(next)
+          .filter(([, is_expanded]) => !is_expanded)
+          .map(([id]) => Number(id));
+        void workspaceService.updateNavCollapseState(workspace_slug, { collapsed_group_ids });
+        return next;
+      });
+    },
+    [workspace_slug]
+  );
 
   const runMutation = useCallback(
     async (mutation: (slug: string) => Promise<unknown>) => {

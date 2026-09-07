@@ -30,7 +30,7 @@ const WorkspaceHomeRedirect: React.FC = () => {
           return;
         }
 
-        const tree = await workspaceService.getNavigationTree(home_workspace.slug);
+        const { data: tree } = await workspaceService.getNavigationTree(home_workspace.slug);
         const manage_item = tree.find((node) => node.view_key === "workspace_manage");
 
         if (!manage_item) {

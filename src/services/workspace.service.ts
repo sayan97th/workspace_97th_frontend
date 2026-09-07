@@ -4,6 +4,7 @@ import type {
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
+  UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
   Workspace,
@@ -12,6 +13,7 @@ import type {
   WorkspaceContentItem,
   WorkspaceContentPage,
   WorkspaceMember,
+  WorkspaceNavigationTreeResponse,
   WorkspaceNavNode,
   TransferOwnershipPayload,
   TransferOwnershipResult,
@@ -137,12 +139,30 @@ export const workspaceService = {
     return apiClient.get<BoardDetail>(`/api/boards/${item_id}`);
   },
 
-  /** GET /api/workspaces/{slug}/navigation — the full navigation tree. */
-  async getNavigationTree(workspace_slug: string): Promise<WorkspaceNavNode[]> {
-    const response = await apiClient.get<{ data: WorkspaceNavNode[] }>(
+  /**
+   * GET /api/workspaces/{slug}/navigation — the full navigation tree, plus
+   * which of its folders the current user currently has collapsed.
+   */
+  async getNavigationTree(workspace_slug: string): Promise<WorkspaceNavigationTreeResponse> {
+    return apiClient.get<WorkspaceNavigationTreeResponse>(
       `/api/workspaces/${workspace_slug}/navigation`
     );
-    return response.data;
+  },
+
+  /**
+   * PUT /api/workspaces/{slug}/navigation/collapsed-state — saves the
+   * viewer's own collapsed/expanded set of sidebar folders for this
+   * workspace, so it's remembered per user across page reloads.
+   */
+  async updateNavCollapseState(
+    workspace_slug: string,
+    payload: UpdateNavCollapseStatePayload
+  ): Promise<number[]> {
+    const response = await apiClient.put<{ collapsed_group_ids: number[] }>(
+      `/api/workspaces/${workspace_slug}/navigation/collapsed-state`,
+      payload
+    );
+    return response.collapsed_group_ids;
   },
 
   /** POST /api/workspaces/{slug}/navigation — create a folder or view. */

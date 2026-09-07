@@ -145,6 +145,21 @@ export type MoveNavItemPayload = {
   position?: number;
 };
 
+/**
+ * Response shape for `GET /api/workspaces/{slug}/navigation` — the tree plus
+ * which of its folders the current user currently has collapsed (a personal
+ * preference, mirrors the board tables' `collapsed_group_ids`).
+ */
+export type WorkspaceNavigationTreeResponse = {
+  data: WorkspaceNavNode[];
+  collapsed_group_ids: number[];
+};
+
+/** Payload for `PUT /api/workspaces/{slug}/navigation/collapsed-state`. */
+export type UpdateNavCollapseStatePayload = {
+  collapsed_group_ids: number[];
+};
+
 /** Payload for creating a workspace from the "Add new workspace" dialog. */
 export type CreateWorkspacePayload = {
   name: string;
