@@ -1,12 +1,14 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { arrayMove } from "@dnd-kit/sortable";
 import { workspaceService } from "@/services/workspace.service";
 import type {
   CreateNavItemPayload,
   MoveNavItemPayload,
+  ReorderNavItemsPayload,
   WorkspaceNavNode,
 } from "@/types/workspace";
-import { collectGroupIds } from "./helpers";
+import { collectGroupIds, locateNavNode } from "./helpers";
 
 export type WorkspaceNavApi = {
   tree: WorkspaceNavNode[];
@@ -21,6 +23,12 @@ export type WorkspaceNavApi = {
   /** Flags/unflags a sidebar item (board/folder) as priority — the nav tree's own priority star. */
   togglePriority: (item_id: number, is_priority: boolean) => Promise<void>;
   moveItem: (item_id: number, payload: MoveNavItemPayload) => Promise<void>;
+  /** Drag-and-drop reorder: persists a full sibling order in one server-side transaction. */
+  reorderItem: (payload: ReorderNavItemsPayload) => Promise<void>;
+  /** Swaps an item with its previous sibling (kebab menu's "Move up"); a no-op when it's already first. */
+  moveItemUp: (item_id: number) => Promise<void>;
+  /** Swaps an item with its next sibling (kebab menu's "Move down"); a no-op when it's already last. */
+  moveItemDown: (item_id: number) => Promise<void>;
   duplicateItem: (item_id: number) => Promise<void>;
   deleteItem: (item_id: number) => Promise<void>;
 };
@@ -122,6 +130,40 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  const reorderItem = useCallback(
+    (payload: ReorderNavItemsPayload) =>
+      runMutation((slug) => workspaceService.reorderNavItems(slug, payload)),
+    [runMutation]
+  );
+
+  /** Shared by `moveItemUp`/`moveItemDown`: swaps `item_id` with its previous/next sibling and persists the new order. */
+  const swapWithSibling = useCallback(
+    (item_id: number, direction: "up" | "down") =>
+      runMutation((slug) => {
+        const location = locateNavNode(tree, item_id);
+        if (!location) return Promise.resolve();
+
+        const swap_index = direction === "up" ? location.index - 1 : location.index + 1;
+        if (swap_index < 0 || swap_index >= location.siblings.length) return Promise.resolve();
+
+        const target_ordered_ids = arrayMove(
+          location.siblings.map((sibling) => sibling.id),
+          location.index,
+          swap_index
+        );
+
+        return workspaceService.reorderNavItems(slug, {
+          moved_item_id: item_id,
+          target_parent_id: location.parent_id,
+          target_ordered_ids,
+        });
+      }),
+    [runMutation, tree]
+  );
+
+  const moveItemUp = useCallback((item_id: number) => swapWithSibling(item_id, "up"), [swapWithSibling]);
+  const moveItemDown = useCallback((item_id: number) => swapWithSibling(item_id, "down"), [swapWithSibling]);
+
   const duplicateItem = useCallback(
     (item_id: number) =>
       runMutation((slug) => workspaceService.duplicateNavItem(slug, item_id)),
@@ -146,6 +188,9 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     toggleFavorite,
     togglePriority,
     moveItem,
+    reorderItem,
+    moveItemUp,
+    moveItemDown,
     duplicateItem,
     deleteItem,
   };

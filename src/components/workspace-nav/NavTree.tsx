@@ -1,12 +1,28 @@
 "use client";
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { WorkspaceNavNode } from "@/types/workspace";
 import {
   DeleteIcon,
   DuplicateIcon,
   FolderIcon,
+  GroupToggleIcon,
+  HomeIcon,
+  MoveDownIcon,
   MoveToIcon,
+  MoveUpIcon,
   OpenInNewTabIcon,
   PlusIcon,
   RenameIcon,
@@ -17,7 +33,7 @@ import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/An
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
-import { getLeafHref } from "./helpers";
+import { getLeafHref, locateNavNode } from "./helpers";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
 
 export type NavTreeProps = {
@@ -47,6 +63,22 @@ type MoveState = { is_open: boolean; node: WorkspaceNavNode | null };
 const CLOSED_MENU: MenuState = { is_open: false, anchor_el: null, node: null };
 const CLOSED_FORM: FormState = { is_open: false, mode: "create-folder", parent_id: null, target: null };
 
+/** A static, non-interactive copy of a row's icon + label, floated under the pointer while it's being dragged — mirrors `BoardKanban`'s `CardPreview`. */
+const NavRowPreview: React.FC<{ node: WorkspaceNavNode }> = ({ node }) => (
+  <div className="flex h-9 w-72 items-center gap-[11px] rounded-[9px] bg-shell-panel px-2.5 text-shell-text shadow-2xl">
+    <span className="flex flex-none text-shell-text-secondary">
+      {node.type === "group" ? (
+        <GroupToggleIcon />
+      ) : node.icon === "home" ? (
+        <HomeIcon size={16} />
+      ) : (
+        <FolderIcon size={15} />
+      )}
+    </span>
+    <span className="flex-1 truncate text-sm">{node.label}</span>
+  </div>
+);
+
 /**
  * The dynamic navigation tree plus all of its editing affordances (add at root,
  * per-row kebab actions, and the create/rename/move modals). Reusable for any
@@ -58,6 +90,44 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
   const [move, setMove] = useState<MoveState>({ is_open: false, node: null });
   const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode | null>(null);
+  const [active_drag_id, setActiveDragId] = useState<number | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(Number(event.active.id));
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDragId(null);
+
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const active_location = locateNavNode(nav.tree, Number(active.id));
+    const over_location = locateNavNode(nav.tree, Number(over.id));
+    // Drag-and-drop only reorders siblings within their current folder (or the
+    // workspace root); moving an item into a *different* folder still goes
+    // through "Move to" below, which already picks any folder as a target.
+    if (!active_location || !over_location || active_location.parent_id !== over_location.parent_id) return;
+
+    const target_ordered_ids = arrayMove(
+      active_location.siblings.map((sibling) => sibling.id),
+      active_location.index,
+      over_location.index
+    );
+
+    void nav.reorderItem({
+      moved_item_id: Number(active.id),
+      target_parent_id: active_location.parent_id,
+      target_ordered_ids,
+    });
+  };
+
+  const active_drag_node = active_drag_id !== null ? locateNavNode(nav.tree, active_drag_id)?.node ?? null : null;
 
   const openRowMenu = (event: React.MouseEvent, node: WorkspaceNavNode) => {
     setMenu({ is_open: true, anchor_el: event.currentTarget as HTMLElement, node });
@@ -99,6 +169,9 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
 
   const buildNodeItems = (node: WorkspaceNavNode): AnchoredMenuItem[] => {
     const items: AnchoredMenuItem[] = [];
+    const location = locateNavNode(nav.tree, node.id);
+    const can_move_up = Boolean(location && location.index > 0);
+    const can_move_down = Boolean(location && location.index < location.siblings.length - 1);
 
     if (node.type === "group") {
       items.push(
@@ -136,6 +209,20 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         label: "Move to",
         icon: <MoveToIcon />,
         onClick: () => setMove({ is_open: true, node }),
+      },
+      {
+        key: "move-up",
+        label: "Move up",
+        icon: <MoveUpIcon />,
+        disabled: !can_move_up,
+        onClick: () => void nav.moveItemUp(node.id),
+      },
+      {
+        key: "move-down",
+        label: "Move down",
+        icon: <MoveDownIcon />,
+        disabled: !can_move_down,
+        onClick: () => void nav.moveItemDown(node.id),
       },
       {
         key: "favorite",
@@ -222,18 +309,32 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
           No items yet. Use the + button to add one.
         </div>
       ) : (
-        nav.tree.map((node) => (
-          <NavTreeRow
-            key={node.id}
-            node={node}
-            depth={0}
-            pathname={pathname}
-            expanded_group_ids={nav.expanded_group_ids}
-            onToggleGroup={nav.toggleGroup}
-            onOpenRowMenu={openRowMenu}
-            onTogglePriority={(target) => void nav.togglePriority(target.id, !target.is_priority)}
-          />
-        ))
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveDragId(null)}
+        >
+          <SortableContext items={nav.tree.map((node) => String(node.id))} strategy={verticalListSortingStrategy}>
+            {nav.tree.map((node) => (
+              <NavTreeRow
+                key={node.id}
+                node={node}
+                depth={0}
+                pathname={pathname}
+                expanded_group_ids={nav.expanded_group_ids}
+                onToggleGroup={nav.toggleGroup}
+                onOpenRowMenu={openRowMenu}
+                onTogglePriority={(target) => void nav.togglePriority(target.id, !target.is_priority)}
+              />
+            ))}
+          </SortableContext>
+
+          <DragOverlay dropAnimation={{ duration: 180, easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)" }}>
+            {active_drag_node ? <NavRowPreview node={active_drag_node} /> : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       <AnchoredMenu

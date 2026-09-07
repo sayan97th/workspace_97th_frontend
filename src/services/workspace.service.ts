@@ -4,6 +4,7 @@ import type {
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
+  ReorderNavItemsPayload,
   UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
@@ -217,6 +218,22 @@ export const workspaceService = {
       payload
     );
     return response.item;
+  },
+
+  /**
+   * PATCH /api/workspaces/{slug}/navigation/reorder — sidebar drag-and-drop
+   * reordering (and the "Move up"/"Move down" quick actions), resequenced
+   * server-side in one transaction, mirroring `reorderItems` on the board API.
+   */
+  async reorderNavItems(
+    workspace_slug: string,
+    payload: ReorderNavItemsPayload
+  ): Promise<WorkspaceNavNode[]> {
+    const response = await apiClient.patch<{ items: WorkspaceNavNode[] }>(
+      `/api/workspaces/${workspace_slug}/navigation/reorder`,
+      payload
+    );
+    return response.items;
   },
 
   /** POST /api/workspaces/{slug}/navigation/{id}/duplicate — deep-copy a subtree. */

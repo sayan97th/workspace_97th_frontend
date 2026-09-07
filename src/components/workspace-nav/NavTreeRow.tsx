@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { WorkspaceNavNode } from "@/types/workspace";
 import {
   FolderIcon,
@@ -76,6 +78,19 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
 }) => {
   const padding_left = indentFor(depth);
 
+  // Drag-and-drop reordering among this row's current siblings (root list, or
+  // one folder's children — see the `SortableContext` each level wraps its
+  // children in below). `NavTree`'s `DndContext` owns the actual persistence.
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: String(node.id),
+  });
+  const sortable_style: React.CSSProperties = {
+    paddingLeft: padding_left,
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
   const handleKebabClick = (event: React.MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -89,8 +104,11 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
     return (
       <>
         <div
-          className="group flex h-[34px] cursor-pointer items-center gap-[7px] rounded-[9px] pr-2 hover:bg-shell-hover"
-          style={{ paddingLeft: padding_left }}
+          ref={setNodeRef}
+          style={sortable_style}
+          {...attributes}
+          {...listeners}
+          className="group flex h-[34px] cursor-grab items-center gap-[7px] rounded-[9px] pr-2 hover:bg-shell-hover active:cursor-grabbing"
           onClick={() => onToggleGroup(group_id)}
         >
           <span
@@ -112,19 +130,25 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
             <MoreDotsIcon />
           </button>
         </div>
-        {is_expanded &&
-          node.children.map((child) => (
-            <NavTreeRow
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              pathname={pathname}
-              expanded_group_ids={expanded_group_ids}
-              onToggleGroup={onToggleGroup}
-              onOpenRowMenu={onOpenRowMenu}
-              onTogglePriority={onTogglePriority}
-            />
-          ))}
+        {is_expanded && (
+          <SortableContext
+            items={node.children.map((child) => String(child.id))}
+            strategy={verticalListSortingStrategy}
+          >
+            {node.children.map((child) => (
+              <NavTreeRow
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                pathname={pathname}
+                expanded_group_ids={expanded_group_ids}
+                onToggleGroup={onToggleGroup}
+                onOpenRowMenu={onOpenRowMenu}
+                onTogglePriority={onTogglePriority}
+              />
+            ))}
+          </SortableContext>
+        )}
       </>
     );
   }
@@ -136,9 +160,12 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
 
   return (
     <Link
+      ref={setNodeRef}
       href={href}
-      className={`group relative flex ${row_height} cursor-pointer items-center gap-[11px] rounded-[9px] pr-2 hover:bg-shell-hover`}
-      style={{ paddingLeft: padding_left }}
+      {...attributes}
+      {...listeners}
+      className={`group relative flex ${row_height} cursor-grab items-center gap-[11px] rounded-[9px] pr-2 hover:bg-shell-hover active:cursor-grabbing`}
+      style={sortable_style}
     >
       {is_active && (
         <div className="shell-nav-item-active absolute inset-0 rounded-[9px]" />

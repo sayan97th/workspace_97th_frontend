@@ -156,6 +156,23 @@ export type MoveNavItemPayload = {
 };
 
 /**
+ * Payload for `PATCH /api/workspaces/{slug}/navigation/reorder` — a sidebar
+ * drag-and-drop reorder (or a "Move up"/"Move down" quick action, which is
+ * just a two-item reorder under the hood). `target_ordered_ids` is the full
+ * new sibling order under `target_parent_id` (a folder id, or `null` for the
+ * workspace root), including the moved item itself. `source_parent_id` /
+ * `source_ordered_ids` are only needed when the item changed folders, so the
+ * old parent's remaining children are resequenced too.
+ */
+export type ReorderNavItemsPayload = {
+  moved_item_id: number;
+  target_parent_id: number | null;
+  target_ordered_ids: number[];
+  source_parent_id?: number | null;
+  source_ordered_ids?: number[];
+};
+
+/**
  * Response shape for `GET /api/workspaces/{slug}/navigation` — the tree plus
  * which of its folders the current user currently has collapsed (a personal
  * preference, mirrors the board tables' `collapsed_group_ids`).

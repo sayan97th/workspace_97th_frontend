@@ -189,6 +189,20 @@ export const MoveToIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+export const MoveUpIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 13 V3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M4.2 6.8 L8 3 L11.8 6.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const MoveDownIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 3 V12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M4.2 9.2 L8 13 L11.8 9.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const DuplicateIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <rect x="2.6" y="2.6" width="8" height="8" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
