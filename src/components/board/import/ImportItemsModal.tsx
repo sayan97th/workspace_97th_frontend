@@ -1,11 +1,18 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/icons/workspace-icons";
+import { useBoardImportProgress } from "@/hooks/useBoardImportProgress";
 import { boardImportService } from "@/services/board-import.service";
-import type { BoardImportAnalyzeResponse, BoardImportCommitResponse, BoardImportDuplicateMode, BoardImportMapping } from "@/types/board-import";
+import type {
+  BoardImportAnalyzeResponse,
+  BoardImportDuplicateMode,
+  BoardImportJobDto,
+  BoardImportMapping,
+} from "@/types/board-import";
 import ImportUploadStep from "./ImportUploadStep";
 import ImportMapColumnsStep from "./ImportMapColumnsStep";
 import ImportHandleMatchesStep from "./ImportHandleMatchesStep";
+import ImportProgressStep from "./ImportProgressStep";
 import { importErrorMessage, suggestGroupName } from "./importWizardUtils";
 
 export type ImportItemsModalProps = {
@@ -14,33 +21,36 @@ export type ImportItemsModalProps = {
   board_id: number;
   /** The currently open tab — the import always lands on this tab. */
   view_id: number | null;
-  /** Fired once the import has actually written rows, so the caller can refresh its columns/groups/items. */
-  onImported: (result: BoardImportCommitResponse) => void;
+  /** Fired once the background job has actually written rows (as soon as it reaches a terminal status with a target table), so the caller can refresh its columns/groups/items. */
+  onImported: (result: { group_id: number }) => void;
 };
 
-type WizardStep = "upload" | "map" | "match";
+type WizardStep = "upload" | "map" | "match" | "progress";
 
-const STEPS: { id: WizardStep; label: string }[] = [
+const STEPS: { id: Exclude<WizardStep, "progress">; label: string }[] = [
   { id: "upload", label: "Upload" },
   { id: "map", label: "Map columns" },
   { id: "match", label: "Handle matches" },
 ];
 
 /**
- * Board options menu's "More actions" > "Import items" — a three-step
- * ("Upload" / "Map columns" / "Handle matches") wizard for bulk-importing a
- * .csv/.xlsx/.xls file into the current tab, either into a new table or an
- * existing one. Owns the whole flow (both API calls, every step's local
- * state); the caller only needs to render it and refresh its own board data
- * from {@link ImportItemsModalProps.onImported}.
+ * Board options menu's "More actions" > "Import items" — a wizard for
+ * bulk-importing a .csv/.xlsx/.xls file into the current tab, either into a
+ * new table or an existing one: "Upload" (pick a file) → "Map columns"
+ * (choose each column's destination) → "Handle matches" (dedupe strategy) →
+ * "Importing…" (live progress on the background job, with a "Stop" button —
+ * see {@link useBoardImportProgress} and `ProcessBoardImportJob`). Owns the
+ * whole flow itself; the caller only needs to render it and refresh its own
+ * board data from {@link ImportItemsModalProps.onImported}.
  */
 const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, board_id, view_id, onImported }) => {
   const [step, setStep] = useState<WizardStep>("upload");
   const [is_analyzing, setIsAnalyzing] = useState(false);
-  const [is_committing, setIsCommitting] = useState(false);
+  const [is_starting_import, setIsStartingImport] = useState(false);
+  const [is_stopping, setIsStopping] = useState(false);
   const [upload_error, setUploadError] = useState<string | null>(null);
   const [map_error, setMapError] = useState<string | null>(null);
-  const [commit_error, setCommitError] = useState<string | null>(null);
+  const [start_error, setStartError] = useState<string | null>(null);
 
   const [analysis, setAnalysis] = useState<BoardImportAnalyzeResponse | null>(null);
   const [mappings, setMappings] = useState<BoardImportMapping[]>([]);
@@ -49,21 +59,42 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
   const [duplicate_mode, setDuplicateMode] = useState<BoardImportDuplicateMode>("add");
   const [match_source_index, setMatchSourceIndex] = useState<number | null>(null);
 
+  const [seed_job, setSeedJob] = useState<BoardImportJobDto | null>(null);
+  const job = useBoardImportProgress(board_id, seed_job);
+  const has_reported_import_ref = useRef(false);
+
   useEffect(() => {
     if (!is_open) return;
     setStep("upload");
     setIsAnalyzing(false);
-    setIsCommitting(false);
+    setIsStartingImport(false);
+    setIsStopping(false);
     setUploadError(null);
     setMapError(null);
-    setCommitError(null);
+    setStartError(null);
     setAnalysis(null);
     setMappings([]);
     setTargetGroupId(null);
     setNewGroupName("");
     setDuplicateMode("add");
     setMatchSourceIndex(null);
+    setSeedJob(null);
+    has_reported_import_ref.current = false;
   }, [is_open]);
+
+  // Refreshes the caller's board data the moment the job reaches a terminal
+  // status with rows actually written — before the viewer even clicks
+  // "Done" — so the table's already current by the time they close the
+  // wizard. Guarded by a ref (not state) so a later poll/broadcast update
+  // carrying the same terminal status doesn't fire this a second time.
+  useEffect(() => {
+    if (!job || has_reported_import_ref.current) return;
+    const is_terminal = job.status === "completed" || job.status === "failed" || job.status === "cancelled";
+    if (is_terminal && job.group_id !== null && job.processed_rows > 0) {
+      has_reported_import_ref.current = true;
+      onImported({ group_id: job.group_id });
+    }
+  }, [job, onImported]);
 
   if (!is_open) return null;
 
@@ -110,12 +141,12 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
     }
   };
 
-  const handleCommit = async () => {
+  const handleStartImport = async () => {
     if (!analysis) return;
-    setCommitError(null);
-    setIsCommitting(true);
+    setStartError(null);
+    setIsStartingImport(true);
     try {
-      const result = await boardImportService.commit(board_id, {
+      const created_job = await boardImportService.commit(board_id, {
         import_token: analysis.import_token,
         view_id,
         target_group_id,
@@ -124,14 +155,25 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
         duplicate_mode,
         match_source_index,
       });
-      onImported(result);
-      onClose();
+      setSeedJob(created_job);
+      setStep("progress");
     } catch (error) {
-      setCommitError(
-        importErrorMessage(error, "The import failed partway through — nothing else was saved. Please try again.")
-      );
+      setStartError(importErrorMessage(error, "Couldn't start the import. Please try again."));
     } finally {
-      setIsCommitting(false);
+      setIsStartingImport(false);
+    }
+  };
+
+  const handleStop = async () => {
+    if (!job) return;
+    setIsStopping(true);
+    try {
+      const updated = await boardImportService.cancel(board_id, job.id);
+      setSeedJob(updated);
+    } catch {
+      // The next poll tick / broadcast will reconcile the real state either way.
+    } finally {
+      setIsStopping(false);
     }
   };
 
@@ -153,15 +195,16 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
   const skip_count = mappings.filter((mapping) => mapping.mode === "skip").length;
 
   const step_index = STEPS.findIndex((entry) => entry.id === step);
+  const can_go_back = step === "map" || step === "match";
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Import items" className="fixed inset-0 z-[430] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={is_committing ? undefined : onClose} aria-hidden="true" />
+      <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-[431] flex h-[min(760px,92vh)] w-[min(1080px,94vw)] flex-col overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-2xl">
         <div className="flex items-center justify-between border-b border-shell-border px-7 py-4">
           <div className="flex w-[90px] items-center">
-            {step !== "upload" && !is_committing && (
+            {can_go_back && (
               <button
                 type="button"
                 onClick={handleBack}
@@ -176,44 +219,54 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
           </div>
 
           <div className="flex items-center gap-3">
-            {STEPS.map((entry, index) => {
-              const is_current = index === step_index;
-              const is_done = index < step_index;
-              return (
-                <React.Fragment key={entry.id}>
-                  {index > 0 && <span className="h-px w-8 bg-shell-border-strong" />}
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11.5px] font-semibold ${
-                        is_done
-                          ? "bg-brand-500 text-white"
-                          : is_current
-                            ? "border-2 border-brand-500 text-brand-500"
-                            : "border border-shell-border-strong text-shell-text-muted"
-                      }`}
-                    >
-                      {is_done ? (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                          <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      ) : (
-                        index + 1
-                      )}
+            {step === "progress"
+              ? STEPS.map((entry, index) => (
+                  <React.Fragment key={entry.id}>
+                    {index > 0 && <span className="h-px w-8 bg-brand-500" />}
+                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand-500 text-white">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                        <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
                     </span>
-                    <span className={`text-[13px] font-medium ${is_current ? "text-shell-text" : "text-shell-text-muted"}`}>{entry.label}</span>
-                  </div>
-                </React.Fragment>
-              );
-            })}
+                  </React.Fragment>
+                ))
+              : STEPS.map((entry, index) => {
+                  const is_current = index === step_index;
+                  const is_done = index < step_index;
+                  return (
+                    <React.Fragment key={entry.id}>
+                      {index > 0 && <span className="h-px w-8 bg-shell-border-strong" />}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11.5px] font-semibold ${
+                            is_done
+                              ? "bg-brand-500 text-white"
+                              : is_current
+                                ? "border-2 border-brand-500 text-brand-500"
+                                : "border border-shell-border-strong text-shell-text-muted"
+                          }`}
+                        >
+                          {is_done ? (
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                              <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          ) : (
+                            index + 1
+                          )}
+                        </span>
+                        <span className={`text-[13px] font-medium ${is_current ? "text-shell-text" : "text-shell-text-muted"}`}>{entry.label}</span>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
           </div>
 
           <div className="flex w-[90px] items-center justify-end">
             <button
               type="button"
-              onClick={is_committing ? undefined : onClose}
-              disabled={is_committing}
+              onClick={onClose}
               aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text disabled:opacity-50"
+              className="flex h-8 w-8 items-center justify-center rounded-full text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
             >
               <CloseIcon size={14} />
             </button>
@@ -250,7 +303,9 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
           />
         )}
 
-        {step !== "upload" && (
+        {step === "progress" && <ImportProgressStep job={job} is_stopping={is_stopping} onStop={() => void handleStop()} onDone={onClose} />}
+
+        {(step === "map" || step === "match") && (
           <div className="flex items-center justify-between border-t border-shell-border px-7 py-4">
             <div className="flex items-center gap-4 text-[12.5px] text-shell-text-secondary">
               {step === "map" && (
@@ -269,16 +324,16 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
                   </span>
                 </>
               )}
-              {step === "match" && commit_error && <span className="text-error-500">{commit_error}</span>}
+              {step === "match" && start_error && <span className="text-error-500">{start_error}</span>}
             </div>
 
             <button
               type="button"
-              onClick={step === "map" ? handleContinueFromMap : () => void handleCommit()}
-              disabled={is_committing}
+              onClick={step === "map" ? handleContinueFromMap : () => void handleStartImport()}
+              disabled={is_starting_import}
               className="rounded-lg bg-brand-500 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
             >
-              {step === "map" ? "Continue" : is_committing ? "Importing…" : "Import Now"}
+              {step === "map" ? "Continue" : is_starting_import ? "Starting…" : "Import Now"}
             </button>
           </div>
         )}

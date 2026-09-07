@@ -92,7 +92,6 @@ import type {
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardImportCommitResponse } from "@/types/board-import";
 import type { BoardDetail, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
@@ -973,7 +972,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
    * would otherwise no-op for a table the viewer already had open).
    */
   const handleImportItems = useCallback(
-    (result: BoardImportCommitResponse) => {
+    (result: { group_id: number }) => {
       boardContentService.getColumns(board_id, view_tabs.active_view_id).then(setColumns).catch(() => {});
       boardContentService
         .getGroups(board_id, view_tabs.active_view_id)

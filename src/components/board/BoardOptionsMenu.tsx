@@ -27,7 +27,6 @@ import { CommentIcon, DownloadIcon } from "@/icons/board-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
 import { boardOptionsService } from "@/services/board-options.service";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardImportCommitResponse } from "@/types/board-import";
 import type { BoardType } from "@/types/workspace";
 import BoardActivityLogDrawer from "./BoardActivityLogDrawer";
 import BoardPermissionsModal from "./BoardPermissionsModal";
@@ -61,8 +60,8 @@ export type BoardOptionsMenuProps = {
   onRename: (label: string) => Promise<void>;
   /** Duplicates the whole board (every tab, its columns/groups/items) and navigates to the copy. */
   onDuplicate: () => Promise<void>;
-  /** "More actions" > "Import items" — fired once a bulk import has actually written rows, so the caller can refresh its columns/groups/items. */
-  onImportItems: (result: BoardImportCommitResponse) => void;
+  /** "More actions" > "Import items" — fired once the background import job has actually written rows, so the caller can refresh its columns/groups/items. */
+  onImportItems: (result: { group_id: number }) => void;
   /** Archives the board in place — the board stays open, its menu just flips to "Restore from archive". */
   onArchive: () => Promise<void>;
   /** Un-archives the board in place, from either "Restore from archive" or the trash panel's Archive tab. */

@@ -1,9 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type {
-  BoardImportAnalyzeResponse,
-  BoardImportCommitPayload,
-  BoardImportCommitResponse,
-} from "@/types/board-import";
+import type { BoardImportAnalyzeResponse, BoardImportCommitPayload, BoardImportJobDto } from "@/types/board-import";
 
 /**
  * Talks to `App\Http\Controllers\Board\BoardImportController` — the board
@@ -19,8 +15,26 @@ export const boardImportService = {
     return apiClient.postFormData<BoardImportAnalyzeResponse>(`/api/boards/${board_id}/import/analyze`, form_data);
   },
 
-  /** POST /api/boards/{board_id}/import/commit — "Handle matches" step's final "Import Now". */
-  async commit(board_id: number, payload: BoardImportCommitPayload): Promise<BoardImportCommitResponse> {
-    return apiClient.post<BoardImportCommitResponse>(`/api/boards/${board_id}/import/commit`, payload);
+  /**
+   * POST /api/boards/{board_id}/import/commit — "Handle matches" step's
+   * final "Import Now". Queues the background job and returns its initial
+   * status (usually already past `"queued"` by the time this resolves);
+   * `useBoardImportProgress` takes over from there.
+   */
+  async commit(board_id: number, payload: BoardImportCommitPayload): Promise<BoardImportJobDto> {
+    const response = await apiClient.post<{ data: BoardImportJobDto }>(`/api/boards/${board_id}/import/commit`, payload);
+    return response.data;
+  },
+
+  /** GET /api/boards/{board_id}/import/{import_job_id} — the progress step's polling fallback for whenever the websocket connection is down. */
+  async getStatus(board_id: number, import_job_id: number): Promise<BoardImportJobDto> {
+    const response = await apiClient.get<{ data: BoardImportJobDto }>(`/api/boards/${board_id}/import/${import_job_id}`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/import/{import_job_id}/cancel — the progress step's "Stop" button. */
+  async cancel(board_id: number, import_job_id: number): Promise<BoardImportJobDto> {
+    const response = await apiClient.post<{ data: BoardImportJobDto }>(`/api/boards/${board_id}/import/${import_job_id}/cancel`);
+    return response.data;
   },
 };

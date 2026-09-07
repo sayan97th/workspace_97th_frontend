@@ -56,11 +56,32 @@ export type BoardImportCommitPayload = {
   match_source_index?: number | null;
 };
 
-export type BoardImportCommitResponse = {
-  created: number;
-  updated: number;
-  skipped: number;
+/** A {@link BoardImportJobDto}'s lifecycle — mirrors `App\Models\BoardImportJob::STATUS_*`. */
+export type BoardImportJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
+
+/** Terminal statuses — no further `board_import_progress` broadcasts will arrive for this job. */
+export const BOARD_IMPORT_JOB_TERMINAL_STATUSES: BoardImportJobStatus[] = ["completed", "failed", "cancelled"];
+
+/**
+ * Progress snapshot for one run of the background import job — the "Import
+ * items" wizard's 4th ("Importing…") step polls/listens for this. Mirrors
+ * `App\Http\Resources\BoardImportJobResource`, the same shape returned by
+ * `commit()`'s 202 response, `GET .../import/{id}`, and the live
+ * `board_import_progress` broadcast.
+ */
+export type BoardImportJobDto = {
+  id: number;
+  status: BoardImportJobStatus;
+  file_name: string;
+  total_rows: number;
+  processed_rows: number;
+  /** 0-100, rounded. */
+  percent: number;
+  created_count: number;
+  updated_count: number;
+  skipped_count: number;
   columns_created: number;
-  group_id: number;
-  group_created: boolean;
+  group_id: number | null;
+  cancel_requested: boolean;
+  error_message: string | null;
 };
