@@ -13,6 +13,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import type { WorkspaceNavNode } from "@/types/workspace";
 import {
   DeleteIcon,
@@ -312,6 +313,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
+          modifiers={[snapCenterToCursor]}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveDragId(null)}
