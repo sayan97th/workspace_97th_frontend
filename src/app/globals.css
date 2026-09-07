@@ -1,32 +1,9 @@
 @import "tailwindcss";
+@import "../styles/typography.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  /* Brand typeface is Manrope (loaded via next/font in the root layout).
-     `font-outfit` is kept as the base-body token name for compatibility with
-     the shared component library, but it now resolves to Manrope. */
-  --font-*: initial;
-  --font-outfit: var(--font-manrope), ui-sans-serif, sans-serif;
-  --font-mono-accent: var(--font-roboto-mono), ui-monospace, monospace;
-  /* Board table's own typeface (see `board-tree-font.ts`) — scoped via the
-     `boardTreeFontClassName` wrapper class, not applied app-wide. */
-  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
-  --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
-
-  --text-title-2xl: 72px;
-  --text-title-2xl--line-height: 90px;
-  --text-title-md: 36px;
-  --text-title-md--line-height: 44px;
-  --text-title-sm: 30px;
-  --text-title-sm--line-height: 38px;
-  --text-theme-xl: 20px;
-  --text-theme-xl--line-height: 30px;
-  --text-theme-sm: 14px;
-  --text-theme-sm--line-height: 20px;
-  --text-theme-xs: 12px;
-  --text-theme-xs--line-height: 18px;
-
   --color-current: currentColor;
   --color-transparent: transparent;
   --color-white: #ffffff;
@@ -172,30 +149,6 @@
   --z-index-9999: 9999;
   --z-index-99999: 99999;
   --z-index-999999: 999999;
-}
-
-/*
-  `--font-boardtree-sans`/`-mono` (declared in the `@theme` block above) are
-  never usable as written: a custom property's value is substituted *once*,
-  at whichever element it's declared on — here that's the Tailwind-emitted
-  `:root` rule — and only then inherited down as that (possibly-invalid)
-  resolved value. `--font-boardtree-sans-family` (the real font, injected by
-  `next/font`'s module class in `board-tree-font.ts`) only exists on
-  `BoardTable`'s own wrapper div, several levels below `:root`, so at `:root`
-  it's undefined, `--font-boardtree-sans` computes to the guaranteed-invalid
-  value right there, and every descendant inherits that same invalid value —
-  redefining `--font-boardtree-sans-family` further down changes nothing,
-  since `--font-boardtree-sans` itself was already fixed at `:root`. The
-  `font-family: var(--font-boardtree-sans)` declaration is therefore always
-  invalid and silently discarded, and text falls through to the app's base
-  Manrope. Redeclaring the indirection on the *same selector* that also
-  carries the real font variable forces it to (re)resolve there instead.
-*/
-.font-boardtree-sans {
-  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
-}
-.font-boardtree-mono {
-  --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
 }
 
 /*

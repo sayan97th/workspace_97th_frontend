@@ -5,7 +5,7 @@ import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
  * client-approved design (`design/desing_3/Table_board_tree_subitems.dc.html`).
  * Scoped to `BoardTable`'s root wrapper via `boardTreeFontClassName` rather
  * than the app-wide layout, so the rest of the app keeps its current
- * Manrope/Roboto Mono typeface (see `src/app/layout.tsx`).
+ * Figtree/Poppins/Roboto Mono typeface (see `src/app/layout.tsx`).
  */
 const ibm_plex_sans = IBM_Plex_Sans({
   subsets: ["latin"],

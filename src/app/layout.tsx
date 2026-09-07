@@ -1,19 +1,31 @@
-import { Manrope, Roboto_Mono } from 'next/font/google';
+import { Figtree, Poppins, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 
-const manrope = Manrope({
+// Body/UI typeface — see `src/styles/typography.css` for how these map to
+// the `--font-outfit`/`--font-heading` theme tokens (monday.com-style pairing:
+// Figtree for copy, Poppins for headings).
+const figtree_font = Figtree({
   subsets: ["latin"],
-  variable: "--font-manrope",
+  variable: "--font-figtree",
+  display: "swap",
 });
 
-const robotoMono = Roboto_Mono({
+const poppins_font = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-poppins",
+  display: "swap",
+});
+
+const roboto_mono_font = Roboto_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
   variable: "--font-roboto-mono",
+  display: "swap",
 });
 
 // Runs before hydration so a returning visitor's saved "dark"/"system" choice
@@ -28,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${manrope.variable} ${robotoMono.variable} ${manrope.className} antialiased dark:bg-gray-900`}>
+      <body className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable} ${figtree_font.className} antialiased dark:bg-gray-900`}>
         <script dangerouslySetInnerHTML={{ __html: theme_bootstrap_script }} />
         <ThemeProvider>
           <AuthProvider>
