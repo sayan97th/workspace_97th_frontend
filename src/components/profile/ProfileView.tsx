@@ -1,7 +1,7 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { format } from "date-fns";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import UserAvatar from "@/components/common/UserAvatar";
 import { getUserDisplayName } from "@/lib/user";
@@ -10,6 +10,8 @@ import ProfileTabs from "./ProfileTabs";
 import ProfileBanner from "./ProfileBanner";
 import { useProfileManager } from "./useProfileManager";
 import type { ProfileSectionId } from "./types";
+
+const VALID_SECTION_IDS: ProfileSectionId[] = ["personal", "working", "notifications", "language", "password", "sessions"];
 import PersonalInfoSection from "./sections/PersonalInfoSection";
 import WorkingStatusSection from "./sections/WorkingStatusSection";
 import NotificationsSection from "./sections/NotificationsSection";
@@ -25,11 +27,23 @@ import SessionHistorySection from "./sections/SessionHistorySection";
  */
 const ProfileView: React.FC = () => {
   const router = useRouter();
+  const search_params = useSearchParams();
   const { user } = useAuth();
   const profile = useProfileManager();
 
   /** "Teams" is a routed page (`/teams`) rather than a modal. */
   const openTeams = () => router.push("/teams");
+
+  // Deep-link support for `/profile?section=notifications` — e.g. the board
+  // options menu's "Notifications" row, which sends the user here instead of
+  // duplicating a second, board-scoped notification-preferences UI.
+  useEffect(() => {
+    const section = search_params.get("section");
+    if (VALID_SECTION_IDS.includes(section as ProfileSectionId)) {
+      profile.selectSection(section as ProfileSectionId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search_params]);
 
   const SECTION_PANELS: Record<ProfileSectionId, React.ReactNode> = {
     personal: <PersonalInfoSection onOpenTeams={openTeams} />,

@@ -52,6 +52,8 @@ export type WorkspaceNavNode = {
   /** Custom width (px) for every subitem tree's first (subitem name) column, persisted from its resize handle; null falls back to auto-sizing from the longest subitem name within each item. */
   sub_item_column_width: number | null;
   is_favorite: boolean;
+  /** Hidden from the sidebar/nav tree and the workspace's Content tab without being deleted — see the board options menu's "Archive board" / "View archive / trash". */
+  is_archived: boolean;
   /** Total updates (top-level + replies) on the board's discussion feed; only populated on {@link BoardDetail} (0 elsewhere). */
   comments_count: number;
   position: number;
@@ -86,6 +88,8 @@ export type BoardDetail = WorkspaceNavNode & {
   breadcrumb: BoardBreadcrumbItem[];
   /** Whether the current user has discussion updates they haven't seen yet — drives the "Board updates" badge's red/gray state. */
   has_unseen_comments: boolean;
+  /** Whether the current user may archive/delete/restore this board or change its settings — the board's creator, its workspace's owner, or an admin. Drives the board options menu's management-only rows. */
+  can_manage: boolean;
 };
 
 export type Workspace = {

@@ -79,6 +79,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { boardOptionsService } from "@/services/board-options.service";
 import { workspaceService } from "@/services/workspace.service";
 import type {
   BoardColumnConfig,
@@ -414,6 +415,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         board_type={board_type}
         info={info}
         invite_count={access.length}
+        access={access}
+        onAccessChange={setAccess}
         workspace_members={workspace_members}
         onInviteClick={() => setIsInviteOpen(true)}
         initial_columns={loaded.columns}
@@ -456,6 +459,9 @@ type TableBoardBodyProps = {
   info: BoardHeaderInfo;
   invite_count: number;
   onInviteClick: () => void;
+  /** Full "who can access this board" roster, shared with `BoardInviteModal` — the board options menu's "Permissions" panel reads/mutates the same list. */
+  access: BoardAccessEntry[];
+  onAccessChange: (access: BoardAccessEntry[]) => void;
   /** The full workspace roster, assignable to People columns (Assignee row, People cells, Calendar members, etc), see the fetch in `TableBoardView`. */
   workspace_members: WorkspaceMember[];
   initial_columns: BoardColumnDto[];
@@ -537,9 +543,12 @@ const GanttRowLabel: React.FC<{
 const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   node,
   breadcrumb,
+  board_type,
   info,
   invite_count,
   onInviteClick,
+  access,
+  onAccessChange,
   workspace_members,
   initial_columns,
   initial_groups,
@@ -553,6 +562,38 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const router = useRouter();
   const { user } = useAuth();
   const board_id = node.id;
+
+  // ── Board options menu ("...") state — rename/archive both apply in place
+  // (the board stays open; only its label/menu-row flip), so these live here
+  // rather than as a `node` mutation. Delete instead navigates away — see
+  // `handleDeleteBoard`. ──
+  const [board_label, setBoardLabel] = useState(node.label);
+  const [is_board_archived, setIsBoardArchived] = useState(node.is_archived);
+
+  const handleRenameBoard = async (label: string) => {
+    await workspaceService.updateNavItem(node.workspace.slug, board_id, { label });
+    setBoardLabel(label);
+  };
+
+  const handleDuplicateBoard = async () => {
+    const copy = await workspaceService.duplicateNavItem(node.workspace.slug, board_id);
+    router.push(`/boards/${copy.id}`);
+  };
+
+  const handleArchiveBoard = async () => {
+    await boardOptionsService.archiveBoard(board_id);
+    setIsBoardArchived(true);
+  };
+
+  const handleUnarchiveBoard = async () => {
+    await boardOptionsService.unarchiveBoard(board_id);
+    setIsBoardArchived(false);
+  };
+
+  const handleDeleteBoard = async () => {
+    await workspaceService.deleteNavItem(node.workspace.slug, board_id);
+    router.push("/workspace-home");
+  };
 
   const [columns, setColumns] = useState(initial_columns);
   const [groups, setGroups] = useState(initial_groups);
@@ -2213,7 +2254,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   return (
     <BoardShell
       header={{
-        title: node.label,
+        title: board_label,
         is_favorite: node.is_favorite,
         invite_count,
         info,
@@ -2221,6 +2262,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onBoardUpdatesClick: discussion_drawer.open,
         board_updates_count: discussion_drawer.comment_count,
         board_updates_unseen: discussion_drawer.has_unseen_comments,
+        options_menu: {
+          board_id,
+          board_label,
+          board_type,
+          is_archived: is_board_archived,
+          can_manage: node.can_manage,
+          view_id: view_tabs.active_view_id,
+          access,
+          onAccessChange,
+          onBoardUpdatesClick: discussion_drawer.open,
+          onChangeBoardTypeClick: () => info.onChangeBoardType?.(),
+          onRename: handleRenameBoard,
+          onDuplicate: handleDuplicateBoard,
+          onArchive: handleArchiveBoard,
+          onUnarchive: handleUnarchiveBoard,
+          onDelete: handleDeleteBoard,
+        },
       }}
       tabs={{
         tabs: view_tabs.tabs,

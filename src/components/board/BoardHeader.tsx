@@ -19,6 +19,7 @@ import {
 } from "@/icons/board-icons";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
 import type { BoardType } from "@/types/workspace";
+import BoardOptionsMenu, { type BoardOptionsMenuProps } from "./BoardOptionsMenu";
 import { BOARD_TYPE_OPTIONS } from "./BoardTypePicker";
 import PersonAvatarStack, { type PersonAvatarStackPerson } from "./PersonAvatarStack";
 
@@ -53,6 +54,8 @@ export type BoardHeaderProps = {
   board_updates_count?: number;
   /** Whether that badge reads as unseen (brand red, to draw the eye) rather than caught-up (neutral gray). */
   board_updates_unseen?: boolean;
+  /** Powers the "..." options menu; the button stays inert when omitted. */
+  options_menu?: Omit<BoardOptionsMenuProps, "anchor_el" | "is_open" | "onClose">;
 };
 
 const action_button_class =
@@ -75,10 +78,13 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   onBoardUpdatesClick,
   board_updates_count = 0,
   board_updates_unseen = false,
+  options_menu,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
   const [is_link_copied, setIsLinkCopied] = useState(false);
+  const [is_options_open, setIsOptionsOpen] = useState(false);
+  const options_button_ref = useRef<HTMLButtonElement>(null);
 
   // Reverts the "Copied" confirmation back to the plain link icon after a beat.
   useEffect(() => {
@@ -264,9 +270,24 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       >
         {is_link_copied ? <CheckIcon size={14} className="text-success-400" /> : <LinkIcon />}
       </button>
-      <button type="button" className={`${icon_button_class} hidden sm:flex`} aria-label="More board actions">
+      <button
+        ref={options_button_ref}
+        type="button"
+        onClick={() => options_menu && setIsOptionsOpen((open) => !open)}
+        className={`${icon_button_class} hidden sm:flex ${is_options_open ? "bg-shell-hover" : ""}`}
+        aria-label="More board actions"
+        aria-expanded={is_options_open}
+      >
         <MoreDotsIcon />
       </button>
+      {options_menu && (
+        <BoardOptionsMenu
+          anchor_el={options_button_ref.current}
+          is_open={is_options_open}
+          onClose={() => setIsOptionsOpen(false)}
+          {...options_menu}
+        />
+      )}
     </div>
   </div>
   );
