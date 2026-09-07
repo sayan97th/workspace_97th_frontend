@@ -20,6 +20,8 @@ export type WorkspacesApi = {
     workspace_slug: string,
     payload: UpdateWorkspacePayload
   ) => Promise<BrowseWorkspace>;
+  /** Flags/unflags a workspace as a priority client — any member can toggle this (see the sidebar's priority star). */
+  togglePriority: (workspace_slug: string, is_priority: boolean) => Promise<BrowseWorkspace>;
   /** Remove the current user from a workspace; drops it from local state on success. */
   leaveWorkspace: (workspace_slug: string) => Promise<void>;
   /** Soft-delete a workspace; drops it from local state on success. */
@@ -125,6 +127,19 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   );
 
+  const togglePriority = useCallback(
+    async (workspace_slug: string, is_priority: boolean) => {
+      const updated = mapWorkspaceToBrowse(
+        await workspaceService.updateWorkspacePriority(workspace_slug, { is_priority })
+      );
+      setWorkspaces((prev) =>
+        prev.map((workspace) => (workspace.id === workspace_slug ? updated : workspace))
+      );
+      return updated;
+    },
+    []
+  );
+
   /** Drops a workspace from local state, falling back active selection to the home
    * workspace (or the first remaining one) when the removed workspace was active. */
   const dropWorkspaceFromState = useCallback((workspace_slug: string) => {
@@ -166,6 +181,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       selectWorkspace,
       createWorkspace,
       updateWorkspace,
+      togglePriority,
       leaveWorkspace,
       deleteWorkspace,
       reload: load,
@@ -181,6 +197,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       selectWorkspace,
       createWorkspace,
       updateWorkspace,
+      togglePriority,
       leaveWorkspace,
       deleteWorkspace,
       load,

@@ -29,6 +29,7 @@ const AppSidebar: React.FC = () => {
     selectWorkspace,
     createWorkspace,
     updateWorkspace,
+    togglePriority,
     leaveWorkspace,
     deleteWorkspace,
   } = workspaces_api;
@@ -86,6 +87,7 @@ const AppSidebar: React.FC = () => {
                 <WorkspaceOptionsButton
                   workspace={active_workspace}
                   updateWorkspace={updateWorkspace}
+                  togglePriority={togglePriority}
                   leaveWorkspace={leaveWorkspace}
                   deleteWorkspace={deleteWorkspace}
                   trigger_class_name="shell-icon-button h-7 w-7"
@@ -116,6 +118,7 @@ const AppSidebar: React.FC = () => {
             recent_workspaces={recent_workspaces}
             my_workspaces={my_workspaces}
             nav={nav}
+            togglePriority={togglePriority}
             onSelectWorkspace={selectWorkspace}
             onAddWorkspace={() => setIsCreateOpen(true)}
             onBrowseAll={() => setIsBrowseOpen(true)}
@@ -145,6 +148,7 @@ const AppSidebar: React.FC = () => {
         onSelectWorkspace={selectWorkspace}
         onCreateWorkspace={() => setIsCreateOpen(true)}
         updateWorkspace={updateWorkspace}
+        togglePriority={togglePriority}
         leaveWorkspace={leaveWorkspace}
         deleteWorkspace={deleteWorkspace}
       />

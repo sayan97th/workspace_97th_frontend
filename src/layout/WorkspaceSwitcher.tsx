@@ -11,6 +11,7 @@ import {
   ChevronDownIcon,
   PlusIcon,
   SearchIcon,
+  StarIcon,
 } from "@/icons/workspace-icons";
 import {
   active_workspace as default_active_workspace,
@@ -30,6 +31,8 @@ type WorkspaceSwitcherProps = Partial<WorkspaceMutationProps> & {
   my_workspaces?: WorkspaceSummary[];
   /** Active workspace's nav api — backs the "+" button's "Add new" content menu. */
   nav?: WorkspaceNavApi;
+  /** Flags/unflags a workspace as a priority client; the row's priority star stays hidden when omitted. */
+  togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
   onSelectWorkspace?: (workspace: WorkspaceSummary) => void;
   onAddWorkspace?: () => void;
   onBrowseAll?: () => void;
@@ -55,6 +58,8 @@ type WorkspaceRowProps = Partial<WorkspaceMutationProps> & {
   workspace: WorkspaceSummary;
   is_active: boolean;
   onSelect: (workspace: WorkspaceSummary) => void;
+  /** Flags/unflags this workspace as a priority client; the priority star stays hidden when omitted. */
+  togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
 };
 
 /**
@@ -65,38 +70,64 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
   workspace,
   is_active,
   onSelect,
+  togglePriority,
   updateWorkspace,
   leaveWorkspace,
   deleteWorkspace,
-}) => (
-  <div
-    role="button"
-    tabIndex={0}
-    onClick={() => onSelect(workspace)}
-    onKeyDown={(event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        onSelect(workspace);
-      }
-    }}
-    className={`group flex w-full cursor-pointer items-center gap-[11px] rounded-[9px] px-2.5 py-2.5 text-left transition-colors hover:bg-shell-hover ${
-      is_active ? "bg-shell-hover" : ""
-    }`}
-  >
-    <WorkspaceBadge workspace={workspace} size={26} notchColor={DROPDOWN_SURFACE} />
-    <span className="flex-1 truncate text-sm font-medium text-shell-text">
-      {workspace.name}
-    </span>
-    {updateWorkspace && leaveWorkspace && deleteWorkspace && (
-      <WorkspaceOptionsButton
-        workspace={workspace}
-        updateWorkspace={updateWorkspace}
-        leaveWorkspace={leaveWorkspace}
-        deleteWorkspace={deleteWorkspace}
-      />
-    )}
-  </div>
-);
+}) => {
+  const is_priority = !!workspace.is_priority;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(workspace)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(workspace);
+        }
+      }}
+      className={`group flex w-full cursor-pointer items-center gap-[11px] rounded-[9px] px-2.5 py-2.5 text-left transition-colors hover:bg-shell-hover ${
+        is_active ? "bg-shell-hover" : ""
+      }`}
+    >
+      <WorkspaceBadge workspace={workspace} size={26} notchColor={DROPDOWN_SURFACE} />
+      <span className="flex-1 truncate text-sm font-medium text-shell-text">
+        {workspace.name}
+      </span>
+      {togglePriority && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            void togglePriority(workspace.id, !is_priority);
+          }}
+          title={is_priority ? "Remove as priority client" : "Mark as priority client — their tasks sort above the rest"}
+          aria-label={is_priority ? "Remove as priority client" : "Mark as priority client"}
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-md transition-colors hover:bg-shell-hover-strong"
+          style={{
+            color: is_priority ? "#fdab3d" : "var(--color-shell-text-muted)",
+            opacity: is_priority ? 1 : undefined,
+          }}
+        >
+          <span className={is_priority ? "" : "opacity-0 group-hover:opacity-100"}>
+            <StarIcon filled={is_priority} size={14} />
+          </span>
+        </button>
+      )}
+      {updateWorkspace && leaveWorkspace && deleteWorkspace && (
+        <WorkspaceOptionsButton
+          workspace={workspace}
+          updateWorkspace={updateWorkspace}
+          togglePriority={togglePriority}
+          leaveWorkspace={leaveWorkspace}
+          deleteWorkspace={deleteWorkspace}
+        />
+      )}
+    </div>
+  );
+};
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="px-1.5 pb-1.5 pt-3.5 font-mono-accent text-[11px] uppercase tracking-[0.05em] text-shell-text-muted">
@@ -115,6 +146,7 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   recent_workspaces = default_recent_workspaces,
   my_workspaces = default_my_workspaces,
   nav,
+  togglePriority,
   onSelectWorkspace,
   onAddWorkspace,
   onBrowseAll,
@@ -190,6 +222,11 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           <span className="flex-1 truncate text-sm font-semibold text-shell-text">
             {active_workspace.name}
           </span>
+          {active_workspace.is_priority && (
+            <span className="flex flex-none" style={{ color: "#fdab3d" }} title="Priority client">
+              <StarIcon filled size={13} />
+            </span>
+          )}
           <ChevronDownIcon
             size={12}
             className={`flex-none text-shell-text-muted transition-transform duration-150 ${
@@ -247,6 +284,7 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                     workspace={workspace}
                     is_active={workspace.id === active_workspace.id}
                     onSelect={handleSelect}
+                    togglePriority={togglePriority}
                     updateWorkspace={updateWorkspace}
                     leaveWorkspace={leaveWorkspace}
                     deleteWorkspace={deleteWorkspace}

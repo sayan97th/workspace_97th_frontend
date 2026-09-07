@@ -144,6 +144,12 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         onClick: () => void nav.toggleFavorite(node.id, !node.is_favorite),
       },
       {
+        key: "priority",
+        label: node.is_priority ? "Unmark as priority" : "Mark as priority",
+        icon: <StarIcon filled={node.is_priority} />,
+        onClick: () => void nav.togglePriority(node.id, !node.is_priority),
+      },
+      {
         key: "duplicate",
         label: "Duplicate",
         icon: <DuplicateIcon />,
@@ -225,6 +231,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
             expanded_group_ids={nav.expanded_group_ids}
             onToggleGroup={nav.toggleGroup}
             onOpenRowMenu={openRowMenu}
+            onTogglePriority={(target) => void nav.togglePriority(target.id, !target.is_priority)}
           />
         ))
       )}

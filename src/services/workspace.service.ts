@@ -7,6 +7,7 @@ import type {
   UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
   UpdateWorkspacePayload,
+  UpdateWorkspacePriorityPayload,
   Workspace,
   WorkspaceContentCreator,
   WorkspaceContentFilters,
@@ -46,6 +47,21 @@ export const workspaceService = {
   ): Promise<Workspace> {
     const response = await apiClient.patch<{ workspace: Workspace }>(
       `/api/workspaces/${workspace_slug}`,
+      payload
+    );
+    return response.workspace;
+  },
+
+  /**
+   * PATCH /api/workspaces/{slug}/priority — flags/unflags this workspace as a
+   * priority client (the sidebar's priority star), open to any member.
+   */
+  async updateWorkspacePriority(
+    workspace_slug: string,
+    payload: UpdateWorkspacePriorityPayload
+  ): Promise<Workspace> {
+    const response = await apiClient.patch<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/priority`,
       payload
     );
     return response.workspace;

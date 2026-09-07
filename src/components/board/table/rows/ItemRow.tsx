@@ -150,7 +150,11 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
             title={item.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
             className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
-            style={{ color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: item.is_priority || is_hovered ? 1 : 0, pointerEvents: item.is_priority || is_hovered ? "auto" : "none" }}
+            style={{
+              color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
+              opacity: is_hovered || item.is_priority ? 1 : 0,
+              pointerEvents: is_hovered || item.is_priority ? "auto" : "none",
+            }}
           >
             <svg viewBox="0 0 16 16" width="13" height="13">
               <path

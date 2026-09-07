@@ -12,6 +12,8 @@ export type WorkspaceSummary = {
   color: string;
   /** The home workspace renders the small house glyph on its badge. */
   is_home?: boolean;
+  /** Priority client flag — sorts above regular workspaces and shows the sidebar's priority star. */
+  is_priority?: boolean;
 };
 
 /** Brand red — the default badge color for 97th Floor workspaces. */

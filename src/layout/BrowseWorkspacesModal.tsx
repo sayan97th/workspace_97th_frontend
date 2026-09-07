@@ -38,6 +38,8 @@ type BrowseWorkspacesModalProps = {
     workspace_slug: string,
     payload: UpdateWorkspacePayload
   ) => Promise<BrowseWorkspace>;
+  /** Flags/unflags a workspace as a priority client; each card's priority star stays hidden when omitted. */
+  togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
   leaveWorkspace?: (workspace_slug: string) => Promise<void>;
   deleteWorkspace?: (workspace_slug: string) => Promise<void>;
 };
@@ -99,6 +101,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
   onSelectWorkspace,
   onCreateWorkspace,
   updateWorkspace,
+  togglePriority,
   leaveWorkspace,
   deleteWorkspace,
 }) => {
@@ -306,6 +309,7 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
                     workspace={workspace}
                     onSelect={handleSelect}
                     updateWorkspace={updateWorkspace}
+                    togglePriority={togglePriority}
                     leaveWorkspace={leaveWorkspace}
                     deleteWorkspace={deleteWorkspace}
                   />

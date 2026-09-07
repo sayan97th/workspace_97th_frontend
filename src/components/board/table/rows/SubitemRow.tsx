@@ -141,7 +141,11 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(sub.id); }}
             title={sub.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
             className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
-            style={{ color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: sub.is_priority || is_hovered ? 1 : 0, pointerEvents: sub.is_priority || is_hovered ? "auto" : "none" }}
+            style={{
+              color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
+              opacity: is_hovered || sub.is_priority ? 1 : 0,
+              pointerEvents: is_hovered || sub.is_priority ? "auto" : "none",
+            }}
           >
             <svg viewBox="0 0 16 16" width="12" height="12">
               <path

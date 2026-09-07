@@ -18,7 +18,41 @@ export type NavTreeRowProps = {
   expanded_group_ids: Record<string, boolean>;
   onToggleGroup: (group_id: string) => void;
   onOpenRowMenu: (event: React.MouseEvent, node: WorkspaceNavNode) => void;
+  /** Flags/unflags this row as priority — the nav tree's own priority star. */
+  onTogglePriority: (node: WorkspaceNavNode) => void;
 };
+
+/** Priority star color — matches the board table's item/subitem priority star (see ItemRow.tsx). */
+const PRIORITY_COLOR = "#fdab3d";
+
+type PriorityStarProps = { node: WorkspaceNavNode; onTogglePriority: (node: WorkspaceNavNode) => void; size?: number };
+
+/**
+ * The sidebar row's single star: solid orange once a board/folder is flagged
+ * as priority, hidden until the row is hovered otherwise — so unflagged rows
+ * stay clean and every row's star lands in the same spot (same button size
+ * whether or not the icon inside is visible). Mirrors the priority star
+ * already used for workspaces themselves (see WorkspaceCard.tsx / the
+ * WorkspaceSwitcher's WorkspaceRow).
+ */
+const PriorityStar: React.FC<PriorityStarProps> = ({ node, onTogglePriority, size = 13 }) => (
+  <button
+    type="button"
+    onClick={(event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onTogglePriority(node);
+    }}
+    title={node.is_priority ? "Unmark as priority" : "Mark as priority"}
+    aria-label={node.is_priority ? "Unmark as priority" : "Mark as priority"}
+    className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md hover:bg-shell-hover-strong"
+    style={{ color: node.is_priority ? PRIORITY_COLOR : "var(--color-shell-text-faint)" }}
+  >
+    <span className={node.is_priority ? "" : "opacity-0 group-hover:opacity-100"}>
+      <StarIcon filled={node.is_priority} size={size} />
+    </span>
+  </button>
+);
 
 /** Left indent grows with depth so arbitrarily-nested folders stay readable. */
 const indentFor = (depth: number): number => 10 + depth * 20;
@@ -38,6 +72,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
   expanded_group_ids,
   onToggleGroup,
   onOpenRowMenu,
+  onTogglePriority,
 }) => {
   const padding_left = indentFor(depth);
 
@@ -67,10 +102,11 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
           <span className="flex-1 truncate text-sm font-semibold text-shell-text">
             {node.label}
           </span>
+          <PriorityStar node={node} onTogglePriority={onTogglePriority} />
           <button
             type="button"
             onClick={handleKebabClick}
-            className="ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
+            className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
             aria-label={`${node.label} options`}
           >
             <MoreDotsIcon />
@@ -86,6 +122,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
               expanded_group_ids={expanded_group_ids}
               onToggleGroup={onToggleGroup}
               onOpenRowMenu={onOpenRowMenu}
+              onTogglePriority={onTogglePriority}
             />
           ))}
       </>
@@ -122,19 +159,17 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
       >
         {node.label}
       </span>
-      {node.is_favorite && (
-        <span className="relative z-1 flex flex-none text-sunset-200">
-          <StarIcon filled size={13} />
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={handleKebabClick}
-        className="relative z-2 ml-auto flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
-        aria-label={`${node.label} options`}
-      >
-        <MoreDotsIcon />
-      </button>
+      <span className="ml-auto flex items-center gap-[7px]">
+        <PriorityStar node={node} onTogglePriority={onTogglePriority} />
+        <button
+          type="button"
+          onClick={handleKebabClick}
+          className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
+          aria-label={`${node.label} options`}
+        >
+          <MoreDotsIcon />
+        </button>
+      </span>
     </Link>
   );
 };

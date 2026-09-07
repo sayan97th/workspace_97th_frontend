@@ -52,6 +52,8 @@ export type WorkspaceNavNode = {
   /** Custom width (px) for every subitem tree's first (subitem name) column, persisted from its resize handle; null falls back to auto-sizing from the longest subitem name within each item. */
   sub_item_column_width: number | null;
   is_favorite: boolean;
+  /** Priority flag for this sidebar item — the same "sorts above the rest" star from a board's items/subitems, brought to the nav tree so a high-priority board/folder is easy to spot at a glance. Purely a visual signal (like item/subitem priority), not a sort key. */
+  is_priority: boolean;
   /** Hidden from the sidebar/nav tree and the workspace's Content tab without being deleted — see the board options menu's "Archive board" / "View archive / trash". */
   is_archived: boolean;
   /** Total updates (top-level + replies) on the board's discussion feed; only populated on {@link BoardDetail} (0 elsewhere). */
@@ -105,6 +107,8 @@ export type Workspace = {
   /** "open" — any account member can join; "closed" — invite-only. */
   privacy: "open" | "closed";
   is_home: boolean;
+  /** Priority client flag — sorts this workspace above regular ones in the switcher/browse lists, the same way a priority item sorts above the rest within a board. Toggled from the sidebar's priority star. */
+  is_priority: boolean;
   description: string | null;
   position: number;
   /** Human role label for the current user (e.g. "Owner"), null when not a member. */
@@ -137,6 +141,12 @@ export type UpdateNavItemPayload = {
   item_column_width?: number | null;
   sub_item_column_width?: number | null;
   is_favorite?: boolean;
+  is_priority?: boolean;
+};
+
+/** Payload for `PATCH /api/workspaces/{slug}/priority` — flags/unflags a priority client. */
+export type UpdateWorkspacePriorityPayload = {
+  is_priority: boolean;
 };
 
 /** Payload for moving a navigation item to a new parent / position. */

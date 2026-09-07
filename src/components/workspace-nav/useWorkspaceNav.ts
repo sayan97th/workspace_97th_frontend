@@ -18,6 +18,8 @@ export type WorkspaceNavApi = {
   createItem: (payload: CreateNavItemPayload) => Promise<void>;
   renameItem: (item_id: number, label: string) => Promise<void>;
   toggleFavorite: (item_id: number, is_favorite: boolean) => Promise<void>;
+  /** Flags/unflags a sidebar item (board/folder) as priority — the nav tree's own priority star. */
+  togglePriority: (item_id: number, is_priority: boolean) => Promise<void>;
   moveItem: (item_id: number, payload: MoveNavItemPayload) => Promise<void>;
   duplicateItem: (item_id: number) => Promise<void>;
   deleteItem: (item_id: number) => Promise<void>;
@@ -106,6 +108,14 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  const togglePriority = useCallback(
+    (item_id: number, is_priority: boolean) =>
+      runMutation((slug) =>
+        workspaceService.updateNavItem(slug, item_id, { is_priority })
+      ),
+    [runMutation]
+  );
+
   const moveItem = useCallback(
     (item_id: number, payload: MoveNavItemPayload) =>
       runMutation((slug) => workspaceService.moveNavItem(slug, item_id, payload)),
@@ -134,6 +144,7 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     createItem,
     renameItem,
     toggleFavorite,
+    togglePriority,
     moveItem,
     duplicateItem,
     deleteItem,

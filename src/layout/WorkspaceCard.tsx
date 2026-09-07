@@ -2,6 +2,7 @@
 import React from "react";
 import WorkspaceBadge from "./WorkspaceBadge";
 import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsButton";
+import { StarIcon } from "@/icons/workspace-icons";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 import type { UpdateWorkspacePayload } from "@/types/workspace";
 
@@ -19,6 +20,8 @@ type WorkspaceCardProps = {
     workspace_slug: string,
     payload: UpdateWorkspacePayload
   ) => Promise<BrowseWorkspace>;
+  /** Flags/unflags this workspace as a priority client; the card's priority star stays hidden when omitted. */
+  togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
   leaveWorkspace?: (workspace_slug: string) => Promise<void>;
   deleteWorkspace?: (workspace_slug: string) => Promise<void>;
 };
@@ -36,6 +39,7 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
   workspace,
   onSelect,
   updateWorkspace,
+  togglePriority,
   leaveWorkspace,
   deleteWorkspace,
 }) => (
@@ -70,10 +74,28 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
         {workspace.role}
       </span>
     )}
+    {togglePriority && (
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          void togglePriority(workspace.id, !workspace.is_priority);
+        }}
+        title={workspace.is_priority ? "Remove as priority client" : "Mark as priority client — their tasks sort above the rest"}
+        aria-label={workspace.is_priority ? "Remove as priority client" : "Mark as priority client"}
+        className="flex h-7 w-7 flex-none items-center justify-center rounded-md transition-colors hover:bg-shell-hover"
+        style={{ color: workspace.is_priority ? "#fdab3d" : "var(--color-shell-text-muted)" }}
+      >
+        <span className={workspace.is_priority ? "" : "opacity-0 group-hover:opacity-100"}>
+          <StarIcon filled={!!workspace.is_priority} size={15} />
+        </span>
+      </button>
+    )}
     {updateWorkspace && leaveWorkspace && deleteWorkspace && (
       <WorkspaceOptionsButton
         workspace={workspace}
         updateWorkspace={updateWorkspace}
+        togglePriority={togglePriority}
         leaveWorkspace={leaveWorkspace}
         deleteWorkspace={deleteWorkspace}
         trigger_class_name={OPTIONS_TRIGGER_CLASS}

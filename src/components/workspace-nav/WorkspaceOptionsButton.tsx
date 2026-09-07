@@ -22,6 +22,8 @@ export type WorkspaceOptionsButtonWorkspace = {
   /** Human role label for the current user (e.g. "Owner"); absent/null when not a member — the button renders nothing in that case. */
   role?: string | null;
   privacy?: "open" | "closed";
+  /** Priority client flag — drives the "Mark/Remove as priority client" menu item. */
+  is_priority?: boolean;
 };
 
 export type WorkspaceOptionsButtonProps = {
@@ -30,6 +32,8 @@ export type WorkspaceOptionsButtonProps = {
     workspace_slug: string,
     payload: UpdateWorkspacePayload
   ) => Promise<unknown>;
+  /** Flags/unflags this workspace as a priority client; the menu item stays hidden when omitted. */
+  togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
   leaveWorkspace: (workspace_slug: string) => Promise<void>;
   deleteWorkspace: (workspace_slug: string) => Promise<void>;
   /** Overrides the default hover-revealed row-dots trigger styling (e.g. an always-visible header button). */
@@ -57,6 +61,7 @@ const DEFAULT_TRIGGER_CLASS =
 const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   workspace,
   updateWorkspace,
+  togglePriority,
   leaveWorkspace,
   deleteWorkspace,
   trigger_class_name,
@@ -83,6 +88,10 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
 
   const handleChangeType = async (privacy: "open" | "closed") => {
     await updateWorkspace(workspace.id, { privacy });
+  };
+
+  const handleTogglePriority = async () => {
+    await togglePriority?.(workspace.id, !workspace.is_priority);
   };
 
   const handleLeave = async () => {
@@ -121,6 +130,8 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
           can_manage={can_manage}
           onRename={() => openDialog("rename")}
           onChangeType={() => openDialog("change-type")}
+          is_priority={!!workspace.is_priority}
+          onTogglePriority={togglePriority ? handleTogglePriority : undefined}
           onLeave={() => openDialog("leave")}
           onDelete={() => openDialog("delete")}
         />

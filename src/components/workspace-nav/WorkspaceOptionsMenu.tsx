@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
-import { CrownIcon, DeleteIcon, LeaveWorkspaceIcon, RenameIcon, WorkspaceTypeIcon } from "@/icons/workspace-icons";
+import { CrownIcon, DeleteIcon, LeaveWorkspaceIcon, RenameIcon, StarIcon, WorkspaceTypeIcon } from "@/icons/workspace-icons";
 
 export type WorkspaceOptionsMenuProps = {
   anchor_el: HTMLElement | null;
@@ -13,6 +13,10 @@ export type WorkspaceOptionsMenuProps = {
   onChangeType: () => void;
   /** Omit to hide "Transfer ownership" (e.g. compact switcher/browse contexts that don't have a member list to hand). */
   onTransferOwnership?: () => void;
+  /** Whether this workspace is currently flagged as a priority client. */
+  is_priority?: boolean;
+  /** Flags/unflags the workspace as a priority client; the menu item stays hidden when omitted. */
+  onTogglePriority?: () => void;
   onLeave: () => void;
   onDelete: () => void;
 };
@@ -31,6 +35,8 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
   onRename,
   onChangeType,
   onTransferOwnership,
+  is_priority = false,
+  onTogglePriority,
   onLeave,
   onDelete,
 }) => {
@@ -54,6 +60,16 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
                 },
               ] satisfies AnchoredMenuItem[])
             : []),
+        ] satisfies AnchoredMenuItem[])
+      : []),
+    ...(onTogglePriority
+      ? ([
+          {
+            key: "priority",
+            label: is_priority ? "Remove as priority client" : "Mark as priority client",
+            icon: <StarIcon filled={is_priority} />,
+            onClick: onTogglePriority,
+          },
         ] satisfies AnchoredMenuItem[])
       : []),
     { key: "leave", label: "Leave workspace", icon: <LeaveWorkspaceIcon />, onClick: onLeave },

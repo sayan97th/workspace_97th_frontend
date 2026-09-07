@@ -41,6 +41,7 @@ export const mapWorkspaceToBrowse = (workspace: Workspace): BrowseWorkspace => (
   mono: workspace.mono,
   color: workspace.color,
   is_home: workspace.is_home,
+  is_priority: workspace.is_priority,
   product: workspace.product,
   privacy: workspace.privacy,
   role: workspace.role ?? undefined,
