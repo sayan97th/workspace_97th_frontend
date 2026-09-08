@@ -57,6 +57,13 @@ const select_class =
  * existing board column, a freshly-created one, or "Don't import". Also owns
  * the "Add items to" table picker above the list, mirroring the approved
  * design's header row.
+ *
+ * Every row arrives already auto-mapped by the backend's `suggestMappings()`
+ * — an exact label match onto an existing board column, or (failing that) a
+ * brand-new column typed from the uploaded values themselves — so the user
+ * never has to hand-pick a destination for every column; the caption under
+ * each select just makes that automatic choice visible, and any row can
+ * still be overridden or set to "Don't import".
  */
 const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   file_name,
@@ -173,31 +180,42 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
                   <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
 
-                <div className="flex items-center gap-2">
-                  {mapping.mode === "name" && <ColumnSwatchBadge swatch={{ accent_color: "#fdab3d", glyph: "T", glyph_text_color: "#3a2a00" }} />}
-                  {mapping.mode === "map" && mapping.target_column_id != null && (
-                    <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[board_columns.find((c) => c.id === mapping.target_column_id)?.type ?? "text"]} />
-                  )}
-                  {mapping.mode === "create" && <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[mapping.new_type ?? source.suggested_type]} />}
-
-                  <select
-                    value={optionValue(mapping)}
-                    onChange={(event) => handleSelectChange(source.index, source.label, source.suggested_type, event.target.value)}
-                    className={select_class}
-                  >
-                    <option value="skip">Don&apos;t import</option>
-                    <option value="name">Item (name)</option>
-                    {board_columns.length > 0 && (
-                      <optgroup label="Existing columns">
-                        {board_columns.map((column) => (
-                          <option key={column.id} value={`map:${column.id}`}>
-                            {column.label}
-                          </option>
-                        ))}
-                      </optgroup>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    {mapping.mode === "name" && <ColumnSwatchBadge swatch={{ accent_color: "#fdab3d", glyph: "T", glyph_text_color: "#3a2a00" }} />}
+                    {mapping.mode === "map" && mapping.target_column_id != null && (
+                      <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[board_columns.find((c) => c.id === mapping.target_column_id)?.type ?? "text"]} />
                     )}
-                    <option value="create">+ Create new column</option>
-                  </select>
+                    {mapping.mode === "create" && <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[mapping.new_type ?? source.suggested_type]} />}
+
+                    <select
+                      value={optionValue(mapping)}
+                      onChange={(event) => handleSelectChange(source.index, source.label, source.suggested_type, event.target.value)}
+                      className={select_class}
+                    >
+                      <option value="skip">Don&apos;t import</option>
+                      <option value="name">Item (name)</option>
+                      {board_columns.length > 0 && (
+                        <optgroup label="Existing columns">
+                          {board_columns.map((column) => (
+                            <option key={column.id} value={`map:${column.id}`}>
+                              {column.label}
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <option value="create">+ Create new column</option>
+                    </select>
+                  </div>
+
+                  {mapping.mode === "map" && (
+                    <span className="pl-0.5 text-[11px] text-shell-text-muted">Auto-matched to an existing column</span>
+                  )}
+                  {mapping.mode === "create" && (
+                    <span className="pl-0.5 text-[11px] text-shell-text-muted">
+                      Auto-detected as {TYPE_LABELS[mapping.new_type ?? source.suggested_type]} — a new column will be created
+                    </span>
+                  )}
                 </div>
 
                 {mapping.mode === "create" && (
