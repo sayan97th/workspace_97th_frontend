@@ -24,6 +24,7 @@ import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
 import { useAuth } from "@/context/AuthContext";
 import { INVITATION_MANAGER_ROLES } from "@/components/invitations";
 import { WORKSPACE_PERMISSIONS_MANAGER_ROLES } from "@/components/permissions";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { useWorkspaceDetail } from "./useWorkspaceDetail";
 import WorkspaceManageRecents from "./WorkspaceManageRecents";
 import WorkspaceManageContent from "./WorkspaceManageContent";
@@ -296,14 +297,12 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
             // rendered disabled (greyed out, unclickable) for anyone without
             // WORKSPACE_PERMISSIONS_MANAGER_ROLES — see `can_manage_permissions`.
             const is_disabled = id === "permissions" && !can_manage_permissions;
-            return (
+            const tab_button = (
               <button
-                key={id}
                 type="button"
                 onClick={() => !is_disabled && setActiveTab(id)}
                 disabled={is_disabled}
                 aria-disabled={is_disabled}
-                title={is_disabled ? "You don't have permission to view this tab." : undefined}
                 className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${
                   is_disabled
                     ? "cursor-not-allowed border-transparent font-medium text-shell-text-faint"
@@ -315,6 +314,16 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
                 <Icon />
                 {label}
               </button>
+            );
+
+            return (
+              <Tooltip
+                key={id}
+                disabled={!is_disabled}
+                content="Only workspace administrators and staff can manage permissions in this workspace."
+              >
+                {tab_button}
+              </Tooltip>
             );
           })}
         </div>
