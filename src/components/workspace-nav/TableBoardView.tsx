@@ -318,6 +318,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       is_recent: false,
       invited_by: null,
       joined_at: null,
+      is_creator: false,
     }))
   );
   useEffect(() => {

@@ -8,6 +8,8 @@
  * is a navigable view.
  */
 
+import type { WorkspaceMembershipRole } from "@/types/invitation";
+
 export type WorkspaceNavNodeType = "group" | "leaf";
 
 /**
@@ -218,6 +220,13 @@ export type WorkspaceMember = {
   /** Id of the user who invited this member, null when unknown (e.g. the workspace's creator). */
   invited_by: number | null;
   joined_at: string | null;
+  /** Whether this member is the workspace's original creator — permanent, and never removable regardless of their current role. */
+  is_creator: boolean;
+};
+
+/** Payload for `PATCH /api/workspaces/{slug}/members/{member_id}`. */
+export type UpdateWorkspaceMemberRolePayload = {
+  role: WorkspaceMembershipRole;
 };
 
 /** The role the current owner keeps after handing off ownership, or `"leave"` to exit the workspace entirely. */

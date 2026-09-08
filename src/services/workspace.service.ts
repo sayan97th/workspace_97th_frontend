@@ -7,6 +7,7 @@ import type {
   ReorderNavItemsPayload,
   UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
+  UpdateWorkspaceMemberRolePayload,
   UpdateWorkspacePayload,
   UpdateWorkspacePriorityPayload,
   Workspace,
@@ -113,6 +114,32 @@ export const workspaceService = {
       `/api/workspaces/${workspace_slug}/members`
     );
     return response.data;
+  },
+
+  /**
+   * PATCH /api/workspaces/{slug}/members/{member_id} — changes a member's
+   * role (owner/privileged staff only). A member can never change their own
+   * role here — that goes through "Transfer ownership" or "Leave workspace".
+   */
+  async updateWorkspaceMemberRole(
+    workspace_slug: string,
+    member_id: number,
+    payload: UpdateWorkspaceMemberRolePayload
+  ): Promise<WorkspaceMember> {
+    const response = await apiClient.patch<{ data: WorkspaceMember }>(
+      `/api/workspaces/${workspace_slug}/members/${member_id}`,
+      payload
+    );
+    return response.data;
+  },
+
+  /**
+   * DELETE /api/workspaces/{slug}/members/{member_id} — removes a member from
+   * the workspace (owner/privileged staff only). The workspace's creator and
+   * the acting user's own membership can never be removed this way.
+   */
+  async removeWorkspaceMember(workspace_slug: string, member_id: number): Promise<void> {
+    await apiClient.delete(`/api/workspaces/${workspace_slug}/members/${member_id}`);
   },
 
   /**
