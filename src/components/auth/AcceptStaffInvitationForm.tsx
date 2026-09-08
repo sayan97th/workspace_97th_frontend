@@ -81,7 +81,7 @@ export default function AcceptStaffInvitationForm({ code }: Props) {
 
   return (
     <div className="no-scrollbar flex w-full flex-col overflow-y-auto lg:w-1/2 lg:flex-1">
-      <div className="mx-auto w-full max-w-md pb-10 sm:pt-10">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center pb-10 sm:pt-10">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-theme-xs dark:border-shell-border dark:bg-shell-panel sm:p-8">
           {preview_state.status === "loading" && (
             <div className="flex items-center justify-center py-12">
