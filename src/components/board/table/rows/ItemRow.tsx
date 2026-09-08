@@ -198,7 +198,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         {group.base_columns.concat(group.custom_columns).map((col) => (
           <div
             key={col.id}
-            className="relative flex items-stretch border-r border-boardtree-border-soft"
+            className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
             style={{ height: row_h, background: state.cell_colors[item.id]?.[col.id] }}
           >
             <CellRenderer node_id={item.id} column={col} values={item.values} state={state} actions={actions} />

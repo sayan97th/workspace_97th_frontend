@@ -175,7 +175,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => (
-          <div key={col.id} className="relative flex items-stretch border-r border-boardtree-border-soft" style={{ height: row_h }}>
+          <div key={col.id} className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft" style={{ height: row_h }}>
             <CellRenderer node_id={sub.id} column={col} values={sub.values} state={state} actions={actions} />
           </div>
         ))}

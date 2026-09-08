@@ -42,7 +42,7 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
         title={asString(value)}
-        className="h-full w-full truncate bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
+        className="h-full w-full min-w-0 truncate bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
       />
     );
   }
@@ -53,7 +53,8 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
         placeholder="Add text"
-        className="box-border h-full w-full resize-none bg-transparent px-3 py-1.5 font-[inherit] text-[12.5px] leading-[15px] text-boardtree-text-secondary outline-none"
+        title={asString(value)}
+        className="box-border h-full w-full min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-3 py-1.5 font-[inherit] text-[12.5px] leading-[15px] text-boardtree-text-secondary outline-none"
       />
     );
   }
@@ -247,17 +248,23 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     // there it would also clip `DropdownMenu`, which renders as that div's
     // other child and needs to overflow past the cell's edges.
     return (
-      <div className="relative flex flex-1 items-center gap-1.5 px-2.5">
+      <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
         {/* `h-full` keeps the button clickable when there are no chips yet —
             without it, `items-center` on the wrapping div shrinks the button
             to its (empty) content height, leaving nothing for a click to
             actually hit. */}
-        <button type="button" onClick={openMenu} className="flex h-full flex-1 items-center gap-1.5 overflow-hidden">
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
           {selected.map((entry) => {
             const def = findDef(defs, entry);
+            const label = def?.label ?? entry;
             return (
-              <span key={entry} className="flex-none whitespace-nowrap rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def?.color || "#9aa0b6" }}>
-                {def?.label ?? entry}
+              // `min-w-0 truncate` (not `flex-none whitespace-nowrap`) so an
+              // abnormally long option value — e.g. a "tags"/"dropdown"
+              // column repurposed to hold free-form text — clips with an
+              // ellipsis instead of forcing the chip past its own width and
+              // bleeding into the next column.
+              <span key={entry} title={label} className="min-w-0 max-w-full truncate rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def?.color || "#9aa0b6" }}>
+                {label}
               </span>
             );
           })}
@@ -292,14 +299,16 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     // See the Dropdown cell's own comment above — `overflow-hidden` stays off
     // this wrapping div so `TagsMenu` isn't clipped either.
     return (
-      <div className="relative flex flex-1 items-center gap-2.5 px-2.5">
+      <div className="relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5">
         {/* See the Dropdown cell's own comment above — same fix, same reason. */}
-        <button type="button" onClick={openMenu} className="flex h-full flex-1 items-center gap-2.5 overflow-hidden">
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
           {selected.map((entry) => {
             const def = findDef(defs, entry);
+            const label = def?.label ?? entry;
             return (
-              <span key={entry} className="flex-none whitespace-nowrap text-[12px] font-medium" style={{ color: def?.color || "#9aa0b6" }}>
-                {def?.label ?? entry}
+              // See the Dropdown cell's own chip comment above — same fix, same reason.
+              <span key={entry} title={label} className="min-w-0 max-w-full truncate text-[12px] font-medium" style={{ color: def?.color || "#9aa0b6" }}>
+                {label}
               </span>
             );
           })}

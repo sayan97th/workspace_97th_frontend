@@ -13,10 +13,16 @@ interface TagsMenuProps {
   onClose: () => void;
 }
 
+// A tag's `label` is typed as `string`, but real column data isn't
+// type-checked at write time — a malformed import can leave a non-string
+// value (e.g. a bare number) sitting in `config.options`. Coercing before
+// `.toLowerCase()` keeps one bad option from crashing the whole menu.
+const labelText = (label: TagDef["label"]): string => String(label ?? "");
+
 export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onToggle, onCreateTag, onManageTags, onClose }: TagsMenuProps) {
   const q = query.trim().toLowerCase();
-  const filtered = tag_defs.filter((t) => t.label.toLowerCase().includes(q));
-  const exact_match = tag_defs.some((t) => t.label.toLowerCase() === q);
+  const filtered = tag_defs.filter((t) => labelText(t.label).toLowerCase().includes(q));
+  const exact_match = tag_defs.some((t) => labelText(t.label).toLowerCase() === q);
   const can_create = q.length > 0 && !exact_match;
 
   return (
