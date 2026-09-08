@@ -31,8 +31,9 @@ import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
 import TransferOwnershipModal from "./TransferOwnershipModal";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import type { TransferOwnershipPayload } from "@/types/workspace";
+import { DEFAULT_WORKSPACE_MANAGE_TAB, type WorkspaceManageTabId } from "./tab-routing";
 
-type TabId = "recents" | "content" | "collaborators" | "permissions";
+type TabId = WorkspaceManageTabId;
 
 type TabDefinition = {
   id: TabId;
@@ -59,13 +60,38 @@ const WORKSPACE_TABS: TabDefinition[] = [
  * it a real, always-correct `workspace_slug` instead of guessing at an
  * independently-selected "active workspace".
  */
-const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug }) => {
+export type WorkspaceManageProps = WorkspaceViewProps & {
+  /**
+   * Active tab, controlled by the `/workspaces/{workspace_id}/{tab}` route
+   * (see `WorkspaceManageRouteContext`). Falls back to internal state when
+   * omitted, e.g. if this ever renders through the generic `/boards/{id}`
+   * path without a route wrapper.
+   */
+  active_tab?: TabId;
+  /** Called when the user switches tabs; required alongside `active_tab` to drive the URL from the route wrapper. */
+  onTabChange?: (tab: TabId) => void;
+};
+
+const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
+  node,
+  workspace_slug,
+  active_tab: controlled_active_tab,
+  onTabChange,
+}) => {
   const router = useRouter();
   const { hasAnyRole } = useAuth();
   const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace, transferOwnership } =
     useWorkspaceDetail(workspace_slug);
 
-  const [active_tab, setActiveTab] = useState<TabId>("recents");
+  const [internal_active_tab, setInternalActiveTab] = useState<TabId>(DEFAULT_WORKSPACE_MANAGE_TAB);
+  const active_tab = controlled_active_tab ?? internal_active_tab;
+  const setActiveTab = (tab: TabId) => {
+    if (onTabChange) {
+      onTabChange(tab);
+    } else {
+      setInternalActiveTab(tab);
+    }
+  };
   const [is_options_open, setIsOptionsOpen] = useState(false);
   const [is_info_open, setIsInfoOpen] = useState(false);
   const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);

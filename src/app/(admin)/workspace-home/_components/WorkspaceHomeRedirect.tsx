@@ -2,16 +2,15 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { workspaceService } from "@/services/workspace.service";
-import { buildBoardPath } from "@/components/workspace-nav/helpers";
+import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
 /**
  * `/workspace-home` is the app's stable post-login landing route (see
- * `src/utils/redirect.ts`), but "Manage Workspace" now lives as a real
- * per-workspace board (`view_key: "workspace_manage"`), reachable only via
- * its id-routed `/boards/{id}` path. This page's only job is to resolve the
- * current user's home workspace and forward there — it never renders
- * Manage Workspace itself.
+ * `src/utils/redirect.ts`), but "Manage Workspace" now lives at its own
+ * tab-addressable `/workspaces/{workspace_id}/...` route. This page's only
+ * job is to resolve the current user's home workspace and forward there —
+ * it never renders Manage Workspace itself.
  */
 const WorkspaceHomeRedirect: React.FC = () => {
   const router = useRouter();
@@ -30,15 +29,7 @@ const WorkspaceHomeRedirect: React.FC = () => {
           return;
         }
 
-        const { data: tree } = await workspaceService.getNavigationTree(home_workspace.slug);
-        const manage_item = tree.find((node) => node.view_key === "workspace_manage");
-
-        if (!manage_item) {
-          if (!cancelled) setError("This workspace doesn't have a Manage Workspace view yet.");
-          return;
-        }
-
-        if (!cancelled) router.replace(buildBoardPath(manage_item.id));
+        if (!cancelled) router.replace(buildWorkspaceManagePath(home_workspace.id));
       } catch {
         if (!cancelled) setError("We couldn't load your workspace.");
       }

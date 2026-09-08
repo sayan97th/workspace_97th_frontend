@@ -108,6 +108,16 @@ export const workspaceService = {
     return apiClient.get<Workspace>(`/api/workspaces/${workspace_slug}`);
   },
 
+  /**
+   * GET /api/workspaces/by-id/{workspace_id} — same payload as
+   * {@link getWorkspace}, resolved by the workspace's numeric id instead of
+   * its slug. Used by the `/workspaces/{workspace_id}/...` routes, which only
+   * have the id on hand from the URL itself.
+   */
+  async getWorkspaceById(workspace_id: number): Promise<Workspace> {
+    return apiClient.get<Workspace>(`/api/workspaces/by-id/${workspace_id}`);
+  },
+
   /** GET /api/workspaces/{slug}/members — the full member roster, for the Collaborations tab. */
   async getWorkspaceMembers(workspace_slug: string): Promise<WorkspaceMember[]> {
     const response = await apiClient.get<{ data: WorkspaceMember[] }>(

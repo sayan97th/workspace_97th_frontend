@@ -1,5 +1,6 @@
 import type { Workspace, WorkspaceNavNode } from "@/types/workspace";
 import type { BrowseWorkspace, WorkspaceMembership } from "@/data/workspace-browse-data";
+import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
 
 /** Base segment for id-routed boards. */
 export const BOARD_ROUTE_BASE = "/boards";
@@ -12,12 +13,16 @@ export const buildBoardPath = (item_id: number): string => `${BOARD_ROUTE_BASE}/
 
 /**
  * The href a leaf navigates to: an explicit `href` (used by special static
- * pages like Workspace Home) takes precedence, otherwise the id-routed board
- * path — which is what every generic, database-backed board (including
- * Client Hub) resolves to.
+ * pages like Workspace Home) takes precedence; the "Manage Workspace" leaf
+ * goes to its dedicated, tab-addressable `/workspaces/{workspace_id}/...`
+ * route; every other generic, database-backed board (including Client Hub)
+ * resolves to the id-routed board path.
  */
-export const getLeafHref = (node: WorkspaceNavNode): string =>
-  node.href ?? buildBoardPath(node.id);
+export const getLeafHref = (node: WorkspaceNavNode): string => {
+  if (node.href) return node.href;
+  if (node.view_key === "workspace_manage") return buildWorkspaceManagePath(node.workspace_id);
+  return buildBoardPath(node.id);
+};
 
 /** Where a node sits in the tree: its parent id, its sibling list, and its index within it. */
 export type NavNodeLocation = {

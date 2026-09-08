@@ -117,6 +117,13 @@ export type Workspace = {
   role: string | null;
   /** Membership buckets the current user has for this workspace (e.g. ["member","recent"]). */
   memberships: string[];
+  /**
+   * Id of this workspace's "Manage Workspace" navigation leaf (its
+   * `view_key: "workspace_manage"` board), or null if it hasn't been seeded
+   * yet. Lets `/workspaces/{workspace_id}/...` resolve straight to the board
+   * that renders Manage Workspace without a separate navigation-tree lookup.
+   */
+  manage_node_id: number | null;
 };
 
 /** Payload for creating a navigation item (folder or view). */
