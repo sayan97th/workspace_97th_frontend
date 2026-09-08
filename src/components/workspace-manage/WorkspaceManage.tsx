@@ -21,6 +21,8 @@ import {
 import type { WorkspaceViewProps } from "@/components/workspace-nav/TableBoardView";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
+import { useAuth } from "@/context/AuthContext";
+import { INVITATION_MANAGER_ROLES } from "@/components/invitations";
 import { useWorkspaceDetail } from "./useWorkspaceDetail";
 import WorkspaceManageRecents from "./WorkspaceManageRecents";
 import WorkspaceManageContent from "./WorkspaceManageContent";
@@ -59,6 +61,7 @@ const WORKSPACE_TABS: TabDefinition[] = [
  */
 const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug }) => {
   const router = useRouter();
+  const { hasAnyRole } = useAuth();
   const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace, transferOwnership } =
     useWorkspaceDetail(workspace_slug);
 
@@ -84,6 +87,10 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
   const workspace_mono = workspace.mono;
   const workspace_color = workspace.color;
   const can_manage_workspace = workspace.role?.toLowerCase() === "owner";
+  // Inviting/removing collaborators is broader than owner-only rename/delete: it also
+  // opens up to a privileged global role, mirroring the "Sent invitations" view's own gate
+  // (see `AuthorizesWorkspaceManagement` on the backend and `canManageWorkspaceInvitations`).
+  const can_manage_collaborators = can_manage_workspace || hasAnyRole(...INVITATION_MANAGER_ROLES);
 
   const closeDialog = () => setOpenDialog(null);
 
@@ -277,7 +284,7 @@ const WorkspaceManage: React.FC<WorkspaceViewProps> = ({ node, workspace_slug })
           <WorkspaceManageCollaborators
             key={collaborators_refresh_key}
             workspace_slug={workspace.slug}
-            can_manage_workspace={can_manage_workspace}
+            can_manage_workspace={can_manage_collaborators}
           />
         )}
       </div>
