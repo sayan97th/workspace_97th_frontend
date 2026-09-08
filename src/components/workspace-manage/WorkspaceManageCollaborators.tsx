@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { workspaceService } from "@/services/workspace.service";
@@ -13,6 +13,7 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
 import { SendInvitationModal } from "@/components/invitations";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import MemberOptionsMenu from "./MemberOptionsMenu";
+import SearchField from "@/components/common/SearchField";
 
 export type WorkspaceManageCollaboratorsProps = {
   workspace_slug: string;
@@ -36,6 +37,7 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search_query, setSearchQuery] = useState("");
   const [is_add_member_open, setIsAddMemberOpen] = useState(false);
   const [open_menu_member_id, setOpenMenuMemberId] = useState<number | null>(null);
   const [action_error, setActionError] = useState<string | null>(null);
@@ -63,6 +65,17 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
       cancelled = true;
     };
   }, [workspace_slug]);
+
+  const filtered_members = useMemo(() => {
+    const normalized_query = search_query.trim().toLowerCase();
+    if (!normalized_query) return members;
+
+    return members.filter(
+      (member) =>
+        member.full_name.toLowerCase().includes(normalized_query) ||
+        member.email.toLowerCase().includes(normalized_query)
+    );
+  }, [members, search_query]);
 
   const viewSentInvitations = () => router.push(`/invitations?workspace=${workspace_slug}`);
 
@@ -128,16 +141,24 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
 
   return (
     <div className="mt-2.5 pb-[60px]">
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between gap-3">
         <button
           type="button"
           onClick={viewSentInvitations}
-          className="flex items-center gap-1 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:text-shell-text"
+          className="flex flex-none items-center gap-1 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:text-shell-text"
         >
           View sent invitations
           <ChevronRightIcon size={10} />
         </button>
-        {addMemberButton}
+        <div className="flex flex-1 items-center justify-end gap-3">
+          <SearchField
+            value={search_query}
+            onChange={setSearchQuery}
+            placeholder="Search collaborators"
+            className="w-full max-w-[260px]"
+          />
+          {addMemberButton}
+        </div>
       </div>
 
       {action_error && (
@@ -146,7 +167,13 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
         </div>
       )}
 
-      {members.map((member, index) => {
+      {filtered_members.length === 0 && (
+        <div className="flex items-center justify-center py-16 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
+          [ no collaborators match &quot;{search_query.trim()}&quot; ]
+        </div>
+      )}
+
+      {filtered_members.map((member, index) => {
         const [gradient_from, gradient_to] = gradientForId(member.id);
         const is_owner = member.role === "owner";
         const is_viewer = member.role === "viewer";
@@ -157,7 +184,7 @@ const WorkspaceManageCollaborators: React.FC<WorkspaceManageCollaboratorsProps> 
           <div
             key={member.id}
             className={`flex items-center gap-3.5 rounded-lg px-2 py-[15px] ${
-              index < members.length - 1 ? "border-b border-shell-border" : ""
+              index < filtered_members.length - 1 ? "border-b border-shell-border" : ""
             }`}
           >
             <CreatorAvatar
