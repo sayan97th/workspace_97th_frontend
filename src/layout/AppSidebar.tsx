@@ -6,6 +6,7 @@ import useWorkspaceNav from "@/components/workspace-nav/useWorkspaceNav";
 import NavTree from "@/components/workspace-nav/NavTree";
 import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsButton";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
+import WorkspaceSwitcherSkeleton from "./WorkspaceSwitcherSkeleton";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import CreateWorkspaceModal from "./CreateWorkspaceModal";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
@@ -113,19 +114,23 @@ const AppSidebar: React.FC = () => {
             </div>
           </div>
 
-          <WorkspaceSwitcher
-            active_workspace={active_workspace}
-            recent_workspaces={recent_workspaces}
-            my_workspaces={my_workspaces}
-            nav={nav}
-            togglePriority={togglePriority}
-            onSelectWorkspace={selectWorkspace}
-            onAddWorkspace={() => setIsCreateOpen(true)}
-            onBrowseAll={() => setIsBrowseOpen(true)}
-            updateWorkspace={updateWorkspace}
-            leaveWorkspace={leaveWorkspace}
-            deleteWorkspace={deleteWorkspace}
-          />
+          {active_workspace ? (
+            <WorkspaceSwitcher
+              active_workspace={active_workspace}
+              recent_workspaces={recent_workspaces}
+              my_workspaces={my_workspaces}
+              nav={nav}
+              togglePriority={togglePriority}
+              onSelectWorkspace={selectWorkspace}
+              onAddWorkspace={() => setIsCreateOpen(true)}
+              onBrowseAll={() => setIsBrowseOpen(true)}
+              updateWorkspace={updateWorkspace}
+              leaveWorkspace={leaveWorkspace}
+              deleteWorkspace={deleteWorkspace}
+            />
+          ) : (
+            <WorkspaceSwitcherSkeleton />
+          )}
         </div>
 
         <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
