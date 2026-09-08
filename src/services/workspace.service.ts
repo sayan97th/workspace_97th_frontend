@@ -73,6 +73,15 @@ export const workspaceService = {
     await apiClient.delete(`/api/workspaces/${workspace_slug}`);
   },
 
+  /**
+   * PATCH /api/workspaces/{slug}/activate — records this workspace as the one
+   * the current user last had open, so it's restored on their next login/page
+   * reload instead of always defaulting to the home workspace.
+   */
+  async activateWorkspace(workspace_slug: string): Promise<void> {
+    await apiClient.patch(`/api/workspaces/${workspace_slug}/activate`);
+  },
+
   /** POST /api/workspaces/{slug}/leave — remove the current user from the workspace. */
   async leaveWorkspace(workspace_slug: string): Promise<void> {
     await apiClient.post(`/api/workspaces/${workspace_slug}/leave`);

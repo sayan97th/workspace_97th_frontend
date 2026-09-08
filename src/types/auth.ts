@@ -30,6 +30,9 @@ export interface User {
   time_format: "12" | "24";
   date_format: "long" | "euro";
   first_day_of_week: "sunday" | "monday";
+
+  /** The numeric id of the workspace the user last had open, restored by the switcher on page load. */
+  last_active_workspace_id: number | null;
 }
 
 export interface AuthResponse {
@@ -132,6 +135,9 @@ export interface ProfileResponse extends ProfileData {
   time_format: "12" | "24";
   date_format: "long" | "euro";
   first_day_of_week: "sunday" | "monday";
+
+  /** The numeric id of the workspace the user last had open, restored by the switcher on page load. */
+  last_active_workspace_id: number | null;
 }
 
 /** Partial update payload for PATCH /api/profile. */

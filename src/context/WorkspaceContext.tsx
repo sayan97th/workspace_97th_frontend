@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
+import { useAuth } from "@/context/AuthContext";
 import type { CreateWorkspacePayload, UpdateWorkspacePayload } from "@/types/workspace";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 import { mapWorkspaceToBrowse } from "@/components/workspace-nav/helpers";
@@ -46,10 +47,17 @@ const WorkspaceContext = createContext<WorkspacesApi | undefined>(undefined);
  * consumer now reads/writes the same active workspace.
  */
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [workspaces, setWorkspaces] = useState<BrowseWorkspace[]>([]);
   const [active_workspace_id, setActiveWorkspaceId] = useState<string | undefined>();
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Reads the account's own copy of "which workspace was last open" (persisted
+  // server-side by `selectWorkspace`/`createWorkspace` below) so a page reload
+  // restores it instead of always defaulting to the home workspace. Read once
+  // per provider instance — after that, `selectWorkspace` is the only writer.
+  const last_active_workspace_id = useCallback(() => user?.last_active_workspace_id, [user]);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -62,6 +70,14 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (current && mapped.some((workspace) => workspace.id === current)) {
           return current;
         }
+        const remembered_id = last_active_workspace_id();
+        const remembered_workspace =
+          remembered_id != null
+            ? data.find((workspace) => workspace.id === remembered_id)
+            : undefined;
+        if (remembered_workspace) {
+          return remembered_workspace.slug;
+        }
         return (mapped.find((workspace) => workspace.is_home) ?? mapped[0])?.id;
       });
     } catch {
@@ -69,7 +85,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [last_active_workspace_id]);
 
   useEffect(() => {
     void load();
@@ -95,8 +111,15 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     [workspaces]
   );
 
+  /**
+   * Switches the active workspace and remembers the choice server-side (fire
+   * and forget — the switch itself is instant and shouldn't wait on the
+   * network, or roll back if the request fails) so it survives a page reload
+   * or a login from another device.
+   */
   const selectWorkspace = useCallback((workspace: { id: string }) => {
     setActiveWorkspaceId(workspace.id);
+    void workspaceService.activateWorkspace(workspace.id);
   }, []);
 
   const createWorkspace = useCallback(
@@ -106,6 +129,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       );
       setWorkspaces((prev) => [...prev, created]);
       setActiveWorkspaceId(created.id);
+      void workspaceService.activateWorkspace(created.id);
       return created;
     },
     []
@@ -147,7 +171,13 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const remaining = prev.filter((workspace) => workspace.id !== workspace_slug);
       setActiveWorkspaceId((current) => {
         if (current !== workspace_slug) return current;
-        return (remaining.find((workspace) => workspace.is_home) ?? remaining[0])?.id;
+        const fallback = remaining.find((workspace) => workspace.is_home) ?? remaining[0];
+        // Left/deleted workspaces stay in the `/api/workspaces` catalog (for
+        // "Browse all"), so the remembered last-active id must be corrected
+        // here too — otherwise a reload tries to restore the workspace the
+        // user just left.
+        if (fallback) void workspaceService.activateWorkspace(fallback.id);
+        return fallback?.id;
       });
       return remaining;
     });
