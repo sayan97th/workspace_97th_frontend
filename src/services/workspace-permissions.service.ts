@@ -19,12 +19,12 @@ export type UpdateWorkspacePermissionPayload = {
  * workspace — only the grants are stored data, editable via `update`.
  */
 export const workspacePermissionsService = {
-  /** GET /api/workspace-permissions */
+  /** GET /api/workspace-permissions — restricted to WORKSPACE_PERMISSIONS_MANAGER_ROLES. */
   async getPermissions(): Promise<WorkspacePermissionsPayload> {
     return apiClient.get<WorkspacePermissionsPayload>("/api/workspace-permissions");
   },
 
-  /** PATCH /api/workspace-permissions — staff-only; toggles a single grant. */
+  /** PATCH /api/workspace-permissions — restricted to WORKSPACE_PERMISSIONS_MANAGER_ROLES; toggles a single grant. */
   async updatePermission(payload: UpdateWorkspacePermissionPayload): Promise<void> {
     await apiClient.patch("/api/workspace-permissions", payload);
   },

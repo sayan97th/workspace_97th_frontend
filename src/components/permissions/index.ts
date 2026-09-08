@@ -4,4 +4,5 @@ export { default as PermissionsGroupCard } from "./PermissionsGroupCard";
 export { default as PermissionsCheckbox } from "./PermissionsCheckbox";
 export { usePermissionsManager } from "./usePermissionsManager";
 export type { PermissionsManagerApi } from "./usePermissionsManager";
+export { WORKSPACE_PERMISSIONS_MANAGER_ROLES } from "./permissionsAccess";
 export type * from "./types";

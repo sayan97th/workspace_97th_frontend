@@ -10,19 +10,36 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
 
 const EMPTY_CONFIG: PermissionsConfig = { roles: [], groups: [], defaults: {} };
 
+export type WorkspaceManagePermissionsProps = {
+  /**
+   * Whether the current user holds one of `WORKSPACE_PERMISSIONS_MANAGER_ROLES`
+   * (see {@link WorkspaceManage}), mirroring the API's
+   * `role:super_admin,admin,staff` floor on `/workspace-permissions`. When
+   * false, neither the catalog nor the current grants are fetched, and an
+   * access-denied message renders instead of the matrix — guards a direct
+   * visit to `/workspaces/{id}/permissions`, not just the disabled tab button.
+   */
+  can_manage: boolean;
+};
+
 /**
  * Manage Workspace's "Permissions" tab: which actions each default workspace
  * role (owner / member / non-member) is allowed to perform, shared across
  * every workspace. Fetches the catalog + current grants from the API and
  * persists any toggle back to it (staff-only server-side).
  */
-const WorkspaceManagePermissions: React.FC = () => {
+const WorkspaceManagePermissions: React.FC<WorkspaceManagePermissionsProps> = ({ can_manage }) => {
   const [payload, setPayload] = useState<WorkspacePermissionsPayload | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggle_error, setToggleError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!can_manage) {
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     setIsLoading(true);
@@ -42,7 +59,7 @@ const WorkspaceManagePermissions: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [can_manage]);
 
   const config: PermissionsConfig = payload
     ? { roles: payload.roles, groups: payload.groups, defaults: payload.matrix }
@@ -57,6 +74,15 @@ const WorkspaceManagePermissions: React.FC = () => {
         manager.togglePermission(key); // revert the optimistic flip
       });
   });
+
+  if (!can_manage) {
+    return (
+      <CenteredMessage
+        title="You don't have access to this tab"
+        detail="Only workspace administrators and staff can view or edit workspace permissions."
+      />
+    );
+  }
 
   if (is_loading) return <BoardLoadingSpinner />;
   if (error) return <CenteredMessage title="Something went wrong" detail={error} />;

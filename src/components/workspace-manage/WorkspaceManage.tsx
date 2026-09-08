@@ -23,6 +23,7 @@ import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
 import { useAuth } from "@/context/AuthContext";
 import { INVITATION_MANAGER_ROLES } from "@/components/invitations";
+import { WORKSPACE_PERMISSIONS_MANAGER_ROLES } from "@/components/permissions";
 import { useWorkspaceDetail } from "./useWorkspaceDetail";
 import WorkspaceManageRecents from "./WorkspaceManageRecents";
 import WorkspaceManageContent from "./WorkspaceManageContent";
@@ -117,6 +118,12 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
   // opens up to a privileged global role, mirroring the "Sent invitations" view's own gate
   // (see `AuthorizesWorkspaceManagement` on the backend and `canManageWorkspaceInvitations`).
   const can_manage_collaborators = can_manage_workspace || hasAnyRole(...INVITATION_MANAGER_ROLES);
+  // The Permissions tab configures the default workspace-role matrix shared
+  // across every workspace, not this workspace's own settings — so its gate
+  // is a straight global-role check, mirroring the API's
+  // `role:super_admin,admin,staff` floor on `/workspace-permissions`
+  // (see `WORKSPACE_PERMISSIONS_MANAGER_ROLES`), not workspace ownership.
+  const can_manage_permissions = hasAnyRole(...WORKSPACE_PERMISSIONS_MANAGER_ROLES);
 
   const closeDialog = () => setOpenDialog(null);
 
@@ -285,14 +292,24 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
         <div className="mt-[26px] flex gap-1.5 border-b border-shell-border">
           {WORKSPACE_TABS.map(({ id, label, Icon }) => {
             const is_active = active_tab === id;
+            // The Permissions tab stays visible for every member, but is
+            // rendered disabled (greyed out, unclickable) for anyone without
+            // WORKSPACE_PERMISSIONS_MANAGER_ROLES — see `can_manage_permissions`.
+            const is_disabled = id === "permissions" && !can_manage_permissions;
             return (
               <button
                 key={id}
                 type="button"
-                onClick={() => setActiveTab(id)}
-                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${is_active
-                    ? "border-brand-500 font-semibold text-brand-500"
-                    : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
+                onClick={() => !is_disabled && setActiveTab(id)}
+                disabled={is_disabled}
+                aria-disabled={is_disabled}
+                title={is_disabled ? "You don't have permission to view this tab." : undefined}
+                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${
+                  is_disabled
+                    ? "cursor-not-allowed border-transparent font-medium text-shell-text-faint"
+                    : is_active
+                      ? "border-brand-500 font-semibold text-brand-500"
+                      : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
                   }`}
               >
                 <Icon />
@@ -305,7 +322,9 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
         {/* Tab panels */}
         {active_tab === "recents" && <WorkspaceManageRecents workspace_slug={workspace.slug} />}
         {active_tab === "content" && <WorkspaceManageContent />}
-        {active_tab === "permissions" && <WorkspaceManagePermissions />}
+        {active_tab === "permissions" && (
+          <WorkspaceManagePermissions can_manage={can_manage_permissions} />
+        )}
         {active_tab === "collaborators" && (
           <WorkspaceManageCollaborators
             key={collaborators_refresh_key}
