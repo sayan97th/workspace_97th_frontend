@@ -22,7 +22,11 @@ import {
 
 type WorkspaceMutationProps = Pick<
   WorkspaceOptionsButtonProps,
-  "updateWorkspace" | "leaveWorkspace" | "deleteWorkspace"
+  | "updateWorkspace"
+  | "uploadWorkspaceAvatar"
+  | "removeWorkspaceAvatar"
+  | "leaveWorkspace"
+  | "deleteWorkspace"
 >;
 
 type WorkspaceSwitcherProps = Partial<WorkspaceMutationProps> & {
@@ -72,6 +76,8 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
   onSelect,
   togglePriority,
   updateWorkspace,
+  uploadWorkspaceAvatar,
+  removeWorkspaceAvatar,
   leaveWorkspace,
   deleteWorkspace,
 }) => {
@@ -121,6 +127,8 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
           workspace={workspace}
           updateWorkspace={updateWorkspace}
           togglePriority={togglePriority}
+          uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+          removeWorkspaceAvatar={removeWorkspaceAvatar}
           leaveWorkspace={leaveWorkspace}
           deleteWorkspace={deleteWorkspace}
         />
@@ -151,6 +159,8 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
   onAddWorkspace,
   onBrowseAll,
   updateWorkspace,
+  uploadWorkspaceAvatar,
+  removeWorkspaceAvatar,
   leaveWorkspace,
   deleteWorkspace,
 }) => {
@@ -286,6 +296,8 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
                     onSelect={handleSelect}
                     togglePriority={togglePriority}
                     updateWorkspace={updateWorkspace}
+                    uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+                    removeWorkspaceAvatar={removeWorkspaceAvatar}
                     leaveWorkspace={leaveWorkspace}
                     deleteWorkspace={deleteWorkspace}
                   />

@@ -249,6 +249,18 @@ export const WorkspaceTypeIcon: React.FC<IconProps> = ({ className, size = 15 })
   </svg>
 );
 
+export const EditWorkspaceIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.2" y="2.2" width="8" height="8" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M9.4 9.4 L9.4 12.4 L12.4 12.4 L14.2 10.6 A1 1 0 0 0 14.2 9.2 L13.2 8.2 A1 1 0 0 0 11.8 8.2 Z"
+      stroke="currentColor"
+      strokeWidth="1.1"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const CheckIcon: React.FC<IconProps> = ({ className, size = 12 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

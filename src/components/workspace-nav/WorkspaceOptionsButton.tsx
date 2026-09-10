@@ -4,11 +4,14 @@ import WorkspaceOptionsMenu from "./WorkspaceOptionsMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import ChangeWorkspaceTypeModal from "./ChangeWorkspaceTypeModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import EditWorkspaceModal, {
+  type EditWorkspaceSubmission,
+} from "@/layout/EditWorkspaceModal";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import type { UpdateWorkspacePayload } from "@/types/workspace";
 
 /** Which single-field/confirm dialog the "…" menu currently has open. */
-type OptionsDialog = "rename" | "change-type" | "leave" | "delete" | null;
+type OptionsDialog = "edit" | "rename" | "change-type" | "leave" | "delete" | null;
 
 /**
  * The subset of a workspace this button actually needs — kept minimal (rather
@@ -24,6 +27,10 @@ export type WorkspaceOptionsButtonWorkspace = {
   privacy?: "open" | "closed";
   /** Priority client flag — drives the "Mark/Remove as priority client" menu item. */
   is_priority?: boolean;
+  /** Badge background color, used to prefill the "Edit workspace" dialog's color picker. */
+  color?: string;
+  /** Uploaded avatar image, used to prefill the "Edit workspace" dialog's photo preview. */
+  avatar_url?: string | null;
 };
 
 export type WorkspaceOptionsButtonProps = {
@@ -34,6 +41,10 @@ export type WorkspaceOptionsButtonProps = {
   ) => Promise<unknown>;
   /** Flags/unflags this workspace as a priority client; the menu item stays hidden when omitted. */
   togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
+  /** Uploads (or replaces) this workspace's avatar; the "Edit workspace" dialog's photo picker is disabled when omitted. */
+  uploadWorkspaceAvatar?: (workspace_slug: string, file: File) => Promise<unknown>;
+  /** Removes this workspace's avatar, reverting it to its generated mono/color badge. */
+  removeWorkspaceAvatar?: (workspace_slug: string) => Promise<unknown>;
   leaveWorkspace: (workspace_slug: string) => Promise<void>;
   deleteWorkspace: (workspace_slug: string) => Promise<void>;
   /** Overrides the default hover-revealed row-dots trigger styling (e.g. an always-visible header button). */
@@ -62,6 +73,8 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   workspace,
   updateWorkspace,
   togglePriority,
+  uploadWorkspaceAvatar,
+  removeWorkspaceAvatar,
   leaveWorkspace,
   deleteWorkspace,
   trigger_class_name,
@@ -84,6 +97,23 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
 
   const handleRename = async (name: string) => {
     await updateWorkspace(workspace.id, { name });
+  };
+
+  const handleEdit = async (
+    workspace_slug: string,
+    submission: EditWorkspaceSubmission
+  ) => {
+    await updateWorkspace(workspace_slug, {
+      name: submission.name,
+      mono: submission.name[0]?.toUpperCase() ?? "W",
+      color: submission.color,
+      privacy: submission.privacy,
+    });
+    if (submission.avatar_change instanceof File) {
+      await uploadWorkspaceAvatar?.(workspace_slug, submission.avatar_change);
+    } else if (submission.avatar_change === "remove") {
+      await removeWorkspaceAvatar?.(workspace_slug);
+    }
   };
 
   const handleChangeType = async (privacy: "open" | "closed") => {
@@ -128,12 +158,26 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
           is_open={is_menu_open}
           onClose={() => setIsMenuOpen(false)}
           can_manage={can_manage}
+          onEdit={() => openDialog("edit")}
           onRename={() => openDialog("rename")}
           onChangeType={() => openDialog("change-type")}
           is_priority={!!workspace.is_priority}
           onTogglePriority={togglePriority ? handleTogglePriority : undefined}
           onLeave={() => openDialog("leave")}
           onDelete={() => openDialog("delete")}
+        />
+
+        <EditWorkspaceModal
+          is_open={open_dialog === "edit"}
+          workspace={{
+            id: workspace.id,
+            name: workspace.name,
+            color: workspace.color ?? "#6E7B7D",
+            avatar_url: workspace.avatar_url,
+            privacy: workspace.privacy ?? "open",
+          }}
+          onSave={handleEdit}
+          onClose={closeDialog}
         />
 
         <NavItemFormModal

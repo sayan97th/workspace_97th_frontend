@@ -22,6 +22,10 @@ type WorkspaceCardProps = {
   ) => Promise<BrowseWorkspace>;
   /** Flags/unflags this workspace as a priority client; the card's priority star stays hidden when omitted. */
   togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
+  /** Uploads (or replaces) this workspace's avatar; the "Edit workspace" dialog's photo picker is disabled when omitted. */
+  uploadWorkspaceAvatar?: (workspace_slug: string, file: File) => Promise<unknown>;
+  /** Removes this workspace's avatar, reverting it to its generated mono/color badge. */
+  removeWorkspaceAvatar?: (workspace_slug: string) => Promise<unknown>;
   leaveWorkspace?: (workspace_slug: string) => Promise<void>;
   deleteWorkspace?: (workspace_slug: string) => Promise<void>;
 };
@@ -40,6 +44,8 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
   onSelect,
   updateWorkspace,
   togglePriority,
+  uploadWorkspaceAvatar,
+  removeWorkspaceAvatar,
   leaveWorkspace,
   deleteWorkspace,
 }) => (
@@ -96,6 +102,8 @@ const WorkspaceCard: React.FC<WorkspaceCardProps> = ({
         workspace={workspace}
         updateWorkspace={updateWorkspace}
         togglePriority={togglePriority}
+        uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+        removeWorkspaceAvatar={removeWorkspaceAvatar}
         leaveWorkspace={leaveWorkspace}
         deleteWorkspace={deleteWorkspace}
         trigger_class_name={OPTIONS_TRIGGER_CLASS}

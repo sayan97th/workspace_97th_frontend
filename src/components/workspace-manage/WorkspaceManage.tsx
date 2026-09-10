@@ -18,6 +18,9 @@ import {
   NavItemFormModal,
   WorkspaceOptionsMenu,
 } from "@/components/workspace-nav";
+import EditWorkspaceModal, {
+  type EditWorkspaceSubmission,
+} from "@/layout/EditWorkspaceModal";
 import type { WorkspaceViewProps } from "@/components/workspace-nav/TableBoardView";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
@@ -44,7 +47,7 @@ type TabDefinition = {
 };
 
 /** Which single-field/confirm dialog the "…" menu currently has open. */
-type OptionsDialog = "rename" | "change-type" | "transfer-ownership" | "leave" | "delete" | null;
+type OptionsDialog = "edit" | "rename" | "change-type" | "transfer-ownership" | "leave" | "delete" | null;
 
 const WORKSPACE_TABS: TabDefinition[] = [
   { id: "recents", label: "Recents", Icon: ClockIcon },
@@ -82,8 +85,17 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
 }) => {
   const router = useRouter();
   const { hasAnyRole } = useAuth();
-  const { workspace, is_loading, error, updateWorkspace, leaveWorkspace, deleteWorkspace, transferOwnership } =
-    useWorkspaceDetail(workspace_slug);
+  const {
+    workspace,
+    is_loading,
+    error,
+    updateWorkspace,
+    uploadWorkspaceAvatar,
+    removeWorkspaceAvatar,
+    leaveWorkspace,
+    deleteWorkspace,
+    transferOwnership,
+  } = useWorkspaceDetail(workspace_slug);
 
   const [internal_active_tab, setInternalActiveTab] = useState<TabId>(DEFAULT_WORKSPACE_MANAGE_TAB);
   const active_tab = controlled_active_tab ?? internal_active_tab;
@@ -130,6 +142,23 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
 
   const handleRename = async (name: string) => {
     await updateWorkspace({ name });
+  };
+
+  const handleEditWorkspace = async (
+    _workspace_slug: string,
+    submission: EditWorkspaceSubmission
+  ) => {
+    await updateWorkspace({
+      name: submission.name,
+      mono: submission.name[0]?.toUpperCase() ?? "W",
+      color: submission.color,
+      privacy: submission.privacy,
+    });
+    if (submission.avatar_change instanceof File) {
+      await uploadWorkspaceAvatar(submission.avatar_change);
+    } else if (submission.avatar_change === "remove") {
+      await removeWorkspaceAvatar();
+    }
   };
 
   const handleChangeType = async (privacy: "open" | "closed") => {
@@ -279,11 +308,24 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
                 is_open={is_options_open}
                 onClose={() => setIsOptionsOpen(false)}
                 can_manage={can_manage_workspace}
+                onEdit={() => setOpenDialog("edit")}
                 onRename={() => setOpenDialog("rename")}
                 onChangeType={() => setOpenDialog("change-type")}
                 onTransferOwnership={() => setOpenDialog("transfer-ownership")}
                 onLeave={() => setOpenDialog("leave")}
                 onDelete={() => setOpenDialog("delete")}
+              />
+              <EditWorkspaceModal
+                is_open={open_dialog === "edit"}
+                workspace={{
+                  id: workspace.slug,
+                  name: workspace_name,
+                  color: workspace_color,
+                  avatar_url: workspace.avatar_thumbnail_url ?? workspace.avatar_url,
+                  privacy: workspace.privacy,
+                }}
+                onSave={handleEditWorkspace}
+                onClose={closeDialog}
               />
             </div>
           </div>

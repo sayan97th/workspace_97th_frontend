@@ -40,6 +40,10 @@ type BrowseWorkspacesModalProps = {
   ) => Promise<BrowseWorkspace>;
   /** Flags/unflags a workspace as a priority client; each card's priority star stays hidden when omitted. */
   togglePriority?: (workspace_slug: string, is_priority: boolean) => Promise<unknown>;
+  /** Uploads (or replaces) a workspace's avatar; each card's "Edit workspace" photo picker is disabled when omitted. */
+  uploadWorkspaceAvatar?: (workspace_slug: string, file: File) => Promise<unknown>;
+  /** Removes a workspace's avatar, reverting it to its generated mono/color badge. */
+  removeWorkspaceAvatar?: (workspace_slug: string) => Promise<unknown>;
   leaveWorkspace?: (workspace_slug: string) => Promise<void>;
   deleteWorkspace?: (workspace_slug: string) => Promise<void>;
 };
@@ -102,6 +106,8 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
   onCreateWorkspace,
   updateWorkspace,
   togglePriority,
+  uploadWorkspaceAvatar,
+  removeWorkspaceAvatar,
   leaveWorkspace,
   deleteWorkspace,
 }) => {
@@ -310,6 +316,8 @@ const BrowseWorkspacesModal: React.FC<BrowseWorkspacesModalProps> = ({
                     onSelect={handleSelect}
                     updateWorkspace={updateWorkspace}
                     togglePriority={togglePriority}
+                    uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+                    removeWorkspaceAvatar={removeWorkspaceAvatar}
                     leaveWorkspace={leaveWorkspace}
                     deleteWorkspace={deleteWorkspace}
                   />

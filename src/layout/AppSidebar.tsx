@@ -31,6 +31,7 @@ const AppSidebar: React.FC = () => {
     updateWorkspace,
     togglePriority,
     uploadWorkspaceAvatar,
+    removeWorkspaceAvatar,
     leaveWorkspace,
     deleteWorkspace,
   } = workspaces_api;
@@ -92,6 +93,8 @@ const AppSidebar: React.FC = () => {
                   workspace={active_workspace}
                   updateWorkspace={updateWorkspace}
                   togglePriority={togglePriority}
+                  uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+                  removeWorkspaceAvatar={removeWorkspaceAvatar}
                   leaveWorkspace={leaveWorkspace}
                   deleteWorkspace={deleteWorkspace}
                   trigger_class_name="shell-icon-button h-7 w-7"
@@ -128,6 +131,8 @@ const AppSidebar: React.FC = () => {
               onAddWorkspace={() => setIsCreateOpen(true)}
               onBrowseAll={() => setIsBrowseOpen(true)}
               updateWorkspace={updateWorkspace}
+              uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+              removeWorkspaceAvatar={removeWorkspaceAvatar}
               leaveWorkspace={leaveWorkspace}
               deleteWorkspace={deleteWorkspace}
             />
@@ -157,6 +162,8 @@ const AppSidebar: React.FC = () => {
         onCreateWorkspace={() => setIsCreateOpen(true)}
         updateWorkspace={updateWorkspace}
         togglePriority={togglePriority}
+        uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+        removeWorkspaceAvatar={removeWorkspaceAvatar}
         leaveWorkspace={leaveWorkspace}
         deleteWorkspace={deleteWorkspace}
       />

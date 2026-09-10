@@ -13,6 +13,10 @@ export type WorkspaceDetailApi = {
   is_loading: boolean;
   error: string | null;
   updateWorkspace: (payload: UpdateWorkspacePayload) => Promise<void>;
+  /** Uploads (or replaces) this workspace's custom avatar image. Owner/admin only. */
+  uploadWorkspaceAvatar: (file: File) => Promise<void>;
+  /** Removes this workspace's custom avatar, reverting it to its generated mono/color badge. Owner/admin only. */
+  removeWorkspaceAvatar: () => Promise<void>;
   leaveWorkspace: () => Promise<void>;
   deleteWorkspace: () => Promise<void>;
   transferOwnership: (payload: TransferOwnershipPayload) => Promise<TransferOwnershipResult>;
@@ -62,6 +66,17 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     [current_slug]
   );
 
+  const uploadWorkspaceAvatar = useCallback(
+    async (file: File) => {
+      setWorkspace(await workspaceService.uploadWorkspaceAvatar(current_slug, file));
+    },
+    [current_slug]
+  );
+
+  const removeWorkspaceAvatar = useCallback(async () => {
+    setWorkspace(await workspaceService.removeWorkspaceAvatar(current_slug));
+  }, [current_slug]);
+
   const leaveWorkspace = useCallback(async () => {
     await workspaceService.leaveWorkspace(current_slug);
   }, [current_slug]);
@@ -87,6 +102,8 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     is_loading,
     error,
     updateWorkspace,
+    uploadWorkspaceAvatar,
+    removeWorkspaceAvatar,
     leaveWorkspace,
     deleteWorkspace,
     transferOwnership,
