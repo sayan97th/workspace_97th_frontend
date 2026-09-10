@@ -241,6 +241,30 @@
   --color-boardtree-scrollbar-thumb: rgba(255, 255, 255, 0.14);
 }
 
+/* Entrance animation for `ConfirmActionModal` — panel rises + scales in
+   while the backdrop fades, so the dialog reads as settling into place
+   rather than popping in when a destructive/consequential action is
+   confirmed (e.g. "Leave workspace", "Delete workspace"). */
+@keyframes confirm-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes confirm-modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Entrance animation for the board table's floating selection action bar
    (`SelectionActionBar`) — a short rise + fade so it reads as appearing
    rather than popping in when the first row checkbox is checked. */

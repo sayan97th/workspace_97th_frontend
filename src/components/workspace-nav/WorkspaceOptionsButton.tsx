@@ -214,8 +214,17 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
         <ConfirmActionModal
           is_open={open_dialog === "leave"}
           title="Leave workspace"
-          description={`You'll lose access to "${workspace.name}" and everything in it until someone invites you back.`}
+          description={`Are you sure you want to leave "${workspace.name}"?`}
           confirm_label="Leave workspace"
+          variant="warning"
+          risk_items={[
+            `You'll immediately lose access to every board, file, and conversation in "${workspace.name}".`,
+            "Boards or items assigned to you will stay assigned, but you won't be able to view or update them.",
+            "You can only get back in if an owner invites you again.",
+            ...(can_manage
+              ? ["You're an owner here — if you're the only one, assign another owner first."]
+              : []),
+          ]}
           onConfirm={handleLeave}
           onClose={closeDialog}
         />
@@ -223,9 +232,14 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
         <ConfirmActionModal
           is_open={open_dialog === "delete"}
           title="Delete workspace"
-          description={`"${workspace.name}" and everything in it will be moved to trash. This can be undone from Trash within 30 days.`}
+          description={`Are you sure you want to delete "${workspace.name}"?`}
           confirm_label="Delete workspace"
           danger
+          risk_items={[
+            "Every board, file, and conversation in this workspace will be moved to trash for all members.",
+            "Members lose access immediately, including anyone currently viewing it.",
+            "You can restore it from Trash within 30 days — after that, it's gone for good.",
+          ]}
           onConfirm={handleDelete}
           onClose={closeDialog}
         />
