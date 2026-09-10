@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CloseIcon } from "@/icons/workspace-icons";
 import type { WorkspacePrivacy } from "@/data/workspace-create-data";
 import WorkspacePrivacyPicker from "./WorkspacePrivacyPicker";
@@ -41,7 +42,7 @@ const ChangeWorkspaceTypeModal: React.FC<ChangeWorkspaceTypeModalProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [is_open, onClose]);
 
-  if (!is_open) return null;
+  if (!is_open || typeof document === "undefined") return null;
 
   const handleSubmit = async () => {
     setIsSaving(true);
@@ -53,7 +54,7 @@ const ChangeWorkspaceTypeModal: React.FC<ChangeWorkspaceTypeModalProps> = ({
     }
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -97,7 +98,8 @@ const ChangeWorkspaceTypeModal: React.FC<ChangeWorkspaceTypeModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
