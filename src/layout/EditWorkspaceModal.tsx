@@ -61,20 +61,34 @@ const EditWorkspaceModal: React.FC<EditWorkspaceModalProps> = ({
   const [is_submitting, setIsSubmitting] = useState(false);
   const [submit_error, setSubmitError] = useState<string | null>(null);
   const avatar_input_ref = useRef<HTMLInputElement>(null);
+  // Tracks which workspace id the form was last seeded for, so the effect
+  // below can tell "the dialog just opened (or switched workspaces)" apart
+  // from "the parent re-rendered and handed us a new `workspace` object with
+  // the same data". Callers that build `workspace` inline (a fresh object
+  // literal every render) would otherwise keep re-triggering the seed effect
+  // on every unrelated re-render, wiping out whatever the user just typed.
+  const seeded_workspace_id_ref = useRef<string | null>(null);
 
-  // (Re)seed the form from the workspace being edited every time the modal opens.
+  // (Re)seed the form from the workspace being edited once per open "session"
+  // (i.e. only on the closed→open transition, or when the workspace being
+  // edited changes) — never merely because `workspace` got a new identity
+  // while already open, so in-progress edits are never clobbered mid-typing.
   useEffect(() => {
-    if (is_open && workspace) {
-      setName(workspace.name);
-      setPrivacy(workspace.privacy ?? "open");
-      setSelectedColor(workspace.color);
-      setAvatarFile(null);
-      setAvatarPreviewUrl(null);
-      setAvatarRemoved(false);
-      setAvatarError(null);
-      setSubmitError(null);
-      setIsSubmitting(false);
+    if (!is_open || !workspace) {
+      seeded_workspace_id_ref.current = null;
+      return;
     }
+    if (seeded_workspace_id_ref.current === workspace.id) return;
+    seeded_workspace_id_ref.current = workspace.id;
+    setName(workspace.name);
+    setPrivacy(workspace.privacy ?? "open");
+    setSelectedColor(workspace.color);
+    setAvatarFile(null);
+    setAvatarPreviewUrl(null);
+    setAvatarRemoved(false);
+    setAvatarError(null);
+    setSubmitError(null);
+    setIsSubmitting(false);
   }, [is_open, workspace]);
 
   // The preview <img> is backed by an object URL for the locally-picked file —

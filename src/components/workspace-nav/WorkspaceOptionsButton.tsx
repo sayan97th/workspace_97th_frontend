@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import WorkspaceOptionsMenu from "./WorkspaceOptionsMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import ChangeWorkspaceTypeModal from "./ChangeWorkspaceTypeModal";
@@ -90,6 +90,20 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   const can_manage = workspace.role.toLowerCase() === "owner";
   const closeDialog = () => setOpenDialog(null);
 
+  // Stable object identity across re-renders (only changes when the actual
+  // fields do) — EditWorkspaceModal reseeds its form off this object, and a
+  // fresh literal on every render would otherwise discard in-progress edits.
+  const edit_workspace = useMemo(
+    () => ({
+      id: workspace.id,
+      name: workspace.name,
+      color: workspace.color ?? "#6E7B7D",
+      avatar_url: workspace.avatar_url,
+      privacy: workspace.privacy ?? "open",
+    }),
+    [workspace.id, workspace.name, workspace.color, workspace.avatar_url, workspace.privacy]
+  );
+
   const openDialog = (dialog: Exclude<OptionsDialog, null>) => {
     setIsMenuOpen(false);
     setOpenDialog(dialog);
@@ -151,8 +165,14 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
 
       {/* Menu + dialogs render fixed/portaled overlays, but React event bubbling
           still follows this component's place in the tree — stop propagation here
-          so clicking inside them can't also fire a parent row's onClick. */}
-      <span onClick={(event) => event.stopPropagation()}>
+          so clicking inside them can't also fire a parent row's onClick, and so
+          typing (e.g. a space between words, or Enter) inside one of their form
+          fields can't bubble up into a parent row's "Enter/Space selects this
+          row" keyboard handler and select/navigate away mid-edit. */}
+      <span
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={(event) => event.stopPropagation()}
+      >
         <WorkspaceOptionsMenu
           anchor_el={button_ref.current}
           is_open={is_menu_open}
@@ -169,13 +189,7 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
 
         <EditWorkspaceModal
           is_open={open_dialog === "edit"}
-          workspace={{
-            id: workspace.id,
-            name: workspace.name,
-            color: workspace.color ?? "#6E7B7D",
-            avatar_url: workspace.avatar_url,
-            privacy: workspace.privacy ?? "open",
-          }}
+          workspace={edit_workspace}
           onSave={handleEdit}
           onClose={closeDialog}
         />

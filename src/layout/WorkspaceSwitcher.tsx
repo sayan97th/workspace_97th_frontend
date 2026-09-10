@@ -89,6 +89,14 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({
       tabIndex={0}
       onClick={() => onSelect(workspace)}
       onKeyDown={(event) => {
+        // Guard against bubbled keydowns: React fires synthetic events along
+        // the component tree, not the DOM tree, so typing (e.g. hitting
+        // Space between words, or Enter to submit) inside the nested "Edit
+        // workspace" dialog's fields — which portals its DOM elsewhere, but
+        // stays a React descendant of this row — would otherwise reach here
+        // and select/navigate away from under the user, unmounting the open
+        // dialog. Only react when the row itself is the actual target.
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onSelect(workspace);
