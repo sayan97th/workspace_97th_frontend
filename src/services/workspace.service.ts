@@ -55,6 +55,32 @@ export const workspaceService = {
   },
 
   /**
+   * POST /api/workspaces/{slug}/avatar — uploads (or replaces) the
+   * workspace's custom avatar image, shown instead of its generated
+   * mono/color badge. Owner/admin only.
+   */
+  async uploadWorkspaceAvatar(workspace_slug: string, file: File): Promise<Workspace> {
+    const form_data = new FormData();
+    form_data.append("file", file);
+    const response = await apiClient.postFormData<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/avatar`,
+      form_data
+    );
+    return response.workspace;
+  },
+
+  /**
+   * DELETE /api/workspaces/{slug}/avatar — removes the workspace's custom
+   * avatar, reverting it to its generated mono/color badge. Owner/admin only.
+   */
+  async removeWorkspaceAvatar(workspace_slug: string): Promise<Workspace> {
+    const response = await apiClient.delete<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/avatar`
+    );
+    return response.workspace;
+  },
+
+  /**
    * PATCH /api/workspaces/{slug}/priority — flags/unflags this workspace as a
    * priority client (the sidebar's priority star), open to any member.
    */

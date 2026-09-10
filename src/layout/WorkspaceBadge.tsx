@@ -3,7 +3,7 @@ import { WorkspaceHomeGlyphIcon } from "@/icons/workspace-icons";
 import { default_workspace_color, type WorkspaceSummary } from "@/data/workspace-switcher-data";
 
 type WorkspaceBadgeProps = {
-  workspace: Pick<WorkspaceSummary, "mono" | "color" | "is_home">;
+  workspace: Pick<WorkspaceSummary, "mono" | "color" | "is_home" | "avatar_url">;
   /** Square edge length in pixels. */
   size?: number;
   /**
@@ -30,7 +30,7 @@ const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
 
   return (
     <span
-      className={`relative flex flex-none items-center justify-center rounded-md font-outfit font-bold text-white ${className}`}
+      className={`relative flex flex-none items-center justify-center overflow-hidden rounded-md font-outfit font-bold text-white ${className}`}
       style={{
         width: size,
         height: size,
@@ -38,7 +38,16 @@ const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
         backgroundColor: workspace.color || default_workspace_color,
       }}
     >
-      {workspace.mono}
+      {workspace.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={workspace.avatar_url}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        workspace.mono
+      )}
       {workspace.is_home && (
         <span
           className="absolute -bottom-[3px] -right-[3px] flex items-center justify-center rounded text-shell-text"

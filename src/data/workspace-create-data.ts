@@ -3,14 +3,17 @@
  *
  * Mirrors the deterministic name -> color/initial preview from the approved
  * design so the badge shown while typing matches the badge the workspace gets
- * once created. Kept separate from the component so the same factory can be
- * reused if another entry point needs to create a workspace programmatically.
+ * once created, until the user overrides it with an explicit color pick
+ * and/or an uploaded avatar image.
  */
-import type { BrowseWorkspace } from "./workspace-browse-data";
 
 export type WorkspacePrivacy = "open" | "closed";
 
-/** Badge color candidates a new workspace's color is deterministically picked from. */
+/**
+ * Badge color choices offered by {@link WorkspaceColorPicker} and the
+ * deterministic name -> color fallback below. A user can still enter any
+ * other hex value via the picker's custom color swatch.
+ */
 export const workspace_create_color_palette = [
   "#E53E2E",
   "#2B7FE0",
@@ -19,6 +22,11 @@ export const workspace_create_color_palette = [
   "#E9A23B",
   "#8A63D2",
   "#DB4C86",
+  "#EF6C4D",
+  "#1FA6A6",
+  "#6E7B7D",
+  "#C2410C",
+  "#4338CA",
 ];
 
 /** Badge color shown while the name field is empty. */
@@ -49,21 +57,5 @@ export const hashWorkspaceColor = (name: string): string => {
   return workspace_create_color_palette[hash % workspace_create_color_palette.length];
 };
 
-/** Builds the workspace record submitted from the create-workspace form. */
-export const buildWorkspaceFromName = (
-  name: string,
-  privacy: WorkspacePrivacy
-): BrowseWorkspace => {
-  const trimmed = name.trim();
-  return {
-    id: `custom_${Date.now()}`,
-    name: trimmed,
-    mono: trimmed[0]?.toUpperCase() ?? "W",
-    color: hashWorkspaceColor(trimmed),
-    is_home: false,
-    product: "monday",
-    role: "Owner",
-    memberships: ["recent", "owner"],
-    privacy,
-  };
-};
+/** Max upload size accepted for a workspace avatar image, matching `StoreWorkspaceAvatarRequest`'s `max:5120` (5MB). */
+export const workspace_avatar_max_size_bytes = 5 * 1024 * 1024;

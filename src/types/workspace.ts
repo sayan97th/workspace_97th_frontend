@@ -102,8 +102,12 @@ export type Workspace = {
   slug: string;
   /** 1-2 character monogram shown in the badge. */
   mono: string;
-  /** Badge background color (hex). */
+  /** Badge background color (hex), shown behind the monogram when no avatar_url is set. */
   color: string;
+  /** Full-size uploaded avatar image, or null to use the generated mono/color badge. */
+  avatar_url: string | null;
+  /** Small square-cropped version of avatar_url, used by the compact badges (sidebar switcher, browse modal). */
+  avatar_thumbnail_url: string | null;
   /** Product/source label shown under the name in the browse modal. */
   product: string;
   /** "open" — any account member can join; "closed" — invite-only. */

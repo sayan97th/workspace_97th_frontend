@@ -8,8 +8,7 @@ import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsB
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import WorkspaceSwitcherSkeleton from "./WorkspaceSwitcherSkeleton";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
-import CreateWorkspaceModal from "./CreateWorkspaceModal";
-import type { BrowseWorkspace } from "@/data/workspace-browse-data";
+import CreateWorkspaceModal, { type CreateWorkspaceSubmission } from "./CreateWorkspaceModal";
 import {
   CollapseSidebarIcon,
   ExpandSidebarIcon,
@@ -31,6 +30,7 @@ const AppSidebar: React.FC = () => {
     createWorkspace,
     updateWorkspace,
     togglePriority,
+    uploadWorkspaceAvatar,
     leaveWorkspace,
     deleteWorkspace,
   } = workspaces_api;
@@ -40,13 +40,16 @@ const AppSidebar: React.FC = () => {
   const [is_browse_open, setIsBrowseOpen] = useState(false);
   const [is_create_open, setIsCreateOpen] = useState(false);
 
-  const handleCreateWorkspace = async (workspace: BrowseWorkspace) => {
-    await createWorkspace({
-      name: workspace.name,
-      mono: workspace.mono,
-      color: workspace.color,
-      privacy: workspace.privacy,
+  const handleCreateWorkspace = async (submission: CreateWorkspaceSubmission) => {
+    const created = await createWorkspace({
+      name: submission.name,
+      mono: submission.name[0]?.toUpperCase() ?? "W",
+      color: submission.color,
+      privacy: submission.privacy,
     });
+    if (submission.avatar_file) {
+      await uploadWorkspaceAvatar(created.id, submission.avatar_file);
+    }
   };
 
   const handleCollapseClick = () => {

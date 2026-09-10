@@ -10,6 +10,8 @@ export type WorkspaceSummary = {
   mono: string;
   /** Badge background color (hex). Falls back to the brand red when omitted. */
   color: string;
+  /** Uploaded avatar image shown instead of the mono/color badge, or null/undefined to use it. */
+  avatar_url?: string | null;
   /** The home workspace renders the small house glyph on its badge. */
   is_home?: boolean;
   /** Priority client flag — sorts above regular workspaces and shows the sidebar's priority star. */

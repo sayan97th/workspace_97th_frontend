@@ -23,6 +23,10 @@ export type WorkspacesApi = {
   ) => Promise<BrowseWorkspace>;
   /** Flags/unflags a workspace as a priority client — any member can toggle this (see the sidebar's priority star). */
   togglePriority: (workspace_slug: string, is_priority: boolean) => Promise<BrowseWorkspace>;
+  /** Uploads (or replaces) a workspace's custom avatar image. Owner/admin only. */
+  uploadWorkspaceAvatar: (workspace_slug: string, file: File) => Promise<BrowseWorkspace>;
+  /** Removes a workspace's custom avatar, reverting it to its generated mono/color badge. Owner/admin only. */
+  removeWorkspaceAvatar: (workspace_slug: string) => Promise<BrowseWorkspace>;
   /** Remove the current user from a workspace; drops it from local state on success. */
   leaveWorkspace: (workspace_slug: string) => Promise<void>;
   /** Soft-delete a workspace; drops it from local state on success. */
@@ -164,6 +168,32 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   );
 
+  const uploadWorkspaceAvatar = useCallback(
+    async (workspace_slug: string, file: File) => {
+      const updated = mapWorkspaceToBrowse(
+        await workspaceService.uploadWorkspaceAvatar(workspace_slug, file)
+      );
+      setWorkspaces((prev) =>
+        prev.map((workspace) => (workspace.id === workspace_slug ? updated : workspace))
+      );
+      return updated;
+    },
+    []
+  );
+
+  const removeWorkspaceAvatar = useCallback(
+    async (workspace_slug: string) => {
+      const updated = mapWorkspaceToBrowse(
+        await workspaceService.removeWorkspaceAvatar(workspace_slug)
+      );
+      setWorkspaces((prev) =>
+        prev.map((workspace) => (workspace.id === workspace_slug ? updated : workspace))
+      );
+      return updated;
+    },
+    []
+  );
+
   /** Drops a workspace from local state, falling back active selection to the home
    * workspace (or the first remaining one) when the removed workspace was active. */
   const dropWorkspaceFromState = useCallback((workspace_slug: string) => {
@@ -212,6 +242,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       createWorkspace,
       updateWorkspace,
       togglePriority,
+      uploadWorkspaceAvatar,
+      removeWorkspaceAvatar,
       leaveWorkspace,
       deleteWorkspace,
       reload: load,
@@ -228,6 +260,8 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       createWorkspace,
       updateWorkspace,
       togglePriority,
+      uploadWorkspaceAvatar,
+      removeWorkspaceAvatar,
       leaveWorkspace,
       deleteWorkspace,
       load,
