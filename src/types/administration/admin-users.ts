@@ -39,12 +39,21 @@ export type AdminUsersPage = {
   total: number;
 };
 
+/** Columns the `/api/admin/users` list can be sorted by, mirroring `UserController::ALLOWED_SORT_FIELDS`. */
+export type AdminUsersSortField = "name" | "email" | "role" | "department" | "status" | "created_at";
+
+export type AdminUsersSortDirection = "asc" | "desc";
+
 export type AdminUsersQuery = {
   search?: string;
   page?: number;
   per_page?: number;
   /** `"unassigned"` for users with no department, or a specific department id. */
   department?: "unassigned" | number;
+  role?: PlatformRoleName;
+  account_status?: "active" | "disabled";
+  sort_field?: AdminUsersSortField;
+  sort_direction?: AdminUsersSortDirection;
 };
 
 export type UpdateAdminUserPayload = {

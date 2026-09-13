@@ -2,11 +2,12 @@
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
-import { Pagination } from "@/components/content";
 import SearchField from "@/components/common/SearchField";
 import SettingsDropdown from "@/components/administration/SettingsDropdown";
 import UsersDirectoryTable from "./UsersDirectoryTable";
-import { PER_PAGE_OPTIONS, useUsersDirectory } from "./useUsersDirectory";
+import UsersDirectoryFooter from "./UsersDirectoryFooter";
+import { PER_PAGE_OPTIONS, useUsersDirectory, type AccountStatusFilter } from "./useUsersDirectory";
+import type { PlatformRoleName } from "@/types/administration/admin-users";
 
 /** Roles allowed to view the site's user list, mirroring the Laravel API's `/admin` route group floor. */
 const USERS_DIRECTORY_ROLES = ["super_admin", "admin", "staff"];
@@ -16,11 +17,25 @@ const PER_PAGE_DROPDOWN_OPTIONS = PER_PAGE_OPTIONS.map((value) => ({
   label: `${value} per page`,
 }));
 
+const ROLE_FILTER_OPTIONS: { id: string; label: string }[] = [
+  { id: "", label: "All roles" },
+  { id: "super_admin", label: "Super admin" },
+  { id: "admin", label: "Admin" },
+  { id: "staff", label: "Staff" },
+  { id: "client", label: "Client" },
+];
+
+const STATUS_FILTER_OPTIONS: { id: string; label: string }[] = [
+  { id: "", label: "All statuses" },
+  { id: "active", label: "Active" },
+  { id: "disabled", label: "Disabled" },
+];
+
 /**
- * Standalone `/users` page: a read-only directory of every account on the site, in a real
- * table with each person's name, email, site-wide role, department, active status and join
- * date. Gated to `super_admin`/`admin`/`staff`, the same floor the backend already enforces
- * on `/api/admin/users`.
+ * Standalone `/users` page: a read-only directory of every account on the site, in a real,
+ * filterable, sortable table with each person's name, email, site-wide role, department,
+ * active status and join date. Gated to `super_admin`/`admin`/`staff`, the same floor the
+ * backend already enforces on `/api/admin/users`.
  */
 const UsersDirectoryView: React.FC = () => {
   const { isLoading: is_auth_loading, hasAnyRole } = useAuth();
@@ -59,6 +74,21 @@ const UsersDirectoryView: React.FC = () => {
           placeholder="Search name or email"
           className="w-[280px]"
         />
+
+        <SettingsDropdown
+          value={directory.role_filter ?? ""}
+          options={ROLE_FILTER_OPTIONS}
+          onChange={(value) => directory.setRoleFilter(value ? (value as PlatformRoleName) : null)}
+          className="w-[150px]"
+        />
+
+        <SettingsDropdown
+          value={directory.status_filter ?? ""}
+          options={STATUS_FILTER_OPTIONS}
+          onChange={(value) => directory.setStatusFilter(value ? (value as AccountStatusFilter) : null)}
+          className="w-[150px]"
+        />
+
         <div className="ml-auto flex items-center gap-2">
           <span className="text-[12.5px] text-shell-text-faint">Rows per page</span>
           <SettingsDropdown
@@ -74,14 +104,20 @@ const UsersDirectoryView: React.FC = () => {
         Showing {directory.user_rows.length} of {directory.user_total} users
       </div>
 
-      <UsersDirectoryTable user_rows={directory.user_rows} is_loading={directory.is_loading} />
+      <UsersDirectoryTable
+        user_rows={directory.user_rows}
+        is_loading={directory.is_loading}
+        sort_field={directory.sort_field}
+        sort_direction={directory.sort_direction}
+        onSort={directory.toggleSort}
+      />
 
-      <Pagination
+      <UsersDirectoryFooter
         current_page={directory.page}
         last_page={directory.last_page}
         total={directory.user_total}
-        per_page={directory.per_page}
-        onPageChange={directory.setPage}
+        onPrevious={() => directory.setPage(directory.page - 1)}
+        onNext={() => directory.setPage(directory.page + 1)}
       />
     </div>
   );

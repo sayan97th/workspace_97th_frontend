@@ -15,6 +15,10 @@ const buildQuery = (query?: AdminUsersQuery): string => {
   if (query?.page) params.set("page", String(query.page));
   if (query?.per_page) params.set("per_page", String(query.per_page));
   if (query?.department !== undefined) params.set("department", String(query.department));
+  if (query?.role) params.set("role", query.role);
+  if (query?.account_status) params.set("account_status", query.account_status);
+  if (query?.sort_field) params.set("sort_field", query.sort_field);
+  if (query?.sort_direction) params.set("sort_direction", query.sort_direction);
   const search = params.toString();
   return search ? `?${search}` : "";
 };
