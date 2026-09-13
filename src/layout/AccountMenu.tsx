@@ -67,6 +67,12 @@ const TeamsGlyph = () => (
     />
   </svg>
 );
+const UsersGlyph = () => (
+  <svg {...iconBaseProps}>
+    <circle cx="8" cy="5.2" r="2.4" />
+    <path d="M3 13 c0-2.6 2.2-4 5-4 s5 1.4 5 4" strokeLinecap="round" />
+  </svg>
+);
 const LogOutGlyph = () => (
   <svg {...iconBaseProps}>
     <path
@@ -187,6 +193,8 @@ export type AccountMenuProps = {
   onOpenArchive?: () => void;
   /** Opens the account Administration dialog owned by the top bar. */
   onOpenAdministration?: () => void;
+  /** Navigates to the site-wide Users directory page, provided by the top bar. */
+  onOpenUsers?: () => void;
   /** Organization / workspace name shown in the panel header. */
   organization_name?: string;
 };
@@ -206,10 +214,11 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onOpenTrash,
   onOpenArchive,
   onOpenAdministration,
+  onOpenUsers,
   organization_name = "97th Floor",
 }) => {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, hasAnyRole } = useAuth();
   const [do_not_disturb, setDoNotDisturb] = useState(false);
 
   // Close on Escape while the panel is open.
@@ -268,12 +277,21 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onOpenAdministration?.();
   };
 
+  const handleOpenUsers = () => {
+    onClose();
+    onOpenUsers?.();
+  };
+
+  /** Only super_admin/admin/staff may view the Users directory, mirroring the page's own gate. */
+  const can_view_users = hasAnyRole("super_admin", "admin", "staff");
+
   const account_items: MenuItem[] = [
     { label: "My profile", icon: <ProfileGlyph />, onSelect: handleOpenProfile },
     { label: "Invitations", icon: <InvitationsGlyph />, onSelect: handleOpenInvitations },
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
     { label: "Administration", icon: <AdministrationGlyph />, onSelect: handleOpenAdministration },
+    ...(can_view_users ? [{ label: "Users", icon: <UsersGlyph />, onSelect: handleOpenUsers }] : []),
     { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
     { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },
   ];

@@ -75,6 +75,9 @@ const AppTopBar: React.FC = () => {
   /** "Administration" is now a routed page (`/administration`) rather than a modal. */
   const openAdministration = () => router.push("/administration");
 
+  /** "Users" opens the site-wide user directory, gated to super_admin/admin/staff. */
+  const openUsers = () => router.push("/users");
+
   /** "Invitations" opens the Sent invitations page, scoped to the active workspace. */
   const openInvitations = () =>
     router.push(active_workspace_slug ? `/invitations?workspace=${active_workspace_slug}` : "/invitations");
@@ -275,6 +278,7 @@ const AppTopBar: React.FC = () => {
         onOpenTrash={openTrash}
         onOpenArchive={openArchive}
         onOpenAdministration={openAdministration}
+        onOpenUsers={openUsers}
       />
     </>
   );
