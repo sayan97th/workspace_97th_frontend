@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import SearchField from "@/components/common/SearchField";
 import SettingsDropdown from "@/components/administration/SettingsDropdown";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import UsersDirectoryTable from "./UsersDirectoryTable";
 import UsersDirectoryFooter from "./UsersDirectoryFooter";
 import { PER_PAGE_OPTIONS, useUsersDirectory, type AccountStatusFilter } from "./useUsersDirectory";
@@ -110,6 +111,10 @@ const UsersDirectoryView: React.FC = () => {
         sort_field={directory.sort_field}
         sort_direction={directory.sort_direction}
         onSort={directory.toggleSort}
+        can_manage={directory.can_manage}
+        current_user_id={directory.current_user_id}
+        onToggleActive={directory.requestToggleActive}
+        onDelete={directory.requestDelete}
       />
 
       <UsersDirectoryFooter
@@ -118,6 +123,42 @@ const UsersDirectoryView: React.FC = () => {
         total={directory.user_total}
         onPrevious={() => directory.setPage(directory.page - 1)}
         onNext={() => directory.setPage(directory.page + 1)}
+      />
+
+      <ConfirmActionModal
+        is_open={directory.user_pending_toggle !== null}
+        title={directory.user_pending_toggle?.is_active ? "Disable user login" : "Enable user login"}
+        description={
+          directory.user_pending_toggle?.is_active ? (
+            <>
+              This will temporarily disable website access for &quot;{directory.user_pending_toggle?.full_name}&quot;.
+              The account and its data are kept as is, and the person will see a message that their account has been
+              temporarily disabled the next time they try to sign in. You can re-enable access at any time.
+            </>
+          ) : (
+            <>&quot;{directory.user_pending_toggle?.full_name}&quot; will regain access and be able to sign in again.</>
+          )
+        }
+        confirm_label={directory.user_pending_toggle?.is_active ? "Disable login" : "Enable login"}
+        variant={directory.user_pending_toggle?.is_active ? "warning" : "neutral"}
+        onConfirm={directory.confirmToggleActive}
+        onClose={directory.cancelToggleActive}
+      />
+
+      <ConfirmActionModal
+        is_open={directory.user_pending_delete !== null}
+        title="Delete user"
+        description={
+          <>
+            This will permanently delete &quot;{directory.user_pending_delete?.full_name}&quot;&apos;s account. This
+            action cannot be undone.
+          </>
+        }
+        confirm_label="Delete user"
+        variant="danger"
+        risk_items={["This cannot be undone.", "The account will lose access immediately."]}
+        onConfirm={directory.confirmDelete}
+        onClose={directory.cancelDelete}
       />
     </div>
   );

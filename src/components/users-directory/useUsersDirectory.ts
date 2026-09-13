@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { adminUsersService } from "@/services/administration/admin-users.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import type {
@@ -39,6 +40,20 @@ export type UsersDirectoryApi = {
   sort_direction: AdminUsersSortDirection;
   /** Clicking a column that's already sorted flips its direction; clicking a new one sorts ascending. */
   toggleSort: (field: AdminUsersSortField) => void;
+
+  /** Only `super_admin`/`admin` may deactivate, reactivate or delete an account; the backend enforces this too. */
+  can_manage: boolean;
+  current_user_id: number | null;
+
+  user_pending_toggle: AdminUserDto | null;
+  requestToggleActive: (user: AdminUserDto) => void;
+  cancelToggleActive: () => void;
+  confirmToggleActive: () => Promise<void>;
+
+  user_pending_delete: AdminUserDto | null;
+  requestDelete: (user: AdminUserDto) => void;
+  cancelDelete: () => void;
+  confirmDelete: () => Promise<void>;
 };
 
 /**
@@ -49,6 +64,9 @@ export type UsersDirectoryApi = {
  * this view is list-only.
  */
 export function useUsersDirectory(): UsersDirectoryApi {
+  const { user, hasAnyRole } = useAuth();
+  const can_manage = hasAnyRole("super_admin", "admin");
+
   const [user_rows, setUserRows] = useState<AdminUserDto[]>([]);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +82,37 @@ export function useUsersDirectory(): UsersDirectoryApi {
 
   const [sort_field, setSortField] = useState<AdminUsersSortField>("created_at");
   const [sort_direction, setSortDirection] = useState<AdminUsersSortDirection>("desc");
+
+  const [user_pending_toggle, setUserPendingToggle] = useState<AdminUserDto | null>(null);
+  const [user_pending_delete, setUserPendingDelete] = useState<AdminUserDto | null>(null);
+
+  const replaceRow = (updated: AdminUserDto) =>
+    setUserRows((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+
+  const removeRow = (deleted_id: number) => setUserRows((current) => current.filter((row) => row.id !== deleted_id));
+
+  const requestToggleActive = useCallback((user_row: AdminUserDto) => setUserPendingToggle(user_row), []);
+  const cancelToggleActive = useCallback(() => setUserPendingToggle(null), []);
+
+  const confirmToggleActive = useCallback(async () => {
+    if (!user_pending_toggle) return;
+    const updated = user_pending_toggle.is_active
+      ? await adminUsersService.deactivateUser(user_pending_toggle.id)
+      : await adminUsersService.reactivateUser(user_pending_toggle.id);
+    replaceRow(updated);
+    setUserPendingToggle(null);
+  }, [user_pending_toggle]);
+
+  const requestDelete = useCallback((user_row: AdminUserDto) => setUserPendingDelete(user_row), []);
+  const cancelDelete = useCallback(() => setUserPendingDelete(null), []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!user_pending_delete) return;
+    await adminUsersService.deleteUser(user_pending_delete.id);
+    removeRow(user_pending_delete.id);
+    setUserPendingDelete(null);
+    setUserTotal((current) => Math.max(0, current - 1));
+  }, [user_pending_delete]);
 
   const toggleSort = (field: AdminUsersSortField) => {
     if (field === sort_field) {
@@ -135,5 +184,18 @@ export function useUsersDirectory(): UsersDirectoryApi {
     sort_field,
     sort_direction,
     toggleSort,
+
+    can_manage,
+    current_user_id: user?.id ?? null,
+
+    user_pending_toggle,
+    requestToggleActive,
+    cancelToggleActive,
+    confirmToggleActive,
+
+    user_pending_delete,
+    requestDelete,
+    cancelDelete,
+    confirmDelete,
   };
 }

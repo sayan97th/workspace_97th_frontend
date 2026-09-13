@@ -30,10 +30,20 @@ export const adminUsersService = {
     return apiClient.get<AdminUsersPage>(`/api/admin/users${buildQuery(query)}`);
   },
 
+  /** GET /api/admin/users/{id} */
+  async getUser(user_id: number): Promise<AdminUserDto> {
+    return apiClient.get<AdminUserDto>(`/api/admin/users/${user_id}`);
+  },
+
   /** PATCH /api/admin/users/{id} */
   async updateUser(user_id: number, payload: UpdateAdminUserPayload): Promise<AdminUserDto> {
     const response = await apiClient.patch<{ user: AdminUserDto }>(`/api/admin/users/${user_id}`, payload);
     return response.user;
+  },
+
+  /** DELETE /api/admin/users/{id} — permanently removes the account. */
+  async deleteUser(user_id: number): Promise<void> {
+    await apiClient.delete<void>(`/api/admin/users/${user_id}`);
   },
 
   /** PATCH /api/admin/users/{id}/ban — deactivates the account. */
