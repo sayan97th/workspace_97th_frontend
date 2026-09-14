@@ -3,9 +3,9 @@ import Link from "next/link";
 import { PersonAvatar } from "@/components/board";
 import { toPersonOption } from "@/components/administration/adminUserMapping";
 import { primaryRole } from "@/components/administration/useUsersManager";
-import { DeleteIcon, EyeIcon, LockIcon, RenameIcon, UnlockIcon } from "@/icons/workspace-icons";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
+import UserRowActionsMenu from "./UserRowActionsMenu";
 import type { AdminUserDto, AdminUsersSortDirection, AdminUsersSortField } from "@/types/administration/admin-users";
 
 const SKELETON_ROWS = 8;
@@ -189,44 +189,21 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
                     {is_self ? (
                       <span className="block text-right text-xs text-shell-text-faint">You</span>
                     ) : (
-                      <div className="flex items-center justify-end gap-1">
+                      <div className="flex items-center justify-end gap-1.5">
                         <Link
                           href={`/users/${row.id}/edit`}
                           aria-label={`Edit ${row.full_name}`}
-                          title="Edit user"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                          className="rounded-lg border border-shell-border-strong px-2.5 py-1 text-xs font-semibold text-shell-text-secondary transition-colors hover:border-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                         >
-                          <RenameIcon size={14} />
+                          Edit
                         </Link>
-                        {canImpersonate(row) ? (
-                          <button
-                            type="button"
-                            onClick={() => onImpersonate(row)}
-                            aria-label={`Impersonate ${row.full_name}`}
-                            title="Impersonate user"
-                            className="flex h-7 w-7 items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-warning-500/10 hover:text-warning-600"
-                          >
-                            <EyeIcon size={14} />
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          onClick={() => onToggleActive(row)}
-                          aria-label={row.is_active ? `Disable ${row.full_name}` : `Enable ${row.full_name}`}
-                          title={row.is_active ? "Disable login" : "Enable login"}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-                        >
-                          {row.is_active ? <LockIcon size={14} /> : <UnlockIcon size={14} />}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onDelete(row)}
-                          aria-label={`Delete ${row.full_name}`}
-                          title="Delete user"
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-[#e2445c]/10 hover:text-[#e2445c]"
-                        >
-                          <DeleteIcon size={14} />
-                        </button>
+                        <UserRowActionsMenu
+                          user={row}
+                          can_impersonate={canImpersonate(row)}
+                          onToggleActive={() => onToggleActive(row)}
+                          onDelete={() => onDelete(row)}
+                          onImpersonate={() => onImpersonate(row)}
+                        />
                       </div>
                     )}
                   </td>
