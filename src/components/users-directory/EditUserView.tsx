@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { PersonAvatar } from "@/components/board";
@@ -15,6 +15,8 @@ import { inputClass, labelClass, primaryButtonClass } from "@/components/profile
 import { ChevronRightIcon, MailIcon, PersonIcon } from "@/icons/workspace-icons";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
+import AdminPasswordSection from "./AdminPasswordSection";
+import EditUserTabs, { DEFAULT_EDIT_USER_TAB, EDIT_USER_TAB_IDS, type EditUserTabId } from "./EditUserTabs";
 import { useEditUser } from "./useEditUser";
 
 const EDIT_USER_ROLES = ["super_admin", "admin"];
@@ -26,8 +28,27 @@ export type EditUserViewProps = {
 /** Full-page (not a modal) form for editing another account's name, email, phone and department. */
 const EditUserView: React.FC<EditUserViewProps> = ({ user_id }) => {
   const router = useRouter();
+  const search_params = useSearchParams();
   const { isLoading: is_auth_loading, hasAnyRole } = useAuth();
   const edit_user = useEditUser(user_id);
+
+  // The active tab lives in the URL (`?tab=password`) rather than component state, so
+  // reloading the page — or sharing/bookmarking the link — lands back on the same section.
+  const tab_param = search_params.get("tab");
+  const active_tab: EditUserTabId = EDIT_USER_TAB_IDS.includes(tab_param as EditUserTabId)
+    ? (tab_param as EditUserTabId)
+    : DEFAULT_EDIT_USER_TAB;
+
+  const selectTab = (id: EditUserTabId) => {
+    const params = new URLSearchParams(search_params.toString());
+    if (id === DEFAULT_EDIT_USER_TAB) {
+      params.delete("tab");
+    } else {
+      params.set("tab", id);
+    }
+    const query = params.toString();
+    router.replace(`/users/${user_id}/edit${query ? `?${query}` : ""}`, { scroll: false });
+  };
 
   if (is_auth_loading) {
     return <BoardLoadingSpinner />;
@@ -82,137 +103,145 @@ const EditUserView: React.FC<EditUserViewProps> = ({ user_id }) => {
         </div>
       </div>
 
-      {edit_user.save_error ? (
-        <ProfileBanner tone="error" className="mb-6">
-          {edit_user.save_error}
-        </ProfileBanner>
-      ) : null}
-      {edit_user.success_message ? (
-        <ProfileBanner tone="success" className="mb-6">
-          {edit_user.success_message}
-        </ProfileBanner>
-      ) : null}
+      <EditUserTabs active_tab={active_tab} onSelect={selectTab} />
 
-      <div className="space-y-6">
-        <ProfileCard>
-          <ProfileSectionHeader
-            icon={<PersonIcon size={16} />}
-            title="Personal information"
-            description="This account's name."
-          />
+      <div className="pt-6">
+        {active_tab === "profile" ? (
+          <div className="space-y-6">
+            {edit_user.save_error ? (
+              <ProfileBanner tone="error" className="mb-6">
+                {edit_user.save_error}
+              </ProfileBanner>
+            ) : null}
+            {edit_user.success_message ? (
+              <ProfileBanner tone="success" className="mb-6">
+                {edit_user.success_message}
+              </ProfileBanner>
+            ) : null}
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass} htmlFor="first_name">
-                First name
-              </label>
-              <input
-                id="first_name"
-                name="first_name"
-                type="text"
-                value={edit_user.form_data.first_name}
-                placeholder="First name"
-                onChange={(e) => edit_user.setField("first_name", e.target.value)}
-                className={inputClass(!!edit_user.field_errors.first_name)}
+            <ProfileCard>
+              <ProfileSectionHeader
+                icon={<PersonIcon size={16} />}
+                title="Personal information"
+                description="This account's name."
               />
-              {edit_user.field_errors.first_name ? (
-                <ProfileFieldError message={edit_user.field_errors.first_name} />
-              ) : null}
-            </div>
-            <div>
-              <label className={labelClass} htmlFor="last_name">
-                Last name
-              </label>
-              <input
-                id="last_name"
-                name="last_name"
-                type="text"
-                value={edit_user.form_data.last_name}
-                placeholder="Last name"
-                onChange={(e) => edit_user.setField("last_name", e.target.value)}
-                className={inputClass(!!edit_user.field_errors.last_name)}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass} htmlFor="first_name">
+                    First name
+                  </label>
+                  <input
+                    id="first_name"
+                    name="first_name"
+                    type="text"
+                    value={edit_user.form_data.first_name}
+                    placeholder="First name"
+                    onChange={(e) => edit_user.setField("first_name", e.target.value)}
+                    className={inputClass(!!edit_user.field_errors.first_name)}
+                  />
+                  {edit_user.field_errors.first_name ? (
+                    <ProfileFieldError message={edit_user.field_errors.first_name} />
+                  ) : null}
+                </div>
+                <div>
+                  <label className={labelClass} htmlFor="last_name">
+                    Last name
+                  </label>
+                  <input
+                    id="last_name"
+                    name="last_name"
+                    type="text"
+                    value={edit_user.form_data.last_name}
+                    placeholder="Last name"
+                    onChange={(e) => edit_user.setField("last_name", e.target.value)}
+                    className={inputClass(!!edit_user.field_errors.last_name)}
+                  />
+                  {edit_user.field_errors.last_name ? (
+                    <ProfileFieldError message={edit_user.field_errors.last_name} />
+                  ) : null}
+                </div>
+              </div>
+            </ProfileCard>
+
+            <ProfileCard>
+              <ProfileSectionHeader
+                icon={<MailIcon size={16} />}
+                title="Contact details"
+                description="Email, phone number and department."
               />
-              {edit_user.field_errors.last_name ? (
-                <ProfileFieldError message={edit_user.field_errors.last_name} />
-              ) : null}
+
+              <div className="space-y-4">
+                <div>
+                  <label className={labelClass} htmlFor="email">
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    value={edit_user.form_data.email}
+                    placeholder="name@example.com"
+                    onChange={(e) => edit_user.setField("email", e.target.value)}
+                    className={inputClass(!!edit_user.field_errors.email)}
+                  />
+                  {edit_user.field_errors.email ? <ProfileFieldError message={edit_user.field_errors.email} /> : null}
+                </div>
+
+                <div>
+                  <label className={labelClass} htmlFor="phone">
+                    Phone number
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="text"
+                    value={edit_user.form_data.phone}
+                    placeholder="+1 (555) 000-0000"
+                    onChange={(e) => edit_user.setField("phone", e.target.value)}
+                    className={inputClass(!!edit_user.field_errors.phone)}
+                  />
+                  {edit_user.field_errors.phone ? <ProfileFieldError message={edit_user.field_errors.phone} /> : null}
+                </div>
+
+                <div>
+                  <label className={labelClass}>Department</label>
+                  <SettingsDropdown
+                    value={edit_user.form_data.department_id !== null ? String(edit_user.form_data.department_id) : ""}
+                    options={department_options}
+                    onChange={(id) => edit_user.setField("department_id", id ? Number(id) : null)}
+                    placeholder="Unassigned"
+                    className="w-full"
+                  />
+                  {edit_user.field_errors.department_id ? (
+                    <ProfileFieldError message={edit_user.field_errors.department_id} />
+                  ) : null}
+                </div>
+              </div>
+            </ProfileCard>
+
+            <div className="flex items-center justify-end gap-3">
+              <p className="text-xs text-shell-text-faint">Changes will be applied immediately.</p>
+              <button
+                type="button"
+                disabled={edit_user.is_saving}
+                onClick={() => void edit_user.submit()}
+                className={primaryButtonClass}
+              >
+                {edit_user.is_saving ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    Saving…
+                  </span>
+                ) : (
+                  "Save changes"
+                )}
+              </button>
             </div>
           </div>
-        </ProfileCard>
-
-        <ProfileCard>
-          <ProfileSectionHeader
-            icon={<MailIcon size={16} />}
-            title="Contact details"
-            description="Email, phone number and department."
-          />
-
-          <div className="space-y-4">
-            <div>
-              <label className={labelClass} htmlFor="email">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={edit_user.form_data.email}
-                placeholder="name@example.com"
-                onChange={(e) => edit_user.setField("email", e.target.value)}
-                className={inputClass(!!edit_user.field_errors.email)}
-              />
-              {edit_user.field_errors.email ? <ProfileFieldError message={edit_user.field_errors.email} /> : null}
-            </div>
-
-            <div>
-              <label className={labelClass} htmlFor="phone">
-                Phone number
-              </label>
-              <input
-                id="phone"
-                name="phone"
-                type="text"
-                value={edit_user.form_data.phone}
-                placeholder="+1 (555) 000-0000"
-                onChange={(e) => edit_user.setField("phone", e.target.value)}
-                className={inputClass(!!edit_user.field_errors.phone)}
-              />
-              {edit_user.field_errors.phone ? <ProfileFieldError message={edit_user.field_errors.phone} /> : null}
-            </div>
-
-            <div>
-              <label className={labelClass}>Department</label>
-              <SettingsDropdown
-                value={edit_user.form_data.department_id !== null ? String(edit_user.form_data.department_id) : ""}
-                options={department_options}
-                onChange={(id) => edit_user.setField("department_id", id ? Number(id) : null)}
-                placeholder="Unassigned"
-                className="w-full"
-              />
-              {edit_user.field_errors.department_id ? (
-                <ProfileFieldError message={edit_user.field_errors.department_id} />
-              ) : null}
-            </div>
-          </div>
-        </ProfileCard>
-
-        <div className="flex items-center justify-end gap-3">
-          <p className="text-xs text-shell-text-faint">Changes will be applied immediately.</p>
-          <button
-            type="button"
-            disabled={edit_user.is_saving}
-            onClick={() => void edit_user.submit()}
-            className={primaryButtonClass}
-          >
-            {edit_user.is_saving ? (
-              <span className="flex items-center gap-2">
-                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Saving…
-              </span>
-            ) : (
-              "Save changes"
-            )}
-          </button>
-        </div>
+        ) : (
+          <AdminPasswordSection user={user} />
+        )}
       </div>
     </div>
   );

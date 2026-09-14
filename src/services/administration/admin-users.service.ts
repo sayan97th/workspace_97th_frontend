@@ -5,6 +5,7 @@ import type {
   AdminUsersQuery,
   InviteUserPayload,
   PlatformRoleName,
+  SetUserPasswordPayload,
   StaffInvitationDto,
   UpdateAdminUserPayload,
 } from "@/types/administration/admin-users";
@@ -72,6 +73,16 @@ export const adminUsersService = {
       role,
     });
     return response.user;
+  },
+
+  /** PATCH /api/admin/users/{id}/password — sets the account's password directly. */
+  async setPassword(user_id: number, payload: SetUserPasswordPayload): Promise<{ message: string }> {
+    return apiClient.patch<{ message: string }>(`/api/admin/users/${user_id}/password`, payload);
+  },
+
+  /** POST /api/admin/users/{id}/send-password-reset-link — emails the account a reset link. */
+  async sendPasswordResetLink(user_id: number): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>(`/api/admin/users/${user_id}/send-password-reset-link`, {});
   },
 
   /** POST /api/admin/users/invite */

@@ -64,6 +64,11 @@ export type UpdateAdminUserPayload = {
   department_id?: number | null;
 };
 
+export type SetUserPasswordPayload = {
+  password: string;
+  password_confirmation: string;
+};
+
 export type InviteUserPayload = {
   email: string;
   role: PlatformRoleName;
