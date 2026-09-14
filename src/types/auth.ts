@@ -42,6 +42,19 @@ export interface AuthResponse {
   user: User;
 }
 
+/** Returned by POST /api/admin/users/{id}/impersonate, extending a normal login response. */
+export interface ImpersonationStartResponse extends AuthResponse {
+  impersonation: {
+    session_id: number;
+    started_at: string;
+    admin: {
+      id: number;
+      full_name: string;
+      email: string;
+    };
+  };
+}
+
 /** Returned by POST /api/auth/login when the user has 2FA enabled. */
 export interface LoginChallengeResponse {
   requires_two_factor: true;

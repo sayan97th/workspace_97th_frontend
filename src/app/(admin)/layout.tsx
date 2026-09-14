@@ -5,6 +5,7 @@ import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
+import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -37,6 +38,7 @@ export default function AdminLayout({
       <ToastProvider>
         <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
           <AppTopBar />
+          <ImpersonationBanner />
           <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
             <AppSidebar />
             <Backdrop />

@@ -56,7 +56,7 @@ const UsersDirectoryView: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-[1120px] px-8 py-7">
+    <div className="mx-auto max-w-[1440px] px-6 py-7">
       <h1 className="mb-1.5 text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">Users</h1>
       <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
         Every account registered on this site, with their email, site-wide role, department, status and join date.
@@ -115,6 +115,8 @@ const UsersDirectoryView: React.FC = () => {
         current_user_id={directory.current_user_id}
         onToggleActive={directory.requestToggleActive}
         onDelete={directory.requestDelete}
+        canImpersonate={directory.canImpersonate}
+        onImpersonate={directory.requestImpersonate}
       />
 
       <UsersDirectoryFooter
@@ -159,6 +161,26 @@ const UsersDirectoryView: React.FC = () => {
         risk_items={["This cannot be undone.", "The account will lose access immediately."]}
         onConfirm={directory.confirmDelete}
         onClose={directory.cancelDelete}
+      />
+
+      <ConfirmActionModal
+        is_open={directory.user_pending_impersonate !== null}
+        title="Impersonate user"
+        description={
+          <>
+            You are about to sign in as &quot;{directory.user_pending_impersonate?.full_name}&quot; to see the site
+            exactly as they do.
+          </>
+        }
+        confirm_label="Start impersonating"
+        variant="warning"
+        risk_items={[
+          "You will act and appear on the site as this person until the session ends.",
+          "This is recorded in the audit log with your name and the account you viewed.",
+          "The session ends automatically after 30 minutes, or immediately if you stop it.",
+        ]}
+        onConfirm={directory.confirmImpersonate}
+        onClose={directory.cancelImpersonate}
       />
     </div>
   );

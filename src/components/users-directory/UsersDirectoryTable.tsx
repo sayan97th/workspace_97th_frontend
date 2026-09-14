@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PersonAvatar } from "@/components/board";
 import { toPersonOption } from "@/components/administration/adminUserMapping";
 import { primaryRole } from "@/components/administration/useUsersManager";
-import { DeleteIcon, LockIcon, RenameIcon, UnlockIcon } from "@/icons/workspace-icons";
+import { DeleteIcon, EyeIcon, LockIcon, RenameIcon, UnlockIcon } from "@/icons/workspace-icons";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
 import type { AdminUserDto, AdminUsersSortDirection, AdminUsersSortField } from "@/types/administration/admin-users";
@@ -65,6 +65,9 @@ export type UsersDirectoryTableProps = {
   current_user_id: number | null;
   onToggleActive: (user: AdminUserDto) => void;
   onDelete: (user: AdminUserDto) => void;
+  /** Whether the signed-in account may impersonate this specific row; hides the button when false. */
+  canImpersonate: (user: AdminUserDto) => boolean;
+  onImpersonate: (user: AdminUserDto) => void;
 };
 
 /**
@@ -84,6 +87,8 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
   current_user_id,
   onToggleActive,
   onDelete,
+  canImpersonate,
+  onImpersonate,
 }) => {
   const column_count = can_manage ? 6 : 5;
 
@@ -193,6 +198,17 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
                         >
                           <RenameIcon size={14} />
                         </Link>
+                        {canImpersonate(row) ? (
+                          <button
+                            type="button"
+                            onClick={() => onImpersonate(row)}
+                            aria-label={`Impersonate ${row.full_name}`}
+                            title="Impersonate user"
+                            className="flex h-7 w-7 items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-warning-500/10 hover:text-warning-600"
+                          >
+                            <EyeIcon size={14} />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           onClick={() => onToggleActive(row)}

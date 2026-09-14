@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { adminUsersService } from "@/services/administration/admin-users.service";
+import { impersonationService } from "@/services/admin/impersonation.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import type {
   AdminUserDto,
@@ -9,6 +10,9 @@ import type {
   AdminUsersSortField,
   PlatformRoleName,
 } from "@/types/administration/admin-users";
+
+/** Roles a plain `admin` (i.e. not a `super_admin`) may not impersonate, mirroring `ImpersonationController::STAFF_ROLES`. */
+const STAFF_TIER_ROLES: PlatformRoleName[] = ["super_admin", "admin", "staff"];
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -54,6 +58,13 @@ export type UsersDirectoryApi = {
   requestDelete: (user: AdminUserDto) => void;
   cancelDelete: () => void;
   confirmDelete: () => Promise<void>;
+
+  /** Whether the signed-in account is allowed to impersonate this specific row, mirroring the backend's authorization rules. */
+  canImpersonate: (user: AdminUserDto) => boolean;
+  user_pending_impersonate: AdminUserDto | null;
+  requestImpersonate: (user: AdminUserDto) => void;
+  cancelImpersonate: () => void;
+  confirmImpersonate: () => Promise<void>;
 };
 
 /**
@@ -66,6 +77,7 @@ export type UsersDirectoryApi = {
 export function useUsersDirectory(): UsersDirectoryApi {
   const { user, hasAnyRole } = useAuth();
   const can_manage = hasAnyRole("super_admin", "admin");
+  const is_super_admin = hasAnyRole("super_admin");
 
   const [user_rows, setUserRows] = useState<AdminUserDto[]>([]);
   const [is_loading, setIsLoading] = useState(true);
@@ -85,6 +97,7 @@ export function useUsersDirectory(): UsersDirectoryApi {
 
   const [user_pending_toggle, setUserPendingToggle] = useState<AdminUserDto | null>(null);
   const [user_pending_delete, setUserPendingDelete] = useState<AdminUserDto | null>(null);
+  const [user_pending_impersonate, setUserPendingImpersonate] = useState<AdminUserDto | null>(null);
 
   const replaceRow = (updated: AdminUserDto) =>
     setUserRows((current) => current.map((row) => (row.id === updated.id ? updated : row)));
@@ -113,6 +126,39 @@ export function useUsersDirectory(): UsersDirectoryApi {
     setUserPendingDelete(null);
     setUserTotal((current) => Math.max(0, current - 1));
   }, [user_pending_delete]);
+
+  /**
+   * Client-side mirror of `ImpersonationController::actorCanImpersonate()`, so an ineligible
+   * row's impersonate button never even appears: nobody impersonates themselves, an inactive
+   * account, or a super_admin, and a plain admin is further limited to client-tier accounts.
+   * The backend re-checks all of this independently — this is purely a UI convenience.
+   */
+  const canImpersonate = useCallback(
+    (row: AdminUserDto): boolean => {
+      if (!can_manage) return false;
+      if (user?.id === row.id) return false;
+      if (!row.is_active) return false;
+
+      const target_role_names = row.roles.map((role) => role.name);
+      if (target_role_names.includes("super_admin")) return false;
+      if (!is_super_admin && target_role_names.some((name) => STAFF_TIER_ROLES.includes(name))) return false;
+
+      return true;
+    },
+    [can_manage, is_super_admin, user?.id]
+  );
+
+  const requestImpersonate = useCallback((user_row: AdminUserDto) => setUserPendingImpersonate(user_row), []);
+  const cancelImpersonate = useCallback(() => setUserPendingImpersonate(null), []);
+
+  const confirmImpersonate = useCallback(async () => {
+    if (!user_pending_impersonate) return;
+    await impersonationService.start(user_pending_impersonate.id);
+    // Full navigation, not client-side routing, so every provider (auth, workspace, echo)
+    // re-initializes cleanly under the impersonated identity instead of carrying over state
+    // that was loaded for the admin's own account.
+    window.location.href = "/";
+  }, [user_pending_impersonate]);
 
   const toggleSort = (field: AdminUsersSortField) => {
     if (field === sort_field) {
@@ -197,5 +243,11 @@ export function useUsersDirectory(): UsersDirectoryApi {
     requestDelete,
     cancelDelete,
     confirmDelete,
+
+    canImpersonate,
+    user_pending_impersonate,
+    requestImpersonate,
+    cancelImpersonate,
+    confirmImpersonate,
   };
 }

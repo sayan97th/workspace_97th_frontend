@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import { authService } from "@/services/auth.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { impersonationService } from "@/services/admin/impersonation.service";
 import { invitationService } from "@/services/invitation.service";
 import { staffInvitationService } from "@/services/staff-invitation.service";
 import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
@@ -85,6 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const scheduleRefresh = useCallback(() => {
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
+
+    // Impersonation tokens are intentionally short-lived and cannot be silently refreshed (the
+    // backend rejects it, see `AuthController::refresh()`) — `ImpersonationBanner` ends the
+    // session on its own countdown instead of this generic timer trying and failing to renew it.
+    if (impersonationService.isImpersonating()) return;
 
     const expires_at = localStorage.getItem("token_expires_at");
     if (!expires_at) return;
@@ -243,6 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     await authService.logout();
+    impersonationService.clear();
     setUser(null);
     setPermissions([]);
     resetEcho();
