@@ -35,8 +35,16 @@ const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectio
       {toolbar}
     </div>
 
-    <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-6 pb-20 pt-0.5">
-      {children}
+    {/*
+      Horizontal padding lives on this inner wrapper, not the `overflow-auto`
+      element itself. Padding directly on the scrolling ancestor breaks
+      `position: sticky` children (BoardTable's frozen Item/checkbox
+      columns), the browser sticks them against the scroll container's own
+      padding edge, leaving a gap the width of that padding once horizontal
+      scroll carries the sticky columns into their stuck position.
+    */}
+    <div className="shell-scrollbar min-h-0 flex-1 overflow-auto pb-20 pt-0.5">
+      <div className="px-6">{children}</div>
     </div>
 
     {selectionBar && (

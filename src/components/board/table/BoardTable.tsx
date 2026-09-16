@@ -371,7 +371,13 @@ export default function BoardTable({
       <TableToolbar summary_text={summary_text} onNewItem={() => state.groups[0] && actions.addItem(state.groups[0].key)} />
 
       <div className="min-h-0 flex-1">
-        <div className="table-board-scroll h-full overflow-auto px-7 pb-[60px]">{grid}</div>
+        {/* Horizontal padding sits on this inner wrapper, not the `overflow-auto`
+            element, for the same reason as `BoardShell`'s own scroll wrapper:
+            padding on the scrolling ancestor itself breaks the sticky Item/
+            checkbox columns, leaving a gap once horizontal scroll sticks them. */}
+        <div className="table-board-scroll h-full overflow-auto pb-[60px]">
+          <div className="px-7">{grid}</div>
+        </div>
       </div>
 
       {modals}

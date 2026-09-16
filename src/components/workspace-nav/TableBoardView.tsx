@@ -737,7 +737,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       width: 280,
       swatch: { accent_color: "#7e5bef", glyph: "It" },
       full_label: item_column_label,
-      pinnable: true,
+      // Not a real `board_columns` row (see `onResizeItemColumn`'s own doc
+      // comment below), so it's absent from `item_columns`/`table_base_columns`
+      // — `toolbar.pinned_column_ids` toggling this id would never match a
+      // real column there, silently inflating `table_pinned_count` past the
+      // columns actually pinned. It already always freezes on its own
+      // (`ItemRow`'s leading sticky cells), so offering it as a pin toggle
+      // would be a no-op at best.
+      pinnable: false,
       hideable: false,
     };
     const chat_column: BoardColumn = {
@@ -1691,12 +1698,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // (`ItemRow`, `GroupColumnHeaderRow`, `layoutUtils.mainGridTemplate`, ...)
   // renders columns by iterating this array in order with no pin-specific
   // logic of its own, so reordering here is all pinning needs.
-  const table_base_columns = useMemo(() => {
+  const { table_base_columns, table_pinned_count } = useMemo(() => {
     const all = item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null);
     const visible = all.filter((c) => !toolbar.hidden_column_ids.includes(c.id));
     const pinned = visible.filter((c) => toolbar.pinned_column_ids.includes(c.id));
     const rest = visible.filter((c) => !toolbar.pinned_column_ids.includes(c.id));
-    return [...pinned, ...rest];
+    // `pinned.length` (not `toolbar.pinned_column_ids.length`) is the real
+    // freeze count: a pinned column that's also hidden (or no longer exists)
+    // is already dropped from `visible` above, so counting the raw id list
+    // instead would freeze one extra, unrelated column past the real pinned
+    // set — the first column of `rest` — since every row/header downstream
+    // just slices the leading `pinned_column_count` columns off this array.
+    return { table_base_columns: [...pinned, ...rest], table_pinned_count: pinned.length };
   }, [item_columns, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
   const table_sub_base_columns = useMemo(
     () => subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
@@ -1866,8 +1879,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // Same read-only pattern: "Choose columns to pin" (`PinColumnsControl`)
       // already reorders pinned columns to the front of `table_base_columns`
       // above, so all `BoardTable` needs is how many of those leading columns
-      // to actually freeze on screen.
-      pinned_column_count: toolbar.pinned_column_ids.length,
+      // to actually freeze on screen — `table_pinned_count`, not the raw
+      // `toolbar.pinned_column_ids.length` (see `table_base_columns`'s own
+      // doc comment for why those two can differ).
+      pinned_column_count: table_pinned_count,
       current_user_id: user ? String(user.id) : undefined,
       onUploadCellFiles: (node_id, column_id, files) =>
         boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
@@ -1962,6 +1977,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.row_height,
       toolbar.row_colors,
       toolbar.cell_colors,
+      table_pinned_count,
       user,
       requestGroupItems,
     ]
