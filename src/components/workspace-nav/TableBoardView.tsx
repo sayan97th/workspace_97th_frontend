@@ -122,9 +122,8 @@ const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value)
 
 /**
  * The Table view's own `ColumnKind` enum (`@/components/board/table`) is
- * almost, but not quite, the engine's `BoardColumnType`: `"long_text"` here
- * is `"longtext"` there, and `"dependency"` (Gantt-only, no Table cell
- * renderer) has no counterpart at all.
+ * almost, but not quite, the engine's `BoardColumnType`: only `"long_text"`
+ * here vs. `"longtext"` there differs in name.
  */
 const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["kind"]>> = {
   text: "text",
@@ -147,13 +146,14 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   files: "files",
   time_tracking: "time_tracking",
   auto_number: "auto_number",
+  dependency: "dependency",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
 const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
   column.config?.options?.map((option) => ({ id: option.id, label: option.label, color: option.color }));
 
-/** `null` for a column kind the Table view has no cell renderer for (currently just `dependency`) — filtered out of `table_base_columns`/`table_sub_base_columns`. */
+/** `null` for a column kind the Table view has no cell renderer for. Every `BoardColumnDto["type"]` currently has one, so this only ever matters for a type added to the engine before the Table view picks it up. */
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
   const kind = TABLE_COLUMN_KIND[column.type];
   if (!kind) return null;
@@ -1863,6 +1863,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       row_height: toolbar.row_height,
       row_colors: toolbar.row_colors,
       cell_colors: toolbar.cell_colors,
+      // Same read-only pattern: "Choose columns to pin" (`PinColumnsControl`)
+      // already reorders pinned columns to the front of `table_base_columns`
+      // above, so all `BoardTable` needs is how many of those leading columns
+      // to actually freeze on screen.
+      pinned_column_count: toolbar.pinned_column_ids.length,
       current_user_id: user ? String(user.id) : undefined,
       onUploadCellFiles: (node_id, column_id, files) =>
         boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),

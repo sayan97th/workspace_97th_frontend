@@ -23,7 +23,8 @@ export type ColumnKind =
   | "link"
   | "files"
   | "time_tracking"
-  | "auto_number";
+  | "auto_number"
+  | "dependency";
 
 export interface ColumnDef {
   id: string;

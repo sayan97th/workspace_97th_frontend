@@ -54,4 +54,4 @@ export type BoardGroup<TRow> = {
 };
 
 /** Row height presets toggled from the toolbar's overflow menu ("Item height" submenu). */
-export type BoardRowHeight = "single" | "double" | "triple";
+export type BoardRowHeight = "single" | "double" | "triple" | "quad";

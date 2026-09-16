@@ -1,9 +1,36 @@
 import type { ColumnDef } from "./types";
 
 /** Row height (px) per "Item height" preset — item rows. */
-export const ROW_HEIGHT_PX = { single: 42, double: 60, triple: 84 } as const;
+export const ROW_HEIGHT_PX = { single: 42, double: 60, triple: 84, quad: 108 } as const;
 /** Row height (px) per "Item height" preset — subitem rows, which start a touch shorter than item rows at every tier (mirrors the existing single-height 42px/40px split). */
-export const SUB_ROW_HEIGHT_PX = { single: 40, double: 56, triple: 78 } as const;
+export const SUB_ROW_HEIGHT_PX = { single: 40, double: 56, triple: 78, quad: 100 } as const;
+
+/** Pixel widths of the main grid's leading (non-column) cells, see `mainGridTemplate`'s own `36px`/`56px` literals. */
+export const MAIN_LEADING_WIDTHS = { checkbox: 36, comment: 56 } as const;
+/** Same idea for the subitem grid, see `subGridTemplate`'s own `34px`/`52px` literals. */
+export const SUB_LEADING_WIDTHS = { checkbox: 34, comment: 52 } as const;
+
+/**
+ * Left offsets (px, from the row's own left edge) for the main grid's frozen
+ * cells: checkbox, Item name, comment icon, then each pinned value column in
+ * order. Mirrors `mainGridTemplate`'s own column order/widths. `ItemRow` and
+ * `GroupColumnHeaderRow` apply `position: sticky; left: <offset>` to exactly
+ * these cells so they stay on screen while the rest of the row scrolls.
+ */
+export function mainStickyOffsets(name_col_width: number, pinned_columns: ColumnDef[]): number[] {
+  const offsets = [0, MAIN_LEADING_WIDTHS.checkbox, MAIN_LEADING_WIDTHS.checkbox + name_col_width];
+  let running = MAIN_LEADING_WIDTHS.checkbox + name_col_width + MAIN_LEADING_WIDTHS.comment;
+  for (const column of pinned_columns) {
+    offsets.push(running);
+    running += column.width;
+  }
+  return offsets;
+}
+
+/** Same idea as `mainStickyOffsets`, scoped to the subitem grid's own three leading cells. Subitem columns have no pinning concept of their own, so there's nothing past the comment icon to freeze. */
+export function subStickyOffsets(name_col_width: number): number[] {
+  return [0, SUB_LEADING_WIDTHS.checkbox, SUB_LEADING_WIDTHS.checkbox + name_col_width];
+}
 
 export function computeNameColWidth(names: string[]): number {
   const longest = names.reduce((a, n) => Math.max(a, (n || "").length), 0);

@@ -6,6 +6,7 @@ import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
+import { dependencyCandidates, findNode } from "../treeUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import StatusMenu from "../menus/StatusMenu";
 import LabelMenu from "../menus/LabelMenu";
@@ -17,6 +18,7 @@ import DropdownMenu from "../menus/DropdownMenu";
 import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
+import DependencyMenu from "../menus/DependencyMenu";
 
 interface CellRendererProps {
   node_id: string;
@@ -504,6 +506,44 @@ export default function CellRenderer({ node_id, column, values, state, actions }
           {hh}:{mm}:{ss}
         </span>
       </button>
+    );
+  }
+
+  if (column.kind === "dependency") {
+    const dependency_ids = asArray(value);
+    const selected = dependency_ids
+      .map((id) => ({ id, name: findNode(state.groups, id)?.name }))
+      .filter((entry): entry is { id: string; name: string } => Boolean(entry.name));
+    const visible = selected.slice(0, 2);
+    const overflow = selected.length - visible.length;
+    return (
+      <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden">
+          {visible.length > 0 ? (
+            <>
+              {visible.map((entry) => (
+                <span key={entry.id} title={entry.name} className="flex max-w-[110px] items-center gap-1 truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
+                  <svg viewBox="0 0 14 14" width="10" height="10" className="flex-none"><path d="M5.5 8.5 L11 3 M7 3 H11 V7 M9.5 3 H3.5 V11 H10.5 V7.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  <span className="truncate">{entry.name}</span>
+                </span>
+              ))}
+              {overflow > 0 && (
+                <span className="flex-none rounded-full bg-boardtree-hover-strong px-1.5 py-0.5 text-[10.5px] font-semibold text-boardtree-text-muted">+{overflow}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-[12.5px] text-boardtree-text-faint">Add dependency</span>
+          )}
+        </button>
+        {is_menu_open && (
+          <DependencyMenu
+            candidates={dependencyCandidates(state.groups, node_id, column.id)}
+            selected={dependency_ids}
+            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
+            onClose={actions.closeCellMenu}
+          />
+        )}
+      </div>
     );
   }
 

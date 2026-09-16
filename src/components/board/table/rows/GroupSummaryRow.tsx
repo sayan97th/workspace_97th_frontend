@@ -1,6 +1,6 @@
 import type { BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
-import { mainGridTemplate } from "../layoutUtils";
+import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
 
 interface GroupSummaryRowProps {
@@ -15,22 +15,32 @@ interface GroupSummaryRowProps {
 export default function GroupSummaryRow({ group, name_col_width, min_width, state }: GroupSummaryRowProps) {
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const columns = group.base_columns.concat(group.custom_columns);
+  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
+  const ROW_BG = "var(--color-boardtree-surface)";
 
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
       <div className="w-[5px] flex-none" />
       <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="h-[46px]" />
-        <div className="h-[46px]" />
-        <div className="h-[46px] border-r border-boardtree-border-soft" />
+        <div className="h-[46px]" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 15, background: ROW_BG }} />
+        <div className="h-[46px]" style={{ position: "sticky", left: sticky_offsets[1], zIndex: 15, background: ROW_BG }} />
+        <div className="h-[46px] border-r border-boardtree-border-soft" style={{ position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
 
-        {columns.map((col) => {
+        {columns.map((col, col_index) => {
           const summary = summaryForColumn(group.items, col, state.status_defs);
+          const is_pinned = col_index < pinned_columns.length;
           return (
             <div
               key={col.id}
               className="flex h-[46px] min-w-0 flex-col items-center justify-center gap-0.5 border-r border-boardtree-border-soft bg-boardtree-surface px-2.5"
-              style={{ borderTop: "1px solid var(--color-boardtree-border)", borderBottom: "1px solid var(--color-boardtree-border)" }}
+              style={{
+                borderTop: "1px solid var(--color-boardtree-border)",
+                borderBottom: "1px solid var(--color-boardtree-border)",
+                position: is_pinned ? "sticky" : undefined,
+                left: is_pinned ? sticky_offsets[3 + col_index] : undefined,
+                zIndex: is_pinned ? 15 : undefined,
+              }}
             >
               {summary.is_status && summary.segments.length > 0 && (
                 <div className="flex h-[15px] w-full overflow-hidden rounded-[2px] bg-boardtree-track">

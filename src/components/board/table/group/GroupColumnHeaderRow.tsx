@@ -2,7 +2,7 @@
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
-import { mainGridTemplate } from "../layoutUtils";
+import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
 
@@ -37,6 +37,9 @@ export default function GroupColumnHeaderRow({
   const sort_scope = `main:${group.key}`;
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const picker_key = `pick:main|${group.key}`;
+  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
+  const HEADER_BG = "var(--color-boardtree-surface)";
   // When the caller supplies `onRequestColumnSort`, the toolbar's own
   // `sort_rules` is the single source of sort truth for the main table (see
   // `BoardTable`'s own doc comment); omitted, this falls back to
@@ -58,13 +61,14 @@ export default function GroupColumnHeaderRow({
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-b border-boardtree-border" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="h-[38px] border-r border-boardtree-border-soft" />
+        <div className="h-[38px] border-r border-boardtree-border-soft" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
 
         <ColumnHeaderCell
           scoped_key={item_title_key}
           title={group.item_title}
           height={38}
           can_delete={false}
+          sticky={{ left: sticky_offsets[1], background: HEADER_BG }}
           sort_dir={sortDirFor("__name")}
           is_menu_open={state.open_column_menu_key === item_title_key}
           is_hovered={state.hover_head_key === item_title_key}
@@ -89,7 +93,7 @@ export default function GroupColumnHeaderRow({
           className="col-span-2"
         />
 
-        {group.base_columns.concat(group.custom_columns).map((col) => (
+        {group.base_columns.concat(group.custom_columns).map((col, col_index) => (
           <ColumnHeaderCell
             key={col.id}
             scoped_key={scope_key_of(col.id)}
@@ -97,6 +101,7 @@ export default function GroupColumnHeaderRow({
             height={38}
             column={{ id: col.id, kind: col.kind, width: col.width, options: col.options }}
             can_delete={true}
+            sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={sortDirFor(col.id)}
             is_menu_open={state.open_column_menu_key === scope_key_of(col.id)}

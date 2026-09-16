@@ -179,6 +179,51 @@ export function visibleRowSequence(
   return rows;
 }
 
+/**
+ * Valid predecessor candidates for one row's Dependency cell: every other
+ * row (item or subitem, across every group) except `node_id` itself and
+ * anything already reachable *from* `node_id` by walking existing
+ * dependency edges forward, since picking one of those would close a cycle
+ * (`node_id` would end up depending, directly or transitively, on something
+ * that already depends on it). Mirrors the Gantt view's own
+ * `getDependencyCandidates` (`TableBoardView.tsx`), generalized to items and
+ * subitems alike since the Table view's own column isn't root-item-only.
+ */
+export function dependencyCandidates(groups: BoardTableGroup[], node_id: string, column_id: string): { id: string; name: string }[] {
+  const all_nodes: BoardTableNode[] = [];
+  for (const group of groups) {
+    for (const item of group.items) {
+      all_nodes.push(item);
+      all_nodes.push(...item.subs);
+    }
+  }
+
+  const successors = new Map<string, string[]>();
+  for (const node of all_nodes) {
+    const raw = node.values[column_id];
+    if (!Array.isArray(raw)) continue;
+    for (const predecessor_id of raw as string[]) {
+      const list = successors.get(predecessor_id) ?? [];
+      list.push(node.id);
+      successors.set(predecessor_id, list);
+    }
+  }
+
+  const unreachable = new Set<string>([node_id]);
+  const queue = [node_id];
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    for (const successor_id of successors.get(current) ?? []) {
+      if (!unreachable.has(successor_id)) {
+        unreachable.add(successor_id);
+        queue.push(successor_id);
+      }
+    }
+  }
+
+  return all_nodes.filter((node) => !unreachable.has(node.id)).map((node) => ({ id: node.id, name: node.name }));
+}
+
 export function reorderWithinList<T extends { id: string }>(list: T[], dragged_id: string, target_id: string): T[] {
   if (dragged_id === target_id) return list;
   const from = list.findIndex((x) => x.id === dragged_id);

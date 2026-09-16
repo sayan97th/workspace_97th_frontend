@@ -59,7 +59,10 @@ export default function CollapsedGroupSummaryRow({ group, group_index, group_cou
         <div className="w-[5px] flex-none" style={{ background: group.color }} />
 
         <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-          <div className="flex items-center pl-8" style={{ gridColumn: "span 3", height: ROW_HEIGHT }}>
+          <div
+            className="flex items-center pl-8"
+            style={{ gridColumn: "span 3", height: ROW_HEIGHT, position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}
+          >
             <GroupHeaderLeft group={group} group_index={group_index} group_count={group_count} state={state} actions={actions} show_menu_button={false} />
           </div>
 

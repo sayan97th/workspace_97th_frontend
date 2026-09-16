@@ -280,11 +280,22 @@ export interface UseBoardTableConfig {
    * never mutates it back. Omitted (the standalone demo), rows render at
    * the default `"single"` height.
    */
-  row_height?: "single" | "double" | "triple";
+  row_height?: "single" | "double" | "triple" | "quad";
   /** Row-id → color, from the toolbar's Conditional coloring rules scoped to "row" — see `row_height`'s own doc comment for the same read-only, toolbar-owned pattern. */
   row_colors?: Record<string, string>;
   /** Row-id → column-id → color, from the toolbar's Conditional coloring rules scoped to "cell". */
   cell_colors?: Record<string, Record<string, string>>;
+  /**
+   * How many of `base_columns` (leading ones, immediately after the Item
+   * column) the board toolbar's "Choose columns to pin" control has pinned.
+   * `TableBoardView` already reorders pinned columns to the front of the
+   * list it hands `BoardTable`, so a count is all this needs to know which
+   * ones to freeze. Those columns, plus the Item column itself, render with
+   * `position: sticky` so they stay on screen while the rest of the table
+   * scrolls horizontally. Omitted (the standalone demo), only the Item
+   * column freezes.
+   */
+  pinned_column_count?: number;
 }
 
 export interface BoardTableState {
@@ -333,11 +344,13 @@ export interface BoardTableState {
   /** Explicit width (px) for the subitem-title virtual column, once the user has dragged its resize handle — null falls back to `GroupSection`'s per-item auto-sizing from that item's longest subitem name. */
   sub_column_width: number | null;
   /** Row density preset — see `UseBoardTableConfig.row_height`'s own doc comment. */
-  row_height: "single" | "double" | "triple";
+  row_height: "single" | "double" | "triple" | "quad";
   /** Row-id → color — see `UseBoardTableConfig.row_colors`'s own doc comment. */
   row_colors: Record<string, string>;
   /** Row-id → column-id → color — see `UseBoardTableConfig.cell_colors`'s own doc comment. */
   cell_colors: Record<string, Record<string, string>>;
+  /** Leading pinned/frozen column count, see `UseBoardTableConfig.pinned_column_count`'s own doc comment. */
+  pinned_column_count: number;
   /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
   /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
@@ -391,6 +404,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     row_height: config.row_height ?? "single",
     row_colors: config.row_colors ?? {},
     cell_colors: config.cell_colors ?? {},
+    pinned_column_count: config.pinned_column_count ?? 0,
     active_cell: null,
     clipboard_cell: null,
     fill_drag: null,
@@ -475,6 +489,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.cell_colors) setState((s) => ({ ...s, cell_colors: config.cell_colors! }));
   }, [config.cell_colors]);
+
+  useEffect(() => {
+    if (config.pinned_column_count !== undefined) setState((s) => ({ ...s, pinned_column_count: config.pinned_column_count! }));
+  }, [config.pinned_column_count]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key

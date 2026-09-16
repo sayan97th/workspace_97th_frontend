@@ -268,8 +268,8 @@ export const ItemHeightIcon: React.FC<IconProps> = ({ className, size = 16 }) =>
 );
 
 /** Ruler + `lines` text-bar glyph identifying a row-height preset (Single/Double/Triple) in the Item height submenu. */
-export const RowHeightIcon: React.FC<IconProps & { lines?: 1 | 2 | 3 }> = ({ className, size = 16, lines = 1 }) => {
-  const bar_ys = lines === 1 ? [8] : lines === 2 ? [5.5, 10.5] : [4, 8, 12];
+export const RowHeightIcon: React.FC<IconProps & { lines?: 1 | 2 | 3 | 4 }> = ({ className, size = 16, lines = 1 }) => {
+  const bar_ys = lines === 1 ? [8] : lines === 2 ? [5.5, 10.5] : lines === 3 ? [4, 8, 12] : [3, 6.3, 9.7, 13];
   return (
     <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
       <path

@@ -2,7 +2,7 @@
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
-import { subGridTemplate } from "../layoutUtils";
+import { subGridTemplate, subStickyOffsets } from "../layoutUtils";
 import ColumnHeaderCell from "../group/ColumnHeaderCell";
 import ColumnPicker from "../menus/ColumnPicker";
 import TreeBar from "./TreeBar";
@@ -24,6 +24,8 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
   const sort_scope = `sub:${item.id}`;
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const picker_key = `pick:sub|${item.id}`;
+  const sticky_offsets = subStickyOffsets(name_col_width);
+  const HEADER_BG = "var(--color-boardtree-panel-alt)";
 
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
@@ -31,13 +33,14 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
       <div className="w-[30px] flex-none" />
       <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
       <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-boardtree-border bg-boardtree-panel-alt" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
-        <div className="h-9 border-r border-boardtree-border-soft" />
+        <div className="h-9 border-r border-boardtree-border-soft" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
 
         <ColumnHeaderCell
           scoped_key={sub_title_key}
           title={group.sub_title}
           height={36}
           can_delete={false}
+          sticky={{ left: sticky_offsets[1], background: HEADER_BG }}
           sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === "__name" ? state.sort.direction : null}
           is_menu_open={state.open_column_menu_key === sub_title_key}
           is_hovered={state.hover_head_key === sub_title_key}

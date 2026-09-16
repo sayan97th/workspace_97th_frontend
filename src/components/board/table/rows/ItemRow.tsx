@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
-import { ROW_HEIGHT_PX, mainGridTemplate } from "../layoutUtils";
+import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
@@ -27,6 +27,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const is_dragging = state.drag?.node_id === item.id;
   const row_h = ROW_HEIGHT_PX[state.row_height];
   const row_color = state.row_colors[item.id];
+  const row_bg = is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)");
+  // The Item column (checkbox + name + comment icon) always freezes; any
+  // extra leading value columns freeze too once pinned from the toolbar's
+  // "Choose columns to pin" control, see `mainStickyOffsets`'s own comment.
+  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
 
   const move_targets: RowMenuTarget[] = state.groups.map((g) => ({ id: g.key, label: g.title, current: g.key === group.key }));
   const convert_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.filter((it) => it.id !== item.id).map((it) => ({ id: it.id, label: it.name })));
@@ -58,7 +64,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   return (
     <div
       className="relative flex items-stretch"
-      style={{ minWidth: min_width, background: is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)"), opacity: is_dragging ? 0.45 : 1 }}
+      style={{ minWidth: min_width, background: row_bg, opacity: is_dragging ? 0.45 : 1 }}
       draggable
       onDragStart={(e) => {
         // See `fill_handle_mousedown_ref`'s own doc comment — a fill-handle
@@ -112,7 +118,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
       <TreeBar variant="thick" color={group.color} />
 
       <div className="flex-1 border-b border-boardtree-border-soft" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
           <button type="button" onClick={() => actions.toggleSelected(item.id)} className="flex items-center justify-center">
             {is_selected ? (
               <span className="flex h-[15px] w-[15px] items-center justify-center rounded-[3px] bg-boardtree-accent">
@@ -124,7 +130,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="flex items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3" style={{ height: row_h }}>
+        <div className="flex items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
           <div className="flex w-3 flex-none cursor-grab items-center justify-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
           </div>
@@ -163,7 +169,13 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               <span
                 onClick={() => actions.startEditName(item.id, item.name)}
                 className={`max-w-full cursor-text rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text ${
-                  state.row_height === "triple" ? "line-clamp-3 whitespace-normal" : state.row_height === "double" ? "line-clamp-2 whitespace-normal" : "truncate"
+                  state.row_height === "quad"
+                    ? "line-clamp-4 whitespace-normal"
+                    : state.row_height === "triple"
+                      ? "line-clamp-3 whitespace-normal"
+                      : state.row_height === "double"
+                        ? "line-clamp-2 whitespace-normal"
+                        : "truncate"
                 }`}
               >
                 {item.name}
@@ -205,7 +217,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h }}>
+        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openComments(item.id); }}
@@ -220,20 +232,23 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        {group.base_columns.concat(group.custom_columns).map((col) => {
+        {group.base_columns.concat(group.custom_columns).map((col, col_index) => {
           const is_active = state.active_cell?.node_id === item.id && state.active_cell?.column_id === col.id;
           const is_fill_target =
             !!state.fill_drag &&
             state.fill_drag.column_id === col.id &&
             state.fill_drag.hovered_node_id === item.id &&
             state.fill_drag.anchor_node_id !== item.id;
+          const is_pinned = col_index < pinned_columns.length;
           return (
             <div
               key={col.id}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
               style={{
                 height: row_h,
-                background: state.cell_colors[item.id]?.[col.id],
+                background: state.cell_colors[item.id]?.[col.id] ?? (is_pinned ? row_bg : undefined),
+                position: is_pinned ? "sticky" : undefined,
+                left: is_pinned ? sticky_offsets[3 + col_index] : undefined,
                 // `outline` (not `box-shadow`) so the ring still shows on top
                 // of a cell whose own content paints an opaque, edge-to-edge
                 // background (Status/Label/Progress/Timeline pills) — an
@@ -245,7 +260,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                     ? "1.5px dashed var(--color-boardtree-accent)"
                     : undefined,
                 outlineOffset: is_active || is_fill_target ? "-2px" : undefined,
-                zIndex: is_active ? 5 : undefined,
+                zIndex: is_pinned ? 15 : is_active ? 5 : undefined,
               }}
               onMouseDown={() => actions.setActiveCell(item.id, col.id)}
               onMouseEnter={() => {

@@ -59,6 +59,8 @@ interface ColumnHeaderCellProps {
   onColumnDragStart?: () => void;
   onColumnDragOver?: () => void;
   onColumnDragEnd?: () => void;
+  /** Freezes this header cell in place (the Item/Subitem title cell, or a pinned column) while the row scrolls horizontally, see `layoutUtils.mainStickyOffsets`. Omitted for every other header cell. */
+  sticky?: { left: number; background: string };
 }
 
 export default function ColumnHeaderCell({
@@ -66,7 +68,7 @@ export default function ColumnHeaderCell({
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
-  is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd,
+  is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
   const title_input_ref = useRef<HTMLInputElement>(null);
@@ -83,7 +85,11 @@ export default function ColumnHeaderCell({
       onDragOver={is_draggable ? (e) => { e.preventDefault(); onColumnDragOver?.(); } : undefined}
       onDragEnd={is_draggable ? onColumnDragEnd : undefined}
       className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-border-soft ${className || ""}`}
-      style={{ height, opacity: is_dragging ? 0.45 : 1 }}
+      style={{
+        height,
+        opacity: is_dragging ? 0.45 : 1,
+        ...(sticky ? { position: "sticky" as const, left: sticky.left, zIndex: 16, background: sticky.background } : {}),
+      }}
     >
       {is_draggable && (
         <span

@@ -148,6 +148,7 @@ export default function GroupSection({
               color={group.color}
               row_height={state.row_height}
               item_count={group.item_count}
+              pinned_column_count={state.pinned_column_count}
             />
           ) : (
             <>
@@ -201,6 +202,7 @@ export default function GroupSection({
                     color={group.color}
                     row_height={state.row_height}
                     item_count={2}
+                    pinned_column_count={state.pinned_column_count}
                   />
                 </div>
               )}

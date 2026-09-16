@@ -94,6 +94,7 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "files", label: "Files", mark: "📎", accent: "#7f5347", section: "Super useful", default_width: 150 },
   { kind: "time_tracking", label: "Time Tracking", mark: "⏱", accent: "#4f6bed", section: "Super useful", default_width: 150 },
   { kind: "auto_number", label: "Item ID", mark: "#", accent: "#5b6180", section: "Super useful", default_width: 100 },
+  { kind: "dependency", label: "Dependency", mark: "→", accent: "#7f5347", section: "Super useful", default_width: 200 },
 ];
 
 /**
@@ -125,6 +126,7 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   files: "files",
   time_tracking: "time_tracking",
   auto_number: "auto_number",
+  dependency: "dependency",
 };
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];

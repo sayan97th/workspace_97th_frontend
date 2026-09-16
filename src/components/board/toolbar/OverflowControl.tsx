@@ -16,10 +16,11 @@ export type OverflowControlProps<TRow> = {
 /** Selected-row accent used by the "..." menu and its "Item height" submenu, matching the design's active-state blue. */
 const MENU_ACTIVE_BG = "#4f6bed";
 
-const ROW_HEIGHT_OPTIONS: { id: BoardRowHeight; label: string; lines: 1 | 2 | 3 }[] = [
-  { id: "single", label: "Single", lines: 1 },
-  { id: "double", label: "Double", lines: 2 },
-  { id: "triple", label: "Triple", lines: 3 },
+const ROW_HEIGHT_OPTIONS: { id: BoardRowHeight; label: string; lines: 1 | 2 | 3 | 4 }[] = [
+  { id: "single", label: "Small", lines: 1 },
+  { id: "double", label: "Medium", lines: 2 },
+  { id: "triple", label: "Large", lines: 3 },
+  { id: "quad", label: "Extra large", lines: 4 },
 ];
 
 function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {

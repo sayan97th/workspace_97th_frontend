@@ -13,10 +13,15 @@ export default function AddItemRow({ min_width, color, onAdd }: AddItemRowProps)
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
       <TreeBar variant="thick" color={color} />
       <div className="grid flex-1 grid-cols-[36px_1fr] border-b border-boardtree-border-soft bg-boardtree-surface">
-        <div className="flex h-[42px] items-center justify-center border-r border-boardtree-border-soft">
+        <div className="flex h-[42px] items-center justify-center border-r border-boardtree-border-soft" style={{ position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}>
           <span className="h-[15px] w-[15px] rounded-[3px] border-[1.5px] border-boardtree-border bg-boardtree-surface" />
         </div>
-        <button type="button" onClick={onAdd} className="flex h-[42px] items-center pr-3 pl-5 text-[13px] text-boardtree-text-muted hover:text-boardtree-accent">
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex h-[42px] items-center pr-3 pl-5 text-[13px] text-boardtree-text-muted hover:text-boardtree-accent"
+          style={{ position: "sticky", left: 36, zIndex: 15 }}
+        >
           + Add item
         </button>
       </div>
