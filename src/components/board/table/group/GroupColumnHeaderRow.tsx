@@ -56,8 +56,24 @@ export default function GroupColumnHeaderRow({
   const requestSort = (column_id: string, direction: "asc" | "desc" | null) =>
     use_sort_bridge ? onRequestColumnSort!(column_id, direction) : actions.setSort(sort_scope, column_id, direction);
 
+  // `position: sticky` always opens its own stacking context, so at the shared base z-index
+  // (70) every group's column-header row competes against every OTHER group's, and since
+  // they're equal, the one later in the DOM simply paints on top. A popover opened from an
+  // earlier group (the "+" add-column picker, a column's "..." menu) is confined to ITS OWN
+  // row's stacking context, so it can end up hidden under a later group's row even though it
+  // visually overlaps it. Bumping this row's z-index only while one of its own overlays is
+  // open (mirroring `GroupHeaderBar`'s identical `is_menu_open` bump) guarantees the open
+  // overlay always wins, without permanently outranking every other group's row.
+  const group_prefix = `main|${group.key}|`;
+  const has_open_overlay =
+    state.open_picker_key === picker_key ||
+    state.open_column_menu_key === item_title_key ||
+    !!state.open_column_menu_key?.startsWith(group_prefix) ||
+    state.editing_column?.scoped_key === item_title_key ||
+    !!state.editing_column?.scoped_key?.startsWith(group_prefix);
+
   return (
-    <div className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width }}>
+    <div className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width, zIndex: has_open_overlay ? 200 : 70 }}>
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-b border-boardtree-border" style={{ display: "grid", gridTemplateColumns: main_tpl }}>

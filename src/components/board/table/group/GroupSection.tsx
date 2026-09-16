@@ -117,7 +117,15 @@ export default function GroupSection({
   }, [is_items_loaded, has_more_rows, visible_count]);
 
   return (
-    <div ref={section_ref} style={{ marginTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
+    // `paddingTop`, not `marginTop`. A sticky child (`GroupHeaderBar`) can only stay pinned
+    // to `top: 0` while some part of ITS OWN containing block (this very div) is still on
+    // screen. Margin sits outside that box, so a margin-based gap between groups is a dead
+    // zone no sticky header can occupy, the previous group's header un-sticks the instant its
+    // box scrolls past, but the next group's box (and its `top: 0` claim) hasn't arrived yet,
+    // and the raw page background flashes through for the width of that gap. Padding is part
+    // of the box itself, so the same spacing here keeps the handoff between one group's
+    // sticky header and the next completely contiguous while looking identical at rest.
+    <div ref={section_ref} style={{ paddingTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
         <CollapsedGroupSummaryRow group={group} group_index={group_index} group_count={group_count} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
       ) : (
