@@ -88,6 +88,12 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "email", label: "Email", mark: "@", accent: "#f2662a", section: "Super useful", default_width: 190 },
   { kind: "tags", label: "Tags", mark: "#", accent: "#12c46b", section: "Super useful", default_width: 180 },
   { kind: "checkbox", label: "Checkbox", mark: "✓", accent: "#12c46b", section: "Super useful", default_width: 110 },
+  { kind: "rating", label: "Rating", mark: "★", accent: "#fdab3d", section: "Super useful", default_width: 140 },
+  { kind: "vote", label: "Vote", mark: "♥", accent: "#e2445c", section: "Super useful", default_width: 110 },
+  { kind: "link", label: "Link", mark: "🔗", accent: "#0086c0", section: "Super useful", default_width: 200 },
+  { kind: "files", label: "Files", mark: "📎", accent: "#7f5347", section: "Super useful", default_width: 150 },
+  { kind: "time_tracking", label: "Time Tracking", mark: "⏱", accent: "#4f6bed", section: "Super useful", default_width: 150 },
+  { kind: "auto_number", label: "Item ID", mark: "#", accent: "#5b6180", section: "Super useful", default_width: 100 },
 ];
 
 /**
@@ -113,6 +119,12 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   checkbox: "checkbox",
   phone: "phone",
   email: "email",
+  rating: "rating",
+  vote: "vote",
+  link: "link",
+  files: "files",
+  time_tracking: "time_tracking",
+  auto_number: "auto_number",
 };
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];

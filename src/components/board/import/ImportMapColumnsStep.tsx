@@ -22,6 +22,12 @@ const TYPE_LABELS: Record<BoardColumnType, string> = {
   email: "Email",
   timeline: "Timeline",
   dependency: "Dependency",
+  rating: "Rating",
+  vote: "Vote",
+  link: "Link",
+  files: "Files",
+  time_tracking: "Time Tracking",
+  auto_number: "Item ID",
 };
 
 const NEW_GROUP_VALUE = "__new__";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate } from "../layoutUtils";
@@ -38,13 +38,38 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the edit out from under it.
   const is_emoji_palette_open_ref = useRef(false);
+  // A native `dragstart` event's own `target` is always the row (the
+  // `draggable` element itself), never the fill handle the gesture actually
+  // began on — so the row's `onDragStart` can't tell the two apart just by
+  // inspecting the event. This ref is set synchronously by the handle's own
+  // `onMouseDown` (which always fires first) and read once by the very next
+  // `onDragStart`, letting the row cancel its own native drag when that's
+  // where the gesture really came from.
+  const fill_handle_mousedown_ref = useRef(false);
+  // A fill-drag ends on a plain `mouseup` (no native `dragend` ever fires,
+  // since `dragstart` was cancelled) — this is what clears the ref again for
+  // the row's next, ordinary drag-to-reorder gesture.
+  useEffect(() => {
+    const clear = () => { fill_handle_mousedown_ref.current = false; };
+    window.addEventListener("mouseup", clear);
+    return () => window.removeEventListener("mouseup", clear);
+  }, []);
 
   return (
     <div
       className="relative flex items-stretch"
       style={{ minWidth: min_width, background: is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)"), opacity: is_dragging ? 0.45 : 1 }}
       draggable
-      onDragStart={() => actions.onDragStart(item.id, "ROOT")}
+      onDragStart={(e) => {
+        // See `fill_handle_mousedown_ref`'s own doc comment — a fill-handle
+        // drag starts inside this same `draggable` row, and must cancel the
+        // row's own native drag instead of reordering it.
+        if (fill_handle_mousedown_ref.current) {
+          e.preventDefault();
+          return;
+        }
+        actions.onDragStart(item.id, "ROOT");
+      }}
       onDragOver={(e) => { e.preventDefault(); actions.onDragOver(item.id, "ROOT"); }}
       onDragEnd={actions.onDragEnd}
       onMouseEnter={() => actions.setHoverRow(item.id)}
@@ -195,15 +220,54 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        {group.base_columns.concat(group.custom_columns).map((col) => (
-          <div
-            key={col.id}
-            className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
-            style={{ height: row_h, background: state.cell_colors[item.id]?.[col.id] }}
-          >
-            <CellRenderer node_id={item.id} column={col} values={item.values} state={state} actions={actions} />
-          </div>
-        ))}
+        {group.base_columns.concat(group.custom_columns).map((col) => {
+          const is_active = state.active_cell?.node_id === item.id && state.active_cell?.column_id === col.id;
+          const is_fill_target =
+            !!state.fill_drag &&
+            state.fill_drag.column_id === col.id &&
+            state.fill_drag.hovered_node_id === item.id &&
+            state.fill_drag.anchor_node_id !== item.id;
+          return (
+            <div
+              key={col.id}
+              className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              style={{
+                height: row_h,
+                background: state.cell_colors[item.id]?.[col.id],
+                // `outline` (not `box-shadow`) so the ring still shows on top
+                // of a cell whose own content paints an opaque, edge-to-edge
+                // background (Status/Label/Progress/Timeline pills) — an
+                // inset box-shadow on this wrapper would otherwise be
+                // completely covered by that child's fill.
+                outline: is_active
+                  ? "2px solid var(--color-boardtree-accent)"
+                  : is_fill_target
+                    ? "1.5px dashed var(--color-boardtree-accent)"
+                    : undefined,
+                outlineOffset: is_active || is_fill_target ? "-2px" : undefined,
+                zIndex: is_active ? 5 : undefined,
+              }}
+              onMouseDown={() => actions.setActiveCell(item.id, col.id)}
+              onMouseEnter={() => {
+                if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(item.id);
+              }}
+            >
+              <CellRenderer node_id={item.id} column={col} values={item.values} state={state} actions={actions} />
+              {is_active && (
+                <div
+                  data-fill-handle="true"
+                  draggable={false}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    fill_handle_mousedown_ref.current = true;
+                    actions.startFillDrag(item.id, col.id);
+                  }}
+                  className="absolute -bottom-[4px] -right-[4px] z-10 h-[9px] w-[9px] cursor-crosshair rounded-[1.5px] border border-white bg-boardtree-accent"
+                />
+              )}
+            </div>
+          );
+        })}
 
         <div style={{ height: row_h }} />
         <div style={{ height: row_h }} />

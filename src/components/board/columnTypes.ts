@@ -21,7 +21,13 @@ export type BoardColumnKind =
   | "progress"
   | "long_text"
   | "phone"
-  | "email";
+  | "email"
+  | "rating"
+  | "vote"
+  | "link"
+  | "files"
+  | "time_tracking"
+  | "auto_number";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -40,6 +46,12 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   long_text: { accent_color: "#e8b23a", glyph: "¶", glyph_text_color: "#3a2a00" },
   phone: { accent_color: "#f2a53c", glyph: "☎", glyph_text_color: "#3a2a00" },
   email: { accent_color: "#f2662a", glyph: "@" },
+  rating: { accent_color: "#fdab3d", glyph: "★", glyph_text_color: "#3a2a00" },
+  vote: { accent_color: "#e2445c", glyph: "♥" },
+  link: { accent_color: "#0086c0", glyph: "🔗" },
+  files: { accent_color: "#7f5347", glyph: "📎" },
+  time_tracking: { accent_color: "#4f6bed", glyph: "⏱" },
+  auto_number: { accent_color: "#5b6180", glyph: "#" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */
@@ -204,6 +216,60 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     description: "Link items that must finish before this one starts",
     swatch: COLUMN_KIND_SWATCH.dependency,
     default_width: 170,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "rating",
+    label: "Rating",
+    description: "Rate items on a 5-star scale",
+    swatch: COLUMN_KIND_SWATCH.rating,
+    default_width: 140,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "vote",
+    label: "Vote",
+    description: "Let the team vote on items",
+    swatch: COLUMN_KIND_SWATCH.vote,
+    default_width: 110,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "link",
+    label: "Link",
+    description: "A clickable URL with its own display text",
+    swatch: COLUMN_KIND_SWATCH.link,
+    default_width: 200,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "files",
+    label: "Files",
+    description: "Attach one or more files directly to this cell",
+    swatch: COLUMN_KIND_SWATCH.files,
+    default_width: 150,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "time_tracking",
+    label: "Time Tracking",
+    description: "Track time spent with a start/stop timer",
+    swatch: COLUMN_KIND_SWATCH.time_tracking,
+    default_width: 150,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "auto_number",
+    label: "Item ID",
+    description: "A read-only sequential number assigned when an item is created",
+    swatch: COLUMN_KIND_SWATCH.auto_number,
+    default_width: 100,
     section: "super_useful",
     has_options: false,
   },

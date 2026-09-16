@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "../types";
 import { SUB_ROW_HEIGHT_PX, subGridTemplate } from "../layoutUtils";
@@ -36,6 +36,17 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the edit out from under it.
   const is_emoji_palette_open_ref = useRef(false);
+  // See `ItemRow`'s identical ref for why this exists: a native `dragstart`
+  // event's `target` is always the row (the `draggable` element), never the
+  // fill handle a gesture actually began on, so the row's `onDragStart` reads
+  // this ref (set synchronously by the handle's own `onMouseDown`, which
+  // always fires first) instead of inspecting the event.
+  const fill_handle_mousedown_ref = useRef(false);
+  useEffect(() => {
+    const clear = () => { fill_handle_mousedown_ref.current = false; };
+    window.addEventListener("mouseup", clear);
+    return () => window.removeEventListener("mouseup", clear);
+  }, []);
 
   return (
     <div
@@ -86,7 +97,13 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         className="flex-1 border-r border-b border-boardtree-border-soft"
         style={{ display: "grid", gridTemplateColumns: sub_tpl, background: is_selected ? "var(--color-boardtree-selected)" : "var(--color-boardtree-surface)", opacity: is_dragging ? 0.45 : 1 }}
         draggable
-        onDragStart={() => actions.onDragStart(sub.id, item.id)}
+        onDragStart={(e) => {
+          if (fill_handle_mousedown_ref.current) {
+            e.preventDefault();
+            return;
+          }
+          actions.onDragStart(sub.id, item.id);
+        }}
         onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id); }}
         onDragEnd={actions.onDragEnd}
       >
@@ -174,11 +191,50 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </button>
         </div>
 
-        {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => (
-          <div key={col.id} className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft" style={{ height: row_h }}>
-            <CellRenderer node_id={sub.id} column={col} values={sub.values} state={state} actions={actions} />
-          </div>
-        ))}
+        {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => {
+          const is_active = state.active_cell?.node_id === sub.id && state.active_cell?.column_id === col.id;
+          const is_fill_target =
+            !!state.fill_drag &&
+            state.fill_drag.column_id === col.id &&
+            state.fill_drag.hovered_node_id === sub.id &&
+            state.fill_drag.anchor_node_id !== sub.id;
+          return (
+            <div
+              key={col.id}
+              className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              style={{
+                height: row_h,
+                // See `ItemRow`'s identical cell wrapper for why this is an
+                // `outline`, not a `box-shadow`.
+                outline: is_active
+                  ? "2px solid var(--color-boardtree-accent)"
+                  : is_fill_target
+                    ? "1.5px dashed var(--color-boardtree-accent)"
+                    : undefined,
+                outlineOffset: is_active || is_fill_target ? "-2px" : undefined,
+                zIndex: is_active ? 5 : undefined,
+              }}
+              onMouseDown={() => actions.setActiveCell(sub.id, col.id)}
+              onMouseEnter={() => {
+                if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(sub.id);
+              }}
+            >
+              <CellRenderer node_id={sub.id} column={col} values={sub.values} state={state} actions={actions} />
+              {is_active && (
+                <div
+                  data-fill-handle="true"
+                  draggable={false}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    fill_handle_mousedown_ref.current = true;
+                    actions.startFillDrag(sub.id, col.id);
+                  }}
+                  className="absolute -bottom-[4px] -right-[4px] z-10 h-[9px] w-[9px] cursor-crosshair rounded-[1.5px] border border-white bg-boardtree-accent"
+                />
+              )}
+            </div>
+          );
+        })}
 
         <div style={{ height: row_h }} />
         <div style={{ height: row_h }} />

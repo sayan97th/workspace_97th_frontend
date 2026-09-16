@@ -1,4 +1,4 @@
-import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "./types";
+import type { BoardTableGroup, BoardTableItem, BoardTableNode, ColumnDef } from "./types";
 
 export interface ItemLocation {
   kind: "item";
@@ -141,6 +141,42 @@ export function insertSubIntoItem(
       return { ...item, subs };
     }),
   }));
+}
+
+export interface VisibleRow {
+  node_id: string;
+  /** The value columns actually rendered for this row (item vs. subitem each have their own set) — an active cell's arrow-key navigation only ever moves within this list. */
+  columns: ColumnDef[];
+}
+
+/**
+ * Every row currently on-screen, in top-to-bottom display order: root items,
+ * and — only when that item is expanded (`open_map`) and has any — its
+ * subitems right after it. Rows inside a collapsed group are skipped
+ * entirely. Mirrors exactly what `GroupSection`/`ItemRow`/`SubitemRow`
+ * render, so arrow-key cell navigation never lands on a row the viewer can't
+ * actually see.
+ */
+export function visibleRowSequence(
+  groups: BoardTableGroup[],
+  collapsed_groups: Record<string, boolean>,
+  open_map: Record<string, boolean>
+): VisibleRow[] {
+  const rows: VisibleRow[] = [];
+  for (const group of groups) {
+    if (collapsed_groups[group.key]) continue;
+    const columns = group.base_columns.concat(group.custom_columns);
+    const sub_columns = group.sub_base_columns.concat(group.sub_custom_columns);
+    for (const item of group.items) {
+      rows.push({ node_id: item.id, columns });
+      if (open_map[item.id] && item.subs.length > 0) {
+        for (const sub of item.subs) {
+          rows.push({ node_id: sub.id, columns: sub_columns });
+        }
+      }
+    }
+  }
+  return rows;
 }
 
 export function reorderWithinList<T extends { id: string }>(list: T[], dragged_id: string, target_id: string): T[] {

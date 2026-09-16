@@ -17,7 +17,13 @@ export type ColumnKind =
   | "tags"
   | "checkbox"
   | "phone"
-  | "email";
+  | "email"
+  | "rating"
+  | "vote"
+  | "link"
+  | "files"
+  | "time_tracking"
+  | "auto_number";
 
 export interface ColumnDef {
   id: string;
@@ -54,8 +60,39 @@ export interface TagDef {
   color: string;
 }
 
-/** Widened beyond the mock demo's own string/array/boolean values so a real board's `number`, `null` and timeline-range cell values pass through unchanged. */
-export type CellValue = string | string[] | number | boolean | { start: string; end: string } | null | undefined;
+/** A `link`-type column's value — the display text is separate from the URL, unlike a plain Text column. */
+export interface LinkValue {
+  url: string;
+  text: string;
+}
+
+/** A `time_tracking`-type column's value — `running_since` is the ISO timestamp the timer was last started, or null while stopped; the displayed duration is `seconds` plus elapsed time since `running_since` when running. */
+export interface TimeTrackingValue {
+  seconds: number;
+  running_since: string | null;
+}
+
+/** One file in a `files`-type column's cell — the cell's value is an array of these, mirroring `BoardItemAttachment` but scoped to one column instead of the whole item. */
+export interface CellFile {
+  id: string;
+  file_name: string;
+  url: string;
+  mime_type: string;
+  size_bytes: number;
+}
+
+/** Widened beyond the mock demo's own string/array/boolean values so a real board's `number`, `null`, timeline-range, link, time-tracking and files cell values pass through unchanged. */
+export type CellValue =
+  | string
+  | string[]
+  | number
+  | boolean
+  | { start: string; end: string }
+  | LinkValue
+  | TimeTrackingValue
+  | CellFile[]
+  | null
+  | undefined;
 
 export interface BoardTableNode {
   id: string;
@@ -143,6 +180,24 @@ export type ReorderScope = "root" | "subitem";
 export type ReorderPayload =
   | { scope: "root"; moved_id: string; group_key: string; ordered_ids: string[] }
   | { scope: "subitem"; moved_id: string; parent_id: string; ordered_ids: string[] };
+
+/** The single cell currently focused for Excel-style keyboard navigation/copy-paste — see `useBoardTable`'s `moveActiveCell`/`copyActiveCell`/`pasteIntoActiveCell`. */
+export interface ActiveCell {
+  node_id: string;
+  column_id: string;
+}
+
+/**
+ * An in-progress "fill handle" drag (the little square at an active cell's
+ * bottom-right corner) — dragging it down/up copies that cell's value into
+ * every row the pointer passes over, mirroring Excel/Google Sheets. Confined
+ * to a single column: `column_id` never changes once the drag starts.
+ */
+export interface FillDragState {
+  column_id: string;
+  anchor_node_id: string;
+  hovered_node_id: string;
+}
 
 /** Which popover/picker/menu is open, addressed by a scoped string key. */
 export interface OpenMenus {

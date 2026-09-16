@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
 import type { ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
@@ -98,6 +98,26 @@ export interface BoardTableProps {
   /** The toolbar's currently active sort column/direction, for the main table's header arrow to reflect — see `onRequestColumnSort`. Ignored (and `state.sort` used instead) when `onRequestColumnSort` is omitted. */
   active_sort_column_id?: string | null;
   active_sort_direction?: "asc" | "desc" | null;
+  /**
+   * Fired whenever the set of checked root-item ids changes, so a sibling
+   * `<SelectionActionBar />` (rendered by the caller, outside `BoardTable`'s
+   * own scroll container — see `BoardShell`'s `selectionBar` slot) knows how
+   * many rows are selected and which ids to act on. Deliberately reports
+   * only root-item ids: a subitem's group is denormalized from its parent
+   * (see the API's own `BoardColumn` doc comment), so a subitem moving to a
+   * different group on its own would desync that invariant — the selection
+   * bar's bulk actions stay scoped to whole root items/their subtrees.
+   */
+  onSelectionChange?: (selected_item_ids: string[]) => void;
+  /**
+   * Bumped (any new value) by the caller once a bulk action from the
+   * selection bar resolves, to clear every checked row's local state. A
+   * plain signal rather than a controlled `selected_ids` prop since
+   * `BoardTable` otherwise owns selection entirely on its own — mirrors the
+   * lightweight "tell the child to reset" convention used for one-off
+   * imperative asks that don't warrant lifting the whole state up.
+   */
+  clear_selection_signal?: number;
 }
 
 /** The "Main table" board view: a Monday-style grid of groups, tree rows and subitems with rich per-column cell editing. Mirrors `BoardKanban`'s role as the generic shell for its own view kind. */
@@ -117,8 +137,27 @@ export default function BoardTable({
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
+  onSelectionChange,
+  clear_selection_signal,
 }: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
+
+  const selected_root_ids = useMemo(
+    () => state.groups.flatMap((g) => g.items.filter((it) => state.selected_map[it.id]).map((it) => it.id)),
+    [state.groups, state.selected_map]
+  );
+
+  useEffect(() => {
+    onSelectionChange?.(selected_root_ids);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected_root_ids]);
+
+  const clear_selection_signal_ref = useRef(clear_selection_signal);
+  useEffect(() => {
+    if (clear_selection_signal === undefined || clear_selection_signal === clear_selection_signal_ref.current) return;
+    clear_selection_signal_ref.current = clear_selection_signal;
+    base_actions.clearSelection();
+  }, [clear_selection_signal, base_actions]);
 
   const addItemReal = useCallback(
     (group_key: string) => {

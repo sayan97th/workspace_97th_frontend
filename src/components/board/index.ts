@@ -1,5 +1,7 @@
 export { default as BoardShell } from "./BoardShell";
 export type { BoardShellProps } from "./BoardShell";
+export { default as SelectionActionBar } from "./SelectionActionBar";
+export type { SelectionActionBarProps, SelectionActionBarGroupOption } from "./SelectionActionBar";
 export { default as BoardHeader } from "./BoardHeader";
 export type { BoardHeaderProps, BoardHeaderInfo } from "./BoardHeader";
 export { default as BoardViewTabs } from "./BoardViewTabs";

@@ -16,8 +16,32 @@ export type { BoardCellOption, BoardOptionActions };
 /** A `timeline`-type column's value — both `YYYY-MM-DD`. */
 export type BoardCellTimelineValue = { start: string; end: string };
 
-/** A cell value, shaped per the owning column's kind. */
-export type BoardCellValue = string | number | boolean | string[] | BoardCellTimelineValue | null;
+/** A `link`-type column's value — see the Table kit's own `LinkValue`. */
+export type BoardCellLinkValue = { url: string; text: string };
+
+/** A `time_tracking`-type column's value — see the Table kit's own `TimeTrackingValue`. */
+export type BoardCellTimeTrackingValue = { seconds: number; running_since: string | null };
+
+/** One file in a `files`-type column's cell — see the Table kit's own `CellFile`. */
+export type BoardCellFileValue = { id: string; file_name: string; url: string; mime_type: string; size_bytes: number };
+
+/**
+ * A cell value, shaped per the owning column's kind. `link`/`time_tracking`/
+ * `files`/`rating`/`vote`/`auto_number` have no dedicated editor in this
+ * generic Kanban-drawer cell yet (see `BoardValueCell`'s `default` case) —
+ * these members exist so the type stays a superset of the engine's own
+ * `BoardItemValue`, not because every kind below renders something bespoke.
+ */
+export type BoardCellValue =
+  | string
+  | number
+  | boolean
+  | string[]
+  | BoardCellTimelineValue
+  | BoardCellLinkValue
+  | BoardCellTimeTrackingValue
+  | BoardCellFileValue[]
+  | null;
 
 /** The subset of a column a cell editor needs — decoupled from the engine's DTO. */
 export type BoardCellColumn = {
@@ -97,8 +121,11 @@ const formatIsoDateLocal = (date: Date, has_time: boolean): string => {
   return `${date_part}T${hours}:${minutes}`;
 };
 
+// Only ever called from the "timeline" case below, so the object shape is
+// safely known even though `BoardCellValue`'s other object-shaped members
+// (link/time-tracking) aren't structurally distinguishable from it here.
 const asTimelineValue = (value: BoardCellValue): BoardCellTimelineValue | null =>
-  value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  value && typeof value === "object" && !Array.isArray(value) ? (value as BoardCellTimelineValue) : null;
 
 const asStringArray = (value: BoardCellValue): string[] =>
   Array.isArray(value) ? value.map(String) : [];

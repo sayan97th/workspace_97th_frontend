@@ -1,6 +1,7 @@
 "use client";
 
-import type { CellValue, ColumnDef } from "../types";
+import { useEffect, useState } from "react";
+import type { CellFile, CellValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
@@ -14,6 +15,8 @@ import TimelineMenu from "../menus/TimelineMenu";
 import ProgressMenu from "../menus/ProgressMenu";
 import DropdownMenu from "../menus/DropdownMenu";
 import TagsMenu from "../menus/TagsMenu";
+import LinkMenu from "../menus/LinkMenu";
+import FilesMenu from "../menus/FilesMenu";
 
 interface CellRendererProps {
   node_id: string;
@@ -26,8 +29,9 @@ interface CellRendererProps {
 function asString(v: CellValue): string {
   return typeof v === "string" ? v : "";
 }
+/** Narrows to `string[]` for the array-valued kinds (people/dropdown/tags/vote) — `CellValue`'s other array member, `CellFile[]`, only ever reaches a `files` column's own branch, which reads it separately. */
 function asArray(v: CellValue): string[] {
-  return Array.isArray(v) ? v : [];
+  return Array.isArray(v) ? (v as string[]) : [];
 }
 
 export default function CellRenderer({ node_id, column, values, state, actions }: CellRendererProps) {
@@ -35,6 +39,21 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   const is_menu_open = state.open_cell_menu_key === scope_key;
   const value = values[column.id];
   const openMenu = () => actions.openCellMenu(scope_key);
+
+  // Time Tracking's live-ticking elapsed display, while its timer is running
+  // — declared unconditionally (Rules of Hooks) even though it's only ever
+  // read by the "time_tracking" branch below.
+  const running_since = column.kind === "time_tracking" ? (value as TimeTrackingValue | undefined)?.running_since ?? null : null;
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running_since) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [running_since]);
+
+  // Files cell's own "Upload" in-flight state, so the popover can disable its
+  // button and show a "Uploading…" label while a request is pending.
+  const [is_uploading, setIsUploading] = useState(false);
 
   if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
     return (
@@ -335,6 +354,163 @@ export default function CellRenderer({ node_id, column, values, state, actions }
             onClose={actions.closeCellMenu}
           />
         )}
+      </div>
+    );
+  }
+
+  if (column.kind === "rating") {
+    const rating = typeof value === "number" ? value : 0;
+    return (
+      <div className="flex h-full w-full items-center justify-center gap-0.5 px-2">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button
+            key={n}
+            type="button"
+            onClick={() => actions.setCellValue(node_id, column.id, rating === n ? 0 : n)}
+            className="flex h-4 w-4 items-center justify-center"
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14">
+              <path
+                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                fill={n <= rating ? "#fdab3d" : "none"}
+                stroke={n <= rating ? "none" : "var(--color-boardtree-text-faint)"}
+                strokeWidth={n <= rating ? undefined : "1.2"}
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (column.kind === "vote") {
+    const voter_ids = asArray(value);
+    const has_voted = !!state.current_user_id && voter_ids.includes(state.current_user_id);
+    return (
+      <button
+        type="button"
+        disabled={!state.current_user_id}
+        onClick={() => state.current_user_id && actions.toggleArrayValue(node_id, column.id, state.current_user_id)}
+        title={state.current_user_id ? undefined : "Sign in to vote"}
+        className="flex h-full w-full items-center justify-center gap-1.5 disabled:opacity-50"
+      >
+        <svg viewBox="0 0 16 16" width="14" height="14">
+          <path
+            d="M8 13.4 C8 13.4 2 9.6 2 5.7 A3 3 0 0 1 8 4.6 A3 3 0 0 1 14 5.7 C14 9.6 8 13.4 8 13.4 Z"
+            fill={has_voted ? "#e2445c" : "none"}
+            stroke={has_voted ? "none" : "var(--color-boardtree-text-faint)"}
+            strokeWidth={has_voted ? undefined : "1.3"}
+          />
+        </svg>
+        <span className="font-mono text-[11.5px] text-boardtree-text-secondary">{voter_ids.length}</span>
+      </button>
+    );
+  }
+
+  if (column.kind === "link") {
+    const link = value && typeof value === "object" && !Array.isArray(value) && "url" in value ? (value as LinkValue) : null;
+    return (
+      <div className="relative flex flex-1 items-center gap-1.5 px-2.5">
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
+          {link?.url ? (
+            <span className="min-w-0 truncate text-[12.5px] font-medium text-boardtree-accent underline">{link.text || link.url}</span>
+          ) : (
+            <span className="text-[12.5px] text-boardtree-text-faint">Add link</span>
+          )}
+        </button>
+        {link?.url && (
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Open link"
+            className="flex-none text-boardtree-text-faint hover:text-boardtree-accent"
+          >
+            <svg viewBox="0 0 14 14" width="12" height="12">
+              <path d="M5.5 8.5 L11 3 M7 3 H11 V7 M9.5 3 H3.5 V11 H10.5 V7.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </a>
+        )}
+        {is_menu_open && (
+          <LinkMenu
+            url={link?.url ?? ""}
+            text={link?.text ?? ""}
+            onSave={(url, text) => actions.setCellValue(node_id, column.id, { url, text })}
+            onClear={() => actions.clearCellValue(node_id, column.id)}
+            onClose={actions.closeCellMenu}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (column.kind === "files") {
+    const files = Array.isArray(value) && value.every((f) => typeof f === "object" && f !== null) ? (value as CellFile[]) : [];
+    return (
+      <div className="relative flex h-full w-full items-center justify-center px-2">
+        <button type="button" onClick={openMenu} className="flex items-center gap-1.5 text-boardtree-text-faint hover:text-boardtree-accent">
+          <svg viewBox="0 0 14 14" width="13" height="13">
+            <path d="M9.5 2.5 L3.8 8.2 a2 2 0 0 0 2.8 2.8 L12 5.6 a3.2 3.2 0 0 0 -4.5 -4.5 L2.3 6.3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {files.length > 0 && <span className="font-mono text-[11px]">{files.length}</span>}
+        </button>
+        {is_menu_open && (
+          <FilesMenu
+            files={files}
+            is_uploading={is_uploading}
+            onUpload={(picked) => {
+              setIsUploading(true);
+              void actions.uploadCellFiles(node_id, column.id, picked).finally(() => setIsUploading(false));
+            }}
+            onDelete={(file_id) => void actions.deleteCellFile(node_id, column.id, file_id)}
+            onClose={actions.closeCellMenu}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (column.kind === "time_tracking") {
+    const tv = (value as TimeTrackingValue | undefined) ?? { seconds: 0, running_since: null };
+    const is_running = !!tv.running_since;
+    const live_seconds = tv.seconds + (is_running ? Math.max(0, (now - new Date(tv.running_since!).getTime()) / 1000) : 0);
+    const total = Math.floor(live_seconds);
+    const hh = String(Math.floor(total / 3600)).padStart(2, "0");
+    const mm = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+    const ss = String(total % 60).padStart(2, "0");
+
+    return (
+      <button
+        type="button"
+        onClick={() =>
+          actions.setCellValue(
+            node_id,
+            column.id,
+            is_running ? { seconds: Math.floor(live_seconds), running_since: null } : { seconds: tv.seconds, running_since: new Date().toISOString() }
+          )
+        }
+        className="flex h-full w-full items-center justify-center gap-2 px-2"
+      >
+        <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full ${is_running ? "bg-[#e2445c]" : "bg-boardtree-hover-strong"}`}>
+          {is_running ? (
+            <svg viewBox="0 0 14 14" width="8" height="8"><rect x="3" y="3" width="8" height="8" fill="#fff" /></svg>
+          ) : (
+            <svg viewBox="0 0 14 14" width="9" height="9"><path d="M4 2.5 L11.5 7 L4 11.5 Z" fill="var(--color-boardtree-text-secondary)" /></svg>
+          )}
+        </span>
+        <span className="font-mono text-[12px] text-boardtree-text-secondary">
+          {hh}:{mm}:{ss}
+        </span>
+      </button>
+    );
+  }
+
+  if (column.kind === "auto_number") {
+    return (
+      <div className="flex h-full w-full items-center justify-center font-mono text-[12.5px] text-boardtree-text-faint">
+        {typeof value === "number" ? value : "–"}
       </div>
     );
   }

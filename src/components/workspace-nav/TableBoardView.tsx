@@ -31,6 +31,7 @@ import {
   KanbanCardMembers,
   KanbanItemDrawer,
   PersonAvatarStack,
+  SelectionActionBar,
   parseIsoDate,
   toIsoDate,
   useBoardDiscussionDrawer,
@@ -79,12 +80,17 @@ import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { workspaceService } from "@/services/workspace.service";
 import type {
+  BoardCellFile,
   BoardColumnConfig,
   BoardColumnDto,
   BoardColumnScope,
+  BoardLinkValue,
+  BoardTimelineValue,
+  BoardTimeTrackingValue,
   BoardGroupDto,
   BoardItemDetailDto,
   BoardItemDto,
@@ -111,8 +117,8 @@ const ITEM_COLUMN_ID = "name";
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
 
-/** A multi-select cell's raw value, narrowed to the option/person ids it actually holds. */
-const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? value : []);
+/** A multi-select cell's raw value, narrowed to the option/person ids it actually holds — `BoardItemValue`'s other array member, `BoardCellFile[]`, is only ever read by a `files` column's own file-list handling. */
+const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? (value as string[]) : []);
 
 /**
  * The Table view's own `ColumnKind` enum (`@/components/board/table`) is
@@ -135,6 +141,12 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   progress: "progress",
   phone: "phone",
   email: "email",
+  rating: "rating",
+  vote: "vote",
+  link: "link",
+  files: "files",
+  time_tracking: "time_tracking",
+  auto_number: "auto_number",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
@@ -631,6 +643,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
+  // ── Selection action bar — see `handleBulkDuplicate`/`handleBulkMove`/
+  // `handleBulkArchive`/`handleBulkDelete` below for the actions themselves. ──
+  const [selected_item_ids, setSelectedItemIds] = useState<number[]>([]);
+  const [is_bulk_action_busy, setIsBulkActionBusy] = useState(false);
+  // Bumped after every bulk action resolves (and on the bar's own "×") to
+  // tell `BoardTable`'s internal `state.selected_map` to reset — see
+  // `BoardTable`'s `clear_selection_signal` prop doc comment.
+  const [selection_clear_signal, setSelectionClearSignal] = useState(0);
   const [item_column_label] = useState(node.item_column_label ?? "Item");
   const [item_column_width, setItemColumnWidth] = useState<number | null>(node.item_column_width ?? null);
   const [sub_item_column_width, setSubItemColumnWidth] = useState<number | null>(node.sub_item_column_width ?? null);
@@ -773,6 +793,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       if (value == null) return "";
       if (column?.type === "people" && Array.isArray(value)) {
         return value.map((id) => people_names_by_id[String(id)] ?? String(id)).join(" ");
+      }
+      // `link`/`time_tracking`/`files` all store an object (or array of
+      // objects) rather than a plain scalar/string[] — the generic
+      // `Array.isArray`/`String()` fallback below would otherwise search/sort
+      // against "[object Object]" for every row.
+      if (column?.type === "link" && typeof value === "object" && !Array.isArray(value)) {
+        const link = value as BoardLinkValue;
+        return `${link.text ?? ""} ${link.url ?? ""}`.trim();
+      }
+      if (column?.type === "time_tracking" && typeof value === "object" && !Array.isArray(value)) {
+        return String((value as BoardTimeTrackingValue).seconds ?? 0);
+      }
+      if (column?.type === "files" && Array.isArray(value)) {
+        return value.map((file) => (typeof file === "object" && file ? file.file_name : "")).join(" ");
       }
       return Array.isArray(value) ? value.join(" ") : String(value);
     },
@@ -1039,6 +1073,78 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const updated = await boardContentService.updateItem(board_id, item_id, { name });
     setItems((current) => mapItemInTree(current, item_id, (item) => ({ ...item, name: updated.name })));
     setEditingItemId(null);
+  };
+
+  /** "Move to" target list for the selection action bar — every table (group) in the active tab. */
+  const selection_move_targets = useMemo(() => groups.map((g) => ({ id: String(g.id), label: g.name })), [groups]);
+
+  // ── Selection action bar — bulk actions on the Table view's checked root
+  // items. Deliberately scoped to root items only (see `BoardTable`'s
+  // `onSelectionChange` doc comment): a subitem's `group_id` is denormalized
+  // from its parent, so moving/archiving/deleting it independently isn't a
+  // supported operation on its own. ──
+  const handleBulkDuplicate = async () => {
+    if (!selected_item_ids.length || is_bulk_action_busy) return;
+    setIsBulkActionBusy(true);
+    try {
+      const duplicates = await boardContentService.duplicateItems(board_id, selected_item_ids);
+      setItems((current) => [...current, ...duplicates]);
+      setSelectionClearSignal((n) => n + 1);
+    } finally {
+      setIsBulkActionBusy(false);
+    }
+  };
+
+  const handleBulkMove = async (target_group_id: string) => {
+    if (!selected_item_ids.length || is_bulk_action_busy) return;
+    setIsBulkActionBusy(true);
+    try {
+      const moved = await boardContentService.moveItems(board_id, selected_item_ids, Number(target_group_id));
+      const moved_by_id = new Map(moved.map((item) => [item.id, item]));
+      // Merges only the fields the move actually changed (`group_id`/`position`)
+      // rather than replacing the whole item — `bulkMove`'s response doesn't
+      // eager-load `childrenRecursive`, so a wholesale replace would wipe out
+      // any subitems already known locally (mirrors `handleRenameItem`'s own
+      // merge-not-replace, just above).
+      setItems((current) =>
+        current.map((item) => {
+          const update = moved_by_id.get(item.id);
+          return update ? { ...item, group_id: update.group_id, position: update.position } : item;
+        })
+      );
+      setSelectionClearSignal((n) => n + 1);
+    } finally {
+      setIsBulkActionBusy(false);
+    }
+  };
+
+  const handleBulkArchive = async () => {
+    if (!selected_item_ids.length || is_bulk_action_busy) return;
+    setIsBulkActionBusy(true);
+    try {
+      await boardContentService.archiveItems(board_id, selected_item_ids);
+      setItems((current) => selected_item_ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
+      setSelectionClearSignal((n) => n + 1);
+    } finally {
+      setIsBulkActionBusy(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!selected_item_ids.length || is_bulk_action_busy) return;
+    setIsBulkActionBusy(true);
+    try {
+      await boardContentService.deleteItems(board_id, selected_item_ids);
+      setItems((current) => selected_item_ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
+      setSelectionClearSignal((n) => n + 1);
+    } finally {
+      setIsBulkActionBusy(false);
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedItemIds([]);
+    setSelectionClearSignal((n) => n + 1);
   };
 
   // ── "New item" toolbar button — always inserts at the very top of the first table ──
@@ -1757,6 +1863,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       row_height: toolbar.row_height,
       row_colors: toolbar.row_colors,
       cell_colors: toolbar.cell_colors,
+      current_user_id: user ? String(user.id) : undefined,
+      onUploadCellFiles: (node_id, column_id, files) =>
+        boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
+      onDeleteCellFile: (node_id, column_id, file_id) =>
+        boardItemCellFilesService.deleteCellFile(board_id, Number(node_id), Number(column_id), file_id),
       initial_collapsed_groups: collapsed_group_map,
       // Tables (groups) are scoped per tab, so the viewer's collapsed set is
       // saved against the active tab rather than the board as a whole — see
@@ -1846,6 +1957,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.row_height,
       toolbar.row_colors,
       toolbar.cell_colors,
+      user,
       requestGroupItems,
     ]
   );
@@ -2376,8 +2488,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     if (!board_timeline_column) return null;
     const raw = row.values[String(board_timeline_column.id)];
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-    if (!raw.start) return null;
-    return { start: raw.start, end: raw.end ?? null };
+    // `board_timeline_column` guarantees this is really a `BoardTimelineValue`
+    // — the plain `typeof === "object"` check above can't itself distinguish
+    // it from a Link/Time-tracking column's own object-shaped value.
+    const range = raw as BoardTimelineValue;
+    if (!range.start) return null;
+    return { start: range.start, end: range.end ?? null };
   };
 
   const getGanttDependencyIds = (row: BoardItemDto): string[] => {
@@ -2495,6 +2611,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
         )
       }
+      selectionBar={
+        active_view_type === "table" ? (
+          <SelectionActionBar
+            selected_count={selected_item_ids.length}
+            groups={selection_move_targets}
+            is_busy={is_bulk_action_busy}
+            onDuplicate={handleBulkDuplicate}
+            onMove={handleBulkMove}
+            onArchive={handleBulkArchive}
+            onDelete={handleBulkDelete}
+            onClose={handleClearSelection}
+          />
+        ) : undefined
+      }
     >
       {view_tabs.is_dirty && (
         <div className="mb-3 flex items-center gap-2">
@@ -2537,6 +2667,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRequestColumnSort={handleRequestColumnSort}
           active_sort_column_id={active_sort_column_id}
           active_sort_direction={active_sort_direction}
+          onSelectionChange={(ids) => setSelectedItemIds(ids.map(Number))}
+          clear_selection_signal={selection_clear_signal}
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (
