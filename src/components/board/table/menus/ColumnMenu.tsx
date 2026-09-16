@@ -5,7 +5,7 @@ import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnSettingsPanel from "./ColumnSettingsPanel";
 import type { ColumnTypeDef } from "../constants";
-import type { ColumnKind, StatusDef } from "../types";
+import type { ColumnKind, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 
 interface ColumnMenuProps {
   title: string;
@@ -16,8 +16,14 @@ interface ColumnMenuProps {
   is_group_by_eligible: boolean;
   onRename: (title: string) => void;
   onSort: (direction: "asc" | "desc" | null) => void;
-  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
+  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string }) => void;
   onEditLabels?: () => void;
+  /** Formula columns only: opens the operation/source-columns settings modal. */
+  onEditFormula?: () => void;
+  /** Mirror columns only: opens the linked-column settings modal. */
+  onEditMirror?: () => void;
+  /** Connect-board columns only: opens the linked-board settings modal. */
+  onEditConnectBoard?: () => void;
   onRequestFilter: () => void;
   onRequestGroupBy: () => void;
   onCollapseAll: () => void;
@@ -43,7 +49,7 @@ const HOVER_INTENT_DELAY_MS = 250;
 
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
-  onRename, onSort, onUpdateSettings, onEditLabels, onRequestFilter, onRequestGroupBy, onCollapseAll,
+  onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onRequestFilter, onRequestGroupBy, onCollapseAll,
   onDuplicate, onAddColumnRight, onChangeType, onDelete, onClose,
 }: ColumnMenuProps) {
   const [draft, setDraft] = useState(title);
@@ -129,6 +135,25 @@ export default function ColumnMenu({
               />
             )}
           </div>
+        )}
+
+        {column?.kind === "formula" && onEditFormula && (
+          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditFormula(); onClose(); }} className={ROW_ITEM}>
+            <span className="w-4 text-boardtree-text-muted">ƒ</span>
+            <span className="flex-1">Configure formula</span>
+          </button>
+        )}
+        {column?.kind === "connect_board" && onEditConnectBoard && (
+          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditConnectBoard(); onClose(); }} className={ROW_ITEM}>
+            <span className="w-4 text-boardtree-text-muted">⛓</span>
+            <span className="flex-1">Configure linked board</span>
+          </button>
+        )}
+        {column?.kind === "mirror" && onEditMirror && (
+          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditMirror(); onClose(); }} className={ROW_ITEM}>
+            <span className="w-4 text-boardtree-text-muted">⧉</span>
+            <span className="flex-1">Configure mirror</span>
+          </button>
         )}
 
         {column && (

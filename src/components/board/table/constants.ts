@@ -95,6 +95,9 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "time_tracking", label: "Time Tracking", mark: "⏱", accent: "#4f6bed", section: "Super useful", default_width: 150 },
   { kind: "auto_number", label: "Item ID", mark: "#", accent: "#5b6180", section: "Super useful", default_width: 100 },
   { kind: "dependency", label: "Dependency", mark: "→", accent: "#7f5347", section: "Super useful", default_width: 200 },
+  { kind: "formula", label: "Formula", mark: "ƒ", accent: "#9d50dd", section: "Super useful", default_width: 150 },
+  { kind: "connect_board", label: "Connect boards", mark: "⛓", accent: "#7f5347", section: "Super useful", default_width: 200 },
+  { kind: "mirror", label: "Mirror", mark: "⧉", accent: "#0086c0", section: "Super useful", default_width: 160 },
 ];
 
 /**
@@ -127,6 +130,9 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   time_tracking: "time_tracking",
   auto_number: "auto_number",
   dependency: "dependency",
+  formula: "formula",
+  connect_board: "connect_board",
+  mirror: "mirror",
 };
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];

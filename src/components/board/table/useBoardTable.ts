@@ -9,6 +9,8 @@ import type {
   ColumnKind,
   DragState,
   FillDragState,
+  FormulaConfig,
+  MirrorConfig,
   PersonDef,
   ReorderPayload,
   SortState,
@@ -171,6 +173,12 @@ export interface UseBoardTableConfig {
    * renders — see `ColumnDef.notify_on_assignment`.
    */
   onToggleColumnNotifyOnAssignment?: (column_id: string) => void;
+  /** Formula settings modal's "Save" — see `ColumnDef.formula`. */
+  onUpdateColumnFormula?: (column_id: string, formula: FormulaConfig) => void;
+  /** Connect-board settings modal's "Save" — see `ColumnDef.linked_board_id`. */
+  onUpdateColumnLinkedBoard?: (column_id: string, linked_board_id: string) => void;
+  /** Mirror settings modal's "Save" — see `ColumnDef.mirror`. */
+  onUpdateColumnMirror?: (column_id: string, mirror: MirrorConfig) => void;
   onDeleteNode?: (node_id: string) => void;
   /**
    * Fires once per completed drag that actually changed a list's order — a
@@ -228,7 +236,17 @@ export interface UseBoardTableConfig {
     group_key: string,
     scope: ColumnScope,
     column_id: string,
-    patch: { width?: number; hideable?: boolean; pinnable?: boolean }
+    patch: {
+      width?: number;
+      hideable?: boolean;
+      pinnable?: boolean;
+      /** Formula columns only, see `ColumnDef.formula`. */
+      formula?: FormulaConfig;
+      /** Mirror columns only, see `ColumnDef.mirror`. */
+      mirror?: MirrorConfig;
+      /** Connect-board columns only, see `ColumnDef.linked_board_id`. */
+      linked_board_id?: string;
+    }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
   /**
@@ -333,6 +351,13 @@ export interface BoardTableState {
    * standalone mock demo's shared `status_defs`/`label_defs` palette.
    */
   label_editor_column_id: string | null;
+  /**
+   * The Formula/Mirror/Connect-board column currently being configured from
+   * its header menu's "Configure ..." row (see `ColumnMenu`'s `onEditFormula`/
+   * `onEditMirror`/`onEditConnectBoard`) — mirrors `label_editor_kind`'s own
+   * "which modal, for which column" shape. Null closes every such modal.
+   */
+  config_editor: { kind: "formula" | "mirror" | "connect_board"; column_id: string } | null;
   tag_editor_open: boolean;
   drag: DragState | null;
   /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
@@ -394,6 +419,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     tag_defs: DEFAULT_TAG_DEFS.slice(),
     label_editor_kind: null,
     label_editor_column_id: null,
+    config_editor: null,
     tag_editor_open: false,
     drag: null,
     column_drag: null,
@@ -1164,10 +1190,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const columnListKey = (scope: ColumnScope) => (scope === "main" ? "custom_columns" : "sub_custom_columns");
 
   /** Patches one column's `width` wherever it lives in `group_key`'s base/custom column list — the shared write both `updateColumnSettings` and the live resize-drag preview apply to local state. */
-  const applyColumnWidth = (groups: BoardTableGroup[], group_key: string, scope: ColumnScope, column_id: string, width: number): BoardTableGroup[] => {
+  /** Patches one column wherever it lives in `group_key`'s base/custom column list — the shared write `applyColumnWidth`, `updateColumnSettings`'s non-width fields, and the live resize-drag preview all apply to local state. */
+  const applyColumnPatch = (groups: BoardTableGroup[], group_key: string, scope: ColumnScope, column_id: string, patch: Partial<ColumnDef>): BoardTableGroup[] => {
     const list_key = columnListKey(scope);
     const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
-    const apply = (c: ColumnDef) => (c.id === column_id ? { ...c, width } : c);
+    const apply = (c: ColumnDef) => (c.id === column_id ? { ...c, ...patch } : c);
     return groups.map((g) =>
       g.key !== group_key
         ? g
@@ -1178,6 +1205,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
           }
     );
   };
+  const applyColumnWidth = (groups: BoardTableGroup[], group_key: string, scope: ColumnScope, column_id: string, width: number): BoardTableGroup[] =>
+    applyColumnPatch(groups, group_key, scope, column_id, { width });
 
   const openPicker = useCallback((scoped_key: string) => {
     setState((s) => ({ ...s, ...closeAllMenus, open_picker_key: s.open_picker_key === scoped_key ? null : scoped_key, picker_query: "" }));
@@ -1329,8 +1358,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const updateColumnSettings = useCallback(
-    (group_key: string, scope: ColumnScope, column_id: string, patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => {
-      setState((s) => (patch.width == null ? s : { ...s, groups: applyColumnWidth(s.groups, group_key, scope, column_id, patch.width!) }));
+    (
+      group_key: string,
+      scope: ColumnScope,
+      column_id: string,
+      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string }
+    ) => {
+      const local_patch: Partial<ColumnDef> = {};
+      if (patch.width != null) local_patch.width = patch.width;
+      if (patch.formula) local_patch.formula = patch.formula;
+      if (patch.mirror) local_patch.mirror = patch.mirror;
+      if (patch.linked_board_id) local_patch.linked_board_id = patch.linked_board_id;
+      setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
     []
@@ -1478,6 +1517,14 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   );
   const closeLabelEditor = useCallback(() => setState((s) => ({ ...s, label_editor_kind: null, label_editor_column_id: null })), []);
 
+  /** Opens the Formula/Mirror/Connect-board settings modal for a column, see `BoardTableState.config_editor`'s own doc comment. */
+  const openConfigEditor = useCallback(
+    (kind: "formula" | "mirror" | "connect_board", column_id: string) =>
+      setState((s) => ({ ...s, config_editor: { kind, column_id }, ...closeAllMenus })),
+    []
+  );
+  const closeConfigEditor = useCallback(() => setState((s) => ({ ...s, config_editor: null })), []);
+
   const addStatusDef = useCallback(() => {
     setState((s) => {
       const color = STATUS_PALETTE[s.status_defs.length % STATUS_PALETTE.length];
@@ -1597,6 +1644,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       })),
     }));
     config_ref.current.onToggleColumnNotifyOnAssignment?.(column_id);
+  }, []);
+
+  /** Formula settings modal's "Save" — mirrors `toggleColumnNotifyOnAssignment`'s local-mutation-plus-callback shape. */
+  const updateColumnFormula = useCallback((column_id: string, formula: FormulaConfig) => {
+    setState((s) => ({ ...s, groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, formula })) }));
+    config_ref.current.onUpdateColumnFormula?.(column_id, formula);
+  }, []);
+
+  /** Connect-board settings modal's "Save" — see `updateColumnFormula`. */
+  const updateColumnLinkedBoard = useCallback((column_id: string, linked_board_id: string) => {
+    setState((s) => ({ ...s, groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, linked_board_id })) }));
+    config_ref.current.onUpdateColumnLinkedBoard?.(column_id, linked_board_id);
+  }, []);
+
+  /** Mirror settings modal's "Save" — see `updateColumnFormula`. */
+  const updateColumnMirror = useCallback((column_id: string, mirror: MirrorConfig) => {
+    setState((s) => ({ ...s, groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, mirror })) }));
+    config_ref.current.onUpdateColumnMirror?.(column_id, mirror);
   }, []);
 
   const openTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: true, ...closeAllMenus })), []);
@@ -1735,6 +1800,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setPeopleQuery,
       openLabelEditor,
       closeLabelEditor,
+      openConfigEditor,
+      closeConfigEditor,
       addStatusDef,
       renameStatusDef,
       setStatusDefColor,
@@ -1748,6 +1815,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       recolorColumnOption,
       deleteColumnOption,
       toggleColumnNotifyOnAssignment,
+      updateColumnFormula,
+      updateColumnLinkedBoard,
+      updateColumnMirror,
       openTagEditor,
       closeTagEditor,
       addTagDef,
@@ -1769,8 +1839,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
-      closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, openTagEditor, closeTagEditor, addTagDef,
+      closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
+      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef,
       setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, requestGroupItems,
     ]
   );

@@ -17,7 +17,7 @@ export default function GroupHeaderBar({ group, group_index, group_count, min_wi
   const is_menu_open = state.open_group_menu_key === group.key;
 
   return (
-    <div className="top-0 z-[60] flex h-10 items-end  pb-2" style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}>
+    <div className="sticky top-0 z-[60] flex h-10 items-end bg-boardtree-bg pb-2" style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}>
       <GroupHeaderLeft group={group} group_index={group_index} group_count={group_count} state={state} actions={actions} />
     </div>
   );

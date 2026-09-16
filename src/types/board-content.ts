@@ -42,6 +42,14 @@ export type BoardColumnConfig = {
   options?: BoardColumnOption[];
   /** People columns only: whether assigning someone here notifies them (in-app + email). Defaults to `true` server-side when unset. Edited from the People cell picker's bottom toggle. */
   notify_on_assignment?: boolean;
+  /** Formula columns only: the operation applied to `source_column_ids`, in row order, read from the same item's other cells. */
+  operation?: "sum" | "subtract" | "multiply" | "divide" | "concat";
+  source_column_ids?: number[];
+  /** Connect-board columns only: the other board this column's cells link items on. */
+  linked_board_id?: number;
+  /** Mirror columns only: which of this tab's own connect-board columns to read through (`source_column_id`), and which column on that linked board to display (`mirrored_column_id`). */
+  source_column_id?: number;
+  mirrored_column_id?: number;
 };
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */

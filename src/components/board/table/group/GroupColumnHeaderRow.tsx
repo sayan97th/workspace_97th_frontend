@@ -57,7 +57,7 @@ export default function GroupColumnHeaderRow({
     use_sort_bridge ? onRequestColumnSort!(column_id, direction) : actions.setSort(sort_scope, column_id, direction);
 
   return (
-    <div className="top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width }}>
+    <div className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width }}>
       <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-b border-boardtree-border" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
@@ -133,6 +133,9 @@ export default function GroupColumnHeaderRow({
               // editing/deleting them happens inline in each cell's own
               // `DropdownMenu` popover instead of a shared modal.
             }
+            onEditFormula={col.kind === "formula" ? () => actions.openConfigEditor("formula", col.id) : undefined}
+            onEditMirror={col.kind === "mirror" ? () => actions.openConfigEditor("mirror", col.id) : undefined}
+            onEditConnectBoard={col.kind === "connect_board" ? () => actions.openConfigEditor("connect_board", col.id) : undefined}
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
             onCollapseAll={actions.collapseAllGroups}

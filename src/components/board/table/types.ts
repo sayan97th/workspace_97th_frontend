@@ -24,7 +24,22 @@ export type ColumnKind =
   | "files"
   | "time_tracking"
   | "auto_number"
-  | "dependency";
+  | "dependency"
+  | "formula"
+  | "connect_board"
+  | "mirror";
+
+/** A `formula`-kind column's own config: the operation applied to `source_column_ids`, read in row order from the same item's other cells. */
+export interface FormulaConfig {
+  operation: "sum" | "subtract" | "multiply" | "divide" | "concat";
+  source_column_ids: string[];
+}
+
+/** A `mirror`-kind column's own config: which of this tab's `connect_board` columns to read through, and which column on that linked board to display. */
+export interface MirrorConfig {
+  source_column_id: string;
+  mirrored_column_id: string;
+}
 
 export interface ColumnDef {
   id: string;
@@ -46,6 +61,12 @@ export interface ColumnDef {
    * (undefined) for the mock demo, which has no backing notification pipeline.
    */
   notify_on_assignment?: boolean;
+  /** Formula kind only, see `FormulaConfig`. */
+  formula?: FormulaConfig;
+  /** Mirror kind only, see `MirrorConfig`. */
+  mirror?: MirrorConfig;
+  /** Connect-board kind only: the other board this column's cells link items on. */
+  linked_board_id?: string;
 }
 
 export interface StatusDef {

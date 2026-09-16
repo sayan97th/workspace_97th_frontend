@@ -54,6 +54,10 @@ export type BoardHeaderProps = {
   board_updates_count?: number;
   /** Whether that badge reads as unseen (brand red, to draw the eye) rather than caught-up (neutral gray). */
   board_updates_unseen?: boolean;
+  /** Opens the rule-based automations panel; the "Automate" button stays inert when omitted (every board view but Table, which is the only one with an automations engine so far). */
+  onAutomateClick?: () => void;
+  /** Enabled automation count on the current tab, shown as a badge on "Automate", hidden when 0 or omitted. */
+  automation_count?: number;
   /** Powers the "..." options menu; the button stays inert when omitted. */
   options_menu?: Omit<BoardOptionsMenuProps, "anchor_el" | "is_open" | "onClose">;
 };
@@ -78,6 +82,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   onBoardUpdatesClick,
   board_updates_count = 0,
   board_updates_unseen = false,
+  onAutomateClick,
+  automation_count = 0,
   options_menu,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
@@ -212,11 +218,16 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         </span>
         Integrate
       </button>
-      <button type="button" className={`${action_button_class} hidden md:flex`}>
+      <button type="button" onClick={onAutomateClick} className={`${action_button_class} relative hidden md:flex`}>
         <span className="text-shell-text-muted">
           <AutomateIcon />
         </span>
         Automate
+        {automation_count > 0 && (
+          <span className="flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#4c7cf3] px-1 text-[10.5px] font-bold leading-none text-white">
+            {automation_count}
+          </span>
+        )}
       </button>
       <button type="button" className={`${action_button_class} relative hidden md:flex`}>
         <span className="text-shell-text-muted">

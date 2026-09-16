@@ -7,7 +7,9 @@ import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
 import { dependencyCandidates, findNode } from "../treeUtils";
+import { computeFormulaValue } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
+import ConnectBoardMenu from "../menus/ConnectBoardMenu";
 import StatusMenu from "../menus/StatusMenu";
 import LabelMenu from "../menus/LabelMenu";
 import PeopleMenu from "../menus/PeopleMenu";
@@ -551,6 +553,65 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     return (
       <div className="flex h-full w-full items-center justify-center font-mono text-[12.5px] text-boardtree-text-faint">
         {typeof value === "number" ? value : "–"}
+      </div>
+    );
+  }
+
+  if (column.kind === "formula") {
+    const computed = computeFormulaValue(column, values);
+    const is_concat = column.formula?.operation === "concat";
+    return (
+      <div
+        className={`flex h-full w-full items-center px-2.5 font-mono text-[12.5px] text-boardtree-text-secondary ${is_concat ? "justify-start truncate" : "justify-end"}`}
+        title={computed}
+      >
+        {computed || "–"}
+      </div>
+    );
+  }
+
+  if (column.kind === "connect_board") {
+    const linked_ids = asArray(value);
+    const linked_board_id = column.linked_board_id;
+    return (
+      <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden">
+          {linked_ids.length > 0 ? (
+            <span className="flex-none rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
+              {linked_ids.length} linked
+            </span>
+          ) : (
+            <span className="text-[12.5px] text-boardtree-text-faint">Connect items</span>
+          )}
+        </button>
+        {is_menu_open && linked_board_id && (
+          <ConnectBoardMenu
+            linked_board_id={linked_board_id}
+            selected={linked_ids}
+            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
+            onClose={actions.closeCellMenu}
+          />
+        )}
+      </div>
+    );
+  }
+
+  if (column.kind === "mirror") {
+    const raw_values = Array.isArray(value) ? value : value !== undefined && value !== null ? [value] : [];
+    const display_values = raw_values.map((entry) =>
+      typeof entry === "string" ? entry : typeof entry === "number" ? String(entry) : typeof entry === "boolean" ? (entry ? "Yes" : "No") : ""
+    ).filter(Boolean);
+    return (
+      <div className="flex h-full w-full min-w-0 items-center gap-1 overflow-hidden px-2.5">
+        {display_values.length > 0 ? (
+          display_values.map((text, index) => (
+            <span key={index} className="max-w-[110px] flex-none truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
+              {text}
+            </span>
+          ))
+        ) : (
+          <span className="text-[12.5px] text-boardtree-text-faint">–</span>
+        )}
       </div>
     );
   }

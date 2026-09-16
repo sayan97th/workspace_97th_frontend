@@ -27,7 +27,10 @@ export type BoardColumnKind =
   | "link"
   | "files"
   | "time_tracking"
-  | "auto_number";
+  | "auto_number"
+  | "formula"
+  | "connect_board"
+  | "mirror";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -52,6 +55,9 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   files: { accent_color: "#7f5347", glyph: "📎" },
   time_tracking: { accent_color: "#4f6bed", glyph: "⏱" },
   auto_number: { accent_color: "#5b6180", glyph: "#" },
+  formula: { accent_color: "#9d50dd", glyph: "ƒ" },
+  connect_board: { accent_color: "#7f5347", glyph: "⛓" },
+  mirror: { accent_color: "#0086c0", glyph: "⧉" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */

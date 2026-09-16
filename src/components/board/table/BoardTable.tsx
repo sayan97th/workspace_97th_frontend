@@ -11,6 +11,7 @@ import TableToolbar from "./toolbar/TableToolbar";
 import GroupSection from "./group/GroupSection";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
+import ConfigEditorModal from "./menus/ConfigEditorModal";
 import "./table-board.css";
 
 export interface BoardTableProps {
@@ -260,6 +261,23 @@ export default function BoardTable({
   }, [state.groups, state.label_editor_column_id]);
   const is_real_label_editor_column = label_editor_column?.options !== undefined;
 
+  /** Every distinct column across every group's four column lists, deduped by id — see `label_editor_column`'s own doc comment for why a column def is the same logical entity everywhere. Feeds the Formula/Mirror settings modals' source-column pickers. */
+  const all_columns: ColumnDef[] = useMemo(() => {
+    const by_id = new Map<string, ColumnDef>();
+    for (const g of state.groups) {
+      for (const list of [g.base_columns, g.custom_columns, g.sub_base_columns, g.sub_custom_columns]) {
+        for (const c of list) by_id.set(c.id, c);
+      }
+    }
+    return Array.from(by_id.values());
+  }, [state.groups]);
+
+  const config_editor_column: ColumnDef | undefined = useMemo(() => {
+    const column_id = state.config_editor?.column_id;
+    if (!column_id) return undefined;
+    return all_columns.find((c) => c.id === column_id);
+  }, [all_columns, state.config_editor]);
+
   const grid = (
     <>
       {!embedded && <div className="h-[26px]" />}
@@ -351,6 +369,15 @@ export default function BoardTable({
           onDelete={actions.deleteTagDef}
           onAdd={actions.addTagDef}
           onClose={actions.closeTagEditor}
+        />
+      )}
+      {state.config_editor && config_editor_column && (
+        <ConfigEditorModal
+          kind={state.config_editor.kind}
+          column={config_editor_column}
+          sibling_columns={all_columns}
+          actions={actions}
+          onClose={actions.closeConfigEditor}
         />
       )}
     </>

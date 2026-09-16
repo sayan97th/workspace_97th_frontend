@@ -28,6 +28,9 @@ const TYPE_LABELS: Record<BoardColumnType, string> = {
   files: "Files",
   time_tracking: "Time Tracking",
   auto_number: "Item ID",
+  formula: "Formula",
+  connect_board: "Connect boards",
+  mirror: "Mirror",
 };
 
 const NEW_GROUP_VALUE = "__new__";

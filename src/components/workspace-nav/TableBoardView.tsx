@@ -79,6 +79,9 @@ import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
+import { boardAutomationService } from "@/services/board-automation.service";
+import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
+import AutomationsModal from "../board/automations/AutomationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
@@ -147,6 +150,9 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   time_tracking: "time_tracking",
   auto_number: "auto_number",
   dependency: "dependency",
+  formula: "formula",
+  connect_board: "connect_board",
+  mirror: "mirror",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
@@ -166,6 +172,15 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     // Only a people column's picker ever reads this, but setting it
     // regardless of `type` is harmless and matches `options` above.
     notify_on_assignment: column.config?.notify_on_assignment ?? true,
+    formula:
+      column.config?.operation && column.config?.source_column_ids
+        ? { operation: column.config.operation, source_column_ids: column.config.source_column_ids.map(String) }
+        : undefined,
+    mirror:
+      column.config?.source_column_id != null && column.config?.mirrored_column_id != null
+        ? { source_column_id: String(column.config.source_column_id), mirrored_column_id: String(column.config.mirrored_column_id) }
+        : undefined,
+    linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
   };
 };
 
@@ -640,6 +655,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [columns, setColumns] = useState(initial_columns);
   const [groups, setGroups] = useState(initial_groups);
   const [items, setItems] = useState(initial_items);
+  // ── Automations ("Automate" header button) — table-view-scoped, so this
+  // refetches whenever the active tab changes, mirroring `handleUpdateColumnFormula`'s
+  // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
+  const [automations, setAutomations] = useState<BoardAutomationDto[]>([]);
+  const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
@@ -935,6 +955,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleChangeViewEmoji = (id: number | string, emoji: string | null) => view_tabs.changeViewEmoji(Number(id), emoji);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
 
+  useEffect(() => {
+    let cancelled = false;
+    boardAutomationService
+      .getAutomations(board_id, view_tabs.active_view_id)
+      .then((data) => { if (!cancelled) setAutomations(data); })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [board_id, view_tabs.active_view_id]);
+
+  const handleCreateAutomation = async (payload: Omit<CreateBoardAutomationPayload, "view_id">) => {
+    if (view_tabs.active_view_id == null) return;
+    const created = await boardAutomationService.createAutomation(board_id, { ...payload, view_id: view_tabs.active_view_id });
+    setAutomations((current) => [created, ...current]);
+  };
+
+  const handleToggleAutomation = async (automation_id: number, is_enabled: boolean) => {
+    const updated = await boardAutomationService.updateAutomation(board_id, automation_id, { is_enabled });
+    setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
+  };
+
+  const handleDeleteAutomation = async (automation_id: number) => {
+    await boardAutomationService.deleteAutomation(board_id, automation_id);
+    setAutomations((current) => current.filter((a) => a.id !== automation_id));
+  };
+
   // ── Lazy per-table item loading (Table view only) — see `GroupSection`'s
   // `IntersectionObserver` and `loaded.loaded_group_ids`'s own doc comment
   // in `TableBoardView`. `loaded_group_ids` is the set of groups whose rows
@@ -1118,6 +1165,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           const update = moved_by_id.get(item.id);
           return update ? { ...item, group_id: update.group_id, position: update.position } : item;
         })
+      );
+      setSelectionClearSignal((n) => n + 1);
+    } finally {
+      setIsBulkActionBusy(false);
+    }
+  };
+
+  const handleBulkEditColumn = async (column_id: string, value: BoardItemValue) => {
+    if (!selected_item_ids.length || is_bulk_action_busy) return;
+    setIsBulkActionBusy(true);
+    try {
+      await boardContentService.bulkSetColumnValue(board_id, selected_item_ids, Number(column_id), value);
+      setItems((current) =>
+        current.map((item) =>
+          selected_item_ids.includes(item.id) ? { ...item, values: { ...item.values, [column_id]: value } } : item
+        )
       );
       setSelectionClearSignal((n) => n + 1);
     } finally {
@@ -1370,6 +1433,44 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       const next_value = !(column.config?.notify_on_assignment ?? true);
       const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
         config: { ...(column.config ?? {}), notify_on_assignment: next_value },
+      });
+      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    },
+    [board_id, columns_by_id]
+  );
+
+  // ── Formula/Connect-board/Mirror settings modals' "Save" — same
+  // read-modify-write shape as `handleToggleColumnNotifyOnAssignment`. ──
+  const handleUpdateColumnFormula = useCallback(
+    async (column_id: string, formula: { operation: "sum" | "subtract" | "multiply" | "divide" | "concat"; source_column_ids: string[] }) => {
+      const column = columns_by_id[column_id];
+      if (!column) return;
+      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+        config: { ...(column.config ?? {}), operation: formula.operation, source_column_ids: formula.source_column_ids.map(Number) },
+      });
+      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    },
+    [board_id, columns_by_id]
+  );
+
+  const handleUpdateColumnLinkedBoard = useCallback(
+    async (column_id: string, linked_board_id: string) => {
+      const column = columns_by_id[column_id];
+      if (!column) return;
+      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+        config: { ...(column.config ?? {}), linked_board_id: Number(linked_board_id) },
+      });
+      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+    },
+    [board_id, columns_by_id]
+  );
+
+  const handleUpdateColumnMirror = useCallback(
+    async (column_id: string, mirror: { source_column_id: string; mirrored_column_id: string }) => {
+      const column = columns_by_id[column_id];
+      if (!column) return;
+      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
+        config: { ...(column.config ?? {}), source_column_id: Number(mirror.source_column_id), mirrored_column_id: Number(mirror.mirrored_column_id) },
       });
       setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
     },
@@ -1912,6 +2013,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onDeleteColumnOption: (column_id, option_id) =>
         void patchColumnOptions(column_id, (options) => options.filter((o) => o.id !== option_id)),
       onToggleColumnNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
+      onUpdateColumnFormula: (column_id, formula) => void handleUpdateColumnFormula(column_id, formula),
+      onUpdateColumnLinkedBoard: (column_id, linked_board_id) => void handleUpdateColumnLinkedBoard(column_id, linked_board_id),
+      onUpdateColumnMirror: (column_id, mirror) => void handleUpdateColumnMirror(column_id, mirror),
       onDeleteNode: (node_id) => {
         void boardContentService
           .deleteItem(board_id, Number(node_id))
@@ -2589,6 +2693,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onBoardUpdatesClick: discussion_drawer.open,
         board_updates_count: discussion_drawer.comment_count,
         board_updates_unseen: discussion_drawer.has_unseen_comments,
+        onAutomateClick: active_view_type === "table" ? () => setIsAutomationsModalOpen(true) : undefined,
+        automation_count: automations.filter((a) => a.is_enabled).length,
         options_menu: {
           board_id,
           board_label,
@@ -2637,9 +2743,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <SelectionActionBar
             selected_count={selected_item_ids.length}
             groups={selection_move_targets}
+            columns={table_base_columns}
+            people={table_people}
             is_busy={is_bulk_action_busy}
             onDuplicate={handleBulkDuplicate}
             onMove={handleBulkMove}
+            onEditColumn={(column_id, value) => void handleBulkEditColumn(column_id, value as BoardItemValue)}
             onArchive={handleBulkArchive}
             onDelete={handleBulkDelete}
             onClose={handleClearSelection}
@@ -2936,6 +3045,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       <BoardDiscussionDrawer drawer={discussion_drawer} />
+
+      <AutomationsModal
+        is_open={is_automations_modal_open}
+        onClose={() => setIsAutomationsModalOpen(false)}
+        automations={automations}
+        columns={table_base_columns}
+        groups={selection_move_targets}
+        people={table_people}
+        onCreate={handleCreateAutomation}
+        onToggle={handleToggleAutomation}
+        onDelete={handleDeleteAutomation}
+      />
     </BoardShell>
   );
 };

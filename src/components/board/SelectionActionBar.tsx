@@ -1,6 +1,8 @@
 "use client";
 import React, { useRef, useState } from "react";
 import BoardPopover from "./toolbar/BoardPopover";
+import BulkEditColumnPopover, { BULK_EDITABLE_KINDS } from "./BulkEditColumnPopover";
+import type { CellValue, ColumnDef, PersonDef } from "./table/types";
 import { CloseIcon } from "@/icons/board-icons";
 
 export type SelectionActionBarGroupOption = { id: string; label: string };
@@ -10,10 +12,14 @@ export type SelectionActionBarProps = {
   selected_count: number;
   /** Target tables for "Move to" — omitted or empty hides that button instead of showing an empty menu. */
   groups: SelectionActionBarGroupOption[];
+  /** This tab's columns, for "Edit column" — restricted to `BULK_EDITABLE_KINDS`. Omitted or empty hides that button. */
+  columns?: ColumnDef[];
+  people?: PersonDef[];
   /** Disables every action button while a bulk request is in flight, so a slow network can't queue up several overlapping mutations from repeated clicks. */
   is_busy?: boolean;
   onDuplicate: () => void;
   onMove: (group_id: string) => void;
+  onEditColumn?: (column_id: string, value: CellValue) => void;
   onArchive: () => void;
   onDelete: () => void;
   onClose: () => void;
@@ -32,15 +38,21 @@ const ACTION_BUTTON =
 const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
   selected_count,
   groups,
+  columns = [],
+  people = [],
   is_busy = false,
   onDuplicate,
   onMove,
+  onEditColumn,
   onArchive,
   onDelete,
   onClose,
 }) => {
   const move_button_ref = useRef<HTMLButtonElement>(null);
   const [is_move_open, setIsMoveOpen] = useState(false);
+  const edit_button_ref = useRef<HTMLButtonElement>(null);
+  const [is_edit_open, setIsEditOpen] = useState(false);
+  const editable_columns = columns.filter((c) => BULK_EDITABLE_KINDS.includes(c.kind));
 
   if (selected_count === 0) return null;
 
@@ -89,6 +101,31 @@ const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
               ))}
             </div>
           </BoardPopover>
+        </>
+      )}
+
+      {onEditColumn && editable_columns.length > 0 && (
+        <>
+          <button
+            ref={edit_button_ref}
+            type="button"
+            onClick={() => setIsEditOpen((open) => !open)}
+            disabled={is_busy}
+            className={ACTION_BUTTON}
+          >
+            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9.6 1.8 L12.2 4.4 L4.6 12 L1.6 12.4 L2 9.4 Z" />
+            </svg>
+            Edit column
+          </button>
+          <BulkEditColumnPopover
+            anchor_el={edit_button_ref.current}
+            is_open={is_edit_open}
+            columns={editable_columns}
+            people={people}
+            onSave={(column_id, value) => { setIsEditOpen(false); onEditColumn(column_id, value); }}
+            onClose={() => setIsEditOpen(false)}
+          />
         </>
       )}
 

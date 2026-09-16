@@ -245,6 +245,16 @@ export const boardContentService = {
     return response.items;
   },
 
+  /** PATCH /api/boards/{board_id}/items/values — selection action bar's "Edit column" bulk action. */
+  async bulkSetColumnValue(board_id: number, item_ids: number[], column_id: number, value: BoardItemValue): Promise<BoardItemDto[]> {
+    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/values`, {
+      item_ids,
+      column_id,
+      value,
+    });
+    return response.items;
+  },
+
   /**
    * PATCH /api/boards/{board_id}/items/reorder — drag-and-drop reordering
    * (same-table, cross-table, or within a subitem list), resequenced

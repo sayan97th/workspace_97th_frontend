@@ -104,6 +104,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
               // editing/deleting them happens inline in each cell's own
               // `DropdownMenu` popover instead of a shared modal.
             }
+            onEditFormula={col.kind === "formula" ? () => actions.openConfigEditor("formula", col.id) : undefined}
+            onEditMirror={col.kind === "mirror" ? () => actions.openConfigEditor("mirror", col.id) : undefined}
+            onEditConnectBoard={col.kind === "connect_board" ? () => actions.openConfigEditor("connect_board", col.id) : undefined}
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
             onCollapseAll={actions.collapseAllGroups}

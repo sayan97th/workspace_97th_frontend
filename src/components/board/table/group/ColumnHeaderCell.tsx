@@ -4,7 +4,7 @@ import { useRef } from "react";
 import ColumnMenu from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import EmojiInsertButton from "../../EmojiInsertButton";
-import type { ColumnKind, StatusDef } from "../types";
+import type { ColumnKind, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 
 interface ColumnHeaderCellProps {
   scoped_key: string;
@@ -32,7 +32,7 @@ interface ColumnHeaderCellProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
-  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean }) => void;
+  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string }) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
   /**
@@ -44,6 +44,12 @@ interface ColumnHeaderCellProps {
   /** Fired once on the item-title column's resize-drag end, with the final width — the virtual-column analogue of `onUpdateSettings`'s `width` patch. */
   onResizeEnd?: (width: number) => void;
   onEditLabels?: () => void;
+  /** Formula columns only: opens the operation/source-columns settings modal. */
+  onEditFormula?: () => void;
+  /** Mirror columns only: opens the linked-column settings modal. */
+  onEditMirror?: () => void;
+  /** Connect-board columns only: opens the linked-board settings modal. */
+  onEditConnectBoard?: () => void;
   onRequestFilter?: () => void;
   onRequestGroupBy?: () => void;
   onCollapseAll: () => void;
@@ -66,7 +72,7 @@ interface ColumnHeaderCellProps {
 export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
-  onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels,
+  onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
   onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
@@ -164,6 +170,9 @@ export default function ColumnHeaderCell({
           onSort={onSort}
           onUpdateSettings={onUpdateSettings ?? (() => {})}
           onEditLabels={onEditLabels}
+          onEditFormula={onEditFormula}
+          onEditMirror={onEditMirror}
+          onEditConnectBoard={onEditConnectBoard}
           onRequestFilter={onRequestFilter ?? (() => {})}
           onRequestGroupBy={onRequestGroupBy ?? (() => {})}
           onCollapseAll={onCollapseAll}
