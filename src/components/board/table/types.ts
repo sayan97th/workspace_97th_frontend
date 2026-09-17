@@ -27,7 +27,8 @@ export type ColumnKind =
   | "dependency"
   | "formula"
   | "connect_board"
-  | "mirror";
+  | "mirror"
+  | "checklist";
 
 /** A `formula`-kind column's own config: the operation applied to `source_column_ids`, read in row order from the same item's other cells. */
 export interface FormulaConfig {
@@ -39,6 +40,29 @@ export interface FormulaConfig {
 export interface MirrorConfig {
   source_column_id: string;
   mirrored_column_id: string;
+}
+
+/**
+ * Any column kind's own validation rules, set from the header menu's
+ * "Settings" panel (`ColumnSettingsPanel`) — advisory only: an unmet rule
+ * flags the cell with a red outline/asterisk (see `isValueInvalid` in
+ * `validationUtils.ts`), it never blocks a cell from being saved.
+ * `min`/`max` only apply to a `number` column; `pattern` (a regular
+ * expression, tested without anchors) only to the text-family kinds
+ * (`text`/`longtext`/`phone`/`email`).
+ */
+export interface ColumnValidation {
+  required?: boolean;
+  min?: number;
+  max?: number;
+  pattern?: string;
+}
+
+/** One sub-task in a `checklist`-kind cell's value — see `ColumnKind`'s own doc comment. */
+export interface ChecklistItemValue {
+  id: string;
+  text: string;
+  is_done: boolean;
 }
 
 export interface ColumnDef {
@@ -67,6 +91,8 @@ export interface ColumnDef {
   mirror?: MirrorConfig;
   /** Connect-board kind only: the other board this column's cells link items on. */
   linked_board_id?: string;
+  /** Any kind, see `ColumnValidation`'s own doc comment. */
+  validation?: ColumnValidation;
 }
 
 export interface StatusDef {
@@ -113,6 +139,7 @@ export type CellValue =
   | LinkValue
   | TimeTrackingValue
   | CellFile[]
+  | ChecklistItemValue[]
   | null
   | undefined;
 

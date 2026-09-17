@@ -98,6 +98,7 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "formula", label: "Formula", mark: "ƒ", accent: "#9d50dd", section: "Super useful", default_width: 150 },
   { kind: "connect_board", label: "Connect boards", mark: "⛓", accent: "#7f5347", section: "Super useful", default_width: 200 },
   { kind: "mirror", label: "Mirror", mark: "⧉", accent: "#0086c0", section: "Super useful", default_width: 160 },
+  { kind: "checklist", label: "Checklist", mark: "☑", accent: "#00c875", section: "Super useful", default_width: 200 },
 ];
 
 /**
@@ -133,6 +134,7 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   formula: "formula",
   connect_board: "connect_board",
   mirror: "mirror",
+  checklist: "checklist",
 };
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];

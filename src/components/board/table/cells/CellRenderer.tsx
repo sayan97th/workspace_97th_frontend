@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CellFile, CellValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
+import type { CellFile, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
@@ -21,6 +21,7 @@ import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import DependencyMenu from "../menus/DependencyMenu";
+import ChecklistMenu from "../menus/ChecklistMenu";
 
 interface CellRendererProps {
   node_id: string;
@@ -612,6 +613,29 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         ) : (
           <span className="text-[12.5px] text-boardtree-text-faint">–</span>
         )}
+      </div>
+    );
+  }
+
+  if (column.kind === "checklist") {
+    const items = Array.isArray(value) && value.every((v) => typeof v === "object" && v !== null && "is_done" in v) ? (value as ChecklistItemValue[]) : [];
+    const done_count = items.filter((it) => it.is_done).length;
+    const pct = items.length > 0 ? Math.round((done_count / items.length) * 100) : 0;
+    return (
+      <div className="relative flex flex-1 items-center gap-2 px-3">
+        <button type="button" onClick={openMenu} className="flex min-w-0 flex-1 items-center gap-2">
+          {items.length > 0 ? (
+            <>
+              <div className="h-1.5 flex-1 overflow-hidden rounded-[3px] bg-boardtree-track">
+                <div className="h-full rounded-[3px]" style={{ width: `${pct}%`, background: pct >= 100 ? "#00c875" : "#fdab3d" }} />
+              </div>
+              <div className="flex-none font-mono text-[10.5px] text-boardtree-text-muted">{done_count}/{items.length}</div>
+            </>
+          ) : (
+            <span className="text-[12.5px] text-boardtree-text-faint">Add sub-tasks</span>
+          )}
+        </button>
+        {is_menu_open && <ChecklistMenu items={items} onChange={(next) => actions.setCellValue(node_id, column.id, next)} onClose={actions.closeCellMenu} />}
       </div>
     );
   }

@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import TreeHook from "./TreeHook";
+import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface SubitemRowProps {
@@ -200,10 +201,12 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             state.fill_drag.column_id === col.id &&
             state.fill_drag.hovered_node_id === sub.id &&
             state.fill_drag.anchor_node_id !== sub.id;
+          const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, sub.values[col.id]);
           return (
             <div
               key={col.id}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              title={is_invalid ? "This column requires a valid value" : undefined}
               style={{
                 height: row_h,
                 // See `ItemRow`'s identical cell wrapper for why this is an
@@ -212,8 +215,10 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                   ? "2px solid var(--color-boardtree-accent)"
                   : is_fill_target
                     ? "1.5px dashed var(--color-boardtree-accent)"
-                    : undefined,
-                outlineOffset: is_active || is_fill_target ? "-2px" : undefined,
+                    : is_invalid
+                      ? "1.5px solid #e2445c"
+                      : undefined,
+                outlineOffset: is_active || is_fill_target || is_invalid ? "-2px" : undefined,
                 zIndex: is_active ? 5 : undefined,
               }}
               onMouseDown={() => actions.setActiveCell(sub.id, col.id)}

@@ -7,6 +7,7 @@ import type {
   CellValue,
   ColumnDef,
   ColumnKind,
+  ColumnValidation,
   DragState,
   FillDragState,
   FormulaConfig,
@@ -246,6 +247,8 @@ export interface UseBoardTableConfig {
       mirror?: MirrorConfig;
       /** Connect-board columns only, see `ColumnDef.linked_board_id`. */
       linked_board_id?: string;
+      /** Any column kind, see `ColumnDef.validation`. */
+      validation?: ColumnValidation;
     }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
@@ -384,7 +387,29 @@ export interface BoardTableState {
   fill_drag: FillDragState | null;
   /** See `UseBoardTableConfig.current_user_id`'s own doc comment. */
   current_user_id: string | null;
+  /**
+   * Ctrl/Cmd+Z undo stack — each entry re-runs the same local-mutation-plus-
+   * server-callback action a cell edit/rename/priority toggle already used
+   * (see `pushHistory`), just with the value flipped back to what it was
+   * before. Scoped to a handful of the most common, safely-reversible edits
+   * (cell values, item/group renames, priority toggles) — structural changes
+   * (add/delete/move/reorder a row, group or column) deliberately have no
+   * undo entry, since reversing those would need their own server round
+   * trip this stack doesn't model.
+   */
+  history_past: HistoryEntry[];
+  /** Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y redo stack — see `history_past`'s own doc comment. */
+  history_future: HistoryEntry[];
 }
+
+/** One undo-able edit — see `BoardTableState.history_past`'s own doc comment. */
+interface HistoryEntry {
+  undo: () => void;
+  redo: () => void;
+}
+
+/** How many edits `history_past`/`history_future` each keep before the oldest is dropped. */
+const HISTORY_LIMIT = 50;
 
 function initialState(config: UseBoardTableConfig): BoardTableState {
   const is_controlled = Boolean(config.initial_groups);
@@ -435,6 +460,8 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     clipboard_cell: null,
     fill_drag: null,
     current_user_id: config.current_user_id ?? null,
+    history_past: [],
+    history_future: [],
   };
 }
 
@@ -465,6 +492,27 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   // a rename for) without depending on — and being recreated by — `state`.
   const state_ref = useRef(state);
   state_ref.current = state;
+
+  /** Records one undo-able edit — see `BoardTableState.history_past`'s own doc comment. Any new edit clears the redo stack, mirroring every other editor's undo/redo convention. */
+  const pushHistory = useCallback((entry: HistoryEntry) => {
+    setState((s) => ({ ...s, history_past: [...s.history_past.slice(-(HISTORY_LIMIT - 1)), entry], history_future: [] }));
+  }, []);
+
+  /** Ctrl/Cmd+Z. */
+  const undo = useCallback(() => {
+    const entry = state_ref.current.history_past.at(-1);
+    if (!entry) return;
+    entry.undo();
+    setState((s) => ({ ...s, history_past: s.history_past.slice(0, -1), history_future: [...s.history_future, entry].slice(-HISTORY_LIMIT) }));
+  }, []);
+
+  /** Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y. */
+  const redo = useCallback(() => {
+    const entry = state_ref.current.history_future.at(-1);
+    if (!entry) return;
+    entry.redo();
+    setState((s) => ({ ...s, history_future: s.history_future.slice(0, -1), history_past: [...s.history_past, entry].slice(-HISTORY_LIMIT) }));
+  }, []);
 
   // Re-syncs local state whenever the caller's real data changes underneath
   // it (a refetch, another viewer's edit, ...) — skipped while a rename or
@@ -568,13 +616,23 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, edit_draft: value }));
   }, []);
 
+  /** Applies a node's new name to local state and the real board — the shared "do" half of `commitEditName`'s own action and its undo/redo entries. */
+  const applyNodeName = useCallback((node_id: string, name: string) => {
+    setState((s) => ({ ...s, groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, name })) }));
+    config_ref.current.onRenameNode?.(node_id, name);
+  }, []);
+
   const commitEditName = useCallback(() => {
     const editing_id = state_ref.current.editing_id;
     if (!editing_id) return;
     const name = (state_ref.current.edit_draft || "").trim() || "Untitled";
-    setState((s) => ({ ...s, editing_id: null, groups: updateNodeById<BoardTableNode>(s.groups, editing_id, (n) => ({ ...n, name })) }));
-    config_ref.current.onRenameNode?.(editing_id, name);
-  }, []);
+    const previous_name = findNode(state_ref.current.groups, editing_id)?.name;
+    setState((s) => ({ ...s, editing_id: null }));
+    if (previous_name !== undefined && previous_name !== name) {
+      pushHistory({ undo: () => applyNodeName(editing_id, previous_name), redo: () => applyNodeName(editing_id, name) });
+    }
+    applyNodeName(editing_id, name);
+  }, [applyNodeName, pushHistory]);
 
   const cancelEditName = useCallback(() => {
     setState((s) => ({ ...s, editing_id: null }));
@@ -588,35 +646,49 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, group_draft: value }));
   }, []);
 
+  /** Applies a group's new title to local state and the real board — see `applyNodeName`'s own doc comment. */
+  const applyGroupTitle = useCallback((group_key: string, title: string) => {
+    setState((s) => ({ ...s, groups: s.groups.map((g) => (g.key === group_key ? { ...g, title } : g)) }));
+    config_ref.current.onRenameGroup?.(group_key, title);
+  }, []);
+
   const commitGroupRename = useCallback(() => {
     const editing_group_key = state_ref.current.editing_group_key;
     if (!editing_group_key) return;
     const title = (state_ref.current.group_draft || "").trim() || "Untitled group";
-    setState((s) => ({
-      ...s,
-      editing_group_key: null,
-      groups: s.groups.map((g) => (g.key === editing_group_key ? { ...g, title } : g)),
-    }));
-    config_ref.current.onRenameGroup?.(editing_group_key, title);
-  }, []);
+    const previous_title = state_ref.current.groups.find((g) => g.key === editing_group_key)?.title;
+    setState((s) => ({ ...s, editing_group_key: null }));
+    if (previous_title !== undefined && previous_title !== title) {
+      pushHistory({ undo: () => applyGroupTitle(editing_group_key, previous_title), redo: () => applyGroupTitle(editing_group_key, title) });
+    }
+    applyGroupTitle(editing_group_key, title);
+  }, [applyGroupTitle, pushHistory]);
 
   const cancelGroupRename = useCallback(() => {
     setState((s) => ({ ...s, editing_group_key: null }));
   }, []);
 
-  const toggleNodePriority = useCallback((node_id: string) => {
-    const next_is_priority = !findNode(state_ref.current.groups, node_id)?.is_priority;
-    setState((s) => ({
-      ...s,
-      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, is_priority: next_is_priority })),
-      open_row_menu_id: null,
-    }));
-    config_ref.current.onToggleNodePriority?.(node_id, next_is_priority);
+  /** Applies a node's new priority flag to local state and the real board — see `applyNodeName`'s own doc comment. */
+  const applyNodePriority = useCallback((node_id: string, is_priority: boolean) => {
+    setState((s) => ({ ...s, groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, is_priority })) }));
+    config_ref.current.onToggleNodePriority?.(node_id, is_priority);
   }, []);
+
+  const toggleNodePriority = useCallback(
+    (node_id: string) => {
+      const previous_is_priority = !!findNode(state_ref.current.groups, node_id)?.is_priority;
+      const next_is_priority = !previous_is_priority;
+      setState((s) => ({ ...s, open_row_menu_id: null }));
+      pushHistory({ undo: () => applyNodePriority(node_id, previous_is_priority), redo: () => applyNodePriority(node_id, next_is_priority) });
+      applyNodePriority(node_id, next_is_priority);
+    },
+    [applyNodePriority, pushHistory]
+  );
 
   // ---- cell values --------------------------------------------------------
 
-  const setCellValue = useCallback((node_id: string, column_id: string, value: CellValue) => {
+  /** Applies a cell's new value to local state and the real board — see `applyNodeName`'s own doc comment. */
+  const applyCellValue = useCallback((node_id: string, column_id: string, value: CellValue) => {
     setState((s) => ({
       ...s,
       groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: value } })),
@@ -624,31 +696,43 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onCellValueChange?.(node_id, column_id, value);
   }, []);
 
-  const toggleArrayValue = useCallback((node_id: string, column_id: string, option: string) => {
-    // Computed synchronously from `state_ref` up front (mirroring `commitEditName`'s
-    // own pattern below) rather than inside the `setState` updater — React doesn't
-    // guarantee that updater runs before the `onCellValueChange` call right after it,
-    // so a value captured via an outer-scope variable mutated inside the updater can
-    // still be at its unset initial value when read here, silently sending a stale
-    // (effectively empty) value to the backend on every toggle.
-    const node = findNode(state_ref.current.groups, node_id);
-    const current = (node?.values[column_id] as string[]) || [];
-    const next_value = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
-    setState((s) => ({
-      ...s,
-      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: next_value } })),
-    }));
-    config_ref.current.onCellValueChange?.(node_id, column_id, next_value.length ? next_value : null);
-  }, []);
+  const setCellValue = useCallback(
+    (node_id: string, column_id: string, value: CellValue) => {
+      const previous_value = findNode(state_ref.current.groups, node_id)?.values[column_id] ?? null;
+      pushHistory({ undo: () => applyCellValue(node_id, column_id, previous_value), redo: () => applyCellValue(node_id, column_id, value) });
+      applyCellValue(node_id, column_id, value);
+    },
+    [applyCellValue, pushHistory]
+  );
 
-  const clearCellValue = useCallback((node_id: string, column_id: string) => {
-    setState((s) => ({
-      ...s,
-      groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: undefined } })),
-      open_cell_menu_key: null,
-    }));
-    config_ref.current.onCellValueChange?.(node_id, column_id, null);
-  }, []);
+  const toggleArrayValue = useCallback(
+    (node_id: string, column_id: string, option: string) => {
+      // Computed synchronously from `state_ref` up front (mirroring `commitEditName`'s
+      // own pattern below) rather than inside the `setState` updater — React doesn't
+      // guarantee that updater runs before the `onCellValueChange` call right after it,
+      // so a value captured via an outer-scope variable mutated inside the updater can
+      // still be at its unset initial value when read here, silently sending a stale
+      // (effectively empty) value to the backend on every toggle.
+      const node = findNode(state_ref.current.groups, node_id);
+      const current = (node?.values[column_id] as string[]) || [];
+      const next_value = current.includes(option) ? current.filter((v) => v !== option) : current.concat([option]);
+      const previous_value: CellValue = current.length ? current : null;
+      const applied_next_value: CellValue = next_value.length ? next_value : null;
+      pushHistory({ undo: () => applyCellValue(node_id, column_id, previous_value), redo: () => applyCellValue(node_id, column_id, applied_next_value) });
+      applyCellValue(node_id, column_id, applied_next_value);
+    },
+    [applyCellValue, pushHistory]
+  );
+
+  const clearCellValue = useCallback(
+    (node_id: string, column_id: string) => {
+      const previous_value = findNode(state_ref.current.groups, node_id)?.values[column_id] ?? null;
+      setState((s) => ({ ...s, open_cell_menu_key: null }));
+      pushHistory({ undo: () => applyCellValue(node_id, column_id, previous_value), redo: () => applyCellValue(node_id, column_id, null) });
+      applyCellValue(node_id, column_id, null);
+    },
+    [applyCellValue, pushHistory]
+  );
 
   /** Like `setCellValue`, but skips `onCellValueChange` — for a value that was already persisted by the caller of `uploadCellFiles`/`deleteCellFile` below, so it isn't sent to the server a second time as an ordinary cell edit. */
   const setCellValueLocal = useCallback((node_id: string, column_id: string, value: CellValue) => {
@@ -813,7 +897,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const s = state_ref.current;
-      if (!s.active_cell || hasOverlayOpen(s) || isTypingTarget(event.target)) return;
+      if (hasOverlayOpen(s) || isTypingTarget(event.target)) return;
+
+      // Undo/redo act page-wide (no active cell needed), mirroring every
+      // other editor's Ctrl/Cmd+Z — unlike copy/paste/arrow-nav below, which
+      // are meaningless without one already focused.
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+        event.preventDefault();
+        redo();
+        return;
+      }
+
+      if (!s.active_cell) return;
 
       if (event.key === "Escape") {
         if (s.fill_drag) cancelFillDrag();
@@ -840,7 +941,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearActiveCell, copyActiveCell, pasteIntoActiveCell, moveActiveCell, cancelFillDrag]);
+  }, [clearActiveCell, copyActiveCell, pasteIntoActiveCell, moveActiveCell, cancelFillDrag, undo, redo]);
 
   // Commits (or cancels) an in-progress fill-handle drag as soon as the
   // mouse button is released anywhere on the page — the drag doesn't rely on
@@ -1362,13 +1463,14 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       group_key: string,
       scope: ColumnScope,
       column_id: string,
-      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string }
+      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation }
     ) => {
       const local_patch: Partial<ColumnDef> = {};
       if (patch.width != null) local_patch.width = patch.width;
       if (patch.formula) local_patch.formula = patch.formula;
       if (patch.mirror) local_patch.mirror = patch.mirror;
       if (patch.linked_board_id) local_patch.linked_board_id = patch.linked_board_id;
+      if (patch.validation) local_patch.validation = patch.validation;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
@@ -1828,6 +1930,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       copyRowLink,
       openComments,
       requestGroupItems,
+      undo,
+      redo,
     }),
     [
       toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
@@ -1841,7 +1945,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef,
-      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, requestGroupItems,
+      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, requestGroupItems, undo, redo,
     ]
   );
 

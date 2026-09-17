@@ -7,6 +7,7 @@ import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUti
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
+import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface ItemRowProps {
@@ -240,10 +241,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             state.fill_drag.hovered_node_id === item.id &&
             state.fill_drag.anchor_node_id !== item.id;
           const is_pinned = col_index < pinned_columns.length;
+          const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, item.values[col.id]);
           return (
             <div
               key={col.id}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              title={is_invalid ? "This column requires a valid value" : undefined}
               style={{
                 height: row_h,
                 background: state.cell_colors[item.id]?.[col.id] ?? (is_pinned ? row_bg : undefined),
@@ -258,8 +261,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                   ? "2px solid var(--color-boardtree-accent)"
                   : is_fill_target
                     ? "1.5px dashed var(--color-boardtree-accent)"
-                    : undefined,
-                outlineOffset: is_active || is_fill_target ? "-2px" : undefined,
+                    : is_invalid
+                      ? "1.5px solid #e2445c"
+                      : undefined,
+                outlineOffset: is_active || is_fill_target || is_invalid ? "-2px" : undefined,
                 zIndex: is_pinned ? 15 : is_active ? 5 : undefined,
               }}
               onMouseDown={() => actions.setActiveCell(item.id, col.id)}

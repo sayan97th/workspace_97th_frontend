@@ -2,25 +2,31 @@
 
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
-import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH } from "../constants";
+import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../constants";
+import type { ColumnKind, ColumnValidation } from "../types";
 
 interface ColumnSettingsPanelProps {
   width: number;
   hideable: boolean;
   pinnable: boolean;
   can_edit_labels: boolean;
+  /** Drives which validation fields below are relevant — `min`/`max` for `number`, `pattern` for the text-family kinds. Undefined for the item-title/sub-title virtual columns, which skip validation entirely. */
+  kind?: ColumnKind;
+  validation?: ColumnValidation;
   onWidthChange: (width: number) => void;
   onHideableChange: (value: boolean) => void;
   onPinnableChange: (value: boolean) => void;
+  onValidationChange?: (patch: Partial<ColumnValidation>) => void;
   onEditLabels: () => void;
 }
 
 const ROW = "flex h-[34px] w-full items-center justify-between gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text";
 
 export default function ColumnSettingsPanel({
-  width, hideable, pinnable, can_edit_labels, onWidthChange, onHideableChange, onPinnableChange, onEditLabels,
+  width, hideable, pinnable, can_edit_labels, kind, validation, onWidthChange, onHideableChange, onPinnableChange, onValidationChange, onEditLabels,
 }: ColumnSettingsPanelProps) {
   const [draft, setDraft] = useState(String(width));
+  const [pattern_draft, setPatternDraft] = useState(validation?.pattern ?? "");
 
   const commitWidth = () => {
     const parsed = Number(draft);
@@ -55,6 +61,52 @@ export default function ColumnSettingsPanel({
         <span>Pinnable</span>
         <ToggleSwitch is_on={pinnable} size="sm" />
       </button>
+
+      {onValidationChange && kind && (
+        <>
+          <div className="my-1 h-px bg-boardtree-border-soft" />
+          <button type="button" onClick={() => onValidationChange({ required: !validation?.required })} className={`${ROW} hover:bg-boardtree-hover`}>
+            <span>Required</span>
+            <ToggleSwitch is_on={!!validation?.required} size="sm" />
+          </button>
+
+          {kind === "number" && (
+            <>
+              <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
+                <span>Min value</span>
+                <input
+                  type="number"
+                  value={validation?.min ?? ""}
+                  onChange={(e) => onValidationChange({ min: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+                />
+              </label>
+              <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
+                <span>Max value</span>
+                <input
+                  type="number"
+                  value={validation?.max ?? ""}
+                  onChange={(e) => onValidationChange({ max: e.target.value === "" ? undefined : Number(e.target.value) })}
+                  className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+                />
+              </label>
+            </>
+          )}
+
+          {TEXT_FAMILY_KINDS.includes(kind) && (
+            <label className="flex flex-col gap-1 px-1 py-1.5 text-[13px] text-boardtree-text">
+              <span>Match pattern (regex)</span>
+              <input
+                value={pattern_draft}
+                onChange={(e) => setPatternDraft(e.target.value)}
+                onBlur={() => onValidationChange({ pattern: pattern_draft.trim() || undefined })}
+                placeholder="e.g. ^[A-Z]{2}[0-9]+$"
+                className="h-8 w-full rounded-[6px] border border-boardtree-border px-2 font-mono text-[12px] text-boardtree-text outline-none focus:border-boardtree-accent"
+              />
+            </label>
+          )}
+        </>
+      )}
 
       {can_edit_labels && (
         <>

@@ -4,16 +4,32 @@
  * See `board-content.ts`'s own doc comment for the sibling engine types this pairs with.
  */
 
-export type BoardAutomationTriggerType = "status_changed" | "date_arrived";
-export type BoardAutomationActionType = "move_to_group" | "notify_person";
+export type BoardAutomationTriggerType =
+  | "status_changed"
+  | "date_arrived"
+  | "item_created"
+  | "subitem_created"
+  | "person_assigned";
+export type BoardAutomationActionType =
+  | "move_to_group"
+  | "notify_person"
+  | "archive_item"
+  | "set_column_value"
+  | "create_item";
 
 export type BoardAutomationActionParams = {
-  /** `move_to_group` only. */
+  /** `move_to_group`/`create_item` only. */
   target_group_id?: number;
   /** `notify_person` only, a fixed recipient. */
   notify_user_id?: number;
   /** `notify_person` only, resolved to whoever a people column currently holds on the triggering item. */
   notify_from_people_column_id?: number;
+  /** `set_column_value` only: which column to write. */
+  target_column_id?: number;
+  /** `set_column_value` only: the value to write into `target_column_id`. */
+  value?: unknown;
+  /** `create_item` only: the new item's name, defaulting to "New item". */
+  item_name?: string;
 };
 
 export type BoardAutomationDto = {
@@ -23,8 +39,9 @@ export type BoardAutomationDto = {
   name: string | null;
   is_enabled: boolean;
   trigger_type: BoardAutomationTriggerType;
-  trigger_column_id: number;
-  /** The matched status/label option id, `status_changed` triggers only. Null for `date_arrived`. */
+  /** Null for `item_created`/`subitem_created`, which watch no column. */
+  trigger_column_id: number | null;
+  /** The matched status/label option id (`status_changed`) or a specific person id to watch for (`person_assigned`, null meaning "anyone"). Null for `date_arrived`/`item_created`/`subitem_created`. */
   trigger_value: string | null;
   action_type: BoardAutomationActionType;
   action_params: BoardAutomationActionParams;
@@ -36,7 +53,7 @@ export type CreateBoardAutomationPayload = {
   name?: string | null;
   is_enabled?: boolean;
   trigger_type: BoardAutomationTriggerType;
-  trigger_column_id: number;
+  trigger_column_id?: number | null;
   trigger_value?: string | null;
   action_type: BoardAutomationActionType;
   action_params: BoardAutomationActionParams;

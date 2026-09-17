@@ -31,6 +31,7 @@ const TYPE_LABELS: Record<BoardColumnType, string> = {
   formula: "Formula",
   connect_board: "Connect boards",
   mirror: "Mirror",
+  checklist: "Checklist",
 };
 
 const NEW_GROUP_VALUE = "__new__";

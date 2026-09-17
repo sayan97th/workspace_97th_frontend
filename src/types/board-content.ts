@@ -50,6 +50,13 @@ export type BoardColumnConfig = {
   /** Mirror columns only: which of this tab's own connect-board columns to read through (`source_column_id`), and which column on that linked board to display (`mirrored_column_id`). */
   source_column_id?: number;
   mirrored_column_id?: number;
+  /** Any column type: advisory validation rules — see `ColumnValidation` in `@/components/board/table/types` (same shape, this is the wire-format twin). */
+  validation?: {
+    required?: boolean;
+    min?: number;
+    max?: number;
+    pattern?: string;
+  };
 };
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */

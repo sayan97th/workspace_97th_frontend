@@ -115,7 +115,7 @@ export default function GroupColumnHeaderRow({
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={38}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}

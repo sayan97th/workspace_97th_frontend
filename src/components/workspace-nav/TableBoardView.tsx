@@ -153,6 +153,7 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   formula: "formula",
   connect_board: "connect_board",
   mirror: "mirror",
+  checklist: "checklist",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
@@ -181,6 +182,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         ? { source_column_id: String(column.config.source_column_id), mirrored_column_id: String(column.config.mirrored_column_id) }
         : undefined,
     linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
+    validation: column.config?.validation,
   };
 };
 
@@ -2048,10 +2050,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .updateColumn(board_id, Number(column_id), { label: title })
           .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
       onDeleteColumn: (_group_key, _scope, column_id) => void handleRemoveKanbanProperty(column_id),
-      onUpdateColumnSettings: (_group_key, _scope, column_id, patch) =>
+      // `validation` lives under the column's own `config` JSON server-side
+      // (like `formula`/`mirror`), unlike `width`/`hideable`/`pinnable`,
+      // which are real top-level `board_columns` fields — so it needs the
+      // same read-modify-write merge `handleUpdateColumnFormula` uses,
+      // rather than being forwarded to `updateColumn` as-is.
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, ...rest }) => {
+        const column = columns_by_id[column_id];
+        const body = validation !== undefined ? { ...rest, config: { ...(column?.config ?? {}), validation } } : rest;
         void boardContentService
-          .updateColumn(board_id, Number(column_id), patch)
-          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
+          .updateColumn(board_id, Number(column_id), body)
+          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c))));
+      },
       onChangeColumnKind: (_group_key, _scope, column_id, kind, default_width) =>
         void boardContentService
           .updateColumn(board_id, Number(column_id), { type: TABLE_KIND_TO_ENGINE_KIND[kind], width: default_width })

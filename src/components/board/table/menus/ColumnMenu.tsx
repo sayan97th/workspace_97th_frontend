@@ -5,18 +5,18 @@ import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnSettingsPanel from "./ColumnSettingsPanel";
 import type { ColumnTypeDef } from "../constants";
-import type { ColumnKind, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { ColumnKind, ColumnValidation, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 
 interface ColumnMenuProps {
   title: string;
   /** Undefined for the item-title/sub-title virtual columns — renders the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[] };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible: boolean;
   onRename: (title: string) => void;
   onSort: (direction: "asc" | "desc" | null) => void;
-  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string }) => void;
+  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation }) => void;
   onEditLabels?: () => void;
   /** Formula columns only: opens the operation/source-columns settings modal. */
   onEditFormula?: () => void;
@@ -128,9 +128,12 @@ export default function ColumnMenu({
                 hideable
                 pinnable
                 can_edit_labels={!!onEditLabels}
+                kind={column.kind}
+                validation={column.validation}
                 onWidthChange={(width) => onUpdateSettings({ width })}
                 onHideableChange={(value) => onUpdateSettings({ hideable: value })}
                 onPinnableChange={(value) => onUpdateSettings({ pinnable: value })}
+                onValidationChange={(patch) => onUpdateSettings({ validation: { ...column.validation, ...patch } })}
                 onEditLabels={() => { onEditLabels?.(); onClose(); }}
               />
             )}
