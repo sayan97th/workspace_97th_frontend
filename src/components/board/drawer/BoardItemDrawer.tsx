@@ -7,6 +7,7 @@ import InfoBoxesPanel from "./InfoBoxesPanel";
 import SlideOverPanel from "./SlideOverPanel";
 import UpdatesPanel from "./UpdatesPanel";
 import type { BoardItemDrawerApi, DrawerTabId } from "./types";
+import { useCommentPresence } from "./useCommentPresence";
 import { useLatchWhileOpen } from "./useLatchWhileOpen";
 
 export type BoardItemDrawerProps<TRow> = {
@@ -30,6 +31,14 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   // panel closed — `drawer.close()` clears `open_row` (and everything
   // derived from it) synchronously, well before that exit animation ends.
   const content = useLatchWhileOpen(drawer, drawer.is_open);
+
+  // Only joined for a real, backend-persisted item (`board_id` set) — mock
+  // boards (Client Hub) have no matching `BoardItem` row for the presence
+  // channel's auth callback to resolve. Bare name (no `presence-` prefix):
+  // `Echo.join()` prepends that itself, matching `Broadcast::channel('presence-board-item.{id}', ...)`.
+  const presence_channel_name =
+    drawer.board_id !== undefined && content.open_row_id ? `board-item.${content.open_row_id}` : null;
+  const presence = useCommentPresence(presence_channel_name);
 
   if (!drawer.is_open && !content.is_open) return null;
 
@@ -102,7 +111,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       </div>
 
       {/* Active tab body */}
-      {content.active_tab === "updates" && <UpdatesPanel drawer={content} />}
+      {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} />}
       {content.active_tab === "files" && <FilesPanel drawer={content} />}
       {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
     </SlideOverPanel>

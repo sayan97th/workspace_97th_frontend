@@ -1,12 +1,17 @@
 "use client";
-import React from "react";
+import React, { useRef } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { UpdatesTabIcon } from "@/icons/drawer-icons";
-import { FolderPathIcon, MailIcon } from "@/icons/workspace-icons";
+import { BellIcon, FolderPathIcon, MailIcon } from "@/icons/workspace-icons";
 import CommentComposer from "./CommentComposer";
+import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import SlideOverPanel from "./SlideOverPanel";
 import type { BoardDiscussionDrawerApi } from "./useBoardDiscussionDrawer";
+import { useCommentPresence } from "./useCommentPresence";
+
+/** Skips whispering "typing" on every single keystroke — one whisper per this interval is plenty for the indicator's purpose. */
+const TYPING_WHISPER_THROTTLE_MS = 2000;
 
 export type BoardDiscussionDrawerProps = {
   drawer: BoardDiscussionDrawerApi;
@@ -27,6 +32,19 @@ export type BoardDiscussionDrawerProps = {
  * keeps showing its last-loaded value while the panel slides away.
  */
 const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer }) => {
+  // Bare name (no `presence-` prefix): `Echo.join()` prepends that itself,
+  // matching `Broadcast::channel('presence-board-discussion.{id}', ...)`.
+  const presence = useCommentPresence(drawer.is_open ? `board-discussion.${drawer.board_id}` : null);
+  const last_whisper_at_ref = useRef(0);
+  const handleComposerChange = (value: string) => {
+    drawer.onComposerTextChange(value);
+    const now = Date.now();
+    if (now - last_whisper_at_ref.current > TYPING_WHISPER_THROTTLE_MS) {
+      last_whisper_at_ref.current = now;
+      presence.whisperTyping();
+    }
+  };
+
   return (
     <SlideOverPanel
       is_open={drawer.is_open}
@@ -42,14 +60,27 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             <span className="truncate">{drawer.breadcrumb_label}</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={drawer.close}
-          aria-label="Close board discussion"
-          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-        >
-          <CloseIcon size={16} />
-        </button>
+        <div className="flex flex-none items-center gap-1">
+          <button
+            type="button"
+            onClick={drawer.toggleMute}
+            aria-label={drawer.is_muted ? "Unmute this board's notifications" : "Mute this board's notifications"}
+            aria-pressed={drawer.is_muted}
+            title={drawer.is_muted ? "Unmute this board's notifications" : "Mute this board's notifications"}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover"
+            style={{ color: drawer.is_muted ? "#e2445c" : "var(--color-shell-text-muted)" }}
+          >
+            <BellIcon size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={drawer.close}
+            aria-label="Close board discussion"
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+          >
+            <CloseIcon size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Update-via-email / give-feedback links */}
@@ -68,7 +99,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           target="composer"
           avatar_person={drawer.current_user}
           value={drawer.composer_text}
-          onChange={drawer.onComposerTextChange}
+          onChange={handleComposerChange}
           onSubmit={drawer.postComment}
           placeholder="Write an update and mention others with @"
           submit_label="Update"
@@ -76,6 +107,13 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           mention_target={drawer.mention_target}
           mention_matches={drawer.mention_matches}
           onPickMention={drawer.pickMention}
+          mentionable_people={drawer.mentionable_people}
+          notify_target={drawer.notify_target}
+          onToggleNotifyPicker={drawer.toggleNotifyPicker}
+          onCloseNotifyPicker={drawer.closeNotifyPicker}
+          onPickNotifyPerson={drawer.pickNotifyPerson}
+          notified_people={drawer.notified_people_by_target.composer ?? []}
+          onRemoveNotifyPerson={(person_id) => drawer.removeNotifyPerson("composer", person_id)}
           emoji_palette_target={drawer.emoji_palette_target}
           onToggleEmojiPalette={drawer.toggleEmojiPalette}
           onCloseEmojiPalette={drawer.closeEmojiPalette}
@@ -84,6 +122,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           onAddFiles={drawer.addComposerAttachments}
           onRemoveAttachment={drawer.removeComposerAttachment}
         />
+        <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />
       </div>
 
       {/* Discussion feed */}
@@ -111,36 +150,47 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           </div>
         )}
 
-        {drawer.comments.map((comment) => (
-          <CommentThread
-            key={comment.id}
-            comment={comment}
-            current_user={drawer.current_user}
-            onToggleLike={drawer.toggleLike}
-            onToggleSeen={drawer.toggleSeen}
-            onDeleteComment={drawer.deleteComment}
-            editing_key={drawer.editing_key}
-            edit_draft={drawer.edit_draft}
-            onEditDraftChange={drawer.onEditDraftChange}
-            onStartEditing={drawer.startEditingComment}
-            onCancelEditing={drawer.cancelEditingComment}
-            onSaveEditing={drawer.saveEditedComment}
-            reaction_palette_id={drawer.reaction_palette_id}
-            onToggleReactionPalette={drawer.toggleReactionPalette}
-            onCloseReactionPalette={drawer.closeReactionPalette}
-            onToggleReaction={drawer.toggleReaction}
-            reply_value={drawer.reply_text_by_comment[comment.id] ?? ""}
-            onReplyChange={(value) => drawer.onReplyTextChange(comment.id, value)}
-            onPostReply={() => drawer.postReply(comment.id)}
-            mention_target={drawer.mention_target}
-            mention_matches={drawer.mention_matches}
-            onPickMention={drawer.pickMention}
-            emoji_palette_target={drawer.emoji_palette_target}
-            onToggleEmojiPalette={drawer.toggleEmojiPalette}
-            onCloseEmojiPalette={drawer.closeEmojiPalette}
-            onInsertEmoji={drawer.insertEmoji}
-          />
-        ))}
+        {drawer.comments
+          .slice()
+          .sort((a, b) => Number(b.pinned) - Number(a.pinned))
+          .map((comment) => (
+            <CommentThread
+              key={comment.id}
+              comment={comment}
+              current_user={drawer.current_user}
+              onToggleLike={drawer.toggleLike}
+              onToggleSeen={drawer.toggleSeen}
+              onTogglePin={drawer.togglePin}
+              onDeleteComment={drawer.deleteComment}
+              editing_key={drawer.editing_key}
+              edit_draft={drawer.edit_draft}
+              onEditDraftChange={drawer.onEditDraftChange}
+              onStartEditing={drawer.startEditingComment}
+              onCancelEditing={drawer.cancelEditingComment}
+              onSaveEditing={drawer.saveEditedComment}
+              reaction_palette_id={drawer.reaction_palette_id}
+              onToggleReactionPalette={drawer.toggleReactionPalette}
+              onCloseReactionPalette={drawer.closeReactionPalette}
+              onToggleReaction={drawer.toggleReaction}
+              reply_value={drawer.reply_text_by_comment[comment.id] ?? ""}
+              onReplyChange={(value) => drawer.onReplyTextChange(comment.id, value)}
+              onPostReply={() => drawer.postReply(comment.id)}
+              mention_target={drawer.mention_target}
+              mention_matches={drawer.mention_matches}
+              onPickMention={drawer.pickMention}
+              mentionable_people={drawer.mentionable_people}
+              notify_target={drawer.notify_target}
+              onToggleNotifyPicker={drawer.toggleNotifyPicker}
+              onCloseNotifyPicker={drawer.closeNotifyPicker}
+              onPickNotifyPerson={drawer.pickNotifyPerson}
+              notified_people={drawer.notified_people_by_target[comment.id] ?? []}
+              onRemoveNotifyPerson={drawer.removeNotifyPerson}
+              emoji_palette_target={drawer.emoji_palette_target}
+              onToggleEmojiPalette={drawer.toggleEmojiPalette}
+              onCloseEmojiPalette={drawer.closeEmojiPalette}
+              onInsertEmoji={drawer.insertEmoji}
+            />
+          ))}
       </div>
     </SlideOverPanel>
   );

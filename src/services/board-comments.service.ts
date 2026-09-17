@@ -26,6 +26,7 @@ export const boardCommentsService = {
     form_data.append("body", payload.body);
     if (payload.parent_id !== undefined) form_data.append("parent_id", String(payload.parent_id));
     (payload.mentioned_user_ids ?? []).forEach((user_id) => form_data.append("mentioned_user_ids[]", String(user_id)));
+    (payload.notified_user_ids ?? []).forEach((user_id) => form_data.append("notified_user_ids[]", String(user_id)));
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
 
     const response = await apiClient.postFormData<{ comment: BoardItemCommentDto }>(
@@ -75,6 +76,14 @@ export const boardCommentsService = {
   async toggleSeen(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
     const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
       `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/seen`
+    );
+    return response.comment;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/pin */
+  async togglePin(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
+    const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/pin`
     );
     return response.comment;
   },

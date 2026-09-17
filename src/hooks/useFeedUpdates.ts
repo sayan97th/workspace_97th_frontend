@@ -122,6 +122,14 @@ export function useFeedUpdates({ tab, board_id }: UseFeedUpdatesOptions) {
     [applyUpdate]
   );
 
+  const pinUpdate = useCallback(
+    async (id: string) => {
+      const dto = await feedService.togglePin(id);
+      applyUpdate(dto);
+    },
+    [applyUpdate]
+  );
+
   const markSeen = useCallback(
     async (id: string) => {
       const target = updates.find((update) => update.id === id);
@@ -148,13 +156,19 @@ export function useFeedUpdates({ tab, board_id }: UseFeedUpdatesOptions) {
     []
   );
 
+  // Stable sort (pinned first) — the initial `GET /api/feed/updates` load
+  // already comes pinned-first from the backend, this just keeps that order
+  // intact after a live websocket update prepends a new (unpinned) card.
+  const sorted_updates = [...updates].sort((a, b) => Number(b.pinned) - Number(a.pinned));
+
   return {
-    updates,
+    updates: sorted_updates,
     boards,
     unread_count,
     is_loading,
     bookmarkUpdate,
     likeUpdate,
+    pinUpdate,
     markSeen,
     replyToUpdate,
     scheduleReply,

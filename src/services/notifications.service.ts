@@ -24,4 +24,14 @@ export const notificationsService = {
   async markAsRead(id: string): Promise<void> {
     await apiClient.patch(`/api/notifications/${id}/read`);
   },
+
+  /** PATCH /api/notifications/read-all */
+  async markAllAsRead(): Promise<void> {
+    await apiClient.patch("/api/notifications/read-all");
+  },
+
+  /** DELETE /api/notifications/{id} */
+  async dismiss(id: string): Promise<void> {
+    await apiClient.delete(`/api/notifications/${id}`);
+  },
 };

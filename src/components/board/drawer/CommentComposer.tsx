@@ -1,12 +1,14 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, ReactSmileyIcon } from "@/icons/drawer-icons";
+import { BellIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
+import RichTextComposer, { type RichTextComposerRef } from "./RichTextComposer";
 import type { DrawerAttachment, DrawerComposerTarget } from "./types";
 
 export type CommentComposerProps = {
@@ -23,6 +25,14 @@ export type CommentComposerProps = {
   mention_target: DrawerComposerTarget | null;
   mention_matches: BoardPersonOption[];
   onPickMention: (person: BoardPersonOption) => void;
+  /** All people who could be flagged via "Notify" — same roster as `mention_matches` draws from, unfiltered. */
+  mentionable_people?: BoardPersonOption[];
+  notify_target?: DrawerComposerTarget | null;
+  onToggleNotifyPicker?: (target: DrawerComposerTarget) => void;
+  onCloseNotifyPicker?: () => void;
+  onPickNotifyPerson?: (person: BoardPersonOption) => void;
+  notified_people?: BoardPersonOption[];
+  onRemoveNotifyPerson?: (person_id: string) => void;
   emoji_palette_target: DrawerComposerTarget | null;
   onToggleEmojiPalette: (target: DrawerComposerTarget) => void;
   onCloseEmojiPalette: () => void;
@@ -48,6 +58,13 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   mention_target,
   mention_matches,
   onPickMention,
+  mentionable_people = [],
+  notify_target,
+  onToggleNotifyPicker,
+  onCloseNotifyPicker,
+  onPickNotifyPerson,
+  notified_people = [],
+  onRemoveNotifyPerson,
   emoji_palette_target,
   onToggleEmojiPalette,
   onCloseEmojiPalette,
@@ -58,32 +75,92 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
-  const textarea_ref = useRef<HTMLTextAreaElement>(null);
+  const notify_trigger_ref = useRef<HTMLButtonElement>(null);
+  const notify_picker_ref = useRef<HTMLDivElement>(null);
+  const editor_root_ref = useRef<HTMLDivElement>(null);
+  const rich_text_ref = useRef<RichTextComposerRef>(null);
   const is_update = variant === "update";
-  const has_draft = value.trim().length > 0;
+  const has_draft = value.replace(/<[^>]*>/g, "").trim().length > 0 || value.includes("<img");
   const show_mention_picker = mention_target === target && mention_matches.length > 0;
+  const show_notify_picker = notify_target === target;
   const show_emoji_palette = emoji_palette_target === target;
+  const can_notify = Boolean(onToggleNotifyPicker && onPickNotifyPerson);
+
+  const handlePickMention = (person: BoardPersonOption) => {
+    rich_text_ref.current?.insertMentionText(person.name);
+    onPickMention(person);
+  };
+
+  const handleInsertEmoji = (emoji: string) => {
+    rich_text_ref.current?.insertText(emoji);
+    onInsertEmoji(emoji);
+  };
 
   // Mac's own emoji-picker chord (Control + Command + Space), scoped to this
-  // composer's own textarea so it opens this draft's palette rather than
-  // whichever one last toggled.
-  useEmojiShortcut(textarea_ref, () => onToggleEmojiPalette(target));
+  // composer's own editable root so it opens this draft's palette rather
+  // than whichever one last toggled.
+  useEmojiShortcut(editor_root_ref, () => onToggleEmojiPalette(target));
+
+  // Unlike the `@mention` picker (which closes itself once the trigger text
+  // no longer matches), the Notify picker is opened by an explicit button
+  // press and has no such natural close signal — dismiss it on any click
+  // outside its own trigger + dropdown instead.
+  useEffect(() => {
+    if (!show_notify_picker || !onCloseNotifyPicker) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const target_node = event.target as Node;
+      if (notify_trigger_ref.current?.contains(target_node)) return;
+      if (notify_picker_ref.current?.contains(target_node)) return;
+      onCloseNotifyPicker();
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [show_notify_picker, onCloseNotifyPicker]);
 
   return (
     <div className={`flex ${is_update ? "gap-[11px]" : "gap-2.5"}`}>
       <PersonAvatar person={avatar_person} size={is_update ? 34 : 27} className="mt-0.5" />
       <div className="relative flex-1">
-        <textarea
-          ref={textarea_ref}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          placeholder={placeholder}
-          className={`w-full resize-none overflow-hidden rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[11px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-[height] duration-100 placeholder:text-shell-text-faint focus:border-[#00c875] ${
-            is_update ? "h-16" : has_draft ? "h-[52px]" : "h-10"
-          }`}
-        />
+        {notified_people.length > 0 && (
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <BellIcon size={12} className="text-shell-text-faint" />
+            {notified_people.map((person) => (
+              <span
+                key={person.id}
+                className="flex items-center gap-1 rounded-full bg-shell-hover-strong px-2 py-0.5 text-[11.5px] font-semibold text-shell-text-secondary"
+              >
+                {person.name}
+                {onRemoveNotifyPerson && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveNotifyPerson(person.id)}
+                    aria-label={`Stop notifying ${person.name}`}
+                    className="text-shell-text-faint hover:text-shell-text"
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        )}
 
-        {show_mention_picker && <MentionPicker people={mention_matches} onPick={onPickMention} />}
+        <div ref={editor_root_ref}>
+          <RichTextComposer
+            ref={rich_text_ref}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
+          />
+        </div>
+
+        {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
+        {show_notify_picker && onPickNotifyPerson && (
+          <div ref={notify_picker_ref}>
+            <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />
+          </div>
+        )}
 
         {(is_update || has_draft) && (
           <div className="mt-2.5 flex items-center justify-between gap-2.5">
@@ -101,10 +178,26 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                   anchor_el={emoji_trigger_ref.current}
                   is_open={show_emoji_palette}
                   onClose={onCloseEmojiPalette}
-                  onPick={onInsertEmoji}
+                  onPick={handleInsertEmoji}
                   mode="insert"
                 />
               </span>
+              {can_notify && (
+                <span className="relative">
+                  <button
+                    ref={notify_trigger_ref}
+                    type="button"
+                    onClick={() => onToggleNotifyPicker?.(target)}
+                    aria-label="Notify someone"
+                    title="Notify someone without mentioning them"
+                    className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
+                      show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
+                    }`}
+                  >
+                    <BellIcon size={is_update ? 16 : 15} />
+                  </button>
+                </span>
+              )}
               {is_update && onAddFiles && (
                 <>
                   <button

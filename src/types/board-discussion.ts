@@ -29,6 +29,12 @@ export type BoardDiscussionCommentAttachmentDto = {
   download_url: string;
 };
 
+export type BoardDiscussionCommentSeenByDto = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+};
+
 /** A top-level comment ("update"), or a reply when `parent_id` is set. Replies never nest further. */
 export type BoardDiscussionCommentDto = {
   id: number;
@@ -42,6 +48,9 @@ export type BoardDiscussionCommentDto = {
   liked_by_me: boolean;
   view_count: number;
   seen_by_me: boolean;
+  seen_by: BoardDiscussionCommentSeenByDto[];
+  pinned: boolean;
+  notified_user_ids: number[];
   reactions: BoardDiscussionCommentReactionDto[];
   mentioned_user_ids: number[];
   attachments: BoardDiscussionCommentAttachmentDto[];
@@ -53,5 +62,7 @@ export type CreateBoardDiscussionCommentPayload = {
   /** Set to reply under an existing top-level comment. */
   parent_id?: number;
   mentioned_user_ids?: number[];
+  /** Explicitly flagged via the composer's "Notify" action — distinct from `mentioned_user_ids`, never shown inline in the body. */
+  notified_user_ids?: number[];
   attachments?: File[];
 };

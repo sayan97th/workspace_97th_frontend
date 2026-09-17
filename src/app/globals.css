@@ -423,3 +423,76 @@
   letter-spacing: 0.02em !important;
   text-transform: uppercase !important;
 }
+
+/*
+ * `RichTextComposer`'s Tiptap editor — the library's `Placeholder` extension
+ * only marks the empty first paragraph with `data-placeholder` and an
+ * `is-editor-empty` class; the actual placeholder text is rendered purely
+ * through this `::before` rule, which Tiptap's own docs ask every consumer
+ * to supply themselves rather than baking into the extension.
+ */
+.shell-rich-text-editor.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: var(--color-shell-text-faint);
+}
+.shell-rich-text-editor.ProseMirror {
+  outline: none;
+}
+.shell-rich-text-editor.ProseMirror p {
+  margin: 0 0 0.5em 0;
+}
+.shell-rich-text-editor.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+.shell-rich-text-editor.ProseMirror ul,
+.shell-rich-text-editor.ProseMirror ol {
+  padding-left: 1.25em;
+  margin: 0 0 0.5em 0;
+}
+.shell-rich-text-editor.ProseMirror a {
+  color: #7fb2ff;
+  text-decoration: underline;
+}
+.shell-rich-text-editor.ProseMirror img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.35em 0;
+}
+
+/* Read-only rendering of a comment/update body (`RichTextContent`) — same
+ * list/link/image rules as the editor above, minus anything editor-only. */
+.shell-rich-text-content p {
+  margin: 0 0 0.5em 0;
+}
+.shell-rich-text-content p:last-child {
+  margin-bottom: 0;
+}
+.shell-rich-text-content ul,
+.shell-rich-text-content ol {
+  padding-left: 1.25em;
+  margin: 0 0 0.5em 0;
+}
+.shell-rich-text-content a {
+  color: #7fb2ff;
+  text-decoration: underline;
+}
+.shell-rich-text-content .rich-text-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0.35em 0;
+}
+.shell-rich-text-content .rich-text-image-gallery img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+.shell-rich-text-content img:not(.rich-text-image-gallery img) {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 0.35em 0;
+}

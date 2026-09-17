@@ -55,12 +55,13 @@ export type FeedUpdate = {
   /** Relative date label, e.g. "2 days ago". */
   date_label: string;
   breadcrumb: FeedBreadcrumb;
-  /** Raw comment body — mention highlighting is applied at render time via `renderMentionText`. */
+  /** Raw comment body (sanitized HTML) — rendered via `RichTextContent`. */
   body: string;
   /** Optional read/view count shown bottom-right of the body. */
   view_count?: number;
   is_unread: boolean;
   is_bookmarked: boolean;
+  pinned: boolean;
   /** Which tabs (beyond the catch-all "all") this update belongs to. */
   categories: UpdateFeedTabId[];
   /** Frontend route to navigate to when the card (or its breadcrumb) is opened. */

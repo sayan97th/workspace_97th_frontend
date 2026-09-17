@@ -44,6 +44,12 @@ export const feedService = {
     return response.data;
   },
 
+  /** POST /api/feed/updates/{id}/pin */
+  async togglePin(id: string): Promise<FeedUpdateDto> {
+    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/pin`);
+    return response.data;
+  },
+
   /** POST /api/feed/updates/{id}/seen */
   async markSeen(id: string): Promise<FeedUpdateDto> {
     const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`);

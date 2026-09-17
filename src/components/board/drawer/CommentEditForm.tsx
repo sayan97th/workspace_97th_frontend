@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import RichTextComposer from "./RichTextComposer";
 
 export type CommentEditFormProps = {
   value: string;
@@ -10,25 +11,24 @@ export type CommentEditFormProps = {
 };
 
 /**
- * Inline "edit this comment/reply" form — a textarea plus Save/Cancel, shown
- * in place of a comment or reply's body while it's being edited. Shared by
- * every drawer flavor the same way `CommentAttachmentChip` already is.
+ * Inline "edit this comment/reply" form — a rich text box plus Save/Cancel,
+ * shown in place of a comment or reply's body while it's being edited.
+ * Shared by every drawer flavor the same way `CommentAttachmentChip` already
+ * is. Uses the same `RichTextComposer` as the main composer (the body being
+ * edited is already sanitized HTML), just without its `@mention`/emoji/attach
+ * affordances — those apply to composing a new update, not touching up one
+ * already posted.
  */
 const CommentEditForm: React.FC<CommentEditFormProps> = ({ value, onChange, onSave, onCancel, autoFocus }) => (
   <div className="mt-1.5">
-    <textarea
-      autoFocus={autoFocus}
+    <RichTextComposer
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-          event.preventDefault();
-          onSave();
-        }
-        if (event.key === "Escape") onCancel();
-      }}
-      rows={2}
-      className="w-full resize-y rounded-lg border border-shell-border-strong bg-shell-panel px-3 py-2 text-[13.5px] leading-relaxed text-shell-text-secondary outline-none focus:border-[#00c875]"
+      onChange={onChange}
+      placeholder="Edit your update"
+      min_height_class="min-h-10"
+      onEnterSubmit={onSave}
+      onEscape={onCancel}
+      autoFocus={autoFocus}
     />
     <div className="mt-1.5 flex items-center gap-2">
       <button

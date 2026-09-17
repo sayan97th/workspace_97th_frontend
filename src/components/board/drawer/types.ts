@@ -41,6 +41,12 @@ export type DrawerReply = {
 /** A top-level comment ("update"), which additionally tracks seen state, attachments and replies. */
 export type DrawerComment = DrawerReply & {
   seen: boolean;
+  /** Everyone who has viewed this update, for the live "seen by" avatar stack — empty on client-side-only mock data. */
+  seen_by: BoardPersonOption[];
+  /** True once pinned via the composer's pin action — pinned updates sort ahead of the rest of the thread. Absent (falsy) on client-side-only mock data. */
+  pinned?: boolean;
+  /** Ids of people explicitly flagged via "Notify", distinct from `@mentions` in the body. Absent on client-side-only mock data. */
+  notified_user_ids?: string[];
   attachments: DrawerAttachment[];
   replies: DrawerReply[];
 };
@@ -151,6 +157,15 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   mention_matches: BoardPersonOption[];
   pickMention: (person: BoardPersonOption) => void;
 
+  /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
+  notify_target: DrawerComposerTarget | null;
+  toggleNotifyPicker: (target: DrawerComposerTarget) => void;
+  closeNotifyPicker: () => void;
+  /** People picked via "Notify" for the in-progress composer/reply draft, keyed the same way as `DrawerComposerTarget`. */
+  notified_people_by_target: Record<string, BoardPersonOption[]>;
+  pickNotifyPerson: (person: BoardPersonOption) => void;
+  removeNotifyPerson: (target: DrawerComposerTarget, person_id: string) => void;
+
   emoji_palette_target: DrawerComposerTarget | null;
   toggleEmojiPalette: (target: DrawerComposerTarget) => void;
   closeEmojiPalette: () => void;
@@ -163,6 +178,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
 
   toggleLike: (comment_id: string, reply_id?: string) => void;
   toggleSeen: (comment_id: string) => void;
+  /** Toggles whether a top-level comment is pinned — pinned updates sort ahead of the rest of the thread. */
+  togglePin: (comment_id: string) => void;
   /** Deletes a top-level comment, or (when `reply_id` is given) just that reply. Author-only — also enforced server-side. */
   deleteComment: (comment_id: string, reply_id?: string) => void;
 

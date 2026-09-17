@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { boardDiscussionService } from "@/services/board-discussion.service";
+import { boardMuteService } from "@/services/board-mute.service";
 import type { BoardPersonOption } from "../toolbar/types";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
@@ -10,9 +11,11 @@ const createId = () => Math.random().toString(36).slice(2, 10);
 
 const MENTION_TRIGGER = /@([\w]*)$/;
 
-/** Inserts `@Full Name ` in place of a trailing `@partial` token, or appends it if there's no in-progress mention. */
-const insertMention = (text: string, person_name: string): string =>
-  MENTION_TRIGGER.test(text) ? text.replace(MENTION_TRIGGER, `@${person_name} `) : `${text}@${person_name} `;
+/** Strips HTML tags for `@mention` trigger detection over a rich text composer's HTML body. */
+const stripHtmlTags = (html: string): string => html.replace(/<[^>]*>/g, "");
+
+/** A rich text composer's "empty" document still serializes to `<p></p>`, not `""` — this checks for genuinely no text and no inline image instead of relying on string emptiness. */
+const isRichTextEmpty = (html: string): boolean => stripHtmlTags(html).trim().length === 0 && !html.includes("<img");
 
 /** Bumps (or removes) a single emoji's reaction pill, toggling whether the current user reacted with it — a comment can carry any number of these in parallel, one per distinct emoji. */
 const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReaction[] => {
@@ -63,6 +66,10 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   /** Whether the "Board updates" badge should read as unseen (red) rather than caught-up (gray) — true until the drawer is opened once, since opening it marks the board as viewed server-side. */
   has_unseen_comments: boolean;
 
+  /** Whether the current user has muted this board's notifications — fetched once the drawer opens. */
+  is_muted: boolean;
+  toggleMute: () => void;
+
   composer_text: string;
   composer_attachments: DrawerAttachment[];
   onComposerTextChange: (value: string) => void;
@@ -78,6 +85,15 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   mention_matches: BoardPersonOption[];
   pickMention: (person: BoardPersonOption) => void;
 
+  /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
+  notify_target: DrawerComposerTarget | null;
+  toggleNotifyPicker: (target: DrawerComposerTarget) => void;
+  closeNotifyPicker: () => void;
+  /** People picked via "Notify" for the in-progress composer/reply draft, keyed the same way as `DrawerComposerTarget`. */
+  notified_people_by_target: Record<string, BoardPersonOption[]>;
+  pickNotifyPerson: (person: BoardPersonOption) => void;
+  removeNotifyPerson: (target: DrawerComposerTarget, person_id: string) => void;
+
   emoji_palette_target: DrawerComposerTarget | null;
   toggleEmojiPalette: (target: DrawerComposerTarget) => void;
   closeEmojiPalette: () => void;
@@ -90,6 +106,8 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
 
   toggleLike: (comment_id: string, reply_id?: string) => void;
   toggleSeen: (comment_id: string) => void;
+  /** Toggles whether a top-level comment is pinned — pinned updates sort ahead of the rest of the thread. */
+  togglePin: (comment_id: string) => void;
   /** Deletes a top-level comment, or (when `reply_id` is given) just that reply. Author-only — also enforced server-side. */
   deleteComment: (comment_id: string, reply_id?: string) => void;
 
@@ -132,11 +150,17 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   const [mention_target, setMentionTarget] = useState<DrawerComposerTarget | null>(null);
   const [mention_query, setMentionQuery] = useState("");
+  const [notify_target, setNotifyTarget] = useState<DrawerComposerTarget | null>(null);
+  /** Ids of people picked via "Notify" for the in-progress composer/reply draft, keyed the same way as `DrawerComposerTarget`. */
+  const [notified_ids_by_target, setNotifiedIdsByTarget] = useState<Record<string, string[]>>({});
   const [emoji_palette_target, setEmojiPaletteTarget] = useState<DrawerComposerTarget | null>(null);
   const [reaction_palette_id, setReactionPaletteId] = useState<string | null>(null);
+  const [is_muted, setIsMuted] = useState(false);
 
   const detectMention = (target: DrawerComposerTarget, value: string) => {
-    const match = MENTION_TRIGGER.exec(value);
+    // `value` is the composer's HTML body — strip tags first, see
+    // `useBoardItemDrawer`'s own `detectMention` for why.
+    const match = MENTION_TRIGGER.exec(stripHtmlTags(value));
     if (match) {
       setMentionTarget(target);
       setMentionQuery(match[1].toLowerCase());
@@ -150,12 +174,19 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setComposerText("");
     setComposerAttachmentDrafts([]);
     setMentionTarget(null);
+    setNotifyTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
     setMentionIdsByTarget({});
+    setNotifiedIdsByTarget({});
     setCommentsError(null);
     setEditingTarget(null);
     setEditDraft("");
+
+    boardMuteService
+      .listMutedBoards()
+      .then((muted_boards) => setIsMuted(muted_boards.some((board) => board.board_id === board_id)))
+      .catch(() => {});
 
     setCommentsLoading(true);
     boardDiscussionService
@@ -171,6 +202,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const close = () => {
     setIsOpen(false);
     setMentionTarget(null);
+    setNotifyTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
     setEditingTarget(null);
@@ -187,17 +219,12 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     detectMention(comment_id, value);
   };
 
+  // Text insertion itself happens in `RichTextComposer` (via its imperative
+  // ref, called by `CommentComposer`), since only the live editor instance
+  // knows where the cursor actually is — this only tracks which ids the
+  // in-progress draft has mentioned, for the eventual `postComment()` payload.
   const pickMention = (person: BoardPersonOption) => {
     if (!mention_target) return;
-    if (mention_target === "composer") {
-      setComposerText((current) => insertMention(current, person.name));
-    } else {
-      const target_comment_id = mention_target;
-      setReplyTextByComment((current) => ({
-        ...current,
-        [target_comment_id]: insertMention(current[target_comment_id] ?? "", person.name),
-      }));
-    }
     setMentionIdsByTarget((current) => ({
       ...current,
       [mention_target]: [...(current[mention_target] ?? []), person.id],
@@ -205,20 +232,53 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setMentionTarget(null);
   };
 
+  const toggleNotifyPicker = (target: DrawerComposerTarget) =>
+    setNotifyTarget((current) => (current === target ? null : target));
+  const closeNotifyPicker = () => setNotifyTarget(null);
+
+  /** Adds `person` to the notify list for whichever composer/reply the picker is currently open for — a no-op if they're already on it. */
+  const pickNotifyPerson = (person: BoardPersonOption) => {
+    if (!notify_target) return;
+    setNotifiedIdsByTarget((current) => {
+      const existing = current[notify_target] ?? [];
+      if (existing.includes(person.id)) return current;
+      return { ...current, [notify_target]: [...existing, person.id] };
+    });
+    setNotifyTarget(null);
+  };
+
+  const removeNotifyPerson = (target: DrawerComposerTarget, person_id: string) =>
+    setNotifiedIdsByTarget((current) => ({
+      ...current,
+      [target]: (current[target] ?? []).filter((id) => id !== person_id),
+    }));
+
+  const notified_people_by_target = useMemo(() => {
+    const result: Record<string, BoardPersonOption[]> = {};
+    for (const [target, ids] of Object.entries(notified_ids_by_target)) {
+      result[target] = ids
+        .map((id) => config.mentionable_people.find((person) => person.id === id))
+        .filter((person): person is BoardPersonOption => person !== undefined);
+    }
+    return result;
+  }, [notified_ids_by_target, config.mentionable_people]);
+
   const postComment = () => {
     const body = composer_text.trim();
-    if (!body && composer_attachment_drafts.length === 0) return;
+    if (isRichTextEmpty(body) && composer_attachment_drafts.length === 0) return;
 
     const mentioned_user_ids = (mention_ids_by_target.composer ?? []).map(Number);
+    const notified_user_ids = (notified_ids_by_target.composer ?? []).map(Number);
     const files = composer_attachment_drafts.map((draft) => draft.file);
     setCommentsError(null);
     boardDiscussionService
-      .postComment(board_id, { body, mentioned_user_ids, attachments: files })
+      .postComment(board_id, { body, mentioned_user_ids, notified_user_ids, attachments: files })
       .then((dto) => {
         setComments((current) => [mapDiscussionCommentDtoToDrawerComment(dto), ...current]);
         setComposerText("");
         setComposerAttachmentDrafts([]);
         setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
+        setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
       })
       .catch(() => setCommentsError("Couldn't post your update. Please try again."));
   };
@@ -237,12 +297,13 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   const postReply = (comment_id: string) => {
     const body = (reply_text_by_comment[comment_id] ?? "").trim();
-    if (!body) return;
+    if (isRichTextEmpty(body)) return;
 
     const mentioned_user_ids = (mention_ids_by_target[comment_id] ?? []).map(Number);
+    const notified_user_ids = (notified_ids_by_target[comment_id] ?? []).map(Number);
     setCommentsError(null);
     boardDiscussionService
-      .postComment(board_id, { body, parent_id: Number(comment_id), mentioned_user_ids })
+      .postComment(board_id, { body, parent_id: Number(comment_id), mentioned_user_ids, notified_user_ids })
       .then((dto) => {
         const new_reply = mapDiscussionCommentDtoToDrawerReply(dto);
         setComments((current) =>
@@ -252,6 +313,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
         );
         setReplyTextByComment((current) => ({ ...current, [comment_id]: "" }));
         setMentionIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
+        setNotifiedIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
       })
       .catch(() => setCommentsError("Couldn't post your reply. Please try again."));
   };
@@ -260,16 +322,10 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setEmojiPaletteTarget((current) => (current === target ? null : target));
   const closeEmojiPalette = () => setEmojiPaletteTarget(null);
 
-  const insertEmoji = (emoji: string) => {
-    if (!emoji_palette_target) return;
-    if (emoji_palette_target === "composer") {
-      setComposerText((current) => current + emoji);
-    } else {
-      const target_comment_id = emoji_palette_target;
-      setReplyTextByComment((current) => ({ ...current, [target_comment_id]: (current[target_comment_id] ?? "") + emoji }));
-    }
-    setEmojiPaletteTarget(null);
-  };
+  // The actual emoji insertion happens in `RichTextComposer` (via its
+  // imperative ref, called by `CommentComposer`) — this only closes the
+  // palette, same as `EmojiPalette`'s own `onClose` already does.
+  const insertEmoji = () => setEmojiPaletteTarget(null);
 
   const toggleReactionPalette = (id: string) => setReactionPaletteId((current) => (current === id ? null : id));
   const closeReactionPalette = () => setReactionPaletteId(null);
@@ -398,7 +454,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     if (!editing_target) return;
     const { comment_id, reply_id } = editing_target;
     const body = edit_draft.trim();
-    if (!body) return;
+    if (isRichTextEmpty(body)) return;
 
     const previous_comments = comments;
     applyBodyEdit(comment_id, reply_id, body);
@@ -421,6 +477,30 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
         current.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
       );
       setCommentsError("Couldn't update seen state. Please try again.");
+    });
+  };
+
+  const toggleMute = () => {
+    const next_muted = !is_muted;
+    setIsMuted(next_muted);
+    const request = next_muted ? boardMuteService.muteBoard(board_id) : boardMuteService.unmuteBoard(board_id);
+    request.catch(() => {
+      setIsMuted(!next_muted);
+      setCommentsError("Couldn't update mute state. Please try again.");
+    });
+  };
+
+  const applyPinToggle = (comment_id: string) =>
+    setComments((current) =>
+      current.map((comment) => (comment.id === comment_id ? { ...comment, pinned: !comment.pinned } : comment))
+    );
+
+  const togglePin = (comment_id: string) => {
+    applyPinToggle(comment_id);
+
+    boardDiscussionService.togglePin(board_id, Number(comment_id)).catch(() => {
+      applyPinToggle(comment_id);
+      setCommentsError("Couldn't update pinned state. Please try again.");
     });
   };
 
@@ -459,6 +539,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     comments_error,
     comment_count,
     has_unseen_comments,
+    is_muted,
+    toggleMute,
 
     composer_text,
     composer_attachments,
@@ -475,6 +557,13 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     mention_matches,
     pickMention,
 
+    notify_target,
+    toggleNotifyPicker,
+    closeNotifyPicker,
+    notified_people_by_target,
+    pickNotifyPerson,
+    removeNotifyPerson,
+
     emoji_palette_target,
     toggleEmojiPalette,
     closeEmojiPalette,
@@ -487,6 +576,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
     toggleLike,
     toggleSeen,
+    togglePin,
     deleteComment,
 
     editing_key,

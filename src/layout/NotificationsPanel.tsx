@@ -1,14 +1,16 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import SlideOverDrawer from "./SlideOverDrawer";
 import NotificationItem from "./NotificationItem";
+import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
 import {
-  notification_group_label,
-  notification_mute_hint,
+  notification_date_groups,
+  notificationDateGroupOf,
   notification_search_placeholder,
   notification_tabs,
+  type NotificationDateGroup,
   type NotificationTabId,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
@@ -18,6 +20,8 @@ type NotificationsPanelProps = {
   onClose: () => void;
   notifications: WorkspaceNotification[];
   onSelectNotification: (id: string) => void;
+  onMarkAllAsRead?: () => void;
+  onDismissNotification?: (id: string) => void;
 };
 
 /** Keeps a notification only when it matches the currently active tab. */
@@ -52,12 +56,15 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onClose,
   notifications,
   onSelectNotification,
+  onMarkAllAsRead,
+  onDismissNotification,
 }) => {
   const { resolved_theme, toggleTheme } = useTheme();
   const [active_tab, setActiveTab] = useState<NotificationTabId>("all");
   const [search_query, setSearchQuery] = useState("");
   const [unread_only, setUnreadOnly] = useState(false);
-  const [is_hint_visible, setIsHintVisible] = useState(true);
+  const [is_preferences_open, setIsPreferencesOpen] = useState(false);
+  const preferences_trigger_ref = useRef<HTMLButtonElement>(null);
 
   const visible_notifications = useMemo(
     () =>
@@ -70,16 +77,38 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
     [notifications, active_tab, search_query, unread_only]
   );
 
+  const grouped_notifications = useMemo(() => {
+    const groups = new Map<NotificationDateGroup, WorkspaceNotification[]>();
+    for (const notification of visible_notifications) {
+      const group_id = notificationDateGroupOf(notification.created_at);
+      groups.set(group_id, [...(groups.get(group_id) ?? []), notification]);
+    }
+    return notification_date_groups
+      .map((group) => ({ ...group, notifications: groups.get(group.id) ?? [] }))
+      .filter((group) => group.notifications.length > 0);
+  }, [visible_notifications]);
+
+  const has_unread = notifications.some((notification) => notification.is_unread);
+
   const header_icon_button =
     "flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover";
 
   return (
     <SlideOverDrawer is_open={is_open} onClose={onClose} aria_label="Notifications">
-      {/* Sticky header: title, actions, tabs, search + toggle, mute hint */}
+      {/* Sticky header: title, actions, tabs, search + toggle */}
       <div className="flex-none px-5 pt-5">
         <div className="flex items-center justify-between">
           <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notifications</h2>
           <div className="flex items-center gap-0.5">
+            {onMarkAllAsRead && has_unread && (
+              <button
+                type="button"
+                onClick={onMarkAllAsRead}
+                className="mr-1 rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+              >
+                Mark all as read
+              </button>
+            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -88,9 +117,20 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
             >
               <SunIcon size={16} />
             </button>
-            <button type="button" className={header_icon_button} aria-label="Notification settings">
+            <button
+              ref={preferences_trigger_ref}
+              type="button"
+              onClick={() => setIsPreferencesOpen((previous) => !previous)}
+              className={header_icon_button}
+              aria-label="Notification settings"
+            >
               <MoreDotsIcon size={16} />
             </button>
+            <NotificationPreferencesPanel
+              anchor_el={preferences_trigger_ref.current}
+              is_open={is_preferences_open}
+              onClose={() => setIsPreferencesOpen(false)}
+            />
             <button
               type="button"
               onClick={onClose}
@@ -157,51 +197,30 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
           </button>
         </div>
 
-        {/* Dismissible board-mute hint */}
-        {is_hint_visible && (
-          <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-shell-border bg-shell-panel-alt p-3">
-            <span
-              className="h-[38px] w-[44px] flex-none rounded-[7px] border border-shell-border"
-              style={{
-                backgroundImage:
-                  "repeating-linear-gradient(120deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 10px)",
-              }}
-              aria-hidden="true"
-            />
-            <span className="flex-1 text-[12.5px] leading-[1.5] text-shell-text-secondary">
-              {notification_mute_hint}
-            </span>
-            <button
-              type="button"
-              onClick={() => setIsHintVisible(false)}
-              className="flex-none text-shell-text-muted transition-colors hover:text-shell-text"
-              aria-label="Dismiss hint"
-            >
-              <CloseIcon size={14} />
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Scrollable list */}
+      {/* Scrollable list, grouped by date */}
       <div className="shell-scrollbar flex-1 overflow-y-auto px-5 pb-6 pt-[18px]">
-        <div className="mb-3 text-[12.5px] font-semibold text-shell-text-muted">
-          {notification_group_label}
-        </div>
         {visible_notifications.length === 0 ? (
           <p className="pt-6 text-center text-[13px] text-shell-text-muted">
             You&apos;re all caught up.
           </p>
         ) : (
-          <div className="flex flex-col gap-2.5">
-            {visible_notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onSelect={onSelectNotification}
-              />
-            ))}
-          </div>
+          grouped_notifications.map((group) => (
+            <div key={group.id} className="mb-4 last:mb-0">
+              <div className="mb-3 text-[12.5px] font-semibold text-shell-text-muted">{group.label}</div>
+              <div className="flex flex-col gap-2.5">
+                {group.notifications.map((notification) => (
+                  <NotificationItem
+                    key={notification.id}
+                    notification={notification}
+                    onSelect={onSelectNotification}
+                    onDismiss={onDismissNotification}
+                  />
+                ))}
+              </div>
+            </div>
+          ))
         )}
       </div>
     </SlideOverDrawer>

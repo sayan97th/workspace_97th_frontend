@@ -22,6 +22,7 @@ export const PROFILE_NOTIFICATION_SEED: ProfileNotificationSeed[] = [
   { key: "replied_thread", label: "Replied", sub: "to a thread I commented on or reacted to", category: "Communication" },
   { key: "replied_update", label: "Replied", sub: "to an update I wrote", category: "Communication" },
   { key: "reactions", label: "Reactions", sub: "to my update", category: "Communication" },
+  { key: "notified", label: "Notified me directly", sub: "on an update, without mentioning me", category: "Communication" },
   { key: "assigned", label: "Assigned me", sub: "to an item", category: "Collaboration" },
   { key: "invitations", label: "Invitations", sub: "to workspace, board, doc, item, or team", category: "Collaboration" },
   { key: "template_changes", label: "Template changes", sub: "by the template owner", category: "Collaboration" },

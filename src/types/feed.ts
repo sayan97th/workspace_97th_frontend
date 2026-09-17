@@ -20,6 +20,7 @@ export type FeedUpdateDto = {
   is_mentioned: boolean;
   is_bookmarked: boolean;
   mentioned_user_ids: number[];
+  pinned: boolean;
 };
 
 /**
@@ -53,6 +54,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
     view_count: dto.view_count > 0 ? dto.view_count : undefined,
     is_unread: dto.is_unread,
     is_bookmarked: dto.is_bookmarked,
+    pinned: dto.pinned,
     categories,
     link: dto.link,
     show_actions: true,

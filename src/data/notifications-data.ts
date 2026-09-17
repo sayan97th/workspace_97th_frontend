@@ -50,7 +50,40 @@ export type WorkspaceNotification = {
   category: NotificationCategory;
   /** Frontend route to navigate to on click, e.g. `/boards/12`. */
   link?: string;
+  /** Raw ISO timestamp, used to bucket the list into date sections (Today/Yesterday/This week/Older). */
+  created_at: string;
 };
+
+/** One of the list's date-grouped sections. */
+export type NotificationDateGroup = "today" | "yesterday" | "this_week" | "older";
+
+const NOTIFICATION_DATE_GROUP_LABELS: Record<NotificationDateGroup, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  this_week: "This week",
+  older: "Older",
+};
+
+/** Buckets a notification's raw `created_at` into a date section for the drawer's grouped list. */
+export function notificationDateGroupOf(created_at: string): NotificationDateGroup {
+  const date = new Date(created_at);
+  const now = new Date();
+  const start_of_today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const start_of_yesterday = new Date(start_of_today);
+  start_of_yesterday.setDate(start_of_yesterday.getDate() - 1);
+  const start_of_week = new Date(start_of_today);
+  start_of_week.setDate(start_of_week.getDate() - 7);
+
+  if (date >= start_of_today) return "today";
+  if (date >= start_of_yesterday) return "yesterday";
+  if (date >= start_of_week) return "this_week";
+  return "older";
+}
+
+/** Display order + label for each date group. */
+export const notification_date_groups: { id: NotificationDateGroup; label: string }[] = (
+  ["today", "yesterday", "this_week", "older"] as const
+).map((id) => ({ id, label: NOTIFICATION_DATE_GROUP_LABELS[id] }));
 
 /** Tabs shown in the drawer header, in display order. */
 export const notification_tabs: NotificationTab[] = [
@@ -58,13 +91,6 @@ export const notification_tabs: NotificationTab[] = [
   { id: "mentioned", label: "Mentioned" },
   { id: "assigned", label: "Assigned to me" },
 ];
-
-/** Section heading shown above the list. */
-export const notification_group_label = "Older Notifications";
-
-/** Copy for the dismissible board-mute hint card. */
-export const notification_mute_hint =
-  "Mute notifications from specific boards using the 3-dot menu within the notification.";
 
 /** Placeholder for the search input in the drawer header. */
 export const notification_search_placeholder =

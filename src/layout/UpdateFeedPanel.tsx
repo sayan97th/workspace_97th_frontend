@@ -57,7 +57,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const [read_filter, setReadFilter] = useState<FeedReadFilter>("all");
   const [is_filter_open, setIsFilterOpen] = useState(false);
 
-  const { updates, boards, bookmarkUpdate, likeUpdate, replyToUpdate, scheduleReply, markSeen } =
+  const { updates, boards, bookmarkUpdate, likeUpdate, pinUpdate, replyToUpdate, scheduleReply, markSeen } =
     useFeedUpdates({ tab: active_tab, board_id: active_board });
 
   const visible_updates = useMemo(
@@ -220,6 +220,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   update={update}
                   onLike={likeUpdate}
                   onBookmark={bookmarkUpdate}
+                  onPin={pinUpdate}
                   onReply={replyToUpdate}
                   onSchedule={scheduleReply}
                   onMarkSeen={markSeen}

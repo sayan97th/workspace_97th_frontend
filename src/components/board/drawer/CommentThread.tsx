@@ -2,6 +2,7 @@
 import React, { useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
+import { PinIcon } from "@/icons/board-icons";
 import { LikeIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import CommentComposer from "./CommentComposer";
@@ -9,7 +10,7 @@ import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EmojiPalette from "./EmojiPalette";
 import { formatReactorNames } from "./reactionFormatting";
-import { renderMentionText } from "./renderMentionText";
+import RichTextContent from "./RichTextContent";
 import type { DrawerComment, DrawerComposerTarget, DrawerReaction, DrawerReply } from "./types";
 
 export type CommentThreadProps = {
@@ -17,6 +18,7 @@ export type CommentThreadProps = {
   current_user: BoardPersonOption;
   onToggleLike: (comment_id: string, reply_id?: string) => void;
   onToggleSeen: (comment_id: string) => void;
+  onTogglePin?: (comment_id: string) => void;
   onDeleteComment: (comment_id: string, reply_id?: string) => void;
   editing_key: string | null;
   edit_draft: string;
@@ -34,6 +36,13 @@ export type CommentThreadProps = {
   mention_target: DrawerComposerTarget | null;
   mention_matches: BoardPersonOption[];
   onPickMention: (person: BoardPersonOption) => void;
+  mentionable_people?: BoardPersonOption[];
+  notify_target?: DrawerComposerTarget | null;
+  onToggleNotifyPicker?: (target: DrawerComposerTarget) => void;
+  onCloseNotifyPicker?: () => void;
+  onPickNotifyPerson?: (person: BoardPersonOption) => void;
+  notified_people?: BoardPersonOption[];
+  onRemoveNotifyPerson?: (target: DrawerComposerTarget, person_id: string) => void;
   emoji_palette_target: DrawerComposerTarget | null;
   onToggleEmojiPalette: (target: DrawerComposerTarget) => void;
   onCloseEmojiPalette: () => void;
@@ -152,7 +161,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
         {is_editing ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <div className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary">{renderMentionText(reply.body)}</div>
+          <RichTextContent html={reply.body} className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary" />
         )}
         <ReactionsRow
           reactions={reply.reactions}
@@ -203,6 +212,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   current_user,
   onToggleLike,
   onToggleSeen,
+  onTogglePin,
   onDeleteComment,
   editing_key,
   edit_draft,
@@ -220,6 +230,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   mention_target,
   mention_matches,
   onPickMention,
+  mentionable_people,
+  notify_target,
+  onToggleNotifyPicker,
+  onCloseNotifyPicker,
+  onPickNotifyPerson,
+  notified_people,
+  onRemoveNotifyPerson,
   emoji_palette_target,
   onToggleEmojiPalette,
   onCloseEmojiPalette,
@@ -229,11 +246,22 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === comment.id;
 
-  const focusReplyComposer = () => reply_composer_ref.current?.querySelector("textarea")?.focus();
+  const focusReplyComposer = () =>
+    (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
 
   return (
-    <div className="mt-4 overflow-hidden rounded-[14px] border border-shell-border bg-shell-panel-alt">
+    <div
+      className={`mt-4 overflow-hidden rounded-[14px] border bg-shell-panel-alt ${
+        comment.pinned ? "border-[#f5a623]" : "border-shell-border"
+      }`}
+    >
       <div className="px-4 pb-[13px] pt-[15px]">
+        {comment.pinned && (
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#f5a623]">
+            <PinIcon size={11} />
+            Pinned
+          </div>
+        )}
         <div className="flex items-center gap-2.5">
           <PersonAvatar person={comment.author} size={32} />
           <div className="min-w-0 flex-1">
@@ -247,6 +275,19 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <ViewsIcon />
             {comment.view_count}
           </span>
+          {onTogglePin && (
+            <button
+              type="button"
+              onClick={() => onTogglePin(comment.id)}
+              aria-label={comment.pinned ? "Unpin update" : "Pin update"}
+              aria-pressed={comment.pinned}
+              title={comment.pinned ? "Unpin update" : "Pin update"}
+              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
+              style={{ color: comment.pinned ? "#f5a623" : "var(--color-shell-text-muted)" }}
+            >
+              <PinIcon size={13} />
+            </button>
+          )}
           {comment.author.id === current_user.id && (
             <CommentOptionsMenu onEdit={() => onStartEditing(comment.id)} onDelete={() => onDeleteComment(comment.id)} kind="comment" />
           )}
@@ -255,7 +296,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         {editing_key === comment.id ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <div className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary">{renderMentionText(comment.body)}</div>
+          <RichTextContent html={comment.body} className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary" />
         )}
 
         {comment.attachments.length > 0 && (
@@ -312,15 +353,29 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <ReplyIcon />
             Reply
           </button>
-          <button
-            type="button"
-            onClick={() => onToggleSeen(comment.id)}
-            className="ml-auto flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: comment.seen ? "#00c875" : "var(--color-shell-text-muted)" }}
-          >
-            <SeenIcon />
-            {comment.seen ? "Seen" : "Mark as seen"}
-          </button>
+          <div className="ml-auto flex items-center gap-2.5">
+            {comment.seen_by.length > 0 && (
+              <div className="flex items-center -space-x-1.5" title={comment.seen_by.map((person) => person.name).join(", ")}>
+                {comment.seen_by.slice(0, 3).map((person) => (
+                  <PersonAvatar key={person.id} person={person} size={19} className="ring-2 ring-shell-panel-alt" />
+                ))}
+                {comment.seen_by.length > 3 && (
+                  <span className="flex h-[19px] w-[19px] items-center justify-center rounded-full bg-shell-hover-strong text-[9px] font-bold text-shell-text-muted ring-2 ring-shell-panel-alt">
+                    +{comment.seen_by.length - 3}
+                  </span>
+                )}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => onToggleSeen(comment.id)}
+              className="flex items-center gap-1.5 text-[12.5px] font-semibold"
+              style={{ color: comment.seen ? "#00c875" : "var(--color-shell-text-muted)" }}
+            >
+              <SeenIcon />
+              {comment.seen ? "Seen" : "Mark as seen"}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -362,6 +417,13 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           mention_target={mention_target}
           mention_matches={mention_matches}
           onPickMention={onPickMention}
+          mentionable_people={mentionable_people}
+          notify_target={notify_target}
+          onToggleNotifyPicker={onToggleNotifyPicker}
+          onCloseNotifyPicker={onCloseNotifyPicker}
+          onPickNotifyPerson={onPickNotifyPerson}
+          notified_people={notified_people}
+          onRemoveNotifyPerson={onRemoveNotifyPerson ? (person_id) => onRemoveNotifyPerson(comment.id, person_id) : undefined}
           emoji_palette_target={emoji_palette_target}
           onToggleEmojiPalette={onToggleEmojiPalette}
           onCloseEmojiPalette={onCloseEmojiPalette}

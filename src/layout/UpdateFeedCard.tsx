@@ -1,10 +1,12 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { renderMentionText } from "@/components/board/drawer/renderMentionText";
+import RichTextContent from "@/components/board/drawer/RichTextContent";
+import { PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
   ChevronRightIcon,
   ClockIcon,
+  LinkIcon,
   MoreDotsIcon,
   ReplyIcon,
   ThumbsUpIcon,
@@ -22,6 +24,8 @@ type UpdateFeedCardProps = {
   onLike?: (id: string) => void;
   /** Fired when the Bookmark action is pressed. */
   onBookmark?: (id: string) => void;
+  /** Fired when the Pin action is pressed. */
+  onPin?: (id: string) => void;
   /** Fired when a reply is submitted from the inline composer. */
   onReply?: (id: string, body: string) => void;
   /** Fired when a reply is scheduled for a later time from the inline composer. */
@@ -42,6 +46,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   update,
   onLike,
   onBookmark,
+  onPin,
   onReply,
   onSchedule,
   onMarkSeen,
@@ -55,6 +60,8 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     view_count,
     is_unread,
     is_bookmarked,
+    pinned,
+    link,
     show_actions,
     show_composer,
   } = update;
@@ -62,7 +69,16 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   const [reply_text, setReplyText] = useState("");
   const [is_scheduling, setIsScheduling] = useState(false);
   const [scheduled_at, setScheduledAt] = useState("");
+  const [link_copied, setLinkCopied] = useState(false);
   const reply_input_ref = useRef<HTMLInputElement>(null);
+
+  const copyLink = () => {
+    if (!link) return;
+    navigator.clipboard.writeText(`${window.location.origin}${link}`).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1500);
+    });
+  };
 
   useEffect(() => {
     if (is_unread) onMarkSeen?.(id);
@@ -86,8 +102,16 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   };
 
   return (
-    <article className="overflow-hidden rounded-[14px] border border-shell-border-strong">
+    <article
+      className={`overflow-hidden rounded-[14px] border ${pinned ? "border-[#f5a623]" : "border-shell-border-strong"}`}
+    >
       <div className="p-5">
+        {pinned && (
+          <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#f5a623]">
+            <PinIcon size={11} />
+            Pinned
+          </div>
+        )}
         {/* Author row */}
         <div className="flex items-center gap-[11px]">
           <span
@@ -98,6 +122,29 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
           <span className="text-[12.5px] text-shell-text-muted">{date_label}</span>
           {show_actions && (
             <div className="ml-auto flex items-center gap-1">
+              {link && (
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                  aria-label="Copy link to this update"
+                  title={link_copied ? "Link copied!" : "Copy link to this update"}
+                >
+                  <LinkIcon size={13} />
+                </button>
+              )}
+              {onPin && (
+                <button
+                  type="button"
+                  onClick={() => onPin(id)}
+                  className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-shell-hover"
+                  style={{ color: pinned ? "#f5a623" : "var(--color-shell-text-muted)" }}
+                  aria-label={pinned ? "Unpin update" : "Pin update"}
+                  aria-pressed={pinned}
+                >
+                  <PinIcon size={13} />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onBookmark?.(id)}
@@ -143,9 +190,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
         </div>
 
         {/* Message body */}
-        <p className="mt-3.5 text-[13.5px] leading-[1.6] text-shell-text-secondary">
-          {renderMentionText(body)}
-        </p>
+        <RichTextContent html={body} className="mt-3.5 text-[13.5px] leading-[1.6] text-shell-text-secondary" />
 
         {/* View count */}
         {typeof view_count === "number" && (

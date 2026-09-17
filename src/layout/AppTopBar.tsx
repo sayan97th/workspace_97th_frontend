@@ -44,7 +44,7 @@ const AppTopBar: React.FC = () => {
   const { logo_url } = useAccountBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
-  const { notifications, unread_count, selectNotification } = useNotifications();
+  const { notifications, unread_count, selectNotification, markAllAsRead, dismissNotification } = useNotifications();
   const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all" });
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
@@ -262,6 +262,8 @@ const AppTopBar: React.FC = () => {
           const selected = selectNotification(id);
           if (selected?.link) router.push(selected.link);
         }}
+        onMarkAllAsRead={markAllAsRead}
+        onDismissNotification={dismissNotification}
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />

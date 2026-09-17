@@ -97,5 +97,21 @@ export function useNotifications() {
     [notifications]
   );
 
-  return { notifications, unread_count, selectNotification };
+  const markAllAsRead = useCallback(() => {
+    setNotifications((previous) => previous.map((item) => ({ ...item, is_unread: false })));
+    setUnreadCount(0);
+    notificationsService.markAllAsRead().catch(() => {});
+  }, []);
+
+  const dismissNotification = useCallback(
+    (id: string) => {
+      const notification = notifications.find((item) => item.id === id);
+      setNotifications((previous) => previous.filter((item) => item.id !== id));
+      if (notification?.is_unread) setUnreadCount((previous) => Math.max(0, previous - 1));
+      notificationsService.dismiss(id).catch(() => {});
+    },
+    [notifications]
+  );
+
+  return { notifications, unread_count, selectNotification, markAllAsRead, dismissNotification };
 }

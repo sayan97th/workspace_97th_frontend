@@ -48,5 +48,6 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     is_unread: dto.is_unread,
     category: dto.category,
     link: dto.link ?? undefined,
+    created_at: dto.created_at,
   };
 }

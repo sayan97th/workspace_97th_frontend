@@ -79,6 +79,9 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
 export const mapCommentDtoToDrawerComment = (dto: BoardItemCommentDto): DrawerComment => ({
   ...mapCommentDtoToDrawerReply(dto),
   seen: dto.seen_by_me,
+  seen_by: dto.seen_by.map((person) => mapAuthorToPerson(person)),
+  pinned: dto.pinned,
+  notified_user_ids: dto.notified_user_ids.map(String),
   attachments: dto.attachments.map(mapAttachmentDto),
   replies: dto.replies.map(mapCommentDtoToDrawerReply),
 });
