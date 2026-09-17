@@ -561,8 +561,24 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "formula") {
+    // Unconfigured (no operation/source columns picked yet — e.g. a column
+    // created before this board had other columns to compute from): there's
+    // nothing to compute, so the cell offers the same "Configure formula"
+    // setup the column header's own "..." menu does, rather than sitting
+    // there as a dead, unexplained "–".
+    if (!column.formula) {
+      return (
+        <button
+          type="button"
+          onClick={() => actions.openConfigEditor("formula", column.id)}
+          className="flex h-full w-full items-center px-2.5 text-[12.5px] text-boardtree-text-faint underline decoration-dotted"
+        >
+          Set up formula
+        </button>
+      );
+    }
     const computed = computeFormulaValue(column, values);
-    const is_concat = column.formula?.operation === "concat";
+    const is_concat = column.formula.operation === "concat";
     return (
       <div
         className={`flex h-full w-full items-center px-2.5 font-mono text-[12.5px] text-boardtree-text-secondary ${is_concat ? "justify-start truncate" : "justify-end"}`}
@@ -583,11 +599,20 @@ export default function CellRenderer({ node_id, column, values, state, actions }
     const resolved_names = linked_items
       ? linked_ids.map((id) => linked_items.find((candidate) => candidate.id === id)?.name).filter((name): name is string => Boolean(name))
       : [];
+    // Unconfigured (no `linked_board_id` yet — e.g. a column created before
+    // this board ever had a second board to link to): there's no candidate
+    // list to show in a popover, so the click instead opens the same
+    // "Configure linked board" setup modal the column header's own "..."
+    // menu does, rather than silently doing nothing.
     return (
       <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
-        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden">
+        <button
+          type="button"
+          onClick={linked_board_id ? openMenu : () => actions.openConfigEditor("connect_board", column.id)}
+          className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden"
+        >
           {!linked_board_id ? (
-            <span className="text-[12.5px] text-boardtree-text-faint">Not connected yet</span>
+            <span className="text-[12.5px] text-boardtree-text-faint underline decoration-dotted">Connect this column to a board</span>
           ) : linked_ids.length === 0 ? (
             <span className="text-[12.5px] text-boardtree-text-faint">Connect items</span>
           ) : !linked_items ? (
