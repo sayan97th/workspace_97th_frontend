@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { boardContentService } from "@/services/board-content.service";
+import { useState } from "react";
 import PopoverPanel from "./PopoverPanel";
 
 interface ConnectBoardMenuProps {
-  /** The other board this column's cells link items on, see `ColumnDef.linked_board_id`. */
-  linked_board_id: string;
+  /** The linked board's items, shared with the closed cell's own name chips — see `useBoardTable`'s `connect_board_items`/`ensureLinkedBoardItems`, which this menu's owner (`CellRenderer`) fetches once per board id rather than this popover fetching its own copy every time it opens. */
+  candidates: { id: string; name: string }[];
+  is_loading: boolean;
   selected: string[];
   onToggle: (id: string) => void;
   onClose: () => void;
@@ -14,30 +14,10 @@ interface ConnectBoardMenuProps {
 
 /**
  * Search + toggleable item list for a Connect-board cell's popover, mirroring
- * `DependencyMenu`'s layout, its candidates come from `linked_board_id` (a
- * different board) instead of `state.groups`, so this owns its own fetch
- * rather than reading candidates off the table's own local state.
+ * `DependencyMenu`'s layout.
  */
-export default function ConnectBoardMenu({ linked_board_id, selected, onToggle, onClose }: ConnectBoardMenuProps) {
+export default function ConnectBoardMenu({ candidates, is_loading, selected, onToggle, onClose }: ConnectBoardMenuProps) {
   const [query, setQuery] = useState("");
-  const [candidates, setCandidates] = useState<{ id: string; name: string }[]>([]);
-  const [is_loading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let is_current = true;
-    setIsLoading(true);
-    boardContentService
-      .getItems(Number(linked_board_id))
-      .then((items) => {
-        if (is_current) setCandidates(items.map((item) => ({ id: String(item.id), name: item.name })));
-      })
-      .finally(() => {
-        if (is_current) setIsLoading(false);
-      });
-    return () => {
-      is_current = false;
-    };
-  }, [linked_board_id]);
 
   const q = query.trim().toLowerCase();
   const filtered = candidates.filter((candidate) => candidate.name.toLowerCase().includes(q));

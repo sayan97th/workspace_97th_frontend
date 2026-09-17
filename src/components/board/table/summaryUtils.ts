@@ -1,6 +1,7 @@
 import type { ColumnDef, StatusDef, BoardTableItem } from "./types";
 import { findDef } from "./colorUtils";
 import { fmtRange, parseRangeValue } from "./dateUtils";
+import { computeFormulaValue, isNumericFormula } from "./formulaUtils";
 
 export interface StatusSegment {
   key: string;
@@ -109,6 +110,16 @@ export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, sta
         sum_value = fmtAggregate(sum);
     }
     return { ...base, is_number: true, sum_value, aggregation };
+  }
+
+  // A numeric formula (every operation but `concat`, see `isNumericFormula`)
+  // has no `BoardItemValue` of its own to aggregate — sums each item's own
+  // computed result instead, mirroring the Number column's "sum" default
+  // (formula columns have no `aggregation` setting of their own to pick a
+  // different one).
+  if (column.kind === "formula" && isNumericFormula(column)) {
+    const sum = items.reduce((acc, item) => acc + (Number(computeFormulaValue(column, item.values)) || 0), 0);
+    return { ...base, is_number: true, sum_value: fmtAggregate(sum), aggregation: "sum" };
   }
 
   return base;

@@ -73,8 +73,12 @@ export interface BoardTableProps {
    * needed here (unlike `onCreateItem`/`onCreateSubitem`/`onCreateGroup`).
    * Omitted, `addColumn` stays local-only (the standalone demo behavior,
    * adding into `custom_columns` instead).
+   *
+   * Resolves with the created column's real id (like `onCreateItem`) so a
+   * freshly added Formula/Connect-board/Mirror column can have its settings
+   * modal opened immediately — see `openConfigEditorForKind`.
    */
-  onAddColumn?: (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => Promise<void>;
+  onAddColumn?: (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number) => Promise<string | void>;
   /**
    * Column-header menu — "Duplicate column"/"Add column to the right" both
    * create a *new* column id, so they follow this same handshake (skip local
@@ -94,6 +98,7 @@ export interface BoardTableProps {
    * `duplicateColumnToBoard` stays local-only (the standalone demo behavior).
    */
   onDuplicateColumnToBoard?: (group_key: string, scope: ColumnScope, column_id: string, target_board_id: string) => Promise<void>;
+  /** Same "resolves with the real id" contract as `onAddColumn` above — see its own doc comment. */
   onAddColumnRight?: (
     group_key: string,
     scope: ColumnScope,
@@ -101,7 +106,7 @@ export interface BoardTableProps {
     kind: ColumnKind,
     label: string,
     default_width: number
-  ) => Promise<void>;
+  ) => Promise<string | void>;
   /** Column menu's "Filter"/"Group by" rows — bridges to the board's toolbar (a sibling of `BoardTable`, not a descendant), which owns Filter/Sort/GroupBy state. Omitted, those rows still render but are no-ops. */
   onRequestColumnFilter?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
@@ -224,17 +229,29 @@ export default function BoardTable({
     [onDuplicateNode, base_actions]
   );
 
+  // Formula/Connect-board/Mirror need setup (an operation + source columns, a
+  // linked board, ...) before they show anything useful — monday.com opens
+  // that setup dialog immediately after adding one of these, rather than
+  // leaving the viewer to discover the column header's own "..." menu.
+  const openConfigEditorForKind = useCallback(
+    (kind: ColumnKind, column_id: string | void) => {
+      if (!column_id || (kind !== "formula" && kind !== "connect_board" && kind !== "mirror")) return;
+      base_actions.openConfigEditor(kind, column_id);
+    },
+    [base_actions]
+  );
+
   const addColumnReal = useCallback(
     (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
       if (after_column_id) {
         if (!onAddColumnRight) return base_actions.addColumn(group_key, scope, kind, label, default_width, after_column_id);
-        void onAddColumnRight(group_key, scope, after_column_id, kind, label, default_width);
+        void onAddColumnRight(group_key, scope, after_column_id, kind, label, default_width).then((column_id) => openConfigEditorForKind(kind, column_id));
         return;
       }
       if (!onAddColumn) return base_actions.addColumn(group_key, scope, kind, label, default_width);
-      void onAddColumn(group_key, scope, kind, label, default_width);
+      void onAddColumn(group_key, scope, kind, label, default_width).then((column_id) => openConfigEditorForKind(kind, column_id));
     },
-    [onAddColumn, onAddColumnRight, base_actions]
+    [onAddColumn, onAddColumnRight, base_actions, openConfigEditorForKind]
   );
 
   const duplicateColumnReal = useCallback(

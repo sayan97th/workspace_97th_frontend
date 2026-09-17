@@ -16,6 +16,11 @@ function textValueOf(raw: CellValue): string {
   return "";
 }
 
+/** Rounds to 6 decimal places to absorb float artifacts (e.g. `0.1 + 0.2`) without visibly truncating a legitimate fractional result. */
+function roundResult(n: number): number {
+  return Math.round(n * 1e6) / 1e6;
+}
+
 /**
  * A `formula`-kind column's computed display value: applies `column.formula`'s
  * operation to the same row's `source_column_ids` cells. Purely derived, no
@@ -36,14 +41,19 @@ export function computeFormulaValue(column: ColumnDef, values: Record<string, Ce
   const numbers = source_values.map(numberValueOf);
   switch (formula.operation) {
     case "sum":
-      return String(numbers.reduce((total, n) => total + n, 0));
+      return String(roundResult(numbers.reduce((total, n) => total + n, 0)));
     case "subtract":
-      return String(numbers.reduce((total, n, index) => (index === 0 ? n : total - n)));
+      return String(roundResult(numbers.reduce((total, n, index) => (index === 0 ? n : total - n))));
     case "multiply":
-      return String(numbers.reduce((total, n) => total * n, 1));
+      return String(roundResult(numbers.reduce((total, n) => total * n, 1)));
     case "divide":
-      return String(numbers.reduce((total, n, index) => (index === 0 ? n : n === 0 ? total : total / n)));
+      return String(roundResult(numbers.reduce((total, n, index) => (index === 0 ? n : n === 0 ? total : total / n))));
     default:
       return "";
   }
+}
+
+/** Whether `column.formula`'s own result is numeric (every operation but `concat`) — `sortUtils`/`summaryUtils` only compare/aggregate a formula column's *computed* value when this is true. */
+export function isNumericFormula(column: ColumnDef): boolean {
+  return Boolean(column.formula) && column.formula?.operation !== "concat";
 }

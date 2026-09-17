@@ -299,6 +299,27 @@ export type UpdateGroupCollapseStatePayload = {
   collapsed_group_ids: number[];
 };
 
+/**
+ * One option in the Tags column's board-wide list — shared across every
+ * `tags`-type column on the same board (unlike Status/Dropdown, whose options
+ * live per-column in `BoardColumnDto.config.options`), mirroring monday.com's
+ * own Tags column.
+ */
+export type BoardTagDto = {
+  id: number;
+  board_id: number;
+  label: string;
+  color: string;
+  position: number;
+};
+
+export type CreateBoardTagPayload = {
+  label: string;
+  color: string;
+};
+
+export type UpdateBoardTagPayload = Partial<CreateBoardTagPayload> & { position?: number };
+
 export type CreateBoardItemPayload = {
   name: string;
   description?: string | null;

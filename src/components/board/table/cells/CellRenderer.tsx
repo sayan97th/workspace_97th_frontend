@@ -60,6 +60,16 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   // button and show a "Uploading…" label while a request is pending.
   const [is_uploading, setIsUploading] = useState(false);
 
+  // Connect-board cell's linked item names — declared unconditionally (Rules
+  // of Hooks, same as `running_since` above) even though only the
+  // "connect_board" branch below reads `state.connect_board_items`.
+  // `ensureLinkedBoardItems` itself is a no-op past the first call for a
+  // given board id, so every cell in the column re-triggering this on every
+  // render is cheap.
+  useEffect(() => {
+    if (column.kind === "connect_board" && column.linked_board_id) actions.ensureLinkedBoardItems(column.linked_board_id);
+  }, [column.kind, column.linked_board_id, actions]);
+
   if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
     return (
       <input
@@ -313,12 +323,11 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "tags") {
-    // Real per-column tag options come from `column.options` (read/select
-    // only in this pass); the mock demo's own global palette (`state.tag_defs`)
-    // also supports creating new tags inline, since it isn't backed by a
-    // real column that would need persisting.
-    const is_real_column = Boolean(column.options);
-    const defs = column.options ?? state.tag_defs;
+    // Tags is board-wide (`state.tag_defs`), never per-column — unlike
+    // Status/Dropdown/Label, monday.com's Tags column shares one option list
+    // across every Tags column on the board, so `column.options` is never
+    // consulted here even when set.
+    const defs = state.tag_defs;
     const selected = asArray(value);
     // See the Dropdown cell's own comment above — `overflow-hidden` stays off
     // this wrapping div so `TagsMenu` isn't clipped either.
@@ -344,18 +353,11 @@ export default function CellRenderer({ node_id, column, values, state, actions }
             query={state.tag_query}
             onQueryChange={actions.setTagQuery}
             onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
-            onCreateTag={
-              is_real_column
-                ? undefined
-                : () => {
-                    const label = state.tag_query.trim();
-                    if (!label) return;
-                    actions.addTagDef(label);
-                    actions.toggleArrayValue(node_id, column.id, label);
-                    actions.setTagQuery("");
-                  }
-            }
-            onManageTags={is_real_column ? undefined : actions.openTagEditor}
+            onCreateTag={() => {
+              actions.createTagOnCell(node_id, column.id, state.tag_query);
+              actions.setTagQuery("");
+            }}
+            onManageTags={actions.openTagEditor}
             onClose={actions.closeCellMenu}
           />
         )}
@@ -574,20 +576,39 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   if (column.kind === "connect_board") {
     const linked_ids = asArray(value);
     const linked_board_id = column.linked_board_id;
+    // `undefined` means `ensureLinkedBoardItems` (fired by the unconditional
+    // effect above) hasn't resolved yet — falls back to a bare count until it
+    // does, then swaps to the linked items' real names, mirroring monday.com.
+    const linked_items = linked_board_id ? state.connect_board_items[linked_board_id] : undefined;
+    const resolved_names = linked_items
+      ? linked_ids.map((id) => linked_items.find((candidate) => candidate.id === id)?.name).filter((name): name is string => Boolean(name))
+      : [];
     return (
       <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
         <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden">
-          {linked_ids.length > 0 ? (
+          {!linked_board_id ? (
+            <span className="text-[12.5px] text-boardtree-text-faint">Not connected yet</span>
+          ) : linked_ids.length === 0 ? (
+            <span className="text-[12.5px] text-boardtree-text-faint">Connect items</span>
+          ) : !linked_items ? (
             <span className="flex-none rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
               {linked_ids.length} linked
             </span>
           ) : (
-            <span className="text-[12.5px] text-boardtree-text-faint">Connect items</span>
+            <>
+              {resolved_names.slice(0, 2).map((name, index) => (
+                <span key={index} title={name} className="max-w-[110px] flex-none truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
+                  {name}
+                </span>
+              ))}
+              {linked_ids.length > 2 && <span className="flex-none text-[11px] text-boardtree-text-faint">+{linked_ids.length - 2}</span>}
+            </>
           )}
         </button>
         {is_menu_open && linked_board_id && (
           <ConnectBoardMenu
-            linked_board_id={linked_board_id}
+            candidates={linked_items ?? []}
+            is_loading={linked_items === undefined}
             selected={linked_ids}
             onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
             onClose={actions.closeCellMenu}

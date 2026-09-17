@@ -1,9 +1,16 @@
 import type { ColumnDef, SortState, BoardTableNode } from "./types";
+import { computeFormulaValue, isNumericFormula } from "./formulaUtils";
 
 function sortableValue(node: BoardTableNode, column_id: string, columns: ColumnDef[]): string | number {
   if (column_id === "__name") return node.name.toLowerCase();
-  const raw = node.values[column_id];
   const column = columns.find((c) => c.id === column_id);
+  // A formula column has no `BoardItemValue` of its own (see `computeFormulaValue`'s
+  // own doc comment) — its sortable value is always the same computed result its cell renders.
+  if (column?.kind === "formula") {
+    const computed = computeFormulaValue(column, node.values);
+    return isNumericFormula(column) ? Number(computed) || 0 : computed.toLowerCase();
+  }
+  const raw = node.values[column_id];
   if (column && (column.kind === "number" || column.kind === "progress")) return Number(raw) || 0;
   if (Array.isArray(raw)) return raw.join(", ").toLowerCase();
   return String(raw ?? "").toLowerCase();

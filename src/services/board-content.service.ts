@@ -7,11 +7,13 @@ import type {
   BoardItemDetailDto,
   BoardItemDto,
   BoardItemValue,
+  BoardTagDto,
   BoardViewDto,
   BoardViewsIndexDto,
   CreateBoardColumnPayload,
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
+  CreateBoardTagPayload,
   CreateChecklistItemPayload,
   ReorderBoardColumnsPayload,
   ReorderBoardItemsPayload,
@@ -19,6 +21,7 @@ import type {
   UpdateBoardColumnPayload,
   UpdateBoardGroupPayload,
   UpdateBoardItemPayload,
+  UpdateBoardTagPayload,
   UpdateChecklistItemPayload,
   UpdateGroupCollapseStatePayload,
 } from "@/types/board-content";
@@ -145,6 +148,34 @@ export const boardContentService = {
       { with_items }
     );
     return response.group;
+  },
+
+  /**
+   * GET /api/boards/{board_id}/tags — the Tags column's board-wide option
+   * list, shared across every Tags column on this board (unlike
+   * Status/Dropdown's own per-column `config.options`). Board-wide rather
+   * than per-tab, so this isn't scoped by `view_id`.
+   */
+  async getTags(board_id: number): Promise<BoardTagDto[]> {
+    const response = await apiClient.get<{ data: BoardTagDto[] }>(`/api/boards/${board_id}/tags`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/tags — a Tags cell's own "Create new tag", or the column's "Manage tags" modal. */
+  async createTag(board_id: number, payload: CreateBoardTagPayload): Promise<BoardTagDto> {
+    const response = await apiClient.post<{ tag: BoardTagDto }>(`/api/boards/${board_id}/tags`, payload);
+    return response.tag;
+  },
+
+  /** PATCH /api/boards/{board_id}/tags/{tag_id} — "Manage tags" modal's recolor/rename. */
+  async updateTag(board_id: number, tag_id: number, payload: UpdateBoardTagPayload): Promise<BoardTagDto> {
+    const response = await apiClient.patch<{ tag: BoardTagDto }>(`/api/boards/${board_id}/tags/${tag_id}`, payload);
+    return response.tag;
+  },
+
+  /** DELETE /api/boards/{board_id}/tags/{tag_id} */
+  async deleteTag(board_id: number, tag_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/tags/${tag_id}`);
   },
 
   /**

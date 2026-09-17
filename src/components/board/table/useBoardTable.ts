@@ -131,6 +131,37 @@ export interface UseBoardTableConfig {
   initial_groups?: BoardTableGroup[];
   people?: PersonDef[];
   status_defs?: StatusDef[];
+  /**
+   * The Tags column's board-wide option list — shared across every Tags
+   * column on the board (unlike Status/Dropdown, whose options live per-
+   * column, see `status_defs`/`ColumnDef.options`), mirroring monday.com's
+   * own Tags column. Omitted, `BoardTable` falls back to the standalone
+   * demo's local-only `DEFAULT_TAG_DEFS`.
+   */
+  tag_defs?: TagDef[];
+  /**
+   * Tags cell's own "Create new tag" / "Manage tags" modal's "Add" — resolves
+   * with the persisted tag (its real id included) once the board's next
+   * `tag_defs` sync would otherwise reflect it, so a cell that just created a
+   * tag can select it immediately rather than waiting a render. Omitted (the
+   * standalone demo), `addTagDef`/`createTagOnCell` fall back to a local-only
+   * id instead.
+   */
+  onCreateTagDef?: (label: string) => Promise<TagDef>;
+  /** "Manage tags" modal's color swatch — see `onCreateTagDef`'s own doc comment for the real-vs-demo split. */
+  onRecolorTagDef?: (id: string, color: string) => void;
+  /** "Manage tags" modal's delete "×" — see `onCreateTagDef`'s own doc comment. */
+  onDeleteTagDef?: (id: string) => void;
+  /**
+   * Fetches the display name of every item on a Connect-board column's
+   * linked board, for both the closed cell's own name chips and its
+   * `ConnectBoardMenu` popover — called at most once per `linked_board_id`
+   * (see `ensureLinkedBoardItems`), so every Connect-board cell/column
+   * pointing at the same linked board shares one fetch. Omitted (the
+   * standalone demo, which has no other board to link to), a Connect-board
+   * cell just shows its raw linked count with no names.
+   */
+  onFetchLinkedBoardItems?: (linked_board_id: string) => Promise<{ id: string; name: string }[]>;
   /** The signed-in viewer's own id — a `vote`-type cell toggles this id in/out of its value array, and highlights itself when the viewer has already voted. Undefined for the standalone demo, which has no signed-in viewer. */
   current_user_id?: string;
   onRenameNode?: (node_id: string, name: string) => void;
@@ -401,6 +432,16 @@ export interface BoardTableState {
    */
   config_editor: { kind: "formula" | "mirror" | "connect_board"; column_id: string } | null;
   tag_editor_open: boolean;
+  /**
+   * Cache of every Connect-board column's linked-board item names, keyed by
+   * `linked_board_id` — populated at most once per board id by
+   * `ensureLinkedBoardItems`, and shared by every Connect-board cell/column
+   * pointing at that same linked board (both the closed cell's own name
+   * chips and its `ConnectBoardMenu` popover read from here). An absent key
+   * means "not fetched yet" (renders a loading state); an empty array means
+   * "fetched, the linked board has no items".
+   */
+  connect_board_items: Record<string, { id: string; name: string }[]>;
   drag: DragState | null;
   /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
   column_drag: ColumnDragState | null;
@@ -486,11 +527,12 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     tag_query: "",
     status_defs: config.status_defs ?? DEFAULT_STATUS_DEFS.slice(),
     label_defs: DEFAULT_LABEL_DEFS.slice(),
-    tag_defs: DEFAULT_TAG_DEFS.slice(),
+    tag_defs: config.tag_defs ?? DEFAULT_TAG_DEFS.slice(),
     label_editor_kind: null,
     label_editor_column_id: null,
     config_editor: null,
     tag_editor_open: false,
+    connect_board_items: {},
     drag: null,
     column_drag: null,
     sort: null,
@@ -599,6 +641,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.status_defs) setState((s) => ({ ...s, status_defs: config.status_defs! }));
   }, [config.status_defs]);
+
+  useEffect(() => {
+    if (config.tag_defs) setState((s) => ({ ...s, tag_defs: config.tag_defs! }));
+  }, [config.tag_defs]);
 
   useEffect(() => {
     if (config.row_height) setState((s) => ({ ...s, row_height: config.row_height! }));
@@ -1854,25 +1900,95 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const openTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: true, ...closeAllMenus })), []);
   const closeTagEditor = useCallback(() => setState((s) => ({ ...s, tag_editor_open: false })), []);
 
+  /**
+   * "Manage tags" modal's "Add". A real board persists through
+   * `onCreateTagDef` and picks up the confirmed tag once the caller's own
+   * `tag_defs` re-syncs — mirrors `addColumnOption`'s own `onAddColumnOption`
+   * branch; the standalone demo instead appends straight to the local,
+   * unpersisted `tag_defs` palette.
+   */
   const addTagDef = useCallback(
     (label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) return;
+      const on_create = config_ref.current.onCreateTagDef;
+      if (on_create) {
+        void on_create(trimmed);
+        return;
+      }
       setState((s) => {
         const color = STATUS_PALETTE[s.tag_defs.length % STATUS_PALETTE.length];
-        return { ...s, tag_defs: s.tag_defs.concat({ id: nextId("tg"), label, color }) };
+        return { ...s, tag_defs: s.tag_defs.concat({ id: nextId("tg"), label: trimmed, color }) };
       });
     },
     [nextId]
   );
 
+  /**
+   * A Tags cell's own inline "+ Create new tag" (`TagsMenu`'s `onCreateTag`).
+   * Like `addTagDef`, but also selects the freshly created tag on the exact
+   * cell it was typed into — on a real board that has to wait for
+   * `onCreateTagDef` to resolve with the tag's real id (toggling the raw
+   * label text the way the standalone demo does below would desync the cell
+   * from `column.options`-less real `tags` data on the next reload).
+   */
+  const createTagOnCell = useCallback(
+    (node_id: string, column_id: string, label: string) => {
+      const trimmed = label.trim();
+      if (!trimmed) return;
+      const on_create = config_ref.current.onCreateTagDef;
+      if (on_create) {
+        void on_create(trimmed).then((created) => {
+          setState((s) => ({
+            ...s,
+            tag_defs: s.tag_defs.some((d) => d.id === created.id) ? s.tag_defs : s.tag_defs.concat(created),
+          }));
+          toggleArrayValue(node_id, column_id, created.id);
+        });
+        return;
+      }
+      const id = nextId("tg");
+      setState((s) => {
+        const color = STATUS_PALETTE[s.tag_defs.length % STATUS_PALETTE.length];
+        return { ...s, tag_defs: s.tag_defs.concat({ id, label: trimmed, color }) };
+      });
+      toggleArrayValue(node_id, column_id, id);
+    },
+    [nextId, toggleArrayValue]
+  );
+
   const setTagDefColor = useCallback((id: string, color: string) => {
     setState((s) => ({ ...s, tag_defs: s.tag_defs.map((d) => (d.id === id ? { ...d, color } : d)) }));
+    config_ref.current.onRecolorTagDef?.(id, color);
   }, []);
 
   const deleteTagDef = useCallback((id: string) => {
     setState((s) => ({ ...s, tag_defs: s.tag_defs.filter((d) => d.id !== id) }));
+    config_ref.current.onDeleteTagDef?.(id);
   }, []);
 
   const setTagQuery = useCallback((value: string) => setState((s) => ({ ...s, tag_query: value })), []);
+
+  /**
+   * Resolves a Connect-board column's linked item names — called from the
+   * closed cell's own chip display and from `ConnectBoardMenu` alike (see
+   * `connect_board_items`'s own doc comment), fetching at most once per
+   * `linked_board_id` regardless of how many cells/columns point at it.
+   */
+  const requested_linked_boards_ref = useRef<Set<string>>(new Set());
+  const ensureLinkedBoardItems = useCallback((linked_board_id: string) => {
+    const on_fetch = config_ref.current.onFetchLinkedBoardItems;
+    if (!on_fetch || requested_linked_boards_ref.current.has(linked_board_id)) return;
+    requested_linked_boards_ref.current.add(linked_board_id);
+    void on_fetch(linked_board_id)
+      .then((items) => {
+        setState((s) => ({ ...s, connect_board_items: { ...s.connect_board_items, [linked_board_id]: items } }));
+      })
+      .catch(() => {
+        // Leaves the board id unresolved (no cache entry) so a later mount can retry.
+        requested_linked_boards_ref.current.delete(linked_board_id);
+      });
+  }, []);
 
   const closeAllOverlays = useCallback(() => setState((s) => ({ ...s, ...closeAllMenus })), []);
 
@@ -2015,9 +2131,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       openTagEditor,
       closeTagEditor,
       addTagDef,
+      createTagOnCell,
       setTagDefColor,
       deleteTagDef,
       setTagQuery,
+      ensureLinkedBoardItems,
       closeAllOverlays,
       copyRowLink,
       openComments,
@@ -2037,8 +2155,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef,
-      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureLinkedBoardItems, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2056,7 +2174,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
-    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureLinkedBoardItems",
     "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);

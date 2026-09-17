@@ -101,6 +101,7 @@ import type {
   BoardItemDetailDto,
   BoardItemDto,
   BoardItemValue,
+  BoardTagDto,
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
@@ -335,6 +336,27 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     };
   }, [node.id]);
 
+  // The Tags column's shared option list is board-wide, not per-tab (see
+  // `BoardTag`'s own doc comment server-side) — fetched once per board,
+  // mirroring `access` above rather than the columns/groups/items/views
+  // fetch below, which re-runs on every tab switch.
+  const [tags, setTags] = useState<BoardTagDto[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    setTags([]);
+    boardContentService
+      .getTags(node.id)
+      .then((data) => {
+        if (!cancelled) setTags(data);
+      })
+      .catch(() => {
+        // Tags cells just render with an empty palette; not worth a whole-board error state over.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [node.id]);
+
   // The full assignable roster for People columns (Kanban's Assignee row,
   // the Table view's People cells, the Calendar's event members, etc), the
   // whole workspace, not just `node.owners` (which is only the handful of
@@ -479,6 +501,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         onAccessChange={setAccess}
         workspace_members={workspace_members}
         onInviteClick={() => setIsInviteOpen(true)}
+        initial_tags={tags}
         initial_columns={loaded.columns}
         initial_groups={loaded.groups}
         initial_items={loaded.items}
@@ -525,6 +548,8 @@ type TableBoardBodyProps = {
   onAccessChange: (access: BoardAccessEntry[]) => void;
   /** The full workspace roster, assignable to People columns (Assignee row, People cells, Calendar members, etc), see the fetch in `TableBoardView`. */
   workspace_members: WorkspaceMember[];
+  /** The Tags column's board-wide option list — see the fetch in `TableBoardView` and `BoardTag`'s own doc comment server-side. */
+  initial_tags: BoardTagDto[];
   initial_columns: BoardColumnDto[];
   initial_groups: BoardGroupDto[];
   initial_items: BoardItemDto[];
@@ -613,6 +638,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   access,
   onAccessChange,
   workspace_members,
+  initial_tags,
   initial_columns,
   initial_groups,
   initial_items,
@@ -659,6 +685,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     router.push("/workspace-home");
   };
 
+  const [tags, setTags] = useState(initial_tags);
   const [columns, setColumns] = useState(initial_columns);
   const [groups, setGroups] = useState(initial_groups);
   const [items, setItems] = useState(initial_items);
@@ -1362,6 +1389,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       position,
     });
     setColumns((current) => insertColumnAtPosition(current, created));
+    return String(created.id);
   };
 
   // ── Add column — the Table view's own "+" gallery (`ColumnPicker`, main or
@@ -1393,7 +1421,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     width: number
   ) => {
     const after = columns_by_id[after_column_id];
-    await handleAddColumn(
+    return handleAddColumn(
       { kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width },
       scope === "sub" ? "subitem" : "item",
       undefined,
@@ -1536,6 +1564,42 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     },
     [board_id, columns_by_id]
   );
+
+  // ── Tags column's board-wide option list (see `BoardTag`'s own doc comment
+  // server-side) — unlike Status/Dropdown/Label's own per-column
+  // `patchColumnOptions`, these act on the board, not on any one column. ──
+  const handleCreateTagDef = useCallback(
+    async (label: string) => {
+      const created = await boardContentService.createTag(board_id, { label, color: COLUMN_OPTION_PALETTE[tags.length % COLUMN_OPTION_PALETTE.length] });
+      setTags((current) => current.concat(created));
+      return { id: String(created.id), label: created.label, color: created.color };
+    },
+    [board_id, tags.length]
+  );
+
+  const handleRecolorTagDef = useCallback(
+    (tag_id: string, color: string) => {
+      void boardContentService
+        .updateTag(board_id, Number(tag_id), { color })
+        .then((updated) => setTags((current) => current.map((t) => (t.id === updated.id ? updated : t))));
+    },
+    [board_id]
+  );
+
+  const handleDeleteTagDef = useCallback(
+    (tag_id: string) => {
+      void boardContentService.deleteTag(board_id, Number(tag_id)).then(() => setTags((current) => current.filter((t) => t.id !== Number(tag_id))));
+    },
+    [board_id]
+  );
+
+  // ── Connect-board cell/column's linked item names — see
+  // `UseBoardTableConfig.onFetchLinkedBoardItems`'s own doc comment for why
+  // this is fetched once per linked board rather than per cell. ──
+  const handleFetchLinkedBoardItems = useCallback(async (linked_board_id: string) => {
+    const items = await boardContentService.getItems(Number(linked_board_id));
+    return items.map((item) => ({ id: String(item.id), name: item.name }));
+  }, []);
 
   const makeOptionActions = (column_id: string): BoardOptionActions => ({
     onRename: (option_id, label) =>
@@ -2053,6 +2117,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     () => ({
       initial_groups: table_groups,
       people: table_people,
+      // Tags is board-wide (see `BoardTag`'s own doc comment server-side),
+      // never per-column, so this maps straight off `tags` rather than
+      // anything scoped to `columns`.
+      tag_defs: tags.map((tag) => ({ id: String(tag.id), label: tag.label, color: tag.color })),
+      onCreateTagDef: handleCreateTagDef,
+      onRecolorTagDef: handleRecolorTagDef,
+      onDeleteTagDef: handleDeleteTagDef,
+      onFetchLinkedBoardItems: handleFetchLinkedBoardItems,
       initial_item_column_width: item_column_width,
       // Like `item_column_label`, the item-title column isn't a real `board_columns`
       // row, so its resized width persists on the board itself (`item_column_width`)
@@ -2204,6 +2276,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [
       table_groups,
       table_people,
+      tags,
+      handleCreateTagDef,
+      handleRecolorTagDef,
+      handleDeleteTagDef,
+      handleFetchLinkedBoardItems,
       board_id,
       items,
       item_column_width,
