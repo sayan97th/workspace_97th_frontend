@@ -43,3 +43,6 @@ next-env.d.ts
 /design
 CLAUDE.md
 .claude/
+
+# Agent AI Shots
+/shots
