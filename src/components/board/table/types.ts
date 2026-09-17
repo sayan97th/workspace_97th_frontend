@@ -93,6 +93,10 @@ export interface ColumnDef {
   linked_board_id?: string;
   /** Any kind, see `ColumnValidation`'s own doc comment. */
   validation?: ColumnValidation;
+  /** Number kind only: which aggregation the group summary row's footer shows for this column. Undefined behaves as `"sum"` (existing behavior). See `summaryUtils.ts`'s `summaryForColumn`. */
+  aggregation?: "sum" | "avg" | "min" | "max" | "count";
+  /** Date kind only: notifies everyone assigned in a People column on the same item once the date is `days_before` days away — sent daily by the backend's `board:send-due-date-reminders` scheduled command. */
+  reminder?: { enabled: boolean; days_before: number };
 }
 
 export interface StatusDef {
@@ -151,6 +155,8 @@ export interface BoardTableNode {
   comment_count?: number;
   /** Flags this individual row (item or subitem) as a priority row — the per-row counterpart of `BoardTableGroup.is_priority`, independent of any per-item Status/Priority column. Renders a star next to the row's name in `ItemRow`/`SubitemRow`. */
   is_priority?: boolean;
+  /** Root items only: the Row menu's "Set recurring..." schedule, when one is set — renders a small repeat-icon badge next to the row's name in `ItemRow`. Undefined for the standalone mock demo and for subitems, which can't recur on their own. */
+  recurrence?: { frequency: "daily" | "weekly" | "monthly"; interval_count: number } | null;
 }
 
 export interface BoardTableItem extends BoardTableNode {

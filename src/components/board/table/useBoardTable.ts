@@ -152,6 +152,10 @@ export interface UseBoardTableConfig {
    * server-side the same way so it's shared across every viewer.
    */
   onToggleNodePriority?: (node_id: string, is_priority: boolean) => void;
+  /** Row menu's "Set recurring..." popover, root items only — see `BoardTableNode.recurrence`. */
+  onSetItemRecurrence?: (node_id: string, recurrence: { frequency: "daily" | "weekly" | "monthly"; interval_count: number }) => void;
+  /** Row menu's "Stop recurring" action. */
+  onClearItemRecurrence?: (node_id: string) => void;
   /**
    * Appends a new option to a real Dropdown column's `options`, inline from
    * its own cell picker (the "New label" + Add row) — resolves once
@@ -249,6 +253,10 @@ export interface UseBoardTableConfig {
       linked_board_id?: string;
       /** Any column kind, see `ColumnDef.validation`. */
       validation?: ColumnValidation;
+      /** Number columns only, see `ColumnDef.aggregation`. */
+      aggregation?: ColumnDef["aggregation"];
+      /** Date columns only, see `ColumnDef.reminder`. */
+      reminder?: ColumnDef["reminder"];
     }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
@@ -328,6 +336,26 @@ export interface UseBoardTableConfig {
    * column freezes.
    */
   pinned_column_count?: number;
+  /**
+   * The toolbar search's currently active match (Ctrl/Cmd+F "N of M" jump
+   * navigation), read-only here like `row_colors`/`cell_colors` above.
+   * `column_id` is `"__name"` for a match in the item-title virtual column,
+   * mirroring `onRequestColumnSort`'s own convention. Null/omitted when the
+   * search box is closed or has no matches.
+   */
+  active_search_match?: { node_id: string; column_id: string } | null;
+  /** The toolbar's current search text, only used to highlight the matching substring in the item-title span — see `active_search_match`. */
+  search_query?: string;
+  /**
+   * True for a user who may open and browse this board but not edit it (a
+   * workspace `viewer`, e.g. a board-invited guest, see `BoardEditGate`
+   * server-side). Every mutating action on `actions` becomes a no-op (the
+   * guard lives at the end of this hook, see `READ_ONLY_SAFE_ACTIONS`); this
+   * flag itself only drives cosmetic hiding of edit affordances (Add item/
+   * subitem/group rows, the row "..." menu trigger, row drag) that would
+   * otherwise do nothing when clicked.
+   */
+  read_only?: boolean;
 }
 
 export interface BoardTableState {
@@ -390,6 +418,12 @@ export interface BoardTableState {
   cell_colors: Record<string, Record<string, string>>;
   /** Leading pinned/frozen column count, see `UseBoardTableConfig.pinned_column_count`'s own doc comment. */
   pinned_column_count: number;
+  /** See `UseBoardTableConfig.active_search_match`'s own doc comment. */
+  active_search_match: { node_id: string; column_id: string } | null;
+  /** See `UseBoardTableConfig.search_query`'s own doc comment. */
+  search_query: string;
+  /** See `UseBoardTableConfig.read_only`'s own doc comment. */
+  read_only: boolean;
   /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
   /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
@@ -467,6 +501,9 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     row_colors: config.row_colors ?? {},
     cell_colors: config.cell_colors ?? {},
     pinned_column_count: config.pinned_column_count ?? 0,
+    active_search_match: config.active_search_match ?? null,
+    search_query: config.search_query ?? "",
+    read_only: config.read_only ?? false,
     active_cell: null,
     clipboard_cell: null,
     fill_drag: null,
@@ -578,6 +615,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.pinned_column_count !== undefined) setState((s) => ({ ...s, pinned_column_count: config.pinned_column_count! }));
   }, [config.pinned_column_count]);
+
+  useEffect(() => {
+    setState((s) => ({ ...s, active_search_match: config.active_search_match ?? null }));
+  }, [config.active_search_match]);
+
+  useEffect(() => {
+    if (config.search_query !== undefined) setState((s) => ({ ...s, search_query: config.search_query! }));
+  }, [config.search_query]);
+
+  useEffect(() => {
+    setState((s) => ({ ...s, read_only: config.read_only ?? false }));
+  }, [config.read_only]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key
@@ -695,6 +744,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     },
     [applyNodePriority, pushHistory]
   );
+
+  /** Row menu's "Set recurring..." popover — no undo/redo, a scheduling side-effect rather than a visible cell edit, mirroring `openComments`/`openItem`. */
+  const setItemRecurrence = useCallback((node_id: string, recurrence: { frequency: "daily" | "weekly" | "monthly"; interval_count: number }) => {
+    setState((s) => ({ ...s, groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, recurrence })), open_row_menu_id: null }));
+    config_ref.current.onSetItemRecurrence?.(node_id, recurrence);
+  }, []);
+
+  /** Row menu's "Stop recurring" action. */
+  const clearItemRecurrence = useCallback((node_id: string) => {
+    setState((s) => ({ ...s, groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, recurrence: null })), open_row_menu_id: null }));
+    config_ref.current.onClearItemRecurrence?.(node_id);
+  }, []);
 
   // ---- cell values --------------------------------------------------------
 
@@ -1485,7 +1546,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       group_key: string,
       scope: ColumnScope,
       column_id: string,
-      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation }
+      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"] }
     ) => {
       const local_patch: Partial<ColumnDef> = {};
       if (patch.width != null) local_patch.width = patch.width;
@@ -1493,6 +1554,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.mirror) local_patch.mirror = patch.mirror;
       if (patch.linked_board_id) local_patch.linked_board_id = patch.linked_board_id;
       if (patch.validation) local_patch.validation = patch.validation;
+      if (patch.aggregation) local_patch.aggregation = patch.aggregation;
+      if (patch.reminder) local_patch.reminder = patch.reminder;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
@@ -1875,6 +1938,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       createBelow,
       duplicateNode,
       toggleNodePriority,
+      setItemRecurrence,
+      clearItemRecurrence,
       moveItemToGroup,
       convertSubToItem,
       convertItemToSub,
@@ -1966,7 +2031,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
       clearCellValue, uploadCellFiles, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
-      openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, moveItemToGroup,
+      openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
@@ -1977,7 +2042,35 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     ]
   );
 
-  return { state, actions, summary_text, findNode: (id: string) => findNode(state.groups, id) };
+  /**
+   * Purely view/navigation actions that stay functional under `config.read_only`
+   * (see `UseBoardTableConfig.read_only`'s own doc comment) — everything else
+   * on `actions` becomes a no-op below. Deny-by-default rather than an
+   * exclude-list: a new mutating action added later is blocked automatically
+   * instead of silently slipping through a guest's read-only view.
+   */
+  const READ_ONLY_SAFE_ACTIONS = new Set<keyof typeof actions>([
+    "toggleItemOpen", "toggleSelected", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup",
+    "setActiveCell", "clearActiveCell", "moveActiveCell", "copyActiveCell",
+    "openRowMenu", "closeRowMenu", "setHoverRow", "setHoverGroup", "setHoverHead",
+    "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
+    "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
+    "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery",
+    "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
+    "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
+  ]);
+
+  const guarded_actions = useMemo(() => {
+    if (!config.read_only) return actions;
+    const noop = () => {};
+    return Object.fromEntries(
+      Object.entries(actions).map(([key, fn]) => [key, READ_ONLY_SAFE_ACTIONS.has(key as keyof typeof actions) ? fn : noop])
+    ) as typeof actions;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actions, config.read_only]);
+
+  return { state, actions: guarded_actions, summary_text, findNode: (id: string) => findNode(state.groups, id) };
 }
 
 export type BoardTableActions = ReturnType<typeof useBoardTable>["actions"];

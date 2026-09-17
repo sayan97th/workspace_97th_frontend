@@ -5,13 +5,14 @@ import ColumnMenu from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import type { ColumnKind, ColumnValidation, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { NumberAggregation } from "../summaryUtils";
 
 interface ColumnHeaderCellProps {
   scoped_key: string;
   title: string;
   height: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible?: boolean;
@@ -32,7 +33,7 @@ interface ColumnHeaderCellProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
-  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation }) => void;
+  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } }) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
   /**

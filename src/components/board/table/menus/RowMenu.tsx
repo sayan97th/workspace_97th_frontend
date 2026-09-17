@@ -10,6 +10,8 @@ export interface RowMenuTarget {
   current?: boolean;
 }
 
+export type RecurrenceFrequency = "daily" | "weekly" | "monthly";
+
 interface RowMenuProps {
   is_sub: boolean;
   anchor_el: HTMLElement | null;
@@ -17,6 +19,8 @@ interface RowMenuProps {
   convert_targets: RowMenuTarget[];
   copied: boolean;
   is_priority: boolean;
+  /** Root items only (`is_sub` false) — a subitem can't recur on its own, see `BoardTableNode.recurrence`. */
+  recurrence?: { frequency: RecurrenceFrequency; interval_count: number } | null;
   onOpen: () => void;
   onCopyLink: () => void;
   onCreateBelow: () => void;
@@ -26,12 +30,20 @@ interface RowMenuProps {
   onConvertToItem: () => void;
   onConvertToSubOf: (target_id: string) => void;
   onTogglePriority: () => void;
+  onSetRecurrence?: (frequency: RecurrenceFrequency, interval_count: number) => void;
+  onClearRecurrence?: () => void;
   onArchive: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
-type SubmenuKey = "move" | "dup" | "convert";
+type SubmenuKey = "move" | "dup" | "convert" | "recur";
+
+const FREQUENCY_OPTIONS: { id: RecurrenceFrequency; label: string }[] = [
+  { id: "daily", label: "day(s)" },
+  { id: "weekly", label: "week(s)" },
+  { id: "monthly", label: "month(s)" },
+];
 
 const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 const SUBMENU_TRIGGER = `${ROW_ITEM} cursor-pointer`;
@@ -49,14 +61,17 @@ const CHEVRON_ICON = (
  * hover-gap for the cursor to fall out of on the way to the submenu.
  */
 export default function RowMenu({
-  is_sub, anchor_el, move_targets, convert_targets, copied, is_priority,
+  is_sub, anchor_el, move_targets, convert_targets, copied, is_priority, recurrence,
   onOpen, onCopyLink, onCreateBelow, onAddSubitem, onDuplicate, onMoveTo, onConvertToItem, onConvertToSubOf, onTogglePriority,
-  onArchive, onDelete, onClose,
+  onSetRecurrence, onClearRecurrence, onArchive, onDelete, onClose,
 }: RowMenuProps) {
   const [open_submenu, setOpenSubmenu] = useState<SubmenuKey | null>(null);
   const move_row_ref = useRef<HTMLButtonElement>(null);
   const dup_row_ref = useRef<HTMLButtonElement>(null);
   const convert_row_ref = useRef<HTMLButtonElement>(null);
+  const recur_row_ref = useRef<HTMLButtonElement>(null);
+  const [recur_frequency, setRecurFrequency] = useState<RecurrenceFrequency>(recurrence?.frequency ?? "weekly");
+  const [recur_interval, setRecurInterval] = useState(String(recurrence?.interval_count ?? 1));
 
   const closeSubmenu = () => setOpenSubmenu(null);
   const toggleSubmenu = (key: SubmenuKey) => setOpenSubmenu((current) => (current === key ? null : key));
@@ -133,6 +148,22 @@ export default function RowMenu({
             </span>
             <span className="flex-1 text-left">{is_sub ? "Create new subitem below" : "Create new item below"}</span>
           </button>
+
+          {!is_sub && onSetRecurrence && (
+            <button
+              type="button"
+              ref={recur_row_ref}
+              onClick={() => toggleSubmenu("recur")}
+              className={SUBMENU_TRIGGER}
+              style={{ background: open_submenu === "recur" ? "var(--color-boardtree-hover)" : "transparent" }}
+            >
+              <span className="flex w-4 items-center justify-center" style={{ color: recurrence ? "var(--color-boardtree-accent)" : "var(--color-boardtree-text-muted)" }}>
+                <svg viewBox="0 0 16 16" width="15" height="15"><path d="M3 8 a5 5 0 0 1 8.5 -3.5 M13 4.6 V7.4 H10.2 M13 8 a5 5 0 0 1 -8.5 3.5 M3 11.4 V8.6 H5.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+              <span className="flex-1 text-left">{recurrence ? "Recurring" : "Set recurring..."}</span>
+              <span className="flex text-boardtree-text-faint">{CHEVRON_ICON}</span>
+            </button>
+          )}
 
           <div className="my-1.5 mx-1 h-px bg-boardtree-border-soft" />
 
@@ -211,6 +242,54 @@ export default function RowMenu({
           )}
         </div>
       </MenuFlyout>
+
+      {!is_sub && onSetRecurrence && (
+        <MenuFlyout anchor_el={recur_row_ref.current} is_open={open_submenu === "recur"} onClose={closeSubmenu} side="right" width={232}>
+          <div className="flex flex-col gap-2 p-2.5">
+            <div className="flex items-center gap-1.5 text-[13px] text-boardtree-text">
+              <span>Every</span>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                value={recur_interval}
+                onChange={(e) => setRecurInterval(e.target.value)}
+                className="h-8 w-14 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+              />
+              <select
+                value={recur_frequency}
+                onChange={(e) => setRecurFrequency(e.target.value as RecurrenceFrequency)}
+                className="h-8 flex-1 rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+              >
+                {FREQUENCY_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const interval_count = Math.max(1, Number(recur_interval) || 1);
+                onSetRecurrence(recur_frequency, interval_count);
+                closeSubmenu();
+                onClose();
+              }}
+              className="flex h-8 w-full items-center justify-center rounded-[6px] bg-boardtree-accent text-[13px] font-medium text-white hover:bg-boardtree-accent-hover"
+            >
+              {recurrence ? "Update" : "Start recurring"}
+            </button>
+            {recurrence && onClearRecurrence && (
+              <button
+                type="button"
+                onClick={() => { onClearRecurrence(); closeSubmenu(); onClose(); }}
+                className="flex h-8 w-full items-center justify-center rounded-[6px] text-[13px] font-medium text-boardtree-danger hover:bg-boardtree-danger-hover"
+              >
+                Stop recurring
+              </button>
+            )}
+          </div>
+        </MenuFlyout>
+      )}
 
       {!is_sub && convert_targets.length > 0 && (
         <MenuFlyout anchor_el={convert_row_ref.current} is_open={open_submenu === "convert"} onClose={closeSubmenu} side="right" width={238}>

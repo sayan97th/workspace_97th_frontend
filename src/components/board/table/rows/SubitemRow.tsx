@@ -58,39 +58,41 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
       onMouseEnter={() => actions.setHoverRow(sub.id)}
       onMouseLeave={() => actions.setHoverRow(null)}
     >
-      <div className="absolute -left-[27px] top-2 z-[120]">
-        <button
-          ref={menu_btn_ref}
-          type="button"
-          onClick={(e) => { e.stopPropagation(); actions.openRowMenu(sub.id); }}
-          className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-          style={{ background: is_row_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_row_menu_open ? 1 : 0, pointerEvents: is_hovered || is_row_menu_open ? "auto" : "none" }}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
-        </button>
-        {is_row_menu_open && (
-          <RowMenu
-            is_sub
-            anchor_el={menu_btn_ref.current}
-            move_targets={move_targets}
-            convert_targets={[]}
-            copied={state.copied_row_id === sub.id}
-            is_priority={!!sub.is_priority}
-            onOpen={() => {}}
-            onCopyLink={() => actions.copyRowLink(sub.id)}
-            onCreateBelow={() => actions.createBelow(sub.id)}
-            onAddSubitem={() => {}}
-            onDuplicate={(with_subs) => actions.duplicateNode(sub.id, with_subs)}
-            onMoveTo={(target_id) => actions.convertItemToSub(sub.id, target_id)}
-            onConvertToItem={() => actions.convertSubToItem(sub.id)}
-            onConvertToSubOf={() => {}}
-            onTogglePriority={() => actions.toggleNodePriority(sub.id)}
-            onArchive={() => actions.deleteNode(sub.id)}
-            onDelete={() => actions.deleteNode(sub.id)}
-            onClose={actions.closeRowMenu}
-          />
-        )}
-      </div>
+      {!state.read_only && (
+        <div className="absolute -left-[27px] top-2 z-[120]">
+          <button
+            ref={menu_btn_ref}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.openRowMenu(sub.id); }}
+            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+            style={{ background: is_row_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_row_menu_open ? 1 : 0, pointerEvents: is_hovered || is_row_menu_open ? "auto" : "none" }}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
+          </button>
+          {is_row_menu_open && (
+            <RowMenu
+              is_sub
+              anchor_el={menu_btn_ref.current}
+              move_targets={move_targets}
+              convert_targets={[]}
+              copied={state.copied_row_id === sub.id}
+              is_priority={!!sub.is_priority}
+              onOpen={() => {}}
+              onCopyLink={() => actions.copyRowLink(sub.id)}
+              onCreateBelow={() => actions.createBelow(sub.id)}
+              onAddSubitem={() => {}}
+              onDuplicate={(with_subs) => actions.duplicateNode(sub.id, with_subs)}
+              onMoveTo={(target_id) => actions.convertItemToSub(sub.id, target_id)}
+              onConvertToItem={() => actions.convertSubToItem(sub.id)}
+              onConvertToSubOf={() => {}}
+              onTogglePriority={() => actions.toggleNodePriority(sub.id)}
+              onArchive={() => actions.deleteNode(sub.id)}
+              onDelete={() => actions.deleteNode(sub.id)}
+              onClose={actions.closeRowMenu}
+            />
+          )}
+        </div>
+      )}
 
       <TreeBar variant="thin" color={group.color} />
       <TreeHook color={group.color} />
@@ -99,7 +101,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
       <div
         className="flex-1 border-r border-b border-boardtree-border-soft"
         style={{ display: "grid", gridTemplateColumns: sub_tpl, background: is_selected ? "var(--color-boardtree-selected)" : "var(--color-boardtree-surface)", opacity: is_dragging ? 0.45 : 1 }}
-        draggable
+        draggable={!state.read_only}
         onDragStart={(e) => {
           if (fill_handle_mousedown_ref.current) {
             e.preventDefault();

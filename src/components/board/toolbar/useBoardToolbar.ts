@@ -21,10 +21,17 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
 
   const [is_search_open, setIsSearchOpen] = useState(false);
   const [is_search_focused, setIsSearchFocused] = useState(false);
-  const [search_query, setSearchQuery] = useState("");
+  const [search_query, setSearchQueryState] = useState("");
   const [search_column_ids, setSearchColumnIds] = useState<string[]>(() =>
     config.columns.map((column) => column.id)
   );
+  const [active_match_index, setActiveMatchIndex] = useState(0);
+  // Any query edit restarts jump-navigation at the first match, mirroring a
+  // browser's own in-page find.
+  const setSearchQuery = (value: string) => {
+    setSearchQueryState(value);
+    setActiveMatchIndex(0);
+  };
 
   const [selected_person_ids, setSelectedPersonIds] = useState<string[]>([]);
 
@@ -197,6 +204,33 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     ]
   );
 
+  /**
+   * Ctrl/Cmd+F jump-navigation targets: every (row, column) pair whose cell
+   * text actually contains the query, across the rows `deriveBoardRows`
+   * already narrowed down to matches above — this just identifies *which*
+   * of each matching row's searched columns is the reason it matched, so a
+   * board view can outline/scroll to one cell at a time instead of the whole
+   * row (see the Table view's `active_search_match` bridge).
+   */
+  const search_matches = useMemo(() => {
+    const query = search_query.trim().toLowerCase();
+    if (!query) return [];
+    const column_ids = search_column_ids.length ? search_column_ids : config.columns.map((c) => c.id);
+    const matches: { row_id: string; column_id: string }[] = [];
+    for (const group of derived.groups) {
+      for (const row of group.rows) {
+        const row_id = config.getRowId(row);
+        for (const column_id of column_ids) {
+          if (config.getColumnText(row, column_id).toLowerCase().includes(query)) matches.push({ row_id, column_id });
+        }
+      }
+    }
+    return matches;
+  }, [derived.groups, search_query, search_column_ids, config]);
+
+  const nextMatch = () => setActiveMatchIndex((i) => (search_matches.length ? (i + 1) % search_matches.length : 0));
+  const prevMatch = () => setActiveMatchIndex((i) => (search_matches.length ? (i - 1 + search_matches.length) % search_matches.length : 0));
+
   return {
     ...config,
     active_panel,
@@ -215,6 +249,10 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     search_column_ids,
     toggleSearchColumnId,
     setAllSearchColumns,
+    search_matches,
+    active_match_index,
+    nextMatch,
+    prevMatch,
 
     selected_person_ids,
     togglePersonId,

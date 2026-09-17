@@ -346,14 +346,16 @@ export default function BoardTable({
           active_sort_direction={active_sort_direction}
         />
       ))}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); actions.addGroup(); }}
-        className="mt-4 flex items-center gap-2 rounded-[6px] px-2 py-2 text-[13.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent"
-      >
-        <svg viewBox="0 0 14 14" width="13" height="13"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-        Add new group
-      </button>
+      {!state.read_only && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); actions.addGroup(); }}
+          className="mt-4 flex items-center gap-2 rounded-[6px] px-2 py-2 text-[13.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent"
+        >
+          <svg viewBox="0 0 14 14" width="13" height="13"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          Add new group
+        </button>
+      )}
     </>
   );
 

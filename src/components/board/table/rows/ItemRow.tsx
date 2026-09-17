@@ -10,6 +10,20 @@ import TreeBar from "./TreeBar";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 
+/** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
+function highlightMatch(text: string, query: string) {
+  if (!query) return text;
+  const index = text.toLowerCase().indexOf(query.toLowerCase());
+  if (index === -1) return text;
+  return (
+    <>
+      {text.slice(0, index)}
+      <mark className="rounded-[2px] bg-[#fdab3d] text-[#1e2237]">{text.slice(index, index + query.length)}</mark>
+      {text.slice(index + query.length)}
+    </>
+  );
+}
+
 interface ItemRowProps {
   item: BoardTableItem;
   group: BoardTableGroup;
@@ -29,6 +43,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const row_h = ROW_HEIGHT_PX[state.row_height];
   const row_color = state.row_colors[item.id];
   const row_bg = is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)");
+  const is_active_match = state.active_search_match?.node_id === item.id;
+  const is_active_name_match = is_active_match && state.active_search_match?.column_id === "__name";
   // The Item column (checkbox + name + comment icon) always freezes; any
   // extra leading value columns freeze too once pinned from the toolbar's
   // "Choose columns to pin" control, see `mainStickyOffsets`'s own comment.
@@ -62,11 +78,25 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
     return () => window.removeEventListener("mouseup", clear);
   }, []);
 
+  const row_ref = useRef<HTMLDivElement>(null);
+  // Ctrl/Cmd+F "N of M" jump navigation — scrolls the newly active match's
+  // row into view, mirroring a browser's own in-page find.
+  useEffect(() => {
+    if (is_active_match) row_ref.current?.scrollIntoView({ block: "nearest" });
+  }, [is_active_match]);
+
   return (
     <div
+      ref={row_ref}
       className="relative flex items-stretch"
-      style={{ minWidth: min_width, background: row_bg, opacity: is_dragging ? 0.45 : 1 }}
-      draggable
+      style={{
+        minWidth: min_width,
+        background: row_bg,
+        opacity: is_dragging ? 0.45 : 1,
+        outline: is_active_match ? "2px solid #fdab3d" : undefined,
+        outlineOffset: is_active_match ? "-2px" : undefined,
+      }}
+      draggable={!state.read_only}
       onDragStart={(e) => {
         // See `fill_handle_mousedown_ref`'s own doc comment — a fill-handle
         // drag starts inside this same `draggable` row, and must cancel the
@@ -82,39 +112,44 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
       onMouseEnter={() => actions.setHoverRow(item.id)}
       onMouseLeave={() => actions.setHoverRow(null)}
     >
-      <div className="absolute -left-[27px] top-2 z-[120]">
-        <button
-          ref={menu_btn_ref}
-          type="button"
-          onClick={(e) => { e.stopPropagation(); actions.openRowMenu(item.id); }}
-          className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-          style={{ background: is_row_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_row_menu_open ? 1 : 0, pointerEvents: is_hovered || is_row_menu_open ? "auto" : "none" }}
-        >
-          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
-        </button>
-        {is_row_menu_open && (
-          <RowMenu
-            is_sub={false}
-            anchor_el={menu_btn_ref.current}
-            move_targets={move_targets}
-            convert_targets={convert_targets}
-            copied={state.copied_row_id === item.id}
-            onOpen={() => {}}
-            is_priority={!!item.is_priority}
-            onCopyLink={() => actions.copyRowLink(item.id)}
-            onCreateBelow={() => actions.createBelow(item.id)}
-            onAddSubitem={() => actions.addSubitem(item.id)}
-            onDuplicate={(with_subs) => actions.duplicateNode(item.id, with_subs)}
-            onMoveTo={(target_id) => actions.moveItemToGroup(item.id, target_id)}
-            onConvertToItem={() => {}}
-            onConvertToSubOf={(target_id) => actions.convertItemToSub(item.id, target_id)}
-            onTogglePriority={() => actions.toggleNodePriority(item.id)}
-            onArchive={() => actions.deleteNode(item.id)}
-            onDelete={() => actions.deleteNode(item.id)}
-            onClose={actions.closeRowMenu}
-          />
-        )}
-      </div>
+      {!state.read_only && (
+        <div className="absolute -left-[27px] top-2 z-[120]">
+          <button
+            ref={menu_btn_ref}
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.openRowMenu(item.id); }}
+            className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+            style={{ background: is_row_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_row_menu_open ? 1 : 0, pointerEvents: is_hovered || is_row_menu_open ? "auto" : "none" }}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
+          </button>
+          {is_row_menu_open && (
+            <RowMenu
+              is_sub={false}
+              anchor_el={menu_btn_ref.current}
+              move_targets={move_targets}
+              convert_targets={convert_targets}
+              copied={state.copied_row_id === item.id}
+              onOpen={() => {}}
+              is_priority={!!item.is_priority}
+              recurrence={item.recurrence}
+              onCopyLink={() => actions.copyRowLink(item.id)}
+              onCreateBelow={() => actions.createBelow(item.id)}
+              onAddSubitem={() => actions.addSubitem(item.id)}
+              onDuplicate={(with_subs) => actions.duplicateNode(item.id, with_subs)}
+              onMoveTo={(target_id) => actions.moveItemToGroup(item.id, target_id)}
+              onConvertToItem={() => {}}
+              onConvertToSubOf={(target_id) => actions.convertItemToSub(item.id, target_id)}
+              onTogglePriority={() => actions.toggleNodePriority(item.id)}
+              onSetRecurrence={(frequency, interval_count) => actions.setItemRecurrence(item.id, { frequency, interval_count })}
+              onClearRecurrence={() => actions.clearItemRecurrence(item.id)}
+              onArchive={() => actions.deleteNode(item.id)}
+              onDelete={() => actions.deleteNode(item.id)}
+              onClose={actions.closeRowMenu}
+            />
+          )}
+        </div>
+      )}
 
       <TreeBar variant="thick" color={group.color} />
 
@@ -179,7 +214,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                         : "truncate"
                 }`}
               >
-                {item.name}
+                {is_active_name_match ? highlightMatch(item.name, state.search_query) : item.name}
               </span>
             )}
           </div>
@@ -204,6 +239,14 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               />
             </svg>
           </button>
+          {item.recurrence && (
+            <span
+              title={`Recurs every ${item.recurrence.interval_count} ${item.recurrence.frequency === "daily" ? "day(s)" : item.recurrence.frequency === "weekly" ? "week(s)" : "month(s)"}`}
+              className="flex h-[18px] w-[18px] flex-none items-center justify-center text-boardtree-accent"
+            >
+              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3 8 a5 5 0 0 1 8.5 -3.5 M13 4.6 V7.4 H10.2 M13 8 a5 5 0 0 1 -8.5 3.5 M3 11.4 V8.6 H5.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </span>
+          )}
           {item.subs.length > 0 && (
             <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[9px] bg-boardtree-hover px-[7px] py-0.5 font-mono text-[10.5px] text-boardtree-text-secondary">
               {item.subs.length}
@@ -251,6 +294,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             state.fill_drag.anchor_node_id !== item.id;
           const is_pinned = col_index < pinned_columns.length;
           const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, item.values[col.id]);
+          const is_search_match = is_active_match && state.active_search_match?.column_id === col.id;
           return (
             <div
               key={col.id}
@@ -270,10 +314,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                   ? "2px solid var(--color-boardtree-accent)"
                   : is_fill_target
                     ? "1.5px dashed var(--color-boardtree-accent)"
-                    : is_invalid
-                      ? "1.5px solid #e2445c"
-                      : undefined,
-                outlineOffset: is_active || is_fill_target || is_invalid ? "-2px" : undefined,
+                    : is_search_match
+                      ? "2px solid #fdab3d"
+                      : is_invalid
+                        ? "1.5px solid #e2445c"
+                        : undefined,
+                outlineOffset: is_active || is_fill_target || is_search_match || is_invalid ? "-2px" : undefined,
                 zIndex: is_pinned ? 15 : is_active ? 5 : undefined,
               }}
               onMouseDown={() => actions.setActiveCell(item.id, col.id)}

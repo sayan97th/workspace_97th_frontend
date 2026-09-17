@@ -1,7 +1,7 @@
 import type { BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
-import { summaryForColumn } from "../summaryUtils";
+import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
 
 interface GroupSummaryRowProps {
   group: BoardTableGroup;
@@ -54,7 +54,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
                   <div className="w-full truncate text-center font-mono text-[13px] text-boardtree-text-secondary" title={summary.sum_value}>
                     {summary.sum_value}
                   </div>
-                  <div className="text-[10.5px] text-boardtree-text-faint">sum</div>
+                  <div className="text-[10.5px] text-boardtree-text-faint">{NUMBER_AGGREGATION_LABELS[summary.aggregation]}</div>
                 </>
               )}
               {summary.is_timeline && (

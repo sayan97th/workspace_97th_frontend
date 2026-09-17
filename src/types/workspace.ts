@@ -94,6 +94,8 @@ export type BoardDetail = WorkspaceNavNode & {
   has_unseen_comments: boolean;
   /** Whether the current user may archive/delete/restore this board or change its settings — the board's creator, its workspace's owner, or an admin. Drives the board options menu's management-only rows. */
   can_manage: boolean;
+  /** Whether the current user may edit this board's content (cells, rows, groups, columns) rather than just browse it — false for a workspace `viewer` (a board-invited guest). Drives the Table view's read-only mode. */
+  can_edit: boolean;
 };
 
 export type Workspace = {

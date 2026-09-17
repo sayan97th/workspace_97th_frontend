@@ -48,10 +48,40 @@ function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
         onBlur={toolbar.blurSearch}
         onKeyDown={(event) => {
           if (event.key === "Escape") toolbar.closeSearch();
+          else if (event.key === "Enter") {
+            event.preventDefault();
+            if (event.shiftKey) toolbar.prevMatch();
+            else toolbar.nextMatch();
+          }
         }}
         placeholder="Search this board..."
         className="min-w-0 flex-1 bg-transparent text-[13.5px] text-boardtree-text placeholder:text-boardtree-text-muted focus:outline-none"
       />
+      {toolbar.search_query && (
+        <div className="flex flex-none items-center gap-0.5">
+          <span className="px-1 font-mono text-[11.5px] text-boardtree-text-muted">
+            {toolbar.search_matches.length ? `${toolbar.active_match_index + 1} of ${toolbar.search_matches.length}` : "0 of 0"}
+          </span>
+          <button
+            type="button"
+            onClick={toolbar.prevMatch}
+            disabled={!toolbar.search_matches.length}
+            aria-label="Previous match"
+            className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-boardtree-text-muted hover:bg-boardtree-hover-strong disabled:opacity-40"
+          >
+            <svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 7.5 L6 4.5 L9 7.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+          <button
+            type="button"
+            onClick={toolbar.nextMatch}
+            disabled={!toolbar.search_matches.length}
+            aria-label="Next match"
+            className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-boardtree-text-muted hover:bg-boardtree-hover-strong disabled:opacity-40"
+          >
+            <svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 4.5 L6 7.5 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
+        </div>
+      )}
       <button
         ref={tune_button_ref}
         type="button"

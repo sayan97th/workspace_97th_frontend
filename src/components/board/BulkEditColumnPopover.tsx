@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import BoardPopover from "./toolbar/BoardPopover";
 import type { CellValue, ColumnDef, ColumnKind, PersonDef } from "./table/types";
+import { encodeRangeValue } from "./table/dateUtils";
 
 export type BulkEditColumnPopoverProps = {
   anchor_el: HTMLElement | null;
@@ -13,8 +14,8 @@ export type BulkEditColumnPopoverProps = {
   onClose: () => void;
 };
 
-/** Kinds this popover can drive a value input for — richer kinds (files, dependency, formula, mirror, timeline, time_tracking, auto_number) need per-row context this bulk action doesn't have, so the column picker itself only ever offers these. */
-export const BULK_EDITABLE_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email", "number", "status", "label", "dropdown", "checkbox", "date", "people"];
+/** Kinds this popover can drive a value input for — richer kinds (files, dependency, formula, mirror, vote, time_tracking, auto_number) need per-row context this bulk action doesn't have, so the column picker itself only ever offers these. */
+export const BULK_EDITABLE_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email", "number", "status", "label", "dropdown", "tags", "checkbox", "date", "timeline", "people", "link", "rating"];
 
 const ROW = "flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2.5 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 
@@ -89,6 +90,46 @@ function BulkValueInput({ column, people, onSave }: { column: ColumnDef; people:
     );
   }
 
+  if (column.kind === "timeline") {
+    const [start, end] = text.split("..");
+    const setRange = (next_start: string, next_end: string) => setText(`${next_start}..${next_end}`);
+    return (
+      <>
+        <div className="mb-2 flex items-center gap-1.5">
+          <input autoFocus type="date" value={start ?? ""} onChange={(e) => setRange(e.target.value, end ?? "")} className="h-9 w-full rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
+          <span className="flex-none text-boardtree-text-faint">to</span>
+          <input type="date" value={end ?? ""} onChange={(e) => setRange(start ?? "", e.target.value)} className="h-9 w-full rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
+        </div>
+        <SaveButton onClick={() => onSave(encodeRangeValue(start ?? "", end ?? ""))} disabled={!start} />
+      </>
+    );
+  }
+
+  if (column.kind === "link") {
+    const [url, link_text] = text.split("\n");
+    return (
+      <>
+        <input autoFocus placeholder="URL" value={url ?? ""} onChange={(e) => setText(`${e.target.value}\n${link_text ?? ""}`)} className="mb-1.5 h-9 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
+        <input placeholder="Display text (optional)" value={link_text ?? ""} onChange={(e) => setText(`${url ?? ""}\n${e.target.value}`)} className="mb-2 h-9 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
+        <SaveButton onClick={() => onSave({ url: url ?? "", text: link_text ?? "" })} disabled={!url?.trim()} />
+      </>
+    );
+  }
+
+  if (column.kind === "rating") {
+    return (
+      <div className="flex items-center justify-center gap-1 py-2">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <button key={n} type="button" onClick={() => onSave(n)} title={`${n} star${n > 1 ? "s" : ""}`} className="flex h-6 w-6 items-center justify-center">
+            <svg viewBox="0 0 16 16" width="16" height="16">
+              <path d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z" fill="#fdab3d" />
+            </svg>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   if (column.kind === "checkbox") {
     return (
       <div className="flex flex-col gap-0.5">
@@ -112,6 +153,25 @@ function BulkValueInput({ column, people, onSave }: { column: ColumnDef; people:
   }
 
   if (column.kind === "dropdown") {
+    return (
+      <>
+        <div className="mb-2 flex max-h-44 flex-col gap-0.5 overflow-y-auto">
+          {(column.options ?? []).map((option) => {
+            const is_on = multi.includes(option.id);
+            return (
+              <button key={option.id} type="button" onClick={() => setMulti((cur) => (is_on ? cur.filter((x) => x !== option.id) : [...cur, option.id]))} className={ROW}>
+                <span className={`h-3.5 w-3.5 flex-none rounded-[3px] border-[1.5px] ${is_on ? "border-boardtree-accent bg-boardtree-accent" : "border-boardtree-border"}`} />
+                <span className="flex-1 truncate">{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <SaveButton onClick={() => onSave(multi)} disabled={multi.length === 0} />
+      </>
+    );
+  }
+
+  if (column.kind === "tags") {
     return (
       <>
         <div className="mb-2 flex max-h-44 flex-col gap-0.5 overflow-y-auto">

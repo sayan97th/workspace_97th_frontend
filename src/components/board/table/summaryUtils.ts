@@ -8,6 +8,16 @@ export interface StatusSegment {
   background: string;
 }
 
+export type NumberAggregation = "sum" | "avg" | "min" | "max" | "count";
+
+export const NUMBER_AGGREGATION_LABELS: Record<NumberAggregation, string> = {
+  sum: "sum",
+  avg: "average",
+  min: "min",
+  max: "max",
+  count: "count",
+};
+
 export interface ColumnSummary {
   column_id: string;
   is_status: boolean;
@@ -15,6 +25,8 @@ export interface ColumnSummary {
   is_timeline: boolean;
   segments: StatusSegment[];
   sum_value: string;
+  /** Which aggregation `sum_value` actually holds, for `GroupSummaryRow`'s caption — defaults to `"sum"` for columns with no `aggregation` set (existing behavior, unchanged). */
+  aggregation: NumberAggregation;
   range_label: string;
 }
 
@@ -44,9 +56,14 @@ function widestRangeOf(items: BoardTableItem[], column_id: string): { start_iso:
   return { start_iso, end_iso };
 }
 
+/** Rounds to at most 2 decimal places and drops a trailing ".00"/"x0" — keeps `average` readable without a fixed decimal count on whole-number results. */
+function fmtAggregate(n: number): string {
+  return String(Math.round(n * 100) / 100);
+}
+
 /** Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row. */
 export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
-  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", range_label: "" };
+  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "" };
 
   if (column.kind === "timeline") {
     const { start_iso, end_iso } = widestRangeOf(items, column.id);
@@ -71,8 +88,27 @@ export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, sta
   }
 
   if (column.kind === "number") {
-    const sum = items.reduce((acc, item) => acc + numberValueOf(item, column.id), 0);
-    return { ...base, is_number: true, sum_value: String(sum) };
+    const aggregation = column.aggregation ?? "sum";
+    const values = items.map((item) => numberValueOf(item, column.id));
+    const sum = values.reduce((acc, v) => acc + v, 0);
+    let sum_value: string;
+    switch (aggregation) {
+      case "avg":
+        sum_value = values.length ? fmtAggregate(sum / values.length) : "0";
+        break;
+      case "min":
+        sum_value = values.length ? fmtAggregate(Math.min(...values)) : "0";
+        break;
+      case "max":
+        sum_value = values.length ? fmtAggregate(Math.max(...values)) : "0";
+        break;
+      case "count":
+        sum_value = String(items.length);
+        break;
+      default:
+        sum_value = fmtAggregate(sum);
+    }
+    return { ...base, is_number: true, sum_value, aggregation };
   }
 
   return base;

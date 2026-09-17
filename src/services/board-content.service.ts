@@ -205,6 +205,24 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}`);
   },
 
+  /** PATCH /api/boards/{board_id}/items/{item_id}/recurrence — Row menu's "Set recurring..." popover. */
+  async setItemRecurrence(
+    board_id: number,
+    item_id: number,
+    payload: { frequency: "daily" | "weekly" | "monthly"; interval_count: number }
+  ): Promise<{ frequency: "daily" | "weekly" | "monthly"; interval_count: number }> {
+    const response = await apiClient.patch<{ recurrence: { frequency: "daily" | "weekly" | "monthly"; interval_count: number } }>(
+      `/api/boards/${board_id}/items/${item_id}/recurrence`,
+      payload
+    );
+    return response.recurrence;
+  },
+
+  /** DELETE /api/boards/{board_id}/items/{item_id}/recurrence — Row menu's "Stop recurring" action. */
+  async clearItemRecurrence(board_id: number, item_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/recurrence`);
+  },
+
   /** POST /api/boards/{board_id}/items/{item_id}/checklist-items — adds a subtask line, appended to the end. */
   async createChecklistItem(
     board_id: number,

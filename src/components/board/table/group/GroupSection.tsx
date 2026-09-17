@@ -190,7 +190,9 @@ export default function GroupSection({
                         {sorted_subs.map((sub) => (
                           <SubitemRow key={sub.id} sub={sub} item={item} group={group} name_col_width={sub_name_col_width} min_width={sub_min_width} state={state} actions={actions} />
                         ))}
-                        <AddSubitemRow min_width={sub_min_width} color={group.color} tint={group.tint} onAdd={() => actions.addSubitem(item.id)} />
+                        {!state.read_only && (
+                          <AddSubitemRow min_width={sub_min_width} color={group.color} tint={group.tint} onAdd={() => actions.addSubitem(item.id)} />
+                        )}
                         <div className="flex items-stretch" style={{ minWidth: sub_min_width, height: 16 }}>
                           <TreeBar variant="gap" color={group.color} tint={group.tint} />
                         </div>
@@ -215,7 +217,9 @@ export default function GroupSection({
                 </div>
               )}
 
-              <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
+              {!state.read_only && (
+                <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
+              )}
 
               <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
             </>

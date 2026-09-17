@@ -57,6 +57,10 @@ export type BoardColumnConfig = {
     max?: number;
     pattern?: string;
   };
+  /** Number columns only: which aggregation the Table view's group summary footer shows for this column. Defaults to `"sum"` when unset — see `ColumnDef.aggregation` in `@/components/board/table/types`. */
+  aggregation?: "sum" | "avg" | "min" | "max" | "count";
+  /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
+  reminder?: { enabled: boolean; days_before: number };
 };
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */
@@ -154,6 +158,8 @@ export type BoardItemDto = {
    * beneath their (visible, expanded) parent row.
    */
   children: BoardItemDto[];
+  /** The Row menu's "Set recurring..." schedule, when this item has one — only `getItems` populates this; every other call resolves it to null. */
+  recurrence: { frequency: "daily" | "weekly" | "monthly"; interval_count: number } | null;
 };
 
 /** One line of a board item's subtask checklist — see `BoardItemDto.checklist_total_count`. */

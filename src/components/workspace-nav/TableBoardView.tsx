@@ -186,6 +186,8 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         : undefined,
     linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
     validation: column.config?.validation,
+    aggregation: column.config?.aggregation,
+    reminder: column.config?.reminder,
   };
 };
 
@@ -1145,6 +1147,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return () => window.clearTimeout(timeout);
   }, [toolbar.search_query, board_id, view_tabs.active_view_id, mergeFetchedItems]);
 
+  // Ctrl/Cmd+F opens (or refocuses) the board's own search box instead of the
+  // browser's in-page find, so the Table view's Ctrl/Cmd+F match navigation
+  // (`active_search_match_grid` above) is what the shortcut actually reaches.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        toolbar.openSearch();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [toolbar.openSearch]);
+
   // Item-detail deep link (`/boards/{id}/pulses/{item_id}`) into a table
   // that hasn't lazy-loaded yet: the drawer-sync effect below (which reads
   // `items` via `findItemInTree`) would otherwise silently never open it
@@ -1890,6 +1906,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     values: item.values,
     comment_count: item.comment_count,
     is_priority: item.is_priority,
+    recurrence: item.recurrence,
   });
   const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
 
@@ -2024,6 +2041,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
    * `onAddColumnOption` (both funnel into the same `handleAddColumnOption`
    * used by the Kanban drawer's Priority/Project fields).
    */
+  /** Translates the toolbar's active search match (real column ids, `"name"` for the item title) into the grid's own virtual-column convention (`"__name"`) — see `table_config`'s `active_search_match` field below. */
+  const active_search_match_grid = useMemo(() => {
+    const match = toolbar.search_matches[toolbar.active_match_index];
+    if (!match) return null;
+    return { node_id: match.row_id, column_id: match.column_id === ITEM_COLUMN_ID ? "__name" : match.column_id };
+  }, [toolbar.search_matches, toolbar.active_match_index]);
+
   const table_config: UseBoardTableConfig = useMemo(
     () => ({
       initial_groups: table_groups,
@@ -2054,6 +2078,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `toolbar.pinned_column_ids.length` (see `table_base_columns`'s own
       // doc comment for why those two can differ).
       pinned_column_count: table_pinned_count,
+      // Ctrl/Cmd+F jump-navigation, same read-only toolbar-owned pattern as
+      // `row_height`/`row_colors`/`cell_colors` above — `"name"` is the
+      // toolbar's real column id for the item title (`ITEM_COLUMN_ID`), the
+      // grid's own virtual id for that same column is `"__name"` (see the
+      // sort-arrow bridge below for the identical translation).
+      active_search_match: active_search_match_grid,
+      search_query: toolbar.search_query,
+      // A workspace `viewer` (e.g. a board-invited guest) can open and
+      // browse the table but never edit it — see `BoardEditGate` server-side.
+      read_only: !node.can_edit,
       current_user_id: user ? String(user.id) : undefined,
       onUploadCellFiles: (node_id, column_id, files) =>
         boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
@@ -2113,19 +2147,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .updateItem(board_id, Number(node_id), { is_priority })
           .then((updated) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, is_priority: updated.is_priority }))));
       },
+      onSetItemRecurrence: (node_id, recurrence) => {
+        void boardContentService
+          .setItemRecurrence(board_id, Number(node_id), recurrence)
+          .then((saved) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: saved }))));
+      },
+      onClearItemRecurrence: (node_id) => {
+        void boardContentService
+          .clearItemRecurrence(board_id, Number(node_id))
+          .then(() => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: null }))));
+      },
       onRenameColumn: (_group_key, _scope, column_id, title) =>
         void boardContentService
           .updateColumn(board_id, Number(column_id), { label: title })
           .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
       onDeleteColumn: (_group_key, _scope, column_id) => void handleRemoveKanbanProperty(column_id),
-      // `validation` lives under the column's own `config` JSON server-side
-      // (like `formula`/`mirror`), unlike `width`/`hideable`/`pinnable`,
-      // which are real top-level `board_columns` fields — so it needs the
-      // same read-modify-write merge `handleUpdateColumnFormula` uses,
+      // `validation`/`aggregation` live under the column's own `config` JSON
+      // server-side (like `formula`/`mirror`), unlike `width`/`hideable`/
+      // `pinnable`, which are real top-level `board_columns` fields — so they
+      // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, ...rest }) => {
         const column = columns_by_id[column_id];
-        const body = validation !== undefined ? { ...rest, config: { ...(column?.config ?? {}), validation } } : rest;
+        const config_patch: Partial<BoardColumnConfig> = {};
+        if (validation !== undefined) config_patch.validation = validation;
+        if (aggregation !== undefined) config_patch.aggregation = aggregation;
+        if (reminder !== undefined) config_patch.reminder = reminder;
+        const body = Object.keys(config_patch).length > 0 ? { ...rest, config: { ...(column?.config ?? {}), ...config_patch } } : rest;
         void boardContentService
           .updateColumn(board_id, Number(column_id), body)
           .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c))));
@@ -2165,6 +2213,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.row_height,
       toolbar.row_colors,
       toolbar.cell_colors,
+      active_search_match_grid,
+      toolbar.search_query,
+      node.can_edit,
       table_pinned_count,
       user,
       requestGroupItems,
@@ -2840,7 +2891,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         )
       }
       selectionBar={
-        active_view_type === "table" ? (
+        active_view_type === "table" && node.can_edit ? (
           <SelectionActionBar
             selected_count={selected_item_ids.length}
             groups={selection_move_targets}

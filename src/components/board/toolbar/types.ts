@@ -151,6 +151,12 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   search_column_ids: string[];
   toggleSearchColumnId: (column_id: string) => void;
   setAllSearchColumns: (selected: boolean) => void;
+  /** Ctrl/Cmd+F jump-navigation targets, see `useBoardToolbar`'s own doc comment on the memo that builds this. Empty while `search_query` is blank. */
+  search_matches: { row_id: string; column_id: string }[];
+  /** Index into `search_matches` the "N of M" counter and active outline/scroll point at. */
+  active_match_index: number;
+  nextMatch: () => void;
+  prevMatch: () => void;
 
   selected_person_ids: string[];
   togglePersonId: (id: string) => void;
