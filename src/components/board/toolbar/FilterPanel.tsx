@@ -8,7 +8,7 @@ export type FilterPanelProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
-/** Floating panel rendered by BoardToolbar, anchored below the button row — mirrors the Person/Sort/Group by popovers. */
+/** Floating panel rendered by BoardToolbar inside a `BoardPopover`, anchored below the button row and spanning its width — same portal-based popover the Person/Sort/Group by controls use, so it always floats above the table regardless of the sticky header rows' own z-index. */
 function FilterPanel<TRow>({ toolbar }: FilterPanelProps<TRow>) {
   const is_quick = toolbar.filter_mode === "quick";
 

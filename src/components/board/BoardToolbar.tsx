@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { CollapseTableIcon } from "@/icons/board-icons";
 import type { BoardToolbarApi } from "./toolbar/types";
@@ -12,6 +12,10 @@ import HideColumnsControl from "./toolbar/HideColumnsControl";
 import GroupByControl from "./toolbar/GroupByControl";
 import OverflowControl from "./toolbar/OverflowControl";
 import ConditionalColoringPanel from "./toolbar/ConditionalColoringPanel";
+import BoardPopover from "./toolbar/BoardPopover";
+
+/** The inline panel's width matches the toolbar row's own width, capped at this value. */
+const INLINE_PANEL_MAX_WIDTH = 832;
 
 export type BoardToolbarProps<TRow> = {
   new_item_label?: string;
@@ -26,17 +30,25 @@ function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar }:
   const is_color_open = toolbar.active_panel === "color";
   const is_inline_panel_open = is_filter_open || is_color_open;
 
-  useEffect(() => {
-    if (!is_inline_panel_open) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") toolbar.closePanel();
-    };
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [is_inline_panel_open, toolbar]);
+  const toolbar_row_ref = useRef<HTMLDivElement>(null);
+  const [inline_panel_width, setInlinePanelWidth] = useState(INLINE_PANEL_MAX_WIDTH);
+
+  // Tracks the toolbar row's own width so the Filter/Conditional coloring panel keeps
+  // spanning it (capped at INLINE_PANEL_MAX_WIDTH) now that BoardPopover portals it to
+  // document.body — outside the row's own layout flow, so it can no longer size itself
+  // off the row with plain CSS (`w-full`) the way it did before.
+  useLayoutEffect(() => {
+    const el = toolbar_row_ref.current;
+    if (!el) return;
+    const updateWidth = () => setInlinePanelWidth(Math.min(el.offsetWidth, INLINE_PANEL_MAX_WIDTH));
+    updateWidth();
+    const resize_observer = new ResizeObserver(updateWidth);
+    resize_observer.observe(el);
+    return () => resize_observer.disconnect();
+  }, []);
 
   return (
-    <div className="relative flex items-center gap-1">
+    <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
       <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-boardtree-accent">
         <button type="button" onClick={onNewItem} className="px-3.5 py-2 text-[13px] font-semibold text-white">
           {new_item_label}
@@ -68,16 +80,17 @@ function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar }:
         <CollapseTableIcon />
       </button>
 
-      {is_inline_panel_open && (
-        <>
-          {/* Backdrop: dismisses the panel on outside click, matching the other toolbar popovers. */}
-          <div className="fixed inset-0 z-40" onClick={toolbar.closePanel} />
-          <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full max-w-[832px]">
-            {is_filter_open && <FilterPanel toolbar={toolbar} />}
-            {is_color_open && <ConditionalColoringPanel toolbar={toolbar} />}
-          </div>
-        </>
-      )}
+      <BoardPopover
+        anchor_el={toolbar_row_ref.current}
+        is_open={is_inline_panel_open}
+        onClose={toolbar.closePanel}
+        width={inline_panel_width}
+        align="start"
+        unstyled
+      >
+        {is_filter_open && <FilterPanel toolbar={toolbar} />}
+        {is_color_open && <ConditionalColoringPanel toolbar={toolbar} />}
+      </BoardPopover>
     </div>
   );
 }

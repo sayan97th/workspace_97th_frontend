@@ -7,7 +7,7 @@ export type FilterControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
-/** Button only — the (wide) Filter panel itself floats below the toolbar row, positioned by BoardToolbar rather than BoardPopover since it spans the full toolbar width instead of anchoring to this button. */
+/** Button only — the (wide) Filter panel itself is rendered by BoardToolbar via a `BoardPopover` anchored to the whole toolbar row instead of this button, since it spans the full row's width. */
 function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
   const is_open = toolbar.active_panel === "filter";
   return (

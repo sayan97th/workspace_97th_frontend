@@ -26,16 +26,25 @@ export type BoardPopoverProps = {
    * popover background trailing off to the right of the row.
    */
   hug_content?: boolean;
+  /**
+   * Skips the popover's own rounded/border/background/shadow chrome, leaving only
+   * positioning (`fixed` + `z-[1000]`) — for content (e.g. the Filter panel) that already
+   * renders its own container styling and would otherwise end up double-boxed.
+   */
+  unstyled?: boolean;
   children: React.ReactNode;
 };
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
+const CHROME_CLASS =
+  "rounded-xl border border-boardtree-border-soft bg-boardtree-surface text-boardtree-text shadow-2xl shadow-black/40";
 
 /**
- * Shared anchored popover for the board toolbar controls (Person/Sort/Hide/Group by/"...").
- * Portals to document.body and floats over the table (unlike the Filter panel, which is
- * rendered inline by BoardToolbar and pushes the table down instead).
+ * Shared anchored popover for the board toolbar controls (Person/Sort/Hide/Group by/Filter/"...").
+ * Portals to document.body so it always floats above the table regardless of any sticky
+ * header's own stacking context, instead of competing on z-index within the page's normal
+ * DOM tree the way an inline `absolute`-positioned panel would.
  */
 const BoardPopover: React.FC<BoardPopoverProps> = ({
   anchor_el,
@@ -44,6 +53,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   width = 300,
   align = "end",
   hug_content = false,
+  unstyled = false,
   children,
 }) => {
   const popover_ref = useRef<HTMLDivElement>(null);
@@ -129,7 +139,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   return createPortal(
     <div
       ref={popover_ref}
-      className="fixed z-[1000] rounded-xl border border-boardtree-border-soft bg-boardtree-surface text-boardtree-text shadow-2xl shadow-black/40"
+      className={`fixed z-[1000] ${unstyled ? "" : CHROME_CLASS}`}
       style={{
         width: hug_content ? undefined : width,
         maxWidth: width,
