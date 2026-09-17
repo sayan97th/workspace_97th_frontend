@@ -1,8 +1,7 @@
 "use client";
 import React from "react";
 import { CloseIcon } from "@/icons/board-icons";
-import { ActivityLogTabIcon, FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
-import ActivityLogPanel from "./ActivityLogPanel";
+import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
 import FilesPanel from "./FilesPanel";
 import InfoBoxesPanel from "./InfoBoxesPanel";
 import SlideOverPanel from "./SlideOverPanel";
@@ -35,9 +34,8 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   if (!drawer.is_open && !content.is_open) return null;
 
   const tabs: TabDefinition[] = [
-    { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length },
+    { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length + content.activity_log.length },
     { id: "files", label: "Files", icon: <FilesTabIcon size={15} />, count: content.all_attachments.length },
-    { id: "activity", label: "Activity Log", icon: <ActivityLogTabIcon size={15} /> },
     { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={15} /> },
   ];
 
@@ -106,7 +104,6 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       {/* Active tab body */}
       {content.active_tab === "updates" && <UpdatesPanel drawer={content} />}
       {content.active_tab === "files" && <FilesPanel drawer={content} />}
-      {content.active_tab === "activity" && <ActivityLogPanel entries={content.activity_log} />}
       {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
     </SlideOverPanel>
   );

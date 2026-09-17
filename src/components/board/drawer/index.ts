@@ -24,7 +24,6 @@ export { default as EmojiPalette } from "./EmojiPalette";
 export type { EmojiPaletteProps } from "./EmojiPalette";
 export { default as UpdatesPanel } from "./UpdatesPanel";
 export { default as FilesPanel } from "./FilesPanel";
-export { default as ActivityLogPanel } from "./ActivityLogPanel";
 export { default as InfoBoxesPanel } from "./InfoBoxesPanel";
 export { classifyAttachment } from "./drawerAttachments";
 export { renderMentionText } from "./renderMentionText";

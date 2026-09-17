@@ -27,6 +27,8 @@ export type DrawerReply = {
   id: string;
   author: BoardPersonOption;
   posted_at: string;
+  /** Raw ISO timestamp `posted_at` was formatted from, only used to sort the merged Updates feed against `DrawerActivityEntry.occurred_at_iso` — absent on client-side-only mock data, which sorts as "now". */
+  posted_at_iso?: string;
   body: string;
   /** True once the author has edited the body at least once. Absent on client-side-only mock data — treat as false. */
   is_edited?: boolean;
@@ -48,6 +50,8 @@ export type DrawerActivityEntry = {
   actor: BoardPersonOption;
   verb: string;
   occurred_at: string;
+  /** Raw ISO timestamp `occurred_at` was formatted from, see `DrawerReply.posted_at_iso`. */
+  occurred_at_iso?: string;
   accent_color: string;
 };
 
@@ -63,7 +67,8 @@ export type DrawerInfoBox = {
   rows: DrawerInfoBoxRow[];
 };
 
-export type DrawerTabId = "updates" | "files" | "activity" | "info_boxes";
+/** `"activity"` folded into `"updates"` (see `UpdatesPanel`'s merged feed) — no longer a separate tab. */
+export type DrawerTabId = "updates" | "files" | "info_boxes";
 
 /** Which composer a `@mention` picker or emoji palette is currently open for: the top-level composer, or a reply box keyed by its parent comment id. */
 export type DrawerComposerTarget = "composer" | string;

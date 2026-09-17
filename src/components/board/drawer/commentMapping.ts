@@ -67,6 +67,7 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
   id: String(dto.id),
   author: mapAuthorToPerson(dto.author),
   posted_at: formatRelativeTime(dto.created_at),
+  posted_at_iso: dto.created_at,
   body: dto.body,
   is_edited: dto.is_edited,
   view_count: dto.view_count,

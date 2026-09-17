@@ -1612,6 +1612,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             : { id: "0", name: "Someone", initials: "?", avatar_seed: 0 },
           verb: entry.description,
           occurred_at: formatDate(entry.created_at),
+          occurred_at_iso: entry.created_at,
           accent_color: ACTIVITY_ACCENT_COLOR_BY_ACTION[entry.action] ?? "#676879",
         })),
     [activity_log_entries]
