@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo } from "react";
 import DOMPurify from "dompurify";
+import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
 
 export type RichTextContentProps = {
   /** Sanitized-on-the-server HTML body (see `Purifier::clean()` in `BoardItemCommentController`/`BoardCommentController`). */
@@ -8,12 +9,11 @@ export type RichTextContentProps = {
   className?: string;
 };
 
-const MENTION_PATTERN = /(@[A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?)/g;
 const IMG_TAG_PATTERN = /<img[^>]*src="([^"]*)"[^>]*>/g;
 
 /** Wraps `@Full Name` runs in the highlighted span the plain-text renderer used to apply, now working over an HTML string instead of plain text. */
 const highlightMentions = (html: string): string =>
-  html.replace(MENTION_PATTERN, '<span class="font-semibold text-[#7fb2ff]">$1</span>');
+  html.replace(MENTION_PATTERN, `<span class="${MENTION_HIGHLIGHT_CLASS}">$1</span>`);
 
 /**
  * Read-only renderer for a comment/update body — the rich text counterpart

@@ -6,6 +6,7 @@ import Link from "@tiptap/extension-link";
 import TiptapImage from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { inlineUploadService } from "@/services/inline-upload.service";
+import { MentionHighlight } from "./mentionHighlight";
 
 export type RichTextComposerRef = {
   /** Inserts raw text (an emoji) at the current cursor position. */
@@ -60,7 +61,10 @@ const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => 
  * component purely through the imperative ref: picking a mention or emoji
  * calls {@link RichTextComposerRef.insertMentionText}/`insertText` here
  * rather than mutating the HTML string directly, since only the live editor
- * instance knows where the cursor actually is.
+ * instance knows where the cursor actually is. The `MentionHighlight`
+ * extension colors any `@Full Name` run blue as it's typed, independent of
+ * that autocomplete flow, so a mention still highlights even when pasted or
+ * typed out by hand instead of picked from `MentionPicker`.
  */
 const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
   ({ value, onChange, onPlainTextChange, placeholder, min_height_class = "min-h-16", onEnterSubmit, onEscape, autoFocus }, ref) => {
@@ -70,6 +74,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } }),
         TiptapImage,
         Placeholder.configure({ placeholder }),
+        MentionHighlight,
       ],
       content: value || "",
       immediatelyRender: false,

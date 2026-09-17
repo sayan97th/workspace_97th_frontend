@@ -1,6 +1,5 @@
 import React from "react";
-
-const MENTION_PATTERN = /(@[A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?)/g;
+import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
 
 /** Splits a comment body on `@Full Name` mentions and highlights them, matching the approved design. */
 export const renderMentionText = (body: string): React.ReactNode => {
@@ -9,7 +8,7 @@ export const renderMentionText = (body: string): React.ReactNode => {
     <span className="whitespace-pre-wrap">
       {parts.map((part, index) =>
         /^@[A-Z]/.test(part) ? (
-          <span key={index} className="font-semibold text-[#7fb2ff]">
+          <span key={index} className={MENTION_HIGHLIGHT_CLASS}>
             {part}
           </span>
         ) : (
