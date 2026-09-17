@@ -60,6 +60,8 @@ export type BoardHeaderProps = {
   automation_count?: number;
   /** Powers the "..." options menu; the button stays inert when omitted. */
   options_menu?: Omit<BoardOptionsMenuProps, "anchor_el" | "is_open" | "onClose">;
+  /** Face-pile of the other users currently viewing this board (see `PresenceAvatarStack`); hidden when omitted. */
+  presence?: React.ReactNode;
 };
 
 const action_button_class =
@@ -85,6 +87,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   onAutomateClick,
   automation_count = 0,
   options_menu,
+  presence,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
@@ -258,6 +261,13 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </span>
         )}
       </button>
+
+      {presence && (
+        <>
+          <span className="mx-1.5 h-5 w-px bg-shell-border-strong" />
+          {presence}
+        </>
+      )}
 
       <span className="mx-1 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[11px] font-bold text-white">
         {user_initials}

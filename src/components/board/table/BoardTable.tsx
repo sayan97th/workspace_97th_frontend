@@ -56,6 +56,15 @@ export interface BoardTableProps {
    */
   onDuplicateGroup?: (group_key: string, with_items: boolean) => Promise<void>;
   /**
+   * Row menu's own single-item "Duplicate" (an item or a subitem, with or
+   * without its own subitems) — like `onDuplicateGroup`, this awaits the
+   * real API call and lets the caller's own `items` state bring the copy in
+   * under its real id, rather than mutating `BoardTable`'s local state with
+   * a fabricated one that later 404s on edit. Omitted, `duplicateNode` stays
+   * local-only (the standalone demo behavior).
+   */
+  onDuplicateNode?: (node_id: string, with_subs: boolean) => Promise<void>;
+  /**
    * Persists a column picked from the "+" gallery (`ColumnPicker`, main-table
    * or subitem header). Once the caller's real create call resolves and its
    * own column list updates, the new column reaches `BoardTable` again as
@@ -140,6 +149,7 @@ export default function BoardTable({
   onCreateSubitem,
   onCreateGroup,
   onDuplicateGroup,
+  onDuplicateNode,
   onAddColumn,
   onDuplicateColumn,
   onDuplicateColumnToBoard,
@@ -206,6 +216,14 @@ export default function BoardTable({
     [onDuplicateGroup, base_actions]
   );
 
+  const duplicateNodeReal = useCallback(
+    (id: string, with_subs: boolean) => {
+      if (!onDuplicateNode) return base_actions.duplicateNode(id, with_subs);
+      void onDuplicateNode(id, with_subs);
+    },
+    [onDuplicateNode, base_actions]
+  );
+
   const addColumnReal = useCallback(
     (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
       if (after_column_id) {
@@ -242,11 +260,22 @@ export default function BoardTable({
       addSubitem: addSubitemReal,
       addGroup: addGroupReal,
       duplicateGroup: duplicateGroupReal,
+      duplicateNode: duplicateNodeReal,
       addColumn: addColumnReal,
       duplicateColumn: duplicateColumnReal,
       duplicateColumnToBoard: duplicateColumnToBoardReal,
     }),
-    [base_actions, addItemReal, addSubitemReal, addGroupReal, duplicateGroupReal, addColumnReal, duplicateColumnReal, duplicateColumnToBoardReal]
+    [
+      base_actions,
+      addItemReal,
+      addSubitemReal,
+      addGroupReal,
+      duplicateGroupReal,
+      duplicateNodeReal,
+      addColumnReal,
+      duplicateColumnReal,
+      duplicateColumnToBoardReal,
+    ]
   );
 
   /**

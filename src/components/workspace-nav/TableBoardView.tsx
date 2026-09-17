@@ -31,6 +31,7 @@ import {
   KanbanCardMembers,
   KanbanItemDrawer,
   PersonAvatarStack,
+  PresenceAvatarStack,
   SelectionActionBar,
   parseIsoDate,
   toIsoDate,
@@ -1099,13 +1100,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id, view_tabs.active_view_id, mergeFetchedItems]
   );
 
-  // Whenever search/filter/sort/"group by column" becomes active, those
-  // features need every table's rows to be correct — trigger the fallback
-  // above rather than letting them silently operate over just the tables
-  // that happen to have scrolled into view so far.
+  // Whenever filter/sort/"group by column" becomes active, those features
+  // need every table's rows to be correct — trigger the fallback above
+  // rather than letting them silently operate over just the tables that
+  // happen to have scrolled into view so far. Search is handled separately
+  // below by a real server query instead of this "load everything" fallback.
   useEffect(() => {
     const is_narrowed =
-      toolbar.search_query.trim() !== "" ||
       toolbar.selected_person_ids.length > 0 ||
       Object.values(toolbar.quick_filter_selections).some((ids) => ids.length > 0) ||
       toolbar.advanced_filter_rows.some((row) => row.column_id && row.condition) ||
@@ -1113,7 +1114,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID;
     if (is_narrowed) loadAllRemainingGroups();
   }, [
-    toolbar.search_query,
     toolbar.selected_person_ids,
     toolbar.quick_filter_selections,
     toolbar.advanced_filter_rows,
@@ -1121,6 +1121,29 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     toolbar.group_by_option_id,
     loadAllRemainingGroups,
   ]);
+
+  /**
+   * Real server-side search (`BoardItemFilterService::applySearch()`, which
+   * matches the item name OR any column's value, not scoped to specific
+   * columns) — replaces fetching the entire tab just to filter it
+   * client-side. `deriveBoardRows`'s existing client-side `matchesSearch`
+   * still runs on top of this, over the much smaller server-narrowed set:
+   * that's also how "search only these columns" keeps working despite the
+   * backend not supporting column-scoping, the server call is always the
+   * broad superset, narrowed further client-side. Debounced so each
+   * keystroke doesn't fire its own request.
+   */
+  useEffect(() => {
+    const query = toolbar.search_query.trim();
+    if (!query) return;
+    const timeout = window.setTimeout(() => {
+      boardContentService
+        .getItems(board_id, view_tabs.active_view_id, query)
+        .then(mergeFetchedItems)
+        .catch(() => {});
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [toolbar.search_query, board_id, view_tabs.active_view_id, mergeFetchedItems]);
 
   // Item-detail deep link (`/boards/{id}/pulses/{item_id}`) into a table
   // that hasn't lazy-loaded yet: the drawer-sync effect below (which reads
@@ -1880,12 +1903,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.groups.map((g) => {
         const group_id = Number(g.id);
         // `is_all_items_loaded` covers both the eager (non-`"table"` view,
-        // or a search/filter/sort/group-by fallback) case and a "group by
-        // column" bucket, whose synthetic `g.id` isn't a real group id at
-        // all — at that point every table's rows are already loaded anyway
-        // (see `loadAllRemainingGroups`'s effect), so this is always `true`
-        // by the time it would matter.
-        const is_items_loaded = is_all_items_loaded || loaded_group_ids.has(group_id);
+        // or a filter/sort/group-by fallback) case and a "group by column"
+        // bucket, whose synthetic `g.id` isn't a real group id at all — at
+        // that point every table's rows are already loaded anyway (see
+        // `loadAllRemainingGroups`'s effect), so this is always `true` by
+        // the time it would matter. An active search also counts as loaded
+        // for every group (not just matched ones): a group with zero matches
+        // should render as empty, not sit behind a perpetual skeleton
+        // waiting for a real lazy-load that a search never triggers.
+        const is_items_loaded = is_all_items_loaded || loaded_group_ids.has(group_id) || toolbar.search_query.trim() !== "";
         return {
           key: g.id,
           title: g.name,
@@ -1904,7 +1930,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, groups_by_id]
+    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, toolbar.search_query, groups_by_id]
   );
 
   // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
@@ -2214,6 +2240,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       mergeFetchedItems(fetched);
     }
     setLoadedGroupIds((current) => new Set(current).add(created.id));
+  };
+
+  // ── Row menu's own single-item "Duplicate" (an item or a subitem, with or
+  // without its own subitems) — same "await the real call" reasoning as
+  // `handleDuplicateTableGroup` above. Branches on the response's own
+  // `parent_id` rather than the caller's `node_id` context, since that's the
+  // one place both root-item and subitem duplication are already handled
+  // the same way `handleCreateTableItem`/`handleCreateTableSubitem` are. ──
+  const handleDuplicateTableNode = async (node_id: string, with_subs: boolean) => {
+    const [duplicate] = await boardContentService.duplicateItems(board_id, [Number(node_id)], with_subs);
+    if (!duplicate) return;
+    setItems((current) =>
+      duplicate.parent_id == null
+        ? [...current, duplicate]
+        : mapItemInTree(current, duplicate.parent_id, (item) => ({ ...item, children: [...item.children, duplicate] }))
+    );
   };
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
@@ -2771,6 +2813,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onDelete: handleDeleteBoard,
           onImportItems: handleImportItems,
         },
+        presence: active_view_type === "table" ? <PresenceAvatarStack board_id={board_id} /> : undefined,
       }}
       tabs={{
         tabs: view_tabs.tabs,
@@ -2847,6 +2890,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCreateSubitem={handleCreateTableSubitem}
           onCreateGroup={handleCreateTableGroup}
           onDuplicateGroup={handleDuplicateTableGroup}
+          onDuplicateNode={handleDuplicateTableNode}
           onAddColumn={handleAddTableColumn}
           onDuplicateColumn={handleDuplicateTableColumn}
           onAddColumnRight={handleAddColumnRight}

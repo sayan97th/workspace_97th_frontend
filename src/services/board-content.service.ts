@@ -237,10 +237,16 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/checklist-items/${checklist_item_id}`);
   },
 
-  /** POST /api/boards/{board_id}/items/duplicate — selection action bar's "Duplicate". */
-  async duplicateItems(board_id: number, item_ids: number[]): Promise<BoardItemDto[]> {
+  /**
+   * POST /api/boards/{board_id}/items/duplicate — selection action bar's
+   * "Duplicate", and the row menu's own single-item "Duplicate" (item or
+   * subitem). `with_subitems` defaults to true server-side, matching
+   * Monday's own "duplicating an item duplicates its subitems" behavior.
+   */
+  async duplicateItems(board_id: number, item_ids: number[], with_subitems = true): Promise<BoardItemDto[]> {
     const response = await apiClient.post<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/duplicate`, {
       item_ids,
+      with_subitems,
     });
     return response.items;
   },

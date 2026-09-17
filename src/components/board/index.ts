@@ -36,6 +36,8 @@ export { default as PersonAvatar } from "./PersonAvatar";
 export type { PersonAvatarProps } from "./PersonAvatar";
 export { default as PersonAvatarStack } from "./PersonAvatarStack";
 export type { PersonAvatarStackProps, PersonAvatarStackPerson } from "./PersonAvatarStack";
+export { default as PresenceAvatarStack } from "./PresenceAvatarStack";
+export type { PresenceAvatarStackProps } from "./PresenceAvatarStack";
 export { default as BoardTypePicker, BOARD_TYPE_OPTIONS, BOARD_TYPE_HINTS } from "./BoardTypePicker";
 export type { BoardTypePickerProps } from "./BoardTypePicker";
 export { default as ChangeBoardTypeModal } from "./ChangeBoardTypeModal";
