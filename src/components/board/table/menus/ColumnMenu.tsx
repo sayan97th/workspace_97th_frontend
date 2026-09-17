@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnSettingsPanel from "./ColumnSettingsPanel";
+import BoardPickerMenu from "./BoardPickerMenu";
 import type { ColumnTypeDef } from "../constants";
 import type { ColumnKind, ColumnValidation, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 
@@ -28,6 +29,8 @@ interface ColumnMenuProps {
   onRequestGroupBy: () => void;
   onCollapseAll: () => void;
   onDuplicate: () => void;
+  /** Undefined for the item-title/sub-title virtual columns, which have no real column to copy onto another board. */
+  onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight: (kind: ColumnKind, label: string, default_width: number) => void;
   onChangeType: (kind: ColumnKind, default_width: number) => void;
   onDelete: () => void;
@@ -37,7 +40,7 @@ interface ColumnMenuProps {
 const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 const ROW_DISABLED = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text-faint cursor-default";
 
-type Sub = "settings" | "add" | "type" | null;
+type Sub = "settings" | "add" | "type" | "duplicate_to_board" | null;
 
 /**
  * Rows sit directly on top of each other while their flyouts render off to the side,
@@ -50,7 +53,7 @@ const HOVER_INTENT_DELAY_MS = 250;
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
   onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onAddColumnRight, onChangeType, onDelete, onClose,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose,
 }: ColumnMenuProps) {
   const [draft, setDraft] = useState(title);
   const [sub, setSub] = useState<Sub>(null);
@@ -212,6 +215,23 @@ export default function ColumnMenu({
               </span>
               <span className="flex-1">Duplicate column</span>
             </button>
+
+            {onDuplicateToBoard && (
+              <div className="relative" onMouseEnter={() => requestSub("duplicate_to_board")}>
+                <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "duplicate_to_board" ? "var(--color-boardtree-hover)" : "transparent" }}>
+                  <span className="w-4 text-boardtree-text-muted">
+                    <svg viewBox="0 0 16 16" width="14" height="14"><rect x="2.6" y="4.6" width="7.2" height="7.2" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="6.6" y="1.2" width="7.2" height="7.2" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>
+                  </span>
+                  <span className="flex-1">Duplicate to another board</span>
+                  <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
+                </div>
+                {sub === "duplicate_to_board" && (
+                  <div className="absolute left-full top-[-6px] z-10 ml-1">
+                    <BoardPickerMenu onPick={(target_board_id) => { onDuplicateToBoard(target_board_id); onClose(); }} onClose={() => openSub(null)} />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative" onMouseEnter={() => requestSub("add")}>
               <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "add" ? "var(--color-boardtree-hover)" : "transparent" }}>

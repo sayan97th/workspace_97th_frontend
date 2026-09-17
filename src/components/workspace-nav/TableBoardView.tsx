@@ -56,6 +56,7 @@ import {
   type BoardTableNode,
   type BoardToolbarConfig,
   type BoardViewKind,
+  type DrawerActivityEntry,
   type ColumnDef as TableColumnDef,
   type ColumnKind as TableColumnKind,
   type ColumnScope as TableColumnScope,
@@ -81,6 +82,7 @@ import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
 import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
@@ -662,6 +664,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
   const [automations, setAutomations] = useState<BoardAutomationDto[]>([]);
   const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
+  // ── Item detail drawer's Activity tab — the board's own activity log
+  // already carries an `item_id` in `meta` for the entries that concern one
+  // specific item (restored, permanently deleted, an automation ran against
+  // it), see `getActivityLog` below. Fetched once per board rather than
+  // per-row, mirroring `automations`' own board-scoped fetch. ──
+  const [activity_log_entries, setActivityLogEntries] = useState<BoardActivityLogEntry[]>([]);
   const [item_detail_by_id, setItemDetailById] = useState<Record<string, BoardItemDetailDto>>({});
 
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
@@ -967,6 +975,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       cancelled = true;
     };
   }, [board_id, view_tabs.active_view_id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    boardOptionsService
+      .getActivityLog(board_id)
+      .then((data) => { if (!cancelled) setActivityLogEntries(data); })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [board_id]);
 
   const handleCreateAutomation = async (payload: Omit<CreateBoardAutomationPayload, "view_id">) => {
     if (view_tabs.active_view_id == null) return;
@@ -1537,6 +1556,28 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [item_detail_by_id, groups]
   );
 
+  const ACTIVITY_ACCENT_COLOR_BY_ACTION: Record<string, string> = {
+    item_restored: "#00c875",
+    item_deleted: "#e2445c",
+    automation_ran: "#579bfc",
+  };
+
+  const getActivityLog = useCallback(
+    (row: BoardItemDto): DrawerActivityEntry[] =>
+      activity_log_entries
+        .filter((entry) => entry.meta?.item_id === row.id)
+        .map((entry) => ({
+          id: String(entry.id),
+          actor: entry.user
+            ? { id: String(entry.user.id), name: entry.user.full_name, initials: getInitials(entry.user.full_name), avatar_seed: entry.user.id, avatar_url: entry.user.profile_photo_url ?? undefined }
+            : { id: "0", name: "Someone", initials: "?", avatar_seed: 0 },
+          verb: entry.description,
+          occurred_at: formatDate(entry.created_at),
+          accent_color: ACTIVITY_ACCENT_COLOR_BY_ACTION[entry.action] ?? "#676879",
+        })),
+    [activity_log_entries]
+  );
+
   // ── Description — a first-class field on the item itself (like `name`),
   // not a column value, so it persists through `updateItem` rather than
   // `updateItemValues`. Debounced inside `useBoardItemDrawer` (mirrors
@@ -1665,11 +1706,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       getInitialComments: () => [],
       board_id,
       getInfoBoxes,
+      getActivityLog,
       getDescription: (row) => row.description ?? "",
       onDescriptionChange: handleUpdateItemDescription,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, board_id, getInfoBoxes]
+    [node.label, current_user.id, persons, board_id, getInfoBoxes, getActivityLog]
   );
 
   const drawer = useBoardItemDrawer(drawer_config);
@@ -2070,8 +2112,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // real row (item or subitem) up in the tree and reuse the same
       // `handleRowClick` every other view's row click already goes through,
       // so opening comments from the Table view stays in sync with the
-      // drawer's URL/deep-link handling instead of duplicating it.
+      // drawer's URL/deep-link handling instead of duplicating it. The row's
+      // own hover-reveal expand button (`onOpenItem`) opens the same drawer
+      // through the same lookup, it just isn't limited to the message icon.
       onOpenComments: (node_id) => {
+        const row = findItemInTree(items, Number(node_id));
+        if (row) handleRowClick(row);
+      },
+      onOpenItem: (node_id) => {
         const row = findItemInTree(items, Number(node_id));
         if (row) handleRowClick(row);
       },

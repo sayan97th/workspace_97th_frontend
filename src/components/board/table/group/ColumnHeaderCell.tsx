@@ -54,6 +54,8 @@ interface ColumnHeaderCellProps {
   onRequestGroupBy?: () => void;
   onCollapseAll: () => void;
   onDuplicate: () => void;
+  /** Undefined for the item-title/sub-title virtual columns, which have no real column to copy onto another board. */
+  onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight?: (kind: ColumnKind, label: string, default_width: number) => void;
   onChangeType?: (kind: ColumnKind, default_width: number) => void;
   onDelete: () => void;
@@ -73,7 +75,7 @@ export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
-  onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onAddColumnRight, onChangeType, onDelete, className,
+  onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -177,6 +179,7 @@ export default function ColumnHeaderCell({
           onRequestGroupBy={onRequestGroupBy ?? (() => {})}
           onCollapseAll={onCollapseAll}
           onDuplicate={onDuplicate}
+          onDuplicateToBoard={onDuplicateToBoard}
           onAddColumnRight={onAddColumnRight ?? (() => {})}
           onChangeType={onChangeType ?? (() => {})}
           onDelete={onDelete}

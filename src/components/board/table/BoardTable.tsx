@@ -75,6 +75,16 @@ export interface BoardTableProps {
    * `onUpdateColumnSettings`/`onChangeColumnKind` use (see `UseBoardTableConfig`).
    */
   onDuplicateColumn?: (group_key: string, scope: ColumnScope, column_id: string) => Promise<void>;
+  /**
+   * Column-header menu's "Duplicate to another board" — copies the
+   * column's structure onto a different board, never its cell values (that
+   * board's items are a different set of rows). Same handshake as
+   * `onDuplicateColumn`: awaits the real API call and lets the caller's own
+   * data bring the copy in on whichever board it actually landed on, rather
+   * than mutating this board's local state with it. Omitted,
+   * `duplicateColumnToBoard` stays local-only (the standalone demo behavior).
+   */
+  onDuplicateColumnToBoard?: (group_key: string, scope: ColumnScope, column_id: string, target_board_id: string) => Promise<void>;
   onAddColumnRight?: (
     group_key: string,
     scope: ColumnScope,
@@ -132,6 +142,7 @@ export default function BoardTable({
   onDuplicateGroup,
   onAddColumn,
   onDuplicateColumn,
+  onDuplicateColumnToBoard,
   onAddColumnRight,
   onRequestColumnFilter,
   onRequestGroupByColumn,
@@ -216,6 +227,14 @@ export default function BoardTable({
     [onDuplicateColumn, base_actions]
   );
 
+  const duplicateColumnToBoardReal = useCallback(
+    (group_key: string, scope: ColumnScope, column_id: string, target_board_id: string) => {
+      if (!onDuplicateColumnToBoard) return base_actions.duplicateColumnToBoard(group_key, scope, column_id, target_board_id);
+      void onDuplicateColumnToBoard(group_key, scope, column_id, target_board_id);
+    },
+    [onDuplicateColumnToBoard, base_actions]
+  );
+
   const actions = useMemo(
     () => ({
       ...base_actions,
@@ -225,8 +244,9 @@ export default function BoardTable({
       duplicateGroup: duplicateGroupReal,
       addColumn: addColumnReal,
       duplicateColumn: duplicateColumnReal,
+      duplicateColumnToBoard: duplicateColumnToBoardReal,
     }),
-    [base_actions, addItemReal, addSubitemReal, addGroupReal, duplicateGroupReal, addColumnReal, duplicateColumnReal]
+    [base_actions, addItemReal, addSubitemReal, addGroupReal, duplicateGroupReal, addColumnReal, duplicateColumnReal, duplicateColumnToBoardReal]
   );
 
   /**

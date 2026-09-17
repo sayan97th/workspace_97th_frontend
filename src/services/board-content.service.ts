@@ -85,6 +85,15 @@ export const boardContentService = {
     return response.column;
   },
 
+  /** POST /api/boards/{board_id}/columns/{column_id}/duplicate — column menu's "Duplicate to another board", never carries cell values across, since the target board's items are a different set of rows. */
+  async duplicateColumnToBoard(board_id: number, column_id: number, target_board_id: number): Promise<BoardColumnDto> {
+    const response = await apiClient.post<{ column: BoardColumnDto }>(
+      `/api/boards/${board_id}/columns/${column_id}/duplicate`,
+      { target_board_id }
+    );
+    return response.column;
+  },
+
   /** GET /api/boards/{board_id}/groups — a tab's tables (any number, 1…N) plus the viewer's own collapsed/expanded state for them, scoped to `view_id`, defaulting to the board's primary tab. */
   async getGroups(board_id: number, view_id?: number | null): Promise<BoardGroupsIndexDto> {
     const query = view_id ? `?view_id=${view_id}` : "";

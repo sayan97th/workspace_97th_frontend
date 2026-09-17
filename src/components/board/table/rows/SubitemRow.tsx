@@ -177,6 +177,15 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               />
             </svg>
           </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); actions.openItem(sub.id); }}
+            title="Open item"
+            className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+            style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
+          >
+            <svg viewBox="0 0 14 14" width="11" height="11"><path d="M5.4 2.6 H2.6 V5.4 M8.6 2.6 H11.4 V5.4 M5.4 11.4 H2.6 V8.6 M8.6 11.4 H11.4 V8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          </button>
         </div>
 
         <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>

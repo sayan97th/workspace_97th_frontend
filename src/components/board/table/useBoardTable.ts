@@ -285,6 +285,17 @@ export interface UseBoardTableConfig {
    */
   onOpenComments?: (node_id: string) => void;
   /**
+   * Opens a real board's item detail panel for one row (item or subitem),
+   * fired by the row's own hover-reveal expand button (see `ItemRow`/
+   * `SubitemRow`) rather than the message icon that `onOpenComments` reacts
+   * to, so a row can be opened without landing on the Updates tab
+   * specifically. The table engine itself has no detail panel of its own,
+   * so this just hands the node id up to the caller, exactly like
+   * `onOpenComments`. Omitted (the standalone demo), the button renders but
+   * stays inert.
+   */
+  onOpenItem?: (node_id: string) => void;
+  /**
    * Fired at most once per table (group) whose `is_items_loaded` is
    * `false`, when `GroupSection`'s own `IntersectionObserver` sees it
    * scroll near the viewport — the caller resolves this by fetching that
@@ -1436,6 +1447,17 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [nextId]
   );
 
+  /**
+   * Local-only demo fallback for the column menu's "Duplicate to another
+   * board" (mirrors `duplicateColumn`'s own role) — the mock demo has no
+   * other board to actually copy into, so this just closes the menu; a real
+   * board instead hands this off through `BoardTable`'s own `onDuplicateColumnToBoard`
+   * prop, the same handshake `onDuplicateColumn` already uses.
+   */
+  const duplicateColumnToBoard = useCallback((_group_key: string, _scope: ColumnScope, _column_id: string, _target_board_id: string) => {
+    setState((s) => ({ ...s, open_column_menu_key: null }));
+  }, []);
+
   const changeColumnKind = useCallback((group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => {
     setState((s) => {
       const list_key = columnListKey(scope);
@@ -1795,6 +1817,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onOpenComments?.(node_id);
   }, []);
 
+  const openItem = useCallback((node_id: string) => {
+    config_ref.current.onOpenItem?.(node_id);
+  }, []);
+
   /** `GroupSection`'s `IntersectionObserver` trigger — see `UseBoardTableConfig.onRequestGroupItems`'s own doc comment. */
   const requestGroupItems = useCallback((group_key: string) => {
     config_ref.current.onRequestGroupItems?.(group_key);
@@ -1883,6 +1909,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       cancelColumnRename,
       deleteColumn,
       duplicateColumn,
+      duplicateColumnToBoard,
       changeColumnKind,
       updateColumnSettings,
       resizeColumnPreview,
@@ -1929,6 +1956,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       closeAllOverlays,
       copyRowLink,
       openComments,
+      openItem,
       requestGroupItems,
       undo,
       redo,
@@ -1942,10 +1970,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef,
-      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, requestGroupItems, undo, redo,
+      setTagDefColor, deleteTagDef, setTagQuery, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
