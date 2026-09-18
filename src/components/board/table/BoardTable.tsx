@@ -454,7 +454,20 @@ export default function BoardTable({
   if (embedded) {
     return (
       <div className={boardTreeFontClassName}>
-        {grid}
+        {/*
+          `isolate` gives the grid its own stacking context. `GroupHeaderBar`/
+          `GroupColumnHeaderRow` deliberately spike their z-index up to 200
+          while one of their own popovers is open, so that row wins against
+          every OTHER group's sticky header within this same table (see
+          `GroupColumnHeaderRow`'s own doc comment). Without a stacking
+          context here, that z-index escapes this table entirely and competes
+          against the app shell itself (the mobile sidebar, its backdrop,
+          ...), which sit outside `BoardShell` at a lower z-index and have no
+          business ever losing to a table header. `isolate` caps that
+          competition to this subtree, so the table's own headers only ever
+          out-rank content inside the table, never the shell around it.
+        */}
+        <div className="isolate">{grid}</div>
         {modals}
       </div>
     );
@@ -471,7 +484,8 @@ export default function BoardTable({
             padding on the scrolling ancestor itself breaks the sticky Item/
             checkbox columns, leaving a gap once horizontal scroll sticks them. */}
         <div className="table-board-scroll h-full overflow-auto pb-[60px]">
-          <div className="px-7">{grid}</div>
+          {/* See the `embedded` branch above for why this needs `isolate`. */}
+          <div className="isolate px-7">{grid}</div>
         </div>
       </div>
 
