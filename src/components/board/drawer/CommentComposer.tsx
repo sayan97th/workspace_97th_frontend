@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
-import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
@@ -14,7 +13,6 @@ import type { DrawerAttachment, DrawerComposerTarget } from "./types";
 export type CommentComposerProps = {
   /** Identifies this composer among the drawer's shared mention/emoji palette state: "composer" for the top-level update box, or the parent comment id for a reply box. */
   target: DrawerComposerTarget;
-  avatar_person: BoardPersonOption;
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -48,7 +46,6 @@ export type CommentComposerProps = {
  */
 const CommentComposer: React.FC<CommentComposerProps> = ({
   target,
-  avatar_person,
   value,
   onChange,
   onSubmit,
@@ -128,160 +125,160 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   }, [show_notify_picker, onCloseNotifyPicker]);
 
   return (
-    <div className={`flex ${is_update ? "gap-[11px]" : "gap-2.5"}`}>
-      <PersonAvatar person={avatar_person} size={is_update ? 34 : 27} className="mt-0.5" />
-      <div className="relative flex-1">
-        {notified_people.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <BellIcon size={12} className="text-shell-text-faint" />
-            {notified_people.map((person) => (
-              <span
-                key={person.id}
-                className="flex items-center gap-1 rounded-full bg-shell-hover-strong px-2 py-0.5 text-[11.5px] font-semibold text-shell-text-secondary"
-              >
-                {person.name}
-                {onRemoveNotifyPerson && (
-                  <button
-                    type="button"
-                    onClick={() => onRemoveNotifyPerson(person.id)}
-                    aria-label={`Stop notifying ${person.name}`}
-                    className="text-shell-text-faint hover:text-shell-text"
-                  >
-                    ×
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* One Slack-style bordered container: formatting toolbar, editor, then the action row — each separated by a hairline divider instead of the toolbar floating detached above its own boxed textarea. */}
-        <div
-          ref={editor_root_ref}
-          className="overflow-hidden rounded-xl border border-shell-border-strong bg-shell-panel transition-colors focus-within:border-[#00c875]"
-        >
-          <RichTextComposer
-            ref={rich_text_ref}
-            embedded
-            show_toolbar={show_toolbar}
-            value={value}
-            onChange={onChange}
-            placeholder={placeholder}
-            min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
-          />
-
-          {(is_update || has_draft) && (
-            <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[7px] py-[6px]">
-              <div className="flex items-center gap-0.5">
+    // No avatar alongside the box — who's typing is implicit (it's always
+    // the current user), and the reclaimed width goes straight to the
+    // editor instead.
+    <div className="relative">
+      {notified_people.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+          <BellIcon size={12} className="text-shell-text-faint" />
+          {notified_people.map((person) => (
+            <span
+              key={person.id}
+              className="flex items-center gap-1 rounded-full bg-shell-hover-strong px-2 py-0.5 text-[11.5px] font-semibold text-shell-text-secondary"
+            >
+              {person.name}
+              {onRemoveNotifyPerson && (
                 <button
                   type="button"
-                  onClick={() => setToolbarHidden((hidden) => !hidden)}
-                  aria-label={show_toolbar ? "Hide formatting options" : "Show formatting options"}
-                  aria-pressed={show_toolbar}
-                  title={show_toolbar ? "Hide formatting options" : "Show formatting options"}
-                  className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                    show_toolbar ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                  }`}
+                  onClick={() => onRemoveNotifyPerson(person.id)}
+                  aria-label={`Stop notifying ${person.name}`}
+                  className="text-shell-text-faint hover:text-shell-text"
                 >
-                  <FormatToggleIcon size={is_update ? 16 : 15} />
+                  ×
                 </button>
-                {is_update && onAddFiles && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => file_input_ref.current?.click()}
-                      aria-label="Attach a file"
-                      title="Attach a file"
-                      className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-                    >
-                      <AttachIcon />
-                    </button>
-                    <input
-                      ref={file_input_ref}
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={(event) => {
-                        onAddFiles(Array.from(event.target.files ?? []));
-                        event.target.value = "";
-                      }}
-                    />
-                  </>
-                )}
-                <span className="relative">
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* One Slack-style bordered container: formatting toolbar, editor, then the action row — each separated by a hairline divider instead of the toolbar floating detached above its own boxed textarea. */}
+      <div
+        ref={editor_root_ref}
+        className="overflow-hidden rounded-xl border border-shell-border-strong bg-shell-panel transition-colors focus-within:border-[#00c875]"
+      >
+        <RichTextComposer
+          ref={rich_text_ref}
+          embedded
+          show_toolbar={show_toolbar}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
+        />
+
+        {(is_update || has_draft) && (
+          <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[7px] py-[6px]">
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setToolbarHidden((hidden) => !hidden)}
+                aria-label={show_toolbar ? "Hide formatting options" : "Show formatting options"}
+                aria-pressed={show_toolbar}
+                title={show_toolbar ? "Hide formatting options" : "Show formatting options"}
+                className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
+                  show_toolbar ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
+                }`}
+              >
+                <FormatToggleIcon size={is_update ? 16 : 15} />
+              </button>
+              {is_update && onAddFiles && (
+                <>
                   <button
-                    ref={emoji_trigger_ref}
                     type="button"
-                    onClick={() => onToggleEmojiPalette(target)}
-                    aria-label="Add an emoji"
-                    title="Add an emoji"
+                    onClick={() => file_input_ref.current?.click()}
+                    aria-label="Attach a file"
+                    title="Attach a file"
                     className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                   >
-                    <ReactSmileyIcon size={is_update ? 17 : 16} />
+                    <AttachIcon />
                   </button>
-                  <EmojiPalette
-                    anchor_el={emoji_trigger_ref.current}
-                    is_open={show_emoji_palette}
-                    onClose={onCloseEmojiPalette}
-                    onPick={handleInsertEmoji}
-                    mode="insert"
+                  <input
+                    ref={file_input_ref}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      onAddFiles(Array.from(event.target.files ?? []));
+                      event.target.value = "";
+                    }}
                   />
-                </span>
-                {can_notify && (
-                  <span className="relative">
-                    <button
-                      ref={notify_trigger_ref}
-                      type="button"
-                      onClick={() => onToggleNotifyPicker?.(target)}
-                      aria-label="Notify someone"
-                      title="Notify someone without mentioning them"
-                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                        show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                      }`}
-                    >
-                      <BellIcon size={is_update ? 16 : 15} />
-                    </button>
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2.5">
-                {is_update && <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>}
+                </>
+              )}
+              <span className="relative">
                 <button
+                  ref={emoji_trigger_ref}
                   type="button"
-                  onClick={onSubmit}
-                  disabled={!has_draft}
-                  aria-label={submit_label}
-                  title={submit_label}
-                  className={`flex items-center justify-center rounded-lg font-sans font-bold transition-colors ${
-                    is_update ? "h-[34px] w-[34px]" : "h-[30px] w-[30px]"
-                  } ${
-                    has_draft
-                      ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
-                      : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
-                  }`}
+                  onClick={() => onToggleEmojiPalette(target)}
+                  aria-label="Add an emoji"
+                  title="Add an emoji"
+                  className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
                 >
-                  <SendIcon size={is_update ? 16 : 15} />
+                  <ReactSmileyIcon size={is_update ? 17 : 16} />
                 </button>
-              </div>
+                <EmojiPalette
+                  anchor_el={emoji_trigger_ref.current}
+                  is_open={show_emoji_palette}
+                  onClose={onCloseEmojiPalette}
+                  onPick={handleInsertEmoji}
+                  mode="insert"
+                />
+              </span>
+              {can_notify && (
+                <span className="relative">
+                  <button
+                    ref={notify_trigger_ref}
+                    type="button"
+                    onClick={() => onToggleNotifyPicker?.(target)}
+                    aria-label="Notify someone"
+                    title="Notify someone without mentioning them"
+                    className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
+                      show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
+                    }`}
+                  >
+                    <BellIcon size={is_update ? 16 : 15} />
+                  </button>
+                </span>
+              )}
             </div>
-          )}
-        </div>
-
-        {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
-        {show_notify_picker && onPickNotifyPerson && (
-          <div ref={notify_picker_ref}>
-            <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />
-          </div>
-        )}
-
-        {is_update && attachments.length > 0 && onRemoveAttachment && (
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <CommentAttachmentChip key={attachment.id} attachment={attachment} onRemove={onRemoveAttachment} />
-            ))}
+            <div className="flex items-center gap-2.5">
+              {is_update && <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>}
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={!has_draft}
+                aria-label={submit_label}
+                title={submit_label}
+                className={`flex items-center justify-center rounded-lg font-sans font-bold transition-colors ${
+                  is_update ? "h-[34px] w-[34px]" : "h-[30px] w-[30px]"
+                } ${
+                  has_draft
+                    ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
+                    : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
+                }`}
+              >
+                <SendIcon size={is_update ? 16 : 15} />
+              </button>
+            </div>
           </div>
         )}
       </div>
+
+      {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
+      {show_notify_picker && onPickNotifyPerson && (
+        <div ref={notify_picker_ref}>
+          <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />
+        </div>
+      )}
+
+      {is_update && attachments.length > 0 && onRemoveAttachment && (
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          {attachments.map((attachment) => (
+            <CommentAttachmentChip key={attachment.id} attachment={attachment} onRemove={onRemoveAttachment} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

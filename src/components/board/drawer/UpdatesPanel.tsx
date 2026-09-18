@@ -89,7 +89,6 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
       <div className="flex-none border-b border-shell-border px-5 pb-3.5 pt-4">
         <CommentComposer
           target="composer"
-          avatar_person={drawer.current_user}
           value={drawer.composer_text}
           onChange={handleComposerChange}
           onSubmit={drawer.postComment}

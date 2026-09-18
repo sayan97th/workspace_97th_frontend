@@ -1,5 +1,5 @@
 "use client";
-import React, { forwardRef, useEffect, useImperativeHandle } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -17,6 +17,7 @@ import {
   StrikethroughIcon,
 } from "@/icons/drawer-icons";
 import { inlineUploadService } from "@/services/inline-upload.service";
+import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
 
 export type RichTextComposerRef = {
@@ -161,6 +162,11 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       }
     };
 
+    const [is_link_modal_open, setIsLinkModalOpen] = useState(false);
+    const [link_initial_url, setLinkInitialUrl] = useState("");
+    const [link_initial_text, setLinkInitialText] = useState("");
+    const [is_editing_existing_link, setIsEditingExistingLink] = useState(false);
+
     // Mirrors an external reset (e.g. the composer clearing after a
     // successful submit) into the live document — skipped while focused so
     // a live keystroke can never be clobbered by a stale `value` prop.
@@ -215,13 +221,39 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       editor_state ??
       { bold: false, italic: false, strike: false, code: false, blockquote: false, bullet_list: false, ordered_list: false, link: false };
 
-    const toggleLink = () => {
-      if (active_state.link) {
-        editor.chain().focus().unsetLink().run();
-        return;
-      }
-      const url = window.prompt("Link URL");
-      if (url) editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    // Opens `InsertLinkModal` prefilled from whatever's under the cursor: the
+    // selected text (as the label) and, when the cursor already sits inside
+    // an existing link, that link's own href/label (re-selecting its full
+    // range first, via `extendMarkRange`, so an empty-selection click inside
+    // a link still edits the *whole* link instead of just where the caret
+    // happened to land).
+    const openLinkModal = () => {
+      if (active_state.link) editor.chain().focus().extendMarkRange("link").run();
+      const { from, to, empty } = editor.state.selection;
+      const selected_text = empty ? "" : editor.state.doc.textBetween(from, to, " ");
+      const href = editor.getAttributes("link").href;
+      setLinkInitialText(selected_text);
+      setLinkInitialUrl(typeof href === "string" ? href : "");
+      setIsEditingExistingLink(active_state.link);
+      setIsLinkModalOpen(true);
+    };
+
+    // Replaces whatever's currently selected (the same range `openLinkModal`
+    // prefilled from) with a single text node carrying the link mark, so
+    // editing an existing link's label/URL replaces it in place rather than
+    // leaving the old text next to a second, newly-inserted link.
+    const handleInsertLink = (url: string, text: string) => {
+      const label = text || url;
+      const { from, to, empty } = editor.state.selection;
+      const chain = editor.chain().focus();
+      if (!empty) chain.deleteRange({ from, to });
+      chain.insertContent({ type: "text", text: label, marks: [{ type: "link", attrs: { href: url } }] }).run();
+      setIsLinkModalOpen(false);
+    };
+
+    const handleRemoveLink = () => {
+      editor.chain().focus().extendMarkRange("link").unsetLink().run();
+      setIsLinkModalOpen(false);
     };
 
     const toolbar = (
@@ -235,7 +267,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         <ToolbarButton label="Strikethrough" active={active_state.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
           <StrikethroughIcon size={15} />
         </ToolbarButton>
-        <ToolbarButton label="Link" active={active_state.link} onClick={toggleLink}>
+        <ToolbarButton label="Link" active={active_state.link} onClick={openLinkModal}>
           <LinkFormatIcon size={15} />
         </ToolbarButton>
         <ToolbarDivider />
@@ -266,11 +298,24 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       </div>
     );
 
+    const link_modal = (
+      <InsertLinkModal
+        is_open={is_link_modal_open}
+        initial_url={link_initial_url}
+        initial_text={link_initial_text}
+        is_editing_existing={is_editing_existing_link}
+        onInsert={handleInsertLink}
+        onRemove={handleRemoveLink}
+        onClose={() => setIsLinkModalOpen(false)}
+      />
+    );
+
     if (embedded) {
       return (
         <div>
           {show_toolbar && <div className="border-b border-shell-border">{toolbar}</div>}
           <EditorContent editor={editor} />
+          {link_modal}
         </div>
       );
     }
@@ -279,6 +324,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       <div>
         <div className="mb-1.5">{toolbar}</div>
         <EditorContent editor={editor} />
+        {link_modal}
       </div>
     );
   }

@@ -407,7 +407,6 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       <div ref={reply_composer_ref} className="border-t border-shell-border py-3 pl-5 pr-4">
         <CommentComposer
           target={comment.id}
-          avatar_person={current_user}
           value={reply_value}
           onChange={onReplyChange}
           onSubmit={onPostReply}
