@@ -452,9 +452,70 @@
   padding-left: 1.25em;
   margin: 0 0 0.5em 0;
 }
+/* Tailwind's preflight zeroes out `list-style` on every `ul`/`ol`, so
+ * without this the bullet/number markers Tiptap's `BulletList`/`OrderedList`
+ * nodes rely on never render at all. */
+.shell-rich-text-editor.ProseMirror ul {
+  list-style: disc;
+}
+.shell-rich-text-editor.ProseMirror ol {
+  list-style: decimal;
+}
+.shell-rich-text-editor.ProseMirror li::marker {
+  color: var(--color-shell-text-muted);
+}
+/* Tiptap wraps each list item's text in its own `<p>`, which would
+ * otherwise inherit the 0.5em bottom margin above and space list items out
+ * like separate paragraphs instead of a tight list. */
+.shell-rich-text-editor.ProseMirror li > p {
+  margin: 0;
+}
+.shell-rich-text-editor.ProseMirror li > ul,
+.shell-rich-text-editor.ProseMirror li > ol {
+  margin: 0.25em 0 0;
+}
 .shell-rich-text-editor.ProseMirror a {
   color: #7fb2ff;
   text-decoration: underline;
+}
+.shell-rich-text-editor.ProseMirror strong {
+  font-weight: 700;
+}
+.shell-rich-text-editor.ProseMirror em {
+  font-style: italic;
+}
+.shell-rich-text-editor.ProseMirror s {
+  text-decoration: line-through;
+}
+.shell-rich-text-editor.ProseMirror blockquote {
+  margin: 0 0 0.5em 0;
+  padding: 0.05em 0 0.05em 0.85em;
+  border-left: 3px solid var(--color-shell-border-strong);
+  color: var(--color-shell-text-muted);
+}
+.shell-rich-text-editor.ProseMirror code {
+  font-family: var(--font-mono-accent);
+  font-size: 0.9em;
+  background: var(--color-shell-hover-strong);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+.shell-rich-text-editor.ProseMirror pre {
+  margin: 0 0 0.5em 0;
+  padding: 0.7em 0.85em;
+  border-radius: 8px;
+  background: var(--color-shell-hover-strong);
+  overflow-x: auto;
+}
+.shell-rich-text-editor.ProseMirror pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+.shell-rich-text-editor.ProseMirror hr {
+  margin: 0.75em 0;
+  border: none;
+  border-top: 1px solid var(--color-shell-border-strong);
 }
 .shell-rich-text-editor.ProseMirror img {
   max-width: 100%;
@@ -463,7 +524,11 @@
 }
 
 /* Read-only rendering of a comment/update body (`RichTextContent`) — same
- * list/link/image rules as the editor above, minus anything editor-only. */
+ * list/link/image rules as the editor above, minus anything editor-only,
+ * plus headings, since `marked` will render an `<h1>`-`<h6>` from any stored
+ * Markdown that starts a line with `#` even though the composer's own
+ * toolbar has no heading button (StarterKit's `heading` node is disabled
+ * there, not on this independent read-only parser). */
 .shell-rich-text-content p {
   margin: 0 0 0.5em 0;
 }
@@ -475,9 +540,97 @@
   padding-left: 1.25em;
   margin: 0 0 0.5em 0;
 }
+.shell-rich-text-content ul {
+  list-style: disc;
+}
+.shell-rich-text-content ol {
+  list-style: decimal;
+}
+.shell-rich-text-content li::marker {
+  color: var(--color-shell-text-muted);
+}
+.shell-rich-text-content li > p {
+  margin: 0;
+}
+.shell-rich-text-content li > ul,
+.shell-rich-text-content li > ol {
+  margin: 0.25em 0 0;
+}
 .shell-rich-text-content a {
   color: #7fb2ff;
   text-decoration: underline;
+}
+.shell-rich-text-content strong {
+  font-weight: 700;
+}
+.shell-rich-text-content em {
+  font-style: italic;
+}
+.shell-rich-text-content s {
+  text-decoration: line-through;
+}
+.shell-rich-text-content blockquote {
+  margin: 0 0 0.5em 0;
+  padding: 0.05em 0 0.05em 0.85em;
+  border-left: 3px solid var(--color-shell-border-strong);
+  color: var(--color-shell-text-muted);
+}
+.shell-rich-text-content code {
+  font-family: var(--font-mono-accent);
+  font-size: 0.9em;
+  background: var(--color-shell-hover-strong);
+  border-radius: 4px;
+  padding: 0.15em 0.4em;
+}
+.shell-rich-text-content pre {
+  margin: 0 0 0.5em 0;
+  padding: 0.7em 0.85em;
+  border-radius: 8px;
+  background: var(--color-shell-hover-strong);
+  overflow-x: auto;
+}
+.shell-rich-text-content pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+.shell-rich-text-content hr {
+  margin: 0.75em 0;
+  border: none;
+  border-top: 1px solid var(--color-shell-border-strong);
+}
+.shell-rich-text-content h1,
+.shell-rich-text-content h2,
+.shell-rich-text-content h3,
+.shell-rich-text-content h4,
+.shell-rich-text-content h5,
+.shell-rich-text-content h6 {
+  margin: 0.6em 0 0.3em 0;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-shell-text);
+}
+.shell-rich-text-content h1:first-child,
+.shell-rich-text-content h2:first-child,
+.shell-rich-text-content h3:first-child,
+.shell-rich-text-content h4:first-child,
+.shell-rich-text-content h5:first-child,
+.shell-rich-text-content h6:first-child {
+  margin-top: 0;
+}
+.shell-rich-text-content h1 {
+  font-size: 1.35em;
+}
+.shell-rich-text-content h2 {
+  font-size: 1.2em;
+}
+.shell-rich-text-content h3 {
+  font-size: 1.1em;
+}
+.shell-rich-text-content h4,
+.shell-rich-text-content h5,
+.shell-rich-text-content h6 {
+  font-size: 1em;
 }
 .shell-rich-text-content .rich-text-image-gallery {
   display: grid;
