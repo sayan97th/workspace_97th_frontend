@@ -37,7 +37,13 @@ export type RichTextComposerProps = {
   onPlainTextChange?: (text: string) => void;
   placeholder: string;
   min_height_class?: string;
-  /** When set, plain Enter (no Shift) fires this instead of splitting a new paragraph — used by `CommentEditForm`'s quick "edit in place" box, not the main composer (which is button-submit only). */
+  /**
+   * When set, plain Enter fires this instead of splitting a new paragraph.
+   * Slack's own convention: Enter sends, Shift+Enter (or Alt+Enter) inserts
+   * a line break instead. Suspended while the cursor sits inside a list
+   * item, blockquote, or code block, where Enter keeps its native
+   * block-continuation behavior so those stay usable.
+   */
   onEnterSubmit?: () => void;
   /** When set, Escape fires this — `CommentEditForm`'s "Cancel". */
   onEscape?: () => void;
@@ -124,17 +130,39 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             : `shell-rich-text-editor ${min_height_class} w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-colors focus:border-[#00c875]`,
         },
         handleKeyDown: (_view, event) => {
-          if (event.key === "Enter" && !event.shiftKey && onEnterSubmit) {
-            event.preventDefault();
-            onEnterSubmit();
-            return true;
+          if (event.key !== "Enter") {
+            if (event.key === "Escape" && onEscape) {
+              event.preventDefault();
+              onEscape();
+              return true;
+            }
+            return false;
           }
-          if (event.key === "Escape" && onEscape) {
-            event.preventDefault();
-            onEscape();
-            return true;
+          // Slack's own line-break chord, honored on both Windows and macOS
+          // (Alt on Windows, Option on Mac, both surface as `event.altKey`).
+          if (event.altKey || event.shiftKey) {
+            if (event.altKey) {
+              event.preventDefault();
+              editor?.chain().focus().setHardBreak().run();
+              return true;
+            }
+            return false; // Shift+Enter, let HardBreak's own "Shift-Enter" keymap handle it.
           }
-          return false;
+          if (!onEnterSubmit) return false;
+          const in_multiline_block =
+            editor?.isActive("bulletList") ||
+            editor?.isActive("orderedList") ||
+            editor?.isActive("blockquote") ||
+            editor?.isActive("codeBlock");
+          if (in_multiline_block) return false;
+          event.preventDefault();
+          onEnterSubmit();
+          // Blurs so the post-submit external reset (parent clearing `value`
+          // back to "") is picked up by the sync effect below, which only
+          // applies while unfocused, the same way a mouse click on the send
+          // button already blurs before that reset arrives.
+          editor?.commands.blur();
+          return true;
         },
         handlePaste: (_view, event) => {
           const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));

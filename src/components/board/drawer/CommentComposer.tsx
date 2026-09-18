@@ -180,6 +180,11 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             onChange={onChange}
             placeholder={placeholder}
             min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
+            // Enter sends, matching Slack's own convention, except while a
+            // mention/notify picker is open: neither has its own
+            // Enter-to-select yet (only click), so Enter falls back to its
+            // default behavior instead of firing a submit mid-pick.
+            onEnterSubmit={show_mention_picker || show_notify_picker ? undefined : onSubmit}
           />
 
           {(is_update || has_draft) && (
@@ -257,7 +262,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-2.5">
-                {is_update && <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>}
+                <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>
                 <button
                   type="button"
                   onClick={onSubmit}
