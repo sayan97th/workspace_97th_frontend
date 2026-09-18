@@ -2,7 +2,6 @@
 import React, { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Link from "@tiptap/extension-link";
 import TiptapImage from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
@@ -108,8 +107,11 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
   ) => {
     const editor = useEditor({
       extensions: [
-        StarterKit.configure({ heading: false }),
-        Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } }),
+        // StarterKit v3 already bundles `link`, so it's configured here instead of registering `Link` separately.
+        StarterKit.configure({
+          heading: false,
+          link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } },
+        }),
         TiptapImage,
         Placeholder.configure({ placeholder }),
         MentionHighlight,
