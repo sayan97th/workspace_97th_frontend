@@ -127,3 +127,117 @@ export const DownloadFileIcon: React.FC<IconProps> = ({ className, size = 14 }) 
     />
   </svg>
 );
+
+/**
+ * Slack-style rich text toolbar icons, shared by `RichTextComposer`'s
+ * formatting row. Kept in the same 16x16 `currentColor` stroke style as the
+ * rest of this file rather than the glyph/emoji placeholders they replace.
+ */
+
+export const BoldIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M4.5 2.5 H8.6 A2.4 2.4 0 0 1 8.6 7.3 H4.5 Z M4.5 7.3 H9.2 A2.5 2.5 0 0 1 9.2 12.3 H4.5 Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const ItalicIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M7 2.5 H12 M4 12.3 H9 M9.6 2.5 L6.4 12.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const StrikethroughIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M4.2 4.4 C4.2 2.9 5.7 2.3 7.7 2.3 C9.5 2.3 10.9 3 11.2 4.3 M4.6 11.7 C5 12.8 6.3 13.5 7.9 13.5 C9.9 13.5 11.5 12.8 11.5 11.2 C11.5 10 10.7 9.2 9.3 8.8 M2.5 8 H13.5"
+      stroke="currentColor"
+      strokeWidth="1.2"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const LinkFormatIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M6.6 9.4 A2.6 2.6 0 0 0 10.2 9.3 L12.4 7.1 A2.7 2.7 0 0 0 8.6 3.3 L7.3 4.6"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+    <path
+      d="M9.4 6.6 A2.6 2.6 0 0 0 5.8 6.7 L3.6 8.9 A2.7 2.7 0 0 0 7.4 12.7 L8.7 11.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export const BulletListIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="2.9" cy="4.2" r="1" fill="currentColor" />
+    <circle cx="2.9" cy="8" r="1" fill="currentColor" />
+    <circle cx="2.9" cy="11.8" r="1" fill="currentColor" />
+    <path d="M6 4.2 H13.2 M6 8 H13.2 M6 11.8 H13.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const NumberedListIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <text x="1" y="5.6" fontSize="4.2" fontWeight="700" fill="currentColor">1.</text>
+    <text x="1" y="9.4" fontSize="4.2" fontWeight="700" fill="currentColor">2.</text>
+    <text x="1" y="13.2" fontSize="4.2" fontWeight="700" fill="currentColor">3.</text>
+    <path d="M6 4.2 H13.2 M6 8 H13.2 M6 11.8 H13.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const QuoteIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M3 12.5 V9.8 A1.5 1.5 0 0 1 4.5 8.3 H5 A2 2 0 0 0 3.5 6 V3.5 A0.8 0.8 0 0 1 4.3 2.7 H5.7 A2.8 2.8 0 0 1 8.5 5.5 V9 A3.5 3.5 0 0 1 5 12.5 Z"
+      fill="currentColor"
+    />
+    <path
+      d="M9.5 12.5 V9.8 A1.5 1.5 0 0 1 11 8.3 H11.5 A2 2 0 0 0 10 6 V3.5 A0.8 0.8 0 0 1 10.8 2.7 H12.2 A2.8 2.8 0 0 1 15 5.5 V9 A3.5 3.5 0 0 1 11.5 12.5 Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+export const InlineCodeIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M5.5 4.5 L2 8 L5.5 11.5 M10.5 4.5 L14 8 L10.5 11.5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Slack's own "Aa" affordance for showing/hiding the formatting toolbar. */
+export const FormatToggleIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <text x="1.3" y="12" fontSize="10.5" fontWeight="700" fontFamily="sans-serif" fill="currentColor">Aa</text>
+  </svg>
+);
+
+export const SendIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M2 8 L13.5 2.5 L9.5 13.5 L7.3 8.7 Z"
+      fill="currentColor"
+      stroke="currentColor"
+      strokeWidth="1.1"
+      strokeLinejoin="round"
+    />
+    <path d="M7.3 8.7 L11 5" stroke="var(--color-shell-panel)" strokeWidth="1.1" strokeLinecap="round" />
+  </svg>
+);

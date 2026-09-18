@@ -1,8 +1,8 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
-import { AttachIcon, ReactSmileyIcon } from "@/icons/drawer-icons";
+import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import CommentAttachmentChip from "./CommentAttachmentChip";
@@ -80,11 +80,21 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const editor_root_ref = useRef<HTMLDivElement>(null);
   const rich_text_ref = useRef<RichTextComposerRef>(null);
   const is_update = variant === "update";
-  const has_draft = value.replace(/<[^>]*>/g, "").trim().length > 0 || value.includes("<img");
+  // An update can also be submitted with only an attachment and no text
+  // (mirrors the `isRichTextEmpty(body) && attachments.length === 0` guard
+  // in `useBoardItemDrawer`'s `postComment`), so the send button shouldn't
+  // disable itself in that case.
+  const has_draft = value.trim().length > 0 || value.includes("![") || attachments.length > 0;
   const show_mention_picker = mention_target === target && mention_matches.length > 0;
   const show_notify_picker = notify_target === target;
   const show_emoji_palette = emoji_palette_target === target;
   const can_notify = Boolean(onToggleNotifyPicker && onPickNotifyPerson);
+  // The "Aa" button toggles this directly — independent of `variant`, so it
+  // actually does something for the always-visible "update" box too, not
+  // just the reply box (which only shows the toggle once `has_draft`, same
+  // as the rest of its action row).
+  const [toolbar_hidden, setToolbarHidden] = useState(false);
+  const show_toolbar = !toolbar_hidden;
 
   const handlePickMention = (person: BoardPersonOption) => {
     rich_text_ref.current?.insertMentionText(person.name);
@@ -145,93 +155,122 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
-        <div ref={editor_root_ref}>
+        {/* One Slack-style bordered container: formatting toolbar, editor, then the action row — each separated by a hairline divider instead of the toolbar floating detached above its own boxed textarea. */}
+        <div
+          ref={editor_root_ref}
+          className="overflow-hidden rounded-xl border border-shell-border-strong bg-shell-panel transition-colors focus-within:border-[#00c875]"
+        >
           <RichTextComposer
             ref={rich_text_ref}
+            embedded
+            show_toolbar={show_toolbar}
             value={value}
             onChange={onChange}
             placeholder={placeholder}
             min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
           />
+
+          {(is_update || has_draft) && (
+            <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[7px] py-[6px]">
+              <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setToolbarHidden((hidden) => !hidden)}
+                  aria-label={show_toolbar ? "Hide formatting options" : "Show formatting options"}
+                  aria-pressed={show_toolbar}
+                  title={show_toolbar ? "Hide formatting options" : "Show formatting options"}
+                  className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
+                    show_toolbar ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
+                  }`}
+                >
+                  <FormatToggleIcon size={is_update ? 16 : 15} />
+                </button>
+                {is_update && onAddFiles && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => file_input_ref.current?.click()}
+                      aria-label="Attach a file"
+                      title="Attach a file"
+                      className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+                    >
+                      <AttachIcon />
+                    </button>
+                    <input
+                      ref={file_input_ref}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => {
+                        onAddFiles(Array.from(event.target.files ?? []));
+                        event.target.value = "";
+                      }}
+                    />
+                  </>
+                )}
+                <span className="relative">
+                  <button
+                    ref={emoji_trigger_ref}
+                    type="button"
+                    onClick={() => onToggleEmojiPalette(target)}
+                    aria-label="Add an emoji"
+                    title="Add an emoji"
+                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+                  >
+                    <ReactSmileyIcon size={is_update ? 17 : 16} />
+                  </button>
+                  <EmojiPalette
+                    anchor_el={emoji_trigger_ref.current}
+                    is_open={show_emoji_palette}
+                    onClose={onCloseEmojiPalette}
+                    onPick={handleInsertEmoji}
+                    mode="insert"
+                  />
+                </span>
+                {can_notify && (
+                  <span className="relative">
+                    <button
+                      ref={notify_trigger_ref}
+                      type="button"
+                      onClick={() => onToggleNotifyPicker?.(target)}
+                      aria-label="Notify someone"
+                      title="Notify someone without mentioning them"
+                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
+                        show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
+                      }`}
+                    >
+                      <BellIcon size={is_update ? 16 : 15} />
+                    </button>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2.5">
+                {is_update && <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>}
+                <button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={!has_draft}
+                  aria-label={submit_label}
+                  title={submit_label}
+                  className={`flex items-center justify-center rounded-lg font-sans font-bold transition-colors ${
+                    is_update ? "h-[34px] w-[34px]" : "h-[30px] w-[30px]"
+                  } ${
+                    has_draft
+                      ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
+                      : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
+                  }`}
+                >
+                  <SendIcon size={is_update ? 16 : 15} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
         {show_notify_picker && onPickNotifyPerson && (
           <div ref={notify_picker_ref}>
             <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />
-          </div>
-        )}
-
-        {(is_update || has_draft) && (
-          <div className="mt-2.5 flex items-center justify-between gap-2.5">
-            <div className="flex items-center gap-1">
-              <span className="relative">
-                <button
-                  ref={emoji_trigger_ref}
-                  type="button"
-                  onClick={() => onToggleEmojiPalette(target)}
-                  className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-                >
-                  <ReactSmileyIcon size={is_update ? 17 : 16} />
-                </button>
-                <EmojiPalette
-                  anchor_el={emoji_trigger_ref.current}
-                  is_open={show_emoji_palette}
-                  onClose={onCloseEmojiPalette}
-                  onPick={handleInsertEmoji}
-                  mode="insert"
-                />
-              </span>
-              {can_notify && (
-                <span className="relative">
-                  <button
-                    ref={notify_trigger_ref}
-                    type="button"
-                    onClick={() => onToggleNotifyPicker?.(target)}
-                    aria-label="Notify someone"
-                    title="Notify someone without mentioning them"
-                    className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                      show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                    }`}
-                  >
-                    <BellIcon size={is_update ? 16 : 15} />
-                  </button>
-                </span>
-              )}
-              {is_update && onAddFiles && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => file_input_ref.current?.click()}
-                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-                  >
-                    <AttachIcon />
-                  </button>
-                  <input
-                    ref={file_input_ref}
-                    type="file"
-                    multiple
-                    className="hidden"
-                    onChange={(event) => {
-                      onAddFiles(Array.from(event.target.files ?? []));
-                      event.target.value = "";
-                    }}
-                  />
-                </>
-              )}
-            </div>
-            <div className="flex items-center gap-2.5">
-              {is_update && <span className="text-xs text-shell-text-faint">Shift + Enter for a new line</span>}
-              <button
-                type="button"
-                onClick={onSubmit}
-                className={`rounded-lg bg-[#00c875] font-sans font-bold text-[#04241a] hover:bg-[#00e084] ${
-                  is_update ? "px-[18px] py-2 text-[13px]" : "px-4 py-[7px] text-[12.5px]"
-                }`}
-              >
-                {submit_label}
-              </button>
-            </div>
           </div>
         )}
 

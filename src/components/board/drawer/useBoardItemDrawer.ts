@@ -23,11 +23,8 @@ const createId = () => Math.random().toString(36).slice(2, 10);
 
 const MENTION_TRIGGER = /@([\w]*)$/;
 
-/** Strips HTML tags for `@mention` trigger detection over a rich text composer's HTML body. */
-const stripHtmlTags = (html: string): string => html.replace(/<[^>]*>/g, "");
-
-/** A rich text composer's "empty" document still serializes to `<p></p>`, not `""` — this checks for genuinely no text and no inline image instead of relying on string emptiness. */
-const isRichTextEmpty = (html: string): boolean => stripHtmlTags(html).trim().length === 0 && !html.includes("<img");
+/** A rich text composer's Markdown body counts as empty when it's got no visible text and no inline image (`![alt](url)`). */
+const isRichTextEmpty = (markdown: string): boolean => markdown.trim().length === 0 && !markdown.includes("![");
 
 /** Bumps (or removes) a single emoji's reaction pill, toggling whether the current user reacted with it — a comment can carry any number of these in parallel, one per distinct emoji. */
 const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReaction[] => {
@@ -111,11 +108,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const open_row_title = open_row ? config.getRowTitle(open_row) : "";
 
   const detectMention = (target: DrawerComposerTarget, value: string) => {
-    // `value` is the composer's HTML body — strip tags first so a trailing
-    // `@partial` right before the cursor is still found even when it sits
-    // inside its own paragraph/mark (e.g. `<p>Hello @jo</p>`, where the raw
-    // HTML's trailing characters are `</p>`, not the mention itself).
-    const match = MENTION_TRIGGER.exec(stripHtmlTags(value));
+    // `value` is the composer's Markdown body — plain text, so the trigger
+    // regex can run directly against it without stripping any markup first.
+    const match = MENTION_TRIGGER.exec(value);
     if (match) {
       setMentionTarget(target);
       setMentionQuery(match[1].toLowerCase());

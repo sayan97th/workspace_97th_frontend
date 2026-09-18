@@ -15,7 +15,7 @@ export type CommentEditFormProps = {
  * shown in place of a comment or reply's body while it's being edited.
  * Shared by every drawer flavor the same way `CommentAttachmentChip` already
  * is. Uses the same `RichTextComposer` as the main composer (the body being
- * edited is already sanitized HTML), just without its `@mention`/emoji/attach
+ * edited is already Markdown, as stored), just without its `@mention`/emoji/attach
  * affordances — those apply to composing a new update, not touching up one
  * already posted.
  */

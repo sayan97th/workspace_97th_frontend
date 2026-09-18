@@ -5,6 +5,17 @@ import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
 import TiptapImage from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import { Markdown } from "@tiptap/markdown";
+import {
+  BoldIcon,
+  BulletListIcon,
+  InlineCodeIcon,
+  ItalicIcon,
+  LinkFormatIcon,
+  NumberedListIcon,
+  QuoteIcon,
+  StrikethroughIcon,
+} from "@/icons/drawer-icons";
 import { inlineUploadService } from "@/services/inline-upload.service";
 import { MentionHighlight } from "./mentionHighlight";
 
@@ -18,9 +29,9 @@ export type RichTextComposerRef = {
 };
 
 export type RichTextComposerProps = {
-  /** The body as HTML — only pushed into the live editor when it differs and the editor isn't focused, so external resets (clearing after submit) never fight the user's own typing. */
+  /** The body as Markdown — only pushed into the live editor when it differs and the editor isn't focused, so external resets (clearing after submit) never fight the user's own typing. */
   value: string;
-  onChange: (html: string) => void;
+  onChange: (markdown: string) => void;
   /** Plain-text mirror of every keystroke, for the parent's `@mention` trigger detection. */
   onPlainTextChange?: (text: string) => void;
   placeholder: string;
@@ -30,6 +41,10 @@ export type RichTextComposerProps = {
   /** When set, Escape fires this — `CommentEditForm`'s "Cancel". */
   onEscape?: () => void;
   autoFocus?: boolean;
+  /** True when rendered inside `CommentComposer`'s own unified Slack-style box — drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Defaults to false for standalone use (`CommentEditForm`), which keeps its own self-contained bordered box. */
+  embedded?: boolean;
+  /** Embedded mode only: whether the formatting toolbar row is shown — driven by `CommentComposer`'s "Aa" toggle. */
+  show_toolbar?: boolean;
 };
 
 const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => void; children: React.ReactNode }> = ({
@@ -44,13 +59,15 @@ const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => 
     onClick={onClick}
     aria-label={label}
     title={label}
-    className={`flex h-6 w-6 items-center justify-center rounded-md text-[12px] font-bold transition-colors ${
+    className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
       active ? "bg-shell-hover-strong text-shell-text" : "text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
     }`}
   >
     {children}
   </button>
 );
+
+const ToolbarDivider: React.FC = () => <span className="mx-1 h-4 w-px flex-none bg-shell-border-strong" />;
 
 /**
  * Tiptap-backed rich text editor used by `CommentComposer` in place of a
@@ -67,7 +84,21 @@ const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => 
  * typed out by hand instead of picked from `MentionPicker`.
  */
 const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
-  ({ value, onChange, onPlainTextChange, placeholder, min_height_class = "min-h-16", onEnterSubmit, onEscape, autoFocus }, ref) => {
+  (
+    {
+      value,
+      onChange,
+      onPlainTextChange,
+      placeholder,
+      min_height_class = "min-h-16",
+      onEnterSubmit,
+      onEscape,
+      autoFocus,
+      embedded = false,
+      show_toolbar = true,
+    },
+    ref
+  ) => {
     const editor = useEditor({
       extensions: [
         StarterKit.configure({ heading: false }),
@@ -75,17 +106,21 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         TiptapImage,
         Placeholder.configure({ placeholder }),
         MentionHighlight,
+        Markdown,
       ],
       content: value || "",
+      contentType: "markdown",
       immediatelyRender: false,
       autofocus: autoFocus ? "end" : false,
       onUpdate: ({ editor: current_editor }) => {
-        onChange(current_editor.getHTML());
+        onChange(current_editor.getMarkdown());
         onPlainTextChange?.(current_editor.getText());
       },
       editorProps: {
         attributes: {
-          class: `shell-rich-text-editor ${min_height_class} w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-colors focus:border-[#00c875]`,
+          class: embedded
+            ? `shell-rich-text-editor ${min_height_class} w-full resize-none bg-transparent px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none`
+            : `shell-rich-text-editor ${min_height_class} w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-colors focus:border-[#00c875]`,
         },
         handleKeyDown: (_view, event) => {
           if (event.key === "Enter" && !event.shiftKey && onEnterSubmit) {
@@ -131,8 +166,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // a live keystroke can never be clobbered by a stale `value` prop.
     useEffect(() => {
       if (!editor || editor.isFocused) return;
-      if (value === editor.getHTML()) return;
-      editor.commands.setContent(value || "", { emitUpdate: false });
+      if (value === editor.getMarkdown()) return;
+      editor.commands.setContent(value || "", { contentType: "markdown", emitUpdate: false });
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value, editor]);
 
@@ -165,6 +200,9 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       selector: (context) => ({
         bold: context.editor?.isActive("bold") ?? false,
         italic: context.editor?.isActive("italic") ?? false,
+        strike: context.editor?.isActive("strike") ?? false,
+        code: context.editor?.isActive("code") ?? false,
+        blockquote: context.editor?.isActive("blockquote") ?? false,
         bullet_list: context.editor?.isActive("bulletList") ?? false,
         ordered_list: context.editor?.isActive("orderedList") ?? false,
         link: context.editor?.isActive("link") ?? false,
@@ -173,7 +211,9 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
 
     if (!editor) return null;
 
-    const active_state = editor_state ?? { bold: false, italic: false, bullet_list: false, ordered_list: false, link: false };
+    const active_state =
+      editor_state ??
+      { bold: false, italic: false, strike: false, code: false, blockquote: false, bullet_list: false, ordered_list: false, link: false };
 
     const toggleLink = () => {
       if (active_state.link) {
@@ -184,33 +224,60 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       if (url) editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     };
 
+    const toolbar = (
+      <div className="flex items-center gap-0.5 px-[7px] py-[6px]">
+        <ToolbarButton label="Bold (Ctrl+B)" active={active_state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+          <BoldIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton label="Italic (Ctrl+I)" active={active_state.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+          <ItalicIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton label="Strikethrough" active={active_state.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
+          <StrikethroughIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton label="Link" active={active_state.link} onClick={toggleLink}>
+          <LinkFormatIcon size={15} />
+        </ToolbarButton>
+        <ToolbarDivider />
+        <ToolbarButton
+          label="Bulleted list"
+          active={active_state.bullet_list}
+          onClick={() => editor.chain().focus().toggleBulletList().run()}
+        >
+          <BulletListIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton
+          label="Numbered list"
+          active={active_state.ordered_list}
+          onClick={() => editor.chain().focus().toggleOrderedList().run()}
+        >
+          <NumberedListIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton
+          label="Quote"
+          active={active_state.blockquote}
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+        >
+          <QuoteIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton label="Code" active={active_state.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+          <InlineCodeIcon size={15} />
+        </ToolbarButton>
+      </div>
+    );
+
+    if (embedded) {
+      return (
+        <div>
+          {show_toolbar && <div className="border-b border-shell-border">{toolbar}</div>}
+          <EditorContent editor={editor} />
+        </div>
+      );
+    }
+
     return (
       <div>
-        <div className="mb-1.5 flex items-center gap-0.5">
-          <ToolbarButton label="Bold" active={active_state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
-            B
-          </ToolbarButton>
-          <ToolbarButton label="Italic" active={active_state.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
-            <span className="italic">I</span>
-          </ToolbarButton>
-          <ToolbarButton
-            label="Bullet list"
-            active={active_state.bullet_list}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          >
-            •
-          </ToolbarButton>
-          <ToolbarButton
-            label="Numbered list"
-            active={active_state.ordered_list}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          >
-            1.
-          </ToolbarButton>
-          <ToolbarButton label="Link" active={active_state.link} onClick={toggleLink}>
-            🔗
-          </ToolbarButton>
-        </div>
+        <div className="mb-1.5">{toolbar}</div>
         <EditorContent editor={editor} />
       </div>
     );

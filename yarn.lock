@@ -2664,6 +2664,13 @@
   resolved "https://registry.npmjs.org/@tiptap/extensions/-/extensions-3.31.3.tgz"
   integrity sha512-8sJNPGGUe8f3aDojcOW5cfVL7I5NrBbE0UWxG08qoi9Tea6qWbvQJsCR9tsrOapr/DaLr3kpbGZ9s1gEEfcNcA==
 
+"@tiptap/markdown@^3.31.3":
+  version "3.31.3"
+  resolved "https://registry.npmjs.org/@tiptap/markdown/-/markdown-3.31.3.tgz"
+  integrity sha512-rBbYSxasseUoaBo15C8Yoaqafo7mJJzxwAwV9Z1OpLBvOroW9nQ0EbOdqaSYRw3/d9pP71B/3LNSzKyfyy+dpQ==
+  dependencies:
+    marked "^17.0.1"
+
 "@tiptap/pm@^3.31.3", "@tiptap/pm@3.31.3":
   version "3.31.3"
   resolved "https://registry.npmjs.org/@tiptap/pm/-/pm-3.31.3.tgz"
@@ -4882,6 +4889,16 @@ markdown-table@^3.0.0:
   version "3.0.4"
   resolved "https://registry.npmjs.org/markdown-table/-/markdown-table-3.0.4.tgz"
   integrity sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==
+
+marked@^17.0.1:
+  version "17.0.6"
+  resolved "https://registry.npmjs.org/marked/-/marked-17.0.6.tgz"
+  integrity sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==
+
+marked@^18.0.13:
+  version "18.0.13"
+  resolved "https://registry.npmjs.org/marked/-/marked-18.0.13.tgz"
+  integrity sha512-xTxVzZsBFwunP6HDmtBkabUQEYArnP7/rMDGmPj9SlrKlQ4i8MdYVow+nJL0eOqwpUqhzBoTBRADGN6uYwPyOw==
 
 math-intrinsics@^1.1.0:
   version "1.1.0"
