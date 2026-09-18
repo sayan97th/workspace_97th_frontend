@@ -33,6 +33,9 @@ export interface User {
 
   /** The numeric id of the workspace the user last had open, restored by the switcher on page load. */
   last_active_workspace_id: number | null;
+
+  /** The viewer's own saved workspace-sidebar width in pixels, null until they drag its resize handle for the first time. */
+  sidebar_width: number | null;
 }
 
 export interface AuthResponse {
@@ -151,6 +154,9 @@ export interface ProfileResponse extends ProfileData {
 
   /** The numeric id of the workspace the user last had open, restored by the switcher on page load. */
   last_active_workspace_id: number | null;
+
+  /** The viewer's own saved workspace-sidebar width in pixels, null until they drag its resize handle for the first time. */
+  sidebar_width: number | null;
 }
 
 /** Partial update payload for PATCH /api/profile. */

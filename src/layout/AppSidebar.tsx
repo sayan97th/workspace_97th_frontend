@@ -9,6 +9,7 @@ import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import WorkspaceSwitcherSkeleton from "./WorkspaceSwitcherSkeleton";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import CreateWorkspaceModal, { type CreateWorkspaceSubmission } from "./CreateWorkspaceModal";
+import SidebarResizeHandle from "./SidebarResizeHandle";
 import {
   CollapseSidebarIcon,
   ExpandSidebarIcon,
@@ -17,7 +18,15 @@ import {
 } from "@/icons/workspace-icons";
 
 const AppSidebar: React.FC = () => {
-  const { isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
+  const {
+    isExpanded,
+    isMobileOpen,
+    sidebar_width,
+    toggleSidebar,
+    toggleMobileSidebar,
+    previewSidebarWidth,
+    commitSidebarWidth,
+  } = useSidebar();
 
   const workspaces_api = useWorkspaces();
   const {
@@ -79,79 +88,92 @@ const AppSidebar: React.FC = () => {
       )}
 
       <aside
-        className={`shell-scrollbar fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] w-80 flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-surface text-shell-text-secondary transition-transform duration-300 ease-in-out lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
-          } ${is_rail_collapsed ? "lg:hidden" : "lg:static lg:flex lg:translate-x-0"}`}
+        className={`fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] max-w-[100vw] flex-none flex-col border-r border-shell-border bg-shell-surface text-shell-text-secondary transition-transform duration-300 ease-in-out lg:relative lg:top-0 lg:h-full ${isMobileOpen ? "translate-x-0" : "-translate-x-full"
+          } ${is_rail_collapsed ? "lg:hidden" : "lg:flex lg:translate-x-0"}`}
+        style={{ width: sidebar_width }}
       >
-        <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-shell-surface px-4 pb-2.5 pt-5">
-          <div className="flex items-center justify-between">
-            <span className="text-base font-semibold tracking-[-0.01em] text-shell-text">
-              Workspace
-            </span>
-            <div className="flex items-center gap-1.5 text-shell-text-muted">
-              {active_workspace ? (
-                <WorkspaceOptionsButton
-                  workspace={active_workspace}
-                  updateWorkspace={updateWorkspace}
-                  togglePriority={togglePriority}
-                  uploadWorkspaceAvatar={uploadWorkspaceAvatar}
-                  removeWorkspaceAvatar={removeWorkspaceAvatar}
-                  leaveWorkspace={leaveWorkspace}
-                  deleteWorkspace={deleteWorkspace}
-                  trigger_class_name="shell-icon-button h-7 w-7"
-                  icon_size={16}
-                  aria_label="Workspace options"
-                />
-              ) : (
-                <button type="button" className="shell-icon-button h-7 w-7" aria-label="Workspace options" disabled>
-                  <MoreDotsIcon size={16} />
+        {/* Scrolling lives on this inner wrapper (not the `<aside>` itself) so `SidebarResizeHandle`,
+            anchored just outside the aside's own right border, never gets clipped by `overflow-y-auto` -
+            an element can't have one axis scroll and the other stay visible, so the parent's own
+            overflow would otherwise clip the handle's horizontal overhang along with it. */}
+        <div className="shell-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-shell-surface px-4 pb-2.5 pt-5">
+            <div className="flex items-center justify-between">
+              <span className="text-base font-semibold tracking-[-0.01em] text-shell-text">
+                Workspace
+              </span>
+              <div className="flex items-center gap-1.5 text-shell-text-muted">
+                {active_workspace ? (
+                  <WorkspaceOptionsButton
+                    workspace={active_workspace}
+                    updateWorkspace={updateWorkspace}
+                    togglePriority={togglePriority}
+                    uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+                    removeWorkspaceAvatar={removeWorkspaceAvatar}
+                    leaveWorkspace={leaveWorkspace}
+                    deleteWorkspace={deleteWorkspace}
+                    trigger_class_name="shell-icon-button h-7 w-7"
+                    icon_size={16}
+                    aria_label="Workspace options"
+                  />
+                ) : (
+                  <button type="button" className="shell-icon-button h-7 w-7" aria-label="Workspace options" disabled>
+                    <MoreDotsIcon size={16} />
+                  </button>
+                )}
+                <button type="button" className="shell-icon-button h-7 w-7" aria-label="Search">
+                  <SearchIcon />
                 </button>
-              )}
-              <button type="button" className="shell-icon-button h-7 w-7" aria-label="Search">
-                <SearchIcon />
-              </button>
-              <button
-                type="button"
-                onClick={handleCollapseClick}
-                className="shell-icon-button h-7 w-7"
-                aria-label="Collapse sidebar"
-              >
-                <CollapseSidebarIcon />
-              </button>
+                <button
+                  type="button"
+                  onClick={handleCollapseClick}
+                  className="shell-icon-button h-7 w-7"
+                  aria-label="Collapse sidebar"
+                >
+                  <CollapseSidebarIcon />
+                </button>
+              </div>
             </div>
+
+            {active_workspace ? (
+              <WorkspaceSwitcher
+                active_workspace={active_workspace}
+                recent_workspaces={recent_workspaces}
+                my_workspaces={my_workspaces}
+                nav={nav}
+                togglePriority={togglePriority}
+                onSelectWorkspace={selectWorkspace}
+                onAddWorkspace={() => setIsCreateOpen(true)}
+                onBrowseAll={() => setIsBrowseOpen(true)}
+                updateWorkspace={updateWorkspace}
+                uploadWorkspaceAvatar={uploadWorkspaceAvatar}
+                removeWorkspaceAvatar={removeWorkspaceAvatar}
+                leaveWorkspace={leaveWorkspace}
+                deleteWorkspace={deleteWorkspace}
+              />
+            ) : (
+              <WorkspaceSwitcherSkeleton />
+            )}
           </div>
 
-          {active_workspace ? (
-            <WorkspaceSwitcher
-              active_workspace={active_workspace}
-              recent_workspaces={recent_workspaces}
-              my_workspaces={my_workspaces}
-              nav={nav}
-              togglePriority={togglePriority}
-              onSelectWorkspace={selectWorkspace}
-              onAddWorkspace={() => setIsCreateOpen(true)}
-              onBrowseAll={() => setIsBrowseOpen(true)}
-              updateWorkspace={updateWorkspace}
-              uploadWorkspaceAvatar={uploadWorkspaceAvatar}
-              removeWorkspaceAvatar={removeWorkspaceAvatar}
-              leaveWorkspace={leaveWorkspace}
-              deleteWorkspace={deleteWorkspace}
-            />
-          ) : (
-            <WorkspaceSwitcherSkeleton />
-          )}
+          <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
+            {active_workspace_slug ? (
+              <NavTree nav={nav} workspace_slug={active_workspace_slug} />
+            ) : (
+              <div className="space-y-1.5 px-2.5 py-2">
+                {[0, 1, 2, 3, 4].map((row) => (
+                  <div key={row} className="h-8 animate-pulse rounded-[9px] bg-shell-hover" />
+                ))}
+              </div>
+            )}
+          </nav>
         </div>
 
-        <nav className="flex flex-1 flex-col px-2.5 pb-7 pt-1.5">
-          {active_workspace_slug ? (
-            <NavTree nav={nav} workspace_slug={active_workspace_slug} />
-          ) : (
-            <div className="space-y-1.5 px-2.5 py-2">
-              {[0, 1, 2, 3, 4].map((row) => (
-                <div key={row} className="h-8 animate-pulse rounded-[9px] bg-shell-hover" />
-              ))}
-            </div>
-          )}
-        </nav>
+        <SidebarResizeHandle
+          width={sidebar_width}
+          onResize={previewSidebarWidth}
+          onResizeEnd={commitSidebarWidth}
+        />
       </aside>
 
       <BrowseWorkspacesModal

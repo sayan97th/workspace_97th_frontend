@@ -27,6 +27,10 @@ export type LocalePreferencesPayload = {
   first_day_of_week?: "sunday" | "monday";
 };
 
+export type SidebarPreferencePayload = {
+  width: number;
+};
+
 /** Common envelope returned by every `PATCH /api/profile/*` preference endpoint. */
 export type UpdatePreferencesResponse = {
   message: string;

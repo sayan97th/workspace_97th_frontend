@@ -3,6 +3,7 @@ import type { ApiError } from "@/types/auth";
 import type {
   LocalePreferencesPayload,
   NotificationPreferencesPayload,
+  SidebarPreferencePayload,
   UpdatePreferencesResponse,
   UserSessionDto,
   WorkingStatusPayload,
@@ -29,6 +30,11 @@ export const profilePreferencesService = {
   /** PATCH /api/profile/locale */
   async updateLocalePreferences(payload: LocalePreferencesPayload): Promise<UpdatePreferencesResponse> {
     return apiClient.patch<UpdatePreferencesResponse>("/api/profile/locale", payload);
+  },
+
+  /** PATCH /api/profile/sidebar */
+  async updateSidebarPreference(payload: SidebarPreferencePayload): Promise<UpdatePreferencesResponse> {
+    return apiClient.patch<UpdatePreferencesResponse>("/api/profile/sidebar", payload);
   },
 
   /** GET /api/profile/sessions */
