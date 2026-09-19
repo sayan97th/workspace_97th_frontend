@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { UpdatesTabIcon } from "@/icons/drawer-icons";
-import { BellIcon, FolderPathIcon, MailIcon } from "@/icons/workspace-icons";
+import { BellIcon, FolderPathIcon } from "@/icons/workspace-icons";
 import CommentComposer from "./CommentComposer";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
@@ -81,16 +81,6 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             <CloseIcon size={16} />
           </button>
         </div>
-      </div>
-
-      {/* Update-via-email / give-feedback links */}
-      <div className="flex flex-none items-center gap-2.5 border-b border-shell-border px-[22px] py-3 text-[12.5px] font-semibold text-shell-text-muted">
-        <span className="inline-flex items-center gap-[7px]">
-          <MailIcon size={13} />
-          Update via email
-        </span>
-        <span className="text-shell-border-strong">|</span>
-        <span>Give feedback</span>
       </div>
 
       {/* Composer */}

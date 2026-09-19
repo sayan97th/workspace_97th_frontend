@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { downloadBlob } from "@/lib/download-blob";
 import { boardCommentsService } from "@/services/board-comments.service";
 import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
 import type { BoardPersonOption } from "../toolbar/types";
@@ -8,6 +9,7 @@ import { classifyAttachment } from "./drawerAttachments";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
+  DrawerActionFeedback,
   DrawerAttachment,
   DrawerComment,
   DrawerComposerTarget,
@@ -18,6 +20,7 @@ import type {
 
 const DEFAULT_ACCENT_COLOR = "#00c875";
 const DESCRIPTION_AUTOSAVE_DELAY_MS = 800;
+const ACTION_FEEDBACK_DISMISS_DELAY_MS = 3000;
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
@@ -74,6 +77,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
   const [edit_draft, setEditDraft] = useState("");
+  const [item_action_feedback, setItemActionFeedback] = useState<DrawerActionFeedback | null>(null);
 
   // Local draft that wins over `getDescription(open_row)` once the viewer has
   // typed — `null` means "no unsaved edit yet, defer to the row's own value".
@@ -104,8 +108,13 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     return `c${id_seq_ref.current}-${createId()}`;
   };
 
+  // `open_row` is the snapshot taken when the drawer opened; everything shown
+  // for the row is read from its live copy so it never goes stale mid-session.
+  const live_open_row = open_row && config.resolveRow ? config.resolveRow(open_row) : open_row;
   const open_row_id = open_row ? getRowId(open_row) : null;
-  const open_row_title = open_row ? config.getRowTitle(open_row) : "";
+  const open_row_title = live_open_row ? config.getRowTitle(live_open_row) : "";
+  const current_group_id = live_open_row && config.getRowGroupId ? config.getRowGroupId(live_open_row) : null;
+  const is_top_level_row = live_open_row && config.isTopLevelRow ? config.isTopLevelRow(live_open_row) : true;
 
   const detectMention = (target: DrawerComposerTarget, value: string) => {
     // `value` is the composer's Markdown body — plain text, so the trigger
@@ -137,6 +146,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setDescriptionDraft(null);
     setEditingTarget(null);
     setEditDraft("");
+    setItemActionFeedback(null);
 
     if (is_api_backed) {
       const item_id = Number(row_id);
@@ -606,6 +616,66 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       });
   };
 
+  const showActionFeedback = (tone: DrawerActionFeedback["tone"], message: string) =>
+    setItemActionFeedback({ tone, message });
+  const dismissItemActionFeedback = () => setItemActionFeedback(null);
+
+  // A success banner is only a confirmation, so it clears itself; an error
+  // stays until dismissed (or the next action) so it can't be missed.
+  useEffect(() => {
+    if (item_action_feedback?.tone !== "success") return;
+    const timeout_id = setTimeout(() => setItemActionFeedback(null), ACTION_FEEDBACK_DISMISS_DELAY_MS);
+    return () => clearTimeout(timeout_id);
+  }, [item_action_feedback]);
+
+  const exportUpdates = async () => {
+    if (!open_row_id || !is_api_backed) return;
+    setItemActionFeedback(null);
+    try {
+      const blob = await boardCommentsService.exportUpdates(board_id, Number(open_row_id));
+      const file_slug = open_row_title.replace(/[^a-z0-9]+/gi, "_").replace(/^_+|_+$/g, "").toLowerCase() || "item";
+      downloadBlob(blob, `${file_slug}_updates.xlsx`);
+    } catch {
+      showActionFeedback("error", "Couldn't export the updates. Please try again.");
+    }
+  };
+
+  const copyItemLink = async () => {
+    if (!open_row_id || !is_api_backed) return;
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/boards/${board_id}/pulses/${open_row_id}`);
+      showActionFeedback("success", "Item link copied to your clipboard.");
+    } catch {
+      showActionFeedback("error", "Couldn't copy the item link. Please try again.");
+    }
+  };
+
+  /**
+   * Runs one of the caller's item-level actions (archive, delete, move) and
+   * reports whether it succeeded. Deliberately silent on failure: each of
+   * these is triggered from a dialog that shows its own inline error, so the
+   * banner ({@link item_action_feedback}) is reserved for the dialog-less
+   * export and copy-link actions.
+   */
+  const runItemAction = async (action: ((row_id: string) => Promise<void>) | undefined): Promise<boolean> => {
+    if (!open_row_id || !action) return false;
+    try {
+      await action(open_row_id);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const archiveItem = () => runItemAction(config.onArchiveItem);
+  const deleteItem = () => runItemAction(config.onDeleteItem);
+  const moveItemToGroup = (group_id: string) =>
+    runItemAction(config.onMoveItemToGroup && ((row_id) => config.onMoveItemToGroup!(row_id, group_id)));
+  const moveItemToBoard = (target_board_id: number, target_group_id: number) =>
+    runItemAction(
+      config.onMoveItemToBoard && ((row_id) => config.onMoveItemToBoard!(row_id, target_board_id, target_group_id))
+    );
+
   const mention_matches = useMemo(
     () =>
       mention_target
@@ -628,8 +698,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     () => [...item_attachments, ...comments.flatMap((comment) => comment.attachments)],
     [item_attachments, comments]
   );
-  const info_boxes = open_row && getInfoBoxes ? getInfoBoxes(open_row) : [];
-  const activity_log = open_row && getActivityLog ? getActivityLog(open_row) : [];
+  const info_boxes = live_open_row && getInfoBoxes ? getInfoBoxes(live_open_row) : [];
+  const activity_log = live_open_row && getActivityLog ? getActivityLog(live_open_row) : [];
 
   const editing_key = editing_target
     ? editing_target.reply_id
@@ -638,7 +708,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     : null;
 
   const has_description = getDescription !== undefined;
-  const description = description_draft ?? (open_row && getDescription ? getDescription(open_row) : "");
+  const description = description_draft ?? (live_open_row && getDescription ? getDescription(live_open_row) : "");
 
   // Kept in a ref (rather than a plain closure passed to `setTimeout`) so
   // `openRow`/`close` can always flush whatever the *latest* pending edit
@@ -692,6 +762,17 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     files_upload_error,
     dismissFilesUploadError,
     deleteAttachment,
+
+    current_group_id,
+    is_top_level_row,
+    item_action_feedback,
+    dismissItemActionFeedback,
+    exportUpdates,
+    copyItemLink,
+    archiveItem,
+    deleteItem,
+    moveItemToGroup,
+    moveItemToBoard,
 
     reply_text_by_comment,
     onReplyTextChange,

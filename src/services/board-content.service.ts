@@ -6,6 +6,7 @@ import type {
   BoardItemChecklistItemDto,
   BoardItemDetailDto,
   BoardItemDto,
+  BoardItemMoveTargetDto,
   BoardItemValue,
   BoardTagDto,
   BoardViewDto,
@@ -15,6 +16,7 @@ import type {
   CreateBoardItemPayload,
   CreateBoardTagPayload,
   CreateChecklistItemPayload,
+  MoveBoardItemToBoardPayload,
   ReorderBoardColumnsPayload,
   ReorderBoardItemsPayload,
   SaveBoardViewPayload,
@@ -307,6 +309,17 @@ export const boardContentService = {
       group_id,
     });
     return response.items;
+  },
+
+  /** GET /api/boards/{board_id}/move-targets, the other boards (with their tables) an item can be moved into from its drawer. */
+  async getItemMoveTargets(board_id: number): Promise<BoardItemMoveTargetDto[]> {
+    const response = await apiClient.get<{ data: BoardItemMoveTargetDto[] }>(`/api/boards/${board_id}/move-targets`);
+    return response.data;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/{item_id}/board, item drawer's "Move to" > "Move to board". Moves the item, with its subitems, into a table of another board. */
+  async moveItemToBoard(board_id: number, item_id: number, payload: MoveBoardItemToBoardPayload): Promise<void> {
+    await apiClient.patch(`/api/boards/${board_id}/items/${item_id}/board`, payload);
   },
 
   /** PATCH /api/boards/{board_id}/items/values — selection action bar's "Edit column" bulk action. */

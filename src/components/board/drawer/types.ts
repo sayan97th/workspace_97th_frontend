@@ -79,6 +79,17 @@ export type DrawerTabId = "updates" | "files" | "info_boxes";
 /** Which composer a `@mention` picker or emoji palette is currently open for: the top-level composer, or a reply box keyed by its parent comment id. */
 export type DrawerComposerTarget = "composer" | string;
 
+export type DrawerActionFeedback = {
+  tone: "success" | "error";
+  message: string;
+};
+
+/** One table (group) an item can be moved into from the drawer's "Move to" menu. */
+export type DrawerMoveGroupOption = {
+  id: string;
+  label: string;
+};
+
 /** Board-specific configuration a caller supplies to {@link useBoardItemDrawer}. Generic over the row type so any board view can reuse it. */
 export type BoardItemDrawerConfig<TRow> = {
   getRowId: (row: TRow) => string;
@@ -104,6 +115,27 @@ export type BoardItemDrawerConfig<TRow> = {
   getDescription?: (row: TRow) => string;
   /** Persists a debounced description edit — required alongside {@link getDescription} for the field to be editable rather than read-only. */
   onDescriptionChange?: (row_id: string, description: string) => void;
+  /**
+   * Returns the freshest copy of `row` the caller currently holds. The drawer
+   * keeps the row it was opened with, so without this its title, description
+   * and info boxes would go stale once an action (e.g. "Move to group")
+   * changes that row in the caller's own state.
+   */
+  resolveRow?: (row: TRow) => TRow;
+  /** The id of the table (group) `row` currently sits in, lets "Move to group" leave the current table out of its list. */
+  getRowGroupId?: (row: TRow) => string;
+  /** Whether `row` is a top-level item rather than a subitem. Moving and archiving are only offered for top-level items, since a subitem's group follows its parent's. Defaults to true. */
+  isTopLevelRow?: (row: TRow) => boolean;
+  /** Tables the "Move to group" action can move the open item into. Omit to hide that action. */
+  move_group_options?: DrawerMoveGroupOption[];
+  /** Moves the item into another table of the same board. Rejecting surfaces an inline error in the move dialog. */
+  onMoveItemToGroup?: (row_id: string, group_id: string) => Promise<void>;
+  /** Moves the item (with its subitems) into a table of another board. Omit to hide "Move to board". */
+  onMoveItemToBoard?: (row_id: string, target_board_id: number, target_group_id: number) => Promise<void>;
+  /** Archives the item. Omit to hide "Archive". */
+  onArchiveItem?: (row_id: string) => Promise<void>;
+  /** Deletes the item. Omit to hide "Delete". */
+  onDeleteItem?: (row_id: string) => Promise<void>;
 };
 
 /** Full live state + actions returned by {@link useBoardItemDrawer}. */
@@ -148,6 +180,23 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   dismissFilesUploadError: () => void;
   /** Permanently deletes an item-level attachment (`attachment.can_delete` must be true) — also removes its file from storage server-side. */
   deleteAttachment: (attachment_id: string) => void;
+
+  /** Id of the table (group) the open item currently sits in, or null when unknown. */
+  current_group_id: string | null;
+  /** False when the open row is a subitem, which hides the move and archive actions. */
+  is_top_level_row: boolean;
+  /** Outcome of a header "…" menu action that has no dialog of its own to report it in (export and copy link); shown as a dismissible banner under the drawer header. */
+  item_action_feedback: DrawerActionFeedback | null;
+  dismissItemActionFeedback: () => void;
+  /** Downloads the open item's updates (and replies) as an .xlsx workbook. Only available on a real board, see {@link BoardItemDrawerConfig.board_id}. */
+  exportUpdates: () => Promise<void>;
+  /** Copies the open item's shareable `/boards/{id}/pulses/{item_id}` link to the clipboard. Only available on a real board. */
+  copyItemLink: () => Promise<void>;
+  /** Each resolves to whether the action succeeded, so the calling dialog can close (or stay open with an error) and the drawer can close. */
+  archiveItem: () => Promise<boolean>;
+  deleteItem: () => Promise<boolean>;
+  moveItemToGroup: (group_id: string) => Promise<boolean>;
+  moveItemToBoard: (target_board_id: number, target_group_id: number) => Promise<boolean>;
 
   reply_text_by_comment: Record<string, string>;
   onReplyTextChange: (comment_id: string, value: string) => void;

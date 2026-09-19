@@ -393,3 +393,23 @@ export type SaveBoardViewPayload = {
   /** Chart type/data source/grouping, saved whenever a `chart`-type view's config panel changes. */
   chart_config?: BoardChartConfig | null;
 };
+
+/** One table (group) of a board an item can be moved into, see {@link BoardItemMoveTargetDto}. */
+export type BoardItemMoveTargetGroupDto = {
+  id: number;
+  name: string;
+  accent_color: string;
+};
+
+/** A board the item drawer's "Move to board" action can move an item into, with its tables. */
+export type BoardItemMoveTargetDto = {
+  id: number;
+  label: string;
+  groups: BoardItemMoveTargetGroupDto[];
+};
+
+/** Where the item drawer's "Move to board" action lands an item. */
+export type MoveBoardItemToBoardPayload = {
+  target_board_id: number;
+  target_group_id: number;
+};

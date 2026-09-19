@@ -1,6 +1,10 @@
 export { default as BoardItemDrawer } from "./BoardItemDrawer";
 export type { BoardItemDrawerProps } from "./BoardItemDrawer";
 export { default as useBoardItemDrawer } from "./useBoardItemDrawer";
+export { default as BoardItemOptionsMenu } from "./BoardItemOptionsMenu";
+export type { BoardItemOptionsMenuProps } from "./BoardItemOptionsMenu";
+export { default as MoveItemModal } from "./MoveItemModal";
+export type { MoveItemModalProps, MoveItemModalMode } from "./MoveItemModal";
 export { default as BoardDiscussionDrawer } from "./BoardDiscussionDrawer";
 export type { BoardDiscussionDrawerProps } from "./BoardDiscussionDrawer";
 export { default as useBoardDiscussionDrawer } from "./useBoardDiscussionDrawer";

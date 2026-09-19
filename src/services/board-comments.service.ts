@@ -36,6 +36,11 @@ export const boardCommentsService = {
     return response.comment;
   },
 
+  /** GET /api/boards/{board_id}/items/{item_id}/updates/export, item drawer's "Export updates to Excel", downloads every update and reply as an .xlsx workbook. */
+  async exportUpdates(board_id: number, item_id: number): Promise<Blob> {
+    return apiClient.get<Blob>(`/api/boards/${board_id}/items/${item_id}/updates/export`, { responseType: "blob" });
+  },
+
   /** PATCH /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
   async updateComment(board_id: number, item_id: number, comment_id: number, body: string): Promise<BoardItemCommentDto> {
     const response = await apiClient.patch<{ comment: BoardItemCommentDto }>(

@@ -1800,6 +1800,40 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     });
   };
 
+  // ── Item drawer's "…" menu actions, each one mirrors the selection action
+  // bar's equivalent bulk handler (see `handleBulkMove`/`handleBulkArchive`/
+  // `handleBulkDelete`) but for the single open item, and rejects on failure so
+  // the drawer can report it. Closing the drawer afterwards is up to the
+  // drawer itself (it needs the router-aware `handleDrawerClose`). ──
+  const handleDrawerMoveItemToGroup = async (item_id: string, group_id: string) => {
+    const [moved] = await boardContentService.moveItems(board_id, [Number(item_id)], Number(group_id));
+    // A subitem's `group_id` is denormalized from its parent, so the whole
+    // subtree takes the new group, mirroring the backend's own cascade.
+    const applyGroup = (item: BoardItemDto): BoardItemDto => ({
+      ...item,
+      group_id: moved.group_id,
+      children: item.children.map(applyGroup),
+    });
+    setItems((current) =>
+      mapItemInTree(current, Number(item_id), (item) => ({ ...applyGroup(item), position: moved.position }))
+    );
+  };
+
+  const handleDrawerMoveItemToBoard = async (item_id: string, target_board_id: number, target_group_id: number) => {
+    await boardContentService.moveItemToBoard(board_id, Number(item_id), { target_board_id, target_group_id });
+    setItems((current) => removeItemFromTree(current, Number(item_id)));
+  };
+
+  const handleDrawerArchiveItem = async (item_id: string) => {
+    await boardContentService.archiveItems(board_id, [Number(item_id)]);
+    setItems((current) => removeItemFromTree(current, Number(item_id)));
+  };
+
+  const handleDrawerDeleteItem = async (item_id: string) => {
+    await boardContentService.deleteItem(board_id, Number(item_id));
+    setItems((current) => removeItemFromTree(current, Number(item_id)));
+  };
+
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
       getRowId: (row) => String(row.id),
@@ -1813,9 +1847,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       getActivityLog,
       getDescription: (row) => row.description ?? "",
       onDescriptionChange: handleUpdateItemDescription,
+      resolveRow: (row) => findItemInTree(items, row.id) ?? row,
+      getRowGroupId: (row) => String(row.group_id),
+      isTopLevelRow: (row) => row.parent_id === null,
+      move_group_options: selection_move_targets,
+      onMoveItemToGroup: handleDrawerMoveItemToGroup,
+      onMoveItemToBoard: handleDrawerMoveItemToBoard,
+      onArchiveItem: handleDrawerArchiveItem,
+      onDeleteItem: handleDrawerDeleteItem,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, board_id, getInfoBoxes, getActivityLog]
+    [node.label, current_user.id, persons, board_id, getInfoBoxes, getActivityLog, items, selection_move_targets]
   );
 
   const drawer = useBoardItemDrawer(drawer_config);
