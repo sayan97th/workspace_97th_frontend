@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import EditUserView from "@/components/users-directory/EditUserView";
 
 export const metadata: Metadata = {
-  title: "Edit User | Workspace 97th",
+  title: "Edit User",
   description: "Edit an account's name, email, phone and department",
 };
 

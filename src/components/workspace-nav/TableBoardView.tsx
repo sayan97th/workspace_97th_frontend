@@ -80,6 +80,8 @@ import {
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { buildPageTitle } from "@/lib/page-title";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
 import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
@@ -475,6 +477,10 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
   };
 
   const info = buildBoardInfo(node, board_type, () => setIsChangeTypeOpen(true));
+
+  // While the board's content loads there is no active view yet, so the tab shows just the
+  // board name. `TableBoardBody` takes over (board and view, or the open item) once mounted.
+  useDocumentTitle(loaded || has_error ? null : buildPageTitle(node.label));
 
   if (has_error) {
     return (
@@ -1904,6 +1910,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     initial_comment_count: node.comments_count,
     initial_has_unseen_comments: node.has_unseen_comments,
   });
+
+  // Browser tab title: the open item wins, then the board updates panel, then the active view.
+  // "Launch plan | Client Hub | Workspace 97th", "Client Hub | Main table | Workspace 97th".
+  useDocumentTitle(
+    drawer.is_open
+      ? buildPageTitle(drawer.open_row_title, node.label)
+      : discussion_drawer.is_open
+        ? buildPageTitle("Board updates", node.label)
+        : buildPageTitle(node.label, view_tabs.active_view?.label)
+  );
 
   const handleRowClick = (row: BoardItemDto) => {
     drawer.openRow(row);

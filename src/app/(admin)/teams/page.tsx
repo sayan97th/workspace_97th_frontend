@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import TeamsView from "@/components/teams/TeamsView";
 
 export const metadata: Metadata = {
-  title: "Teams | Workspace 97th",
+  title: "Teams",
   description: "Browse your account's teams, manage rosters, and organize collaborators",
 };
 

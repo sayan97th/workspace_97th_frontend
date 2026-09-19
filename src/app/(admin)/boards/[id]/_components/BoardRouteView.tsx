@@ -3,6 +3,8 @@ import React, { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getViewComponent } from "@/components/workspace-nav/view-registry";
 import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { buildPageTitle } from "@/lib/page-title";
 import { useBoardRoute } from "../_context/BoardRouteContext";
 import { BoardLoadingSpinner, CenteredMessage } from "../../_components/BoardRouteStates";
 
@@ -23,6 +25,11 @@ export const BoardRouteView: React.FC = () => {
   const router = useRouter();
   const { board, has_error, breadcrumb, open_item_id, active_view_id } = useBoardRoute();
   const is_workspace_manage = board?.view_key === "workspace_manage";
+
+  // Only the states this component renders itself. Once a view mounts, it owns the title
+  // (board, active view and open item), since it is the one that knows those names.
+  const is_unavailable = has_error || (board !== null && board.type !== "leaf");
+  useDocumentTitle(is_unavailable ? buildPageTitle("Board unavailable") : null);
 
   useEffect(() => {
     if (board && is_workspace_manage) {

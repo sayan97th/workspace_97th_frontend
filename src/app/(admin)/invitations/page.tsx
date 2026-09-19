@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import InvitationsView from "./_components/InvitationsView";
 
 export const metadata: Metadata = {
-  title: "Sent invitations | Workspace 97th",
+  title: "Sent invitations",
   description: "Every invitation sent for this workspace",
 };
 

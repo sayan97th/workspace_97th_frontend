@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import AcceptInvitationForm from "@/components/auth/AcceptInvitationForm";
 
 export const metadata: Metadata = {
-  title: "Accept Invitation | Workspace 97th",
+  title: "Accept Invitation",
   description: "Accept your invitation to join a Workspace 97th workspace",
 };
 

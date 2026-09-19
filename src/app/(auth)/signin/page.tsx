@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Sign In | Workspace 97th",
+  title: "Sign In",
   description: "Sign In page for Workspace 97th Dashboard",
 };
 

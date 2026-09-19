@@ -9,6 +9,9 @@ import React from "react";
 // opposite direction.
 import "@/components/workspace-nav/view-registry";
 import WorkspaceManage from "@/components/workspace-manage/WorkspaceManage";
+import { WORKSPACE_MANAGE_TAB_LABELS } from "@/components/workspace-manage/tab-routing";
+import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { buildPageTitle } from "@/lib/page-title";
 import { useWorkspaceManageRoute } from "../_context/WorkspaceManageRouteContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
@@ -20,6 +23,15 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
  */
 export const WorkspaceManageRouteView: React.FC = () => {
   const { node, has_error, active_tab, onTabChange } = useWorkspaceManageRoute();
+
+  // "Collaborators | Marketing | Workspace 97th": the active tab, then the workspace it manages.
+  useDocumentTitle(
+    node
+      ? buildPageTitle(WORKSPACE_MANAGE_TAB_LABELS[active_tab], node.workspace.name)
+      : has_error
+        ? buildPageTitle("Workspace unavailable")
+        : null
+  );
 
   if (has_error) {
     return (

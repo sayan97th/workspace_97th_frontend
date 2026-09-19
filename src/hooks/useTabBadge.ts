@@ -7,7 +7,7 @@ const BADGE_PREFIX_PATTERN = /^\(\d+\+?\)\s*/;
 const MAX_BADGE_COUNT = 99;
 
 /** The tab title without a "(3) " unread prefix, whoever put it there. */
-const stripBadge = (title: string): string => title.replace(BADGE_PREFIX_PATTERN, "");
+export const stripBadge = (title: string): string => title.replace(BADGE_PREFIX_PATTERN, "");
 
 /**
  * Prefixes the browser tab title with the unread notification count, "(3)

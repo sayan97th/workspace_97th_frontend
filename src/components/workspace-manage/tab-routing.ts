@@ -10,6 +10,14 @@ export type WorkspaceManageTabId = "recents" | "content" | "collaborators" | "pe
 
 export const DEFAULT_WORKSPACE_MANAGE_TAB: WorkspaceManageTabId = "recents";
 
+/** Display name for each tab, shared by the tab bar and the browser tab title. */
+export const WORKSPACE_MANAGE_TAB_LABELS: Record<WorkspaceManageTabId, string> = {
+  recents: "Recents",
+  content: "Content",
+  collaborators: "Collaborators",
+  permissions: "Permissions",
+};
+
 /** URL segment for each tab, e.g. "collaborators" -> "/workspaces/{workspace_id}/collaborators". */
 export const WORKSPACE_MANAGE_TAB_SLUGS: Record<WorkspaceManageTabId, string> = {
   recents: "recent-boards",

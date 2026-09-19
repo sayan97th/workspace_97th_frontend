@@ -36,7 +36,7 @@ import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
 import TransferOwnershipModal from "./TransferOwnershipModal";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import type { TransferOwnershipPayload } from "@/types/workspace";
-import { DEFAULT_WORKSPACE_MANAGE_TAB, type WorkspaceManageTabId } from "./tab-routing";
+import { DEFAULT_WORKSPACE_MANAGE_TAB, WORKSPACE_MANAGE_TAB_LABELS, type WorkspaceManageTabId } from "./tab-routing";
 
 type TabId = WorkspaceManageTabId;
 
@@ -50,10 +50,10 @@ type TabDefinition = {
 type OptionsDialog = "edit" | "rename" | "change-type" | "transfer-ownership" | "leave" | "delete" | null;
 
 const WORKSPACE_TABS: TabDefinition[] = [
-  { id: "recents", label: "Recents", Icon: ClockIcon },
-  { id: "content", label: "Content", Icon: ContentTabIcon },
-  { id: "collaborators", label: "Collaborators", Icon: CollaboratorsIcon },
-  { id: "permissions", label: "Permissions", Icon: PermissionsIcon },
+  { id: "recents", label: WORKSPACE_MANAGE_TAB_LABELS.recents, Icon: ClockIcon },
+  { id: "content", label: WORKSPACE_MANAGE_TAB_LABELS.content, Icon: ContentTabIcon },
+  { id: "collaborators", label: WORKSPACE_MANAGE_TAB_LABELS.collaborators, Icon: CollaboratorsIcon },
+  { id: "permissions", label: WORKSPACE_MANAGE_TAB_LABELS.permissions, Icon: PermissionsIcon },
 ];
 
 /**

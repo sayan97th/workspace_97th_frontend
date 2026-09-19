@@ -1,9 +1,21 @@
+import type { Metadata } from 'next';
 import { Figtree, Poppins, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { APP_NAME } from '@/lib/page-title';
+
+// Every static route exports a plain `metadata.title` ("Users") and this
+// template appends the product name. Client-resolved routes (boards, views,
+// items) set their own title through `useDocumentTitle` instead.
+export const metadata: Metadata = {
+  title: {
+    default: APP_NAME,
+    template: `%s | ${APP_NAME}`,
+  },
+};
 
 // Body/UI typeface — see `src/styles/typography.css` for how these map to
 // the `--font-outfit`/`--font-heading` theme tokens (monday.com-style pairing:

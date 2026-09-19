@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import JoinWorkspaceForm from "@/components/auth/JoinWorkspaceForm";
 
 export const metadata: Metadata = {
-  title: "Join Workspace | Workspace 97th",
+  title: "Join Workspace",
   description: "Join a Workspace 97th workspace through a shared invite link",
 };
 

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import AdministrationView from "@/components/administration/AdministrationView";
 
 export const metadata: Metadata = {
-  title: "Administration | Workspace 97th",
+  title: "Administration",
   description: "Manage account settings, branding, users, departments, and security",
 };
 

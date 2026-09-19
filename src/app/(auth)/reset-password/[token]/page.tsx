@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 
 export const metadata: Metadata = {
-  title: "Reset Password | Workspace 97th",
+  title: "Reset Password",
   description: "Set your new Workspace 97th account password",
 };
 
