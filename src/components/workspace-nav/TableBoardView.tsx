@@ -3353,13 +3353,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       <IntegrationsModal
         is_open={is_integrations_modal_open}
         onClose={handleCloseIntegrations}
+        board_label={board_label}
         return_path={integrations_return_path}
-        onOpenAutomations={
+        automation_tools={
           active_view_type === "table"
-            ? () => {
-                handleCloseIntegrations();
-                setIsAutomationsModalOpen(true);
-              }
+            ? { automations, columns: table_base_columns, people: table_people, onCreate: handleCreateAutomation, onToggle: handleToggleAutomation, onDelete: handleDeleteAutomation }
             : undefined
         }
       />

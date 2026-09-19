@@ -30,6 +30,9 @@ export const CHANNEL_ACTION_TYPES: Record<CommunicationChannel, BoardAutomationA
   slack_person: "slack_notify_person",
 };
 
+/** Every action type that reaches someone outside the app, used to pick a board's email and Slack automations out of the full list. */
+export const COMMUNICATION_ACTION_TYPES: BoardAutomationActionType[] = Object.values(CHANNEL_ACTION_TYPES);
+
 const TRIGGER_PHRASES: Record<CommunicationTrigger, string> = {
   status_changed: "When **status** changes to **something**",
   date_arrived: "When **date** arrives",

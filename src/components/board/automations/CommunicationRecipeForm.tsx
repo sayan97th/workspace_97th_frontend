@@ -15,6 +15,8 @@ export type CommunicationRecipeFormProps = {
   slack: SlackAutomationOptions;
   is_saving: boolean;
   onSave: (payload: Omit<CreateBoardAutomationPayload, "view_id">) => Promise<void>;
+  /** Switches the host dialog to where Slack is connected; falls back to a link to Administration when omitted. */
+  onGoToConnections?: () => void;
 };
 
 const MESSAGE_MAX_LENGTH = 1000;
@@ -29,7 +31,7 @@ const READ_ONLY_KINDS: ColumnDef["kind"][] = ["formula", "mirror", "auto_number"
  * optional message. One form covers every trigger and channel pairing, so adding a template
  * to `COMMUNICATION_TEMPLATES` needs no new component.
  */
-export default function CommunicationRecipeForm({ template, columns, people, slack, is_saving, onSave }: CommunicationRecipeFormProps) {
+export default function CommunicationRecipeForm({ template, columns, people, slack, is_saving, onSave, onGoToConnections }: CommunicationRecipeFormProps) {
   const { trigger, channel } = template;
 
   const trigger_columns = useMemo(() => {
@@ -111,7 +113,11 @@ export default function CommunicationRecipeForm({ template, columns, people, sla
       {uses_slack && !slack.is_loading && !is_slack_connected && (
         <div className="mb-3 rounded-[8px] border border-boardtree-border-soft bg-boardtree-panel-alt px-3 py-2.5 text-[12.5px] leading-relaxed text-boardtree-text-muted">
           Slack is not connected yet.{" "}
-          {slack.status?.can_manage ? (
+          {onGoToConnections ? (
+            <button type="button" onClick={onGoToConnections} className="font-semibold text-boardtree-accent hover:underline">
+              Connect it in Connections
+            </button>
+          ) : slack.status?.can_manage ? (
             <Link href="/administration?section=integrations" className="font-semibold text-boardtree-accent hover:underline">
               Connect it from Administration
             </Link>
