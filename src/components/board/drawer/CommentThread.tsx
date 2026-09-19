@@ -2,6 +2,7 @@
 import React, { useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
+import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { PinIcon } from "@/icons/board-icons";
 import { LikeIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
@@ -9,6 +10,7 @@ import CommentComposer from "./CommentComposer";
 import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EmojiPalette from "./EmojiPalette";
+import type { MentionOption } from "./mentionOptions";
 import { formatReactorNames } from "./reactionFormatting";
 import RichTextContent from "./RichTextContent";
 import type { DrawerComment, DrawerComposerTarget, DrawerReaction, DrawerReply } from "./types";
@@ -34,9 +36,11 @@ export type CommentThreadProps = {
   onReplyChange: (value: string) => void;
   onPostReply: () => void;
   mention_target: DrawerComposerTarget | null;
-  mention_matches: BoardPersonOption[];
-  onPickMention: (person: BoardPersonOption) => void;
+  mention_matches: MentionOption[];
+  onPickMention: (option: MentionOption) => void;
   mentionable_people?: BoardPersonOption[];
+  /** Ids of comments and replies that arrived live through the "N new updates" pill, badged "New". */
+  fresh_comment_ids?: string[];
   notify_target?: DrawerComposerTarget | null;
   onToggleNotifyPicker?: (target: DrawerComposerTarget) => void;
   onCloseNotifyPicker?: () => void;
@@ -106,8 +110,17 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
   );
 };
 
+/** Small marker on an update that arrived live while the drawer was open. */
+const NewBadge: React.FC = () => (
+  <span className="rounded-[5px] bg-[rgba(0,200,117,0.16)] px-[5px] py-px text-[9.5px] font-bold uppercase tracking-wide text-[#00c875]">
+    New
+  </span>
+);
+
 type ReplyRowProps = {
   reply: DrawerReply;
+  people?: BoardPersonOption[];
+  is_new?: boolean;
   current_user_id: string;
   onLike: () => void;
   onDelete: () => void;
@@ -126,6 +139,8 @@ type ReplyRowProps = {
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
   reply,
+  people,
+  is_new,
   current_user_id,
   onLike,
   onDelete,
@@ -146,11 +161,16 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
 
   return (
     <div className="flex gap-2.5 py-3 pl-5 pr-4">
-      <PersonAvatar person={reply.author} size={27} />
+      <PersonHoverCard person={reply.author} className="flex-none">
+        <PersonAvatar person={reply.author} size={27} />
+      </PersonHoverCard>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
+          <PersonHoverCard person={reply.author}>
+            <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
+          </PersonHoverCard>
           <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
+          {is_new && <NewBadge />}
           {reply.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
           {reply.author.id === current_user_id && (
             <span className="ml-auto">
@@ -161,7 +181,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
         {is_editing ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <RichTextContent html={reply.body} className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary" />
+          <RichTextContent html={reply.body} people={people} className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary" />
         )}
         <ReactionsRow
           reactions={reply.reactions}
@@ -231,6 +251,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   mention_matches,
   onPickMention,
   mentionable_people,
+  fresh_comment_ids = [],
   notify_target,
   onToggleNotifyPicker,
   onCloseNotifyPicker,
@@ -263,10 +284,15 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           </div>
         )}
         <div className="flex items-center gap-2.5">
-          <PersonAvatar person={comment.author} size={32} />
+          <PersonHoverCard person={comment.author} className="flex-none">
+            <PersonAvatar person={comment.author} size={32} />
+          </PersonHoverCard>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</span>
+              <PersonHoverCard person={comment.author}>
+                <span className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</span>
+              </PersonHoverCard>
+              {fresh_comment_ids.includes(comment.id) && <NewBadge />}
               {comment.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
             </div>
             <div className="text-[11.5px] text-shell-text-faint">{comment.posted_at}</div>
@@ -296,7 +322,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         {editing_key === comment.id ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <RichTextContent html={comment.body} className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary" />
+          <RichTextContent html={comment.body} people={mentionable_people} className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary" />
         )}
 
         {comment.attachments.length > 0 && (
@@ -385,6 +411,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <ReplyRow
               key={reply.id}
               reply={reply}
+              people={mentionable_people}
+              is_new={fresh_comment_ids.includes(reply.id)}
               current_user_id={current_user.id}
               onLike={() => onToggleLike(comment.id, reply.id)}
               onDelete={() => onDeleteComment(comment.id, reply.id)}

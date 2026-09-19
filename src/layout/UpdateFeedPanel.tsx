@@ -1,5 +1,9 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
+import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import { useAuth } from "@/context/AuthContext";
+import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { getUserInitials } from "@/lib/user";
 import { Dropdown } from "@/components/ui/dropdown/Dropdown";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
 import SlideOverDrawer from "./SlideOverDrawer";
@@ -47,8 +51,9 @@ const renderTabIcon = (tab: UpdateFeedTab) => {
  * filters by board while the content pane shows the "All updates",
  * "I was mentioned", "Bookmarked", "All account" and "Scheduled" tabs, a
  * read-state filter and the feed cards. Backed by real `BoardItemComment`/
- * `BoardComment` rows via {@link useFeedUpdates}, kept live over the
- * `feed.{user_id}` Reverb channel.
+ * `BoardComment` rows via {@link useFeedUpdates}: pages in as it is scrolled,
+ * and stays live over the `feed.{user_id}` Reverb channel, announcing what
+ * other people post with an "N new updates" banner.
  */
 const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) => {
   const [active_tab, setActiveTab] =
@@ -57,13 +62,56 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const [read_filter, setReadFilter] = useState<FeedReadFilter>("all");
   const [is_filter_open, setIsFilterOpen] = useState(false);
 
-  const { updates, boards, bookmarkUpdate, likeUpdate, pinUpdate, replyToUpdate, scheduleReply, markSeen } =
-    useFeedUpdates({ tab: active_tab, board_id: active_board });
+  const { user } = useAuth();
+  const scroll_area_ref = useRef<HTMLDivElement>(null);
+
+  const {
+    updates,
+    pending_count,
+    showPendingUpdates,
+    boards,
+    is_loading,
+    is_loading_more,
+    has_more,
+    loadMore,
+    bookmarkUpdate,
+    likeUpdate,
+    pinUpdate,
+    replyToUpdate,
+    scheduleReply,
+    markSeen,
+  } = useFeedUpdates({ tab: active_tab, board_id: active_board });
+
+  const current_user: BoardPersonOption = useMemo(
+    () =>
+      user
+        ? {
+            id: String(user.id),
+            name: user.full_name,
+            initials: getUserInitials(user),
+            avatar_seed: user.id,
+            avatar_url: user.profile_photo_url ?? undefined,
+          }
+        : { id: "0", name: "You", initials: "Y", avatar_seed: 0 },
+    [user]
+  );
 
   const visible_updates = useMemo(
     () => updates.filter((update) => read_filter === "all" || update.is_unread),
     [updates, read_filter]
   );
+
+  const sentinel_ref = useInfiniteScroll({
+    onLoadMore: loadMore,
+    can_load_more: is_open && has_more && !is_loading && !is_loading_more,
+    root_ref: scroll_area_ref,
+    watch: updates.length,
+  });
+
+  const showNewUpdates = () => {
+    showPendingUpdates();
+    scroll_area_ref.current?.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const selectReadFilter = (value: FeedReadFilter) => {
     setReadFilter(value);
@@ -171,7 +219,23 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
         </div>
 
         {/* Scrollable list */}
-        <div className="shell-scrollbar flex-1 overflow-y-auto px-6 pb-8 pt-5">
+        <div ref={scroll_area_ref} className="shell-scrollbar relative flex-1 overflow-y-auto px-6 pb-8 pt-5">
+          {/* Live banner: updates other people posted while the feed is open, held back so the cards being read do not jump. */}
+          <div role="status" aria-live="polite" className="sticky top-0 z-[3] flex justify-center">
+            {pending_count > 0 && (
+              <button
+                type="button"
+                onClick={showNewUpdates}
+                className="mb-3 flex items-center gap-1.5 rounded-full bg-brand-500 px-3.5 py-1.5 text-[12.5px] font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-brand-600"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                  <path d="M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {pending_count} new {pending_count === 1 ? "update" : "updates"}
+              </button>
+            )}
+          </div>
+
           {/* Read-state filter */}
           <div className="relative mb-[18px] inline-flex items-center gap-1.5 text-[13px] font-semibold text-shell-text-secondary">
             Show
@@ -208,9 +272,9 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
             </Dropdown>
           </div>
 
-          {visible_updates.length === 0 ? (
+          {visible_updates.length === 0 && !has_more ? (
             <p className="pt-6 text-center text-[13px] text-shell-text-muted">
-              You&apos;re all caught up.
+              {is_loading ? "Loading updates…" : "You're all caught up."}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
@@ -218,6 +282,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                 <UpdateFeedCard
                   key={update.id}
                   update={update}
+                  current_user={current_user}
                   onLike={likeUpdate}
                   onBookmark={bookmarkUpdate}
                   onPin={pinUpdate}
@@ -228,6 +293,10 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
               ))}
             </div>
           )}
+
+          {/* Sentinel: reaching it loads the next page. */}
+          <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
+          {is_loading_more && <p className="pt-4 text-center text-[12.5px] text-shell-text-muted">Loading more…</p>}
         </div>
       </div>
     </SlideOverDrawer>

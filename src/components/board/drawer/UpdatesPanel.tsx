@@ -29,6 +29,14 @@ function sortKeyOf(iso: string | undefined): number {
 /** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...) — folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. */
 function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
   const last_whisper_at_ref = useRef(0);
+  const scroll_area_ref = useRef<HTMLDivElement>(null);
+
+  // The thread reads oldest to newest, so freshly loaded updates land at the
+  // bottom: after loading them, bring that end into view.
+  const showPendingUpdates = () => {
+    drawer.loadPendingUpdates();
+    requestAnimationFrame(() => scroll_area_ref.current?.scrollTo({ top: scroll_area_ref.current.scrollHeight, behavior: "smooth" }));
+  };
   const handleComposerChange = (value: string) => {
     drawer.onComposerTextChange(value);
     const now = Date.now();
@@ -72,6 +80,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
       mention_matches={drawer.mention_matches}
       onPickMention={drawer.pickMention}
       mentionable_people={drawer.mentionable_people}
+      fresh_comment_ids={drawer.fresh_comment_ids}
       notify_target={drawer.notify_target}
       onToggleNotifyPicker={drawer.toggleNotifyPicker}
       onCloseNotifyPicker={drawer.closeNotifyPicker}
@@ -117,7 +126,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
         {presence && <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />}
       </div>
 
-      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+      <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
         {drawer.comments_error && (
           <div className="mt-3 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
             {drawer.comments_error}
@@ -152,6 +161,22 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
             renderThread(entry.comment)
           )
         )}
+
+        {/* Live "N new updates" pill: sticks to the bottom edge, where the newest updates land once loaded. */}
+        <div role="status" aria-live="polite" className="sticky bottom-2 z-[3] mt-3 flex justify-center">
+          {drawer.pending_update_count > 0 && (
+            <button
+              type="button"
+              onClick={showPendingUpdates}
+              className="flex items-center gap-1.5 rounded-full bg-[#00c875] px-3.5 py-1.5 text-[12.5px] font-bold text-[#04241a] shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-[#00e084]"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="M6 2v8m0 0L2.5 6.5M6 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {drawer.pending_update_count} new {drawer.pending_update_count === 1 ? "update" : "updates"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

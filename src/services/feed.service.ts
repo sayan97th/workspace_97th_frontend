@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { FeedUpdateDto } from "@/types/feed";
+import type { FeedPersonDto, FeedUpdateDto, FeedUpdatesPageDto } from "@/types/feed";
 import type { FeedBoardFilter, UpdateFeedTabId } from "@/data/update-feed-data";
 
 /**
@@ -7,14 +7,24 @@ import type { FeedBoardFilter, UpdateFeedTabId } from "@/data/update-feed-data";
  * (workspace_97th_api).
  */
 export const feedService = {
-  /** GET /api/feed/updates?tab=&board_id= */
-  async listUpdates(tab: UpdateFeedTabId, board_id?: string): Promise<FeedUpdateDto[]> {
+  /** GET /api/feed/updates?tab=&board_id=&cursor=&limit=, one cursor-paginated page (the first also carries every pinned update). */
+  async listUpdates(
+    tab: UpdateFeedTabId,
+    board_id?: string,
+    cursor?: string | null,
+    limit?: number
+  ): Promise<FeedUpdatesPageDto> {
     const params = new URLSearchParams({ tab });
     if (board_id && board_id !== "all-boards") params.set("board_id", board_id);
+    if (cursor) params.set("cursor", cursor);
+    if (limit) params.set("limit", String(limit));
 
-    const response = await apiClient.get<{ data: FeedUpdateDto[] }>(
-      `/api/feed/updates?${params.toString()}`
-    );
+    return apiClient.get<FeedUpdatesPageDto>(`/api/feed/updates?${params.toString()}`);
+  },
+
+  /** GET /api/feed/boards/{board_id}/people, the workspace members a reply on that board can `@mention`. */
+  async listBoardPeople(board_id: string): Promise<FeedPersonDto[]> {
+    const response = await apiClient.get<{ data: FeedPersonDto[] }>(`/api/feed/boards/${board_id}/people`);
     return response.data;
   },
 

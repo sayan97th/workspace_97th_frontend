@@ -78,3 +78,36 @@ export function resetEcho(): void {
     echo_instance = null;
   }
 }
+
+const private_channel_subscribers = new Map<string, number>();
+
+/**
+ * Listens for `event` on a private channel that more than one part of the app
+ * may be subscribed to at once (the top bar's feed badge and the feed drawer
+ * both follow `feed.{user_id}`). Each caller only removes its own handler on
+ * cleanup, and the channel itself is left only once the last subscriber goes,
+ * so one component unmounting never silences another.
+ *
+ * @returns A function that removes this subscription.
+ */
+export function listenOnPrivateChannel<TPayload>(
+  token: string,
+  channel_name: string,
+  event: string,
+  handler: (payload: TPayload) => void
+): () => void {
+  const echo = getEcho(token);
+  const channel = echo.private(channel_name).listen(event, handler);
+  private_channel_subscribers.set(channel_name, (private_channel_subscribers.get(channel_name) ?? 0) + 1);
+
+  return () => {
+    channel.stopListening(event, handler);
+    const remaining = (private_channel_subscribers.get(channel_name) ?? 1) - 1;
+    if (remaining > 0) {
+      private_channel_subscribers.set(channel_name, remaining);
+      return;
+    }
+    private_channel_subscribers.delete(channel_name);
+    echo.leave(channel_name);
+  };
+}

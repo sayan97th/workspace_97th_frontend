@@ -8,6 +8,7 @@ import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
+import type { MentionOption } from "./mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "./RichTextComposer";
 import type { DrawerAttachment, DrawerComposerTarget } from "./types";
 
@@ -30,8 +31,8 @@ export type CommentComposerProps = {
   /** "update" shows the always-visible toolbar + attachments tray; "reply" only reveals its (lighter) toolbar once a draft is in progress. */
   variant?: "update" | "reply";
   mention_target: DrawerComposerTarget | null;
-  mention_matches: BoardPersonOption[];
-  onPickMention: (person: BoardPersonOption) => void;
+  mention_matches: MentionOption[];
+  onPickMention: (option: MentionOption) => void;
   /** All people who could be flagged via "Notify" — same roster as `mention_matches` draws from, unfiltered. */
   mentionable_people?: BoardPersonOption[];
   notify_target?: DrawerComposerTarget | null;
@@ -103,9 +104,9 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const [toolbar_hidden, setToolbarHidden] = useState(false);
   const show_toolbar = !toolbar_hidden;
 
-  const handlePickMention = (person: BoardPersonOption) => {
-    rich_text_ref.current?.insertMentionText(person.name);
-    onPickMention(person);
+  const handlePickMention = (option: MentionOption) => {
+    rich_text_ref.current?.insertMentionText(option.name);
+    onPickMention(option);
   };
 
   const handleInsertEmoji = (emoji: string) => {

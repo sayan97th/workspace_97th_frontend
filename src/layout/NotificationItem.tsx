@@ -1,54 +1,93 @@
 "use client";
-import React from "react";
-import type { WorkspaceNotification } from "@/data/notifications-data";
-import { CloseIcon } from "@/icons/workspace-icons";
+import React, { useRef, useState } from "react";
+import PersonAvatar from "@/components/board/PersonAvatar";
+import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import {
+  notification_snooze_presets,
+  type NotificationActor,
+  type NotificationSnoozePresetId,
+  type WorkspaceNotification,
+} from "@/data/notifications-data";
+import { CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+
+/** The actor as the shared {@link PersonAvatar} expects it, so the drawer shows the real profile photo and falls back to initials. */
+export const notificationActorToPerson = (actor: NotificationActor): BoardPersonOption => ({
+  id: actor.id ?? "0",
+  name: actor.name,
+  initials: actor.initials,
+  avatar_seed: Number(actor.id) || 0,
+  avatar_url: actor.avatar_url,
+});
 
 type NotificationItemProps = {
   notification: WorkspaceNotification;
   onSelect?: (id: string) => void;
   onDismiss?: (id: string) => void;
+  onMarkRead?: (id: string) => void;
+  onMarkUnread?: (id: string) => void;
+  onSnooze?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** Rendered inside an expanded {@link NotificationGroupCard}, so it sits a little tighter. */
+  is_nested?: boolean;
 };
 
+const MENU_ITEM_CLASS =
+  "flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover hover:text-shell-text";
+
 /**
- * A single notification card: gradient avatar, actor + action sentence, the
+ * A single notification card: the actor's avatar, actor + action sentence, the
  * board chip it is scoped to, a relative time, an unread dot, and (on hover)
- * a dismiss "×". Reusable in the notifications drawer and anywhere a
- * notification feed is rendered.
+ * a "..." menu (mark as read or unread, remind me later) plus a dismiss "×".
+ * Reusable in the notifications drawer and anywhere a notification feed is
+ * rendered.
  */
 const NotificationItem: React.FC<NotificationItemProps> = ({
   notification,
   onSelect,
   onDismiss,
+  onMarkRead,
+  onMarkUnread,
+  onSnooze,
+  is_nested = false,
 }) => {
-  const { id, actor, action_label, action_target, board, time_label, is_unread } =
-    notification;
+  const { id, actor, action_label, action_target, board, time_label, is_unread } = notification;
+  const menu_trigger_ref = useRef<HTMLButtonElement>(null);
+  const [is_menu_open, setIsMenuOpen] = useState(false);
+
+  const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze);
+  const closeMenu = () => setIsMenuOpen(false);
+
+  const runAndClose = (action: () => void) => () => {
+    action();
+    closeMenu();
+  };
 
   return (
     <div className="group relative">
       <button
         type="button"
         onClick={() => onSelect?.(id)}
-        className="flex w-full gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt p-[13px] text-left transition-colors hover:border-shell-border-strong"
+        className={`flex w-full gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt text-left transition-colors hover:border-shell-border-strong ${
+          is_nested ? "p-[11px]" : "p-[13px]"
+        }`}
       >
-        <span
-          className="h-[30px] w-[30px] flex-none rounded-full"
-          style={{ background: actor.avatar_gradient }}
-          aria-hidden="true"
-        />
+        <PersonAvatar person={notificationActorToPerson(actor)} size={30} />
 
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] leading-[1.5] text-shell-text-secondary">
             <strong className="font-bold text-shell-text">{actor.name}</strong>{" "}
             <span className="text-[#7fb2ff]">{action_label}</span> {action_target}
           </span>
-          <span className="mt-2 flex items-center gap-[7px] text-xs text-shell-text-muted">
-            <span
-              className="h-[15px] w-[15px] flex-none rounded"
-              style={{ backgroundColor: board.color }}
-              aria-hidden="true"
-            />
-            {board.name}
-          </span>
+          {board.name && (
+            <span className="mt-2 flex items-center gap-[7px] text-xs text-shell-text-muted">
+              <span
+                className="h-[15px] w-[15px] flex-none rounded"
+                style={{ backgroundColor: board.color }}
+                aria-hidden="true"
+              />
+              {board.name}
+            </span>
+          )}
         </span>
 
         <span className="flex flex-none flex-col items-end gap-2">
@@ -62,19 +101,81 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </span>
       </button>
 
-      {onDismiss && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onDismiss(id);
-          }}
-          aria-label="Dismiss notification"
-          title="Dismiss"
-          className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt text-shell-text-faint opacity-0 transition-opacity hover:bg-shell-hover hover:text-shell-text group-hover:opacity-100"
+      {(onDismiss || has_menu) && (
+        <div
+          className={`absolute right-2 top-2 flex items-center gap-0.5 rounded-md bg-shell-panel-alt transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
+            is_menu_open ? "opacity-100" : "opacity-0"
+          }`}
         >
-          <CloseIcon size={11} />
-        </button>
+          {has_menu && (
+            <button
+              ref={menu_trigger_ref}
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsMenuOpen((previous) => !previous);
+              }}
+              aria-label="Notification options"
+              aria-haspopup="menu"
+              aria-expanded={is_menu_open}
+              title="More options"
+              className="flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt text-shell-text-faint hover:bg-shell-hover hover:text-shell-text"
+            >
+              <MoreDotsIcon size={13} />
+            </button>
+          )}
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDismiss(id);
+              }}
+              aria-label="Dismiss notification"
+              title="Dismiss"
+              className="flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt text-shell-text-faint hover:bg-shell-hover hover:text-shell-text"
+            >
+              <CloseIcon size={11} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {has_menu && (
+        <BoardPopover anchor_el={menu_trigger_ref.current} is_open={is_menu_open} onClose={closeMenu} width={208}>
+          <div role="menu" className="p-1.5">
+            {is_unread
+              ? onMarkRead && (
+                  <button type="button" role="menuitem" onClick={runAndClose(() => onMarkRead(id))} className={MENU_ITEM_CLASS}>
+                    Mark as read
+                  </button>
+                )
+              : onMarkUnread && (
+                  <button type="button" role="menuitem" onClick={runAndClose(() => onMarkUnread(id))} className={MENU_ITEM_CLASS}>
+                    Mark as unread
+                  </button>
+                )}
+
+            {onSnooze && (
+              <>
+                <div className="mt-1 border-t border-shell-border px-3 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-wide text-shell-text-faint">
+                  Remind me
+                </div>
+                {notification_snooze_presets.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={runAndClose(() => onSnooze(id, preset.id))}
+                    className={MENU_ITEM_CLASS}
+                  >
+                    {preset.label}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        </BoardPopover>
       )}
     </div>
   );

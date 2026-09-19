@@ -6,6 +6,7 @@ import { boardItemAttachmentsService } from "@/services/board-item-attachments.s
 import type { BoardPersonOption } from "../toolbar/types";
 import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
+import { buildMentionMatches, mentionOptionUserIds, type MentionOption } from "./mentionOptions";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
@@ -16,6 +17,7 @@ import type {
   DrawerReaction,
   DrawerReply,
   DrawerTabId,
+  RemoteCommentEvent,
 } from "./types";
 
 const DEFAULT_ACCENT_COLOR = "#00c875";
@@ -73,6 +75,11 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   // a blank entry in the Comments feed. See `postAttachments` below.
   const [item_attachments_by_row, setItemAttachmentsByRow] = useState<Record<string, DrawerAttachment[]>>({});
   const [comments_error, setCommentsError] = useState<string | null>(null);
+  // Ids of comments/replies other people posted while this drawer was open,
+  // which drive the "N new updates" pill until the viewer loads them, and
+  // (afterwards) the "New" badge kept for the rest of the session.
+  const [pending_comment_ids, setPendingCommentIds] = useState<string[]>([]);
+  const [fresh_comment_ids, setFreshCommentIds] = useState<string[]>([]);
   const [is_uploading_files, setIsUploadingFiles] = useState(false);
   const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
@@ -142,6 +149,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setMentionIdsByTarget({});
     setNotifiedIdsByTarget({});
     setCommentsError(null);
+    setPendingCommentIds([]);
+    setFreshCommentIds([]);
     setFilesUploadError(null);
     setDescriptionDraft(null);
     setEditingTarget(null);
@@ -197,11 +206,12 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   // ref, called by `CommentComposer`), since only the live editor instance
   // knows where the cursor actually is — this only tracks which ids the
   // in-progress draft has mentioned, for the eventual `postComment()` payload.
-  const pickMention = (person: BoardPersonOption) => {
+  const pickMention = (option: MentionOption) => {
     if (!mention_target) return;
+    const picked_ids = mentionOptionUserIds(option);
     setMentionIdsByTarget((current) => ({
       ...current,
-      [mention_target]: [...(current[mention_target] ?? []), person.id],
+      [mention_target]: Array.from(new Set([...(current[mention_target] ?? []), ...picked_ids])),
     }));
     setMentionTarget(null);
   };
@@ -616,6 +626,43 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       });
   };
 
+  /**
+   * Records a comment or reply another person just posted on the open item
+   * (announced by the `item_comment_posted` presence broadcast). Nothing is
+   * inserted into the thread on its own, so the list never jumps under the
+   * viewer: the id only feeds the "N new updates" pill, which
+   * {@link loadPendingUpdates} resolves on click. Ignores the viewer's own
+   * posts (already added locally) and anything the thread already shows.
+   */
+  const onRemoteCommentPosted = (event: RemoteCommentEvent) => {
+    if (!is_api_backed || !open_row_id) return;
+    if (event.author_id !== null && String(event.author_id) === config.current_user.id) return;
+
+    const comment_id = String(event.comment_id);
+    const known_ids = (comments_by_row[open_row_id] ?? []).flatMap((comment) => [
+      comment.id,
+      ...comment.replies.map((reply) => reply.id),
+    ]);
+    if (known_ids.includes(comment_id)) return;
+
+    setPendingCommentIds((current) => (current.includes(comment_id) ? current : [...current, comment_id]));
+  };
+
+  const loadPendingUpdates = () => {
+    if (!is_api_backed || !open_row_id || pending_comment_ids.length === 0) return;
+    const row_id = open_row_id;
+    const arrived_ids = pending_comment_ids;
+
+    boardCommentsService
+      .listComments(board_id, Number(row_id))
+      .then((dtos) => {
+        setCommentsByRow((current) => ({ ...current, [row_id]: dtos.map(mapCommentDtoToDrawerComment) }));
+        setFreshCommentIds((current) => Array.from(new Set([...current, ...arrived_ids])));
+        setPendingCommentIds((current) => current.filter((id) => !arrived_ids.includes(id)));
+      })
+      .catch(() => setCommentsError("Couldn't load the new updates. Please try again."));
+  };
+
   const showActionFeedback = (tone: DrawerActionFeedback["tone"], message: string) =>
     setItemActionFeedback({ tone, message });
   const dismissItemActionFeedback = () => setItemActionFeedback(null);
@@ -679,9 +726,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const mention_matches = useMemo(
     () =>
       mention_target
-        ? config.mentionable_people.filter((person) => person.name.toLowerCase().includes(mention_query))
+        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id)
         : [],
-    [mention_target, mention_query, config.mentionable_people]
+    [mention_target, mention_query, config.mentionable_people, config.current_user.id]
   );
 
   const comments = open_row_id ? comments_by_row[open_row_id] ?? [] : [];
@@ -743,6 +790,10 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     comments,
     comments_loading,
     comments_error,
+    pending_update_count: pending_comment_ids.length,
+    loadPendingUpdates,
+    onRemoteCommentPosted,
+    fresh_comment_ids,
     all_attachments,
     info_boxes,
     activity_log,

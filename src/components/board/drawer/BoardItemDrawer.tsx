@@ -40,7 +40,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   // `Echo.join()` prepends that itself, matching `Broadcast::channel('presence-board-item.{id}', ...)`.
   const presence_channel_name =
     drawer.board_id !== undefined && content.open_row_id ? `board-item.${content.open_row_id}` : null;
-  const presence = useCommentPresence(presence_channel_name);
+  const presence = useCommentPresence(presence_channel_name, { onCommentPosted: content.onRemoteCommentPosted });
 
   if (!drawer.is_open && !content.is_open) return null;
 

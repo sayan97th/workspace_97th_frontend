@@ -5,7 +5,7 @@
  * form-request shapes.
  */
 
-import type { ProfileResponse } from "./auth";
+import type { EmailDigestFrequency, ProfileResponse } from "./auth";
 
 export type WorkingStatusPayload = {
   working_status?: string | null;
@@ -17,6 +17,10 @@ export type WorkingStatusPayload = {
 export type NotificationPreferencesPayload = {
   preferences?: Record<string, boolean>;
   desktop_notifications_enabled?: boolean;
+  quiet_hours_enabled?: boolean;
+  quiet_hours_start?: string;
+  quiet_hours_end?: string;
+  email_digest_frequency?: EmailDigestFrequency;
 };
 
 export type LocalePreferencesPayload = {

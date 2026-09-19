@@ -35,9 +35,22 @@ export type FeedBoardFilter = {
 
 /** The person who authored a feed update. */
 export type FeedActor = {
+  /** Backend user id, absent for deleted users. */
+  id?: string;
   name: string;
-  /** Tailwind gradient utilities used to paint the circular avatar. */
-  avatar_gradient: string;
+  /** Up to two uppercase initials, shown when there is no `avatar_url`. */
+  initials: string;
+  /** Picks the fallback gradient, so a person keeps the same color everywhere. */
+  avatar_seed: number;
+  /** Real uploaded profile photo, when available. */
+  avatar_url?: string;
+};
+
+/** Someone `@mentioned` in an update, so hovering the mention can show who they are. */
+export type FeedMention = {
+  id: string;
+  name: string;
+  avatar_url?: string;
 };
 
 /** The board/sprint/item trail an update is scoped to. */
@@ -57,6 +70,10 @@ export type FeedUpdate = {
   breadcrumb: FeedBreadcrumb;
   /** Raw comment body (sanitized HTML) — rendered via `RichTextContent`. */
   body: string;
+  /** People `@mentioned` in the body. */
+  mentions: FeedMention[];
+  /** Board the update lives on, used to load who can be mentioned in a reply. */
+  board_id: string;
   /** Optional read/view count shown bottom-right of the body. */
   view_count?: number;
   is_unread: boolean;
@@ -93,5 +110,5 @@ export const feed_helper_prompt = "What goes in my feed?";
 /** Placeholder for the inline reply composer. */
 export const feed_reply_placeholder = "Write a reply and mention others with @";
 
-/** Gradient for the signed-in user's avatar in the reply composer. */
-export const feed_reply_avatar_gradient = "from-[#e5623e] to-[#8a2018]";
+/** How many updates a feed page holds. */
+export const feed_page_size = 20;

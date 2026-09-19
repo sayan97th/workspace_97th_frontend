@@ -44,8 +44,25 @@ const AppTopBar: React.FC = () => {
   const { logo_url } = useAccountBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
-  const { notifications, unread_count, selectNotification, markAllAsRead, dismissNotification } = useNotifications();
-  const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all" });
+  const {
+    notifications,
+    unread_count,
+    filters: notification_filters,
+    updateFilters: updateNotificationFilters,
+    filter_options: notification_filter_options,
+    loadFilterOptions: loadNotificationFilterOptions,
+    is_loading: is_loading_notifications,
+    is_loading_more: is_loading_more_notifications,
+    has_more: has_more_notifications,
+    loadMore: loadMoreNotifications,
+    selectNotification,
+    markAsRead,
+    markAsUnread,
+    markAllAsRead,
+    dismissNotification,
+    snoozeNotification,
+  } = useNotifications();
+  const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all", load_updates: false });
   const [is_account_open, setIsAccountOpen] = useState(false);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -252,12 +269,28 @@ const AppTopBar: React.FC = () => {
         is_open={is_notifications_open}
         onClose={closeNotifications}
         notifications={notifications}
+        filters={notification_filters}
+        onFiltersChange={updateNotificationFilters}
+        filter_options={notification_filter_options}
+        onLoadFilterOptions={loadNotificationFilterOptions}
+        is_loading={is_loading_notifications}
+        is_loading_more={is_loading_more_notifications}
+        has_more={has_more_notifications}
+        onLoadMore={loadMoreNotifications}
         onSelectNotification={(id) => {
           const selected = selectNotification(id);
           if (selected?.link) router.push(selected.link);
         }}
+        onSelectGroup={(ids) => {
+          // Every notification in the group counts as read, the newest one decides where to go.
+          const [newest] = ids.map((id) => selectNotification(id));
+          if (newest?.link) router.push(newest.link);
+        }}
         onMarkAllAsRead={markAllAsRead}
         onDismissNotification={dismissNotification}
+        onMarkAsRead={markAsRead}
+        onMarkAsUnread={markAsUnread}
+        onSnoozeNotification={snoozeNotification}
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />

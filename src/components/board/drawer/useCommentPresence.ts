@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getToken } from "@/lib/api-client";
 import { getEcho } from "@/lib/echo";
+import type { RemoteCommentEvent } from "./types";
 
 export type CommentPresenceUser = {
   id: number;
@@ -13,6 +14,11 @@ export type CommentPresenceUser = {
 /** How long a "typing" whisper stays valid before that person drops off the indicator, absent a follow-up whisper refreshing it. */
 const TYPING_TIMEOUT_MS = 3000;
 
+type UseCommentPresenceOptions = {
+  /** Fired for every `item_comment_posted` broadcast on the joined channel (a comment or reply another person just posted on that item). */
+  onCommentPosted?: (event: RemoteCommentEvent) => void;
+};
+
 /**
  * Live "who's viewing this thread" + "who's typing" for the item drawer's
  * Updates tab / the board discussion drawer — joins `channel_name` (a
@@ -22,14 +28,22 @@ const TYPING_TIMEOUT_MS = 3000;
  * join/leave lifecycle. Typing is a pure client-to-client whisper (no DB
  * write, no `Notification`/broadcast event) — each whisper refreshes a
  * per-user timeout that drops them from {@link typing_names} after
- * {@link TYPING_TIMEOUT_MS} of silence.
+ * {@link TYPING_TIMEOUT_MS} of silence. The same channel also carries
+ * `item_comment_posted` (see `App\Events\ItemCommentPosted`), forwarded to
+ * {@link UseCommentPresenceOptions.onCommentPosted}.
  */
-export function useCommentPresence(channel_name: string | null) {
+export function useCommentPresence(channel_name: string | null, options: UseCommentPresenceOptions = {}) {
   const { user } = useAuth();
   const [presence_users, setPresenceUsers] = useState<CommentPresenceUser[]>([]);
   const [typing_names, setTypingNames] = useState<string[]>([]);
   const channel_ref = useRef<ReturnType<ReturnType<typeof getEcho>["join"]> | null>(null);
   const typing_timeouts_ref = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  // Read through a ref so the subscription below is not torn down and re-joined every time the parent hands in a fresh callback.
+  const comment_posted_ref = useRef(options.onCommentPosted);
+
+  useEffect(() => {
+    comment_posted_ref.current = options.onCommentPosted;
+  });
 
   useEffect(() => {
     const token = getToken();
@@ -45,6 +59,7 @@ export function useCommentPresence(channel_name: string | null) {
       .here((members: CommentPresenceUser[]) => setPresenceUsers(members.filter((member) => member.id !== user.id)))
       .joining((member: CommentPresenceUser) => setPresenceUsers((current) => [...current, member]))
       .leaving((member: CommentPresenceUser) => setPresenceUsers((current) => current.filter((existing) => existing.id !== member.id)))
+      .listen(".item_comment_posted", (payload: RemoteCommentEvent) => comment_posted_ref.current?.(payload))
       .listenForWhisper("typing", (payload: { id: number; name: string }) => {
         if (payload.id === user.id) return;
 

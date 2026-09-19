@@ -10,6 +10,7 @@ import type { NotificationCategory, WorkspaceNotification } from "@/data/notific
  */
 export type NotificationDto = {
   id: string;
+  type: string;
   actor: { name: string; id: number | null; avatar_url?: string | null };
   action_label: string;
   action_target: string;
@@ -18,6 +19,21 @@ export type NotificationDto = {
   is_unread: boolean;
   category: NotificationCategory;
   created_at: string;
+  group_key: string;
+  /** Only on the websocket payload: true while the recipient's quiet hours are active, so no toast or desktop push should fire. */
+  is_silenced?: boolean;
+};
+
+/** `GET /api/notifications`: one cursor-paginated page. */
+export type NotificationsPageDto = {
+  data: NotificationDto[];
+  meta: { next_cursor: string | null; has_more: boolean };
+};
+
+/** `GET /api/notifications/filters`. */
+export type NotificationFiltersDto = {
+  boards: { id: number; name: string }[];
+  actors: { id: number; name: string }[];
 };
 
 /**
@@ -33,6 +49,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
   return {
     id: dto.id,
     actor: {
+      id: dto.actor.id !== null ? String(dto.actor.id) : undefined,
       name: dto.actor.name,
       initials: getUserInitials({ full_name: dto.actor.name }),
       avatar_gradient: AVATAR_GRADIENTS[actor_seed % AVATAR_GRADIENTS.length],
@@ -41,6 +58,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     action_label: dto.action_label,
     action_target: dto.action_target,
     board: {
+      id: dto.board ? String(dto.board.id) : undefined,
       name: dto.board?.name ?? "",
       color: BOARD_CONDITIONAL_COLOR_PALETTE[board_seed % BOARD_CONDITIONAL_COLOR_PALETTE.length],
     },
@@ -49,5 +67,6 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     category: dto.category,
     link: dto.link ?? undefined,
     created_at: dto.created_at,
+    group_key: dto.group_key,
   };
 }

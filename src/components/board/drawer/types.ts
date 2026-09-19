@@ -1,4 +1,5 @@
 import type { BoardPersonOption } from "../toolbar/types";
+import type { MentionOption } from "./mentionOptions";
 
 /** A single emoji reaction pill on a comment or reply, with its live tally. */
 export type DrawerReaction = {
@@ -75,6 +76,13 @@ export type DrawerInfoBox = {
 
 /** `"activity"` folded into `"updates"` (see `UpdatesPanel`'s merged feed) — no longer a separate tab. */
 export type DrawerTabId = "updates" | "files" | "info_boxes";
+
+/** Payload of the `item_comment_posted` broadcast, ids only (see `App\Events\ItemCommentPosted`). */
+export type RemoteCommentEvent = {
+  comment_id: number;
+  parent_id: number | null;
+  author_id: number | null;
+};
 
 /** Which composer a `@mention` picker or emoji palette is currently open for: the top-level composer, or a reply box keyed by its parent comment id. */
 export type DrawerComposerTarget = "composer" | string;
@@ -154,6 +162,14 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   comments_loading: boolean;
   /** Set when a comment/reply/like/reaction/seen/attachment request against a real board fails. */
   comments_error: string | null;
+  /** How many updates other people posted since the thread was loaded, shown as the "N new updates" pill. Always 0 for mock boards. */
+  pending_update_count: number;
+  /** Refetches the thread and folds in everything counted by {@link pending_update_count}. */
+  loadPendingUpdates: () => void;
+  /** Feeds a `item_comment_posted` broadcast (see `useCommentPresence`) into the drawer. */
+  onRemoteCommentPosted: (event: RemoteCommentEvent) => void;
+  /** Ids of comments and replies that arrived through the pill, so the thread can badge them as new for the rest of this session. */
+  fresh_comment_ids: string[];
   /** Every attachment across `comments` (top-level only), flattened for the Files tab. */
   all_attachments: DrawerAttachment[];
   info_boxes: DrawerInfoBox[];
@@ -203,8 +219,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   postReply: (comment_id: string) => void;
 
   mention_target: DrawerComposerTarget | null;
-  mention_matches: BoardPersonOption[];
-  pickMention: (person: BoardPersonOption) => void;
+  mention_matches: MentionOption[];
+  pickMention: (option: MentionOption) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
   notify_target: DrawerComposerTarget | null;

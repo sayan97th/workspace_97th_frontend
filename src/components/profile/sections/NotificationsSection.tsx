@@ -3,6 +3,7 @@ import React from "react";
 import { SettingsToggleRow } from "@/components/administration";
 import SlackConnectionCard from "@/components/slack/SlackConnectionCard";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
+import type { EmailDigestFrequency } from "@/types/auth";
 import ProfileCheckbox from "../ProfileCheckbox";
 import type { ProfileManagerApi } from "../useProfileManager";
 
@@ -11,6 +12,15 @@ export type NotificationsSectionProps = {
 };
 
 const GRID_COLUMNS = "grid-cols-[1fr_74px_74px_74px]";
+const TIME_INPUT_CLASS =
+  "rounded-[8px] border border-shell-border bg-shell-panel-alt px-2.5 py-1.5 text-[12.5px] text-shell-text focus:border-brand-500 focus:outline-none";
+
+const DIGEST_OPTIONS: { value: EmailDigestFrequency; label: string }[] = [
+  { value: "off", label: "Off" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+];
+
 const COLUMN_HEADER = "text-center text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint";
 
 /** My Profile > Notifications, per-category in-app, email and Slack notification preferences. */
@@ -104,10 +114,71 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
       <div className="mt-[22px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
         <SettingsToggleRow
           label="Desktop notifications"
-          description="Receive notifications directly on this computer"
+          description={
+            profile.desktop_permission === "denied"
+              ? "Blocked by your browser. Allow notifications for this site in your browser settings to turn this on."
+              : "Get a desktop notification when something new arrives while this tab is in the background"
+          }
           is_on={profile.desktop_notifications_enabled}
           onToggle={profile.toggleDesktopNotifications}
         />
+      </div>
+
+      <div className="mt-[14px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
+        <SettingsToggleRow
+          label="Quiet hours"
+          description="Pause emails, Slack messages, pop-ups and desktop notifications during these hours. Notifications still collect in your bell."
+          is_on={profile.quiet_hours_enabled}
+          onToggle={profile.toggleQuietHours}
+        />
+        {profile.quiet_hours_enabled ? (
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-[12.5px] text-shell-text-muted">
+            <label className="flex items-center gap-2">
+              From
+              <input
+                type="time"
+                value={profile.quiet_hours_start}
+                onChange={(event) => event.target.value && profile.setQuietHoursStart(event.target.value)}
+                className={TIME_INPUT_CLASS}
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              To
+              <input
+                type="time"
+                value={profile.quiet_hours_end}
+                onChange={(event) => event.target.value && profile.setQuietHoursEnd(event.target.value)}
+                className={TIME_INPUT_CLASS}
+              />
+            </label>
+            <span className="text-shell-text-faint">
+              {profile.region_timezone
+                ? `Times use your time zone (${profile.region_timezone}).`
+                : "Times use UTC until you set your time zone in Language & region."}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-[14px] flex items-center gap-4 rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
+        <div className="min-w-0 flex-1">
+          <div className="mb-[3px] text-[13.5px] font-semibold text-shell-text-secondary">Email digest</div>
+          <div className="max-w-[420px] text-[12.5px] leading-relaxed text-shell-text-muted">
+            A summary of the notifications you have not read yet, sent by email. Nothing is sent when you are all caught up.
+          </div>
+        </div>
+        <select
+          value={profile.email_digest_frequency}
+          onChange={(event) => profile.setEmailDigestFrequency(event.target.value as EmailDigestFrequency)}
+          aria-label="Email digest frequency"
+          className={TIME_INPUT_CLASS}
+        >
+          {DIGEST_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mt-[14px] overflow-hidden rounded-xl border border-shell-border bg-shell-hover">

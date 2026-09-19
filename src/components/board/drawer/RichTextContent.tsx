@@ -2,12 +2,15 @@
 import React, { useMemo } from "react";
 import DOMPurify from "dompurify";
 import { Marked } from "marked";
+import { PersonCardPopover, useHoverCardController, type HoverCardPerson } from "@/components/people/PersonHoverCard";
 import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
 
 export type RichTextContentProps = {
   /** Markdown comment/update body, as typed into `RichTextComposer` and stored as-is by the API (see `BoardItemCommentController`/`BoardCommentController`, which no longer HTML-sanitize it — the body is plain Markdown text, not markup). */
   html: string;
   className?: string;
+  /** People that can be `@mentioned` here: hovering a mention that names one of them shows their profile card. */
+  people?: HoverCardPerson[];
 };
 
 const IMG_TAG_PATTERN = /<img[^>]*src="([^"]*)"[^>]*>/g;
@@ -26,9 +29,18 @@ const markdown_renderer = new Marked({
   },
 });
 
-/** Wraps `@Full Name` runs in the highlighted span the plain-text renderer used to apply, now working over an HTML string instead of plain text. */
+/** Wraps `@Full Name` runs in the highlighted span the plain-text renderer used to apply, now working over an HTML string instead of plain text. The name is kept in `data-mention` so a hover can find who it refers to. */
 const highlightMentions = (html: string): string =>
-  html.replace(MENTION_PATTERN, `<span class="${MENTION_HIGHLIGHT_CLASS}">$1</span>`);
+  html.replace(MENTION_PATTERN, (mention) => `<span class="${MENTION_HIGHLIGHT_CLASS}" data-mention="${mention}">${mention}</span>`);
+
+/** The person a rendered mention (`@Full Name`) refers to. The pattern only captures two words, so a longer name is matched by its prefix. */
+const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverCardPerson | undefined => {
+  const name = mention.slice(1).toLowerCase();
+  return (
+    people.find((person) => person.name.toLowerCase() === name) ??
+    people.find((person) => person.name.toLowerCase().startsWith(`${name} `))
+  );
+};
 
 /**
  * Read-only renderer for a comment/update body — the rich text counterpart
@@ -42,7 +54,8 @@ const highlightMentions = (html: string): string =>
  * the flowing text and laid out as a grid instead of stacked full-width,
  * matching Monday's own update media gallery.
  */
-const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className }) => {
+const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className, people }) => {
+  const { target, show, hide, keepOpen, dismiss } = useHoverCardController();
   const parsed_html = useMemo(() => markdown_renderer.parse(body, { async: false }), [body]);
 
   const sanitized_html = useMemo(() => {
@@ -56,8 +69,20 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
     return { text_html: highlightMentions(sanitized_html.replace(IMG_TAG_PATTERN, "")), gallery_urls: urls };
   }, [sanitized_html]);
 
+  const handleMouseOver = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!people?.length) return;
+    const mention_el = (event.target as HTMLElement).closest<HTMLElement>("[data-mention]");
+    if (!mention_el) return;
+    const person = findMentionedPerson(people, mention_el.dataset.mention ?? "");
+    if (person) show(person, mention_el);
+  };
+
+  const handleMouseOut = (event: React.MouseEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("[data-mention]")) hide();
+  };
+
   return (
-    <div className={`shell-rich-text-content ${className ?? ""}`}>
+    <div className={`shell-rich-text-content ${className ?? ""}`} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut}>
       <div dangerouslySetInnerHTML={{ __html: text_html }} />
       {gallery_urls.length > 0 && (
         <div className="rich-text-image-gallery">
@@ -67,6 +92,7 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
           ))}
         </div>
       )}
+      <PersonCardPopover target={target} onEnter={keepOpen} onLeave={hide} onDismiss={dismiss} />
     </div>
   );
 };

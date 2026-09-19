@@ -2,8 +2,14 @@
 import { useEffect, useRef, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getDesktopNotificationPermission,
+  requestDesktopNotificationPermission,
+  type DesktopNotificationPermission,
+} from "@/lib/desktop-notifications";
 import { apiErrorMessage, profilePreferencesService } from "@/services/profile-preferences.service";
 import { PROFILE_NOTIFICATION_SEED, PROFILE_STATUS_OPTIONS } from "@/data/profile-data";
+import type { EmailDigestFrequency } from "@/types/auth";
 import type { UserSessionDto } from "@/types/profile-preferences";
 import type {
   ProfileDateFormat,
@@ -43,6 +49,16 @@ export type ProfileManagerApi = {
   dismissDesktopBanner: () => void;
   desktop_notifications_enabled: boolean;
   toggleDesktopNotifications: () => void;
+  /** The browser's own answer to the permission prompt, so the section can explain a blocked or unsupported browser. */
+  desktop_permission: DesktopNotificationPermission;
+  quiet_hours_enabled: boolean;
+  toggleQuietHours: () => void;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  setQuietHoursStart: (value: string) => void;
+  setQuietHoursEnd: (value: string) => void;
+  email_digest_frequency: EmailDigestFrequency;
+  setEmailDigestFrequency: (value: EmailDigestFrequency) => void;
   is_muted_boards_expanded: boolean;
   toggleMutedBoardsExpanded: () => void;
 
@@ -160,6 +176,11 @@ export function useProfileManager(): ProfileManagerApi {
   const [notification_prefs, setNotificationPrefs] = useState(DEFAULT_NOTIFICATION_PREFS);
   const [is_desktop_banner_dismissed, setIsDesktopBannerDismissed] = useState(false);
   const [desktop_notifications_enabled, setDesktopNotificationsEnabledValue] = useState(false);
+  const [desktop_permission, setDesktopPermission] = useState<DesktopNotificationPermission>("default");
+  const [quiet_hours_enabled, setQuietHoursEnabledValue] = useState(false);
+  const [quiet_hours_start, setQuietHoursStartValue] = useState("22:00");
+  const [quiet_hours_end, setQuietHoursEndValue] = useState("07:00");
+  const [email_digest_frequency, setEmailDigestFrequencyValue] = useState<EmailDigestFrequency>("off");
   const [is_muted_boards_expanded, setIsMutedBoardsExpanded] = useState(false);
 
   // ── Language & region ────────────────────────────────────────────────
@@ -183,6 +204,10 @@ export function useProfileManager(): ProfileManagerApi {
     setHideOnlineStatusValue(user.hide_online_status);
     setNotificationPrefs({ ...DEFAULT_NOTIFICATION_PREFS, ...(user.notification_preferences ?? {}) });
     setDesktopNotificationsEnabledValue(user.desktop_notifications_enabled);
+    setQuietHoursEnabledValue(user.quiet_hours_enabled ?? false);
+    setQuietHoursStartValue(user.quiet_hours_start ?? "22:00");
+    setQuietHoursEndValue(user.quiet_hours_end ?? "07:00");
+    setEmailDigestFrequencyValue(user.email_digest_frequency ?? "off");
     setLanguageValue(user.language ?? "en");
     setRegionTimezoneValue(user.timezone ?? "");
     setTimeFormatValue(user.time_format ?? "12");
@@ -290,10 +315,50 @@ export function useProfileManager(): ProfileManagerApi {
   const toggleNotificationEmail = (key: string) => toggleNotificationChannel(key, "email");
   const toggleNotificationSlack = (key: string) => toggleNotificationChannel(key, "slack");
 
-  const toggleDesktopNotifications = () => {
+  // The browser's permission is per device and only asked for on demand, so read it once on the client.
+  useEffect(() => {
+    setDesktopPermission(getDesktopNotificationPermission());
+  }, []);
+
+  const toggleDesktopNotifications = async () => {
     const next_value = !desktop_notifications_enabled;
+
+    if (next_value) {
+      const permission = await requestDesktopNotificationPermission();
+      setDesktopPermission(permission);
+      if (permission !== "granted") {
+        setPreferencesError(
+          permission === "unsupported"
+            ? "This browser does not support desktop notifications."
+            : "Desktop notifications are blocked. Allow them for this site in your browser settings, then try again."
+        );
+        return;
+      }
+    }
+
     setDesktopNotificationsEnabledValue(next_value);
     void saveNotificationPreferences({ desktop_notifications_enabled: next_value });
+  };
+
+  const toggleQuietHours = () => {
+    const next_value = !quiet_hours_enabled;
+    setQuietHoursEnabledValue(next_value);
+    void saveNotificationPreferences({ quiet_hours_enabled: next_value });
+  };
+
+  const setQuietHoursStart = (value: string) => {
+    setQuietHoursStartValue(value);
+    void saveNotificationPreferences({ quiet_hours_start: value });
+  };
+
+  const setQuietHoursEnd = (value: string) => {
+    setQuietHoursEndValue(value);
+    void saveNotificationPreferences({ quiet_hours_end: value });
+  };
+
+  const setEmailDigestFrequency = (value: EmailDigestFrequency) => {
+    setEmailDigestFrequencyValue(value);
+    void saveNotificationPreferences({ email_digest_frequency: value });
   };
 
   // ── Language & region persistence ───────────────────────────────────────
@@ -372,6 +437,15 @@ export function useProfileManager(): ProfileManagerApi {
     dismissDesktopBanner: () => setIsDesktopBannerDismissed(true),
     desktop_notifications_enabled,
     toggleDesktopNotifications,
+    desktop_permission,
+    quiet_hours_enabled,
+    toggleQuietHours,
+    quiet_hours_start,
+    quiet_hours_end,
+    setQuietHoursStart,
+    setQuietHoursEnd,
+    email_digest_frequency,
+    setEmailDigestFrequency,
     is_muted_boards_expanded,
     toggleMutedBoardsExpanded: () => setIsMutedBoardsExpanded((current) => !current),
 

@@ -5,6 +5,7 @@ import { boardMuteService } from "@/services/board-mute.service";
 import type { BoardPersonOption } from "../toolbar/types";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
+import { buildMentionMatches, mentionOptionUserIds, type MentionOption } from "./mentionOptions";
 import type { DrawerAttachment, DrawerComment, DrawerComposerTarget, DrawerReaction } from "./types";
 
 const createId = () => Math.random().toString(36).slice(2, 10);
@@ -79,8 +80,8 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   postReply: (comment_id: string) => void;
 
   mention_target: DrawerComposerTarget | null;
-  mention_matches: BoardPersonOption[];
-  pickMention: (person: BoardPersonOption) => void;
+  mention_matches: MentionOption[];
+  pickMention: (option: MentionOption) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
   notify_target: DrawerComposerTarget | null;
@@ -220,11 +221,12 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   // ref, called by `CommentComposer`), since only the live editor instance
   // knows where the cursor actually is — this only tracks which ids the
   // in-progress draft has mentioned, for the eventual `postComment()` payload.
-  const pickMention = (person: BoardPersonOption) => {
+  const pickMention = (option: MentionOption) => {
     if (!mention_target) return;
+    const picked_ids = mentionOptionUserIds(option);
     setMentionIdsByTarget((current) => ({
       ...current,
-      [mention_target]: [...(current[mention_target] ?? []), person.id],
+      [mention_target]: Array.from(new Set([...(current[mention_target] ?? []), ...picked_ids])),
     }));
     setMentionTarget(null);
   };
@@ -504,9 +506,9 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const mention_matches = useMemo(
     () =>
       mention_target
-        ? config.mentionable_people.filter((person) => person.name.toLowerCase().includes(mention_query))
+        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id)
         : [],
-    [mention_target, mention_query, config.mentionable_people]
+    [mention_target, mention_query, config.mentionable_people, config.current_user.id]
   );
 
   const composer_attachments = useMemo(
