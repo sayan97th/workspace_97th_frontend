@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { mapAuthorToPerson } from "./drawer/commentMapping";
 import SlideOverPanel from "./drawer/SlideOverPanel";
+import PersonAvatar from "./PersonAvatar";
 import { CloseIcon } from "@/icons/board-icons";
 import { ActivityLogIcon } from "@/icons/board-options-icons";
 import { boardOptionsService } from "@/services/board-options.service";
@@ -12,14 +14,7 @@ export type BoardActivityLogDrawerProps = {
   onClose: () => void;
 };
 
-const getInitials = (full_name: string): string =>
-  full_name
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+const UNKNOWN_ACTOR = { id: "0", name: "Someone", initials: "?", avatar_seed: 0 };
 
 const formatTimestamp = (value: string): string => {
   const date = new Date(value);
@@ -89,9 +84,7 @@ const BoardActivityLogDrawer: React.FC<BoardActivityLogDrawerProps> = ({ board_i
         )}
         {entries?.map((entry) => (
           <div key={entry.id} className="flex items-start gap-3 rounded-lg px-2 py-3 hover:bg-shell-hover">
-            <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[10.5px] font-bold text-white">
-              {entry.user ? getInitials(entry.user.full_name) : "—"}
-            </span>
+            <PersonAvatar person={entry.user ? mapAuthorToPerson(entry.user) : UNKNOWN_ACTOR} size={32} />
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] leading-snug text-shell-text">
                 <span className="font-semibold">{entry.user?.full_name ?? "Someone"}</span>{" "}

@@ -900,6 +900,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         name: member.full_name,
         initials: getInitials(member.full_name),
         avatar_seed: index,
+        avatar_url: member.profile_photo_url ?? undefined,
       })),
     [workspace_members]
   );
@@ -1626,7 +1627,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   // ── Item detail drawer ──
   const current_user: BoardPersonOption = user
-    ? { id: String(user.id), name: user.full_name, initials: getInitials(user.full_name), avatar_seed: 0 }
+    ? {
+        id: String(user.id),
+        name: user.full_name,
+        initials: getInitials(user.full_name),
+        avatar_seed: 0,
+        avatar_url: user.profile_photo_url ?? undefined,
+      }
     : { id: "0", name: "You", initials: "Y", avatar_seed: 0 };
 
   const fetchItemDetail = useCallback(
@@ -2959,6 +2966,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         title: board_label,
         is_favorite: node.is_favorite,
         invite_count,
+        board_id,
+        current_user,
         info,
         onInviteClick,
         onBoardUpdatesClick: discussion_drawer.open,

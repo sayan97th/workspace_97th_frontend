@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef } from "react";
+import PersonAvatar from "../PersonAvatar";
 import CommentComposer from "./CommentComposer";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
@@ -137,7 +138,11 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
         {feed.map((entry) =>
           entry.kind === "activity" ? (
             <div key={`activity-${entry.entry.id}`} className="flex items-center gap-2.5 py-2">
-              <span className="h-[7px] w-[7px] flex-none rounded-full" style={{ background: entry.entry.accent_color }} />
+              <PersonAvatar
+                person={entry.entry.actor}
+                size={20}
+                style={{ boxShadow: `0 0 0 2px ${entry.entry.accent_color}` }}
+              />
               <div className="min-w-0 flex-1 truncate text-[12.5px] text-shell-text-faint">
                 <span className="font-semibold text-shell-text-secondary">{entry.entry.actor.name}</span> {entry.entry.verb}
               </div>

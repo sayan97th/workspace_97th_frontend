@@ -18,10 +18,14 @@ import {
   LinkIcon,
 } from "@/icons/board-icons";
 import InfoDropdown from "@/components/ui/dropdown/InfoDropdown";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import type { BoardType } from "@/types/workspace";
 import BoardOptionsMenu, { type BoardOptionsMenuProps } from "./BoardOptionsMenu";
 import { BOARD_TYPE_OPTIONS } from "./BoardTypePicker";
+import BoardActivityLogDrawer from "./BoardActivityLogDrawer";
+import PersonAvatar from "./PersonAvatar";
 import PersonAvatarStack, { type PersonAvatarStackPerson } from "./PersonAvatarStack";
+import type { BoardPersonOption } from "./toolbar/types";
 
 /** Pre-formatted "Board info" popover content — the caller resolves raw data (a nav node, seed data, …) into display strings. */
 export type BoardHeaderInfo = {
@@ -43,7 +47,10 @@ export type BoardHeaderProps = {
   title: string;
   is_favorite?: boolean;
   invite_count?: number;
-  user_initials?: string;
+  /** Id of the board whose activity log the avatar button opens; the button is hidden when omitted. */
+  board_id?: number;
+  /** The signed in user, shown as a profile photo (or initials fallback) that opens the board's activity log; the button is hidden when omitted. */
+  current_user?: BoardPersonOption;
   /** Board info popover content; the chevron next to the title stays inert when omitted. */
   info?: BoardHeaderInfo;
   /** Opens the "Invite to this board" dialog; the button stays inert when omitted. */
@@ -78,7 +85,8 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   title,
   is_favorite = false,
   invite_count = 0,
-  user_initials = "JM",
+  board_id,
+  current_user,
   info,
   onInviteClick,
   onBoardUpdatesClick,
@@ -94,6 +102,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   const [is_link_copied, setIsLinkCopied] = useState(false);
   const [is_options_open, setIsOptionsOpen] = useState(false);
   const options_button_ref = useRef<HTMLButtonElement>(null);
+  const [is_activity_log_open, setIsActivityLogOpen] = useState(false);
 
   // Reverts the "Copied" confirmation back to the plain link icon after a beat.
   useEffect(() => {
@@ -269,9 +278,27 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         </>
       )}
 
-      <span className="mx-1 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[11px] font-bold text-white">
-        {user_initials}
-      </span>
+      {current_user && board_id !== undefined && (
+        <>
+          <Tooltip content="View activity log" placement="bottom" className="mx-1">
+            <button
+              type="button"
+              onClick={() => setIsActivityLogOpen(true)}
+              className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg transition-colors hover:bg-shell-hover"
+              aria-label="View activity log"
+              aria-haspopup="dialog"
+              aria-expanded={is_activity_log_open}
+            >
+              <PersonAvatar person={current_user} size={28} />
+            </button>
+          </Tooltip>
+          <BoardActivityLogDrawer
+            board_id={board_id}
+            is_open={is_activity_log_open}
+            onClose={() => setIsActivityLogOpen(false)}
+          />
+        </>
+      )}
 
       <button
         type="button"
