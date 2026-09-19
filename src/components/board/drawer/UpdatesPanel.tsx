@@ -1,7 +1,9 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import PersonAvatar from "../PersonAvatar";
 import CommentComposer from "./CommentComposer";
+import CommentFilterBar from "./CommentFilterBar";
+import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import type { BoardItemDrawerApi, DrawerActivityEntry, DrawerComment } from "./types";
@@ -26,10 +28,19 @@ function sortKeyOf(iso: string | undefined): number {
   return Number.isNaN(parsed) ? Date.now() : parsed;
 }
 
-/** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...) — folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. */
+/** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...), which folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. A search and filter row narrows the threads (and hides the activity log, which has nothing to match) while any filter is on. */
 function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
   const last_whisper_at_ref = useRef(0);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
+  const [filters, setFilters] = useState<CommentFilters>(default_comment_filters);
+  const updateFilters = useCallback((patch: Partial<CommentFilters>) => setFilters((previous) => ({ ...previous, ...patch })), []);
+  const clearFilters = useCallback(() => setFilters(default_comment_filters), []);
+  const is_filtering = countActiveCommentFilters(filters) > 0;
+  const visible_comments = useMemo(
+    () => filterComments(drawer.comments, filters, drawer.current_user.id),
+    [drawer.comments, filters, drawer.current_user.id]
+  );
+  const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
 
   // The thread reads oldest to newest, so freshly loaded updates land at the
   // bottom: after loading them, bring that end into view.
@@ -46,12 +57,12 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
     }
   };
 
-  const pinned_comments = drawer.comments.filter((comment) => comment.pinned);
-  const unpinned_comments = drawer.comments.filter((comment) => !comment.pinned);
+  const pinned_comments = visible_comments.filter((comment) => comment.pinned);
+  const unpinned_comments = visible_comments.filter((comment) => !comment.pinned);
 
   const feed: FeedEntry[] = [
     ...unpinned_comments.map((comment): FeedEntry => ({ kind: "comment", sort_key: sortKeyOf(comment.posted_at_iso), comment })),
-    ...drawer.activity_log.map((entry): FeedEntry => ({ kind: "activity", sort_key: sortKeyOf(entry.occurred_at_iso), entry })),
+    ...(is_filtering ? [] : drawer.activity_log).map((entry): FeedEntry => ({ kind: "activity", sort_key: sortKeyOf(entry.occurred_at_iso), entry })),
   ].sort((a, b) => a.sort_key - b.sort_key);
 
   const renderThread = (comment: DrawerComment) => (
@@ -91,6 +102,8 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
       onToggleEmojiPalette={drawer.toggleEmojiPalette}
       onCloseEmojiPalette={drawer.closeEmojiPalette}
       onInsertEmoji={drawer.insertEmoji}
+      onLoadRevisions={drawer.loadCommentRevisions}
+      reference_items={drawer.reference_items_with_links}
     />
   );
 
@@ -122,8 +135,19 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
           attachments={drawer.composer_attachments}
           onAddFiles={drawer.addComposerAttachments}
           onRemoveAttachment={drawer.removeComposerAttachment}
+          reference_items={drawer.reference_items_with_links}
         />
         {presence && <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />}
+        {drawer.comments.length > 0 && (
+          <CommentFilterBar
+            filters={filters}
+            onChange={updateFilters}
+            onClear={clearFilters}
+            authors={authors}
+            visible_count={visible_comments.length}
+            total_count={drawer.comments.length}
+          />
+        )}
       </div>
 
       <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
@@ -135,6 +159,10 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
 
         {drawer.comments_loading && drawer.comments.length === 0 && (
           <div className="mt-6 text-center text-[13px] text-shell-text-faint">Loading updates…</div>
+        )}
+
+        {is_filtering && visible_comments.length === 0 && drawer.comments.length > 0 && (
+          <div className="mt-6 text-center text-[13px] text-shell-text-faint">No updates match these filters.</div>
         )}
 
         {pinned_comments.length > 0 && (

@@ -18,7 +18,7 @@ const GroupBadge: React.FC = () => (
 );
 
 const groupSubtitle = (group: MentionGroupOption): string =>
-  `Notify ${group.member_ids.length} ${group.member_ids.length === 1 ? "person" : "people"}`;
+  `${group.kind === "team" ? "Team, notify" : "Notify"} ${group.member_ids.length} ${group.member_ids.length === 1 ? "person" : "people"}`;
 
 /**
  * `@mention` autocomplete dropdown shared by the update composer and every reply box.

@@ -33,10 +33,35 @@ export type DrawerReply = {
   body: string;
   /** True once the author has edited the body at least once. Absent on client-side-only mock data — treat as false. */
   is_edited?: boolean;
+  /** When the body was last edited (ISO), absent on client-side-only mock data and on a comment that was never edited. */
+  edited_at?: string;
+  /** Ids of the people `@mentioned` in the body, for the "Mentions me" filter. Absent on client-side-only mock data. */
+  mentioned_user_ids?: string[];
   view_count: number;
   liked_by_me: boolean;
   like_count: number;
   reactions: DrawerReaction[];
+};
+
+/** One earlier version of an edited comment or reply, for the "(edited)" history popover. */
+export type DrawerCommentRevision = {
+  id: string;
+  /** Markdown, as it was before the edit that replaced it. */
+  body: string;
+  /** ISO time this version was written, when known. */
+  written_at?: string;
+  /** ISO time an edit replaced it. */
+  replaced_at: string;
+  /** Who made that edit. */
+  editor?: BoardPersonOption;
+};
+
+/** An item another comment can link to with `#`, shown in the composer's reference picker. */
+export type DrawerReferenceItem = {
+  id: string;
+  name: string;
+  /** In-app route the reference links to, `/boards/{board_id}/pulses/{item_id}`. */
+  href: string;
 };
 
 /** A top-level comment ("update"), which additionally tracks seen state, attachments and replies. */
@@ -134,6 +159,8 @@ export type BoardItemDrawerConfig<TRow> = {
   getRowGroupId?: (row: TRow) => string;
   /** Whether `row` is a top-level item rather than a subitem. Moving and archiving are only offered for top-level items, since a subitem's group follows its parent's. Defaults to true. */
   isTopLevelRow?: (row: TRow) => boolean;
+  /** Items of the board a comment can link to by typing `#`. Omit to hide the reference picker. */
+  reference_items?: { id: string; name: string }[];
   /** Tables the "Move to group" action can move the open item into. Omit to hide that action. */
   move_group_options?: DrawerMoveGroupOption[];
   /** Moves the item into another table of the same board. Rejecting surfaces an inline error in the move dialog. */
@@ -166,6 +193,10 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   pending_update_count: number;
   /** Refetches the thread and folds in everything counted by {@link pending_update_count}. */
   loadPendingUpdates: () => void;
+  /** Items the composer's `#` picker offers, with their links resolved. Empty for a board that supplies none. */
+  reference_items_with_links: DrawerReferenceItem[];
+  /** Loads the earlier versions of an edited comment (or reply when `reply_id` is given), newest edit first. Resolves to none for a mock board. */
+  loadCommentRevisions: (comment_id: string, reply_id?: string) => Promise<DrawerCommentRevision[]>;
   /** Feeds a `item_comment_posted` broadcast (see `useCommentPresence`) into the drawer. */
   onRemoteCommentPosted: (event: RemoteCommentEvent) => void;
   /** Ids of comments and replies that arrived through the pill, so the thread can badge them as new for the rest of this session. */

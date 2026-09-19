@@ -1,20 +1,20 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import FilterMenu from "@/components/ui/filter-menu/FilterMenu";
 import { useTheme } from "@/context/ThemeContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import SlideOverDrawer from "./SlideOverDrawer";
 import NotificationGroupCard from "./NotificationGroupCard";
 import NotificationItem from "./NotificationItem";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
-import { ChevronDownIcon, CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
+import type { NotificationBulkAction } from "@/services/notifications.service";
+import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
 import {
   notification_date_groups,
   notificationDateGroupOf,
   notification_search_placeholder,
   notification_tabs,
   type NotificationDateGroup,
-  type NotificationFilterOption,
   type NotificationFilterOptions,
   type NotificationFilters,
   type NotificationSnoozePresetId,
@@ -43,68 +43,20 @@ type NotificationsPanelProps = {
   onMarkAsRead?: (id: string) => void;
   onMarkAsUnread?: (id: string) => void;
   onSnoozeNotification?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** Applies one action to several notifications at once, powers the multi-select toolbar and the e and u shortcuts. */
+  onBulkAction?: (action: NotificationBulkAction, ids: string[]) => void;
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-type FilterMenuProps = {
-  label: string;
-  all_label: string;
-  options: NotificationFilterOption[];
-  selected_id: string | null;
-  onSelect: (id: string | null) => void;
+/** Whether a key press comes from somewhere the person is typing, where the drawer's shortcuts must stay out of the way. */
+const isTypingTarget = (target: EventTarget | null): boolean => {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 };
 
-/** A compact dropdown chip that narrows the list to one board or one person. */
-const FilterMenu: React.FC<FilterMenuProps> = ({ label, all_label, options, selected_id, onSelect }) => {
-  const trigger_ref = useRef<HTMLButtonElement>(null);
-  const [is_open, setIsOpen] = useState(false);
-  const selected = options.find((option) => option.id === selected_id);
-
-  const choose = (id: string | null) => {
-    onSelect(id);
-    setIsOpen(false);
-  };
-
-  return (
-    <>
-      <button
-        ref={trigger_ref}
-        type="button"
-        onClick={() => setIsOpen((previous) => !previous)}
-        aria-haspopup="listbox"
-        aria-expanded={is_open}
-        aria-label={`Filter by ${label.toLowerCase()}`}
-        className={`flex max-w-[150px] items-center gap-1.5 rounded-[8px] border px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
-          selected
-            ? "border-brand-500 text-shell-text"
-            : "border-shell-border text-shell-text-muted hover:text-shell-text"
-        }`}
-      >
-        <span className="truncate">{selected?.name ?? label}</span>
-        <ChevronDownIcon size={10} className="flex-none" />
-      </button>
-      <BoardPopover anchor_el={trigger_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={220} align="start">
-        <div role="listbox" className="shell-scrollbar max-h-[260px] overflow-y-auto p-1.5">
-          {[{ id: null, name: all_label }, ...options].map((option) => (
-            <button
-              key={option.id ?? "all"}
-              type="button"
-              role="option"
-              aria-selected={option.id === selected_id}
-              onClick={() => choose(option.id)}
-              className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] transition-colors hover:bg-shell-hover ${
-                option.id === selected_id ? "font-semibold text-shell-text" : "font-medium text-shell-text-secondary"
-              }`}
-            >
-              <span className="truncate">{option.name}</span>
-            </button>
-          ))}
-        </div>
-      </BoardPopover>
-    </>
-  );
-};
+const BULK_BUTTON_CLASS =
+  "rounded-[7px] px-2.5 py-1 text-[12px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover-strong hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-40";
 
 /**
  * Buckets a date section's notifications by thread: notifications sharing a
@@ -125,7 +77,9 @@ const groupByThread = (notifications: WorkspaceNotification[]): WorkspaceNotific
  * board and person filters, an "unread only" toggle and the notification list,
  * grouped by date and then by thread. Filtering happens server-side and the
  * list pages in as it is scrolled, both driven by `useNotifications`, this
- * component only renders them.
+ * component only renders them. "Select" turns on multi-select with a bulk
+ * toolbar (read, unread, dismiss), and the list is keyboard driven: j and k
+ * move, o opens, e dismisses, u toggles read, x selects.
  */
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   is_open,
@@ -146,12 +100,17 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onMarkAsRead,
   onMarkAsUnread,
   onSnoozeNotification,
+  onBulkAction,
 }) => {
   const { resolved_theme, toggleTheme } = useTheme();
   const [search_text, setSearchText] = useState(filters.search);
   const [is_preferences_open, setIsPreferencesOpen] = useState(false);
   const preferences_trigger_ref = useRef<HTMLButtonElement>(null);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
+  const [is_selecting, setIsSelecting] = useState(false);
+  const [selected_ids, setSelectedIds] = useState<Set<string>>(new Set());
+  // The keyboard cursor, identified by the first notification of the thread it sits on.
+  const [focused_key, setFocusedKey] = useState<string | null>(null);
 
   // The board and person menus only list what actually appears in the user's
   // notifications, refreshed each time the drawer opens.
@@ -186,6 +145,93 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   }, [notifications]);
 
   const has_unread = notifications.some((notification) => notification.is_unread);
+  const threads = useMemo(() => grouped_notifications.flatMap((group) => group.threads), [grouped_notifications]);
+
+  // A dismissed, snoozed or filtered-out notification can no longer be selected or focused.
+  useEffect(() => {
+    const known_ids = new Set(notifications.map((notification) => notification.id));
+    setSelectedIds((previous) => {
+      const kept = new Set([...previous].filter((id) => known_ids.has(id)));
+      return kept.size === previous.size ? previous : kept;
+    });
+    setFocusedKey((previous) => (previous !== null && !known_ids.has(previous) ? null : previous));
+  }, [notifications]);
+
+  useEffect(() => {
+    if (is_open) return;
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+    setFocusedKey(null);
+  }, [is_open]);
+
+  useEffect(() => {
+    if (!focused_key) return;
+    scroll_area_ref.current
+      ?.querySelector(`[data-row-key="${CSS.escape(focused_key)}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [focused_key]);
+
+  const toggleSelection = (ids: string[]) =>
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      const is_all_selected = ids.every((id) => next.has(id));
+      ids.forEach((id) => (is_all_selected ? next.delete(id) : next.add(id)));
+      return next;
+    });
+
+  const stopSelecting = () => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+  };
+
+  const runBulkAction = (action: NotificationBulkAction) => {
+    onBulkAction?.(action, [...selected_ids]);
+    stopSelecting();
+  };
+
+  // Keyboard shortcuts, live only while the drawer is open and nothing is being typed.
+  useEffect(() => {
+    if (!is_open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey || isTypingTarget(event.target) || threads.length === 0) return;
+
+      const index = threads.findIndex((thread) => thread[0].id === focused_key);
+      const focused_thread = index >= 0 ? threads[index] : null;
+      const move = (next_index: number) => {
+        event.preventDefault();
+        setFocusedKey(threads[Math.min(Math.max(next_index, 0), threads.length - 1)][0].id);
+      };
+
+      if (event.key === "j") return move(index + 1);
+      if (event.key === "k") return move(index === -1 ? 0 : index - 1);
+      if (!focused_thread) return;
+
+      const ids = focused_thread.map((notification) => notification.id);
+      if (event.key === "x") {
+        event.preventDefault();
+        setIsSelecting(true);
+        toggleSelection(ids);
+      } else if (event.key === "o") {
+        event.preventDefault();
+        if (ids.length > 1) onSelectGroup(ids);
+        else onSelectNotification(ids[0]);
+      } else if (event.key === "u" && onBulkAction) {
+        event.preventDefault();
+        onBulkAction(focused_thread.some((notification) => notification.is_unread) ? "read" : "unread", ids);
+      } else if (event.key === "e" && onBulkAction) {
+        event.preventDefault();
+        // Leave the cursor on the neighbour that takes its place.
+        const neighbour = threads[index + 1] ?? threads[index - 1];
+        setFocusedKey(neighbour ? neighbour[0].id : null);
+        onBulkAction("dismiss", ids);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [is_open, threads, focused_key, onBulkAction, onSelectGroup, onSelectNotification]);
 
   const header_icon_button =
     "flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover";
@@ -197,15 +243,6 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         <div className="flex items-center justify-between">
           <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notifications</h2>
           <div className="flex items-center gap-0.5">
-            {onMarkAllAsRead && has_unread && (
-              <button
-                type="button"
-                onClick={onMarkAllAsRead}
-                className="mr-1 rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-              >
-                Mark all as read
-              </button>
-            )}
             <button
               type="button"
               onClick={toggleTheme}
@@ -310,7 +347,57 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
             selected_id={filters.actor_id}
             onSelect={(actor_id) => onFiltersChange({ actor_id })}
           />
+          <span className="ml-auto flex items-center gap-1">
+            {onBulkAction && notifications.length > 0 && (
+              <button
+                type="button"
+                onClick={() => (is_selecting ? stopSelecting() : setIsSelecting(true))}
+                aria-pressed={is_selecting}
+                className={`whitespace-nowrap rounded-[7px] px-2 py-1 text-[12px] font-semibold transition-colors hover:bg-shell-hover hover:text-shell-text ${
+                  is_selecting ? "text-shell-text" : "text-shell-text-muted"
+                }`}
+              >
+                {is_selecting ? "Done" : "Select"}
+              </button>
+            )}
+            {onMarkAllAsRead && has_unread && (
+              <button
+                type="button"
+                onClick={onMarkAllAsRead}
+                className="whitespace-nowrap rounded-[7px] px-2 py-1 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+              >
+                Mark all as read
+              </button>
+            )}
+          </span>
         </div>
+
+        {/* Multi-select toolbar */}
+        {is_selecting && (
+          <div role="toolbar" aria-label="Selected notifications" className="mt-3 flex flex-wrap items-center gap-1 rounded-[9px] bg-shell-hover px-2 py-1.5">
+            <span className="px-1.5 text-[12.5px] font-semibold text-shell-text">{selected_ids.size} selected</span>
+            <button
+              type="button"
+              onClick={() =>
+                setSelectedIds(selected_ids.size === notifications.length ? new Set() : new Set(notifications.map((notification) => notification.id)))
+              }
+              className={BULK_BUTTON_CLASS}
+            >
+              {selected_ids.size === notifications.length ? "Select none" : "Select all"}
+            </button>
+            <span className="ml-auto flex items-center gap-1">
+              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("read")} className={BULK_BUTTON_CLASS}>
+                Mark read
+              </button>
+              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("unread")} className={BULK_BUTTON_CLASS}>
+                Mark unread
+              </button>
+              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("dismiss")} className={BULK_BUTTON_CLASS}>
+                Dismiss
+              </button>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Scrollable list, grouped by date and then by thread */}
@@ -324,30 +411,42 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
             <div key={group.id} className="mb-4 last:mb-0">
               <div className="mb-3 text-[12.5px] font-semibold text-shell-text-muted">{group.label}</div>
               <div className="flex flex-col gap-2.5">
-                {group.threads.map((thread) =>
-                  thread.length > 1 ? (
-                    <NotificationGroupCard
-                      key={thread[0].group_key}
-                      notifications={thread}
-                      onSelectGroup={onSelectGroup}
-                      onSelect={onSelectNotification}
-                      onDismiss={onDismissNotification}
-                      onMarkRead={onMarkAsRead}
-                      onMarkUnread={onMarkAsUnread}
-                      onSnooze={onSnoozeNotification}
-                    />
-                  ) : (
-                    <NotificationItem
-                      key={thread[0].id}
-                      notification={thread[0]}
-                      onSelect={onSelectNotification}
-                      onDismiss={onDismissNotification}
-                      onMarkRead={onMarkAsRead}
-                      onMarkUnread={onMarkAsUnread}
-                      onSnooze={onSnoozeNotification}
-                    />
-                  )
-                )}
+                {group.threads.map((thread) => {
+                  const ids = thread.map((notification) => notification.id);
+                  const row_props = {
+                    is_focused: thread[0].id === focused_key,
+                    is_selecting,
+                    is_selected: ids.every((id) => selected_ids.has(id)),
+                  };
+                  return (
+                    <div key={thread[0].group_key} data-row-key={thread[0].id}>
+                      {thread.length > 1 ? (
+                        <NotificationGroupCard
+                          notifications={thread}
+                          onSelectGroup={onSelectGroup}
+                          onSelect={onSelectNotification}
+                          onDismiss={onDismissNotification}
+                          onMarkRead={onMarkAsRead}
+                          onMarkUnread={onMarkAsUnread}
+                          onSnooze={onSnoozeNotification}
+                          onToggleSelect={toggleSelection}
+                          {...row_props}
+                        />
+                      ) : (
+                        <NotificationItem
+                          notification={thread[0]}
+                          onSelect={onSelectNotification}
+                          onDismiss={onDismissNotification}
+                          onMarkRead={onMarkAsRead}
+                          onMarkUnread={onMarkAsUnread}
+                          onSnooze={onSnoozeNotification}
+                          onToggleSelect={(id) => toggleSelection([id])}
+                          {...row_props}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           ))
@@ -356,6 +455,11 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         {/* Sentinel: reaching it loads the next page. */}
         <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
         {is_loading_more && <p className="pt-3 text-center text-[12.5px] text-shell-text-muted">Loading more…</p>}
+        {onBulkAction && notifications.length > 0 && (
+          <p className="mt-4 hidden text-center text-[11.5px] text-shell-text-faint md:block">
+            Keyboard: j and k move, o opens, e dismisses, u marks read or unread, x selects.
+          </p>
+        )}
       </div>
     </SlideOverDrawer>
   );

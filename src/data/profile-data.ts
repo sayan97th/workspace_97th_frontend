@@ -24,6 +24,7 @@ export const PROFILE_NOTIFICATION_SEED: ProfileNotificationSeed[] = [
   { key: "reactions", label: "Reactions", sub: "to my update", category: "Communication" },
   { key: "notified", label: "Notified me directly", sub: "on an update, without mentioning me", category: "Communication" },
   { key: "assigned", label: "Assigned me", sub: "to an item", category: "Collaboration" },
+  { key: "due_date_reminder", label: "Due date reminders", sub: "for items assigned to me that are due today", category: "Collaboration" },
   { key: "invitations", label: "Invitations", sub: "to workspace, board, doc, item, or team", category: "Collaboration" },
   { key: "template_changes", label: "Template changes", sub: "by the template owner", category: "Collaboration" },
   { key: "agent_failures", label: "Agent failures", sub: "when an agent doesn't run as expected", category: "Agents" },

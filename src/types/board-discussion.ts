@@ -44,6 +44,7 @@ export type BoardDiscussionCommentDto = {
   body: string;
   created_at: string;
   is_edited: boolean;
+  edited_at: string | null;
   like_count: number;
   liked_by_me: boolean;
   view_count: number;

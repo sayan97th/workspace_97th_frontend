@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import type { NotificationSnoozePresetId, WorkspaceNotification } from "@/data/notifications-data";
 import { ChevronDownIcon, CloseIcon } from "@/icons/workspace-icons";
-import NotificationItem, { notificationActorToPerson } from "./NotificationItem";
+import NotificationItem, { NotificationSelectBox, notificationActorToPerson } from "./NotificationItem";
 
 type NotificationGroupCardProps = {
   /** Two or more notifications of the same type on the same thread, newest first. */
@@ -15,6 +15,12 @@ type NotificationGroupCardProps = {
   onMarkRead?: (id: string) => void;
   onMarkUnread?: (id: string) => void;
   onSnooze?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** The keyboard cursor (j and k) is on this group. */
+  is_focused?: boolean;
+  /** Multi-select mode: a tick box shows and a click toggles the whole group instead of opening it. */
+  is_selecting?: boolean;
+  is_selected?: boolean;
+  onToggleSelect?: (ids: string[]) => void;
 };
 
 const MAX_STACKED_AVATARS = 3;
@@ -42,6 +48,10 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
   onMarkRead,
   onMarkUnread,
   onSnooze,
+  is_focused = false,
+  is_selecting = false,
+  is_selected = false,
+  onToggleSelect,
 }) => {
   const [is_expanded, setIsExpanded] = useState(false);
 
@@ -55,12 +65,22 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
 
   return (
     <div className="group relative">
-      <div className="rounded-[11px] border border-shell-border bg-shell-panel-alt transition-colors hover:border-shell-border-strong">
+      <div
+        className={`rounded-[11px] border bg-shell-panel-alt transition-colors hover:border-shell-border-strong ${
+          is_selected ? "border-brand-500" : "border-shell-border"
+        } ${is_focused ? "ring-2 ring-brand-500/60" : ""}`}
+      >
         <button
           type="button"
-          onClick={() => onSelectGroup(notifications.map((notification) => notification.id))}
+          onClick={() => {
+            const ids = notifications.map((notification) => notification.id);
+            if (is_selecting) onToggleSelect?.(ids);
+            else onSelectGroup(ids);
+          }}
+          aria-pressed={is_selecting ? is_selected : undefined}
           className="flex w-full gap-3 p-[13px] text-left"
         >
+          {is_selecting && <NotificationSelectBox is_selected={is_selected} />}
           <span className="flex flex-none items-start -space-x-2">
             {stacked_actors.map((notification) => (
               <PersonAvatar
@@ -129,7 +149,7 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
         )}
       </div>
 
-      {onDismiss && (
+      {!is_selecting && onDismiss && (
         <button
           type="button"
           onClick={() => notifications.forEach((notification) => onDismiss(notification.id))}

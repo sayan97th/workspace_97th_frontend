@@ -1,16 +1,20 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
+import { useSavedReplies } from "@/hooks/useSavedReplies";
 import CommentAttachmentChip from "./CommentAttachmentChip";
+import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
 import type { MentionOption } from "./mentionOptions";
-import RichTextComposer, { type RichTextComposerRef } from "./RichTextComposer";
-import type { DrawerAttachment, DrawerComposerTarget } from "./types";
+import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from "./RichTextComposer";
+import SavedRepliesMenu from "./SavedRepliesMenu";
+import { buildSlashSuggestions, filterReferenceItems, type SlashSuggestion } from "./slashCommands";
+import type { DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
 
 export type CommentComposerProps = {
   /** Identifies this composer among the drawer's shared mention/emoji palette state: "composer" for the top-level update box, or the parent comment id for a reply box. */
@@ -48,11 +52,19 @@ export type CommentComposerProps = {
   attachments?: DrawerAttachment[];
   onAddFiles?: (files: File[]) => void;
   onRemoveAttachment?: (attachment_id: string) => void;
+  /** Items typing `#` can link to. Omit to switch the `#` picker off. */
+  reference_items?: DrawerReferenceItem[];
 };
+
+/** Which menu the composer is offering for the text at the caret, if any. */
+type ComposerMenuKind = "slash" | "reference";
 
 /**
  * Textarea + `@mention` autocomplete + emoji insert (+ file attach, for updates) used
  * both for the drawer's top-level "write an update" box and every comment's reply box.
+ * Typing `/` opens a command menu (mention, date, emoji, lists, quote, code, divider and
+ * the user's saved replies), typing `#` links another item of the board, and the
+ * "Saved replies" toolbar button inserts or saves reusable templates.
  */
 const CommentComposer: React.FC<CommentComposerProps> = ({
   target,
@@ -80,6 +92,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   attachments = [],
   onAddFiles,
   onRemoveAttachment,
+  reference_items = [],
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
@@ -103,6 +116,69 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   // as the rest of its action row).
   const [toolbar_hidden, setToolbarHidden] = useState(false);
   const show_toolbar = !toolbar_hidden;
+
+  // `/` and `#` menus: the editor reports the trigger at the caret, this owns the keyboard cursor.
+  const { saved_replies, ensureLoaded: ensureSavedRepliesLoaded } = useSavedReplies();
+  const [trigger, setTrigger] = useState<ComposerTrigger | null>(null);
+  const [suggestion_index, setSuggestionIndex] = useState(0);
+  // Escape hides the menu for the text typed so far, it returns once the query changes.
+  const [dismissed_key, setDismissedKey] = useState<string | null>(null);
+  const trigger_key = trigger ? `${trigger.kind}:${trigger.query}` : null;
+
+  const slash_suggestions = useMemo(
+    () => (trigger?.kind === "slash" ? buildSlashSuggestions(trigger.query, saved_replies) : []),
+    [trigger, saved_replies]
+  );
+  const reference_matches = useMemo(
+    () => (trigger?.kind === "reference" ? filterReferenceItems(reference_items, trigger.query) : []),
+    [trigger, reference_items]
+  );
+  const menu_kind: ComposerMenuKind | null = trigger?.kind ?? null;
+  const menu_length = menu_kind === "slash" ? slash_suggestions.length : reference_matches.length;
+  const is_suggestion_menu_open = menu_kind !== null && menu_length > 0 && dismissed_key !== trigger_key;
+
+  useEffect(() => {
+    setSuggestionIndex(0);
+  }, [trigger_key]);
+
+  useEffect(() => {
+    if (trigger?.kind === "slash") ensureSavedRepliesLoaded();
+  }, [trigger?.kind, ensureSavedRepliesLoaded]);
+
+  const handleTriggerChange = (next: ComposerTrigger | null) => {
+    setTrigger(next);
+    if (next === null) setDismissedKey(null);
+  };
+
+  const pickSuggestion = (index: number) => {
+    const editor = rich_text_ref.current;
+    if (!editor) return;
+
+    if (menu_kind === "slash") {
+      const suggestion: SlashSuggestion | undefined = slash_suggestions[index];
+      if (!suggestion) return;
+      editor.applySlashCommand(suggestion.action);
+      if (suggestion.action.type === "emoji") onToggleEmojiPalette(target);
+    } else {
+      const item = reference_matches[index];
+      if (!item) return;
+      editor.insertItemReference(item.name, item.href);
+    }
+    setTrigger(null);
+  };
+
+  // While a menu is open it claims the arrows, Enter, Tab and Escape, so Enter picks a row instead of sending the update.
+  const handleSuggestionKeyDown = (event: KeyboardEvent): boolean => {
+    if (!is_suggestion_menu_open) return false;
+
+    if (event.key === "ArrowDown") setSuggestionIndex((index) => (index + 1) % menu_length);
+    else if (event.key === "ArrowUp") setSuggestionIndex((index) => (index - 1 + menu_length) % menu_length);
+    else if (event.key === "Enter" || event.key === "Tab") pickSuggestion(suggestion_index);
+    else if (event.key === "Escape") setDismissedKey(trigger_key);
+    else return false;
+
+    return true;
+  };
 
   const handlePickMention = (option: MentionOption) => {
     rich_text_ref.current?.insertMentionText(option.name);
@@ -186,6 +262,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             // Enter-to-select yet (only click), so Enter falls back to its
             // default behavior instead of firing a submit mid-pick.
             onEnterSubmit={show_mention_picker || show_notify_picker ? undefined : onSubmit}
+            onTriggerChange={handleTriggerChange}
+            onSuggestionKeyDown={handleSuggestionKeyDown}
           />
 
           {(is_update || has_draft) && (
@@ -245,6 +323,11 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                     mode="insert"
                   />
                 </span>
+                <SavedRepliesMenu
+                  draft={value}
+                  onInsert={(reply) => rich_text_ref.current?.insertMarkdown(reply.body)}
+                  icon_size={is_update ? 17 : 16}
+                />
                 {can_notify && (
                   <span className="relative">
                     <button
@@ -286,6 +369,19 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
         </div>
 
         {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
+        {is_suggestion_menu_open && (
+          <ComposerSuggestionMenu
+            title={menu_kind === "slash" ? "Commands" : "Link an item"}
+            items={
+              menu_kind === "slash"
+                ? slash_suggestions.map((suggestion) => ({ id: suggestion.id, label: suggestion.label, description: suggestion.description }))
+                : reference_matches.map((item) => ({ id: item.id, label: item.name }))
+            }
+            active_index={suggestion_index}
+            onPick={pickSuggestion}
+            onHover={setSuggestionIndex}
+          />
+        )}
         {show_notify_picker && onPickNotifyPerson && (
           <div ref={notify_picker_ref}>
             <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />

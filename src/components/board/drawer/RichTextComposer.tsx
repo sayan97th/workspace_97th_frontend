@@ -1,5 +1,6 @@
 "use client";
-import React, { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import type { Editor } from "@tiptap/core";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapImage from "@tiptap/extension-image";
@@ -18,12 +19,29 @@ import {
 import { inlineUploadService } from "@/services/inline-upload.service";
 import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
+import type { SlashCommandAction } from "./slashCommands";
+
+/** A `/command` or `#item` being typed right before the caret, reported so the parent can show its suggestion menu. */
+export type ComposerTrigger = { kind: "slash" | "reference"; query: string };
+
+/** Matches a `/query` at the caret, only when it opens a word, so `https://` and file paths never trigger it. */
+const SLASH_TRIGGER = /(?:^|\s)\/([\w-]*)$/;
+/** Matches a `#query` at the caret, likewise only at the start of a word. */
+const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
+/** How far back from the caret the trigger regexes look. */
+const TRIGGER_LOOKBEHIND = 60;
 
 export type RichTextComposerRef = {
   /** Inserts raw text (an emoji) at the current cursor position. */
   insertText: (text: string) => void;
   /** Replaces an in-progress trailing `@partial` token with `@Full Name `, or appends it if there's none. */
   insertMentionText: (name: string) => void;
+  /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
+  insertMarkdown: (markdown: string) => void;
+  /** Replaces the `/query` being typed with the result of a slash command. The `emoji` command only clears the query, the parent opens its palette. */
+  applySlashCommand: (action: SlashCommandAction) => void;
+  /** Replaces the `#query` being typed with a link to another item, shown as `#Name`. */
+  insertItemReference: (name: string, href: string) => void;
   focus: () => void;
   isEmpty: () => boolean;
 };
@@ -46,11 +64,42 @@ export type RichTextComposerProps = {
   onEnterSubmit?: () => void;
   /** When set, Escape fires this — `CommentEditForm`'s "Cancel". */
   onEscape?: () => void;
+  /** Fired as the caret moves or the text changes, with the `/command` or `#item` being typed there, or null when there is none. */
+  onTriggerChange?: (trigger: ComposerTrigger | null) => void;
+  /**
+   * Offered every key press first, so a suggestion menu can claim the arrows,
+   * Enter, Tab and Escape while it is open. Return true when the key was
+   * handled, and the editor then ignores it.
+   */
+  onSuggestionKeyDown?: (event: KeyboardEvent) => boolean;
   autoFocus?: boolean;
   /** True when rendered inside `CommentComposer`'s own unified Slack-style box — drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Defaults to false for standalone use (`CommentEditForm`), which keeps its own self-contained bordered box. */
   embedded?: boolean;
   /** Embedded mode only: whether the formatting toolbar row is shown — driven by `CommentComposer`'s "Aa" toggle. */
   show_toolbar?: boolean;
+};
+
+/** The text run from the caret back to the start of its `/` or `#` word, or null when the caret is not in one. */
+const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; text: string } | null => {
+  const { from, empty } = current_editor.state.selection;
+  if (!empty) return null;
+
+  const text_before = current_editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
+  const slash = SLASH_TRIGGER.exec(text_before);
+  if (slash) return { trigger: { kind: "slash", query: slash[1] }, text: slash[0].trimStart() };
+  const reference = REFERENCE_TRIGGER.exec(text_before);
+  if (reference) return { trigger: { kind: "reference", query: reference[1] }, text: reference[0].trimStart() };
+  return null;
+};
+
+const detectTrigger = (current_editor: Editor): ComposerTrigger | null => findTriggerMatch(current_editor)?.trigger ?? null;
+
+/** Deletes the trigger text (`/query` or `#query`) in front of the caret, leaving the caret where it started. */
+const deleteTriggerText = (current_editor: Editor): void => {
+  const match = findTriggerMatch(current_editor);
+  if (!match) return;
+  const { from } = current_editor.state.selection;
+  current_editor.chain().focus().deleteRange({ from: from - match.text.length, to: from }).run();
 };
 
 const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => void; children: React.ReactNode }> = ({
@@ -99,12 +148,22 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       min_height_class = "min-h-16",
       onEnterSubmit,
       onEscape,
+      onTriggerChange,
+      onSuggestionKeyDown,
       autoFocus,
       embedded = false,
       show_toolbar = true,
     },
     ref
   ) => {
+    // Read through refs, so the editor (created once) always calls the parent's latest callbacks.
+    const trigger_change_ref = useRef(onTriggerChange);
+    const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
+    useEffect(() => {
+      trigger_change_ref.current = onTriggerChange;
+      suggestion_key_down_ref.current = onSuggestionKeyDown;
+    });
+
     const editor = useEditor({
       extensions: [
         // StarterKit v3 already bundles `link`, so it's configured here instead of registering `Link` separately.
@@ -124,7 +183,12 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onUpdate: ({ editor: current_editor }) => {
         onChange(current_editor.getMarkdown());
         onPlainTextChange?.(current_editor.getText());
+        trigger_change_ref.current?.(detectTrigger(current_editor));
       },
+      onSelectionUpdate: ({ editor: current_editor }) => {
+        trigger_change_ref.current?.(detectTrigger(current_editor));
+      },
+      onBlur: () => trigger_change_ref.current?.(null),
       editorProps: {
         attributes: {
           class: embedded
@@ -132,6 +196,10 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             : `shell-rich-text-editor ${min_height_class} w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-colors focus:border-[#00c875]`,
         },
         handleKeyDown: (_view, event) => {
+          if (suggestion_key_down_ref.current?.(event)) {
+            event.preventDefault();
+            return true;
+          }
           if (event.key !== "Enter") {
             if (event.key === "Escape" && onEscape) {
               event.preventDefault();
@@ -224,6 +292,36 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           } else {
             editor.chain().focus().insertContent(`@${name} `).run();
           }
+        },
+        insertMarkdown: (markdown: string) => {
+          editor?.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();
+        },
+        applySlashCommand: (action: SlashCommandAction) => {
+          if (!editor) return;
+          deleteTriggerText(editor);
+          const chain = editor.chain().focus();
+          if (action.type === "text") chain.insertContent(action.text).run();
+          else if (action.type === "mention") chain.insertContent("@").run();
+          else if (action.type === "markdown") chain.insertContent(action.markdown, { contentType: "markdown" }).run();
+          else if (action.type === "block") {
+            if (action.block === "bullet_list") chain.toggleBulletList().run();
+            else if (action.block === "ordered_list") chain.toggleOrderedList().run();
+            else if (action.block === "quote") chain.toggleBlockquote().run();
+            else if (action.block === "code_block") chain.toggleCodeBlock().run();
+            else chain.setHorizontalRule().run();
+          }
+        },
+        insertItemReference: (name: string, href: string) => {
+          if (!editor) return;
+          deleteTriggerText(editor);
+          editor
+            .chain()
+            .focus()
+            .insertContent([
+              { type: "text", text: `#${name}`, marks: [{ type: "link", attrs: { href } }] },
+              { type: "text", text: " " },
+            ])
+            .run();
         },
         focus: () => editor?.commands.focus("end"),
         isEmpty: () => !editor || editor.isEmpty,

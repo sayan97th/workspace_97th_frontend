@@ -1,12 +1,21 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { boardDiscussionService } from "@/services/board-discussion.service";
 import { boardMuteService } from "@/services/board-mute.service";
+import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
+import { mapRevisionDto } from "./commentMapping";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
-import { buildMentionMatches, mentionOptionUserIds, type MentionOption } from "./mentionOptions";
-import type { DrawerAttachment, DrawerComment, DrawerComposerTarget, DrawerReaction } from "./types";
+import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
+import type {
+  DrawerAttachment,
+  DrawerComment,
+  DrawerCommentRevision,
+  DrawerComposerTarget,
+  DrawerReaction,
+  RemoteCommentEvent,
+} from "./types";
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
@@ -63,6 +72,17 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   comment_count: number;
   /** Whether the "Board updates" badge should read as unseen (red) rather than caught-up (gray) — true until the drawer is opened once, since opening it marks the board as viewed server-side. */
   has_unseen_comments: boolean;
+
+  /** How many updates other people posted since the thread was loaded, shown as the "N new updates" pill. */
+  pending_update_count: number;
+  /** Refetches the thread and folds in everything counted by {@link pending_update_count}. */
+  loadPendingUpdates: () => void;
+  /** Feeds a `board_comment_posted` broadcast (see `useCommentPresence`) into the drawer. */
+  onRemoteCommentPosted: (event: RemoteCommentEvent) => void;
+  /** Ids of comments and replies that arrived through the pill, so the thread can badge them as new for the rest of this session. */
+  fresh_comment_ids: string[];
+  /** Loads the earlier versions of an edited update (or reply when `reply_id` is given), newest edit first. */
+  loadCommentRevisions: (comment_id: string, reply_id?: string) => Promise<DrawerCommentRevision[]>;
 
   /** Whether the current user has muted this board's notifications — fetched once the drawer opens. */
   is_muted: boolean;
@@ -154,6 +174,27 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const [emoji_palette_target, setEmojiPaletteTarget] = useState<DrawerComposerTarget | null>(null);
   const [reaction_palette_id, setReactionPaletteId] = useState<string | null>(null);
   const [is_muted, setIsMuted] = useState(false);
+  // Account teams the `@mention` picker can offer as groups.
+  const [mention_teams, setMentionTeams] = useState<MentionTeam[]>([]);
+  // Ids other people posted while the drawer was open, which drive the "N new updates" pill until the
+  // viewer loads them, and (afterwards) the "New" badge kept for the rest of the session.
+  const [pending_comment_ids, setPendingCommentIds] = useState<string[]>([]);
+  const [fresh_comment_ids, setFreshCommentIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let is_current = true;
+    peopleService
+      .listBoardTeams(board_id)
+      .then((teams) => {
+        if (is_current) setMentionTeams(teams.map((team) => ({ id: String(team.id), name: team.name, member_ids: team.member_ids.map(String) })));
+      })
+      .catch(() => {
+        // Without teams the picker still offers Everyone and every person.
+      });
+    return () => {
+      is_current = false;
+    };
+  }, [board_id]);
 
   const detectMention = (target: DrawerComposerTarget, value: string) => {
     // `value` is the composer's Markdown body — plain text, so the trigger
@@ -178,6 +219,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setMentionIdsByTarget({});
     setNotifiedIdsByTarget({});
     setCommentsError(null);
+    setPendingCommentIds([]);
+    setFreshCommentIds([]);
     setEditingTarget(null);
     setEditDraft("");
 
@@ -455,6 +498,15 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     const body = edit_draft.trim();
     if (isRichTextEmpty(body)) return;
 
+    // Saving the text unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
+    const current_comment = comments.find((comment) => comment.id === comment_id);
+    const current_body = reply_id ? current_comment?.replies.find((reply) => reply.id === reply_id)?.body : current_comment?.body;
+    if (current_body?.trim() === body) {
+      setEditingTarget(null);
+      setEditDraft("");
+      return;
+    }
+
     const previous_comments = comments;
     applyBodyEdit(comment_id, reply_id, body);
     setEditingTarget(null);
@@ -506,10 +558,49 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const mention_matches = useMemo(
     () =>
       mention_target
-        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id)
+        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id, undefined, mention_teams)
         : [],
-    [mention_target, mention_query, config.mentionable_people, config.current_user.id]
+    [mention_target, mention_query, config.mentionable_people, config.current_user.id, mention_teams]
   );
+
+  /**
+   * Records an update or reply another person just posted in this discussion
+   * (announced by the `board_comment_posted` presence broadcast). Nothing is
+   * inserted into the thread on its own, so the list never jumps under the
+   * viewer: the id only feeds the "N new updates" pill, which
+   * {@link loadPendingUpdates} resolves on click. Ignores the viewer's own
+   * posts (already added locally) and anything the thread already shows.
+   */
+  const onRemoteCommentPosted = (event: RemoteCommentEvent) => {
+    if (!is_open) return;
+    if (event.author_id !== null && String(event.author_id) === config.current_user.id) return;
+
+    const comment_id = String(event.comment_id);
+    const known_ids = comments.flatMap((comment) => [comment.id, ...comment.replies.map((reply) => reply.id)]);
+    if (known_ids.includes(comment_id)) return;
+
+    setPendingCommentIds((current) => (current.includes(comment_id) ? current : [...current, comment_id]));
+  };
+
+  const loadPendingUpdates = () => {
+    if (pending_comment_ids.length === 0) return;
+    const arrived_ids = pending_comment_ids;
+
+    boardDiscussionService
+      .listComments(board_id)
+      .then((dtos) => {
+        setComments(dtos.map(mapDiscussionCommentDtoToDrawerComment));
+        setFreshCommentIds((current) => Array.from(new Set([...current, ...arrived_ids])));
+        setPendingCommentIds((current) => current.filter((id) => !arrived_ids.includes(id)));
+      })
+      .catch(() => setCommentsError("Couldn't load the new updates. Please try again."));
+  };
+
+  /** The earlier versions of an edited update, or reply when `reply_id` is given. */
+  const loadCommentRevisions = async (comment_id: string, reply_id?: string): Promise<DrawerCommentRevision[]> => {
+    const dtos = await boardDiscussionService.listRevisions(board_id, Number(reply_id ?? comment_id));
+    return dtos.map(mapRevisionDto);
+  };
 
   const composer_attachments = useMemo(
     () => composer_attachment_drafts.map((draft) => draft.attachment),
@@ -538,6 +629,11 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     comments_error,
     comment_count,
     has_unseen_comments,
+    pending_update_count: pending_comment_ids.length,
+    loadPendingUpdates,
+    onRemoteCommentPosted,
+    fresh_comment_ids,
+    loadCommentRevisions,
     is_muted,
     toggleMute,
 

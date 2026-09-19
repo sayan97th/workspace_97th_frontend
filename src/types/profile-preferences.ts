@@ -17,6 +17,8 @@ export type WorkingStatusPayload = {
 export type NotificationPreferencesPayload = {
   preferences?: Record<string, boolean>;
   desktop_notifications_enabled?: boolean;
+  notification_sound_enabled?: boolean;
+  tab_badge_enabled?: boolean;
   quiet_hours_enabled?: boolean;
   quiet_hours_start?: string;
   quiet_hours_end?: string;

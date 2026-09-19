@@ -6,7 +6,9 @@ import { useAuth } from "@/context/AuthContext";
 import { getToken } from "@/lib/api-client";
 import { showDesktopNotification } from "@/lib/desktop-notifications";
 import { getEcho } from "@/lib/echo";
-import { notificationsService } from "@/services/notifications.service";
+import { playNotificationSound } from "@/lib/notification-sound";
+import { notificationsService, type NotificationBulkAction } from "@/services/notifications.service";
+import { useTabBadge } from "@/hooks/useTabBadge";
 import { mapNotificationDto, type NotificationDto } from "@/types/notifications";
 import {
   default_notification_filters,
@@ -21,13 +23,18 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 
 const PAGE_SIZE = 20;
 
+/** The API takes at most this many ids per bulk request. */
+const BULK_BATCH_SIZE = 100;
+
 /**
  * Fetches the current user's notifications (cursor paginated, filtered
  * server-side) and unread count, keeps them live via the
  * `notifications.{user_id}` Reverb channel, raises a Slack-style toast (and,
  * when the tab is in the background, a desktop notification) for each incoming
- * one unless the user's quiet hours are active, and exposes the drawer's
- * actions: open, mark as (un)read, snooze, dismiss.
+ * one unless the user's quiet hours are active (with a short chime when they
+ * turned the sound on), prefixes the tab title with the unread count when they
+ * left that on, and exposes the drawer's actions: open, mark as (un)read,
+ * snooze, dismiss, and the same on a multi-selection.
  */
 export function useNotifications() {
   const { user } = useAuth();
@@ -46,6 +53,7 @@ export function useNotifications() {
   const filters_ref = useRef(filters);
   const notifications_ref = useRef(notifications);
   const desktop_enabled_ref = useRef(false);
+  const sound_enabled_ref = useRef(false);
   // Only the newest list request may write its result: a slower response for
   // an older filter combination must never overwrite a newer one.
   const request_id_ref = useRef(0);
@@ -58,6 +66,10 @@ export function useNotifications() {
   useEffect(() => {
     desktop_enabled_ref.current = user?.desktop_notifications_enabled ?? false;
   }, [user?.desktop_notifications_enabled]);
+
+  useEffect(() => {
+    sound_enabled_ref.current = user?.notification_sound_enabled ?? false;
+  }, [user?.notification_sound_enabled]);
 
   const loadUnreadCount = useCallback(async () => {
     try {
@@ -157,6 +169,8 @@ export function useNotifications() {
         // Quiet hours keep the notification in the bell but never interrupt.
         if (payload.is_silenced) return;
 
+        if (sound_enabled_ref.current) playNotificationSound();
+
         showToast({
           actor_name: notification.actor.name,
           actor_initials: notification.actor.initials,
@@ -170,7 +184,7 @@ export function useNotifications() {
         });
 
         // The toast already covers a visible tab, the desktop notification is for one in the background.
-        if (desktop_enabled_ref.current && document.visibilityState !== "visible") {
+        if (desktop_enabled_ref.current && !payload.is_push_muted && document.visibilityState !== "visible") {
           showDesktopNotification({
             title: `${notification.actor.name} ${notification.action_label.toLowerCase()}`,
             body: [notification.action_target, notification.board.name].filter(Boolean).join(" · "),
@@ -259,6 +273,48 @@ export function useNotifications() {
     [notifications, loadNotifications, loadUnreadCount]
   );
 
+  /**
+   * Applies one action to several notifications at once (the drawer's
+   * multi-select toolbar). The list updates right away, the server confirms
+   * in batches of {@link BULK_BATCH_SIZE}, and a failure reloads the list and
+   * the count so neither can drift from the server.
+   */
+  const bulkAction = useCallback(
+    (action: NotificationBulkAction, ids: string[]) => {
+      const id_set = new Set(ids);
+      if (id_set.size === 0) return;
+
+      const affected = notifications.filter((item) => id_set.has(item.id));
+      const unread_delta = affected.reduce((delta, item) => {
+        if (action === "read" || action === "dismiss") return item.is_unread ? delta - 1 : delta;
+        return item.is_unread ? delta : delta + 1;
+      }, 0);
+
+      setNotifications((previous) =>
+        action === "dismiss"
+          ? previous.filter((item) => !id_set.has(item.id))
+          : previous.map((item) => (id_set.has(item.id) ? { ...item, is_unread: action === "unread" } : item))
+      );
+      setUnreadCount((previous) => Math.max(0, previous + unread_delta));
+
+      const batches: string[][] = [];
+      for (let index = 0; index < ids.length; index += BULK_BATCH_SIZE) batches.push(ids.slice(index, index + BULK_BATCH_SIZE));
+
+      batches
+        .reduce((chain, batch) => chain.then(() => notificationsService.bulk(action, batch)), Promise.resolve<{ unread_count: number } | null>(null))
+        .then((result) => {
+          if (result) setUnreadCount(result.unread_count);
+        })
+        .catch(() => {
+          loadNotifications(filters_ref.current);
+          loadUnreadCount();
+        });
+    },
+    [notifications, loadNotifications, loadUnreadCount]
+  );
+
+  useTabBadge(unread_count, user?.tab_badge_enabled ?? true);
+
   return {
     notifications,
     unread_count,
@@ -276,5 +332,6 @@ export function useNotifications() {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
+    bulkAction,
   };
 }

@@ -15,7 +15,7 @@ export type CommentPresenceUser = {
 const TYPING_TIMEOUT_MS = 3000;
 
 type UseCommentPresenceOptions = {
-  /** Fired for every `item_comment_posted` broadcast on the joined channel (a comment or reply another person just posted on that item). */
+  /** Fired for every `item_comment_posted` or `board_comment_posted` broadcast on the joined channel (a comment or reply another person just posted there). */
   onCommentPosted?: (event: RemoteCommentEvent) => void;
 };
 
@@ -29,8 +29,9 @@ type UseCommentPresenceOptions = {
  * write, no `Notification`/broadcast event) — each whisper refreshes a
  * per-user timeout that drops them from {@link typing_names} after
  * {@link TYPING_TIMEOUT_MS} of silence. The same channel also carries
- * `item_comment_posted` (see `App\Events\ItemCommentPosted`), forwarded to
- * {@link UseCommentPresenceOptions.onCommentPosted}.
+ * `item_comment_posted` (see `App\Events\ItemCommentPosted`) or, for the board
+ * discussion, `board_comment_posted` (`App\Events\BoardCommentPosted`), both
+ * forwarded to {@link UseCommentPresenceOptions.onCommentPosted}.
  */
 export function useCommentPresence(channel_name: string | null, options: UseCommentPresenceOptions = {}) {
   const { user } = useAuth();
@@ -60,6 +61,7 @@ export function useCommentPresence(channel_name: string | null, options: UseComm
       .joining((member: CommentPresenceUser) => setPresenceUsers((current) => [...current, member]))
       .leaving((member: CommentPresenceUser) => setPresenceUsers((current) => current.filter((existing) => existing.id !== member.id)))
       .listen(".item_comment_posted", (payload: RemoteCommentEvent) => comment_posted_ref.current?.(payload))
+      .listen(".board_comment_posted", (payload: RemoteCommentEvent) => comment_posted_ref.current?.(payload))
       .listenForWhisper("typing", (payload: { id: number; name: string }) => {
         if (payload.id === user.id) return;
 

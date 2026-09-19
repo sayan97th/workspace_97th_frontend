@@ -1,27 +1,31 @@
 "use client";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import { useAuth } from "@/context/AuthContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { getUserInitials } from "@/lib/user";
-import { Dropdown } from "@/components/ui/dropdown/Dropdown";
-import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import FeedFilterBar from "@/components/feed/FeedFilterBar";
+import FeedSavedViewsMenu from "@/components/feed/FeedSavedViewsMenu";
 import SlideOverDrawer from "./SlideOverDrawer";
 import UpdateFeedCard from "./UpdateFeedCard";
+import { useFeedSavedViews } from "@/hooks/useFeedSavedViews";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import {
   BookmarkIcon,
   ChatBubbleIcon,
-  ChevronDownIcon,
   CloseIcon,
   FeedSettingsIcon,
   MentionIcon,
 } from "@/icons/workspace-icons";
 import {
+  countActiveFeedFilters,
+  default_feed_filters,
   feed_default_board_filter,
   feed_helper_prompt,
   update_feed_default_tab,
   update_feed_tabs,
+  type FeedFilters,
+  type FeedSavedView,
   type UpdateFeedTab,
   type UpdateFeedTabId,
 } from "@/data/update-feed-data";
@@ -29,14 +33,6 @@ import {
 type UpdateFeedPanelProps = {
   is_open: boolean;
   onClose: () => void;
-};
-
-/** Which read state the feed list is filtered to. */
-type FeedReadFilter = "unread" | "all";
-
-const read_filter_labels: Record<FeedReadFilter, string> = {
-  unread: "Unread updates",
-  all: "All updates",
 };
 
 /** Resolves a tab's optional leading glyph. */
@@ -48,9 +44,10 @@ const renderTabIcon = (tab: UpdateFeedTab) => {
 
 /**
  * Wide update-feed drawer opened from the AppTopBar feed button. A left sidebar
- * filters by board while the content pane shows the "All updates",
- * "I was mentioned", "Bookmarked", "All account" and "Scheduled" tabs, a
- * read-state filter and the feed cards. Backed by real `BoardItemComment`/
+ * filters by board (with per-board unread badges) while the content pane shows
+ * the "All updates", "I was mentioned", "Bookmarked", "All account" and
+ * "Scheduled" tabs, a filter row (search, person, kind, dates, unread only),
+ * saved views, "Mark all as read" and the feed cards. Backed by real `BoardItemComment`/
  * `BoardComment` rows via {@link useFeedUpdates}: pages in as it is scrolled,
  * and stays live over the `feed.{user_id}` Reverb channel, announcing what
  * other people post with an "N new updates" banner.
@@ -59,8 +56,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const [active_tab, setActiveTab] =
     useState<UpdateFeedTabId>(update_feed_default_tab);
   const [active_board, setActiveBoard] = useState(feed_default_board_filter);
-  const [read_filter, setReadFilter] = useState<FeedReadFilter>("all");
-  const [is_filter_open, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<FeedFilters>(default_feed_filters);
 
   const { user } = useAuth();
   const scroll_area_ref = useRef<HTMLDivElement>(null);
@@ -70,6 +66,9 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     pending_count,
     showPendingUpdates,
     boards,
+    authors,
+    loadAuthors,
+    unread_count,
     is_loading,
     is_loading_more,
     has_more,
@@ -80,7 +79,15 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     replyToUpdate,
     scheduleReply,
     markSeen,
-  } = useFeedUpdates({ tab: active_tab, board_id: active_board });
+    markUnread,
+    markAllSeen,
+  } = useFeedUpdates({ tab: active_tab, board_id: active_board, filters });
+  const { saved_views, saveView, deleteView } = useFeedSavedViews();
+
+  const updateFilters = useCallback((patch: Partial<FeedFilters>) => setFilters((previous) => ({ ...previous, ...patch })), []);
+  const clearFilters = useCallback(() => setFilters(default_feed_filters), []);
+  const active_filter_count = countActiveFeedFilters(filters);
+  const is_scheduled_tab = active_tab === "scheduled";
 
   const current_user: BoardPersonOption = useMemo(
     () =>
@@ -96,11 +103,6 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     [user]
   );
 
-  const visible_updates = useMemo(
-    () => updates.filter((update) => read_filter === "all" || update.is_unread),
-    [updates, read_filter]
-  );
-
   const sentinel_ref = useInfiniteScroll({
     onLoadMore: loadMore,
     can_load_more: is_open && has_more && !is_loading && !is_loading_more,
@@ -113,9 +115,14 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     scroll_area_ref.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const selectReadFilter = (value: FeedReadFilter) => {
-    setReadFilter(value);
-    setIsFilterOpen(false);
+  const applySavedView = (view: FeedSavedView) => {
+    setActiveTab(view.tab);
+    setActiveBoard(view.board_id);
+    setFilters(view.filters);
+  };
+
+  const saveCurrentView = async (name: string) => {
+    await saveView(name, active_tab, active_board, filters);
   };
 
   return (
@@ -171,8 +178,18 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                     : "font-medium text-shell-text-secondary hover:bg-shell-hover"
                 }`}
               >
-                <span>{board.name}</span>
-                <span className="text-shell-text-muted">{board.count}</span>
+                <span className="truncate">{board.name}</span>
+                <span className="ml-2 flex flex-none items-center gap-1.5 text-shell-text-muted">
+                  {board.unread_count > 0 && (
+                    <span
+                      className="rounded-full bg-brand-500 px-1.5 py-px text-[10.5px] font-bold text-white"
+                      aria-label={`${board.unread_count} unread`}
+                    >
+                      {board.unread_count}
+                    </span>
+                  )}
+                  {board.count}
+                </span>
               </button>
             );
           })}
@@ -236,49 +253,48 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
             )}
           </div>
 
-          {/* Read-state filter */}
-          <div className="relative mb-[18px] inline-flex items-center gap-1.5 text-[13px] font-semibold text-shell-text-secondary">
-            Show
-            <button
-              type="button"
-              onClick={() => setIsFilterOpen((previous) => !previous)}
-              className="dropdown-toggle flex items-center gap-1.5 text-shell-text"
-              aria-haspopup="menu"
-              aria-expanded={is_filter_open}
-            >
-              {read_filter_labels[read_filter]}
-              <ChevronDownIcon size={11} />
-            </button>
-            <Dropdown
-              isOpen={is_filter_open}
-              onClose={() => setIsFilterOpen(false)}
-              className="!left-9 !right-auto mt-1 w-[168px] !border-shell-border-strong !bg-shell-panel p-1.5"
-            >
-              {(Object.keys(read_filter_labels) as FeedReadFilter[]).map(
-                (value) => (
-                  <DropdownItem
-                    key={value}
-                    tag="button"
-                    baseClassName=""
-                    onItemClick={() => selectReadFilter(value)}
-                    className={`flex w-full items-center rounded-lg px-3 py-2 text-left text-theme-sm font-medium hover:bg-shell-hover ${
-                      read_filter === value ? "!text-shell-text" : "!text-shell-text-secondary"
-                    }`}
+          {/* Filters and saved views. Scheduled updates are the viewer's own drafts, so filtering them makes no sense. */}
+          {!is_scheduled_tab && (
+            <>
+              <div className="mb-2.5 flex items-center gap-2">
+                <FeedSavedViewsMenu
+                  saved_views={saved_views}
+                  onApply={applySavedView}
+                  onDelete={(id) => void deleteView(id)}
+                  onSave={saveCurrentView}
+                  can_save={active_filter_count > 0 || active_tab !== update_feed_default_tab || active_board !== feed_default_board_filter}
+                />
+                {unread_count > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void markAllSeen()}
+                    className="ml-auto whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
                   >
-                    {read_filter_labels[value]}
-                  </DropdownItem>
-                )
-              )}
-            </Dropdown>
-          </div>
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+              <FeedFilterBar
+                filters={filters}
+                onChange={updateFilters}
+                onClear={clearFilters}
+                authors={authors}
+                onLoadAuthors={loadAuthors}
+              />
+            </>
+          )}
 
-          {visible_updates.length === 0 && !has_more ? (
+          {updates.length === 0 && !has_more ? (
             <p className="pt-6 text-center text-[13px] text-shell-text-muted">
-              {is_loading ? "Loading updates…" : "You're all caught up."}
+              {is_loading
+                ? "Loading updates…"
+                : active_filter_count > 0
+                  ? "No updates match these filters."
+                  : "You're all caught up."}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
-              {visible_updates.map((update) => (
+              {updates.map((update) => (
                 <UpdateFeedCard
                   key={update.id}
                   update={update}
@@ -289,6 +305,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   onReply={replyToUpdate}
                   onSchedule={scheduleReply}
                   onMarkSeen={markSeen}
+                  onMarkUnread={markUnread}
                 />
               ))}
             </div>

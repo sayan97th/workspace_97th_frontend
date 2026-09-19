@@ -1,9 +1,11 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { UpdatesTabIcon } from "@/icons/drawer-icons";
 import { BellIcon, FolderPathIcon } from "@/icons/workspace-icons";
 import CommentComposer from "./CommentComposer";
+import CommentFilterBar from "./CommentFilterBar";
+import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import SlideOverPanel from "./SlideOverPanel";
@@ -34,8 +36,26 @@ export type BoardDiscussionDrawerProps = {
 const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer }) => {
   // Bare name (no `presence-` prefix): `Echo.join()` prepends that itself,
   // matching `Broadcast::channel('presence-board-discussion.{id}', ...)`.
-  const presence = useCommentPresence(drawer.is_open ? `board-discussion.${drawer.board_id}` : null);
+  const presence = useCommentPresence(drawer.is_open ? `board-discussion.${drawer.board_id}` : null, {
+    onCommentPosted: drawer.onRemoteCommentPosted,
+  });
   const last_whisper_at_ref = useRef(0);
+  const scroll_area_ref = useRef<HTMLDivElement>(null);
+  const [filters, setFilters] = useState<CommentFilters>(default_comment_filters);
+  const updateFilters = useCallback((patch: Partial<CommentFilters>) => setFilters((previous) => ({ ...previous, ...patch })), []);
+  const clearFilters = useCallback(() => setFilters(default_comment_filters), []);
+  const is_filtering = countActiveCommentFilters(filters) > 0;
+  const visible_comments = useMemo(
+    () => filterComments(drawer.comments, filters, drawer.current_user.id),
+    [drawer.comments, filters, drawer.current_user.id]
+  );
+  const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
+
+  // The thread reads newest first here, so freshly loaded updates land at the top: bring that end into view.
+  const showPendingUpdates = () => {
+    drawer.loadPendingUpdates();
+    requestAnimationFrame(() => scroll_area_ref.current?.scrollTo({ top: 0, behavior: "smooth" }));
+  };
   const handleComposerChange = (value: string) => {
     drawer.onComposerTextChange(value);
     const now = Date.now();
@@ -112,10 +132,36 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           onRemoveAttachment={drawer.removeComposerAttachment}
         />
         <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />
+        {drawer.comments.length > 0 && (
+          <CommentFilterBar
+            filters={filters}
+            onChange={updateFilters}
+            onClear={clearFilters}
+            authors={authors}
+            visible_count={visible_comments.length}
+            total_count={drawer.comments.length}
+          />
+        )}
       </div>
 
       {/* Discussion feed */}
-      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+      <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+        {/* Live "N new updates" pill: sticks to the top edge, where the newest updates land once loaded. */}
+        <div role="status" aria-live="polite" className="sticky top-1 z-[3] flex justify-center">
+          {drawer.pending_update_count > 0 && (
+            <button
+              type="button"
+              onClick={showPendingUpdates}
+              className="mt-1 flex items-center gap-1.5 rounded-full bg-[#00c875] px-3.5 py-1.5 text-[12.5px] font-bold text-[#04241a] shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-[#00e084]"
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                <path d="M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              {drawer.pending_update_count} new {drawer.pending_update_count === 1 ? "update" : "updates"}
+            </button>
+          )}
+        </div>
+
         {drawer.comments_error && (
           <div className="mt-3 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
             {drawer.comments_error}
@@ -139,7 +185,11 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           </div>
         )}
 
-        {drawer.comments
+        {is_filtering && visible_comments.length === 0 && drawer.comments.length > 0 && (
+          <div className="mt-6 text-center text-[13px] text-shell-text-faint">No updates match these filters.</div>
+        )}
+
+        {visible_comments
           .slice()
           .sort((a, b) => Number(b.pinned) - Number(a.pinned))
           .map((comment) => (
@@ -178,6 +228,8 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
               onToggleEmojiPalette={drawer.toggleEmojiPalette}
               onCloseEmojiPalette={drawer.closeEmojiPalette}
               onInsertEmoji={drawer.insertEmoji}
+              fresh_comment_ids={drawer.fresh_comment_ids}
+              onLoadRevisions={drawer.loadCommentRevisions}
             />
           ))}
       </div>

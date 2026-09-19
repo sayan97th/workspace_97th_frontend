@@ -22,6 +22,8 @@ export type NotificationDto = {
   group_key: string;
   /** Only on the websocket payload: true while the recipient's quiet hours are active, so no toast or desktop push should fire. */
   is_silenced?: boolean;
+  /** Only on the websocket payload: true when the recipient turned off the desktop push for this notification type. */
+  is_push_muted?: boolean;
 };
 
 /** `GET /api/notifications`: one cursor-paginated page. */

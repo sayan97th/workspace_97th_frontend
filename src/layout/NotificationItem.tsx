@@ -9,7 +9,7 @@ import {
   type NotificationSnoozePresetId,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
-import { CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import { CheckIcon, CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 
 /** The actor as the shared {@link PersonAvatar} expects it, so the drawer shows the real profile photo and falls back to initials. */
 export const notificationActorToPerson = (actor: NotificationActor): BoardPersonOption => ({
@@ -20,6 +20,20 @@ export const notificationActorToPerson = (actor: NotificationActor): BoardPerson
   avatar_url: actor.avatar_url,
 });
 
+/** The round tick box shown in front of a card while the drawer is in multi-select mode. */
+export const NotificationSelectBox: React.FC<{ is_selected: boolean }> = ({ is_selected }) => (
+  <span
+    role="checkbox"
+    aria-checked={is_selected}
+    aria-label={is_selected ? "Selected" : "Not selected"}
+    className={`mt-1 flex h-[18px] w-[18px] flex-none items-center justify-center rounded-full border transition-colors ${
+      is_selected ? "border-brand-500 bg-brand-500 text-white" : "border-shell-border-strong text-transparent"
+    }`}
+  >
+    <CheckIcon size={10} />
+  </span>
+);
+
 type NotificationItemProps = {
   notification: WorkspaceNotification;
   onSelect?: (id: string) => void;
@@ -29,6 +43,12 @@ type NotificationItemProps = {
   onSnooze?: (id: string, preset: NotificationSnoozePresetId) => void;
   /** Rendered inside an expanded {@link NotificationGroupCard}, so it sits a little tighter. */
   is_nested?: boolean;
+  /** The keyboard cursor (j and k) is on this card. */
+  is_focused?: boolean;
+  /** Multi-select mode: a tick box shows and a click toggles the selection instead of opening the notification. */
+  is_selecting?: boolean;
+  is_selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 };
 
 const MENU_ITEM_CLASS =
@@ -49,6 +69,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   onMarkUnread,
   onSnooze,
   is_nested = false,
+  is_focused = false,
+  is_selecting = false,
+  is_selected = false,
+  onToggleSelect,
 }) => {
   const { id, actor, action_label, action_target, board, time_label, is_unread } = notification;
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
@@ -66,11 +90,13 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <div className="group relative">
       <button
         type="button"
-        onClick={() => onSelect?.(id)}
-        className={`flex w-full gap-3 rounded-[11px] border border-shell-border bg-shell-panel-alt text-left transition-colors hover:border-shell-border-strong ${
-          is_nested ? "p-[11px]" : "p-[13px]"
-        }`}
+        onClick={() => (is_selecting ? onToggleSelect?.(id) : onSelect?.(id))}
+        aria-pressed={is_selecting ? is_selected : undefined}
+        className={`flex w-full gap-3 rounded-[11px] border bg-shell-panel-alt text-left transition-colors hover:border-shell-border-strong ${
+          is_selected ? "border-brand-500" : "border-shell-border"
+        } ${is_focused ? "ring-2 ring-brand-500/60" : ""} ${is_nested ? "p-[11px]" : "p-[13px]"}`}
       >
+        {is_selecting && <NotificationSelectBox is_selected={is_selected} />}
         <PersonAvatar person={notificationActorToPerson(actor)} size={30} />
 
         <span className="min-w-0 flex-1">
@@ -101,7 +127,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </span>
       </button>
 
-      {(onDismiss || has_menu) && (
+      {!is_selecting && (onDismiss || has_menu) && (
         <div
           className={`absolute right-2 top-2 flex items-center gap-0.5 rounded-md bg-shell-panel-alt transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
             is_menu_open ? "opacity-100" : "opacity-0"

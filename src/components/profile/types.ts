@@ -30,13 +30,18 @@ export type ProfileNotificationSeed = {
   category: ProfileNotificationCategory;
 };
 
-/** One row of the Notifications table after per-row app/email/Slack state has been merged in. */
+/** One row of the Notifications table after per-row app/email/Slack/push state has been merged in. */
 export type ProfileNotificationRow = ProfileNotificationSeed & {
   show_header: boolean;
   app_on: boolean;
   email_on: boolean;
   slack_on: boolean;
+  /** Whether a live notification of this type also raises a desktop push, once desktop notifications are enabled. */
+  push_on: boolean;
 };
+
+/** A column of the Notifications table. */
+export type ProfileNotificationChannel = "app" | "email" | "slack" | "push";
 
 /**
  * One row of the personal Session history table. There is no "Location" column —

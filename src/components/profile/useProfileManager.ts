@@ -7,6 +7,7 @@ import {
   requestDesktopNotificationPermission,
   type DesktopNotificationPermission,
 } from "@/lib/desktop-notifications";
+import { playNotificationSound } from "@/lib/notification-sound";
 import { apiErrorMessage, profilePreferencesService } from "@/services/profile-preferences.service";
 import { PROFILE_NOTIFICATION_SEED, PROFILE_STATUS_OPTIONS } from "@/data/profile-data";
 import type { EmailDigestFrequency } from "@/types/auth";
@@ -14,6 +15,7 @@ import type { UserSessionDto } from "@/types/profile-preferences";
 import type {
   ProfileDateFormat,
   ProfileFirstDayOfWeek,
+  ProfileNotificationChannel,
   ProfileNotificationRow,
   ProfileSectionId,
   ProfileSessionRow,
@@ -45,6 +47,15 @@ export type ProfileManagerApi = {
   toggleNotificationApp: (key: string) => void;
   toggleNotificationEmail: (key: string) => void;
   toggleNotificationSlack: (key: string) => void;
+  toggleNotificationPush: (key: string) => void;
+  /** Turns one whole column (in app, email, Slack or desktop push) on or off for every notification type at once. */
+  setNotificationChannelForAll: (channel: ProfileNotificationChannel, is_on: boolean) => void;
+  /** Puts every notification preference back to its default. */
+  resetNotificationPreferences: () => void;
+  notification_sound_enabled: boolean;
+  toggleNotificationSound: () => void;
+  tab_badge_enabled: boolean;
+  toggleTabBadge: () => void;
   is_desktop_banner_dismissed: boolean;
   dismissDesktopBanner: () => void;
   desktop_notifications_enabled: boolean;
@@ -107,6 +118,8 @@ const BASE_NOTIFICATION_PREFS: Record<string, boolean> = {
   automation_failures_email: true,
   platform_api_app: false,
   platform_api_email: false,
+  due_date_reminder_app: true,
+  due_date_reminder_email: true,
   requests_access_app: true,
   requests_access_email: true,
   requests_install_app: true,
@@ -124,15 +137,19 @@ const BASE_NOTIFICATION_PREFS: Record<string, boolean> = {
 };
 
 /**
- * Slack starts out mirroring each row's in-app default, since a notification the user did not
- * want in the app is not one they want in Slack either. Slack only delivers anything once the
- * user has connected their own Slack account, see `NotificationsSection`.
+ * Slack and the desktop push start out mirroring each row's in-app default, since a notification
+ * the user did not want in the app is not one they want in Slack or on their desktop either. Slack
+ * only delivers anything once the user has connected their own Slack account, and the push only
+ * once desktop notifications are enabled, see `NotificationsSection`.
  */
 const DEFAULT_NOTIFICATION_PREFS: Record<string, boolean> = Object.fromEntries([
   ...Object.entries(BASE_NOTIFICATION_PREFS),
   ...Object.entries(BASE_NOTIFICATION_PREFS)
     .filter(([preference_key]) => preference_key.endsWith("_app"))
-    .map(([preference_key, is_on]) => [preference_key.replace(/_app$/, "_slack"), is_on]),
+    .flatMap(([preference_key, is_on]) => [
+      [preference_key.replace(/_app$/, "_slack"), is_on],
+      [preference_key.replace(/_app$/, "_push"), is_on],
+    ]),
 ]);
 
 const DEBOUNCE_MS = 600;
@@ -176,6 +193,8 @@ export function useProfileManager(): ProfileManagerApi {
   const [notification_prefs, setNotificationPrefs] = useState(DEFAULT_NOTIFICATION_PREFS);
   const [is_desktop_banner_dismissed, setIsDesktopBannerDismissed] = useState(false);
   const [desktop_notifications_enabled, setDesktopNotificationsEnabledValue] = useState(false);
+  const [notification_sound_enabled, setNotificationSoundEnabledValue] = useState(false);
+  const [tab_badge_enabled, setTabBadgeEnabledValue] = useState(true);
   const [desktop_permission, setDesktopPermission] = useState<DesktopNotificationPermission>("default");
   const [quiet_hours_enabled, setQuietHoursEnabledValue] = useState(false);
   const [quiet_hours_start, setQuietHoursStartValue] = useState("22:00");
@@ -204,6 +223,8 @@ export function useProfileManager(): ProfileManagerApi {
     setHideOnlineStatusValue(user.hide_online_status);
     setNotificationPrefs({ ...DEFAULT_NOTIFICATION_PREFS, ...(user.notification_preferences ?? {}) });
     setDesktopNotificationsEnabledValue(user.desktop_notifications_enabled);
+    setNotificationSoundEnabledValue(user.notification_sound_enabled ?? false);
+    setTabBadgeEnabledValue(user.tab_badge_enabled ?? true);
     setQuietHoursEnabledValue(user.quiet_hours_enabled ?? false);
     setQuietHoursStartValue(user.quiet_hours_start ?? "22:00");
     setQuietHoursEndValue(user.quiet_hours_end ?? "07:00");
@@ -251,6 +272,7 @@ export function useProfileManager(): ProfileManagerApi {
         app_on: !!notification_prefs[`${seed.key}_app`],
         email_on: !!notification_prefs[`${seed.key}_email`],
         slack_on: !!notification_prefs[`${seed.key}_slack`],
+        push_on: !!notification_prefs[`${seed.key}_push`],
       };
     });
   })();
@@ -304,7 +326,7 @@ export function useProfileManager(): ProfileManagerApi {
     }
   };
 
-  const toggleNotificationChannel = (key: string, channel: "app" | "email" | "slack") => {
+  const toggleNotificationChannel = (key: string, channel: ProfileNotificationChannel) => {
     const preference_key = `${key}_${channel}`;
     const next_value = !notification_prefs[preference_key];
     setNotificationPrefs((current) => ({ ...current, [preference_key]: next_value }));
@@ -314,6 +336,41 @@ export function useProfileManager(): ProfileManagerApi {
   const toggleNotificationApp = (key: string) => toggleNotificationChannel(key, "app");
   const toggleNotificationEmail = (key: string) => toggleNotificationChannel(key, "email");
   const toggleNotificationSlack = (key: string) => toggleNotificationChannel(key, "slack");
+  const toggleNotificationPush = (key: string) => toggleNotificationChannel(key, "push");
+
+  /** Sets one column for every notification type, in a single request. */
+  const setNotificationChannelForAll = (channel: ProfileNotificationChannel, is_on: boolean) => {
+    const changes = Object.fromEntries(PROFILE_NOTIFICATION_SEED.map((seed) => [`${seed.key}_${channel}`, is_on]));
+    setNotificationPrefs((current) => ({ ...current, ...changes }));
+    void saveNotificationPreferences({ preferences: changes });
+  };
+
+  const resetNotificationPreferences = () => {
+    const changes = Object.fromEntries(
+      PROFILE_NOTIFICATION_SEED.flatMap((seed) =>
+        (["app", "email", "slack", "push"] as const).map((channel) => [
+          `${seed.key}_${channel}`,
+          DEFAULT_NOTIFICATION_PREFS[`${seed.key}_${channel}`] ?? false,
+        ])
+      )
+    );
+    setNotificationPrefs((current) => ({ ...current, ...changes }));
+    void saveNotificationPreferences({ preferences: changes });
+  };
+
+  const toggleNotificationSound = () => {
+    const next_value = !notification_sound_enabled;
+    setNotificationSoundEnabledValue(next_value);
+    // Turning it on plays the chime once, so the person knows what to expect.
+    if (next_value) playNotificationSound();
+    void saveNotificationPreferences({ notification_sound_enabled: next_value });
+  };
+
+  const toggleTabBadge = () => {
+    const next_value = !tab_badge_enabled;
+    setTabBadgeEnabledValue(next_value);
+    void saveNotificationPreferences({ tab_badge_enabled: next_value });
+  };
 
   // The browser's permission is per device and only asked for on demand, so read it once on the client.
   useEffect(() => {
@@ -433,6 +490,13 @@ export function useProfileManager(): ProfileManagerApi {
     toggleNotificationApp,
     toggleNotificationEmail,
     toggleNotificationSlack,
+    toggleNotificationPush,
+    setNotificationChannelForAll,
+    resetNotificationPreferences,
+    notification_sound_enabled,
+    toggleNotificationSound,
+    tab_badge_enabled,
+    toggleTabBadge,
     is_desktop_banner_dismissed,
     dismissDesktopBanner: () => setIsDesktopBannerDismissed(true),
     desktop_notifications_enabled,

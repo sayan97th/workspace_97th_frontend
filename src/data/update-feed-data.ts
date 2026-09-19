@@ -31,7 +31,80 @@ export type FeedBoardFilter = {
   name: string;
   /** Number of updates the board contributes to the feed. */
   count: number;
+  /** Updates on the board the viewer has not seen yet and that concern them. */
+  unread_count: number;
 };
+
+/** Whether the feed lists top-level updates or only replies. */
+export type FeedKindFilter = "updates" | "replies";
+
+/** The server-side filters the feed applies on top of its tab and board. */
+export type FeedFilters = {
+  /** Free-text search over the update body and the author's name. */
+  search: string;
+  author_id: string | null;
+  kind: FeedKindFilter | null;
+  /** First day to include, `YYYY-MM-DD` in the viewer's own time zone. */
+  from: string | null;
+  /** Last day to include, `YYYY-MM-DD`. */
+  to: string | null;
+  unread_only: boolean;
+};
+
+export const default_feed_filters: FeedFilters = {
+  search: "",
+  author_id: null,
+  kind: null,
+  from: null,
+  to: null,
+  unread_only: false,
+};
+
+/** How many filters are narrowing the feed, for the "Filters" button badge. */
+export function countActiveFeedFilters(filters: FeedFilters): number {
+  return [
+    filters.search.trim() !== "",
+    filters.author_id !== null,
+    filters.kind !== null,
+    filters.from !== null || filters.to !== null,
+    filters.unread_only,
+  ].filter(Boolean).length;
+}
+
+/** A person the feed's author filter offers. */
+export type FeedAuthorOption = {
+  id: string;
+  name: string;
+};
+
+/** A named combination of tab, board and filters the viewer saved, from `GET /api/feed/saved-views`. */
+export type FeedSavedView = {
+  id: number;
+  name: string;
+  tab: UpdateFeedTabId;
+  board_id: string;
+  filters: FeedFilters;
+};
+
+/** A quick date range offered next to the custom From and To pickers. */
+export type FeedDatePresetId = "today" | "last_7_days" | "last_30_days";
+
+export const feed_date_presets: { id: FeedDatePresetId; label: string }[] = [
+  { id: "today", label: "Today" },
+  { id: "last_7_days", label: "Last 7 days" },
+  { id: "last_30_days", label: "Last 30 days" },
+];
+
+const toDateInputValue = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+/** The `from` and `to` days a date preset resolves to, relative to `now`. */
+export function resolveFeedDatePreset(preset: FeedDatePresetId, now: Date = new Date()): { from: string; to: string } {
+  const start = new Date(now);
+  if (preset === "last_7_days") start.setDate(start.getDate() - 6);
+  if (preset === "last_30_days") start.setDate(start.getDate() - 29);
+  return { from: toDateInputValue(start), to: toDateInputValue(now) };
+}
 
 /** The person who authored a feed update. */
 export type FeedActor = {
@@ -77,6 +150,8 @@ export type FeedUpdate = {
   /** Optional read/view count shown bottom-right of the body. */
   view_count?: number;
   is_unread: boolean;
+  /** A reply to another update rather than a top-level one. */
+  is_reply: boolean;
   is_bookmarked: boolean;
   pinned: boolean;
   /** Which tabs (beyond the catch-all "all") this update belongs to. */

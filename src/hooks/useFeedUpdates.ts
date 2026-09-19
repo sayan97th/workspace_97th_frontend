@@ -6,12 +6,25 @@ import { getToken } from "@/lib/api-client";
 import { listenOnPrivateChannel } from "@/lib/echo";
 import { feedService } from "@/services/feed.service";
 import { mapFeedUpdateDto, type FeedUpdateDto } from "@/types/feed";
-import { feed_page_size, type FeedBoardFilter, type FeedUpdate, type UpdateFeedTabId } from "@/data/update-feed-data";
+import {
+  default_feed_filters,
+  feed_page_size,
+  type FeedAuthorOption,
+  type FeedBoardFilter,
+  type FeedFilters,
+  type FeedUpdate,
+  type UpdateFeedTabId,
+} from "@/data/update-feed-data";
+
+/** How long after the last card is read the unread counts are refetched, so a burst of reads costs one request. */
+const COUNTS_REFRESH_DELAY_MS = 800;
 
 type UseFeedUpdatesOptions = {
   tab: UpdateFeedTabId;
   /** Sidebar board filter id, `"all-boards"` (or unset) means no filter. */
   board_id?: string;
+  /** Search, person, kind, date range and unread filters, applied server-side. Keep the object stable between renders, a new one refetches. */
+  filters?: FeedFilters;
   /** False for a caller that only wants the unread badge (the top bar), so it never fetches the list itself. Defaults to true. */
   load_updates?: boolean;
 };
@@ -25,6 +38,33 @@ function matchesActiveTab(dto: FeedUpdateDto, tab: UpdateFeedTabId, viewer_id: n
   return dto.is_mentioned || dto.is_bookmarked || dto.actor.id === viewer_id;
 }
 
+/** Local `YYYY-MM-DD` of an ISO timestamp, the same day the date pickers speak. */
+const dayOf = (iso: string): string => {
+  const date = new Date(iso);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
+
+/**
+ * Whether a live `new_feed_update` payload passes the feed's filters, so the
+ * live list agrees with what a fresh `GET /api/feed/updates` for the same
+ * filters would return.
+ */
+export function matchesFeedFilters(dto: FeedUpdateDto, filters: FeedFilters): boolean {
+  if (filters.author_id && String(dto.actor.id) !== filters.author_id) return false;
+  if (filters.kind === "replies" && !dto.is_reply) return false;
+  if (filters.kind === "updates" && dto.is_reply) return false;
+  if (filters.unread_only && !dto.is_unread) return false;
+
+  const day = dayOf(dto.created_at);
+  if (filters.from && day < filters.from) return false;
+  if (filters.to && day > filters.to) return false;
+
+  const needle = filters.search.trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = `${dto.body} ${dto.actor.name}`.toLowerCase();
+  return needle.split(/\s+/).every((term) => haystack.includes(term));
+}
+
 /**
  * Fetches the current user's Update Feed for the given tab/board filter, one
  * cursor page at a time, keeps it live via the `feed.{user_id}` Reverb
@@ -34,12 +74,13 @@ function matchesActiveTab(dto: FeedUpdateDto, tab: UpdateFeedTabId, viewer_id: n
  * the viewer is reading around, the viewer's own posts show up straight away.
  * Mirrors `useNotifications`.
  */
-export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUpdatesOptions) {
+export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, load_updates = true }: UseFeedUpdatesOptions) {
   const { user } = useAuth();
   const [updates, setUpdates] = useState<FeedUpdate[]>([]);
   const [pending_updates, setPendingUpdates] = useState<FeedUpdate[]>([]);
   const [next_cursor, setNextCursor] = useState<string | null>(null);
   const [boards, setBoards] = useState<FeedBoardFilter[]>([]);
+  const [authors, setAuthors] = useState<FeedAuthorOption[]>([]);
   const [unread_count, setUnreadCount] = useState(0);
   const [is_loading, setIsLoading] = useState(load_updates);
   const [is_loading_more, setIsLoadingMore] = useState(false);
@@ -49,6 +90,7 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
   const request_id_ref = useRef(0);
   // Read by the websocket listener, so a fresh page of cards never re-subscribes it.
   const known_ids_ref = useRef(new Set<string>());
+  const counts_refresh_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     known_ids_ref.current = new Set([...updates, ...pending_updates].map((update) => update.id));
@@ -59,7 +101,7 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     setIsLoading(true);
     setPendingUpdates([]);
     try {
-      const page = await feedService.listUpdates(tab, board_id, null, feed_page_size);
+      const page = await feedService.listUpdates(tab, board_id, null, feed_page_size, filters);
       if (request_id !== request_id_ref.current) return;
       setUpdates(page.data.map(mapFeedUpdateDto));
       setNextCursor(page.meta.next_cursor);
@@ -68,14 +110,14 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     } finally {
       if (request_id === request_id_ref.current) setIsLoading(false);
     }
-  }, [tab, board_id]);
+  }, [tab, board_id, filters]);
 
   const loadMore = useCallback(async () => {
     if (!next_cursor || is_loading || is_loading_more) return;
     const request_id = request_id_ref.current;
     setIsLoadingMore(true);
     try {
-      const page = await feedService.listUpdates(tab, board_id, next_cursor, feed_page_size);
+      const page = await feedService.listUpdates(tab, board_id, next_cursor, feed_page_size, filters);
       if (request_id !== request_id_ref.current) return;
       setUpdates((previous) => {
         const known_ids = new Set(previous.map((update) => update.id));
@@ -87,7 +129,7 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     } finally {
       setIsLoadingMore(false);
     }
-  }, [tab, board_id, next_cursor, is_loading, is_loading_more]);
+  }, [tab, board_id, filters, next_cursor, is_loading, is_loading_more]);
 
   const loadBoards = useCallback(async () => {
     try {
@@ -105,9 +147,33 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     }
   }, []);
 
+  const loadAuthors = useCallback(async () => {
+    try {
+      setAuthors(await feedService.listAuthors());
+    } catch {
+      // The person filter keeps whatever options it already had.
+    }
+  }, []);
+
   useEffect(() => {
     if (user && load_updates) loadUpdates();
   }, [user, load_updates, loadUpdates]);
+
+  // Reads arrive one card at a time, so the counts that depend on them are refetched once things settle.
+  const scheduleCountsRefresh = useCallback(() => {
+    if (counts_refresh_timeout_ref.current) clearTimeout(counts_refresh_timeout_ref.current);
+    counts_refresh_timeout_ref.current = setTimeout(() => {
+      loadUnreadCount();
+      loadBoards();
+    }, COUNTS_REFRESH_DELAY_MS);
+  }, [loadUnreadCount, loadBoards]);
+
+  useEffect(
+    () => () => {
+      if (counts_refresh_timeout_ref.current) clearTimeout(counts_refresh_timeout_ref.current);
+    },
+    []
+  );
 
   useEffect(() => {
     if (user) {
@@ -126,6 +192,7 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
       if (!load_updates) return;
       if (board_id && board_id !== "all-boards" && String(payload.board.id) !== board_id) return;
       if (!matchesActiveTab(payload, tab, user.id)) return;
+      if (!matchesFeedFilters(payload, filters)) return;
       if (known_ids_ref.current.has(payload.id)) return;
 
       const update = mapFeedUpdateDto(payload);
@@ -135,7 +202,7 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
         setPendingUpdates((previous) => [update, ...previous]);
       }
     });
-  }, [user, tab, board_id, load_updates]);
+  }, [user, tab, board_id, filters, load_updates]);
 
   /** Folds the held-back updates into the top of the list, newest first (the "N new updates" banner). */
   const showPendingUpdates = useCallback(() => {
@@ -183,9 +250,28 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
       const dto = await feedService.markSeen(id);
       applyUpdate(dto);
       setUnreadCount((previous) => Math.max(0, previous - 1));
+      scheduleCountsRefresh();
     },
-    [updates, applyUpdate]
+    [updates, applyUpdate, scheduleCountsRefresh]
   );
+
+  /** "Mark as unread": brings a card the viewer already read back as unread. */
+  const markUnread = useCallback(
+    async (id: string) => {
+      const dto = await feedService.markUnseen(id);
+      applyUpdate(dto);
+      scheduleCountsRefresh();
+    },
+    [applyUpdate, scheduleCountsRefresh]
+  );
+
+  /** "Mark all as read": marks everything the current tab, board and filters match as seen. */
+  const markAllSeen = useCallback(async () => {
+    const result = await feedService.markAllSeen(tab, board_id, filters);
+    setUpdates((previous) => previous.map((update) => ({ ...update, is_unread: false })));
+    setUnreadCount(result.unread_count);
+    loadBoards();
+  }, [tab, board_id, filters, loadBoards]);
 
   const replyToUpdate = useCallback(
     async (id: string, body: string, mentioned_user_ids: number[] = []) => {
@@ -210,6 +296,8 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     pending_count: pending_updates.length,
     showPendingUpdates,
     boards,
+    authors,
+    loadAuthors,
     unread_count,
     is_loading,
     is_loading_more,
@@ -219,6 +307,8 @@ export function useFeedUpdates({ tab, board_id, load_updates = true }: UseFeedUp
     likeUpdate,
     pinUpdate,
     markSeen,
+    markUnread,
+    markAllSeen,
     replyToUpdate,
     scheduleReply,
   };

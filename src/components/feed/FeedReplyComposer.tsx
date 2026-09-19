@@ -9,6 +9,7 @@ import {
   MENTION_TRIGGER,
   mentionOptionUserIds,
   type MentionOption,
+  type MentionTeam,
 } from "@/components/board/drawer/mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "@/components/board/drawer/RichTextComposer";
 import { FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
@@ -18,6 +19,8 @@ type FeedReplyComposerProps = {
   current_user: BoardPersonOption;
   /** Resolves who can be `@mentioned` in a reply, called once the first time the composer is focused. */
   loadPeople: () => Promise<BoardPersonOption[]>;
+  /** Resolves the account teams that can be group `@mentioned`, loaded together with the people. Optional: without it only Everyone and individuals are offered. */
+  loadTeams?: () => Promise<MentionTeam[]>;
   onSubmit: (body: string, mentioned_user_ids: number[]) => void;
   onSchedule: (body: string, mentioned_user_ids: number[], scheduled_at: string) => void;
   placeholder: string;
@@ -31,13 +34,14 @@ const isBodyEmpty = (markdown: string): boolean => markdown.trim().length === 0 
 
 /**
  * The Update feed card's inline reply box: the same Markdown editor the item
- * drawer uses (formatting, emoji, `@mentions` including the "Everyone" group)
+ * drawer uses (formatting, emoji, `@mentions` including the "Everyone" group and teams)
  * plus "schedule for later". People come from the update's board, loaded the
  * first time the box is focused rather than for every card up front.
  */
 const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
   current_user,
   loadPeople,
+  loadTeams,
   onSubmit,
   onSchedule,
   placeholder,
@@ -48,6 +52,7 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
 
   const [value, setValue] = useState("");
   const [people, setPeople] = useState<BoardPersonOption[]>([]);
+  const [teams, setTeams] = useState<MentionTeam[]>([]);
   const [mention_query, setMentionQuery] = useState<string | null>(null);
   const [mention_picks, setMentionPicks] = useState<MentionPick[]>([]);
   const [is_emoji_open, setIsEmojiOpen] = useState(false);
@@ -58,8 +63,8 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
   const has_draft = !isBodyEmpty(value);
 
   const mention_matches = useMemo(
-    () => (mention_query === null ? [] : buildMentionMatches(people, mention_query, current_user.id)),
-    [mention_query, people, current_user.id]
+    () => (mention_query === null ? [] : buildMentionMatches(people, mention_query, current_user.id, undefined, teams)),
+    [mention_query, people, teams, current_user.id]
   );
   const is_picker_open = mention_matches.length > 0;
 
@@ -71,6 +76,11 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
       .catch(() => {
         // Let the next focus retry, mentions just won't autocomplete until then.
         has_requested_people_ref.current = false;
+      });
+    loadTeams?.()
+      .then(setTeams)
+      .catch(() => {
+        // Without teams the picker still offers Everyone and every person.
       });
   };
 

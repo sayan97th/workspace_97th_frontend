@@ -43,6 +43,8 @@ export type BoardItemCommentDto = {
   body: string;
   created_at: string;
   is_edited: boolean;
+  /** When the body was last edited, null for a comment that never was. */
+  edited_at: string | null;
   like_count: number;
   liked_by_me: boolean;
   view_count: number;
@@ -54,6 +56,17 @@ export type BoardItemCommentDto = {
   mentioned_user_ids: number[];
   attachments: BoardItemCommentAttachmentDto[];
   replies: BoardItemCommentDto[];
+};
+
+/** One earlier version of an edited comment or reply, from `GET .../comments/{id}/revisions`. Mirrors `App\Http\Resources\CommentRevisionResource`. */
+export type CommentRevisionDto = {
+  id: number;
+  body: string;
+  /** When this version was written. */
+  written_at: string | null;
+  /** When an edit replaced it. */
+  replaced_at: string;
+  edited_by: { id: number; full_name: string; profile_photo_url: string | null } | null;
 };
 
 export type CreateBoardItemCommentPayload = {

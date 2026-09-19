@@ -3,18 +3,21 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadBlob } from "@/lib/download-blob";
 import { boardCommentsService } from "@/services/board-comments.service";
 import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
+import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto } from "./commentMapping";
+import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapRevisionDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
-import { buildMentionMatches, mentionOptionUserIds, type MentionOption } from "./mentionOptions";
+import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
   DrawerActionFeedback,
   DrawerAttachment,
   DrawerComment,
+  DrawerCommentRevision,
   DrawerComposerTarget,
   DrawerReaction,
+  DrawerReferenceItem,
   DrawerReply,
   DrawerTabId,
   RemoteCommentEvent,
@@ -85,6 +88,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
   const [edit_draft, setEditDraft] = useState("");
   const [item_action_feedback, setItemActionFeedback] = useState<DrawerActionFeedback | null>(null);
+  // Account teams the `@mention` picker can offer as groups, loaded once per real board.
+  const [mention_teams, setMentionTeams] = useState<MentionTeam[]>([]);
 
   // Local draft that wins over `getDescription(open_row)` once the viewer has
   // typed — `null` means "no unsaved edit yet, defer to the row's own value".
@@ -108,6 +113,22 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [notified_ids_by_target, setNotifiedIdsByTarget] = useState<Record<string, string[]>>({});
   const [emoji_palette_target, setEmojiPaletteTarget] = useState<DrawerComposerTarget | null>(null);
   const [reaction_palette_id, setReactionPaletteId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!is_api_backed) return;
+    let is_current = true;
+    peopleService
+      .listBoardTeams(board_id)
+      .then((teams) => {
+        if (is_current) setMentionTeams(teams.map((team) => ({ id: String(team.id), name: team.name, member_ids: team.member_ids.map(String) })));
+      })
+      .catch(() => {
+        // Without teams the picker still offers Everyone and every person.
+      });
+    return () => {
+      is_current = false;
+    };
+  }, [is_api_backed, board_id]);
 
   const id_seq_ref = useRef(0);
   const nextCommentId = () => {
@@ -573,6 +594,15 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     const body = edit_draft.trim();
     if (isRichTextEmpty(body)) return;
 
+    // Saving the text unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
+    const current_comment = (comments_by_row[row_id] ?? []).find((comment) => comment.id === comment_id);
+    const current_body = reply_id ? current_comment?.replies.find((reply) => reply.id === reply_id)?.body : current_comment?.body;
+    if (current_body?.trim() === body) {
+      setEditingTarget(null);
+      setEditDraft("");
+      return;
+    }
+
     const previous_comments = comments_by_row[row_id] ?? [];
     applyBodyEdit(row_id, comment_id, reply_id, body);
     setEditingTarget(null);
@@ -663,6 +693,21 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       .catch(() => setCommentsError("Couldn't load the new updates. Please try again."));
   };
 
+  /** The earlier versions of an edited comment, or reply when `reply_id` is given. A mock board keeps no history. */
+  const loadCommentRevisions = async (comment_id: string, reply_id?: string): Promise<DrawerCommentRevision[]> => {
+    if (!is_api_backed || !open_row_id) return [];
+    const dtos = await boardCommentsService.listRevisions(board_id, Number(open_row_id), Number(reply_id ?? comment_id));
+    return dtos.map(mapRevisionDto);
+  };
+
+  const reference_items_with_links: DrawerReferenceItem[] = useMemo(
+    () =>
+      is_api_backed
+        ? (config.reference_items ?? []).map((item) => ({ ...item, href: `/boards/${board_id}/pulses/${item.id}` }))
+        : [],
+    [is_api_backed, board_id, config.reference_items]
+  );
+
   const showActionFeedback = (tone: DrawerActionFeedback["tone"], message: string) =>
     setItemActionFeedback({ tone, message });
   const dismissItemActionFeedback = () => setItemActionFeedback(null);
@@ -726,9 +771,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const mention_matches = useMemo(
     () =>
       mention_target
-        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id)
+        ? buildMentionMatches(config.mentionable_people, mention_query, config.current_user.id, undefined, mention_teams)
         : [],
-    [mention_target, mention_query, config.mentionable_people, config.current_user.id]
+    [mention_target, mention_query, config.mentionable_people, config.current_user.id, mention_teams]
   );
 
   const comments = open_row_id ? comments_by_row[open_row_id] ?? [] : [];
@@ -792,6 +837,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     comments_error,
     pending_update_count: pending_comment_ids.length,
     loadPendingUpdates,
+    reference_items_with_links,
+    loadCommentRevisions,
     onRemoteCommentPosted,
     fresh_comment_ids,
     all_attachments,

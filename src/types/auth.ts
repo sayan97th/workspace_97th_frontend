@@ -29,6 +29,10 @@ export interface User {
   hide_online_status: boolean;
   notification_preferences: Record<string, boolean>;
   desktop_notifications_enabled: boolean;
+  /** Plays a short sound when a live notification arrives. */
+  notification_sound_enabled: boolean;
+  /** Prefixes the browser tab title with the unread notification count. */
+  tab_badge_enabled: boolean;
   /** Do Not Disturb window: while active, notifications reach the bell only, with no email, Slack, toast or desktop push. */
   quiet_hours_enabled: boolean;
   /** "HH:MM" wall-clock time, read in the user's own `timezone`. */
@@ -156,6 +160,10 @@ export interface ProfileResponse extends ProfileData {
   hide_online_status: boolean;
   notification_preferences: Record<string, boolean>;
   desktop_notifications_enabled: boolean;
+  /** Plays a short sound when a live notification arrives. */
+  notification_sound_enabled: boolean;
+  /** Prefixes the browser tab title with the unread notification count. */
+  tab_badge_enabled: boolean;
   /** Do Not Disturb window: while active, notifications reach the bell only, with no email, Slack, toast or desktop push. */
   quiet_hours_enabled: boolean;
   /** "HH:MM" wall-clock time, read in the user's own `timezone`. */

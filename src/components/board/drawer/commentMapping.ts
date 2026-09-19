@@ -1,11 +1,12 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import { classifyAttachment } from "./drawerAttachments";
-import type { DrawerAttachment, DrawerComment, DrawerReply } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReply } from "./types";
 import type { BoardItemAttachmentDto } from "@/types/board-attachments";
 import type {
   BoardItemCommentAttachmentDto,
   BoardItemCommentAuthorDto,
   BoardItemCommentDto,
+  CommentRevisionDto,
 } from "@/types/board-comments";
 
 const getInitials = (full_name: string): string =>
@@ -70,6 +71,8 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
   posted_at_iso: dto.created_at,
   body: dto.body,
   is_edited: dto.is_edited,
+  edited_at: dto.edited_at ?? undefined,
+  mentioned_user_ids: dto.mentioned_user_ids.map(String),
   view_count: dto.view_count,
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,
@@ -84,4 +87,12 @@ export const mapCommentDtoToDrawerComment = (dto: BoardItemCommentDto): DrawerCo
   notified_user_ids: dto.notified_user_ids.map(String),
   attachments: dto.attachments.map(mapAttachmentDto),
   replies: dto.replies.map(mapCommentDtoToDrawerReply),
+});
+
+export const mapRevisionDto = (dto: CommentRevisionDto): DrawerCommentRevision => ({
+  id: String(dto.id),
+  body: dto.body,
+  written_at: dto.written_at ?? undefined,
+  replaced_at: dto.replaced_at,
+  editor: dto.edited_by ? mapAuthorToPerson(dto.edited_by) : undefined,
 });

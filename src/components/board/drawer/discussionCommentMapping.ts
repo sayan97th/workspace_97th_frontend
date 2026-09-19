@@ -16,6 +16,8 @@ export const mapDiscussionCommentDtoToDrawerReply = (dto: BoardDiscussionComment
   posted_at_iso: dto.created_at,
   body: dto.body,
   is_edited: dto.is_edited,
+  edited_at: dto.edited_at ?? undefined,
+  mentioned_user_ids: dto.mentioned_user_ids.map(String),
   view_count: dto.view_count,
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,

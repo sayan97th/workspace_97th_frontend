@@ -61,6 +61,7 @@ const AppTopBar: React.FC = () => {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
+    bulkAction,
   } = useNotifications();
   const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all", load_updates: false });
   const [is_account_open, setIsAccountOpen] = useState(false);
@@ -291,6 +292,7 @@ const AppTopBar: React.FC = () => {
         onMarkAsRead={markAsRead}
         onMarkAsUnread={markAsUnread}
         onSnoozeNotification={snoozeNotification}
+        onBulkAction={bulkAction}
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />

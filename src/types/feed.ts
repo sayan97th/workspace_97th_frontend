@@ -16,6 +16,8 @@ export type FeedUpdateDto = {
   item: { id: number; name: string } | null;
   link: string;
   view_count: number;
+  /** A reply to another update rather than a top-level one. */
+  is_reply: boolean;
   is_unread: boolean;
   is_mentioned: boolean;
   is_bookmarked: boolean;
@@ -76,6 +78,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
     board_id: String(dto.board.id),
     view_count: dto.view_count > 0 ? dto.view_count : undefined,
     is_unread: dto.is_unread,
+    is_reply: dto.is_reply,
     is_bookmarked: dto.is_bookmarked,
     pinned: dto.pinned,
     categories,

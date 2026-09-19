@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { CommentRevisionDto } from "@/types/board-comments";
 import type { BoardDiscussionCommentDto, CreateBoardDiscussionCommentPayload } from "@/types/board-discussion";
 
 /**
@@ -34,6 +35,14 @@ export const boardDiscussionService = {
       form_data
     );
     return response.comment;
+  },
+
+  /** GET /api/boards/{board_id}/comments/{comment_id}/revisions, earlier bodies of an edited update, newest edit first. */
+  async listRevisions(board_id: number, comment_id: number): Promise<CommentRevisionDto[]> {
+    const response = await apiClient.get<{ data: CommentRevisionDto[] }>(
+      `/api/boards/${board_id}/comments/${comment_id}/revisions`
+    );
+    return response.data;
   },
 
   /** PATCH /api/boards/{board_id}/comments/{comment_id} */

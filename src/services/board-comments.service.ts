@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { BoardItemCommentDto, CreateBoardItemCommentPayload } from "@/types/board-comments";
+import type { BoardItemCommentDto, CommentRevisionDto, CreateBoardItemCommentPayload } from "@/types/board-comments";
 
 /**
  * Talks to the board item drawer's comment endpoints
@@ -83,6 +83,14 @@ export const boardCommentsService = {
       `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/seen`
     );
     return response.comment;
+  },
+
+  /** GET /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/revisions, earlier bodies of an edited comment, newest edit first. */
+  async listRevisions(board_id: number, item_id: number, comment_id: number): Promise<CommentRevisionDto[]> {
+    const response = await apiClient.get<{ data: CommentRevisionDto[] }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/revisions`
+    );
+    return response.data;
   },
 
   /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/pin */

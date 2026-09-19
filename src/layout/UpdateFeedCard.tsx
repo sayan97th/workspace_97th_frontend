@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
+import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import RichTextContent from "@/components/board/drawer/RichTextContent";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import FeedReplyComposer from "@/components/feed/FeedReplyComposer";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
-import { loadFeedBoardPeople } from "@/lib/feed-people";
+import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
 import { PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
@@ -32,13 +33,23 @@ type UpdateFeedCardProps = {
   onReply?: (id: string, body: string, mentioned_user_ids: number[]) => void;
   /** Fired when a reply is scheduled for a later time from the inline composer. */
   onSchedule?: (id: string, body: string, scheduled_at: string, mentioned_user_ids: number[]) => void;
-  /** Fired once, when an unread card mounts — opening the drawer marks it seen, matching Monday's Updates feed. */
+  /** Fired once an unread card has stayed on screen for a moment, so scrolling past it does not count as reading it. */
   onMarkSeen?: (id: string) => void;
+  /** Fired by the card menu's "Mark as unread". */
+  onMarkUnread?: (id: string) => void;
 };
+
+/** How long an unread card must stay mostly on screen before it counts as read. */
+const SEEN_DWELL_MS = 1200;
+
+/** A card counts as on screen when most of it shows, or (for a very tall card) a good slice of it does. */
+const SEEN_VISIBLE_RATIO = 0.6;
+const SEEN_VISIBLE_MIN_HEIGHT_PX = 240;
 
 /**
  * A single update card in the feed: the author's avatar (with a profile hover
- * card), date, the board breadcrumb it is scoped to, the message body, an
+ * card), date, an "Unread" marker until it has been on screen for a moment
+ * (the accent bar stays for the rest of the session), the board breadcrumb it is scoped to, the message body, an
  * optional view count and the Like / Reply footer with an inline rich text
  * reply composer (`@mentions`, emoji, and a "schedule for later" option). Backed by real `App\Models\BoardItemComment` /
  * `App\Models\BoardComment` rows via `useFeedUpdates` — mention highlighting
@@ -53,6 +64,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   onReply,
   onSchedule,
   onMarkSeen,
+  onMarkUnread,
 }) => {
   const {
     id,
@@ -72,7 +84,19 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   } = update;
 
   const [link_copied, setLinkCopied] = useState(false);
+  const [is_menu_open, setIsMenuOpen] = useState(false);
+  // Whether the card arrived unread, kept so its accent bar survives being marked read while the viewer reads it.
+  const [was_unread] = useState(is_unread);
+  const article_ref = useRef<HTMLElement>(null);
+  const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const reply_composer_ref = useRef<HTMLDivElement>(null);
+  // Read through a ref so a parent re-render never restarts the dwell timer below.
+  const mark_seen_ref = useRef(onMarkSeen);
+  const is_own = actor.id !== undefined && actor.id === current_user.id;
+
+  useEffect(() => {
+    mark_seen_ref.current = onMarkSeen;
+  });
 
   const focusReplyComposer = () =>
     (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
@@ -85,14 +109,45 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     });
   };
 
+  // An unread card is marked seen once it has stayed mostly on screen for a moment.
   useEffect(() => {
-    if (is_unread) onMarkSeen?.(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    const node = article_ref.current;
+    if (!is_unread || !node || typeof IntersectionObserver === "undefined") return;
+
+    let timeout_id: ReturnType<typeof setTimeout> | null = null;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        const is_visible =
+          entry.isIntersecting &&
+          (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || entry.intersectionRect.height >= SEEN_VISIBLE_MIN_HEIGHT_PX);
+        if (is_visible && timeout_id === null) {
+          timeout_id = setTimeout(() => mark_seen_ref.current?.(id), SEEN_DWELL_MS);
+        } else if (!is_visible && timeout_id !== null) {
+          clearTimeout(timeout_id);
+          timeout_id = null;
+        }
+      },
+      { threshold: [0, 0.25, SEEN_VISIBLE_RATIO, 1] }
+    );
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      if (timeout_id !== null) clearTimeout(timeout_id);
+    };
+  }, [id, is_unread]);
+
+  const markUnread = () => {
+    setIsMenuOpen(false);
+    onMarkUnread?.(id);
+  };
 
   return (
     <article
-      className={`overflow-hidden rounded-[14px] border ${pinned ? "border-[#f5a623]" : "border-shell-border-strong"}`}
+      ref={article_ref}
+      className={`overflow-hidden rounded-[14px] border ${pinned ? "border-[#f5a623]" : "border-shell-border-strong"} ${
+        was_unread ? "border-l-[3px] border-l-brand-500" : ""
+      }`}
     >
       <div className="p-5">
         {pinned && (
@@ -119,6 +174,12 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
             </>
           )}
           <span className="text-[12.5px] text-shell-text-muted">{date_label}</span>
+          {is_unread && (
+            <span className="flex items-center gap-1 text-[11px] font-bold text-brand-500">
+              <span className="h-[7px] w-[7px] rounded-full bg-brand-500" aria-hidden="true" />
+              Unread
+            </span>
+          )}
           {show_actions && (
             <div className="ml-auto flex items-center gap-1">
               {link && (
@@ -156,12 +217,43 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                 <BookmarkIcon size={13} filled={is_bookmarked} />
               </button>
               <button
+                ref={menu_trigger_ref}
                 type="button"
+                onClick={() => setIsMenuOpen((previous) => !previous)}
+                aria-haspopup="menu"
+                aria-expanded={is_menu_open}
                 className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
                 aria-label="Update options"
               >
                 <MoreDotsIcon size={15} />
               </button>
+              <BoardPopover anchor_el={menu_trigger_ref.current} is_open={is_menu_open} onClose={() => setIsMenuOpen(false)} width={190} align="end">
+                <div role="menu" className="p-1.5">
+                  {!is_own && !is_unread && onMarkUnread && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={markUnread}
+                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                    >
+                      Mark as unread
+                    </button>
+                  )}
+                  {link && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        copyLink();
+                        setIsMenuOpen(false);
+                      }}
+                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                    >
+                      Copy link
+                    </button>
+                  )}
+                </div>
+              </BoardPopover>
             </div>
           )}
         </div>
@@ -228,6 +320,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
           <FeedReplyComposer
             current_user={current_user}
             loadPeople={() => loadFeedBoardPeople(board_id)}
+            loadTeams={() => loadFeedBoardTeams(board_id)}
             onSubmit={(reply_body, mentioned_user_ids) => onReply?.(id, reply_body, mentioned_user_ids)}
             onSchedule={(reply_body, mentioned_user_ids, scheduled_at) =>
               onSchedule?.(id, reply_body, scheduled_at, mentioned_user_ids)

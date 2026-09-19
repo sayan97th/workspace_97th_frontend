@@ -227,6 +227,10 @@ const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | 
   return undefined;
 };
 
+/** Every item of the tree (root items, then their subitems) as the `id` and `name` pairs a comment's `#` picker can link to. */
+const listReferenceItems = (items: BoardItemDto[]): { id: string; name: string }[] =>
+  items.flatMap((item) => [{ id: String(item.id), name: item.name }, ...listReferenceItems(item.children)]);
+
 /** The direct parent of `item_id` in the tree, or undefined for a root item / an id not found. */
 const findParentInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
   for (const item of items) {
@@ -1871,6 +1875,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       mentionable_people: persons,
       getInitialComments: () => [],
       board_id,
+      reference_items: listReferenceItems(items),
       getInfoBoxes,
       getActivityLog,
       getDescription: (row) => row.description ?? "",

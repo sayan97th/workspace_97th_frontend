@@ -10,7 +10,15 @@ export type PersonCardDto = {
   timezone: string | null;
 };
 
+/** Shape returned by `App\Http\Controllers\People\MentionTeamController`: an account team and its members inside the board's workspace. */
+export type MentionTeamDto = {
+  id: number;
+  name: string;
+  member_ids: number[];
+};
+
 const card_cache = new Map<string, Promise<PersonCardDto>>();
+const teams_cache = new Map<string, Promise<MentionTeamDto[]>>();
 
 /**
  * Talks to `App\Http\Controllers\People\PersonCardController`
@@ -35,6 +43,28 @@ export const peopleService = {
         throw error;
       });
     card_cache.set(key, request);
+    return request;
+  },
+
+  /**
+   * GET /api/people/boards/{board_id}/teams, the account teams a comment on
+   * that board can group `@mention`. Cached per board for the page's
+   * lifetime, since every open composer asks for the same list. A failed
+   * request is evicted, letting the next open retry.
+   */
+  listBoardTeams(board_id: string | number): Promise<MentionTeamDto[]> {
+    const key = String(board_id);
+    const cached = teams_cache.get(key);
+    if (cached) return cached;
+
+    const request = apiClient
+      .get<{ data: MentionTeamDto[] }>(`/api/people/boards/${key}/teams`)
+      .then((response) => response.data)
+      .catch((error) => {
+        teams_cache.delete(key);
+        throw error;
+      });
+    teams_cache.set(key, request);
     return request;
   },
 };

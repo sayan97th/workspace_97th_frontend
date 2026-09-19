@@ -2,6 +2,9 @@ import { apiClient } from "@/lib/api-client";
 import type { NotificationFilters } from "@/data/notifications-data";
 import type { NotificationFiltersDto, NotificationsPageDto } from "@/types/notifications";
 
+/** What a multi-select toolbar can do to a batch of notifications. */
+export type NotificationBulkAction = "read" | "unread" | "dismiss";
+
 type ListNotificationsOptions = {
   filters: NotificationFilters;
   cursor?: string | null;
@@ -55,6 +58,15 @@ export const notificationsService = {
   /** PATCH /api/notifications/read-all */
   async markAllAsRead(): Promise<void> {
     await apiClient.patch("/api/notifications/read-all");
+  },
+
+  /** POST /api/notifications/bulk, applies one action to up to 100 notifications and returns the fresh unread count. */
+  async bulk(action: NotificationBulkAction, ids: string[]): Promise<{ ids: string[]; unread_count: number }> {
+    const response = await apiClient.post<{ data: { ids: string[]; unread_count: number } }>("/api/notifications/bulk", {
+      action,
+      ids: ids.map(Number),
+    });
+    return response.data;
   },
 
   /** PATCH /api/notifications/{id}/snooze, hides it until `snoozed_until` (an ISO timestamp), then it returns as unread. */

@@ -9,11 +9,12 @@ import CommentAttachmentChip from "./CommentAttachmentChip";
 import CommentComposer from "./CommentComposer";
 import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
+import EditedMarker from "./EditedMarker";
 import EmojiPalette from "./EmojiPalette";
 import type { MentionOption } from "./mentionOptions";
 import { formatReactorNames } from "./reactionFormatting";
 import RichTextContent from "./RichTextContent";
-import type { DrawerComment, DrawerComposerTarget, DrawerReaction, DrawerReply } from "./types";
+import type { DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
 
 export type CommentThreadProps = {
   comment: DrawerComment;
@@ -51,6 +52,10 @@ export type CommentThreadProps = {
   onToggleEmojiPalette: (target: DrawerComposerTarget) => void;
   onCloseEmojiPalette: () => void;
   onInsertEmoji: (emoji: string) => void;
+  /** Loads the earlier versions of an edited comment (or reply, when `reply_id` is given). Omit to show a plain "(edited)" label. */
+  onLoadRevisions?: (comment_id: string, reply_id?: string) => Promise<DrawerCommentRevision[]>;
+  /** Items the reply box's `#` picker can link to. */
+  reference_items?: DrawerReferenceItem[];
 };
 
 type ReactionsRowProps = {
@@ -135,6 +140,7 @@ type ReplyRowProps = {
   onToggleReactionPalette: (id: string) => void;
   onCloseReactionPalette: () => void;
   onToggleReaction: (emoji: string) => void;
+  onLoadRevisions?: () => Promise<DrawerCommentRevision[]>;
 };
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
@@ -155,6 +161,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   onToggleReactionPalette,
   onCloseReactionPalette,
   onToggleReaction,
+  onLoadRevisions,
 }) => {
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === reaction_palette_key;
@@ -171,7 +178,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
           </PersonHoverCard>
           <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
           {is_new && <NewBadge />}
-          {reply.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
+          {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
           {reply.author.id === current_user_id && (
             <span className="ml-auto">
               <CommentOptionsMenu onEdit={onStartEditing} onDelete={onDelete} kind="reply" />
@@ -262,6 +269,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   onToggleEmojiPalette,
   onCloseEmojiPalette,
   onInsertEmoji,
+  onLoadRevisions,
+  reference_items,
 }) => {
   const reply_composer_ref = useRef<HTMLDivElement>(null);
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
@@ -293,7 +302,12 @@ const CommentThread: React.FC<CommentThreadProps> = ({
                 <span className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</span>
               </PersonHoverCard>
               {fresh_comment_ids.includes(comment.id) && <NewBadge />}
-              {comment.is_edited && <span className="text-[11px] text-shell-text-faint">(edited)</span>}
+              {comment.is_edited && (
+                <EditedMarker
+                  onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id) : undefined}
+                  edited_at={comment.edited_at}
+                />
+              )}
             </div>
             <div className="text-[11.5px] text-shell-text-faint">{comment.posted_at}</div>
           </div>
@@ -427,6 +441,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               onToggleReactionPalette={onToggleReactionPalette}
               onCloseReactionPalette={onCloseReactionPalette}
               onToggleReaction={(emoji) => onToggleReaction(comment.id, reply.id, emoji)}
+              onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id, reply.id) : undefined}
             />
           ))}
         </div>
@@ -456,6 +471,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onToggleEmojiPalette={onToggleEmojiPalette}
           onCloseEmojiPalette={onCloseEmojiPalette}
           onInsertEmoji={onInsertEmoji}
+          reference_items={reference_items}
         />
       </div>
     </div>

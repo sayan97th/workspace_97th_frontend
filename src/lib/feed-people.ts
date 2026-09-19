@@ -1,5 +1,7 @@
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import type { MentionTeam } from "@/components/board/drawer/mentionOptions";
 import { feedService } from "@/services/feed.service";
+import { peopleService } from "@/services/people.service";
 import { getUserInitials } from "@/lib/user";
 
 const people_by_board = new Map<string, Promise<BoardPersonOption[]>>();
@@ -31,4 +33,14 @@ export function loadFeedBoardPeople(board_id: string): Promise<BoardPersonOption
     });
   people_by_board.set(board_id, request);
   return request;
+}
+
+/**
+ * The account teams a reply on `board_id` can group `@mention`, each with the
+ * ids of its members inside that board's workspace. `peopleService` caches the
+ * request per board, so a feed of many cards from one board asks once.
+ */
+export async function loadFeedBoardTeams(board_id: string): Promise<MentionTeam[]> {
+  const teams = await peopleService.listBoardTeams(board_id);
+  return teams.map((team) => ({ id: String(team.id), name: team.name, member_ids: team.member_ids.map(String) }));
 }
