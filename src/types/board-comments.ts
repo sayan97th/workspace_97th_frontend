@@ -32,6 +32,8 @@ export type BoardItemCommentSeenByDto = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
+  /** When this person saw the comment. */
+  seen_at?: string | null;
 };
 
 /** A top-level comment ("update"), or a reply when `parent_id` is set. Replies never nest further. */
@@ -50,6 +52,9 @@ export type BoardItemCommentDto = {
   view_count: number;
   seen_by_me: boolean;
   seen_by: BoardItemCommentSeenByDto[];
+  bookmarked_by_me: boolean;
+  /** Set while the comment is scheduled and not visible to anyone else yet, null once it is live. */
+  scheduled_at: string | null;
   pinned: boolean;
   notified_user_ids: number[];
   reactions: BoardItemCommentReactionDto[];
@@ -77,4 +82,10 @@ export type CreateBoardItemCommentPayload = {
   /** Explicitly flagged via the composer's "Notify" action — distinct from `mentioned_user_ids`, never shown inline in the body. */
   notified_user_ids?: number[];
   attachments?: File[];
+  /** ISO time to publish the comment at instead of posting it now. */
+  scheduled_at?: string;
+  /** The composer's "Assign" action: people to add to the item's People column. Cannot be combined with `scheduled_at`. */
+  assign_user_ids?: number[];
+  /** Due date (`YYYY-MM-DD`) to set on the item's Date column. */
+  assign_due_date?: string;
 };

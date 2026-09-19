@@ -11,10 +11,12 @@ export type UpdateFeedTabId =
   | "mentioned"
   | "bookmarked"
   | "account"
+  | "following"
+  | "pinned"
   | "scheduled";
 
 /** Optional leading glyph for a tab, resolved to an icon in the panel. */
-export type UpdateFeedTabIcon = "mention" | "bookmark";
+export type UpdateFeedTabIcon = "mention" | "bookmark" | "following" | "pin";
 
 /** A tab shown in the feed content header. */
 export type UpdateFeedTab = {
@@ -134,6 +136,19 @@ export type FeedBreadcrumb = {
   crumbs: string[];
 };
 
+/** One change to a cell of the update's item, such as a status moving from Working on it to Done. */
+export type FeedActivityEntry = {
+  id: string;
+  actor: { id?: string; name: string; avatar_url?: string } | null;
+  column_label: string;
+  column_type: string;
+  /** Text of the value before the change, null when the cell was empty. */
+  old_display: string | null;
+  new_display: string | null;
+  /** Relative label, e.g. "3 hours ago". */
+  time_label: string;
+};
+
 /** A single feed update rendered as a card in the list. */
 export type FeedUpdate = {
   id: string;
@@ -154,6 +169,15 @@ export type FeedUpdate = {
   is_reply: boolean;
   is_bookmarked: boolean;
   pinned: boolean;
+  /** The item the update is on, absent for a board-wide update. */
+  item_id?: string;
+  /** Whether the viewer follows this update's item, or its board, which is what fills the Following tab. */
+  is_following_item: boolean;
+  is_following_board: boolean;
+  /** Changes made to the item since the previous update on it, newest first (only for top-level item updates). */
+  activity: FeedActivityEntry[];
+  /** How many changes there were in total, which can exceed the entries sent. */
+  activity_total: number;
   /** Which tabs (beyond the catch-all "all") this update belongs to. */
   categories: UpdateFeedTabId[];
   /** Frontend route to navigate to when the card (or its breadcrumb) is opened. */
@@ -170,7 +194,9 @@ export const update_feed_tabs: UpdateFeedTab[] = [
   { id: "mentioned", label: "I was mentioned", icon: "mention" },
   { id: "bookmarked", label: "Bookmarked", icon: "bookmark" },
   { id: "account", label: "All account" },
-  { id: "scheduled", label: "Scheduled", is_new: true },
+  { id: "following", label: "Following", icon: "following" },
+  { id: "pinned", label: "Pinned", icon: "pin" },
+  { id: "scheduled", label: "Scheduled" },
 ];
 
 /** Tab shown selected when the drawer first opens. */

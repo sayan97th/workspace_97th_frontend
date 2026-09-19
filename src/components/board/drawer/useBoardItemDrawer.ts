@@ -1,13 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { downloadBlob } from "@/lib/download-blob";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { boardCommentsService } from "@/services/board-comments.service";
 import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapRevisionDto } from "./commentMapping";
+import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
+import { useCommentCollaboration } from "./useCommentCollaboration";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
@@ -68,6 +70,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const { getRowId, getInitialComments, getInfoBoxes, getActivityLog, getDescription, board_id } = config;
   const accent_color = config.accent_color ?? DEFAULT_ACCENT_COLOR;
   const is_api_backed = board_id !== undefined;
+  const can_edit = config.can_edit ?? true;
 
   const [open_row, setOpenRow] = useState<TRow | null>(null);
   const [active_tab, setActiveTab] = useState<DrawerTabId>("updates");
@@ -281,17 +284,32 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       const mentioned_user_ids = (mention_ids_by_target.composer ?? []).map(Number);
       const notified_user_ids = (notified_ids_by_target.composer ?? []).map(Number);
       const files = composer_attachment_drafts.map((draft) => draft.file);
+      const { composer_schedule_at, composer_assignment } = collaboration;
+      const assign_user_ids = composer_assignment.user_ids.map(Number);
+      const is_assigning = assign_user_ids.length > 0 || composer_assignment.due_date !== null;
       setCommentsError(null);
       boardCommentsService
-        .postComment(board_id, item_id, { body, mentioned_user_ids, notified_user_ids, attachments: files })
+        .postComment(board_id, item_id, {
+          body,
+          mentioned_user_ids,
+          notified_user_ids,
+          attachments: files,
+          scheduled_at: composer_schedule_at ?? undefined,
+          assign_user_ids: assign_user_ids.length > 0 ? assign_user_ids : undefined,
+          assign_due_date: composer_assignment.due_date ?? undefined,
+        })
         .then((dto) => {
-          updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
+          // A scheduled update waits in its own list until it goes out, it is not part of the thread yet.
+          if (dto.scheduled_at) addScheduledComment(dto);
+          else updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
           setComposerText("");
           setComposerAttachmentDrafts([]);
           setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
           setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
+          resetComposerExtras();
+          if (is_assigning) config.onCommentAssigned?.(open_row_id);
         })
-        .catch(() => setCommentsError("Couldn't post your update. Please try again."));
+        .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
       return;
     }
 
@@ -631,6 +649,14 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     const item_id = Number(open_row_id);
     boardCommentsService
       .toggleSeen(board_id, item_id, Number(comment_id))
+      .then((dto) =>
+        // The server's list of who has seen it, so the "seen by" popover includes the viewer right away.
+        updateComments(open_row_id, (comments) =>
+          comments.map((comment) =>
+            comment.id === comment_id ? { ...comment, seen_by: dto.seen_by.map(mapSeenByDto), view_count: dto.view_count } : comment
+          )
+        )
+      )
       .catch(() => {
         applySeenToggle(open_row_id, comment_id);
         setCommentsError("Couldn't update seen state. Please try again.");
@@ -643,16 +669,16 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     );
 
   const togglePin = (comment_id: string) => {
-    if (!open_row_id) return;
+    if (!open_row_id || !can_edit) return;
     applyPinToggle(open_row_id, comment_id);
 
     if (!is_api_backed) return;
     const item_id = Number(open_row_id);
     boardCommentsService
       .togglePin(board_id, item_id, Number(comment_id))
-      .catch(() => {
+      .catch((error) => {
         applyPinToggle(open_row_id, comment_id);
-        setCommentsError("Couldn't update pinned state. Please try again.");
+        setCommentsError(getApiErrorMessage(error, "Couldn't update pinned state. Please try again."));
       });
   };
 
@@ -777,6 +803,36 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   );
 
   const comments = open_row_id ? comments_by_row[open_row_id] ?? [] : [];
+
+  /** Refetches the open item's thread, used once a scheduled update is sent so it shows up in place. */
+  const reloadThread = async () => {
+    if (!is_api_backed || !open_row_id) return;
+    const row_id = open_row_id;
+    const dtos = await boardCommentsService.listComments(board_id, Number(row_id));
+    setCommentsByRow((current) => ({ ...current, [row_id]: dtos.map(mapCommentDtoToDrawerComment) }));
+  };
+
+  const { collaboration, addScheduledComment, resetComposerExtras } = useCommentCollaboration({
+    is_api_backed,
+    scope_key: open_row_id,
+    can_edit,
+    supports_assignment: is_api_backed,
+    comments,
+    updateComments: (updater) => {
+      if (open_row_id) updateComments(open_row_id, updater);
+    },
+    reloadThread,
+    buildCommentPath: (comment_id) => `/boards/${board_id}/pulses/${open_row_id}?comment=${comment_id}`,
+    deep_link_param: "comment",
+    api: {
+      listScheduled: () => boardCommentsService.listScheduled(board_id!, Number(open_row_id)),
+      updateSchedule: (comment_id, scheduled_at) => boardCommentsService.updateSchedule(board_id!, Number(open_row_id), comment_id, scheduled_at),
+      cancelScheduled: (comment_id) => boardCommentsService.deleteComment(board_id!, Number(open_row_id), comment_id),
+      toggleBookmark: (comment_id) => boardCommentsService.toggleBookmark(board_id!, Number(open_row_id), comment_id),
+    },
+    onError: setCommentsError,
+  });
+
   const item_attachments = open_row_id ? item_attachments_by_row[open_row_id] ?? [] : [];
   const composer_attachments = useMemo(
     () => composer_attachment_drafts.map((draft) => draft.attachment),
@@ -822,6 +878,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   return {
     ...config,
+    collaboration,
     accent_color,
     is_open: open_row !== null,
     open_row_id,

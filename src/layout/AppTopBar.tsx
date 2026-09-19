@@ -61,7 +61,11 @@ const AppTopBar: React.FC = () => {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
+    saveNotification,
+    unsaveNotification,
     bulkAction,
+    summary: notification_summary,
+    loadSummary: loadNotificationSummary,
   } = useNotifications();
   const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all", load_updates: false });
   const [is_account_open, setIsAccountOpen] = useState(false);
@@ -292,6 +296,10 @@ const AppTopBar: React.FC = () => {
         onMarkAsRead={markAsRead}
         onMarkAsUnread={markAsUnread}
         onSnoozeNotification={snoozeNotification}
+        onSaveNotification={saveNotification}
+        onUnsaveNotification={unsaveNotification}
+        summary={notification_summary}
+        onLoadSummary={loadNotificationSummary}
         onBulkAction={bulkAction}
       />
 

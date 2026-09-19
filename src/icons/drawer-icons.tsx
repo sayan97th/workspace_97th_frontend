@@ -241,3 +241,12 @@ export const SendIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
     <path d="M7.3 8.7 L11 5" stroke="var(--color-shell-panel)" strokeWidth="1.1" strokeLinecap="round" />
   </svg>
 );
+
+/** A person with a plus, the composer's "Assign" action. */
+export const AssignPersonIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="6.5" cy="5.2" r="2.5" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M2 13 c0.4 -2.4 2.2 -3.8 4.5 -3.8 s4.1 1.4 4.5 3.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path d="M12.5 4 v4 M10.5 6 h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);

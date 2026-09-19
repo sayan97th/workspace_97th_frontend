@@ -1,11 +1,13 @@
 "use client";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import PersonAvatar from "../PersonAvatar";
+import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentFilterBar from "./CommentFilterBar";
 import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
+import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
 import type { BoardItemDrawerApi, DrawerActivityEntry, DrawerComment } from "./types";
 import type { CommentPresenceUser } from "./useCommentPresence";
 
@@ -56,6 +58,10 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
       presence.whisperTyping();
     }
   };
+
+  // Scheduling, assigning and the per-comment extras only exist for a real, saved item.
+  const collaboration = drawer.collaboration;
+  const is_api_backed = drawer.board_id !== undefined;
 
   const pinned_comments = visible_comments.filter((comment) => comment.pinned);
   const unpinned_comments = visible_comments.filter((comment) => !comment.pinned);
@@ -136,7 +142,19 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
           onAddFiles={drawer.addComposerAttachments}
           onRemoveAttachment={drawer.removeComposerAttachment}
           reference_items={drawer.reference_items_with_links}
+          schedule_at={collaboration.composer_schedule_at}
+          onScheduleChange={is_api_backed ? collaboration.setComposerScheduleAt : undefined}
+          assignment={collaboration.composer_assignment}
+          onAssignmentChange={is_api_backed && collaboration.supports_assignment && collaboration.can_edit ? collaboration.setComposerAssignment : undefined}
         />
+        {is_api_backed && (
+          <ScheduledCommentsPanel
+            scheduled_comments={collaboration.scheduled_comments}
+            onReschedule={collaboration.rescheduleComment}
+            onSendNow={collaboration.sendScheduledNow}
+            onCancel={collaboration.cancelScheduledComment}
+          />
+        )}
         {presence && <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />}
         {drawer.comments.length > 0 && (
           <CommentFilterBar
@@ -150,6 +168,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
         )}
       </div>
 
+      <CommentCollaborationProvider value={collaboration} enabled={is_api_backed}>
       <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
         {drawer.comments_error && (
           <div className="mt-3 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
@@ -206,6 +225,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
           )}
         </div>
       </div>
+      </CommentCollaborationProvider>
     </div>
   );
 }

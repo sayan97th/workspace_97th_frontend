@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { FeedPersonDto, FeedUpdateDto, FeedUpdatesPageDto } from "@/types/feed";
+import type { FeedFollowsDto, FeedPersonDto, FeedUpdateDto, FeedUpdatesPageDto } from "@/types/feed";
 import type {
   FeedAuthorOption,
   FeedBoardFilter,
@@ -147,6 +147,22 @@ export const feedService = {
   /** DELETE /api/feed/saved-views/{id} */
   async deleteSavedView(id: number): Promise<void> {
     await apiClient.delete(`/api/feed/saved-views/${id}`);
+  },
+
+  /** GET /api/feed/follows, the boards and items the viewer follows. */
+  async listFollows(): Promise<FeedFollowsDto> {
+    const response = await apiClient.get<{ data: FeedFollowsDto }>("/api/feed/follows");
+    return response.data;
+  },
+
+  /** POST /api/feed/follows, follows a board or an item so its updates fill the Following tab. */
+  async follow(type: "board" | "item", id: number): Promise<void> {
+    await apiClient.post("/api/feed/follows", { type, id });
+  },
+
+  /** DELETE /api/feed/follows/{type}/{id} */
+  async unfollow(type: "board" | "item", id: number): Promise<void> {
+    await apiClient.delete(`/api/feed/follows/${type}/${id}`);
   },
 
   /** POST /api/feed/updates/{id}/bookmark */

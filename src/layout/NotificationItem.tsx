@@ -9,7 +9,7 @@ import {
   type NotificationSnoozePresetId,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
-import { CheckIcon, CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import { BookmarkIcon, CheckIcon, CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 
 /** The actor as the shared {@link PersonAvatar} expects it, so the drawer shows the real profile photo and falls back to initials. */
 export const notificationActorToPerson = (actor: NotificationActor): BoardPersonOption => ({
@@ -41,6 +41,9 @@ type NotificationItemProps = {
   onMarkRead?: (id: string) => void;
   onMarkUnread?: (id: string) => void;
   onSnooze?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** "Save for later" and its undo, the card shows a bookmark button and a menu entry for whichever applies. */
+  onSave?: (id: string) => void;
+  onUnsave?: (id: string) => void;
   /** Rendered inside an expanded {@link NotificationGroupCard}, so it sits a little tighter. */
   is_nested?: boolean;
   /** The keyboard cursor (j and k) is on this card. */
@@ -57,7 +60,8 @@ const MENU_ITEM_CLASS =
 /**
  * A single notification card: the actor's avatar, actor + action sentence, the
  * board chip it is scoped to, a relative time, an unread dot, and (on hover)
- * a "..." menu (mark as read or unread, remind me later) plus a dismiss "×".
+ * a "..." menu (mark as read or unread, save for later, remind me later), a
+ * bookmark button that keeps it in the Saved tab, plus a dismiss "×".
  * Reusable in the notifications drawer and anywhere a notification feed is
  * rendered.
  */
@@ -68,17 +72,21 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   onMarkRead,
   onMarkUnread,
   onSnooze,
+  onSave,
+  onUnsave,
   is_nested = false,
   is_focused = false,
   is_selecting = false,
   is_selected = false,
   onToggleSelect,
 }) => {
-  const { id, actor, action_label, action_target, board, time_label, is_unread } = notification;
+  const { id, actor, action_label, action_target, board, time_label, is_unread, is_saved } = notification;
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const [is_menu_open, setIsMenuOpen] = useState(false);
 
-  const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze);
+  const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze || onSave || onUnsave);
+  const toggleSaved = () => (is_saved ? onUnsave?.(id) : onSave?.(id));
+  const can_toggle_saved = is_saved ? Boolean(onUnsave) : Boolean(onSave);
   const closeMenu = () => setIsMenuOpen(false);
 
   const runAndClose = (action: () => void) => () => {
@@ -117,7 +125,10 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </span>
 
         <span className="flex flex-none flex-col items-end gap-2">
-          <span className="text-[11.5px] text-shell-text-faint">{time_label}</span>
+          <span className="flex items-center gap-1.5 text-[11.5px] text-shell-text-faint">
+            {is_saved && <BookmarkIcon size={11} filled className="text-[#7fb2ff]" />}
+            {time_label}
+          </span>
           {is_unread && (
             <span
               className="h-2 w-2 rounded-full bg-[#3b82f6]"
@@ -127,7 +138,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </span>
       </button>
 
-      {!is_selecting && (onDismiss || has_menu) && (
+      {!is_selecting && (onDismiss || has_menu || can_toggle_saved) && (
         <div
           className={`absolute right-2 top-2 flex items-center gap-0.5 rounded-md bg-shell-panel-alt transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
             is_menu_open ? "opacity-100" : "opacity-0"
@@ -148,6 +159,23 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
               className="flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt text-shell-text-faint hover:bg-shell-hover hover:text-shell-text"
             >
               <MoreDotsIcon size={13} />
+            </button>
+          )}
+          {can_toggle_saved && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleSaved();
+              }}
+              aria-label={is_saved ? "Remove from saved" : "Save for later"}
+              aria-pressed={is_saved}
+              title={is_saved ? "Remove from saved" : "Save for later"}
+              className={`flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt hover:bg-shell-hover ${
+                is_saved ? "text-[#7fb2ff]" : "text-shell-text-faint hover:text-shell-text"
+              }`}
+            >
+              <BookmarkIcon size={12} filled={is_saved} />
             </button>
           )}
           {onDismiss && (
@@ -181,6 +209,12 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
                     Mark as unread
                   </button>
                 )}
+
+            {can_toggle_saved && (
+              <button type="button" role="menuitem" onClick={runAndClose(toggleSaved)} className={MENU_ITEM_CLASS}>
+                {is_saved ? "Remove from saved" : "Save for later"}
+              </button>
+            )}
 
             {onSnooze && (
               <>

@@ -33,6 +33,8 @@ export type BoardDiscussionCommentSeenByDto = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
+  /** When this person saw the update. */
+  seen_at?: string | null;
 };
 
 /** A top-level comment ("update"), or a reply when `parent_id` is set. Replies never nest further. */
@@ -50,6 +52,9 @@ export type BoardDiscussionCommentDto = {
   view_count: number;
   seen_by_me: boolean;
   seen_by: BoardDiscussionCommentSeenByDto[];
+  bookmarked_by_me: boolean;
+  /** Set while the update is scheduled and not visible to anyone else yet, null once it is live. */
+  scheduled_at: string | null;
   pinned: boolean;
   notified_user_ids: number[];
   reactions: BoardDiscussionCommentReactionDto[];
@@ -66,4 +71,6 @@ export type CreateBoardDiscussionCommentPayload = {
   /** Explicitly flagged via the composer's "Notify" action — distinct from `mentioned_user_ids`, never shown inline in the body. */
   notified_user_ids?: number[];
   attachments?: File[];
+  /** ISO time to publish the update at instead of posting it now. */
+  scheduled_at?: string;
 };

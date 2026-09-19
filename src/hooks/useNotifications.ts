@@ -17,6 +17,7 @@ import {
   type NotificationFilterOptions,
   type NotificationFilters,
   type NotificationSnoozePresetId,
+  type NotificationSummary,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
 import { useToast } from "@/components/ui/toast/ToastProvider";
@@ -34,7 +35,8 @@ const BULK_BATCH_SIZE = 100;
  * one unless the user's quiet hours are active (with a short chime when they
  * turned the sound on), prefixes the tab title with the unread count when they
  * left that on, and exposes the drawer's actions: open, mark as (un)read,
- * snooze, dismiss, and the same on a multi-selection.
+ * snooze, save for later, dismiss, and the same on a multi-selection. Also
+ * loads the summary card's counts of what is waiting for the person.
  */
 export function useNotifications() {
   const { user } = useAuth();
@@ -47,6 +49,7 @@ export function useNotifications() {
   const [next_cursor, setNextCursor] = useState<string | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [is_loading_more, setIsLoadingMore] = useState(false);
+  const [summary, setSummary] = useState<NotificationSummary | null>(null);
 
   // The websocket listener and the paging callbacks read these through refs, so
   // a filter change or a fresh profile never tears down the live subscription.
@@ -76,6 +79,14 @@ export function useNotifications() {
       setUnreadCount(await notificationsService.getUnreadCount());
     } catch {
       // The bell keeps its last known count.
+    }
+  }, []);
+
+  const loadSummary = useCallback(async () => {
+    try {
+      setSummary(await notificationsService.getSummary());
+    } catch {
+      // The card keeps its last known counts.
     }
   }, []);
 
@@ -239,11 +250,43 @@ export function useNotifications() {
   const markAsUnread = useCallback((id: string) => setNotificationUnread(id, true), [setNotificationUnread]);
   const markAsRead = useCallback((id: string) => setNotificationUnread(id, false), [setNotificationUnread]);
 
+  // Notifications saved for later stay unread, saving one is how a person keeps it out of a bulk clear.
   const markAllAsRead = useCallback(() => {
-    setNotifications((previous) => previous.map((item) => ({ ...item, is_unread: false })));
-    setUnreadCount(0);
-    notificationsService.markAllAsRead().catch(() => {});
-  }, []);
+    setNotifications((previous) => previous.map((item) => (item.is_saved ? item : { ...item, is_unread: false })));
+    notificationsService
+      .markAllAsRead()
+      .catch(() => {})
+      .finally(() => {
+        loadUnreadCount();
+        loadSummary();
+      });
+  }, [loadUnreadCount, loadSummary]);
+
+  /** "Save for later": flags one notification saved (or removes the flag), optimistically. Removing it on the Saved tab takes it out of the list. */
+  const setNotificationSaved = useCallback(
+    (id: string, is_saved: boolean) => {
+      const notification = notifications.find((item) => item.id === id);
+      if (!notification || notification.is_saved === is_saved) return;
+
+      const applyState = (value: boolean) =>
+        setNotifications((previous) =>
+          value === false && filters_ref.current.tab === "saved"
+            ? previous.filter((item) => item.id !== id)
+            : previous.map((item) => (item.id === id ? { ...item, is_saved: value } : item))
+        );
+
+      applyState(is_saved);
+      const request = is_saved ? notificationsService.save(id) : notificationsService.unsave(id);
+      request.then(loadSummary).catch(() => {
+        loadNotifications(filters_ref.current);
+        loadSummary();
+      });
+    },
+    [notifications, loadNotifications, loadSummary]
+  );
+
+  const saveNotification = useCallback((id: string) => setNotificationSaved(id, true), [setNotificationSaved]);
+  const unsaveNotification = useCallback((id: string) => setNotificationSaved(id, false), [setNotificationSaved]);
 
   const dismissNotification = useCallback(
     (id: string) => {
@@ -285,16 +328,21 @@ export function useNotifications() {
       if (id_set.size === 0) return;
 
       const affected = notifications.filter((item) => id_set.has(item.id));
-      const unread_delta = affected.reduce((delta, item) => {
-        if (action === "read" || action === "dismiss") return item.is_unread ? delta - 1 : delta;
-        return item.is_unread ? delta : delta + 1;
-      }, 0);
+      const is_save_action = action === "save" || action === "unsave";
+      const unread_delta = is_save_action
+        ? 0
+        : affected.reduce((delta, item) => {
+            if (action === "read" || action === "dismiss") return item.is_unread ? delta - 1 : delta;
+            return item.is_unread ? delta : delta + 1;
+          }, 0);
 
-      setNotifications((previous) =>
-        action === "dismiss"
-          ? previous.filter((item) => !id_set.has(item.id))
-          : previous.map((item) => (id_set.has(item.id) ? { ...item, is_unread: action === "unread" } : item))
-      );
+      setNotifications((previous) => {
+        if (action === "dismiss" || (action === "unsave" && filters_ref.current.tab === "saved")) {
+          return previous.filter((item) => !id_set.has(item.id));
+        }
+        if (is_save_action) return previous.map((item) => (id_set.has(item.id) ? { ...item, is_saved: action === "save" } : item));
+        return previous.map((item) => (id_set.has(item.id) ? { ...item, is_unread: action === "unread" } : item));
+      });
       setUnreadCount((previous) => Math.max(0, previous + unread_delta));
 
       const batches: string[][] = [];
@@ -304,13 +352,14 @@ export function useNotifications() {
         .reduce((chain, batch) => chain.then(() => notificationsService.bulk(action, batch)), Promise.resolve<{ unread_count: number } | null>(null))
         .then((result) => {
           if (result) setUnreadCount(result.unread_count);
+          loadSummary();
         })
         .catch(() => {
           loadNotifications(filters_ref.current);
           loadUnreadCount();
         });
     },
-    [notifications, loadNotifications, loadUnreadCount]
+    [notifications, loadNotifications, loadUnreadCount, loadSummary]
   );
 
   useTabBadge(unread_count, user?.tab_badge_enabled ?? true);
@@ -332,6 +381,10 @@ export function useNotifications() {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
+    saveNotification,
+    unsaveNotification,
     bulkAction,
+    summary,
+    loadSummary,
   };
 }

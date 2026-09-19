@@ -1,11 +1,14 @@
 "use client";
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
+import type { AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import { PinIcon } from "@/icons/board-icons";
-import { LikeIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
+import { LikeIcon, QuoteIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
+import { BookmarkIcon, LinkIcon } from "@/icons/workspace-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
+import { useCommentCollaborationContext } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
@@ -14,6 +17,7 @@ import EmojiPalette from "./EmojiPalette";
 import type { MentionOption } from "./mentionOptions";
 import { formatReactorNames } from "./reactionFormatting";
 import RichTextContent from "./RichTextContent";
+import SeenByList from "./SeenByList";
 import type { DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
 
 export type CommentThreadProps = {
@@ -141,6 +145,11 @@ type ReplyRowProps = {
   onCloseReactionPalette: () => void;
   onToggleReaction: (emoji: string) => void;
   onLoadRevisions?: () => Promise<DrawerCommentRevision[]>;
+  /** Copy link and quote, offered to everyone next to the author's own Edit and Delete. */
+  extra_menu_items?: AnchoredMenuItem[];
+  onToggleBookmark?: () => void;
+  /** A deep link points at this reply, so it is outlined for a few seconds. */
+  is_highlighted?: boolean;
 };
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
@@ -162,12 +171,18 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   onCloseReactionPalette,
   onToggleReaction,
   onLoadRevisions,
+  extra_menu_items,
+  onToggleBookmark,
+  is_highlighted = false,
 }) => {
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === reaction_palette_key;
 
   return (
-    <div className="flex gap-2.5 py-3 pl-5 pr-4">
+    <div
+      id={`comment-${reply.id}`}
+      className={`flex gap-2.5 py-3 pl-5 pr-4 transition-shadow ${is_highlighted ? "shadow-[inset_0_0_0_2px_#579bfc]" : ""}`}
+    >
       <PersonHoverCard person={reply.author} className="flex-none">
         <PersonAvatar person={reply.author} size={27} />
       </PersonHoverCard>
@@ -179,11 +194,14 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
           <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
           {is_new && <NewBadge />}
           {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
-          {reply.author.id === current_user_id && (
-            <span className="ml-auto">
-              <CommentOptionsMenu onEdit={onStartEditing} onDelete={onDelete} kind="reply" />
-            </span>
-          )}
+          <span className="ml-auto">
+            <CommentOptionsMenu
+              onEdit={reply.author.id === current_user_id ? onStartEditing : undefined}
+              onDelete={reply.author.id === current_user_id ? onDelete : undefined}
+              extra_items={extra_menu_items}
+              kind="reply"
+            />
+          </span>
         </div>
         {is_editing ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
@@ -207,6 +225,18 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
             <LikeIcon size={13} filled={reply.liked_by_me} />
             Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
           </button>
+          {onToggleBookmark && (
+            <button
+              type="button"
+              onClick={onToggleBookmark}
+              aria-pressed={reply.bookmarked_by_me ?? false}
+              className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
+              style={{ color: reply.bookmarked_by_me ? "#7fb2ff" : "var(--color-shell-text-muted)" }}
+            >
+              <BookmarkIcon size={13} filled={reply.bookmarked_by_me ?? false} />
+              {reply.bookmarked_by_me ? "Bookmarked" : "Bookmark"}
+            </button>
+          )}
           {reply.reactions.length === 0 && (
             <span className="relative">
               <button
@@ -275,15 +305,51 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const reply_composer_ref = useRef<HTMLDivElement>(null);
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === comment.id;
+  const collaboration = useCommentCollaborationContext();
 
   const focusReplyComposer = () =>
     (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
 
+  // Copy link and quote for a comment (or one of its replies), offered to everyone.
+  const buildExtraItems = (reply_id?: string): AnchoredMenuItem[] =>
+    collaboration
+      ? [
+          {
+            key: "copy-link",
+            label: collaboration.copied_link_id === (reply_id ?? comment.id) ? "Link copied" : "Copy link",
+            icon: <LinkIcon size={14} />,
+            onClick: () => void collaboration.copyCommentLink(comment.id, reply_id),
+          },
+          {
+            key: "quote",
+            label: "Quote in reply",
+            icon: <QuoteIcon size={14} />,
+            onClick: () => {
+              collaboration.quoteComment(comment.id, reply_id);
+              requestAnimationFrame(() => reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+            },
+          },
+        ]
+      : [];
+
+  // A deep link to this comment, or one of its replies, scrolls the thread into view once it has loaded.
+  const highlighted_id = collaboration?.highlighted_comment_id ?? null;
+  const is_thread_highlighted = highlighted_id !== null && (highlighted_id === comment.id || comment.replies.some((reply) => reply.id === highlighted_id));
+  useEffect(() => {
+    if (!is_thread_highlighted || highlighted_id === null) return;
+    const frame_id = requestAnimationFrame(() =>
+      document.getElementById(`comment-${highlighted_id}`)?.scrollIntoView({ block: "center", behavior: "smooth" })
+    );
+    return () => cancelAnimationFrame(frame_id);
+  }, [is_thread_highlighted, highlighted_id]);
+  const can_pin = onTogglePin !== undefined && (collaboration?.can_edit ?? true);
+
   return (
     <div
-      className={`mt-4 overflow-hidden rounded-[14px] border bg-shell-panel-alt ${
+      id={`comment-${comment.id}`}
+      className={`mt-4 overflow-hidden rounded-[14px] border bg-shell-panel-alt transition-shadow ${
         comment.pinned ? "border-[#f5a623]" : "border-shell-border"
-      }`}
+      } ${highlighted_id === comment.id ? "shadow-[0_0_0_2px_#579bfc]" : ""}`}
     >
       <div className="px-4 pb-[13px] pt-[15px]">
         {comment.pinned && (
@@ -315,7 +381,20 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <ViewsIcon />
             {comment.view_count}
           </span>
-          {onTogglePin && (
+          {collaboration && (
+            <button
+              type="button"
+              onClick={() => collaboration.toggleBookmark(comment.id)}
+              aria-label={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
+              aria-pressed={comment.bookmarked_by_me ?? false}
+              title={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
+              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
+              style={{ color: comment.bookmarked_by_me ? "#7fb2ff" : "var(--color-shell-text-muted)" }}
+            >
+              <BookmarkIcon size={13} filled={comment.bookmarked_by_me ?? false} />
+            </button>
+          )}
+          {can_pin && onTogglePin && (
             <button
               type="button"
               onClick={() => onTogglePin(comment.id)}
@@ -328,9 +407,12 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               <PinIcon size={13} />
             </button>
           )}
-          {comment.author.id === current_user.id && (
-            <CommentOptionsMenu onEdit={() => onStartEditing(comment.id)} onDelete={() => onDeleteComment(comment.id)} kind="comment" />
-          )}
+          <CommentOptionsMenu
+            onEdit={comment.author.id === current_user.id ? () => onStartEditing(comment.id) : undefined}
+            onDelete={comment.author.id === current_user.id ? () => onDeleteComment(comment.id) : undefined}
+            extra_items={buildExtraItems()}
+            kind="comment"
+          />
         </div>
 
         {editing_key === comment.id ? (
@@ -394,18 +476,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             Reply
           </button>
           <div className="ml-auto flex items-center gap-2.5">
-            {comment.seen_by.length > 0 && (
-              <div className="flex items-center -space-x-1.5" title={comment.seen_by.map((person) => person.name).join(", ")}>
-                {comment.seen_by.slice(0, 3).map((person) => (
-                  <PersonAvatar key={person.id} person={person} size={19} className="ring-2 ring-shell-panel-alt" />
-                ))}
-                {comment.seen_by.length > 3 && (
-                  <span className="flex h-[19px] w-[19px] items-center justify-center rounded-full bg-shell-hover-strong text-[9px] font-bold text-shell-text-muted ring-2 ring-shell-panel-alt">
-                    +{comment.seen_by.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
+            <SeenByList seen_by={comment.seen_by} />
             <button
               type="button"
               onClick={() => onToggleSeen(comment.id)}
@@ -442,6 +513,9 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               onCloseReactionPalette={onCloseReactionPalette}
               onToggleReaction={(emoji) => onToggleReaction(comment.id, reply.id, emoji)}
               onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id, reply.id) : undefined}
+              extra_menu_items={buildExtraItems(reply.id)}
+              onToggleBookmark={collaboration ? () => collaboration.toggleBookmark(comment.id, reply.id) : undefined}
+              is_highlighted={highlighted_id === reply.id}
             />
           ))}
         </div>
@@ -472,6 +546,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onCloseEmojiPalette={onCloseEmojiPalette}
           onInsertEmoji={onInsertEmoji}
           reference_items={reference_items}
+          quote_request={collaboration?.quote_requests[comment.id]}
         />
       </div>
     </div>

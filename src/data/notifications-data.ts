@@ -9,7 +9,7 @@
 export type NotificationCategory = "mentioned" | "assigned" | "replies" | "reactions" | "subscribed";
 
 /** Identifier of a tab in the drawer header. */
-export type NotificationTabId = "all" | "mentioned" | "assigned" | "replies" | "reactions";
+export type NotificationTabId = "all" | "mentioned" | "assigned" | "replies" | "reactions" | "saved";
 
 /** A tab shown in the drawer header. */
 export type NotificationTab = {
@@ -51,6 +51,8 @@ export type WorkspaceNotification = {
   /** Relative time label, e.g. "16 days". */
   time_label: string;
   is_unread: boolean;
+  /** Kept in the Saved tab, and out of "Mark all as read", until the person removes it. */
+  is_saved: boolean;
   category: NotificationCategory;
   /** Frontend route to navigate to on click, e.g. `/boards/12`. */
   link?: string;
@@ -149,9 +151,10 @@ export const notification_date_groups: { id: NotificationDateGroup; label: strin
 export const notification_tabs: NotificationTab[] = [
   { id: "all", label: "All" },
   { id: "mentioned", label: "Mentioned" },
-  { id: "assigned", label: "Assigned to me" },
+  { id: "assigned", label: "Assigned" },
   { id: "replies", label: "Replies" },
   { id: "reactions", label: "Reactions" },
+  { id: "saved", label: "Saved" },
 ];
 
 /** Placeholder for the search input in the drawer header. */
@@ -164,7 +167,9 @@ export const notification_search_placeholder =
  * `GET /api/notifications` for the same filters would return.
  */
 export function matchesNotificationFilters(notification: WorkspaceNotification, filters: NotificationFilters): boolean {
-  if (filters.tab !== "all" && notification.category !== filters.tab) return false;
+  if (filters.tab === "saved") {
+    if (!notification.is_saved) return false;
+  } else if (filters.tab !== "all" && notification.category !== filters.tab) return false;
   if (filters.unread_only && !notification.is_unread) return false;
   if (filters.board_id && notification.board.id !== filters.board_id) return false;
   if (filters.actor_id && notification.actor.id !== filters.actor_id) return false;
@@ -174,3 +179,17 @@ export function matchesNotificationFilters(notification: WorkspaceNotification, 
   const haystack = `${notification.actor.name} ${notification.board.name}`.toLowerCase();
   return needle.split(/\s+/).every((term) => haystack.includes(term));
 }
+
+/** What is waiting for the person, shown as the summary card at the top of the drawer. */
+export type NotificationSummary = {
+  unread_count: number;
+  mentions: number;
+  replies: number;
+  assigned: number;
+  reactions: number;
+  due_reminders: number;
+  today_count: number;
+  saved_count: number;
+  snoozed_count: number;
+  top_actors: { id: number; name: string; avatar_url: string | null; count: number }[];
+};

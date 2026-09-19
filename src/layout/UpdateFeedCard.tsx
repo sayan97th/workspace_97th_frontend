@@ -4,6 +4,7 @@ import PersonAvatar from "@/components/board/PersonAvatar";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import RichTextContent from "@/components/board/drawer/RichTextContent";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import FeedActivityTimeline from "@/components/feed/FeedActivityTimeline";
 import FeedReplyComposer from "@/components/feed/FeedReplyComposer";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
@@ -11,6 +12,7 @@ import { PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
   ChevronRightIcon,
+  EyeIcon,
   LinkIcon,
   MoreDotsIcon,
   ReplyIcon,
@@ -37,6 +39,8 @@ type UpdateFeedCardProps = {
   onMarkSeen?: (id: string) => void;
   /** Fired by the card menu's "Mark as unread". */
   onMarkUnread?: (id: string) => void;
+  /** Fired by the card menu's follow and unfollow entries, for the update's item or its board. */
+  onFollow?: (type: "board" | "item", id: number, following: boolean) => void;
 };
 
 /** How long an unread card must stay mostly on screen before it counts as read. */
@@ -65,6 +69,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   onSchedule,
   onMarkSeen,
   onMarkUnread,
+  onFollow,
 }) => {
   const {
     id,
@@ -78,6 +83,11 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     is_unread,
     is_bookmarked,
     pinned,
+    item_id,
+    is_following_item,
+    is_following_board,
+    activity,
+    activity_total,
     link,
     show_actions,
     show_composer,
@@ -141,6 +151,13 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     setIsMenuOpen(false);
     onMarkUnread?.(id);
   };
+
+  const toggleFollow = (type: "board" | "item") => {
+    setIsMenuOpen(false);
+    if (type === "item" && item_id) onFollow?.("item", Number(item_id), !is_following_item);
+    if (type === "board") onFollow?.("board", Number(board_id), !is_following_board);
+  };
+  const is_following = is_following_item || is_following_board;
 
   return (
     <article
@@ -239,6 +256,26 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                       Mark as unread
                     </button>
                   )}
+                  {onFollow && item_id && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => toggleFollow("item")}
+                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                    >
+                      {is_following_item ? "Unfollow this item" : "Follow this item"}
+                    </button>
+                  )}
+                  {onFollow && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => toggleFollow("board")}
+                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                    >
+                      {is_following_board ? "Unfollow this board" : "Follow this board"}
+                    </button>
+                  )}
                   {link && (
                     <button
                       type="button"
@@ -278,10 +315,22 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
               </React.Fragment>
             );
           })}
+          {is_following && (
+            <span
+              className="ml-1 flex items-center gap-1 rounded-full border border-shell-border-strong px-2 py-px text-[10.5px] font-semibold text-[#7fb2ff]"
+              title={is_following_item ? "You follow this item" : "You follow this board"}
+            >
+              <EyeIcon size={11} />
+              Following
+            </span>
+          )}
         </div>
 
         {/* Message body */}
         <RichTextContent html={body} people={mentions} className="mt-3.5 text-[13.5px] leading-[1.6] text-shell-text-secondary" />
+
+        {/* Item changes behind this update */}
+        <FeedActivityTimeline entries={activity} total={activity_total} />
 
         {/* View count */}
         {typeof view_count === "number" && (

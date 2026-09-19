@@ -28,6 +28,9 @@ export const boardCommentsService = {
     (payload.mentioned_user_ids ?? []).forEach((user_id) => form_data.append("mentioned_user_ids[]", String(user_id)));
     (payload.notified_user_ids ?? []).forEach((user_id) => form_data.append("notified_user_ids[]", String(user_id)));
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
+    if (payload.scheduled_at) form_data.append("scheduled_at", payload.scheduled_at);
+    (payload.assign_user_ids ?? []).forEach((user_id) => form_data.append("assign_user_ids[]", String(user_id)));
+    if (payload.assign_due_date) form_data.append("assign_due_date", payload.assign_due_date);
 
     const response = await apiClient.postFormData<{ comment: BoardItemCommentDto }>(
       `/api/boards/${board_id}/items/${item_id}/comments`,
@@ -97,6 +100,31 @@ export const boardCommentsService = {
   async togglePin(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
     const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
       `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/pin`
+    );
+    return response.comment;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/bookmark */
+  async toggleBookmark(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
+    const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/bookmark`
+    );
+    return response.comment;
+  },
+
+  /** GET /api/boards/{board_id}/items/{item_id}/comments/scheduled, the viewer's own comments and replies still waiting to be sent, soonest first. */
+  async listScheduled(board_id: number, item_id: number): Promise<BoardItemCommentDto[]> {
+    const response = await apiClient.get<{ data: BoardItemCommentDto[] }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/scheduled`
+    );
+    return response.data;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/schedule, moves a scheduled comment to a new time, or sends it now when `scheduled_at` is null. */
+  async updateSchedule(board_id: number, item_id: number, comment_id: number, scheduled_at: string | null): Promise<BoardItemCommentDto> {
+    const response = await apiClient.patch<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/schedule`,
+      { scheduled_at }
     );
     return response.comment;
   },

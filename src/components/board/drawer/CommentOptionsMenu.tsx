@@ -6,8 +6,11 @@ import { EditPencilIcon } from "@/icons/board-icons";
 import { DeleteIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 
 export type CommentOptionsMenuProps = {
-  onEdit: () => void;
-  onDelete: () => void;
+  /** Author-only. Omit (with `onDelete`) for someone else's comment, and the menu keeps only `extra_items`. */
+  onEdit?: () => void;
+  onDelete?: () => void;
+  /** Actions anyone can take on a comment, such as copying its link or quoting it, listed above Edit and Delete. */
+  extra_items?: AnchoredMenuItem[];
   /** Only used for the trigger's aria-label and the delete confirm dialog's copy. */
   kind?: "comment" | "reply";
   class_name?: string;
@@ -19,8 +22,8 @@ const TRIGGER_CLASS_NAME =
   "flex h-6 w-6 flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text";
 
 /**
- * Author-only "…" options menu for a comment or reply — Edit / Delete, built
- * on the same {@link AnchoredMenu} primitive as {@link TeamOptionsButton}.
+ * "…" options menu for a comment or reply: Edit and Delete for its author, plus
+ * whatever `extra_items` the drawer offers everyone, built on the same {@link AnchoredMenu} primitive as {@link TeamOptionsButton}.
  * Shared by every drawer flavor (`CommentThread`'s full Updates tab and
  * Kanban's compact comment list) the same way `CommentAttachmentChip`
  * already is, so the menu + confirm-before-delete behavior only lives here.
@@ -28,6 +31,7 @@ const TRIGGER_CLASS_NAME =
 const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
   onEdit,
   onDelete,
+  extra_items = [],
   kind = "comment",
   class_name,
   style,
@@ -38,9 +42,14 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
   const button_ref = useRef<HTMLButtonElement>(null);
 
   const items: AnchoredMenuItem[] = [
-    { key: "edit", label: "Edit", icon: <EditPencilIcon size={14} />, onClick: onEdit },
-    { key: "delete", label: "Delete", icon: <DeleteIcon size={14} />, onClick: () => setIsConfirmOpen(true), danger: true },
+    ...extra_items,
+    ...(onEdit ? [{ key: "edit", label: "Edit", icon: <EditPencilIcon size={14} />, onClick: onEdit }] : []),
+    ...(onDelete
+      ? [{ key: "delete", label: "Delete", icon: <DeleteIcon size={14} />, onClick: () => setIsConfirmOpen(true), danger: true }]
+      : []),
   ];
+
+  if (items.length === 0) return null;
 
   return (
     <>
@@ -62,7 +71,7 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
         is_open={is_menu_open}
         onClose={() => setIsMenuOpen(false)}
         items={items}
-        width={160}
+        width={190}
         align="end"
       />
 
@@ -73,7 +82,7 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
         confirm_label="Delete"
         danger
         onClose={() => setIsConfirmOpen(false)}
-        onConfirm={onDelete}
+        onConfirm={() => onDelete?.()}
       />
     </>
   );

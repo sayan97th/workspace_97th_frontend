@@ -1872,6 +1872,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setItems((current) => removeItemFromTree(current, Number(item_id)));
   };
 
+  // A comment that assigned people or a due date changed the open item's cells on the server, so its row is refreshed.
+  const handleDrawerCommentAssigned = async (item_id: string) => {
+    try {
+      const detail = await boardContentService.getItem(board_id, Number(item_id));
+      setItems((current) => mapItemInTree(current, Number(item_id), (item) => ({ ...item, values: detail.values })));
+    } catch {
+      // The row keeps its old cells until the next refresh.
+    }
+  };
+
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
       getRowId: (row) => String(row.id),
@@ -1894,9 +1904,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onMoveItemToBoard: handleDrawerMoveItemToBoard,
       onArchiveItem: handleDrawerArchiveItem,
       onDeleteItem: handleDrawerDeleteItem,
+      can_edit: node.can_edit,
+      onCommentAssigned: handleDrawerCommentAssigned,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [node.label, current_user.id, persons, board_id, getInfoBoxes, getActivityLog, items, selection_move_targets]
+    [node.label, node.can_edit, current_user.id, persons, board_id, getInfoBoxes, getActivityLog, items, selection_move_targets]
   );
 
   const drawer = useBoardItemDrawer(drawer_config);
@@ -1909,7 +1921,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     breadcrumb_label: `${node.workspace.name} · ${node.label}`,
     initial_comment_count: node.comments_count,
     initial_has_unseen_comments: node.has_unseen_comments,
+    can_edit: node.can_edit,
   });
+
+  // `/boards/{id}?update={comment_id}` (a copied link to a board update) opens the discussion drawer, which then scrolls to that update.
+  const discussion_update_param = search_params.get("update");
+  const opened_discussion_param_ref = useRef<string | null>(null);
+  useEffect(() => {
+    if (!discussion_update_param || opened_discussion_param_ref.current === discussion_update_param) return;
+    opened_discussion_param_ref.current = discussion_update_param;
+    discussion_drawer.open();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discussion_update_param]);
 
   // Browser tab title: the open item wins, then the board updates panel, then the active view.
   // "Launch plan | Client Hub | Workspace 97th", "Client Hub | Main table | Workspace 97th".

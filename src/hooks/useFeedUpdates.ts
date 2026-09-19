@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getToken } from "@/lib/api-client";
 import { listenOnPrivateChannel } from "@/lib/echo";
 import { feedService } from "@/services/feed.service";
-import { mapFeedUpdateDto, type FeedUpdateDto } from "@/types/feed";
+import { mapFeedUpdateDto, type FeedFollowsDto, type FeedUpdateDto } from "@/types/feed";
 import {
   default_feed_filters,
   feed_page_size,
@@ -35,6 +35,8 @@ function matchesActiveTab(dto: FeedUpdateDto, tab: UpdateFeedTabId, viewer_id: n
   if (tab === "mentioned") return dto.is_mentioned;
   if (tab === "bookmarked") return dto.is_bookmarked;
   if (tab === "account") return true;
+  if (tab === "following") return dto.is_following_item || dto.is_following_board;
+  if (tab === "pinned") return dto.pinned;
   return dto.is_mentioned || dto.is_bookmarked || dto.actor.id === viewer_id;
 }
 
@@ -69,7 +71,7 @@ export function matchesFeedFilters(dto: FeedUpdateDto, filters: FeedFilters): bo
  * Fetches the current user's Update Feed for the given tab/board filter, one
  * cursor page at a time, keeps it live via the `feed.{user_id}` Reverb
  * channel, and exposes the card actions (bookmark, like, reply, schedule, mark
- * seen). Updates other people post while the feed is open are held back in
+ * seen, follow and unfollow a board or item). Updates other people post while the feed is open are held back in
  * `pending_updates` (the "N new updates" banner) instead of shoving the cards
  * the viewer is reading around, the viewer's own posts show up straight away.
  * Mirrors `useNotifications`.
@@ -84,6 +86,7 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   const [unread_count, setUnreadCount] = useState(0);
   const [is_loading, setIsLoading] = useState(load_updates);
   const [is_loading_more, setIsLoadingMore] = useState(false);
+  const [follows, setFollows] = useState<FeedFollowsDto | null>(null);
 
   // Only the newest list request may write its result, so switching tabs
   // quickly can never leave the previous tab's cards on screen.
@@ -144,6 +147,14 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
       setUnreadCount(await feedService.getUnreadCount());
     } catch {
       // Badge keeps its last known value.
+    }
+  }, []);
+
+  const loadFollows = useCallback(async () => {
+    try {
+      setFollows(await feedService.listFollows());
+    } catch {
+      // The Following header keeps whatever it already had.
     }
   }, []);
 
@@ -226,6 +237,34 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     [applyUpdate]
   );
 
+  /**
+   * Follows or unfollows a board or an item, which fills the Following tab.
+   * Every card on that board or item flips at once, and on the Following tab
+   * the cards that stop matching leave the list. A failed request restores
+   * the previous flags.
+   */
+  const setFollowing = useCallback(
+    async (type: "board" | "item", id: number, following: boolean) => {
+      const key = String(id);
+      const flag = type === "item" ? "is_following_item" : "is_following_board";
+      const matches = (update: FeedUpdate) => (type === "item" ? update.item_id === key : update.board_id === key);
+      const previous = updates;
+
+      setUpdates((current) => {
+        const flipped = current.map((update) => (matches(update) ? { ...update, [flag]: following } : update));
+        return tab === "following" ? flipped.filter((update) => update.is_following_item || update.is_following_board) : flipped;
+      });
+
+      try {
+        await (following ? feedService.follow(type, id) : feedService.unfollow(type, id));
+        loadFollows();
+      } catch {
+        setUpdates(previous);
+      }
+    },
+    [updates, tab, loadFollows]
+  );
+
   const likeUpdate = useCallback(
     async (id: string) => {
       const dto = await feedService.toggleLike(id);
@@ -306,6 +345,9 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     bookmarkUpdate,
     likeUpdate,
     pinUpdate,
+    follows,
+    loadFollows,
+    setFollowing,
     markSeen,
     markUnread,
     markAllSeen,

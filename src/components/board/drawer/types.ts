@@ -41,6 +41,37 @@ export type DrawerReply = {
   liked_by_me: boolean;
   like_count: number;
   reactions: DrawerReaction[];
+  /** True once the viewer bookmarked it, which also lists it in the Update Feed's Bookmarked tab. Absent on client-side-only mock data. */
+  bookmarked_by_me?: boolean;
+};
+
+/** A person who has seen a comment, with when they did. */
+export type DrawerSeenBy = BoardPersonOption & {
+  /** ISO time the person saw it, absent on client-side-only mock data. */
+  seen_at?: string;
+};
+
+/** A comment or reply the viewer scheduled and that has not been sent yet. */
+export type DrawerScheduledComment = {
+  id: string;
+  /** The thread it will be posted under, null for a top-level update. */
+  parent_id: string | null;
+  /** Markdown body. */
+  body: string;
+  /** ISO time it goes out. */
+  scheduled_at: string;
+};
+
+/** The composer's "Assign" action: who to add to the item's People column, and an optional due date (`YYYY-MM-DD`). */
+export type ComposerAssignment = {
+  user_ids: string[];
+  due_date: string | null;
+};
+
+/** Asks a reply composer to append a quoted comment. `key` changes on every request so quoting the same comment twice still fires. */
+export type CommentQuoteRequest = {
+  key: number;
+  markdown: string;
 };
 
 /** One earlier version of an edited comment or reply, for the "(edited)" history popover. */
@@ -68,7 +99,7 @@ export type DrawerReferenceItem = {
 export type DrawerComment = DrawerReply & {
   seen: boolean;
   /** Everyone who has viewed this update, for the live "seen by" avatar stack — empty on client-side-only mock data. */
-  seen_by: BoardPersonOption[];
+  seen_by: DrawerSeenBy[];
   /** True once pinned via the composer's pin action — pinned updates sort ahead of the rest of the thread. Absent (falsy) on client-side-only mock data. */
   pinned?: boolean;
   /** Ids of people explicitly flagged via "Notify", distinct from `@mentions` in the body. Absent on client-side-only mock data. */
@@ -159,6 +190,10 @@ export type BoardItemDrawerConfig<TRow> = {
   getRowGroupId?: (row: TRow) => string;
   /** Whether `row` is a top-level item rather than a subitem. Moving and archiving are only offered for top-level items, since a subitem's group follows its parent's. Defaults to true. */
   isTopLevelRow?: (row: TRow) => boolean;
+  /** Whether the viewer may edit the board. Pinning an update and the composer's "Assign" action need it. Defaults to true. */
+  can_edit?: boolean;
+  /** Called after a comment assigned people or a due date to the open item, so the caller can refresh that row's cells. */
+  onCommentAssigned?: (row_id: string) => void;
   /** Items of the board a comment can link to by typing `#`. Omit to hide the reference picker. */
   reference_items?: { id: string; name: string }[];
   /** Tables the "Move to group" action can move the open item into. Omit to hide that action. */
@@ -173,8 +208,51 @@ export type BoardItemDrawerConfig<TRow> = {
   onDeleteItem?: (row_id: string) => Promise<void>;
 };
 
+/**
+ * What the comment drawers add on top of plain threads: bookmarks, copy link
+ * and quote for a comment, deep link highlighting, and the composer's
+ * "Schedule send" and "Assign" actions. Shared by the item drawer and the board
+ * discussion drawer through `useCommentCollaboration`.
+ */
+export type CommentCollaborationApi = {
+  /** Whether the viewer may pin updates and assign from a comment. Read-only members see neither. */
+  can_edit: boolean;
+  /** Bookmarks a comment (or reply when `reply_id` is given) for the viewer. */
+  toggleBookmark: (comment_id: string, reply_id?: string) => void;
+  /** Copies a direct link that opens the drawer scrolled to that comment. */
+  copyCommentLink: (comment_id: string, reply_id?: string) => Promise<void>;
+  /** Id of the comment whose link was just copied, for a short "Link copied" hint. */
+  copied_link_id: string | null;
+  /** Fills the thread's reply box with a quote of the comment, or of one of its replies. */
+  quoteComment: (comment_id: string, reply_id?: string) => void;
+  /** Pending quote for each reply box, keyed by the thread's comment id. */
+  quote_requests: Record<string, CommentQuoteRequest>;
+  /** The comment a deep link points at, kept for a few seconds so the thread can scroll to it and highlight it. */
+  highlighted_comment_id: string | null;
+
+  /** The viewer's own comments and replies waiting to be sent, soonest first. */
+  scheduled_comments: DrawerScheduledComment[];
+  /** ISO time the update in the composer will be sent at, null to post it right away. */
+  composer_schedule_at: string | null;
+  setComposerScheduleAt: (scheduled_at: string | null) => void;
+  /** Moves a scheduled comment to a new time. */
+  rescheduleComment: (comment_id: string, scheduled_at: string) => Promise<void>;
+  /** Sends a scheduled comment now. */
+  sendScheduledNow: (comment_id: string) => Promise<void>;
+  /** Cancels a scheduled comment for good. */
+  cancelScheduledComment: (comment_id: string) => Promise<void>;
+
+  /** False for the board discussion, which has no item to assign. */
+  supports_assignment: boolean;
+  /** People and due date the update in the composer will assign to the item. */
+  composer_assignment: ComposerAssignment;
+  setComposerAssignment: (assignment: ComposerAssignment) => void;
+};
+
 /** Full live state + actions returned by {@link useBoardItemDrawer}. */
 export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
+  /** Bookmarks, copy link, quote, scheduling and assigning, see {@link CommentCollaborationApi}. */
+  collaboration: CommentCollaborationApi;
   is_open: boolean;
   open_row_id: string | null;
   open_row_title: string;

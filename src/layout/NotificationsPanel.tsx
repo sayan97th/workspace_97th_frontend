@@ -7,6 +7,7 @@ import SlideOverDrawer from "./SlideOverDrawer";
 import NotificationGroupCard from "./NotificationGroupCard";
 import NotificationItem from "./NotificationItem";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
+import NotificationSummaryCard from "./NotificationSummaryCard";
 import type { NotificationBulkAction } from "@/services/notifications.service";
 import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
 import {
@@ -18,6 +19,8 @@ import {
   type NotificationFilterOptions,
   type NotificationFilters,
   type NotificationSnoozePresetId,
+  type NotificationSummary,
+  type NotificationTabId,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
 
@@ -43,6 +46,12 @@ type NotificationsPanelProps = {
   onMarkAsRead?: (id: string) => void;
   onMarkAsUnread?: (id: string) => void;
   onSnoozeNotification?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** "Save for later" and its undo, saved notifications live in the Saved tab and survive "Mark all as read". */
+  onSaveNotification?: (id: string) => void;
+  onUnsaveNotification?: (id: string) => void;
+  /** What is waiting for the person, shown as a card on top of the unfiltered All tab. */
+  summary?: NotificationSummary | null;
+  onLoadSummary?: () => void;
   /** Applies one action to several notifications at once, powers the multi-select toolbar and the e and u shortcuts. */
   onBulkAction?: (action: NotificationBulkAction, ids: string[]) => void;
 };
@@ -73,13 +82,14 @@ const groupByThread = (notifications: WorkspaceNotification[]): WorkspaceNotific
 
 /**
  * Notifications drawer opened from the AppTopBar bell. Shows the "All",
- * "Mentioned", "Assigned to me", "Replies" and "Reactions" tabs, a search box,
+ * "Mentioned", "Assigned", "Replies", "Reactions" and "Saved" tabs, a
+ * summary card of what is waiting (on the unfiltered All tab), a search box,
  * board and person filters, an "unread only" toggle and the notification list,
  * grouped by date and then by thread. Filtering happens server-side and the
  * list pages in as it is scrolled, both driven by `useNotifications`, this
  * component only renders them. "Select" turns on multi-select with a bulk
- * toolbar (read, unread, dismiss), and the list is keyboard driven: j and k
- * move, o opens, e dismisses, u toggles read, x selects.
+ * toolbar (read, unread, save, dismiss), and the list is keyboard driven: j and
+ * k move, o opens, e dismisses, u toggles read, s saves, x selects.
  */
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   is_open,
@@ -100,6 +110,10 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onMarkAsRead,
   onMarkAsUnread,
   onSnoozeNotification,
+  onSaveNotification,
+  onUnsaveNotification,
+  summary,
+  onLoadSummary,
   onBulkAction,
 }) => {
   const { resolved_theme, toggleTheme } = useTheme();
@@ -115,7 +129,10 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   // The board and person menus only list what actually appears in the user's
   // notifications, refreshed each time the drawer opens.
   useEffect(() => {
-    if (is_open) onLoadFilterOptions();
+    if (is_open) {
+      onLoadFilterOptions();
+      onLoadSummary?.();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [is_open]);
 
@@ -144,7 +161,11 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
       .filter((group) => group.threads.length > 0);
   }, [notifications]);
 
-  const has_unread = notifications.some((notification) => notification.is_unread);
+  // Saved notifications survive "Mark all as read", so only the ones it would actually touch make the button worth showing.
+  const has_unread = notifications.some((notification) => notification.is_unread && !notification.is_saved);
+  const is_unfiltered_all =
+    filters.tab === "all" && !filters.unread_only && !filters.search.trim() && !filters.board_id && !filters.actor_id;
+  const openSummaryTab = (tab: NotificationTabId, unread_only: boolean) => onFiltersChange({ tab, unread_only });
   const threads = useMemo(() => grouped_notifications.flatMap((group) => group.threads), [grouped_notifications]);
 
   // A dismissed, snoozed or filtered-out notification can no longer be selected or focused.
@@ -219,6 +240,9 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
       } else if (event.key === "u" && onBulkAction) {
         event.preventDefault();
         onBulkAction(focused_thread.some((notification) => notification.is_unread) ? "read" : "unread", ids);
+      } else if (event.key === "s" && onBulkAction) {
+        event.preventDefault();
+        onBulkAction(focused_thread.every((notification) => notification.is_saved) ? "unsave" : "save", ids);
       } else if (event.key === "e" && onBulkAction) {
         event.preventDefault();
         // Leave the cursor on the neighbour that takes its place.
@@ -277,7 +301,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="shell-scrollbar mt-4 flex gap-[14px] overflow-x-auto border-b border-shell-border">
+        <div className="shell-scrollbar mt-4 flex gap-[10px] overflow-x-auto border-b border-shell-border">
           {notification_tabs.map((tab) => {
             const is_active = tab.id === filters.tab;
             return (
@@ -392,6 +416,14 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
               <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("unread")} className={BULK_BUTTON_CLASS}>
                 Mark unread
               </button>
+              <button
+                type="button"
+                disabled={selected_ids.size === 0}
+                onClick={() => runBulkAction(filters.tab === "saved" ? "unsave" : "save")}
+                className={BULK_BUTTON_CLASS}
+              >
+                {filters.tab === "saved" ? "Unsave" : "Save"}
+              </button>
               <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("dismiss")} className={BULK_BUTTON_CLASS}>
                 Dismiss
               </button>
@@ -402,9 +434,15 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
       {/* Scrollable list, grouped by date and then by thread */}
       <div ref={scroll_area_ref} className="shell-scrollbar flex-1 overflow-y-auto px-5 pb-6 pt-[18px]">
+        {summary && is_unfiltered_all && <NotificationSummaryCard summary={summary} onOpenTab={openSummaryTab} />}
+
         {notifications.length === 0 ? (
           <p className="pt-6 text-center text-[13px] text-shell-text-muted">
-            {is_loading ? "Loading notifications…" : "You're all caught up."}
+            {is_loading
+              ? "Loading notifications…"
+              : filters.tab === "saved"
+                ? "Nothing saved yet. Use the bookmark on a notification to keep it here."
+                : "You're all caught up."}
           </p>
         ) : (
           grouped_notifications.map((group) => (
@@ -429,6 +467,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                           onMarkRead={onMarkAsRead}
                           onMarkUnread={onMarkAsUnread}
                           onSnooze={onSnoozeNotification}
+                          onSave={onSaveNotification}
+                          onUnsave={onUnsaveNotification}
                           onToggleSelect={toggleSelection}
                           {...row_props}
                         />
@@ -440,6 +480,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                           onMarkRead={onMarkAsRead}
                           onMarkUnread={onMarkAsUnread}
                           onSnooze={onSnoozeNotification}
+                          onSave={onSaveNotification}
+                          onUnsave={onUnsaveNotification}
                           onToggleSelect={(id) => toggleSelection([id])}
                           {...row_props}
                         />
@@ -457,7 +499,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
         {is_loading_more && <p className="pt-3 text-center text-[12.5px] text-shell-text-muted">Loading more…</p>}
         {onBulkAction && notifications.length > 0 && (
           <p className="mt-4 hidden text-center text-[11.5px] text-shell-text-faint md:block">
-            Keyboard: j and k move, o opens, e dismisses, u marks read or unread, x selects.
+            Keyboard: j and k move, o opens, e dismisses, u marks read or unread, s saves, x selects.
           </p>
         )}
       </div>

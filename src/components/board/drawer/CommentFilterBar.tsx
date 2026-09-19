@@ -17,16 +17,17 @@ export type CommentFilterBarProps = {
 
 const SEARCH_DEBOUNCE_MS = 200;
 
-const CHIPS: { key: "only_pinned" | "with_files" | "mentioning_me"; label: string }[] = [
+const CHIPS: { key: "only_pinned" | "only_bookmarked" | "with_files" | "mentioning_me"; label: string }[] = [
   { key: "only_pinned", label: "Pinned" },
+  { key: "only_bookmarked", label: "Bookmarked" },
   { key: "with_files", label: "With files" },
   { key: "mentioning_me", label: "Mentions me" },
 ];
 
 /**
  * The slim search and filter row above an update thread, shared by the item
- * drawer and the board discussion drawer: search, author, and Pinned, With
- * files and Mentions me chips. Filtering happens on the threads already
+ * drawer and the board discussion drawer: search, author, and Pinned,
+ * Bookmarked, With files and Mentions me chips. Filtering happens on the threads already
  * loaded, so it needs no request.
  */
 const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, onClear, authors, visible_count, total_count }) => {

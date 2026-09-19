@@ -38,6 +38,8 @@ export type RichTextComposerRef = {
   insertMentionText: (name: string) => void;
   /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
   insertMarkdown: (markdown: string) => void;
+  /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
+  appendMarkdownBlock: (markdown: string) => void;
   /** Replaces the `/query` being typed with the result of a slash command. The `emoji` command only clears the query, the parent opens its palette. */
   applySlashCommand: (action: SlashCommandAction) => void;
   /** Replaces the `#query` being typed with a link to another item, shown as `#Name`. */
@@ -295,6 +297,14 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         },
         insertMarkdown: (markdown: string) => {
           editor?.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();
+        },
+        appendMarkdownBlock: (markdown: string) => {
+          if (!editor) return;
+          const blocks = editor.markdown?.parse(markdown).content ?? [];
+          const content = [...blocks, { type: "paragraph" }];
+          // An empty draft is replaced rather than left with a blank line above the quote.
+          if (editor.isEmpty) editor.chain().setContent(content).focus("end").run();
+          else editor.chain().focus("end").insertContent(content).run();
         },
         applySlashCommand: (action: SlashCommandAction) => {
           if (!editor) return;

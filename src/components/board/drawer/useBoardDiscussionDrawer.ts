@@ -1,14 +1,17 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { boardDiscussionService } from "@/services/board-discussion.service";
 import { boardMuteService } from "@/services/board-mute.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapRevisionDto } from "./commentMapping";
+import { mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
+import { useCommentCollaboration } from "./useCommentCollaboration";
 import type {
+  CommentCollaborationApi,
   DrawerAttachment,
   DrawerComment,
   DrawerCommentRevision,
@@ -55,10 +58,14 @@ export type BoardDiscussionDrawerConfig = {
   initial_comment_count?: number;
   /** Server-known unseen state (board.has_unseen_comments) — whether the badge should start out red before the drawer has ever been opened this load. */
   initial_has_unseen_comments?: boolean;
+  /** Whether the viewer may edit the board, which pinning an update needs. Defaults to true. */
+  can_edit?: boolean;
 };
 
 /** Full live state + actions returned by {@link useBoardDiscussionDrawer}. */
 export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
+  /** Bookmarks, copy link, quote and scheduling, see {@link CommentCollaborationApi}. Assigning does not apply to a whole board. */
+  collaboration: CommentCollaborationApi;
   is_open: boolean;
   open: () => void;
   close: () => void;
@@ -314,15 +321,18 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     const files = composer_attachment_drafts.map((draft) => draft.file);
     setCommentsError(null);
     boardDiscussionService
-      .postComment(board_id, { body, mentioned_user_ids, notified_user_ids, attachments: files })
+      .postComment(board_id, { body, mentioned_user_ids, notified_user_ids, attachments: files, scheduled_at: collaboration.composer_schedule_at ?? undefined })
       .then((dto) => {
-        setComments((current) => [mapDiscussionCommentDtoToDrawerComment(dto), ...current]);
+        // A scheduled update waits in its own list until it goes out, it is not part of the thread yet.
+        if (dto.scheduled_at) addScheduledComment(dto);
+        else setComments((current) => [mapDiscussionCommentDtoToDrawerComment(dto), ...current]);
         setComposerText("");
         setComposerAttachmentDrafts([]);
         setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
         setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
+        resetComposerExtras();
       })
-      .catch(() => setCommentsError("Couldn't post your update. Please try again."));
+      .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
   };
 
   const addComposerAttachments = (files: File[]) => {
@@ -523,12 +533,22 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       current.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
     );
 
-    boardDiscussionService.toggleSeen(board_id, Number(comment_id)).catch(() => {
-      setComments((current) =>
-        current.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
-      );
-      setCommentsError("Couldn't update seen state. Please try again.");
-    });
+    boardDiscussionService
+      .toggleSeen(board_id, Number(comment_id))
+      .then((dto) =>
+        // The server's list of who has seen it, so the "seen by" popover includes the viewer right away.
+        setComments((current) =>
+          current.map((comment) =>
+            comment.id === comment_id ? { ...comment, seen_by: dto.seen_by.map(mapSeenByDto), view_count: dto.view_count } : comment
+          )
+        )
+      )
+      .catch(() => {
+        setComments((current) =>
+          current.map((comment) => (comment.id === comment_id ? { ...comment, seen: !comment.seen } : comment))
+        );
+        setCommentsError("Couldn't update seen state. Please try again.");
+      });
   };
 
   const toggleMute = () => {
@@ -547,11 +567,12 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     );
 
   const togglePin = (comment_id: string) => {
+    if (!(config.can_edit ?? true)) return;
     applyPinToggle(comment_id);
 
-    boardDiscussionService.togglePin(board_id, Number(comment_id)).catch(() => {
+    boardDiscussionService.togglePin(board_id, Number(comment_id)).catch((error) => {
       applyPinToggle(comment_id);
-      setCommentsError("Couldn't update pinned state. Please try again.");
+      setCommentsError(getApiErrorMessage(error, "Couldn't update pinned state. Please try again."));
     });
   };
 
@@ -602,6 +623,28 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     return dtos.map(mapRevisionDto);
   };
 
+  const { collaboration, addScheduledComment, resetComposerExtras } = useCommentCollaboration({
+    is_api_backed: true,
+    scope_key: is_open ? String(board_id) : null,
+    can_edit: config.can_edit ?? true,
+    supports_assignment: false,
+    comments,
+    updateComments: setComments,
+    reloadThread: async () => {
+      const dtos = await boardDiscussionService.listComments(board_id);
+      setComments(dtos.map(mapDiscussionCommentDtoToDrawerComment));
+    },
+    buildCommentPath: (comment_id) => `/boards/${board_id}?update=${comment_id}`,
+    deep_link_param: "update",
+    api: {
+      listScheduled: () => boardDiscussionService.listScheduled(board_id),
+      updateSchedule: (comment_id, scheduled_at) => boardDiscussionService.updateSchedule(board_id, comment_id, scheduled_at),
+      cancelScheduled: (comment_id) => boardDiscussionService.deleteComment(board_id, comment_id),
+      toggleBookmark: (comment_id) => boardDiscussionService.toggleBookmark(board_id, comment_id),
+    },
+    onError: setCommentsError,
+  });
+
   const composer_attachments = useMemo(
     () => composer_attachment_drafts.map((draft) => draft.attachment),
     [composer_attachment_drafts]
@@ -620,6 +663,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   return {
     ...config,
+    collaboration,
     is_open,
     open,
     close,

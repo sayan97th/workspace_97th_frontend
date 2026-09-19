@@ -3,11 +3,13 @@ import React, { useCallback, useMemo, useRef, useState } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { UpdatesTabIcon } from "@/icons/drawer-icons";
 import { BellIcon, FolderPathIcon } from "@/icons/workspace-icons";
+import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentFilterBar from "./CommentFilterBar";
 import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
+import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
 import SlideOverPanel from "./SlideOverPanel";
 import type { BoardDiscussionDrawerApi } from "./useBoardDiscussionDrawer";
 import { useCommentPresence } from "./useCommentPresence";
@@ -130,6 +132,14 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           attachments={drawer.composer_attachments}
           onAddFiles={drawer.addComposerAttachments}
           onRemoveAttachment={drawer.removeComposerAttachment}
+          schedule_at={drawer.collaboration.composer_schedule_at}
+          onScheduleChange={drawer.collaboration.setComposerScheduleAt}
+        />
+        <ScheduledCommentsPanel
+          scheduled_comments={drawer.collaboration.scheduled_comments}
+          onReschedule={drawer.collaboration.rescheduleComment}
+          onSendNow={drawer.collaboration.sendScheduledNow}
+          onCancel={drawer.collaboration.cancelScheduledComment}
         />
         <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />
         {drawer.comments.length > 0 && (
@@ -145,6 +155,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
       </div>
 
       {/* Discussion feed */}
+      <CommentCollaborationProvider value={drawer.collaboration}>
       <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
         {/* Live "N new updates" pill: sticks to the top edge, where the newest updates land once loaded. */}
         <div role="status" aria-live="polite" className="sticky top-1 z-[3] flex justify-center">
@@ -233,6 +244,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             />
           ))}
       </div>
+      </CommentCollaborationProvider>
     </SlideOverPanel>
   );
 };

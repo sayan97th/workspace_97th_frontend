@@ -1,9 +1,9 @@
 import { apiClient } from "@/lib/api-client";
-import type { NotificationFilters } from "@/data/notifications-data";
+import type { NotificationFilters, NotificationSummary } from "@/data/notifications-data";
 import type { NotificationFiltersDto, NotificationsPageDto } from "@/types/notifications";
 
 /** What a multi-select toolbar can do to a batch of notifications. */
-export type NotificationBulkAction = "read" | "unread" | "dismiss";
+export type NotificationBulkAction = "read" | "unread" | "dismiss" | "save" | "unsave";
 
 type ListNotificationsOptions = {
   filters: NotificationFilters;
@@ -72,6 +72,22 @@ export const notificationsService = {
   /** PATCH /api/notifications/{id}/snooze, hides it until `snoozed_until` (an ISO timestamp), then it returns as unread. */
   async snooze(id: string, snoozed_until: string): Promise<void> {
     await apiClient.patch(`/api/notifications/${id}/snooze`, { snoozed_until });
+  },
+
+  /** PATCH /api/notifications/{id}/save, "Save for later": keeps it in the Saved tab and out of "Mark all as read". */
+  async save(id: string): Promise<void> {
+    await apiClient.patch(`/api/notifications/${id}/save`);
+  },
+
+  /** DELETE /api/notifications/{id}/save */
+  async unsave(id: string): Promise<void> {
+    await apiClient.delete(`/api/notifications/${id}/save`);
+  },
+
+  /** GET /api/notifications/summary, what is waiting for the person, for the summary card. */
+  async getSummary(): Promise<NotificationSummary> {
+    const response = await apiClient.get<{ data: NotificationSummary }>("/api/notifications/summary");
+    return response.data;
   },
 
   /** DELETE /api/notifications/{id} */

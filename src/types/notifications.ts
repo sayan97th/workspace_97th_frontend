@@ -17,6 +17,7 @@ export type NotificationDto = {
   board: { id: number; name: string } | null;
   link: string | null;
   is_unread: boolean;
+  is_saved: boolean;
   category: NotificationCategory;
   created_at: string;
   group_key: string;
@@ -66,6 +67,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     },
     time_label: formatDistanceToNowStrict(new Date(dto.created_at)),
     is_unread: dto.is_unread,
+    is_saved: dto.is_saved ?? false,
     category: dto.category,
     link: dto.link ?? undefined,
     created_at: dto.created_at,

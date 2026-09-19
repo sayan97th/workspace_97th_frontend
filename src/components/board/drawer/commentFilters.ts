@@ -6,6 +6,8 @@ export type CommentFilters = {
   search: string;
   author_id: string | null;
   only_pinned: boolean;
+  /** Only threads where the viewer bookmarked the update or one of its replies. */
+  only_bookmarked: boolean;
   with_files: boolean;
   /** Only threads where the current user is `@mentioned`. */
   mentioning_me: boolean;
@@ -15,13 +17,14 @@ export const default_comment_filters: CommentFilters = {
   search: "",
   author_id: null,
   only_pinned: false,
+  only_bookmarked: false,
   with_files: false,
   mentioning_me: false,
 };
 
 /** How many filters are narrowing the thread, for the "Clear" button and the empty state. */
 export const countActiveCommentFilters = (filters: CommentFilters): number =>
-  [filters.search.trim() !== "", filters.author_id !== null, filters.only_pinned, filters.with_files, filters.mentioning_me].filter(Boolean).length;
+  [filters.search.trim() !== "", filters.author_id !== null, filters.only_pinned, filters.only_bookmarked, filters.with_files, filters.mentioning_me].filter(Boolean).length;
 
 /**
  * A rough plain-text reading of a Markdown body, so searching for "budget"
@@ -45,7 +48,7 @@ const messagesOf = (comment: DrawerComment): DrawerReply[] => [comment, ...comme
 
 /**
  * The threads that pass every active filter, order kept. A thread matches on
- * any of its messages for search, author and mentions, so a hit inside a reply
+ * any of its messages for search, author, mentions and bookmarks, so a hit inside a reply
  * still shows the whole conversation around it. Pinned and with-files look at
  * the top-level comment, the only message that can be pinned or carry files.
  */
@@ -59,6 +62,7 @@ export function filterComments(comments: DrawerComment[], filters: CommentFilter
     if (filters.with_files && comment.attachments.length === 0) return false;
 
     const messages = messagesOf(comment);
+    if (filters.only_bookmarked && !messages.some((message) => message.bookmarked_by_me)) return false;
     if (filters.author_id && !messages.some((message) => message.author.id === filters.author_id)) return false;
     if (filters.mentioning_me && !messages.some((message) => message.mentioned_user_ids?.includes(current_user_id))) return false;
 

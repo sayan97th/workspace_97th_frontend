@@ -1,11 +1,12 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import { classifyAttachment } from "./drawerAttachments";
-import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReply } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReply, DrawerScheduledComment, DrawerSeenBy } from "./types";
 import type { BoardItemAttachmentDto } from "@/types/board-attachments";
 import type {
   BoardItemCommentAttachmentDto,
   BoardItemCommentAuthorDto,
   BoardItemCommentDto,
+  BoardItemCommentSeenByDto,
   CommentRevisionDto,
 } from "@/types/board-comments";
 
@@ -77,12 +78,28 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,
   reactions: dto.reactions,
+  bookmarked_by_me: dto.bookmarked_by_me,
+});
+
+/** The comment or update DTO fields a scheduled entry needs, shared by the item and board discussion endpoints. */
+type ScheduledCommentSource = { id: number; parent_id: number | null; body: string; scheduled_at: string | null };
+
+export const mapScheduledDto = (dto: ScheduledCommentSource): DrawerScheduledComment => ({
+  id: String(dto.id),
+  parent_id: dto.parent_id !== null ? String(dto.parent_id) : null,
+  body: dto.body,
+  scheduled_at: dto.scheduled_at ?? "",
+});
+
+export const mapSeenByDto = (person: BoardItemCommentSeenByDto): DrawerSeenBy => ({
+  ...mapAuthorToPerson(person),
+  seen_at: person.seen_at ?? undefined,
 });
 
 export const mapCommentDtoToDrawerComment = (dto: BoardItemCommentDto): DrawerComment => ({
   ...mapCommentDtoToDrawerReply(dto),
   seen: dto.seen_by_me,
-  seen_by: dto.seen_by.map((person) => mapAuthorToPerson(person)),
+  seen_by: dto.seen_by.map(mapSeenByDto),
   pinned: dto.pinned,
   notified_user_ids: dto.notified_user_ids.map(String),
   attachments: dto.attachments.map(mapAttachmentDto),

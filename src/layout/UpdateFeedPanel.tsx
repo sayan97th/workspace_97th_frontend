@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import { useAuth } from "@/context/AuthContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
@@ -10,10 +10,12 @@ import SlideOverDrawer from "./SlideOverDrawer";
 import UpdateFeedCard from "./UpdateFeedCard";
 import { useFeedSavedViews } from "@/hooks/useFeedSavedViews";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";
+import { PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
   ChatBubbleIcon,
   CloseIcon,
+  EyeIcon,
   FeedSettingsIcon,
   MentionIcon,
 } from "@/icons/workspace-icons";
@@ -39,14 +41,25 @@ type UpdateFeedPanelProps = {
 const renderTabIcon = (tab: UpdateFeedTab) => {
   if (tab.icon === "mention") return <MentionIcon size={14} />;
   if (tab.icon === "bookmark") return <BookmarkIcon size={13} />;
+  if (tab.icon === "following") return <EyeIcon size={13} />;
+  if (tab.icon === "pin") return <PinIcon size={12} />;
   return null;
+};
+
+/** What each tab shows when it has nothing to list, so an empty Following or Pinned tab says how to fill it. */
+const EMPTY_TAB_MESSAGES: Partial<Record<UpdateFeedTabId, string>> = {
+  following: "You are not following anything with updates yet. Use the menu on an update to follow its item or board.",
+  pinned: "No pinned updates. Pin an update to keep it here.",
+  bookmarked: "No bookmarks yet. Use the bookmark on an update to keep it here.",
+  scheduled: "Nothing scheduled. Schedule a reply from the reply box to send it later.",
 };
 
 /**
  * Wide update-feed drawer opened from the AppTopBar feed button. A left sidebar
  * filters by board (with per-board unread badges) while the content pane shows
- * the "All updates", "I was mentioned", "Bookmarked", "All account" and
- * "Scheduled" tabs, a filter row (search, person, kind, dates, unread only),
+ * the "All updates", "I was mentioned", "Bookmarked", "All account",
+ * "Following", "Pinned" and "Scheduled" tabs (following a board or item is done
+ * from a card's menu), a filter row (search, person, kind, dates, unread only),
  * saved views, "Mark all as read" and the feed cards. Backed by real `BoardItemComment`/
  * `BoardComment` rows via {@link useFeedUpdates}: pages in as it is scrolled,
  * and stays live over the `feed.{user_id}` Reverb channel, announcing what
@@ -76,6 +89,9 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     bookmarkUpdate,
     likeUpdate,
     pinUpdate,
+    follows,
+    loadFollows,
+    setFollowing,
     replyToUpdate,
     scheduleReply,
     markSeen,
@@ -88,6 +104,12 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const clearFilters = useCallback(() => setFilters(default_feed_filters), []);
   const active_filter_count = countActiveFeedFilters(filters);
   const is_scheduled_tab = active_tab === "scheduled";
+  const is_following_tab = active_tab === "following";
+
+  // The Following tab lists what is followed, so the header can offer to unfollow each one.
+  useEffect(() => {
+    if (is_open && is_following_tab) loadFollows();
+  }, [is_open, is_following_tab, loadFollows]);
 
   const current_user: BoardPersonOption = useMemo(
     () =>
@@ -131,7 +153,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
       onClose={onClose}
       aria_label="Update feed"
       orientation="horizontal"
-      width={960}
+      width={1040}
     >
       {/* Feed sidebar: title, board filters */}
       <aside className="hidden w-[262px] flex-none flex-col gap-[26px] border-r border-shell-border px-[22px] py-[26px] sm:flex">
@@ -199,36 +221,38 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
       {/* Feed content: tabs, read filter, list */}
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         {/* Tabs + close */}
-        <div className="relative flex flex-none items-center gap-[26px] overflow-x-auto border-b border-shell-border px-6 pt-[18px]">
-          {update_feed_tabs.map((tab) => {
-            const is_active = tab.id === active_tab;
-            const icon = renderTabIcon(tab);
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`-mb-px flex flex-none items-center gap-1.5 whitespace-nowrap border-b-2 pb-3.5 text-[13.5px] transition-colors ${
-                  is_active
-                    ? "border-brand-500 font-semibold text-shell-text"
-                    : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
-                }`}
-              >
-                {icon}
-                {tab.label}
-                {tab.is_new && (
-                  <span className="rounded-[5px] border border-[#3a5a80] px-[5px] py-px text-[9.5px] font-bold text-[#7fb2ff]">
-                    New
-                  </span>
-                )}
-              </button>
-            );
-          })}
+        <div className="relative flex flex-none items-end border-b border-shell-border pr-4">
+          <div className="shell-scrollbar flex min-w-0 flex-1 items-center gap-4 overflow-x-auto px-5 pt-[18px]">
+            {update_feed_tabs.map((tab) => {
+              const is_active = tab.id === active_tab;
+              const icon = renderTabIcon(tab);
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`-mb-px flex flex-none items-center gap-1.5 whitespace-nowrap border-b-2 pb-3.5 text-[13.5px] transition-colors ${
+                    is_active
+                      ? "border-brand-500 font-semibold text-shell-text"
+                      : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
+                  }`}
+                >
+                  {icon}
+                  {tab.label}
+                  {tab.is_new && (
+                    <span className="rounded-[5px] border border-[#3a5a80] px-[5px] py-px text-[9.5px] font-bold text-[#7fb2ff]">
+                      New
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="ml-auto mb-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+            className="mb-2 ml-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
             aria-label="Close update feed"
           >
             <CloseIcon size={16} />
@@ -284,13 +308,52 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
             </>
           )}
 
+          {is_following_tab && follows && (follows.boards.length > 0 || follows.items.length > 0) && (
+            <div className="mb-4 flex flex-wrap items-center gap-1.5" aria-label="What you follow">
+              <span className="text-[12px] font-semibold text-shell-text-muted">Following</span>
+              {follows.boards.map((board) => (
+                <span
+                  key={`board-${board.id}`}
+                  className="flex items-center gap-1 rounded-full border border-shell-border-strong px-2.5 py-0.5 text-[12px] font-medium text-shell-text-secondary"
+                >
+                  {board.name}
+                  <button
+                    type="button"
+                    onClick={() => void setFollowing("board", board.id, false)}
+                    aria-label={`Unfollow board ${board.name}`}
+                    className="text-shell-text-faint hover:text-shell-text"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              {follows.items.map((item) => (
+                <span
+                  key={`item-${item.id}`}
+                  title={item.board_name ?? undefined}
+                  className="flex items-center gap-1 rounded-full border border-shell-border px-2.5 py-0.5 text-[12px] font-medium text-shell-text-muted"
+                >
+                  {item.name}
+                  <button
+                    type="button"
+                    onClick={() => void setFollowing("item", item.id, false)}
+                    aria-label={`Unfollow item ${item.name}`}
+                    className="text-shell-text-faint hover:text-shell-text"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           {updates.length === 0 && !has_more ? (
             <p className="pt-6 text-center text-[13px] text-shell-text-muted">
               {is_loading
                 ? "Loading updates…"
                 : active_filter_count > 0
                   ? "No updates match these filters."
-                  : "You're all caught up."}
+                  : (EMPTY_TAB_MESSAGES[active_tab] ?? "You're all caught up.")}
             </p>
           ) : (
             <div className="flex flex-col gap-5">
@@ -306,6 +369,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   onSchedule={scheduleReply}
                   onMarkSeen={markSeen}
                   onMarkUnread={markUnread}
+                  onFollow={setFollowing}
                 />
               ))}
             </div>

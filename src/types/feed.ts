@@ -24,6 +24,27 @@ export type FeedUpdateDto = {
   mentioned_user_ids: number[];
   mentions: { id: number; name: string; avatar_url: string | null }[];
   pinned: boolean;
+  is_following_item: boolean;
+  is_following_board: boolean;
+  activity: FeedActivityEntryDto[];
+  activity_total: number;
+};
+
+/** One item change under an update, as `FeedUpdateResource::activityPayload()` sends it. */
+export type FeedActivityEntryDto = {
+  id: number;
+  actor: { id: number; name: string; avatar_url: string | null } | null;
+  column_label: string;
+  column_type: string;
+  old_display: string | null;
+  new_display: string | null;
+  created_at: string;
+};
+
+/** `GET /api/feed/follows`: what the viewer follows. */
+export type FeedFollowsDto = {
+  boards: { id: number; name: string }[];
+  items: { id: number; name: string; board_id: number; board_name: string | null }[];
 };
 
 /** `GET /api/feed/updates`: one cursor-paginated page. */
@@ -53,6 +74,8 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
   const categories: FeedUpdate["categories"] = [];
   if (dto.is_mentioned) categories.push("mentioned");
   if (dto.is_bookmarked) categories.push("bookmarked");
+  if (dto.is_following_item || dto.is_following_board) categories.push("following");
+  if (dto.pinned) categories.push("pinned");
   categories.push("account");
 
   return {
@@ -81,6 +104,19 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
     is_reply: dto.is_reply,
     is_bookmarked: dto.is_bookmarked,
     pinned: dto.pinned,
+    item_id: dto.item ? String(dto.item.id) : undefined,
+    is_following_item: dto.is_following_item,
+    is_following_board: dto.is_following_board,
+    activity: dto.activity.map((entry) => ({
+      id: String(entry.id),
+      actor: entry.actor ? { id: String(entry.actor.id), name: entry.actor.name, avatar_url: entry.actor.avatar_url ?? undefined } : null,
+      column_label: entry.column_label,
+      column_type: entry.column_type,
+      old_display: entry.old_display,
+      new_display: entry.new_display,
+      time_label: formatDistanceToNowStrict(new Date(entry.created_at), { addSuffix: true }),
+    })),
+    activity_total: dto.activity_total,
     categories,
     link: dto.link,
     show_actions: true,
