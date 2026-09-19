@@ -2,6 +2,7 @@
 export type AdminSectionId =
   | "profile"
   | "account"
+  | "integrations"
   | "customization"
   | "branding"
   | "users"

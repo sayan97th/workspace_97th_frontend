@@ -1,6 +1,6 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ADDABLE_COLUMN_TYPES,
   BOARD_DEFAULT_GROUP_BY_ID,
@@ -85,6 +85,7 @@ import { boardAutomationService } from "@/services/board-automation.service";
 import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
+import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
@@ -650,6 +651,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_open_item_id,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
+  const search_params = useSearchParams();
   const { user } = useAuth();
   const board_id = node.id;
 
@@ -694,6 +697,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
   const [automations, setAutomations] = useState<BoardAutomationDto[]>([]);
   const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
+  // ── Integrations ("Integrate" header button) — connects Email and Slack. Slack's OAuth round
+  // trip leaves the app, so the API sends the browser back to `integrations_return_path`, and the
+  // `integrate` param reopens the dialog on arrival (see the effect below). ──
+  const [is_integrations_modal_open, setIsIntegrationsModalOpen] = useState(false);
+  const integrations_return_path = `${pathname}?integrate=slack`;
+
+  useEffect(() => {
+    if (search_params.get("integrate") === "slack") setIsIntegrationsModalOpen(true);
+  }, [search_params]);
+
+  const handleCloseIntegrations = () => {
+    setIsIntegrationsModalOpen(false);
+    if (!search_params.has("integrate")) return;
+    const next_params = new URLSearchParams(search_params.toString());
+    next_params.delete("integrate");
+    const query = next_params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
   // ── Item detail drawer's Activity tab — the board's own activity log
   // already carries an `item_id` in `meta` for the entries that concern one
   // specific item (restored, permanently deleted, an automation ran against
@@ -2973,6 +2994,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onBoardUpdatesClick: discussion_drawer.open,
         board_updates_count: discussion_drawer.comment_count,
         board_updates_unseen: discussion_drawer.has_unseen_comments,
+        onIntegrateClick: () => setIsIntegrationsModalOpen(true),
         onAutomateClick: active_view_type === "table" ? () => setIsAutomationsModalOpen(true) : undefined,
         automation_count: automations.filter((a) => a.is_enabled).length,
         options_menu: {
@@ -3327,6 +3349,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       <BoardDiscussionDrawer drawer={discussion_drawer} />
+
+      <IntegrationsModal
+        is_open={is_integrations_modal_open}
+        onClose={handleCloseIntegrations}
+        return_path={integrations_return_path}
+        onOpenAutomations={
+          active_view_type === "table"
+            ? () => {
+                handleCloseIntegrations();
+                setIsAutomationsModalOpen(true);
+              }
+            : undefined
+        }
+      />
 
       <AutomationsModal
         is_open={is_automations_modal_open}

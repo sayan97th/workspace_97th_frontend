@@ -30,11 +30,12 @@ export type ProfileNotificationSeed = {
   category: ProfileNotificationCategory;
 };
 
-/** One row of the Notifications table after per-row app/email state has been merged in. */
+/** One row of the Notifications table after per-row app/email/Slack state has been merged in. */
 export type ProfileNotificationRow = ProfileNotificationSeed & {
   show_header: boolean;
   app_on: boolean;
   email_on: boolean;
+  slack_on: boolean;
 };
 
 /**

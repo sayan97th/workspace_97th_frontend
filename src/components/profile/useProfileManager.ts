@@ -38,6 +38,7 @@ export type ProfileManagerApi = {
   notification_rows: ProfileNotificationRow[];
   toggleNotificationApp: (key: string) => void;
   toggleNotificationEmail: (key: string) => void;
+  toggleNotificationSlack: (key: string) => void;
   is_desktop_banner_dismissed: boolean;
   dismissDesktopBanner: () => void;
   desktop_notifications_enabled: boolean;
@@ -63,7 +64,7 @@ export type ProfileManagerApi = {
   logoutSession: (id: string) => void;
 };
 
-const DEFAULT_NOTIFICATION_PREFS: Record<string, boolean> = {
+const BASE_NOTIFICATION_PREFS: Record<string, boolean> = {
   mentioned_app: true,
   mentioned_email: true,
   wrote_own_app: true,
@@ -105,6 +106,18 @@ const DEFAULT_NOTIFICATION_PREFS: Record<string, boolean> = {
   update_deleted_app: true,
   update_deleted_email: true,
 };
+
+/**
+ * Slack starts out mirroring each row's in-app default, since a notification the user did not
+ * want in the app is not one they want in Slack either. Slack only delivers anything once the
+ * user has connected their own Slack account, see `NotificationsSection`.
+ */
+const DEFAULT_NOTIFICATION_PREFS: Record<string, boolean> = Object.fromEntries([
+  ...Object.entries(BASE_NOTIFICATION_PREFS),
+  ...Object.entries(BASE_NOTIFICATION_PREFS)
+    .filter(([preference_key]) => preference_key.endsWith("_app"))
+    .map(([preference_key, is_on]) => [preference_key.replace(/_app$/, "_slack"), is_on]),
+]);
 
 const DEBOUNCE_MS = 600;
 
@@ -212,6 +225,7 @@ export function useProfileManager(): ProfileManagerApi {
         show_header,
         app_on: !!notification_prefs[`${seed.key}_app`],
         email_on: !!notification_prefs[`${seed.key}_email`],
+        slack_on: !!notification_prefs[`${seed.key}_slack`],
       };
     });
   })();
@@ -265,7 +279,7 @@ export function useProfileManager(): ProfileManagerApi {
     }
   };
 
-  const toggleNotificationChannel = (key: string, channel: "app" | "email") => {
+  const toggleNotificationChannel = (key: string, channel: "app" | "email" | "slack") => {
     const preference_key = `${key}_${channel}`;
     const next_value = !notification_prefs[preference_key];
     setNotificationPrefs((current) => ({ ...current, [preference_key]: next_value }));
@@ -274,6 +288,7 @@ export function useProfileManager(): ProfileManagerApi {
 
   const toggleNotificationApp = (key: string) => toggleNotificationChannel(key, "app");
   const toggleNotificationEmail = (key: string) => toggleNotificationChannel(key, "email");
+  const toggleNotificationSlack = (key: string) => toggleNotificationChannel(key, "slack");
 
   const toggleDesktopNotifications = () => {
     const next_value = !desktop_notifications_enabled;
@@ -352,6 +367,7 @@ export function useProfileManager(): ProfileManagerApi {
     notification_rows,
     toggleNotificationApp,
     toggleNotificationEmail,
+    toggleNotificationSlack,
     is_desktop_banner_dismissed,
     dismissDesktopBanner: () => setIsDesktopBannerDismissed(true),
     desktop_notifications_enabled,

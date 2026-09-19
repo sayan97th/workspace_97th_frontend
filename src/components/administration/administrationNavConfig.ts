@@ -5,6 +5,7 @@ import {
   ClockIcon,
   FolderIcon,
   KeyIcon,
+  LinkIcon,
   LockIcon,
   PersonIcon,
   ShieldIcon,
@@ -43,6 +44,7 @@ export const ADMINISTRATION_NAV_GROUPS: AdministrationNavGroup[] = [
 export const ADMINISTRATION_NAV_ITEMS: AdministrationNavItem[] = [
   { id: "profile", label: "Profile", icon: PersonIcon, group: null },
   { id: "account", label: "Account", icon: BuildingIcon, group: null },
+  { id: "integrations", label: "Integrations", icon: LinkIcon, group: null },
   { id: "branding", label: "Branding", icon: CameraIcon, group: "customization" },
   { id: "users", label: "Users", icon: TeamsIcon, group: "directory" },
   { id: "departments", label: "Departments", icon: FolderIcon, group: "directory" },

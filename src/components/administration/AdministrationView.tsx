@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { useAuth } from "@/context/AuthContext";
 import { ChevronRightIcon } from "@/icons/workspace-icons";
@@ -16,6 +16,7 @@ import { useAdminSessionsManager } from "./useAdminSessionsManager";
 import type { AdminSectionId } from "./types";
 import ProfileSection from "./sections/ProfileSection";
 import AccountSection from "./sections/AccountSection";
+import IntegrationsSection from "./sections/IntegrationsSection";
 import CustomizationSection from "./sections/CustomizationSection";
 import BrandingSection from "./sections/BrandingSection";
 import UsersSection from "./sections/UsersSection";
@@ -32,6 +33,7 @@ const ADMINISTRATION_ROLES = ["super_admin", "admin", "staff"];
 const SECTION_TITLES: Record<AdminSectionId, string> = {
   profile: "Profile",
   account: "Account",
+  integrations: "Integrations",
   customization: "Customization",
   branding: "Branding",
   users: "User management",
@@ -61,7 +63,17 @@ const SECTION_TITLES: Record<AdminSectionId, string> = {
 const AdministrationView: React.FC = () => {
   const router = useRouter();
   const { isLoading: is_auth_loading, hasAnyRole } = useAuth();
+  const search_params = useSearchParams();
   const [active_section, setActiveSection] = useState<AdminSectionId>("profile");
+
+  // Deep-link support for `/administration?section=integrations`, which is where the
+  // backend's Slack OAuth callback sends the administrator back to.
+  useEffect(() => {
+    const section = search_params.get("section");
+    if (section && Object.prototype.hasOwnProperty.call(SECTION_TITLES, section)) {
+      setActiveSection(section as AdminSectionId);
+    }
+  }, [search_params]);
 
   const account_settings = useAccountSettingsManager();
   const departments = useDepartmentsManager();
@@ -91,6 +103,8 @@ const AdministrationView: React.FC = () => {
         return <ProfileSection account={account_settings} />;
       case "account":
         return <AccountSection account={account_settings} />;
+      case "integrations":
+        return <IntegrationsSection />;
       case "customization":
         return <CustomizationSection onGoToBranding={() => setActiveSection("branding")} />;
       case "branding":

@@ -2,6 +2,12 @@
 import React, { useState } from "react";
 import type { ColumnDef, PersonDef } from "../table/types";
 import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
+import { useSlackAutomationOptions } from "@/hooks/useSlackAutomationOptions";
+import { apiErrorMessage } from "@/services/profile-preferences.service";
+import { LABEL, ROW, Radio, SAVE_BUTTON } from "./automationFormParts";
+import CommunicationRecipeForm from "./CommunicationRecipeForm";
+import CommunicationTemplateCard from "./CommunicationTemplateCard";
+import { CHANNEL_LABELS, COMMUNICATION_TEMPLATES, type CommunicationChannel, type CommunicationTemplate } from "./communicationTemplates";
 
 export type AutomationsModalProps = {
   is_open: boolean;
@@ -16,232 +22,284 @@ export type AutomationsModalProps = {
   onDelete: (automation_id: number) => Promise<void>;
 };
 
-type Recipe = "status_changed" | "date_arrived" | "item_created" | "person_assigned" | "status_archive" | "subitem_created";
+type Recipe = "status_changed" | "date_arrived" | "item_created" | "person_assigned" | "status_archive" | "subitem_created" | "communication";
+type Tab = "create" | "manage";
+type ChannelFilter = "all" | "email" | "slack";
 
-const ROW = "flex h-9 w-full items-center gap-2.5 rounded-[6px] px-2.5 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
-const LABEL = "mb-1.5 mt-3 text-[12px] font-semibold uppercase tracking-wide text-boardtree-text-faint first:mt-0";
+/** The board actions that sit under the "Board actions" category, ahead of the communication templates. */
+const BOARD_RECIPES: { id: Exclude<Recipe, "communication">; label: string }[] = [
+  { id: "status_changed", label: "When a Status/Label changes, move the item to a table" },
+  { id: "date_arrived", label: "When a Date arrives, notify someone" },
+  { id: "item_created", label: "When an item is created, notify someone" },
+  { id: "person_assigned", label: "When someone is assigned, change the Status" },
+  { id: "status_archive", label: "When a Status/Label changes to X, archive the item" },
+  { id: "subitem_created", label: "When a subitem is created, create an item in another table" },
+];
 
-/** Describes one automation as a plain-English sentence for the list view. */
-function describeAutomation(automation: BoardAutomationDto, columns: ColumnDef[], groups: { id: string; label: string }[], people: PersonDef[]): string {
+const CHANNEL_FILTERS: { id: ChannelFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "email", label: CHANNEL_LABELS.email },
+  { id: "slack", label: CHANNEL_LABELS.slack_channel },
+];
+
+const channelMatchesFilter = (channel: CommunicationChannel, filter: ChannelFilter) =>
+  filter === "all" || (filter === "email" ? channel === "email" : channel !== "email");
+
+type NamedOption = { id: string; label: string };
+
+function describeTrigger(automation: BoardAutomationDto, columns: ColumnDef[], people: PersonDef[]): string {
   const trigger_column = columns.find((c) => c.id === String(automation.trigger_column_id));
   const trigger_label = trigger_column?.title ?? "a column";
 
-  const trigger_text =
-    automation.trigger_type === "status_changed"
-      ? `When ${trigger_label} changes to "${trigger_column?.options?.find((o) => o.id === automation.trigger_value)?.label ?? automation.trigger_value}"`
-      : automation.trigger_type === "date_arrived"
-        ? `When ${trigger_label} arrives`
-        : automation.trigger_type === "item_created"
-          ? "When an item is created"
-          : automation.trigger_type === "subitem_created"
-            ? "When a subitem is created"
-            : automation.trigger_value
-              ? `When ${people.find((p) => p.id === String(automation.trigger_value))?.name ?? "someone"} is assigned in "${trigger_label}"`
-              : `When someone is assigned in "${trigger_label}"`;
-
-  const action_text =
-    automation.action_type === "move_to_group"
-      ? `move the item to "${groups.find((g) => g.id === String(automation.action_params.target_group_id))?.label ?? "a table"}"`
-      : automation.action_type === "archive_item"
-        ? "archive the item"
-        : automation.action_type === "create_item"
-          ? `create "${automation.action_params.item_name || "New item"}" in "${groups.find((g) => g.id === String(automation.action_params.target_group_id))?.label ?? "a table"}"`
-          : automation.action_type === "set_column_value"
-            ? (() => {
-                const target_column = columns.find((c) => c.id === String(automation.action_params.target_column_id));
-                const raw_value = automation.action_params.value;
-                const resolved_value = target_column?.options?.find((o) => o.id === raw_value)?.label ?? String(raw_value ?? "");
-                return `set "${target_column?.title ?? "a column"}" to "${resolved_value}"`;
-              })()
-            : automation.action_params.notify_user_id
-              ? `notify ${people.find((p) => p.id === String(automation.action_params.notify_user_id))?.name ?? "a person"}`
-              : `notify whoever is assigned in "${columns.find((c) => c.id === String(automation.action_params.notify_from_people_column_id))?.title ?? "a column"}"`;
-
-  return `${trigger_text}, ${action_text}.`;
+  switch (automation.trigger_type) {
+    case "status_changed":
+      return `When ${trigger_label} changes to "${trigger_column?.options?.find((o) => o.id === automation.trigger_value)?.label ?? automation.trigger_value}"`;
+    case "date_arrived":
+      return `When ${trigger_label} arrives`;
+    case "item_created":
+      return "When an item is created";
+    case "subitem_created":
+      return "When a subitem is created";
+    case "column_changed":
+      return `When ${trigger_label} changes`;
+    case "update_posted":
+      return "When an update is posted";
+    default:
+      return automation.trigger_value
+        ? `When ${people.find((p) => p.id === String(automation.trigger_value))?.name ?? "someone"} is assigned in "${trigger_label}"`
+        : `When someone is assigned in "${trigger_label}"`;
+  }
 }
 
-/** Board header's "Automate" button — lists this tab's rule-based (no AI) automations and lets the user add/enable/disable/delete them. */
+/** "Amanda", or "whoever is assigned in "Owner"", whichever the action was configured with. */
+function describeRecipient(automation: BoardAutomationDto, columns: ColumnDef[], people: PersonDef[]): string {
+  if (automation.action_params.notify_user_id) {
+    return people.find((p) => p.id === String(automation.action_params.notify_user_id))?.name ?? "a person";
+  }
+  return `whoever is assigned in "${columns.find((c) => c.id === String(automation.action_params.notify_from_people_column_id))?.title ?? "a column"}"`;
+}
+
+function describeAction(automation: BoardAutomationDto, columns: ColumnDef[], groups: NamedOption[], people: PersonDef[]): string {
+  const group_label = groups.find((g) => g.id === String(automation.action_params.target_group_id))?.label ?? "a table";
+
+  switch (automation.action_type) {
+    case "move_to_group":
+      return `move the item to "${group_label}"`;
+    case "archive_item":
+      return "archive the item";
+    case "create_item":
+      return `create "${automation.action_params.item_name || "New item"}" in "${group_label}"`;
+    case "set_column_value": {
+      const target_column = columns.find((c) => c.id === String(automation.action_params.target_column_id));
+      const raw_value = automation.action_params.value;
+      const resolved_value = target_column?.options?.find((o) => o.id === raw_value)?.label ?? String(raw_value ?? "");
+      return `set "${target_column?.title ?? "a column"}" to "${resolved_value}"`;
+    }
+    case "send_email":
+      return `send an email to ${describeRecipient(automation, columns, people)}`;
+    case "slack_notify_person":
+      return `send a Slack message to ${describeRecipient(automation, columns, people)}`;
+    case "slack_notify_channel":
+      return `post to Slack channel #${automation.action_params.slack_channel_name || automation.action_params.slack_channel_id}`;
+    default:
+      return `notify ${describeRecipient(automation, columns, people)}`;
+  }
+}
+
+/** Describes one automation as a plain-English sentence for the list view. */
+function describeAutomation(automation: BoardAutomationDto, columns: ColumnDef[], groups: NamedOption[], people: PersonDef[]): string {
+  return `${describeTrigger(automation, columns, people)}, ${describeAction(automation, columns, groups, people)}.`;
+}
+
+/** Board header's "Automate" button. Create rule-based (no AI) automations from a template library, and enable, disable or delete this tab's existing ones. */
 export default function AutomationsModal({ is_open, onClose, automations, columns, groups, people, onCreate, onToggle, onDelete }: AutomationsModalProps) {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [template, setTemplate] = useState<CommunicationTemplate | null>(null);
+  const [tab, setTab] = useState<Tab | null>(null);
+  const [search, setSearch] = useState("");
+  const [channel_filter, setChannelFilter] = useState<ChannelFilter>("all");
   const [is_saving, setIsSaving] = useState(false);
+  const [save_error, setSaveError] = useState<string | null>(null);
+  const slack = useSlackAutomationOptions(is_open);
 
   if (!is_open) return null;
 
+  // Open on the list once there is something to manage, otherwise on the template library.
+  const active_tab: Tab = tab ?? (automations.length > 0 ? "manage" : "create");
+  const search_text = search.trim().toLowerCase();
+  const visible_board_recipes = BOARD_RECIPES.filter((r) => r.label.toLowerCase().includes(search_text));
+  const visible_templates = COMMUNICATION_TEMPLATES.filter((t) => channelMatchesFilter(t.channel, channel_filter) && t.search_text.includes(search_text));
+
   const close = () => {
     setRecipe(null);
+    setTemplate(null);
+    setSearch("");
+    setSaveError(null);
     onClose();
+  };
+
+  const goBack = () => {
+    setRecipe(null);
+    setTemplate(null);
+    setSaveError(null);
+  };
+
+  const save = async (payload: Omit<CreateBoardAutomationPayload, "view_id">) => {
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await onCreate(payload);
+      setRecipe(null);
+      setTemplate(null);
+      setTab("manage");
+    } catch (failure) {
+      setSaveError(apiErrorMessage(failure, "The automation could not be created."));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[rgba(30,34,55,0.35)]" onClick={close}>
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-[480px] flex-col rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between border-b border-boardtree-border-soft px-5 py-4">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`flex max-h-[85vh] max-w-[94vw] flex-col rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)] ${recipe ? "w-[520px]" : "w-[780px]"}`}
+      >
+        <div className="flex items-center justify-between gap-4 border-b border-boardtree-border-soft px-5 py-4">
           <div className="flex items-center gap-2">
             {recipe && (
-              <button type="button" onClick={() => setRecipe(null)} className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover">
+              <button type="button" onClick={goBack} aria-label="Back" className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover">
                 <svg viewBox="0 0 12 12" width="10" height="10"><path d="M7.5 3 L4.3 6 L7.5 9" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
             )}
             <div className="text-[15px] font-semibold text-boardtree-text">Automations</div>
           </div>
-          <button type="button" onClick={close} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover">
+
+          {!recipe && (
+            <div className="flex overflow-hidden rounded-[7px] border border-boardtree-border text-[12.5px]">
+              {(["create", "manage"] as const).map((tab_id) => (
+                <button
+                  key={tab_id}
+                  type="button"
+                  onClick={() => setTab(tab_id)}
+                  className={`px-3.5 py-1.5 capitalize ${active_tab === tab_id ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-muted hover:bg-boardtree-hover"}`}
+                >
+                  {tab_id}
+                  {tab_id === "manage" && automations.length > 0 ? ` (${automations.length})` : ""}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <button type="button" onClick={close} aria-label="Close" className="flex h-7 w-7 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover">
             <svg viewBox="0 0 14 14" width="12" height="12"><path d="M2.6 2.6 L11.4 11.4 M11.4 2.6 L2.6 11.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {!recipe && (
+          {!recipe && active_tab === "manage" && (
+            <div className="flex flex-col gap-2">
+              {automations.length === 0 && (
+                <div className="text-[12.5px] text-boardtree-text-faint">
+                  No automations on this table yet.{" "}
+                  <button type="button" onClick={() => setTab("create")} className="font-medium text-boardtree-accent hover:underline">Browse templates</button>
+                </div>
+              )}
+              {automations.map((automation) => (
+                <div key={automation.id} className="flex items-start gap-2.5 rounded-[8px] border border-boardtree-border-soft px-3 py-2.5">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={automation.is_enabled}
+                    aria-label="Enable automation"
+                    onClick={() => void onToggle(automation.id, !automation.is_enabled)}
+                    className={`mt-0.5 flex h-5 w-9 flex-none items-center rounded-full px-0.5 transition-colors ${automation.is_enabled ? "justify-end bg-boardtree-accent" : "justify-start bg-boardtree-track"}`}
+                  >
+                    <span className="h-4 w-4 rounded-full bg-white" />
+                  </button>
+                  <div className="min-w-0 flex-1 text-[13px] text-boardtree-text">{describeAutomation(automation, columns, groups, people)}</div>
+                  <button type="button" onClick={() => void onDelete(automation.id)} aria-label="Delete automation" className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger">
+                    <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!recipe && active_tab === "create" && (
             <>
-              <div className="mb-3 flex flex-col gap-2">
-                {automations.length === 0 && <div className="text-[12.5px] text-boardtree-text-faint">No automations on this table yet.</div>}
-                {automations.map((automation) => (
-                  <div key={automation.id} className="flex items-start gap-2.5 rounded-[8px] border border-boardtree-border-soft px-3 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => void onToggle(automation.id, !automation.is_enabled)}
-                      className={`mt-0.5 flex h-5 w-9 flex-none items-center rounded-full px-0.5 transition-colors ${automation.is_enabled ? "justify-end bg-boardtree-accent" : "justify-start bg-boardtree-track"}`}
-                    >
-                      <span className="h-4 w-4 rounded-full bg-white" />
-                    </button>
-                    <div className="min-w-0 flex-1 text-[13px] text-boardtree-text">{describeAutomation(automation, columns, groups, people)}</div>
-                    <button type="button" onClick={() => void onDelete(automation.id)} className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger">
-                      <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                    </button>
-                  </div>
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search automations"
+                aria-label="Search automations"
+                className="mb-4 h-9 w-full rounded-[7px] border border-boardtree-border bg-boardtree-surface px-3 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
+              />
+
+              <div className="mb-1 text-[15px] font-semibold text-boardtree-text">Communication</div>
+              <div className="mb-3 text-[12.5px] text-boardtree-text-muted">Keep your team in the loop with notification and messaging templates.</div>
+              <div className="mb-3 flex gap-1.5">
+                {CHANNEL_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setChannelFilter(filter.id)}
+                    className={`rounded-full border px-3 py-1 text-[12px] ${channel_filter === filter.id ? "border-boardtree-accent bg-boardtree-accent-surface text-boardtree-accent" : "border-boardtree-border-soft text-boardtree-text-muted hover:bg-boardtree-hover"}`}
+                  >
+                    {filter.label}
+                  </button>
                 ))}
               </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {visible_templates.map((t) => (
+                  <CommunicationTemplateCard
+                    key={t.id}
+                    template={t}
+                    onUse={(chosen) => {
+                      setTemplate(chosen);
+                      setRecipe("communication");
+                    }}
+                  />
+                ))}
+              </div>
+              {visible_templates.length === 0 && <div className="text-[12.5px] text-boardtree-text-faint">No communication templates match your search.</div>}
 
-              <div className={LABEL}>Add a new automation</div>
-              <button type="button" onClick={() => setRecipe("status_changed")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When a Status/Label changes, move the item to a table</span>
-              </button>
-              <div className="h-1.5" />
-              <button type="button" onClick={() => setRecipe("date_arrived")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When a Date arrives, notify someone</span>
-              </button>
-              <div className="h-1.5" />
-              <button type="button" onClick={() => setRecipe("item_created")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When an item is created, notify someone</span>
-              </button>
-              <div className="h-1.5" />
-              <button type="button" onClick={() => setRecipe("person_assigned")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When someone is assigned, change the Status</span>
-              </button>
-              <div className="h-1.5" />
-              <button type="button" onClick={() => setRecipe("status_archive")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When a Status/Label changes to X, archive the item</span>
-              </button>
-              <div className="h-1.5" />
-              <button type="button" onClick={() => setRecipe("subitem_created")} className={`${ROW} border border-boardtree-border-soft`}>
-                <span className="flex-1">When a subitem is created, create an item in another table</span>
-              </button>
+              {visible_board_recipes.length > 0 && (
+                <>
+                  <div className="mb-2 mt-6 text-[15px] font-semibold text-boardtree-text">Board actions</div>
+                  <div className="flex flex-col gap-1.5">
+                    {visible_board_recipes.map((r) => (
+                      <button key={r.id} type="button" onClick={() => setRecipe(r.id)} className={`${ROW} border border-boardtree-border-soft`}>
+                        <span className="flex-1">{r.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
 
-          {recipe === "status_changed" && (
-            <StatusChangedForm
-              columns={columns}
-              groups={groups}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
+          {recipe && save_error && (
+            <div role="alert" className="mb-3 rounded-[8px] border border-boardtree-danger/30 bg-boardtree-danger-hover px-3 py-2 text-[12.5px] text-boardtree-danger">
+              {save_error}
+            </div>
           )}
 
-          {recipe === "date_arrived" && (
-            <DateArrivedForm
-              columns={columns}
-              people={people}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
+          {recipe === "communication" && template && (
+            <CommunicationRecipeForm template={template} columns={columns} people={people} slack={slack} is_saving={is_saving} onSave={save} />
           )}
 
-          {recipe === "item_created" && (
-            <ItemCreatedNotifyForm
-              people={people}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
-          )}
-
-          {recipe === "person_assigned" && (
-            <PersonAssignedSetStatusForm
-              columns={columns}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
-          )}
-
-          {recipe === "status_archive" && (
-            <StatusArchiveForm
-              columns={columns}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
-          )}
-
-          {recipe === "subitem_created" && (
-            <SubitemCreatedCreateItemForm
-              groups={groups}
-              is_saving={is_saving}
-              onSave={async (payload) => {
-                setIsSaving(true);
-                try {
-                  await onCreate(payload);
-                  setRecipe(null);
-                } finally {
-                  setIsSaving(false);
-                }
-              }}
-            />
-          )}
+          {recipe === "status_changed" && <StatusChangedForm columns={columns} groups={groups} is_saving={is_saving} onSave={save} />}
+          {recipe === "date_arrived" && <DateArrivedForm columns={columns} people={people} is_saving={is_saving} onSave={save} />}
+          {recipe === "item_created" && <ItemCreatedNotifyForm people={people} is_saving={is_saving} onSave={save} />}
+          {recipe === "person_assigned" && <PersonAssignedSetStatusForm columns={columns} is_saving={is_saving} onSave={save} />}
+          {recipe === "status_archive" && <StatusArchiveForm columns={columns} is_saving={is_saving} onSave={save} />}
+          {recipe === "subitem_created" && <SubitemCreatedCreateItemForm groups={groups} is_saving={is_saving} onSave={save} />}
         </div>
       </div>
     </div>
   );
 }
-
-const SAVE_BUTTON = "mt-4 flex h-9 w-full items-center justify-center rounded-[7px] bg-boardtree-accent text-[13px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40";
 
 function StatusChangedForm({
   columns, groups, is_saving, onSave,
@@ -629,13 +687,5 @@ function SubitemCreatedCreateItemForm({
         Create automation
       </button>
     </>
-  );
-}
-
-function Radio({ checked }: { checked: boolean }) {
-  return (
-    <span className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${checked ? "border-boardtree-accent" : "border-boardtree-border"}`}>
-      {checked && <span className="h-2 w-2 rounded-full bg-boardtree-accent" />}
-    </span>
   );
 }
