@@ -6,6 +6,7 @@ import { useSidebar } from "@/context/SidebarContext";
 import { useAccountBranding } from "@/hooks/useAccountBranding";
 import UserAvatar from "@/components/common/UserAvatar";
 import AccountMenu from "./AccountMenu";
+import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
@@ -28,7 +29,6 @@ import {
   HamburgerIcon,
   HelpIcon,
   InviteIcon,
-  SearchIcon,
 } from "@/icons/workspace-icons";
 
 /**
@@ -168,13 +168,7 @@ const AppTopBar: React.FC = () => {
 
       {/* Center search */}
       <div className="flex min-w-0 flex-1 justify-center">
-        <button
-          type="button"
-          className="flex w-full max-w-[520px] cursor-text items-center gap-2.5 rounded-[10px] border border-shell-border bg-shell-hover px-3.5 py-2 text-left text-shell-text-muted transition-colors hover:bg-shell-hover-strong"
-        >
-          <SearchIcon size={15} />
-          <span className="text-[13.5px]">Search for anything...</span>
-        </button>
+        <GlobalSearch />
       </div>
 
       {/* Right cluster */}
