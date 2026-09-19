@@ -30,10 +30,22 @@ export type ColumnKind =
   | "mirror"
   | "checklist";
 
-/** A `formula`-kind column's own config: the operation applied to `source_column_ids`, read in row order from the same item's other cells. */
+/**
+ * A `formula`-kind column's own config: an expression written with the
+ * formula dialog, e.g. `{#12} * 1.2 + IF({#7} = "Done", 10, 0)`. Columns are
+ * referenced by id (`{#12}`) so renaming one never breaks the formula; the
+ * dialog shows and edits them by title (`{Budget}`).
+ */
 export interface FormulaConfig {
-  operation: "sum" | "subtract" | "multiply" | "divide" | "concat";
-  source_column_ids: string[];
+  expression: string;
+}
+
+/** A column a formula can read: the slice of a `ColumnDef` the expression engine needs to turn a raw cell value into a number, text, date or boolean. */
+export interface FormulaSourceColumn {
+  id: string;
+  title: string;
+  kind: ColumnKind;
+  options?: StatusDef[];
 }
 
 /** A `mirror`-kind column's own config: which of this tab's `connect_board` columns to read through, and which column on that linked board to display. */
@@ -85,8 +97,10 @@ export interface ColumnDef {
    * (undefined) for the mock demo, which has no backing notification pipeline.
    */
   notify_on_assignment?: boolean;
-  /** Formula kind only, see `FormulaConfig`. */
+  /** Formula kind only, see `FormulaConfig`. Undefined until the formula has been set up. */
   formula?: FormulaConfig;
+  /** Formula kind only: every column (hidden ones included, from the same scope) the expression may reference, plus the row's own name as `__name`. Set even while `formula` is still undefined, so the dialog can offer them. */
+  formula_sources?: FormulaSourceColumn[];
   /** Mirror kind only, see `MirrorConfig`. */
   mirror?: MirrorConfig;
   /** Connect-board kind only: the other board this column's cells link items on. */

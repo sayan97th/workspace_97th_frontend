@@ -237,7 +237,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(sub.id);
               }}
             >
-              <CellRenderer node_id={sub.id} column={col} values={sub.values} state={state} actions={actions} />
+              <CellRenderer node_id={sub.id} column={col} values={sub.values} node_name={sub.name} state={state} actions={actions} />
               {is_active && (
                 <div
                   data-fill-handle="true"

@@ -7,7 +7,7 @@ import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
 import { dependencyCandidates, findNode } from "../treeUtils";
-import { computeFormulaValue } from "../formulaUtils";
+import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import ConnectBoardMenu from "../menus/ConnectBoardMenu";
 import StatusMenu from "../menus/StatusMenu";
@@ -27,6 +27,8 @@ interface CellRendererProps {
   node_id: string;
   column: ColumnDef;
   values: Record<string, CellValue>;
+  /** The row's own name, read by a formula column's `{Item}` reference. */
+  node_name?: string;
   state: BoardTableState;
   actions: BoardTableActions;
 }
@@ -39,7 +41,7 @@ function asArray(v: CellValue): string[] {
   return Array.isArray(v) ? (v as string[]) : [];
 }
 
-export default function CellRenderer({ node_id, column, values, state, actions }: CellRendererProps) {
+export default function CellRenderer({ node_id, column, values, node_name, state, actions }: CellRendererProps) {
   const scope_key = `${node_id}:${column.id}`;
   const is_menu_open = state.open_cell_menu_key === scope_key;
   const value = values[column.id];
@@ -561,12 +563,13 @@ export default function CellRenderer({ node_id, column, values, state, actions }
   }
 
   if (column.kind === "formula") {
-    // Unconfigured (no operation/source columns picked yet — e.g. a column
-    // created before this board had other columns to compute from): there's
-    // nothing to compute, so the cell offers the same "Configure formula"
-    // setup the column header's own "..." menu does, rather than sitting
-    // there as a dead, unexplained "–".
-    if (!column.formula) {
+    // Unconfigured (no expression written yet, e.g. a column created before
+    // this board had other columns to compute from): there's nothing to
+    // compute, so the cell offers the same "Configure formula" setup the
+    // column header's own "..." menu does, rather than sitting there as a
+    // dead, unexplained "–".
+    const outcome = computeFormulaOutcome(column, values, node_name);
+    if (!outcome) {
       return (
         <button
           type="button"
@@ -577,14 +580,25 @@ export default function CellRenderer({ node_id, column, values, state, actions }
         </button>
       );
     }
-    const computed = computeFormulaValue(column, values);
-    const is_concat = column.formula.operation === "concat";
+    if (!outcome.ok) {
+      return (
+        <button
+          type="button"
+          onClick={() => actions.openConfigEditor("formula", column.id)}
+          className="flex h-full w-full items-center px-2.5 font-mono text-[12px] font-medium text-boardtree-danger"
+          title={outcome.message}
+        >
+          {outcome.code}
+        </button>
+      );
+    }
+    const is_numeric = formulaResultType(column) === "number";
     return (
       <div
-        className={`flex h-full w-full items-center px-2.5 font-mono text-[12.5px] text-boardtree-text-secondary ${is_concat ? "justify-start truncate" : "justify-end"}`}
-        title={computed}
+        className={`flex h-full w-full items-center px-2.5 font-mono text-[12.5px] text-boardtree-text-secondary ${is_numeric ? "justify-end" : "justify-start truncate"}`}
+        title={outcome.text}
       >
-        {computed || "–"}
+        {outcome.text || "–"}
       </div>
     );
   }

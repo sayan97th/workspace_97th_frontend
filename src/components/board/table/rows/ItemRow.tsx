@@ -327,7 +327,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(item.id);
               }}
             >
-              <CellRenderer node_id={item.id} column={col} values={item.values} state={state} actions={actions} />
+              <CellRenderer node_id={item.id} column={col} values={item.values} node_name={item.name} state={state} actions={actions} />
               {is_active && (
                 <div
                   data-fill-handle="true"

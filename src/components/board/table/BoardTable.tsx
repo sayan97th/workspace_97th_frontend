@@ -12,7 +12,11 @@ import GroupSection from "./group/GroupSection";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
+import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEditorModal";
 import "./table-board.css";
+
+/** How many rows the Formula dialog collects to preview against, before it trims to what fits on screen. */
+const FORMULA_PREVIEW_SCAN_LIMIT = 20;
 
 export interface BoardTableProps {
   board_title?: string;
@@ -344,6 +348,22 @@ export default function BoardTable({
     return all_columns.find((c) => c.id === column_id);
   }, [all_columns, state.config_editor]);
 
+  /** The rows the Formula dialog previews its result on: the first items (or subitems, for a subitem-scope column) across the groups. */
+  const formula_preview_rows: FormulaPreviewRow[] = useMemo(() => {
+    if (state.config_editor?.kind !== "formula" || !config_editor_column) return [];
+    const rows: FormulaPreviewRow[] = [];
+    for (const group of state.groups) {
+      const is_subitem_column = [...group.sub_base_columns, ...group.sub_custom_columns].some((c) => c.id === config_editor_column.id);
+      for (const item of group.items) {
+        for (const node of is_subitem_column ? item.subs : [item]) {
+          rows.push({ id: node.id, name: node.name, values: node.values });
+          if (rows.length >= FORMULA_PREVIEW_SCAN_LIMIT) return rows;
+        }
+      }
+    }
+    return rows;
+  }, [state.groups, state.config_editor?.kind, config_editor_column]);
+
   const grid = (
     <>
       {!embedded && <div className="h-[26px]" />}
@@ -439,15 +459,18 @@ export default function BoardTable({
           onClose={actions.closeTagEditor}
         />
       )}
-      {state.config_editor && config_editor_column && (
-        <ConfigEditorModal
-          kind={state.config_editor.kind}
-          column={config_editor_column}
-          sibling_columns={all_columns}
-          actions={actions}
-          onClose={actions.closeConfigEditor}
-        />
-      )}
+      {state.config_editor && config_editor_column &&
+        (state.config_editor.kind === "formula" ? (
+          <FormulaEditorModal column={config_editor_column} preview_rows={formula_preview_rows} actions={actions} onClose={actions.closeConfigEditor} />
+        ) : (
+          <ConfigEditorModal
+            kind={state.config_editor.kind}
+            column={config_editor_column}
+            sibling_columns={all_columns}
+            actions={actions}
+            onClose={actions.closeConfigEditor}
+          />
+        ))}
     </>
   );
 

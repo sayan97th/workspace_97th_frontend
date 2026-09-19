@@ -42,7 +42,9 @@ export type BoardColumnConfig = {
   options?: BoardColumnOption[];
   /** People columns only: whether assigning someone here notifies them (in-app + email). Defaults to `true` server-side when unset. Edited from the People cell picker's bottom toggle. */
   notify_on_assignment?: boolean;
-  /** Formula columns only: the operation applied to `source_column_ids`, in row order, read from the same item's other cells. */
+  /** Formula columns only: the expression the formula dialog saves, with columns referenced by id (`{#12}`), see `FormulaConfig` in `@/components/board/table/types`. */
+  expression?: string;
+  /** Formula columns only, legacy: the fixed operation applied to `source_column_ids` before expressions existed. Converted to an `expression` when read, and dropped the next time the formula is saved. */
   operation?: "sum" | "subtract" | "multiply" | "divide" | "concat";
   source_column_ids?: number[];
   /** Connect-board columns only: the other board this column's cells link items on. */

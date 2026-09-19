@@ -67,6 +67,9 @@ import {
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
+import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/formula/formulaEngine";
+import { legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
+import type { FormulaSourceColumn } from "@/components/board/table/types";
 import {
   AttachmentIcon,
   CalendarViewIcon,
@@ -180,10 +183,11 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     // Only a people column's picker ever reads this, but setting it
     // regardless of `type` is harmless and matches `options` above.
     notify_on_assignment: column.config?.notify_on_assignment ?? true,
-    formula:
-      column.config?.operation && column.config?.source_column_ids
-        ? { operation: column.config.operation, source_column_ids: column.config.source_column_ids.map(String) }
-        : undefined,
+    // Formulas saved before expressions existed (`operation` + `source_column_ids`) are converted on read, so they keep their result.
+    formula: (() => {
+      const expression = column.config?.expression ?? legacyFormulaToExpression(column.config);
+      return expression ? { expression } : undefined;
+    })(),
     mirror:
       column.config?.source_column_id != null && column.config?.mirrored_column_id != null
         ? { source_column_id: String(column.config.source_column_id), mirrored_column_id: String(column.config.mirrored_column_id) }
@@ -193,6 +197,20 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     aggregation: column.config?.aggregation,
     reminder: column.config?.reminder,
   };
+};
+
+/**
+ * Gives every formula column the list of columns its expression may read: all
+ * the same-scope columns of a readable kind (hidden ones included, so hiding a
+ * column never breaks a formula) plus the row's own name.
+ */
+const attachFormulaSources = (defs: TableColumnDef[], name_title: string): TableColumnDef[] => {
+  if (!defs.some((def) => def.kind === "formula")) return defs;
+  const sources: FormulaSourceColumn[] = [
+    { id: NAME_COLUMN_ID, title: name_title, kind: "text" },
+    ...defs.filter((def) => isFormulaSourceKind(def.kind)).map(({ id, title, kind, options }) => ({ id, title, kind, options })),
+  ];
+  return defs.map((def) => (def.kind === "formula" ? { ...def, formula_sources: sources } : def));
 };
 
 /**
@@ -1562,11 +1580,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Formula/Connect-board/Mirror settings modals' "Save" — same
   // read-modify-write shape as `handleToggleColumnNotifyOnAssignment`. ──
   const handleUpdateColumnFormula = useCallback(
-    async (column_id: string, formula: { operation: "sum" | "subtract" | "multiply" | "divide" | "concat"; source_column_ids: string[] }) => {
+    async (column_id: string, formula: { expression: string }) => {
       const column = columns_by_id[column_id];
       if (!column) return;
+      // The legacy operation/source columns pair is dropped: the expression replaces it.
+      const { operation: _operation, source_column_ids: _source_column_ids, ...rest_config } = column.config ?? {};
       const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
-        config: { ...(column.config ?? {}), operation: formula.operation, source_column_ids: formula.source_column_ids.map(Number) },
+        config: { ...rest_config, expression: formula.expression },
       });
       setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
     },
@@ -2062,7 +2082,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // renders columns by iterating this array in order with no pin-specific
   // logic of its own, so reordering here is all pinning needs.
   const { table_base_columns, table_pinned_count } = useMemo(() => {
-    const all = item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null);
+    const all = attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label);
     const visible = all.filter((c) => !toolbar.hidden_column_ids.includes(c.id));
     const pinned = visible.filter((c) => toolbar.pinned_column_ids.includes(c.id));
     const rest = visible.filter((c) => !toolbar.pinned_column_ids.includes(c.id));
@@ -2073,9 +2093,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // set — the first column of `rest` — since every row/header downstream
     // just slices the leading `pinned_column_count` columns off this array.
     return { table_base_columns: [...pinned, ...rest], table_pinned_count: pinned.length };
-  }, [item_columns, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
+  }, [item_columns, item_column_label, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
   const table_sub_base_columns = useMemo(
-    () => subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null),
+    () => attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem"),
     [subitem_columns]
   );
 
