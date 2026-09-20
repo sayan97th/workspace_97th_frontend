@@ -78,6 +78,13 @@ const AdministrationView: React.FC = () => {
   const account_settings = useAccountSettingsManager();
   const departments = useDepartmentsManager();
   const users = useUsersManager(departments.department_rows);
+  const { reloadUsers } = users;
+
+  // Department assignments can change from the Departments tab, so refresh the roster on each visit.
+  useEffect(() => {
+    if (active_section === "users") reloadUsers();
+  }, [active_section, reloadUsers]);
+
   const board_ownership = useBoardOwnershipManager();
   const authentication = useAuthenticationSettingsManager();
   const advanced = useAdvancedSettingsManager();

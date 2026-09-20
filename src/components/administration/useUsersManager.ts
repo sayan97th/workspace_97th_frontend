@@ -33,6 +33,8 @@ export type UsersManagerApi = {
   last_page: number;
 
   department_rows: DepartmentDto[];
+  /** Refetches the current page, e.g. after departments changed elsewhere in Administration. */
+  reloadUsers: () => void;
 
   /** Only a super_admin may change platform roles; the backend enforces this too. */
   can_edit_roles: boolean;
@@ -78,6 +80,7 @@ export function useUsersManager(department_rows: DepartmentDto[]): UsersManagerA
 
   const [user_rows, setUserRows] = useState<AdminUserDto[]>([]);
   const [is_loading, setIsLoading] = useState(true);
+  const [reload_token, setReloadToken] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [user_query, setUserQuery] = useState("");
   const [debounced_query, setDebouncedQuery] = useState("");
@@ -126,7 +129,9 @@ export function useUsersManager(department_rows: DepartmentDto[]): UsersManagerA
     return () => {
       cancelled = true;
     };
-  }, [debounced_query, page]);
+  }, [debounced_query, page, reload_token]);
+
+  const reloadUsers = useCallback(() => setReloadToken((token) => token + 1), []);
 
   const replaceRow = (updated: AdminUserDto) =>
     setUserRows((current) => current.map((row) => (row.id === updated.id ? updated : row)));
@@ -222,6 +227,7 @@ export function useUsersManager(department_rows: DepartmentDto[]): UsersManagerA
     page,
     setPage,
     last_page,
+    reloadUsers,
 
     department_rows,
 

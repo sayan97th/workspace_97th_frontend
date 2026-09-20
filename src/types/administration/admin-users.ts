@@ -46,6 +46,8 @@ export type AdminUsersSortDirection = "asc" | "desc";
 
 export type AdminUsersQuery = {
   search?: string;
+  /** Restricts the list to staff-tier accounts or client-only accounts. */
+  type?: "staff" | "client";
   page?: number;
   per_page?: number;
   /** `"unassigned"` for users with no department, or a specific department id. */

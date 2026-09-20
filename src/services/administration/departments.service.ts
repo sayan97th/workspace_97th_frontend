@@ -1,5 +1,10 @@
 import { apiClient } from "@/lib/api-client";
-import type { CreateDepartmentPayload, DepartmentDto, UpdateDepartmentPayload } from "@/types/administration/departments";
+import type {
+  CreateDepartmentPayload,
+  DepartmentDto,
+  DepartmentMutationResponse,
+  UpdateDepartmentPayload,
+} from "@/types/administration/departments";
 
 /** Talks to the Laravel `/api/admin/departments` resource. */
 export const departmentsService = {
@@ -29,5 +34,39 @@ export const departmentsService = {
   /** DELETE /api/admin/departments/{id} */
   async deleteDepartment(department_id: number): Promise<void> {
     await apiClient.delete(`/api/admin/departments/${department_id}`);
+  },
+
+  /** POST /api/admin/departments/{id}/members */
+  async assignMembers(department_id: number, user_ids: number[]): Promise<DepartmentDto> {
+    const response = await apiClient.post<DepartmentMutationResponse>(
+      `/api/admin/departments/${department_id}/members`,
+      { user_ids }
+    );
+    return response.department;
+  },
+
+  /** DELETE /api/admin/departments/{id}/members/{user_id} */
+  async removeMember(department_id: number, user_id: number): Promise<DepartmentDto> {
+    const response = await apiClient.delete<DepartmentMutationResponse>(
+      `/api/admin/departments/${department_id}/members/${user_id}`
+    );
+    return response.department;
+  },
+
+  /** POST /api/admin/departments/{id}/owners */
+  async assignOwners(department_id: number, user_ids: number[]): Promise<DepartmentDto> {
+    const response = await apiClient.post<DepartmentMutationResponse>(
+      `/api/admin/departments/${department_id}/owners`,
+      { user_ids }
+    );
+    return response.department;
+  },
+
+  /** DELETE /api/admin/departments/{id}/owners/{user_id} */
+  async removeOwner(department_id: number, user_id: number): Promise<DepartmentDto> {
+    const response = await apiClient.delete<DepartmentMutationResponse>(
+      `/api/admin/departments/${department_id}/owners/${user_id}`
+    );
+    return response.department;
   },
 };

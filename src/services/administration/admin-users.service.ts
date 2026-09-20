@@ -13,6 +13,7 @@ import type {
 const buildQuery = (query?: AdminUsersQuery): string => {
   const params = new URLSearchParams();
   if (query?.search) params.set("search", query.search);
+  if (query?.type) params.set("type", query.type);
   if (query?.page) params.set("page", String(query.page));
   if (query?.per_page) params.set("per_page", String(query.per_page));
   if (query?.department !== undefined) params.set("department", String(query.department));
