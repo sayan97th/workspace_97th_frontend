@@ -59,6 +59,11 @@ export type BoardAutomationDto = {
   action_type: BoardAutomationActionType;
   action_params: BoardAutomationActionParams;
   created_at: string | null;
+  /** How many times this automation has run, all outcomes counted. */
+  run_count: number;
+  /** ISO timestamp of the latest run, null until it has run once. */
+  last_run_at: string | null;
+  created_by: { id: number; name: string } | null;
 };
 
 export type CreateBoardAutomationPayload = {
@@ -73,3 +78,57 @@ export type CreateBoardAutomationPayload = {
 };
 
 export type UpdateBoardAutomationPayload = Partial<Omit<CreateBoardAutomationPayload, "view_id" | "trigger_type" | "trigger_column_id">>;
+
+/** How one run of an automation ended: it did its job, had nothing to do, or could not be delivered. */
+export type BoardAutomationRunStatus = "success" | "skipped" | "failed";
+
+/** One row of the Manage tab's "Run history". */
+export type BoardAutomationRunDto = {
+  id: number;
+  /** Null once the automation was deleted, `automation_name` still names it. */
+  automation_id: number | null;
+  automation_name: string | null;
+  board_item_id: number | null;
+  item_name: string | null;
+  trigger_type: BoardAutomationTriggerType;
+  action_type: BoardAutomationActionType;
+  status: BoardAutomationRunStatus;
+  message: string;
+  /** Full name of whoever caused the run, null for scheduled runs. */
+  actor_name: string | null;
+  ran_at: string;
+};
+
+export type BoardAutomationRunFilters = {
+  status?: BoardAutomationRunStatus | null;
+  automation_id?: number | null;
+  /** `YYYY-MM-DD`, inclusive. */
+  from?: string | null;
+  /** `YYYY-MM-DD`, inclusive. */
+  to?: string | null;
+};
+
+export type BoardAutomationRunsPage = {
+  data: BoardAutomationRunDto[];
+  meta: { current_page: number; last_page: number; per_page: number; total: number };
+};
+
+export type BoardAutomationUsageDto = {
+  period_days: number;
+  runs: number;
+  success: number;
+  failed: number;
+  skipped: number;
+  automations: number;
+  enabled_automations: number;
+  /** One entry per day of the period, oldest first, zero filled. */
+  daily: { date: string; runs: number }[];
+  top_automations: {
+    automation_id: number | null;
+    automation_name: string | null;
+    trigger_type: BoardAutomationTriggerType;
+    action_type: BoardAutomationActionType;
+    runs: number;
+  }[];
+  by_action: { action_type: BoardAutomationActionType; runs: number }[];
+};

@@ -14,3 +14,20 @@ export function Radio({ checked }: { checked: boolean }) {
     </span>
   );
 }
+
+/** The on and off switch of one automation, shared by the Automations dialog's list and the Manage tab. */
+export function ToggleSwitch({ checked, onToggle, label = "Enable automation", disabled = false }: { checked: boolean; onToggle: () => void; label?: string; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onToggle}
+      className={`flex h-5 w-9 flex-none items-center rounded-full px-0.5 transition-colors disabled:opacity-50 ${checked ? "justify-end bg-boardtree-accent" : "justify-start bg-boardtree-track"}`}
+    >
+      <span className="h-4 w-4 rounded-full bg-white" />
+    </button>
+  );
+}

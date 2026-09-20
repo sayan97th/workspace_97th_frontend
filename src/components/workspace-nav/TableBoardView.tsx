@@ -1086,6 +1086,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
   };
 
+  const handleRenameAutomation = async (automation_id: number, name: string | null) => {
+    const updated = await boardAutomationService.updateAutomation(board_id, automation_id, { name });
+    setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
+  };
+
+  const handleDuplicateAutomation = async (automation_id: number) => {
+    const copy = await boardAutomationService.duplicateAutomation(board_id, automation_id);
+    setAutomations((current) => [copy, ...current]);
+  };
+
   const handleDeleteAutomation = async (automation_id: number) => {
     await boardAutomationService.deleteAutomation(board_id, automation_id);
     setAutomations((current) => current.filter((a) => a.id !== automation_id));
@@ -3435,7 +3445,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         return_path={integrations_return_path}
         automation_tools={
           active_view_type === "table"
-            ? { automations, columns: table_base_columns, people: assignable_table_people, onCreate: handleCreateAutomation, onToggle: handleToggleAutomation, onDelete: handleDeleteAutomation }
+            ? {
+                board_id,
+                view_id: view_tabs.active_view_id,
+                automations,
+                columns: table_base_columns,
+                groups: selection_move_targets,
+                people: assignable_table_people,
+                onCreate: handleCreateAutomation,
+                onToggle: handleToggleAutomation,
+                onRename: handleRenameAutomation,
+                onDuplicate: handleDuplicateAutomation,
+                onDelete: handleDeleteAutomation,
+                onOpenBoardAutomations: () => {
+                  handleCloseIntegrations();
+                  setIsAutomationsModalOpen(true);
+                },
+              }
             : undefined
         }
       />

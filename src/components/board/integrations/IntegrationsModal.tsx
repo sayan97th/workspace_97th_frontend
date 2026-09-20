@@ -6,21 +6,30 @@ import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/b
 import { AutomateIcon } from "@/icons/board-icons";
 import { ChatBubbleIcon, LinkIcon } from "@/icons/workspace-icons";
 import type { ColumnDef, PersonDef } from "../table/types";
-import AutomationsList from "../automations/AutomationsList";
-import { COMMUNICATION_ACTION_TYPES } from "../automations/communicationTemplates";
+import type { NamedOption } from "../automations/automationDescriptions";
 import CommunicationView, { type ChannelFilter } from "./CommunicationView";
 import ConnectionsView from "./ConnectionsView";
 import { EnvelopeIcon } from "./integrationUi";
+import ManageView from "./manage/ManageView";
 
 /** What the Communication and Active automations categories need. Omitted on boards without an automations engine, which hides both. */
 export type IntegrationsAutomationTools = {
+  board_id: number;
+  /** The active tab, null while it is still loading. Automations and their history are scoped to it. */
+  view_id: number | null;
   automations: BoardAutomationDto[];
   /** This tab's item-scope columns, for the trigger and recipient pickers. */
   columns: ColumnDef[];
+  /** This tab's tables, so board actions in the Manage list can name where they move items. */
+  groups: NamedOption[];
   people: PersonDef[];
   onCreate: (payload: Omit<CreateBoardAutomationPayload, "view_id">) => Promise<void>;
   onToggle: (automation_id: number, is_enabled: boolean) => Promise<void>;
+  onRename: (automation_id: number, name: string | null) => Promise<void>;
+  onDuplicate: (automation_id: number) => Promise<void>;
   onDelete: (automation_id: number) => Promise<void>;
+  /** Closes this dialog and opens the Automate dialog, where the board actions are built. */
+  onOpenBoardAutomations?: () => void;
 };
 
 export type IntegrationsModalProps = {
@@ -43,8 +52,8 @@ const NAV_ROW = "flex h-10 w-full items-center gap-3 rounded-[6px] px-3 text-lef
 /**
  * Board header's "Integrate" button. A wide dialog with Create and Manage tabs in its header. Create has
  * a Categories sidebar that switches the right side between Connections (Email and Slack) and
- * Communication (the email and Slack automation templates). Manage lists the email and Slack
- * automations already set up on this table. Boards without an automations engine only get Connections.
+ * Communication (the email and Slack automation templates). Manage is the automation center for this
+ * table: its automations, run history, connections and usage. Boards without an automations engine only get Connections.
  */
 export default function IntegrationsModal({ is_open, onClose, board_label, return_path, automation_tools }: IntegrationsModalProps) {
   if (!is_open) return null;
@@ -71,7 +80,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
   const [view, setView] = useState<View>("connections");
   const [channel_filter, setChannelFilter] = useState<ChannelFilter>("all");
 
-  const communication_automations = (automation_tools?.automations ?? []).filter((a) => COMMUNICATION_ACTION_TYPES.includes(a.action_type));
+  const automation_count = automation_tools?.automations.length ?? 0;
   const is_slack_connected = slack.status?.is_connected === true;
 
   const nav_items: { id: View; label: string; icon: React.ReactNode }[] = [
@@ -103,7 +112,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
               className={`px-7 py-2 capitalize ${mode === mode_id ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-secondary hover:bg-boardtree-hover"}`}
             >
               {mode_id}
-              {mode_id === "manage" && communication_automations.length > 0 ? ` (${communication_automations.length})` : ""}
+              {mode_id === "manage" && automation_count > 0 ? ` (${automation_count})` : ""}
             </button>
           ))}
         </div>
@@ -174,24 +183,27 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
           )}
 
           {mode === "manage" && automation_tools && (
-            <div className="max-w-[720px]">
-              <h2 className="text-[20px] font-semibold text-boardtree-text">Manage</h2>
-              <p className="mb-4 mt-1 text-[13px] text-boardtree-text-muted">Email and Slack automations on this table. Board actions live under Automate.</p>
-              <AutomationsList
-                automations={communication_automations}
-                columns={automation_tools.columns}
-                groups={[]}
-                people={automation_tools.people}
-                onToggle={automation_tools.onToggle}
-                onDelete={automation_tools.onDelete}
-                empty_state={
-                  <>
-                    No email or Slack automations yet.{" "}
-                    <button type="button" onClick={() => browseTemplates("all")} className="font-medium text-boardtree-accent hover:underline">Browse templates</button>
-                  </>
-                }
-              />
-            </div>
+            <ManageView
+              board_id={automation_tools.board_id}
+              view_id={automation_tools.view_id}
+              board_label={board_label}
+              slack={slack}
+              return_path={return_path}
+              automations={automation_tools.automations}
+              columns={automation_tools.columns}
+              groups={automation_tools.groups}
+              people={automation_tools.people}
+              onToggle={automation_tools.onToggle}
+              onRename={automation_tools.onRename}
+              onDuplicate={automation_tools.onDuplicate}
+              onDelete={automation_tools.onDelete}
+              onExploreTemplates={() => browseTemplates("all")}
+              onOpenConnections={() => {
+                setView("connections");
+                setMode("create");
+              }}
+              onOpenBoardAutomations={automation_tools.onOpenBoardAutomations}
+            />
           )}
         </div>
       </div>
