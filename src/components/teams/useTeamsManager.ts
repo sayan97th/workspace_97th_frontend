@@ -1,9 +1,11 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useToast } from "@/components/ui/toast/ToastProvider";
+import { useAuth } from "@/context/AuthContext";
 import { accountTeamsService } from "@/services/account-teams.service";
 import type { ApiError } from "@/types/auth";
-import type { AllAccountTeamMembersPage } from "@/types/account-teams";
-import { mapAccountTeamMemberDtoToTeamMember } from "./teamMapping";
+import type { AccountTeamDto, AllAccountTeamMembersPage } from "@/types/account-teams";
+import { mapAccountTeamDtoToTeam, mapAccountTeamMemberDtoToTeamMember } from "./teamMapping";
 import type { Team, TeamMember, TeamsTabId } from "./types";
 
 export const ALL_TEAMS_ID = "all";
@@ -15,6 +17,7 @@ const DIRECTORY_PER_PAGE = 200;
 const SEARCH_DEBOUNCE_MS = 300;
 
 export type TeamRow = {
+  team: Team;
   id: string;
   name: string;
   member_count: number;
@@ -37,6 +40,18 @@ export type TeamsManagerApi = {
   selectTeam: (id: string) => void;
   is_all_selected: boolean;
   selected_team: Team | null;
+
+  /** Only admins and the account owner create teams, the API enforces the same rule. */
+  can_create_teams: boolean;
+  /** The viewer may add and remove members of the selected team (admin, account owner or its team owner). */
+  can_manage_selected_members: boolean;
+  /** The viewer may pick the selected team's owners (admin or account owner only). */
+  can_manage_selected_owners: boolean;
+  /** Whether the row's remove action should show, a team owner cannot remove another owner. */
+  canRemoveMember: (member: TeamMember) => boolean;
+  /** Id of the member whose owner delegation is being saved, to disable that row's action. */
+  owner_saving_member_id: string | null;
+  toggleTeamOwner: (member: TeamMember) => Promise<void>;
 
   active_tab: TeamsTabId;
   setActiveTab: (tab: TeamsTabId) => void;
@@ -110,6 +125,10 @@ const apiErrorMessage = (error: unknown, fallback: string): string => {
  * so {@link TeamsView} and its panels stay presentational.
  */
 export function useTeamsManager(): TeamsManagerApi {
+  const { hasAnyRole } = useAuth();
+  const { showToast } = useToast();
+  const can_create_teams = hasAnyRole("super_admin", "admin");
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [is_loading_teams, setIsLoadingTeams] = useState(true);
   const [teams_error, setTeamsError] = useState<string | null>(null);
@@ -151,13 +170,14 @@ export function useTeamsManager(): TeamsManagerApi {
   const [add_members_error, setAddMembersError] = useState<string | null>(null);
 
   const [member_pending_remove, setMemberPendingRemove] = useState<TeamMember | null>(null);
+  const [owner_saving_member_id, setOwnerSavingMemberId] = useState<string | null>(null);
 
   const loadTeams = useCallback(async () => {
     setIsLoadingTeams(true);
     setTeamsError(null);
     try {
       const data = await accountTeamsService.getTeams();
-      setTeams(data.map((team) => ({ id: team.id, name: team.name, member_count: team.member_count })));
+      setTeams(data.map(mapAccountTeamDtoToTeam));
     } catch {
       setTeamsError("We couldn't load your teams.");
     } finally {
@@ -285,23 +305,14 @@ export function useTeamsManager(): TeamsManagerApi {
           name: trimmed_team_form_name,
           member_ids: team_form_member_ids,
         });
-        setTeams((current) => [
-          ...current,
-          { id: created.id, name: created.name, member_count: created.member_count },
-        ]);
+        setTeams((current) => [...current, mapAccountTeamDtoToTeam(created)]);
         selectTeam(created.id);
       } else if (editing_team_id) {
-        const updated = await accountTeamsService.updateTeam(editing_team_id, {
-          name: trimmed_team_form_name,
-        });
+        await accountTeamsService.updateTeam(editing_team_id, { name: trimmed_team_form_name });
         await accountTeamsService.syncTeamMembers(editing_team_id, team_form_member_ids);
-        setTeams((current) =>
-          current.map((team) =>
-            team.id === editing_team_id
-              ? { id: updated.id, name: updated.name, member_count: team_form_member_ids.length }
-              : team
-          )
-        );
+        // Replacing the roster can drop owners who were unticked, so reload the list for fresh counts and owners.
+        const refreshed = await accountTeamsService.getTeams();
+        setTeams(refreshed.map(mapAccountTeamDtoToTeam));
         if (selected_team_id === editing_team_id) {
           setMembersRefreshToken((token) => token + 1);
         }
@@ -334,9 +345,10 @@ export function useTeamsManager(): TeamsManagerApi {
     setTeamPendingDelete(null);
   }, [team_pending_delete, selected_team_id, selectTeam]);
 
-  /** Reflects a roster mutation's fresh `member_count` into the team list without a full refetch. */
-  const applyMemberCount = useCallback((team_id: string, member_count: number) => {
-    setTeams((current) => current.map((team) => (team.id === team_id ? { ...team, member_count } : team)));
+  /** Reflects a mutation's fresh team payload (counts, owners, permissions) into the team list without a full refetch. */
+  const applyUpdatedTeam = useCallback((dto: AccountTeamDto) => {
+    const next_team = mapAccountTeamDtoToTeam(dto);
+    setTeams((current) => current.map((team) => (team.id === next_team.id ? next_team : team)));
   }, []);
 
   const openAddMembers = useCallback(() => {
@@ -362,7 +374,7 @@ export function useTeamsManager(): TeamsManagerApi {
     setAddMembersError(null);
     try {
       const updated = await accountTeamsService.addTeamMembers(selected_team_id, add_member_selected_ids);
-      applyMemberCount(selected_team_id, updated.member_count);
+      applyUpdatedTeam(updated);
       setMembersRefreshToken((token) => token + 1);
       setIsAddMembersOpen(false);
     } catch (error) {
@@ -370,7 +382,7 @@ export function useTeamsManager(): TeamsManagerApi {
     } finally {
       setIsSubmittingAddMembers(false);
     }
-  }, [can_submit_add_members, is_all_selected, selected_team_id, add_member_selected_ids, applyMemberCount]);
+  }, [can_submit_add_members, is_all_selected, selected_team_id, add_member_selected_ids, applyUpdatedTeam]);
 
   const requestRemoveMember = useCallback((member: TeamMember) => setMemberPendingRemove(member), []);
   const cancelRemoveMember = useCallback(() => setMemberPendingRemove(null), []);
@@ -378,7 +390,7 @@ export function useTeamsManager(): TeamsManagerApi {
   const confirmRemoveMember = useCallback(async () => {
     if (!member_pending_remove || is_all_selected) return;
     const updated = await accountTeamsService.removeTeamMember(selected_team_id, member_pending_remove.id);
-    applyMemberCount(selected_team_id, updated.member_count);
+    applyUpdatedTeam(updated);
     // Removing the last row on a page beyond the first would otherwise leave that page empty.
     if (visible_members.length === 1 && page > 1) {
       setPage((current) => current - 1);
@@ -386,7 +398,38 @@ export function useTeamsManager(): TeamsManagerApi {
       setMembersRefreshToken((token) => token + 1);
     }
     setMemberPendingRemove(null);
-  }, [member_pending_remove, is_all_selected, selected_team_id, visible_members.length, page, applyMemberCount]);
+  }, [member_pending_remove, is_all_selected, selected_team_id, visible_members.length, page, applyUpdatedTeam]);
+
+  const can_manage_selected_members = selected_team?.can_manage_members ?? false;
+  const can_manage_selected_owners = selected_team?.can_manage ?? false;
+
+  const canRemoveMember = useCallback(
+    (member: TeamMember) => can_manage_selected_members && (can_manage_selected_owners || !member.is_team_owner),
+    [can_manage_selected_members, can_manage_selected_owners]
+  );
+
+  const toggleTeamOwner = useCallback(
+    async (member: TeamMember) => {
+      if (is_all_selected || !can_manage_selected_owners) return;
+      setOwnerSavingMemberId(member.id);
+      try {
+        const updated = member.is_team_owner
+          ? await accountTeamsService.removeTeamOwner(selected_team_id, member.id)
+          : await accountTeamsService.assignTeamOwner(selected_team_id, member.id);
+        applyUpdatedTeam(updated);
+        setMembersRefreshToken((token) => token + 1);
+      } catch (error) {
+        showToast({
+          variant: "error",
+          title: "Couldn't update the team owner",
+          description: apiErrorMessage(error, "Something went wrong. Please try again."),
+        });
+      } finally {
+        setOwnerSavingMemberId(null);
+      }
+    },
+    [is_all_selected, can_manage_selected_owners, selected_team_id, applyUpdatedTeam, showToast]
+  );
 
   const total_team_count = teams.length;
   const all_members_total = is_all_selected ? total_members : 0;
@@ -398,6 +441,7 @@ export function useTeamsManager(): TeamsManagerApi {
     team_query,
     setTeamQuery,
     team_rows: filtered_teams.map((team) => ({
+      team,
       id: team.id,
       name: team.name,
       member_count: team.member_count,
@@ -410,6 +454,13 @@ export function useTeamsManager(): TeamsManagerApi {
     selectTeam,
     is_all_selected,
     selected_team,
+
+    can_create_teams,
+    can_manage_selected_members,
+    can_manage_selected_owners,
+    canRemoveMember,
+    owner_saving_member_id,
+    toggleTeamOwner,
 
     active_tab,
     setActiveTab,

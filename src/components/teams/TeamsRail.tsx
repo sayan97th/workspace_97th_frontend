@@ -23,17 +23,19 @@ const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
       <div>
         <div className="text-[18px] font-extrabold tracking-[-0.01em] text-shell-text">Teams</div>
         <div className="mt-0.5 text-[12.5px] text-shell-text-muted">
-          {teams.total_team_count} teams in this account
+          {teams.total_team_count} {teams.total_team_count === 1 ? "team" : "teams"} in this account
         </div>
       </div>
-      <button
-        type="button"
-        onClick={teams.openCreateTeam}
-        className="flex flex-none items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-      >
-        <PlusIcon size={11} />
-        New team
-      </button>
+      {teams.can_create_teams ? (
+        <button
+          type="button"
+          onClick={teams.openCreateTeam}
+          className="flex flex-none items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+        >
+          <PlusIcon size={11} />
+          New team
+        </button>
+      ) : null}
     </div>
 
     <div className="px-3.5 pb-3">
@@ -87,28 +89,30 @@ const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
               {row.name}
             </span>
             <span className="text-[12px] text-shell-text-faint">{row.member_count}</span>
-            <TeamOptionsButton
-              team_name={row.name}
-              onEdit={() => teams.openEditTeam({ id: row.id, name: row.name, member_count: row.member_count })}
-              onDelete={() =>
-                teams.requestDeleteTeam({ id: row.id, name: row.name, member_count: row.member_count })
-              }
-            />
+            {row.team.can_manage ? (
+              <TeamOptionsButton
+                team_name={row.name}
+                onEdit={() => teams.openEditTeam(row.team)}
+                onDelete={() => teams.requestDeleteTeam(row.team)}
+              />
+            ) : null}
           </div>
         ))
       )}
     </div>
 
-    <div className="border-t border-shell-border px-4 py-3">
-      <button
-        type="button"
-        onClick={teams.openCreateTeam}
-        className="flex items-center gap-2 text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text-secondary"
-      >
-        <PlusIcon size={12} />
-        New team
-      </button>
-    </div>
+    {teams.can_create_teams ? (
+      <div className="border-t border-shell-border px-4 py-3">
+        <button
+          type="button"
+          onClick={teams.openCreateTeam}
+          className="flex items-center gap-2 text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text-secondary"
+        >
+          <PlusIcon size={12} />
+          New team
+        </button>
+      </div>
+    ) : null}
   </div>
 );
 

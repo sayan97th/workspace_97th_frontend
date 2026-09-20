@@ -80,6 +80,23 @@ export const accountTeamsService = {
     return response.team;
   },
 
+  /** PUT /api/account-teams/{id}/owners/{user_id} — make a staff user a team owner, joining the roster if needed. Admin only. */
+  async assignTeamOwner(team_id: string, user_id: string): Promise<AccountTeamDto> {
+    const response = await apiClient.put<{ team: AccountTeamDto }>(
+      `/api/account-teams/${team_id}/owners/${user_id}`,
+      {}
+    );
+    return response.team;
+  },
+
+  /** DELETE /api/account-teams/{id}/owners/{user_id} — drop the owner delegation but keep the user on the roster. Admin only. */
+  async removeTeamOwner(team_id: string, user_id: string): Promise<AccountTeamDto> {
+    const response = await apiClient.delete<{ team: AccountTeamDto }>(
+      `/api/account-teams/${team_id}/owners/${user_id}`
+    );
+    return response.team;
+  },
+
   /** GET /api/account-team-members — the account-wide "All members" dedupe. */
   async getAllMembers(query?: MemberListQuery): Promise<AllAccountTeamMembersPage> {
     return apiClient.get<AllAccountTeamMembersPage>(`/api/account-team-members${buildQuery(query)}`);

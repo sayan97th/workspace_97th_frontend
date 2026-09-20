@@ -6,10 +6,23 @@
  * (and only ever shows) the internal staff roster, never client-portal users.
  */
 
+/** A team owner as embedded in {@link AccountTeamDto}, enough to draw an avatar and a tooltip. */
+export type AccountTeamOwnerDto = {
+  id: string;
+  full_name: string;
+  email: string;
+  profile_photo_url: string | null;
+};
+
 export type AccountTeamDto = {
   id: string;
   name: string;
   member_count: number;
+  owners: AccountTeamOwnerDto[];
+  /** Create, rename, delete and pick owners: admins and the account owner only. */
+  can_manage: boolean;
+  /** Add and remove members: admins, the account owner and this team's owners. */
+  can_manage_members: boolean;
   created_at: string;
 };
 
@@ -19,7 +32,10 @@ export type AccountTeamMemberDto = {
   email: string;
   job_title: string | null;
   profile_photo_url: string | null;
+  /** The account owner (super admin), not to be confused with a team owner. */
   is_owner: boolean;
+  /** Delegated to manage this team's roster, only set on a single team's roster. */
+  is_team_owner: boolean;
 };
 
 export type PaginatedResult<T> = {

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useRouter } from "next/navigation";
+import { PersonAvatar } from "@/components/board";
 import SearchField from "@/components/common/SearchField";
 import { Pagination } from "@/components/content";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -28,12 +29,21 @@ const TeamsView: React.FC = () => {
   const router = useRouter();
   const teams = useTeamsManager();
 
+  // Opened straight from a bookmark or a new tab there is nothing to go back to, so land on the home page instead of leaving the site.
+  const goBack = () => {
+    if (window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/workspace-home");
+    }
+  };
+
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
       <div className="flex flex-none items-center gap-3 border-b border-shell-border px-6 py-3.5">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={goBack}
           className="flex items-center gap-1.5 text-[13px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
         >
           <ChevronRightIcon className="rotate-180" size={11} />
@@ -50,6 +60,19 @@ const TeamsView: React.FC = () => {
           <div className="flex-none px-[30px] pt-7">
             <div className="text-[22px] font-extrabold tracking-[-0.01em]">{teams.panel_title}</div>
             <div className="mt-[3px] text-[13px] text-shell-text-muted">{teams.panel_subtitle}</div>
+            {teams.selected_team && teams.selected_team.owners.length > 0 ? (
+              <div className="mt-3 flex items-center gap-2 text-[12.5px] text-shell-text-muted">
+                <span className="font-semibold">Owners</span>
+                <span className="flex items-center -space-x-1.5">
+                  {teams.selected_team.owners.map((owner) => (
+                    <span key={owner.id} title={owner.name} className="rounded-full ring-2 ring-shell-bg">
+                      <PersonAvatar person={owner} size={22} />
+                    </span>
+                  ))}
+                </span>
+                <span className="truncate">{teams.selected_team.owners.map((owner) => owner.name).join(", ")}</span>
+              </div>
+            ) : null}
             <div className="mt-5 flex gap-[22px] border-b border-shell-border">
               <button type="button" onClick={() => teams.setActiveTab("users")} className={tabButtonClass(teams.active_tab === "users")}>
                 Users
@@ -69,7 +92,12 @@ const TeamsView: React.FC = () => {
                   placeholder="Search people"
                   className="max-w-[280px]"
                 />
-                {!teams.is_all_selected ? (
+                {!teams.is_all_selected && !teams.can_manage_selected_members ? (
+                  <span className="text-[12.5px] text-shell-text-faint">
+                    Only admins and team owners can change this roster.
+                  </span>
+                ) : null}
+                {!teams.is_all_selected && teams.can_manage_selected_members ? (
                   <button
                     type="button"
                     onClick={teams.openAddMembers}
@@ -93,7 +121,14 @@ const TeamsView: React.FC = () => {
                   <>
                     <TeamMembersTable
                       members={teams.visible_members}
-                      onRemoveMember={teams.is_all_selected ? undefined : teams.requestRemoveMember}
+                      onRemoveMember={
+                        teams.is_all_selected || !teams.can_manage_selected_members ? undefined : teams.requestRemoveMember
+                      }
+                      canRemoveMember={teams.canRemoveMember}
+                      onToggleOwner={
+                        teams.is_all_selected || !teams.can_manage_selected_owners ? undefined : teams.toggleTeamOwner
+                      }
+                      owner_saving_member_id={teams.owner_saving_member_id}
                     />
                     <Pagination
                       current_page={teams.page}

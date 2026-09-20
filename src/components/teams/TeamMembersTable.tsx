@@ -7,8 +7,14 @@ export type TeamMembersTableProps = {
   members: TeamMember[];
   /** Shown when `members` is empty, e.g. after a search with no matches. */
   empty_label?: string;
-  /** Renders a hover "remove" action per row when given — omit for read-only listings like the "All members" dedupe. */
+  /** Renders a hover "remove" action per row when given, omit for read-only listings like the "All members" dedupe. */
   onRemoveMember?: (member: TeamMember) => void;
+  /** Hides the remove action on rows the viewer may not remove, such as another team owner. */
+  canRemoveMember?: (member: TeamMember) => boolean;
+  /** Renders a hover "Make owner" / "Remove owner" action per row when given, admins only. */
+  onToggleOwner?: (member: TeamMember) => void;
+  /** The member whose owner change is being saved, its action is disabled meanwhile. */
+  owner_saving_member_id?: string | null;
 };
 
 /**
@@ -19,13 +25,16 @@ const TeamMembersTable: React.FC<TeamMembersTableProps> = ({
   members,
   empty_label = "No people match your search.",
   onRemoveMember,
+  canRemoveMember,
+  onToggleOwner,
+  owner_saving_member_id = null,
 }) => (
   <div>
     <div className="flex items-center px-[10px] py-2 text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint">
       <span className="w-[230px] flex-none">Name</span>
       <span className="min-w-0 flex-1">Email</span>
       <span className="w-[200px] flex-none">Title</span>
-      {onRemoveMember ? <span className="w-9 flex-none" /> : null}
+      {onRemoveMember || onToggleOwner ? <span className="w-[176px] flex-none" /> : null}
     </div>
 
     {members.map((member) => (
@@ -41,21 +50,38 @@ const TeamMembersTable: React.FC<TeamMembersTableProps> = ({
               OWNER
             </span>
           ) : null}
+          {member.is_team_owner ? (
+            <span className="flex-none rounded-[5px] bg-brand-500/[0.16] px-[7px] py-0.5 text-[10.5px] font-bold tracking-[0.03em] text-brand-200">
+              TEAM OWNER
+            </span>
+          ) : null}
         </span>
         <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text-muted">{member.email}</span>
         <span className="w-[200px] flex-none truncate text-[13px] text-shell-text-muted">
-          {member.title ?? "—"}
+          {member.title ?? "No title"}
         </span>
-        {onRemoveMember ? (
-          <span className="flex w-9 flex-none justify-end">
-            <button
-              type="button"
-              onClick={() => onRemoveMember(member)}
-              aria-label={`Remove ${member.name} from this team`}
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover-strong hover:text-brand-200 group-hover:opacity-100"
-            >
-              <CloseIcon size={13} />
-            </button>
+        {onRemoveMember || onToggleOwner ? (
+          <span className="flex w-[176px] flex-none items-center justify-end gap-1">
+            {onToggleOwner ? (
+              <button
+                type="button"
+                onClick={() => onToggleOwner(member)}
+                disabled={owner_saving_member_id === member.id}
+                className="flex-none rounded-md px-2 py-1 text-[12px] font-semibold text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover-strong hover:text-shell-text focus-visible:opacity-100 disabled:opacity-50 group-hover:opacity-100"
+              >
+                {member.is_team_owner ? "Remove owner" : "Make owner"}
+              </button>
+            ) : null}
+            {onRemoveMember && (canRemoveMember ? canRemoveMember(member) : true) ? (
+              <button
+                type="button"
+                onClick={() => onRemoveMember(member)}
+                aria-label={`Remove ${member.name} from this team`}
+                className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover-strong hover:text-brand-200 focus-visible:opacity-100 group-hover:opacity-100"
+              >
+                <CloseIcon size={13} />
+              </button>
+            ) : null}
           </span>
         ) : null}
       </div>

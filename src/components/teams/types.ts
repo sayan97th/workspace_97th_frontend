@@ -4,7 +4,10 @@ import type { BoardPersonOption } from "@/components/board";
 export type TeamMember = BoardPersonOption & {
   email: string;
   title?: string;
+  /** The account owner (super admin). */
   is_owner?: boolean;
+  /** Delegated to manage the roster of the team being listed. */
+  is_team_owner?: boolean;
 };
 
 /**
@@ -15,6 +18,11 @@ export type Team = {
   id: string;
   name: string;
   member_count: number;
+  owners: TeamMember[];
+  /** The viewer may rename or delete the team and pick its owners. */
+  can_manage: boolean;
+  /** The viewer may add and remove this team's members. */
+  can_manage_members: boolean;
 };
 
 export type TeamsTabId = "users" | "content";
