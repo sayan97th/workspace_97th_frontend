@@ -6,6 +6,8 @@ import StatusPill from "../StatusPill";
 import ProductTag, { OverflowBadge } from "../ProductTag";
 import PersonAvatarStack from "../PersonAvatarStack";
 import PersonAvatar from "../PersonAvatar";
+import DeactivatedBadge from "../DeactivatedBadge";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import BoardPopover from "../toolbar/BoardPopover";
 import DateCalendarPanel from "./DateCalendarPanel";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
@@ -51,7 +53,13 @@ export type BoardCellColumn = {
 };
 
 /** A board member the People cell can assign. */
-export type BoardCellPerson = { id: number | string; full_name: string; profile_photo_url?: string | null };
+export type BoardCellPerson = {
+  id: number | string;
+  full_name: string;
+  profile_photo_url?: string | null;
+  /** The account was disabled or deleted: shown faded while assigned, and left out of the picker otherwise. */
+  is_deactivated?: boolean;
+};
 
 /** An item the Dependency cell can link to as a predecessor. */
 export type BoardCellItemOption = { id: string; name: string };
@@ -673,6 +681,8 @@ const PeopleCell: React.FC<{
           )}
           {people.map((person, index) => {
             const is_selected = selected_ids.includes(String(person.id));
+            // A deactivated person can't be newly assigned, but stays listed (faded) while assigned so they can be removed.
+            if (person.is_deactivated && !is_selected) return null;
             return (
               <button
                 key={person.id}
@@ -687,11 +697,13 @@ const PeopleCell: React.FC<{
                     initials: getInitials(person.full_name),
                     avatar_seed: index,
                     avatar_url: person.profile_photo_url ?? undefined,
+                    is_deactivated: person.is_deactivated,
                   }}
                   size={24}
                   variant="flat"
                 />
-                <span className="min-w-0 flex-1 truncate text-[13px] text-boardtree-text">{person.full_name}</span>
+                <span className={`min-w-0 flex-1 truncate text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.full_name}</span>
+                <DeactivatedBadge is_deactivated={person.is_deactivated} />
                 {is_selected && (
                   <span className="flex-none text-boardtree-accent">
                     <CheckIcon size={14} />

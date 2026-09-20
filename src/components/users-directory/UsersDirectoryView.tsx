@@ -30,6 +30,7 @@ const STATUS_FILTER_OPTIONS: { id: string; label: string }[] = [
   { id: "", label: "All statuses" },
   { id: "active", label: "Active" },
   { id: "disabled", label: "Disabled" },
+  { id: "deleted", label: "Deleted" },
 ];
 
 /**
@@ -115,6 +116,7 @@ const UsersDirectoryView: React.FC = () => {
         current_user_id={directory.current_user_id}
         onToggleActive={directory.requestToggleActive}
         onDelete={directory.requestDelete}
+        onRestore={directory.requestRestore}
         canImpersonate={directory.canImpersonate}
         onImpersonate={directory.requestImpersonate}
       />
@@ -152,15 +154,35 @@ const UsersDirectoryView: React.FC = () => {
         title="Delete user"
         description={
           <>
-            This will permanently delete &quot;{directory.user_pending_delete?.full_name}&quot;&apos;s account. This
-            action cannot be undone.
+            This will delete &quot;{directory.user_pending_delete?.full_name}&quot;&apos;s account. Their name, email
+            and photo are kept, so their past comments and assignments still show who they were, faded, and you can
+            restore the account later.
           </>
         }
         confirm_label="Delete user"
         variant="danger"
-        risk_items={["This cannot be undone.", "The account will lose access immediately."]}
+        risk_items={[
+          "The account will lose access immediately.",
+          "They will no longer appear in people pickers or mentions.",
+          "You can restore the account from the Deleted filter.",
+        ]}
         onConfirm={directory.confirmDelete}
         onClose={directory.cancelDelete}
+      />
+
+      <ConfirmActionModal
+        is_open={directory.user_pending_restore !== null}
+        title="Restore user"
+        description={
+          <>
+            &quot;{directory.user_pending_restore?.full_name}&quot; will get their account back exactly as it was, with
+            the same roles, workspaces and history.
+          </>
+        }
+        confirm_label="Restore account"
+        variant="neutral"
+        onConfirm={directory.confirmRestore}
+        onClose={directory.cancelRestore}
       />
 
       <ConfirmActionModal

@@ -17,4 +17,5 @@ export const toPersonOption = (user: AdminUserDto): BoardPersonOption => ({
   initials: getInitials(user.full_name),
   avatar_seed: user.id,
   avatar_url: user.profile_photo_url ?? undefined,
+  is_deactivated: user.is_deactivated ?? false,
 });

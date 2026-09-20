@@ -5,6 +5,7 @@ import SlideOverPanel from "./drawer/SlideOverPanel";
 import PersonAvatar from "./PersonAvatar";
 import { CloseIcon } from "@/icons/board-icons";
 import { ActivityLogIcon } from "@/icons/board-options-icons";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import { boardOptionsService } from "@/services/board-options.service";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 
@@ -87,7 +88,7 @@ const BoardActivityLogDrawer: React.FC<BoardActivityLogDrawerProps> = ({ board_i
             <PersonAvatar person={entry.user ? mapAuthorToPerson(entry.user) : UNKNOWN_ACTOR} size={32} />
             <div className="min-w-0 flex-1">
               <p className="text-[13.5px] leading-snug text-shell-text">
-                <span className="font-semibold">{entry.user?.full_name ?? "Someone"}</span>{" "}
+                <span className={`font-semibold ${getDeactivatedClass(entry.user?.is_deactivated)}`}>{entry.user?.full_name ?? "Someone"}</span>{" "}
                 {entry.description.charAt(0).toLowerCase() + entry.description.slice(1)}
               </p>
               <p className="mt-0.5 text-[11.5px] text-shell-text-faint">{formatTimestamp(entry.created_at)}</p>

@@ -1,4 +1,6 @@
 import type { PersonDef } from "../types";
+import DeactivatedBadge from "../../DeactivatedBadge";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import PopoverPanel from "./PopoverPanel";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 
@@ -27,7 +29,10 @@ export default function PeopleMenu({
   notify_on_assignment,
   onToggleNotifyOnAssignment,
 }: PeopleMenuProps) {
-  const filtered = people.filter((p) => p.name.toLowerCase().includes(query.trim().toLowerCase()));
+  // A deactivated person can't be newly assigned, but stays listed (faded) while assigned so they can be removed.
+  const filtered = people.filter(
+    (p) => (!p.is_deactivated || selected.includes(p.id)) && p.name.toLowerCase().includes(query.trim().toLowerCase())
+  );
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[300px] -translate-x-1/2 p-3">
       <div className="mb-2.5 flex h-8 items-center gap-[7px] rounded-[6px] border border-boardtree-border px-[9px] focus-within:border-boardtree-accent">
@@ -54,10 +59,14 @@ export default function PeopleMenu({
               onClick={() => onToggle(person.id)}
               className="flex items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-boardtree-hover"
             >
-              <div className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[9.5px] font-semibold text-white" style={{ background: person.color }}>
+              <div
+                className={`flex h-[26px] w-[26px] items-center justify-center rounded-full text-[9.5px] font-semibold text-white ${getDeactivatedClass(person.is_deactivated)}`}
+                style={{ background: person.color }}
+              >
                 {person.initials}
               </div>
-              <div className="flex-1 text-left text-[13px] text-boardtree-text">{person.name}</div>
+              <div className={`flex-1 text-left text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.name}</div>
+              <DeactivatedBadge is_deactivated={person.is_deactivated} />
               {is_on && (
                 <div className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-boardtree-accent">
                   <svg viewBox="0 0 14 14" width="11" height="11"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>

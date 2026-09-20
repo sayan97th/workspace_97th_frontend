@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { getUserInitials } from "@/lib/user";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import type { FeedActivityEntry } from "@/data/update-feed-data";
 
 export type FeedActivityTimelineProps = {
@@ -75,6 +76,7 @@ const FeedActivityTimeline: React.FC<FeedActivityTimelineProps> = ({ entries, to
                     initials: getUserInitials({ full_name: entry.actor.name }),
                     avatar_seed: Number(entry.actor.id) || 0,
                     avatar_url: entry.actor.avatar_url,
+                    is_deactivated: entry.actor.is_deactivated,
                   }}
                   size={18}
                   className="mt-px flex-none"
@@ -83,7 +85,9 @@ const FeedActivityTimeline: React.FC<FeedActivityTimelineProps> = ({ entries, to
                 <span className="mt-px h-[18px] w-[18px] flex-none rounded-full bg-shell-hover-strong" aria-hidden="true" />
               )}
               <span className="min-w-0 flex-1">
-                <strong className="font-semibold text-shell-text-secondary">{entry.actor?.name ?? "Automation"}</strong>{" "}
+                <strong className={`font-semibold text-shell-text-secondary ${getDeactivatedClass(entry.actor?.is_deactivated)}`}>
+                  {entry.actor?.name ?? "Automation"}
+                </strong>{" "}
                 {describeChange(entry)}
               </span>
               <span className="flex-none text-[11px] text-shell-text-faint">{entry.time_label}</span>

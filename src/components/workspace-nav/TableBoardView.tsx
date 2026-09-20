@@ -389,7 +389,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
   // unselectable/unresolvable). Seeded with `node.owners` (mapped onto the
   // richer `WorkspaceMember` shape with placeholder fields) so the roster
   // isn't empty for the one paint before the real fetch below resolves.
-  const [workspace_members, setWorkspaceMembers] = useState<WorkspaceMember[]>(() =>
+  const [roster_members, setRosterMembers] = useState<WorkspaceMember[]>(() =>
     node.owners.map((owner) => ({
       id: owner.id,
       full_name: owner.full_name,
@@ -405,9 +405,9 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
   useEffect(() => {
     let cancelled = false;
     workspaceService
-      .getWorkspaceMembers(node.workspace.slug)
+      .getWorkspaceMembers(node.workspace.slug, { include_deactivated: true })
       .then((data) => {
-        if (!cancelled) setWorkspaceMembers(data);
+        if (!cancelled) setRosterMembers(data);
       })
       .catch(() => {
         // Keep the `node.owners` seed on failure rather than clearing the roster.
@@ -416,6 +416,10 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       cancelled = true;
     };
   }, [node.workspace.slug]);
+
+  // Deactivated (disabled or deleted) accounts stay in `roster_members` so the items they were assigned to
+  // still show them, faded. `workspace_members` is the subset that can be newly assigned or mentioned.
+  const workspace_members = useMemo(() => roster_members.filter((member) => !member.is_deactivated), [roster_members]);
 
   const [loaded, setLoaded] = useState<{
     columns: BoardColumnDto[];
@@ -529,6 +533,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         access={access}
         onAccessChange={setAccess}
         workspace_members={workspace_members}
+        roster_members={roster_members}
         onInviteClick={() => setIsInviteOpen(true)}
         initial_tags={tags}
         initial_columns={loaded.columns}
@@ -577,6 +582,8 @@ type TableBoardBodyProps = {
   onAccessChange: (access: BoardAccessEntry[]) => void;
   /** The full workspace roster, assignable to People columns (Assignee row, People cells, Calendar members, etc), see the fetch in `TableBoardView`. */
   workspace_members: WorkspaceMember[];
+  /** `workspace_members` plus the deactivated accounts, so items assigned to them still resolve their name and avatar. Not for pickers. */
+  roster_members: WorkspaceMember[];
   /** The Tags column's board-wide option list — see the fetch in `TableBoardView` and `BoardTag`'s own doc comment server-side. */
   initial_tags: BoardTagDto[];
   initial_columns: BoardColumnDto[];
@@ -667,6 +674,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   access,
   onAccessChange,
   workspace_members,
+  roster_members,
   initial_tags,
   initial_columns,
   initial_groups,
@@ -780,8 +788,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // Every root-item-scoped column — drives Kanban's structural lanes and the toolbar.
   const item_columns = useMemo(() => columns.filter((c) => c.scope === "item"), [columns]);
   const people_names_by_id = useMemo(
-    () => Object.fromEntries(workspace_members.map((o) => [String(o.id), o.full_name])),
-    [workspace_members]
+    () => Object.fromEntries(roster_members.map((o) => [String(o.id), o.full_name])),
+    [roster_members]
   );
 
   // ── Shared across Kanban/Calendar/the Kanban drawer's own detail rows ──
@@ -1730,7 +1738,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         .map((entry) => ({
           id: String(entry.id),
           actor: entry.user
-            ? { id: String(entry.user.id), name: entry.user.full_name, initials: getInitials(entry.user.full_name), avatar_seed: entry.user.id, avatar_url: entry.user.profile_photo_url ?? undefined }
+            ? { id: String(entry.user.id), name: entry.user.full_name, initials: getInitials(entry.user.full_name), avatar_seed: entry.user.id, avatar_url: entry.user.profile_photo_url ?? undefined, is_deactivated: entry.user.is_deactivated }
             : { id: "0", name: "Someone", initials: "?", avatar_seed: 0 },
           verb: entry.description,
           occurred_at: formatDate(entry.created_at),
@@ -2063,16 +2071,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Table view — every subitem-scoped column, mirroring `item_columns` above. ──
   const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
 
+  // Active people first, so their avatar colors do not shift when someone is deactivated.
   const table_people: TablePersonDef[] = useMemo(
     () =>
-      workspace_members.map((member, index) => ({
-        id: String(member.id),
-        name: member.full_name,
-        initials: getInitials(member.full_name),
-        color: AVATAR_COLORS[index % AVATAR_COLORS.length],
-      })),
-    [workspace_members]
+      [...roster_members.filter((member) => !member.is_deactivated), ...roster_members.filter((member) => member.is_deactivated)].map(
+        (member, index) => ({
+          id: String(member.id),
+          name: member.full_name,
+          initials: getInitials(member.full_name),
+          color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+          is_deactivated: member.is_deactivated,
+        })
+      ),
+    [roster_members]
   );
+  // Bulk edit and automations only ever assign people, so they never see the deactivated ones.
+  const assignable_table_people = useMemo(() => table_people.filter((person) => !person.is_deactivated), [table_people]);
 
   // Hide/Pin columns come from the board toolbar (`toolbar.hidden_column_ids`/
   // `pinned_column_ids`) — hidden columns are dropped and pinned ones moved
@@ -2547,7 +2561,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
     const members = board_member_column
-      ? workspace_members.filter((member) => member_ids.includes(String(member.id)))
+      ? roster_members.filter((member) => member_ids.includes(String(member.id)))
       : [];
 
     const priority_value = board_priority_column ? row.values[String(board_priority_column.id)] : null;
@@ -2704,7 +2718,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               {board_member_column && (
                 <span className="ml-auto flex-none">
                   <KanbanCardMembers
-                    people={workspace_members}
+                    people={roster_members}
                     selected={members}
                     onToggle={(person_id) => {
                       const next = member_ids.includes(person_id)
@@ -2912,7 +2926,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const renderCalendarEvent = (row: BoardItemDto): React.ReactNode => {
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
     const members = board_member_column
-      ? workspace_members.filter((member) => member_ids.includes(String(member.id)))
+      ? roster_members.filter((member) => member_ids.includes(String(member.id)))
       : [];
 
     return (
@@ -3111,7 +3125,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             selected_count={selected_item_ids.length}
             groups={selection_move_targets}
             columns={table_base_columns}
-            people={table_people}
+            people={assignable_table_people}
             is_busy={is_bulk_action_busy}
             onDuplicate={handleBulkDuplicate}
             onMove={handleBulkMove}
@@ -3328,8 +3342,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           people={
             board_member_column
               ? {
-                  roster: workspace_members,
-                  selected: workspace_members.filter((member) => kanban_open_row_member_ids.includes(String(member.id))),
+                  roster: roster_members,
+                  selected: roster_members.filter((member) => kanban_open_row_member_ids.includes(String(member.id))),
                   onToggle: (person_id) => {
                     if (!kanban_open_row) return;
                     const next = kanban_open_row_member_ids.includes(person_id)
@@ -3384,7 +3398,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                     kind: column.type,
                     options: column.config?.options,
                   })),
-                  people: workspace_members,
+                  people: roster_members,
                   getValue: (column_id) => kanban_open_row.values[column_id] ?? null,
                   onCommit: (column_id, value) => void handleUpdateCellValue(kanban_open_row.id, column_id, value),
                   onAddOption: (column_id, option) => handleAddColumnOption(column_id, option),
@@ -3421,7 +3435,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         return_path={integrations_return_path}
         automation_tools={
           active_view_type === "table"
-            ? { automations, columns: table_base_columns, people: table_people, onCreate: handleCreateAutomation, onToggle: handleToggleAutomation, onDelete: handleDeleteAutomation }
+            ? { automations, columns: table_base_columns, people: assignable_table_people, onCreate: handleCreateAutomation, onToggle: handleToggleAutomation, onDelete: handleDeleteAutomation }
             : undefined
         }
       />
@@ -3432,7 +3446,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         automations={automations}
         columns={table_base_columns}
         groups={selection_move_targets}
-        people={table_people}
+        people={assignable_table_people}
         onCreate={handleCreateAutomation}
         onToggle={handleToggleAutomation}
         onDelete={handleDeleteAutomation}

@@ -19,6 +19,7 @@ import KanbanCardLabels from "./KanbanCardLabels";
 import KanbanCardMembers from "./KanbanCardMembers";
 import KanbanChecklistSection from "./KanbanChecklistSection";
 import BoardValueCell, { type BoardCellPerson, type BoardCellValue } from "../cells/BoardValueCell";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "../cells/OptionPicker";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import type { BoardItemChecklistItemDto } from "@/types/board-content";
@@ -314,10 +315,14 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                         initials: getPersonInitials(people.selected[0].full_name),
                         avatar_seed: 0,
                         avatar_url: people.selected[0].profile_photo_url ?? undefined,
+                        is_deactivated: people.selected[0].is_deactivated,
                       }}
                       size={22}
                     />
-                    <span className="text-[13.5px] font-semibold" style={{ color: KANBAN_COLORS.text_secondary }}>
+                    <span
+                      className={`text-[13.5px] font-semibold ${getDeactivatedClass(people.selected[0].is_deactivated)}`}
+                      style={{ color: KANBAN_COLORS.text_secondary }}
+                    >
                       {people.selected.length > 1
                         ? `${people.selected[0].full_name} +${people.selected.length - 1}`
                         : people.selected[0].full_name}

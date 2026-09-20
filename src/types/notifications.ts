@@ -11,7 +11,7 @@ import type { NotificationCategory, WorkspaceNotification } from "@/data/notific
 export type NotificationDto = {
   id: string;
   type: string;
-  actor: { name: string; id: number | null; avatar_url?: string | null };
+  actor: { name: string; id: number | null; avatar_url?: string | null; is_deactivated?: boolean };
   action_label: string;
   action_target: string;
   board: { id: number; name: string } | null;
@@ -63,6 +63,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
       initials: getUserInitials({ full_name: dto.actor.name }),
       avatar_gradient: AVATAR_GRADIENTS[actor_seed % AVATAR_GRADIENTS.length],
       avatar_url: dto.actor.avatar_url ?? undefined,
+      is_deactivated: dto.actor.is_deactivated ?? false,
     },
     action_label: dto.action_label,
     action_target: dto.action_target,

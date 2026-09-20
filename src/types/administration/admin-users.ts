@@ -25,6 +25,10 @@ export type AdminUserDto = {
   phone: string | null;
   profile_photo_url: string | null;
   is_active: boolean;
+  /** Disabled or deleted, so the account can no longer sign in. */
+  is_deactivated?: boolean;
+  /** When the account was deleted, null while it exists. Deleted accounts are kept and can be restored. */
+  deleted_at?: string | null;
   email_verified_at: string | null;
   created_at: string;
   updated_at: string;
@@ -53,7 +57,7 @@ export type AdminUsersQuery = {
   /** `"unassigned"` for users with no department, or a specific department id. */
   department?: "unassigned" | number;
   role?: PlatformRoleName;
-  account_status?: "active" | "disabled";
+  account_status?: "active" | "disabled" | "deleted";
   sort_field?: AdminUsersSortField;
   sort_direction?: AdminUsersSortDirection;
 };

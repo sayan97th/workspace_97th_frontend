@@ -6,10 +6,13 @@
  * complements.
  */
 
+/** `null` only for a comment whose author was hard deleted before accounts were soft deleted. */
 export type BoardItemCommentAuthorDto = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
+  /** The account was disabled or deleted, so the author is shown faded. */
+  is_deactivated?: boolean;
 } | null;
 
 export type BoardItemCommentReactionDto = {
@@ -32,6 +35,7 @@ export type BoardItemCommentSeenByDto = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
+  is_deactivated?: boolean;
   /** When this person saw the comment. */
   seen_at?: string | null;
 };
@@ -71,7 +75,7 @@ export type CommentRevisionDto = {
   written_at: string | null;
   /** When an edit replaced it. */
   replaced_at: string;
-  edited_by: { id: number; full_name: string; profile_photo_url: string | null } | null;
+  edited_by: { id: number; full_name: string; profile_photo_url: string | null; is_deactivated?: boolean } | null;
 };
 
 export type CreateBoardItemCommentPayload = {

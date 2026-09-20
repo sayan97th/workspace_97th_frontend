@@ -119,6 +119,8 @@ export type FeedActor = {
   avatar_seed: number;
   /** Real uploaded profile photo, when available. */
   avatar_url?: string;
+  /** The author's account was disabled or deleted, so their avatar and name are shown faded. */
+  is_deactivated?: boolean;
 };
 
 /** Someone `@mentioned` in an update, so hovering the mention can show who they are. */
@@ -126,6 +128,7 @@ export type FeedMention = {
   id: string;
   name: string;
   avatar_url?: string;
+  is_deactivated?: boolean;
 };
 
 /** The board/sprint/item trail an update is scoped to. */
@@ -139,7 +142,7 @@ export type FeedBreadcrumb = {
 /** One change to a cell of the update's item, such as a status moving from Working on it to Done. */
 export type FeedActivityEntry = {
   id: string;
-  actor: { id?: string; name: string; avatar_url?: string } | null;
+  actor: { id?: string; name: string; avatar_url?: string; is_deactivated?: boolean } | null;
   column_label: string;
   column_type: string;
   /** Text of the value before the change, null when the cell was empty. */

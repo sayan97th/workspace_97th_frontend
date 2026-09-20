@@ -8,6 +8,8 @@ export type PersonCardDto = {
   job_title: string | null;
   avatar_url: string | null;
   timezone: string | null;
+  /** The account was disabled or deleted. */
+  is_deactivated?: boolean;
 };
 
 /** Shape returned by `App\Http\Controllers\People\MentionTeamController`: an account team and its members inside the board's workspace. */

@@ -10,6 +10,7 @@ import {
   type WorkspaceNotification,
 } from "@/data/notifications-data";
 import { BookmarkIcon, CheckIcon, CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 
 /** The actor as the shared {@link PersonAvatar} expects it, so the drawer shows the real profile photo and falls back to initials. */
 export const notificationActorToPerson = (actor: NotificationActor): BoardPersonOption => ({
@@ -18,6 +19,7 @@ export const notificationActorToPerson = (actor: NotificationActor): BoardPerson
   initials: actor.initials,
   avatar_seed: Number(actor.id) || 0,
   avatar_url: actor.avatar_url,
+  is_deactivated: actor.is_deactivated,
 });
 
 /** The round tick box shown in front of a card while the drawer is in multi-select mode. */
@@ -109,7 +111,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
 
         <span className="min-w-0 flex-1">
           <span className="block text-[13px] leading-[1.5] text-shell-text-secondary">
-            <strong className="font-bold text-shell-text">{actor.name}</strong>{" "}
+            <strong className={`font-bold text-shell-text ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</strong>{" "}
             <span className="text-[#7fb2ff]">{action_label}</span> {action_target}
           </span>
           {board.name && (

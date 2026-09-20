@@ -213,6 +213,8 @@ export interface PersonDef {
   initials: string;
   name: string;
   color: string;
+  /** The account was disabled or deleted: shown faded on items already assigned to them, and left out of the picker. */
+  is_deactivated?: boolean;
 }
 
 export type SortDirection = "asc" | "desc" | null;

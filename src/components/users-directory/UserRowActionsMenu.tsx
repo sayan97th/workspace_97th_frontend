@@ -1,7 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
-import { DeleteIcon, EyeIcon, LockIcon, MoreDotsIcon, UnlockIcon } from "@/icons/workspace-icons";
+import { DeleteIcon, EyeIcon, LockIcon, MoreDotsIcon, RefreshIcon, UnlockIcon } from "@/icons/workspace-icons";
 import type { AdminUserDto } from "@/types/administration/admin-users";
 
 export type UserRowActionsMenuProps = {
@@ -9,12 +9,14 @@ export type UserRowActionsMenuProps = {
   can_impersonate: boolean;
   onToggleActive: () => void;
   onDelete: () => void;
+  onRestore: () => void;
   onImpersonate: () => void;
 };
 
 /**
  * A user row's "..." trigger for the actions that don't warrant their own always-visible
- * text button: Impersonate, Disable/Enable account and Delete. Built on the same
+ * text button: Impersonate, Disable/Enable account, Delete and, for a deleted account,
+ * Restore. Built on the same
  * {@link AnchoredMenu} primitive as {@link TeamOptionsButton}, so the row keeps one
  * "Edit" button in view and everything else reads as labeled text here instead of
  * unlabeled icons.
@@ -24,23 +26,27 @@ const UserRowActionsMenu: React.FC<UserRowActionsMenuProps> = ({
   can_impersonate,
   onToggleActive,
   onDelete,
+  onRestore,
   onImpersonate,
 }) => {
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const button_ref = useRef<HTMLButtonElement>(null);
 
-  const items: AnchoredMenuItem[] = [
-    ...(can_impersonate
-      ? [{ key: "impersonate", label: "Impersonate", icon: <EyeIcon />, onClick: onImpersonate }]
-      : []),
-    {
-      key: "toggle-active",
-      label: user.is_active ? "Disable account" : "Enable account",
-      icon: user.is_active ? <LockIcon /> : <UnlockIcon />,
-      onClick: onToggleActive,
-    },
-    { key: "delete", label: "Delete user", icon: <DeleteIcon />, onClick: onDelete, danger: true },
-  ];
+  // A deleted account can only be brought back, everything else needs a live account.
+  const items: AnchoredMenuItem[] = user.deleted_at
+    ? [{ key: "restore", label: "Restore account", icon: <RefreshIcon />, onClick: onRestore }]
+    : [
+        ...(can_impersonate
+          ? [{ key: "impersonate", label: "Impersonate", icon: <EyeIcon />, onClick: onImpersonate }]
+          : []),
+        {
+          key: "toggle-active",
+          label: user.is_active ? "Disable account" : "Enable account",
+          icon: user.is_active ? <LockIcon /> : <UnlockIcon />,
+          onClick: onToggleActive,
+        },
+        { key: "delete", label: "Delete user", icon: <DeleteIcon />, onClick: onDelete, danger: true },
+      ];
 
   return (
     <span className="inline-flex">

@@ -228,6 +228,8 @@ export type WorkspaceMember = {
   full_name: string;
   email: string;
   profile_photo_url: string | null;
+  /** The account was disabled or deleted. Only present in the roster when requested with `include_deactivated`. */
+  is_deactivated?: boolean;
   role: string | null;
   is_recent: boolean;
   /** Id of the user who invited this member, null when unknown (e.g. the workspace's creator). */

@@ -144,10 +144,15 @@ export const workspaceService = {
     return apiClient.get<Workspace>(`/api/workspaces/by-id/${workspace_id}`);
   },
 
-  /** GET /api/workspaces/{slug}/members — the full member roster, for the Collaborations tab. */
-  async getWorkspaceMembers(workspace_slug: string): Promise<WorkspaceMember[]> {
+  /**
+   * GET /api/workspaces/{slug}/members — the full member roster, for the Collaborations tab.
+   * With `include_deactivated`, deleted accounts are included too (flagged `is_deactivated`), so a
+   * board can still show them, faded, on the items they were assigned to.
+   */
+  async getWorkspaceMembers(workspace_slug: string, options: { include_deactivated?: boolean } = {}): Promise<WorkspaceMember[]> {
+    const query = options.include_deactivated ? "?include_deactivated=1" : "";
     const response = await apiClient.get<{ data: WorkspaceMember[] }>(
-      `/api/workspaces/${workspace_slug}/members`
+      `/api/workspaces/${workspace_slug}/members${query}`
     );
     return response.data;
   },

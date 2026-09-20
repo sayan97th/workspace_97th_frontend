@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import PersonAvatar from "../PersonAvatar";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import { formatRelativeTime } from "./commentMapping";
 import type { DrawerSeenBy } from "./types";
 
@@ -61,7 +62,9 @@ const SeenByList: React.FC<SeenByListProps> = ({ seen_by }) => {
             {ordered.map((person) => (
               <li key={person.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
                 <PersonAvatar person={person} size={24} />
-                <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-shell-text">{person.name}</span>
+                <span className={`min-w-0 flex-1 truncate text-[13px] font-medium text-shell-text ${getDeactivatedClass(person.is_deactivated)}`}>
+                  {person.name}
+                </span>
                 {person.seen_at && (
                   <span className="flex-none text-[11px] text-shell-text-faint" title={formatSeenTime(person.seen_at)}>
                     {formatRelativeTime(person.seen_at)}

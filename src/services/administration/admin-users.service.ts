@@ -43,9 +43,15 @@ export const adminUsersService = {
     return response.user;
   },
 
-  /** DELETE /api/admin/users/{id} — permanently removes the account. */
+  /** DELETE /api/admin/users/{id} — soft deletes the account: no more sign in, but the person's history stays attributed to them. */
   async deleteUser(user_id: number): Promise<void> {
     await apiClient.delete<void>(`/api/admin/users/${user_id}`);
+  },
+
+  /** PATCH /api/admin/users/{id}/restore — brings a deleted account back exactly as it was. */
+  async restoreUser(user_id: number): Promise<AdminUserDto> {
+    const response = await apiClient.patch<{ user: AdminUserDto }>(`/api/admin/users/${user_id}/restore`, {});
+    return response.user;
   },
 
   /** PATCH /api/admin/users/{id}/ban — deactivates the account. */

@@ -20,7 +20,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 export const PER_PAGE_OPTIONS = [10, 25, 50, 100] as const;
 const DEFAULT_PER_PAGE: (typeof PER_PAGE_OPTIONS)[number] = 25;
 
-export type AccountStatusFilter = "active" | "disabled";
+export type AccountStatusFilter = "active" | "disabled" | "deleted";
 
 export type UsersDirectoryApi = {
   is_loading: boolean;
@@ -58,6 +58,11 @@ export type UsersDirectoryApi = {
   requestDelete: (user: AdminUserDto) => void;
   cancelDelete: () => void;
   confirmDelete: () => Promise<void>;
+
+  user_pending_restore: AdminUserDto | null;
+  requestRestore: (user: AdminUserDto) => void;
+  cancelRestore: () => void;
+  confirmRestore: () => Promise<void>;
 
   /** Whether the signed-in account is allowed to impersonate this specific row, mirroring the backend's authorization rules. */
   canImpersonate: (user: AdminUserDto) => boolean;
@@ -97,6 +102,7 @@ export function useUsersDirectory(): UsersDirectoryApi {
 
   const [user_pending_toggle, setUserPendingToggle] = useState<AdminUserDto | null>(null);
   const [user_pending_delete, setUserPendingDelete] = useState<AdminUserDto | null>(null);
+  const [user_pending_restore, setUserPendingRestore] = useState<AdminUserDto | null>(null);
   const [user_pending_impersonate, setUserPendingImpersonate] = useState<AdminUserDto | null>(null);
 
   const replaceRow = (updated: AdminUserDto) =>
@@ -126,6 +132,22 @@ export function useUsersDirectory(): UsersDirectoryApi {
     setUserPendingDelete(null);
     setUserTotal((current) => Math.max(0, current - 1));
   }, [user_pending_delete]);
+
+  const requestRestore = useCallback((user_row: AdminUserDto) => setUserPendingRestore(user_row), []);
+  const cancelRestore = useCallback(() => setUserPendingRestore(null), []);
+
+  const confirmRestore = useCallback(async () => {
+    if (!user_pending_restore) return;
+    const restored = await adminUsersService.restoreUser(user_pending_restore.id);
+    // The "Deleted" filter lists only deleted accounts, so a restored one leaves it. Elsewhere it just updates in place.
+    if (status_filter === "deleted") {
+      removeRow(restored.id);
+      setUserTotal((current) => Math.max(0, current - 1));
+    } else {
+      replaceRow(restored);
+    }
+    setUserPendingRestore(null);
+  }, [user_pending_restore, status_filter]);
 
   /**
    * Client-side mirror of `ImpersonationController::actorCanImpersonate()`, so an ineligible
@@ -243,6 +265,11 @@ export function useUsersDirectory(): UsersDirectoryApi {
     requestDelete,
     cancelDelete,
     confirmDelete,
+
+    user_pending_restore,
+    requestRestore,
+    cancelRestore,
+    confirmRestore,
 
     canImpersonate,
     user_pending_impersonate,

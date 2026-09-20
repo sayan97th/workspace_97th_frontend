@@ -46,8 +46,9 @@ export const mapAuthorToPerson = (author: BoardItemCommentAuthorDto): BoardPerso
         initials: getInitials(author.full_name),
         avatar_seed: author.id,
         avatar_url: author.profile_photo_url ?? undefined,
+        is_deactivated: author.is_deactivated ?? false,
       }
-    : { id: "0", name: "Deleted user", initials: "?", avatar_seed: 0 };
+    : { id: "0", name: "Deleted user", initials: "?", avatar_seed: 0, is_deactivated: true };
 
 export const mapAttachmentDto = (dto: BoardItemCommentAttachmentDto): DrawerAttachment => ({
   id: String(dto.id),

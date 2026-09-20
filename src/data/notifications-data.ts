@@ -28,6 +28,8 @@ export type NotificationActor = {
   avatar_gradient: string;
   /** Real uploaded profile photo, when available — preferred over the initials fallback. */
   avatar_url?: string;
+  /** The actor's account was disabled or deleted, so their avatar and name are shown faded. */
+  is_deactivated?: boolean;
 };
 
 /** The board a notification is scoped to. */
@@ -191,5 +193,5 @@ export type NotificationSummary = {
   today_count: number;
   saved_count: number;
   snoozed_count: number;
-  top_actors: { id: number; name: string; avatar_url: string | null; count: number }[];
+  top_actors: { id: number; name: string; avatar_url: string | null; is_deactivated?: boolean; count: number }[];
 };

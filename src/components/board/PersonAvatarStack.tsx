@@ -1,10 +1,13 @@
 import React from "react";
 import { AVATAR_COLORS, AVATAR_GRADIENTS } from "./TeamAvatars";
+import { getDeactivatedClass, getPersonTitle } from "@/lib/deactivated-user";
 
 export type PersonAvatarStackPerson = {
   id: number | string;
   full_name: string;
   profile_photo_url?: string | null;
+  /** Faded when true, see {@link getDeactivatedClass}. */
+  is_deactivated?: boolean;
 };
 
 export type PersonAvatarStackProps = {
@@ -77,8 +80,8 @@ const PersonAvatarStack: React.FC<PersonAvatarStackProps> = ({
       {visible.map((person) => (
         <span
           key={person.id}
-          title={person.full_name}
-          className="flex flex-none items-center justify-center rounded-full border-2 font-bold text-white"
+          title={getPersonTitle(person.full_name, person.is_deactivated)}
+          className={`flex flex-none items-center justify-center rounded-full border-2 font-bold text-white ${getDeactivatedClass(person.is_deactivated)}`}
           style={{
             width: size,
             height: size,

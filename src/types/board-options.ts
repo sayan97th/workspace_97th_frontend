@@ -3,6 +3,8 @@ export type BoardOptionsPerson = {
   id: number;
   full_name: string;
   profile_photo_url: string | null;
+  /** The account was disabled or deleted, so the person is shown faded. */
+  is_deactivated?: boolean;
 };
 
 /** One row in a board's Activity log — see `App\Models\BoardActivityLog` on the backend for exactly what's tracked. */

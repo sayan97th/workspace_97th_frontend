@@ -3,6 +3,7 @@ import React from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import type { NotificationSummary, NotificationTabId } from "@/data/notifications-data";
 import { getUserInitials } from "@/lib/user";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 
 type NotificationSummaryCardProps = {
   summary: NotificationSummary;
@@ -83,10 +84,11 @@ const NotificationSummaryCard: React.FC<NotificationSummaryCardProps> = ({ summa
                   initials: getUserInitials({ full_name: actor.name }),
                   avatar_seed: actor.id,
                   avatar_url: actor.avatar_url ?? undefined,
+                  is_deactivated: actor.is_deactivated,
                 }}
                 size={18}
               />
-              <span className="font-semibold text-shell-text-secondary">{actor.name}</span>
+              <span className={`font-semibold text-shell-text-secondary ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</span>
               <span className="text-shell-text-faint">{actor.count}</span>
             </span>
           ))}

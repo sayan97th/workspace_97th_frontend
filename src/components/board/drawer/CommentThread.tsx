@@ -2,6 +2,8 @@
 import React, { useEffect, useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
+import DeactivatedBadge from "../DeactivatedBadge";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import type { AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import { PinIcon } from "@/icons/board-icons";
@@ -189,8 +191,9 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <PersonHoverCard person={reply.author}>
-            <span className="text-[12.5px] font-bold text-shell-text">{reply.author.name}</span>
+            <span className={`text-[12.5px] font-bold text-shell-text ${getDeactivatedClass(reply.author.is_deactivated)}`}>{reply.author.name}</span>
           </PersonHoverCard>
+          <DeactivatedBadge is_deactivated={reply.author.is_deactivated} />
           <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
           {is_new && <NewBadge />}
           {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
@@ -365,8 +368,9 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <PersonHoverCard person={comment.author}>
-                <span className="text-[13.5px] font-bold text-shell-text">{comment.author.name}</span>
+                <span className={`text-[13.5px] font-bold text-shell-text ${getDeactivatedClass(comment.author.is_deactivated)}`}>{comment.author.name}</span>
               </PersonHoverCard>
+              <DeactivatedBadge is_deactivated={comment.author.is_deactivated} />
               {fresh_comment_ids.includes(comment.id) && <NewBadge />}
               {comment.is_edited && (
                 <EditedMarker

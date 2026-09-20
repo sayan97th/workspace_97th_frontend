@@ -9,7 +9,7 @@ import type { FeedUpdate } from "@/data/update-feed-data";
  */
 export type FeedUpdateDto = {
   id: string;
-  actor: { id: number | null; name: string; avatar_url: string | null };
+  actor: { id: number | null; name: string; avatar_url: string | null; is_deactivated?: boolean };
   body: string;
   created_at: string;
   board: { id: number; name: string; parent_name: string | null };
@@ -22,7 +22,7 @@ export type FeedUpdateDto = {
   is_mentioned: boolean;
   is_bookmarked: boolean;
   mentioned_user_ids: number[];
-  mentions: { id: number; name: string; avatar_url: string | null }[];
+  mentions: { id: number; name: string; avatar_url: string | null; is_deactivated?: boolean }[];
   pinned: boolean;
   is_following_item: boolean;
   is_following_board: boolean;
@@ -33,7 +33,7 @@ export type FeedUpdateDto = {
 /** One item change under an update, as `FeedUpdateResource::activityPayload()` sends it. */
 export type FeedActivityEntryDto = {
   id: number;
-  actor: { id: number; name: string; avatar_url: string | null } | null;
+  actor: { id: number; name: string; avatar_url: string | null; is_deactivated?: boolean } | null;
   column_label: string;
   column_type: string;
   old_display: string | null;
@@ -86,6 +86,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
       initials: getUserInitials({ full_name: dto.actor.name }),
       avatar_seed: actor_seed,
       avatar_url: dto.actor.avatar_url ?? undefined,
+      is_deactivated: dto.actor.is_deactivated ?? false,
     },
     date_label: formatDistanceToNowStrict(new Date(dto.created_at), { addSuffix: true }),
     breadcrumb: {
@@ -97,6 +98,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
       id: String(mention.id),
       name: mention.name,
       avatar_url: mention.avatar_url ?? undefined,
+      is_deactivated: mention.is_deactivated ?? false,
     })),
     board_id: String(dto.board.id),
     view_count: dto.view_count > 0 ? dto.view_count : undefined,
@@ -109,7 +111,14 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
     is_following_board: dto.is_following_board,
     activity: dto.activity.map((entry) => ({
       id: String(entry.id),
-      actor: entry.actor ? { id: String(entry.actor.id), name: entry.actor.name, avatar_url: entry.actor.avatar_url ?? undefined } : null,
+      actor: entry.actor
+        ? {
+            id: String(entry.actor.id),
+            name: entry.actor.name,
+            avatar_url: entry.actor.avatar_url ?? undefined,
+            is_deactivated: entry.actor.is_deactivated ?? false,
+          }
+        : null,
       column_label: entry.column_label,
       column_type: entry.column_type,
       old_display: entry.old_display,

@@ -65,6 +65,7 @@ export type UsersDirectoryTableProps = {
   current_user_id: number | null;
   onToggleActive: (user: AdminUserDto) => void;
   onDelete: (user: AdminUserDto) => void;
+  onRestore: (user: AdminUserDto) => void;
   /** Whether the signed-in account may impersonate this specific row; hides the button when false. */
   canImpersonate: (user: AdminUserDto) => boolean;
   onImpersonate: (user: AdminUserDto) => void;
@@ -87,6 +88,7 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
   current_user_id,
   onToggleActive,
   onDelete,
+  onRestore,
   canImpersonate,
   onImpersonate,
 }) => {
@@ -160,7 +162,7 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
                     <div className="min-w-0">
                       <div
                         className={`truncate text-[13.5px] font-semibold ${
-                          row.is_active ? "text-shell-text" : "text-shell-text-faint line-through"
+                          row.is_active && !row.deleted_at ? "text-shell-text" : "text-shell-text-faint line-through"
                         }`}
                       >
                         {row.full_name}
@@ -179,7 +181,7 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
                 </td>
 
                 <td className="px-4 py-3">
-                  <UserStatusBadge is_active={row.is_active} />
+                  <UserStatusBadge is_active={row.is_active} is_deleted={Boolean(row.deleted_at)} />
                 </td>
 
                 <td className="px-4 py-3 text-sm text-shell-text-muted">{formatDate(row.created_at)}</td>
@@ -202,6 +204,7 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
                           can_impersonate={canImpersonate(row)}
                           onToggleActive={() => onToggleActive(row)}
                           onDelete={() => onDelete(row)}
+                          onRestore={() => onRestore(row)}
                           onImpersonate={() => onImpersonate(row)}
                         />
                       </div>

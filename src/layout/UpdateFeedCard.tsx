@@ -8,6 +8,8 @@ import FeedActivityTimeline from "@/components/feed/FeedActivityTimeline";
 import FeedReplyComposer from "@/components/feed/FeedReplyComposer";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
+import DeactivatedBadge from "@/components/board/DeactivatedBadge";
 import { PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
@@ -177,17 +179,21 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
         <div className="flex items-center gap-[11px]">
           {actor.id ? (
             <>
-              <PersonHoverCard person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url }} className="flex-none">
+              <PersonHoverCard
+                person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url, is_deactivated: actor.is_deactivated }}
+                className="flex-none"
+              >
                 <PersonAvatar person={{ ...actor, id: actor.id }} size={34} />
               </PersonHoverCard>
-              <PersonHoverCard person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url }}>
-                <span className="text-sm font-bold text-shell-text">{actor.name}</span>
+              <PersonHoverCard person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url, is_deactivated: actor.is_deactivated }}>
+                <span className={`text-sm font-bold text-shell-text ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</span>
               </PersonHoverCard>
+              <DeactivatedBadge is_deactivated={actor.is_deactivated} />
             </>
           ) : (
             <>
-              <PersonAvatar person={{ ...actor, id: "0" }} size={34} />
-              <span className="text-sm font-bold text-shell-text">{actor.name}</span>
+              <PersonAvatar person={{ ...actor, id: "0", is_deactivated: true }} size={34} />
+              <span className={`text-sm font-bold text-shell-text ${getDeactivatedClass(true)}`}>{actor.name}</span>
             </>
           )}
           <span className="text-[12.5px] text-shell-text-muted">{date_label}</span>

@@ -222,7 +222,15 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           <div className="flex items-center pl-[7px]">
             {owner_ids.slice(0, 3).map((id) => {
               const person = state.people.find((p) => p.id === id);
-              return <AvatarBadge key={id} initials={person?.initials || id} color={person?.color || "#9aa0b6"} />;
+              return (
+                <AvatarBadge
+                  key={id}
+                  initials={person?.initials || id}
+                  color={person?.color || "#9aa0b6"}
+                  name={person?.name}
+                  is_deactivated={person?.is_deactivated}
+                />
+              );
             })}
             {owner_ids.length > 3 && (
               <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-boardtree-surface bg-boardtree-hover text-[9.5px] font-semibold text-boardtree-text-secondary">

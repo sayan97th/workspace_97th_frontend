@@ -2,7 +2,9 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PersonAvatar from "@/components/board/PersonAvatar";
+import DeactivatedBadge from "@/components/board/DeactivatedBadge";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import { DEACTIVATED_TOOLTIP, getDeactivatedClass } from "@/lib/deactivated-user";
 import { getUserInitials } from "@/lib/user";
 import { peopleService, type PersonCardDto } from "@/services/people.service";
 
@@ -11,6 +13,8 @@ export type HoverCardPerson = {
   id: string | number;
   name: string;
   avatar_url?: string | null;
+  /** Known before the card loads, so a deactivated person is never flashed as active. */
+  is_deactivated?: boolean;
 };
 
 type HoverCardTarget = { person: HoverCardPerson; anchor: HTMLElement };
@@ -28,6 +32,7 @@ const toAvatarPerson = (person: HoverCardPerson): BoardPersonOption => ({
   initials: getUserInitials({ full_name: person.name }),
   avatar_seed: Number(person.id) || 0,
   avatar_url: person.avatar_url ?? undefined,
+  is_deactivated: person.is_deactivated,
 });
 
 /** "3:45 PM" in `timezone`, or null when the zone is unknown or invalid. */
@@ -131,6 +136,7 @@ export const PersonCardPopover: React.FC<PersonCardPopoverProps> = ({ target, on
   if (!target || !position || typeof document === "undefined") return null;
 
   const name = card?.name ?? target.person.name;
+  const is_deactivated = card?.is_deactivated ?? target.person.is_deactivated ?? false;
   const local_time = formatLocalTime(card?.timezone ?? null);
 
   return createPortal(
@@ -147,19 +153,28 @@ export const PersonCardPopover: React.FC<PersonCardPopoverProps> = ({ target, on
       }}
     >
       <div className="flex items-center gap-3">
-        <PersonAvatar person={toAvatarPerson({ ...target.person, avatar_url: card?.avatar_url ?? target.person.avatar_url })} size={44} />
+        <PersonAvatar person={toAvatarPerson({ ...target.person, avatar_url: card?.avatar_url ?? target.person.avatar_url, is_deactivated })} size={44} />
         <div className="min-w-0">
-          <div className="truncate text-[14.5px] font-bold">{name}</div>
+          <div className="flex items-center gap-1.5">
+            <span className={`truncate text-[14.5px] font-bold ${getDeactivatedClass(is_deactivated)}`}>{name}</span>
+            <DeactivatedBadge is_deactivated={is_deactivated} />
+          </div>
           {card?.job_title && <div className="truncate text-[12.5px] text-shell-text-muted">{card.job_title}</div>}
         </div>
       </div>
 
       {card ? (
         <div className="mt-3 flex flex-col gap-1.5 border-t border-shell-border pt-3 text-[12.5px]">
-          <a href={`mailto:${card.email}`} className="truncate text-[#7fb2ff] hover:text-[#9cc4ff]">
-            {card.email}
-          </a>
-          {local_time && <span className="text-shell-text-muted">{local_time} local time</span>}
+          {is_deactivated ? (
+            <span className="text-shell-text-faint">{DEACTIVATED_TOOLTIP}. They can no longer sign in.</span>
+          ) : (
+            <>
+              <a href={`mailto:${card.email}`} className="truncate text-[#7fb2ff] hover:text-[#9cc4ff]">
+                {card.email}
+              </a>
+              {local_time && <span className="text-shell-text-muted">{local_time} local time</span>}
+            </>
+          )}
         </div>
       ) : (
         <div className="mt-3 border-t border-shell-border pt-3 text-[12.5px] text-shell-text-faint">Loading profile…</div>

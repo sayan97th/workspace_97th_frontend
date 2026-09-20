@@ -1,6 +1,7 @@
 import React from "react";
 import type { BoardPersonOption } from "./toolbar/types";
 import { AVATAR_COLORS, AVATAR_GRADIENTS } from "./TeamAvatars";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 
 export type PersonAvatarProps = {
   person: BoardPersonOption;
@@ -22,16 +23,18 @@ export type PersonAvatarProps = {
  * picker in the board toolbar (Person filter popover, quick-filter facets, comment
  * threads, etc.). Renders the person's real uploaded photo when `avatar_url` is set,
  * falling back to the initials-on-gradient (or, with `variant="flat"`, initials-on-flat-color)
- * treatment otherwise.
+ * treatment otherwise. A deactivated person (`is_deactivated`) renders faded and grayscale.
  */
 const PersonAvatar: React.FC<PersonAvatarProps> = ({ person, size = 20, className, style, variant = "gradient" }) => {
+  const fade_class = getDeactivatedClass(person.is_deactivated);
+
   if (person.avatar_url) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={person.avatar_url}
         alt={person.name}
-        className={`flex-none rounded-full object-cover ${className ?? ""}`}
+        className={`flex-none rounded-full object-cover ${fade_class} ${className ?? ""}`}
         style={{ width: size, height: size, ...style }}
       />
     );
@@ -39,7 +42,7 @@ const PersonAvatar: React.FC<PersonAvatarProps> = ({ person, size = 20, classNam
 
   return (
     <span
-      className={`flex flex-none items-center justify-center rounded-full font-bold text-white ${className ?? ""}`}
+      className={`flex flex-none items-center justify-center rounded-full font-bold text-white ${fade_class} ${className ?? ""}`}
       style={{
         width: size,
         height: size,

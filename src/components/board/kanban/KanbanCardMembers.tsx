@@ -4,6 +4,8 @@ import { CheckIcon, PlusIcon } from "@/icons/board-icons";
 import BoardPopover from "../toolbar/BoardPopover";
 import PersonAvatar from "../PersonAvatar";
 import PersonAvatarStack, { type PersonAvatarStackPerson } from "../PersonAvatarStack";
+import DeactivatedBadge from "../DeactivatedBadge";
+import { getDeactivatedClass } from "@/lib/deactivated-user";
 
 const getInitials = (full_name: string): string =>
   full_name
@@ -15,7 +17,7 @@ const getInitials = (full_name: string): string =>
     .toUpperCase();
 
 export type KanbanCardMembersProps = {
-  /** Everyone assignable (board owners) — the picker's full list. */
+  /** Everyone assignable (board owners) — the picker's full list. Deactivated people are only listed while assigned, so they can be removed. */
   people: PersonAvatarStackPerson[];
   /** The subset currently assigned to this card. */
   selected: PersonAvatarStackPerson[];
@@ -68,6 +70,7 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
           )}
           {people.map((person, index) => {
             const is_selected = selected_ids.has(String(person.id));
+            if (person.is_deactivated && !is_selected) return null;
             return (
               <button
                 key={person.id}
@@ -82,10 +85,12 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
                     initials: getInitials(person.full_name),
                     avatar_seed: index,
                     avatar_url: person.profile_photo_url ?? undefined,
+                    is_deactivated: person.is_deactivated,
                   }}
                   size={24}
                 />
-                <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text">{person.full_name}</span>
+                <span className={`min-w-0 flex-1 truncate text-[13px] text-shell-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.full_name}</span>
+                <DeactivatedBadge is_deactivated={person.is_deactivated} />
                 {is_selected && (
                   <span className="flex-none text-brand-500">
                     <CheckIcon size={14} />
