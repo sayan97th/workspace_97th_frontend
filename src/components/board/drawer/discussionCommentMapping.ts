@@ -1,5 +1,5 @@
 import type { DrawerComment, DrawerReply } from "./types";
-import { formatRelativeTime, mapAttachmentDto, mapAuthorToPerson, mapSeenByDto } from "./commentMapping";
+import { formatRelativeTime, mapAttachmentDto, mapAuthorToPerson, mapReactionDto, mapSeenByDto } from "./commentMapping";
 import type { BoardDiscussionCommentDto } from "@/types/board-discussion";
 
 /**
@@ -21,7 +21,7 @@ export const mapDiscussionCommentDtoToDrawerReply = (dto: BoardDiscussionComment
   view_count: dto.view_count,
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,
-  reactions: dto.reactions,
+  reactions: dto.reactions.map(mapReactionDto),
   bookmarked_by_me: dto.bookmarked_by_me,
 });
 
@@ -30,6 +30,9 @@ export const mapDiscussionCommentDtoToDrawerComment = (dto: BoardDiscussionComme
   seen: dto.seen_by_me,
   seen_by: dto.seen_by.map(mapSeenByDto),
   pinned: dto.pinned,
+  is_resolved: dto.is_resolved,
+  resolved_at: dto.resolved_at ?? undefined,
+  resolved_by: dto.resolved_by ? { id: String(dto.resolved_by.id), name: dto.resolved_by.full_name } : undefined,
   notified_user_ids: dto.notified_user_ids.map(String),
   attachments: dto.attachments.map(mapAttachmentDto),
   replies: dto.replies.map(mapDiscussionCommentDtoToDrawerReply),

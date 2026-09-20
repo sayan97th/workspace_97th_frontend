@@ -5,7 +5,7 @@ import { boardDiscussionService } from "@/services/board-discussion.service";
 import { boardMuteService } from "@/services/board-mute.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapRevisionDto, mapSeenByDto } from "./commentMapping";
+import { mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
@@ -40,7 +40,7 @@ const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReactio
     : current.reactor_names.filter((name) => name !== "You");
   return reactions.map((reaction, existing_index) =>
     existing_index === index
-      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names }
+      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names, reactors: undefined }
       : reaction
   );
 };
@@ -416,7 +416,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
     boardDiscussionService
       .toggleReaction(board_id, Number(reply_id ?? comment_id), emoji)
-      .then((dto) => applyServerReactions(comment_id, reply_id, dto.reactions))
+      .then((dto) => applyServerReactions(comment_id, reply_id, dto.reactions.map(mapReactionDto)))
       .catch(() => {
         applyReactionToggle(comment_id, reply_id, emoji);
         setCommentsError("Couldn't update that reaction. Please try again.");
@@ -468,10 +468,19 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     const previous_comments = comments;
     removeCommentLocally(comment_id, reply_id);
 
-    boardDiscussionService.deleteComment(board_id, Number(reply_id ?? comment_id)).catch(() => {
-      setComments(previous_comments);
-      setCommentsError("Couldn't delete that update. Please try again.");
-    });
+    const deleted_id = Number(reply_id ?? comment_id);
+    boardDiscussionService
+      .deleteComment(board_id, deleted_id)
+      .then(() =>
+        offerUndoDelete({
+          title: reply_id ? "Reply deleted" : "Update deleted",
+          restore: () => boardDiscussionService.restoreComment(board_id, deleted_id),
+        })
+      )
+      .catch(() => {
+        setComments(previous_comments);
+        setCommentsError("Couldn't delete that update. Please try again.");
+      });
   };
 
   /** Applies (or reverts, by calling it again with the prior body) a body edit for a comment or reply. */
@@ -623,7 +632,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     return dtos.map(mapRevisionDto);
   };
 
-  const { collaboration, addScheduledComment, resetComposerExtras } = useCommentCollaboration({
+  const { collaboration, addScheduledComment, resetComposerExtras, offerUndoDelete } = useCommentCollaboration({
     is_api_backed: true,
     scope_key: is_open ? String(board_id) : null,
     can_edit: config.can_edit ?? true,
@@ -641,6 +650,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       updateSchedule: (comment_id, scheduled_at) => boardDiscussionService.updateSchedule(board_id, comment_id, scheduled_at),
       cancelScheduled: (comment_id) => boardDiscussionService.deleteComment(board_id, comment_id),
       toggleBookmark: (comment_id) => boardDiscussionService.toggleBookmark(board_id, comment_id),
+      toggleResolve: (comment_id) => boardDiscussionService.toggleResolve(board_id, comment_id),
     },
     onError: setCommentsError,
   });

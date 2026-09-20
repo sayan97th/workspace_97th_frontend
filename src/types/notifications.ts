@@ -16,6 +16,11 @@ export type NotificationDto = {
   action_target: string;
   board: { id: number; name: string } | null;
   link: string | null;
+  /** The item the notification is about, what "Mute this item" targets. Null for a board level notification. */
+  board_item_id: number | null;
+  is_item_muted: boolean;
+  /** Feed id (`ic-12` or `bc-7`) of the comment that triggered it, what an inline reply attaches to. Null when there is nothing to reply to. */
+  reply_to: string | null;
   is_unread: boolean;
   is_saved: boolean;
   category: NotificationCategory;
@@ -77,6 +82,9 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     is_saved: dto.is_saved ?? false,
     category: dto.category,
     link: dto.link ?? undefined,
+    board_item_id: dto.board_item_id ?? undefined,
+    is_item_muted: dto.is_item_muted ?? false,
+    reply_to: dto.reply_to ?? undefined,
     created_at: dto.created_at,
     group_key: dto.group_key,
   };

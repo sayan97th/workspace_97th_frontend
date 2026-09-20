@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 import { mapScheduledDto } from "./commentMapping";
 import { buildQuoteMarkdown } from "./quoteComment";
 import type {
@@ -15,11 +16,22 @@ import type {
 /** How long the "Link copied" hint and the deep link highlight stay on. */
 const COPIED_HINT_MS = 1800;
 const HIGHLIGHT_MS = 4000;
+/** How long the "Undo" toast of a deleted comment stays. The server keeps the comment for days, this is only how long the shortcut is offered. */
+const UNDO_TOAST_MS = 9000;
 
 export const empty_assignment: ComposerAssignment = { user_ids: [], due_date: null };
 
 /** The fields of a comment or update DTO the scheduled list reads, common to both drawers' endpoints. */
 type ScheduledSource = { id: number; parent_id: number | null; body: string; scheduled_at: string | null };
+
+/** What the server answers after an update is resolved or reopened. */
+type ResolvedSource = { is_resolved: boolean; resolved_at: string | null; resolved_by: { id: number; full_name: string } | null };
+
+/** A delete the viewer can still take back: the toast's title and what brings the comment back. */
+export type UndoableDelete = {
+  title: string;
+  restore: () => Promise<unknown>;
+};
 
 /** What a drawer supplies so the shared behavior can talk to its own endpoints and thread state. */
 type UseCommentCollaborationOptions = {
@@ -43,6 +55,7 @@ type UseCommentCollaborationOptions = {
     updateSchedule: (comment_id: number, scheduled_at: string | null) => Promise<unknown>;
     cancelScheduled: (comment_id: number) => Promise<void>;
     toggleBookmark: (comment_id: number) => Promise<unknown>;
+    toggleResolve: (comment_id: number) => Promise<ResolvedSource>;
   };
   onError: (message: string) => void;
 };
@@ -62,6 +75,7 @@ const findComment = (comments: DrawerComment[], comment_id: string, reply_id?: s
 export function useCommentCollaboration(options: UseCommentCollaborationOptions) {
   const { is_api_backed, scope_key, can_edit, supports_assignment, comments, updateComments, reloadThread, buildCommentPath, deep_link_param, api, onError } = options;
 
+  const { showToast } = useToast();
   const [scheduled_comments, setScheduledComments] = useState<DrawerScheduledComment[]>([]);
   const [composer_schedule_at, setComposerScheduleAt] = useState<string | null>(null);
   const [composer_assignment, setComposerAssignment] = useState<ComposerAssignment>(empty_assignment);
@@ -72,9 +86,9 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
   const [pending_highlight_id, setPendingHighlightId] = useState<string | null>(null);
 
   // Latest callbacks and endpoints are read through a ref, so the effects below re-run on a thread change only.
-  const latest_ref = useRef({ api, onError });
+  const latest_ref = useRef({ api, onError, reloadThread });
   useEffect(() => {
-    latest_ref.current = { api, onError };
+    latest_ref.current = { api, onError, reloadThread };
   });
 
   // A new thread starts clean: its own scheduled list, no draft schedule or assignment, no stale quote.
@@ -140,6 +154,62 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
       });
     },
     [updateComments, is_api_backed, api, onError]
+  );
+
+  /**
+   * Resolves an update, or reopens it. The flag flips at once and the server's
+   * answer then fills in who did it, a failure puts everything back.
+   */
+  const toggleResolved = useCallback(
+    (comment_id: string) => {
+      if (!can_edit) return;
+      const previous = comments.find((comment) => comment.id === comment_id);
+      if (!previous) return;
+
+      const applyResolved = (patch: Pick<DrawerComment, "is_resolved" | "resolved_at" | "resolved_by">) =>
+        updateComments((current) => current.map((comment) => (comment.id === comment_id ? { ...comment, ...patch } : comment)));
+
+      applyResolved({ is_resolved: !previous.is_resolved, resolved_at: undefined, resolved_by: undefined });
+      if (!is_api_backed) return;
+
+      api
+        .toggleResolve(Number(comment_id))
+        .then((dto) =>
+          applyResolved({
+            is_resolved: dto.is_resolved,
+            resolved_at: dto.resolved_at ?? undefined,
+            resolved_by: dto.resolved_by ? { id: String(dto.resolved_by.id), name: dto.resolved_by.full_name } : undefined,
+          })
+        )
+        .catch((error) => {
+          applyResolved({ is_resolved: previous.is_resolved, resolved_at: previous.resolved_at, resolved_by: previous.resolved_by });
+          onError(getApiErrorMessage(error, "Couldn't update that thread. Please try again."));
+        });
+    },
+    [can_edit, comments, updateComments, is_api_backed, api, onError]
+  );
+
+  /**
+   * Raises the "Deleted. Undo" toast after a comment or reply was deleted on the
+   * server. Pressing Undo restores it and refetches the thread, so the comment
+   * comes back in its place with its replies, reactions and files.
+   */
+  const offerUndoDelete = useCallback(
+    ({ title, restore }: UndoableDelete) => {
+      showToast({
+        variant: "success",
+        title,
+        description: "You can undo this for a few seconds.",
+        action_text: "Undo",
+        duration_ms: UNDO_TOAST_MS,
+        onAction: () => {
+          restore()
+            .then(() => latest_ref.current.reloadThread())
+            .catch((error) => latest_ref.current.onError(getApiErrorMessage(error, "Couldn't restore that comment. Please try again.")));
+        },
+      });
+    },
+    [showToast]
   );
 
   const copyCommentLink = useCallback(
@@ -225,6 +295,7 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
     quoteComment,
     quote_requests,
     highlighted_comment_id,
+    toggleResolved,
     scheduled_comments,
     composer_schedule_at,
     setComposerScheduleAt,
@@ -236,5 +307,5 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
     setComposerAssignment,
   };
 
-  return { collaboration, addScheduledComment, resetComposerExtras };
+  return { collaboration, addScheduledComment, resetComposerExtras, offerUndoDelete };
 }

@@ -104,6 +104,22 @@ export const boardCommentsService = {
     return response.comment;
   },
 
+  /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/resolve, marks an update as resolved or reopens it. */
+  async toggleResolve(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
+    const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/resolve`
+    );
+    return response.comment;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/restore, the "Undo" of a delete. */
+  async restoreComment(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
+    const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/restore`
+    );
+    return response.comment;
+  },
+
   /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/bookmark */
   async toggleBookmark(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
     const response = await apiClient.post<{ comment: BoardItemCommentDto }>(

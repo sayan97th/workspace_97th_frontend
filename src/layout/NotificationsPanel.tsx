@@ -49,6 +49,11 @@ type NotificationsPanelProps = {
   /** "Save for later" and its undo, saved notifications live in the Saved tab and survive "Mark all as read". */
   onSaveNotification?: (id: string) => void;
   onUnsaveNotification?: (id: string) => void;
+  /** Posts an inline reply from a notification card, without opening the update. Rejects with the reason it failed. */
+  onReplyToNotification?: (id: string, body: string) => Promise<void>;
+  /** Mutes or unmutes the item a notification is about. */
+  onMuteNotificationItem?: (id: string) => void;
+  onUnmuteNotificationItem?: (id: string) => void;
   /** What is waiting for the person, shown as a card on top of the unfiltered All tab. */
   summary?: NotificationSummary | null;
   onLoadSummary?: () => void;
@@ -112,6 +117,9 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onSnoozeNotification,
   onSaveNotification,
   onUnsaveNotification,
+  onReplyToNotification,
+  onMuteNotificationItem,
+  onUnmuteNotificationItem,
   summary,
   onLoadSummary,
   onBulkAction,
@@ -469,6 +477,9 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                           onSnooze={onSnoozeNotification}
                           onSave={onSaveNotification}
                           onUnsave={onUnsaveNotification}
+                          onReply={onReplyToNotification}
+                          onMuteItem={onMuteNotificationItem}
+                          onUnmuteItem={onUnmuteNotificationItem}
                           onToggleSelect={toggleSelection}
                           {...row_props}
                         />
@@ -482,6 +493,9 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                           onSnooze={onSnoozeNotification}
                           onSave={onSaveNotification}
                           onUnsave={onUnsaveNotification}
+                          onReply={onReplyToNotification}
+                          onMuteItem={onMuteNotificationItem}
+                          onUnmuteItem={onUnmuteNotificationItem}
                           onToggleSelect={(id) => toggleSelection([id])}
                           {...row_props}
                         />

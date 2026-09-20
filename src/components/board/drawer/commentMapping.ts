@@ -1,11 +1,12 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import { classifyAttachment } from "./drawerAttachments";
-import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReply, DrawerScheduledComment, DrawerSeenBy } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReaction, DrawerReply, DrawerScheduledComment, DrawerSeenBy } from "./types";
 import type { BoardItemAttachmentDto } from "@/types/board-attachments";
 import type {
   BoardItemCommentAttachmentDto,
   BoardItemCommentAuthorDto,
   BoardItemCommentDto,
+  BoardItemCommentReactionDto,
   BoardItemCommentSeenByDto,
   CommentRevisionDto,
 } from "@/types/board-comments";
@@ -50,6 +51,18 @@ export const mapAuthorToPerson = (author: BoardItemCommentAuthorDto): BoardPerso
       }
     : { id: "0", name: "Deleted user", initials: "?", avatar_seed: 0, is_deactivated: true };
 
+/** Maps a reaction pill, turning the server's reactor list into the same person shape the avatars use. */
+export const mapReactionDto = (dto: BoardItemCommentReactionDto): DrawerReaction => ({
+  emoji: dto.emoji,
+  count: dto.count,
+  reacted_by_me: dto.reacted_by_me,
+  reactor_names: dto.reactor_names,
+  reactors: dto.reactors?.map((reactor) => ({
+    ...mapAuthorToPerson({ id: reactor.id, full_name: reactor.full_name, profile_photo_url: reactor.profile_photo_url, is_deactivated: reactor.is_deactivated }),
+    reacted_at: reactor.reacted_at ?? undefined,
+  })),
+});
+
 export const mapAttachmentDto = (dto: BoardItemCommentAttachmentDto): DrawerAttachment => ({
   id: String(dto.id),
   file_name: dto.file_name,
@@ -78,7 +91,7 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
   view_count: dto.view_count,
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,
-  reactions: dto.reactions,
+  reactions: dto.reactions.map(mapReactionDto),
   bookmarked_by_me: dto.bookmarked_by_me,
 });
 
@@ -102,6 +115,9 @@ export const mapCommentDtoToDrawerComment = (dto: BoardItemCommentDto): DrawerCo
   seen: dto.seen_by_me,
   seen_by: dto.seen_by.map(mapSeenByDto),
   pinned: dto.pinned,
+  is_resolved: dto.is_resolved,
+  resolved_at: dto.resolved_at ?? undefined,
+  resolved_by: dto.resolved_by ? { id: String(dto.resolved_by.id), name: dto.resolved_by.full_name } : undefined,
   notified_user_ids: dto.notified_user_ids.map(String),
   attachments: dto.attachments.map(mapAttachmentDto),
   replies: dto.replies.map(mapCommentDtoToDrawerReply),

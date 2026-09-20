@@ -10,7 +10,9 @@ import {
   type WorkspaceNotification,
 } from "@/data/notifications-data";
 import { BookmarkIcon, CheckIcon, CloseIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import { ReplyIcon } from "@/icons/drawer-icons";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
+import NotificationQuickReply from "./NotificationQuickReply";
 
 /** The actor as the shared {@link PersonAvatar} expects it, so the drawer shows the real profile photo and falls back to initials. */
 export const notificationActorToPerson = (actor: NotificationActor): BoardPersonOption => ({
@@ -46,6 +48,11 @@ type NotificationItemProps = {
   /** "Save for later" and its undo, the card shows a bookmark button and a menu entry for whichever applies. */
   onSave?: (id: string) => void;
   onUnsave?: (id: string) => void;
+  /** Posts an inline reply on the thread the notification is about. Rejects with the reason it failed. */
+  onReply?: (id: string, body: string) => Promise<void>;
+  /** Silences the item the notification is about, and brings it back. */
+  onMuteItem?: (id: string) => void;
+  onUnmuteItem?: (id: string) => void;
   /** Rendered inside an expanded {@link NotificationGroupCard}, so it sits a little tighter. */
   is_nested?: boolean;
   /** The keyboard cursor (j and k) is on this card. */
@@ -76,20 +83,27 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   onSnooze,
   onSave,
   onUnsave,
+  onReply,
+  onMuteItem,
+  onUnmuteItem,
   is_nested = false,
   is_focused = false,
   is_selecting = false,
   is_selected = false,
   onToggleSelect,
 }) => {
-  const { id, actor, action_label, action_target, board, time_label, is_unread, is_saved } = notification;
+  const { id, actor, action_label, action_target, board, time_label, is_unread, is_saved, is_item_muted } = notification;
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const [is_menu_open, setIsMenuOpen] = useState(false);
+  const [is_replying, setIsReplying] = useState(false);
 
-  const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze || onSave || onUnsave);
+  const can_reply = Boolean(onReply && notification.reply_to);
+  const can_mute_item = notification.board_item_id !== undefined && Boolean(is_item_muted ? onUnmuteItem : onMuteItem);
+  const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze || onSave || onUnsave || can_reply || can_mute_item);
   const toggleSaved = () => (is_saved ? onUnsave?.(id) : onSave?.(id));
   const can_toggle_saved = is_saved ? Boolean(onUnsave) : Boolean(onSave);
   const closeMenu = () => setIsMenuOpen(false);
+  const toggleItemMuted = () => (is_item_muted ? onUnmuteItem?.(id) : onMuteItem?.(id));
 
   const runAndClose = (action: () => void) => () => {
     action();
@@ -122,6 +136,9 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
                 aria-hidden="true"
               />
               {board.name}
+              {is_item_muted && (
+                <span className="rounded-[5px] bg-shell-hover px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-shell-text-faint">Item muted</span>
+              )}
             </span>
           )}
         </span>
@@ -140,12 +157,29 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </span>
       </button>
 
-      {!is_selecting && (onDismiss || has_menu || can_toggle_saved) && (
+      {!is_selecting && (onDismiss || has_menu || can_toggle_saved || can_reply) && (
         <div
           className={`absolute right-2 top-2 flex items-center gap-0.5 rounded-md bg-shell-panel-alt transition-opacity focus-within:opacity-100 group-hover:opacity-100 ${
             is_menu_open ? "opacity-100" : "opacity-0"
           }`}
         >
+          {can_reply && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsReplying((previous) => !previous);
+              }}
+              aria-label="Reply"
+              aria-expanded={is_replying}
+              title="Reply"
+              className={`flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt hover:bg-shell-hover ${
+                is_replying ? "text-[#7fb2ff]" : "text-shell-text-faint hover:text-shell-text"
+              }`}
+            >
+              <ReplyIcon size={12} />
+            </button>
+          )}
           {has_menu && (
             <button
               ref={menu_trigger_ref}
@@ -197,9 +231,18 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         </div>
       )}
 
+      {is_replying && onReply && !is_selecting && (
+        <NotificationQuickReply actor_name={actor.name} onSend={(body) => onReply(id, body)} onClose={() => setIsReplying(false)} />
+      )}
+
       {has_menu && (
         <BoardPopover anchor_el={menu_trigger_ref.current} is_open={is_menu_open} onClose={closeMenu} width={208}>
           <div role="menu" className="p-1.5">
+            {can_reply && (
+              <button type="button" role="menuitem" onClick={runAndClose(() => setIsReplying(true))} className={MENU_ITEM_CLASS}>
+                Reply
+              </button>
+            )}
             {is_unread
               ? onMarkRead && (
                   <button type="button" role="menuitem" onClick={runAndClose(() => onMarkRead(id))} className={MENU_ITEM_CLASS}>
@@ -215,6 +258,12 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
             {can_toggle_saved && (
               <button type="button" role="menuitem" onClick={runAndClose(toggleSaved)} className={MENU_ITEM_CLASS}>
                 {is_saved ? "Remove from saved" : "Save for later"}
+              </button>
+            )}
+
+            {can_mute_item && (
+              <button type="button" role="menuitem" onClick={runAndClose(toggleItemMuted)} className={MENU_ITEM_CLASS}>
+                {is_item_muted ? "Unmute this item" : "Mute this item"}
               </button>
             )}
 

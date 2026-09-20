@@ -56,6 +56,8 @@ export type ProfileManagerApi = {
   toggleNotificationSound: () => void;
   tab_badge_enabled: boolean;
   toggleTabBadge: () => void;
+  auto_follow_enabled: boolean;
+  toggleAutoFollow: () => void;
   is_desktop_banner_dismissed: boolean;
   dismissDesktopBanner: () => void;
   desktop_notifications_enabled: boolean;
@@ -195,6 +197,7 @@ export function useProfileManager(): ProfileManagerApi {
   const [desktop_notifications_enabled, setDesktopNotificationsEnabledValue] = useState(false);
   const [notification_sound_enabled, setNotificationSoundEnabledValue] = useState(false);
   const [tab_badge_enabled, setTabBadgeEnabledValue] = useState(true);
+  const [auto_follow_enabled, setAutoFollowEnabledValue] = useState(true);
   const [desktop_permission, setDesktopPermission] = useState<DesktopNotificationPermission>("default");
   const [quiet_hours_enabled, setQuietHoursEnabledValue] = useState(false);
   const [quiet_hours_start, setQuietHoursStartValue] = useState("22:00");
@@ -225,6 +228,7 @@ export function useProfileManager(): ProfileManagerApi {
     setDesktopNotificationsEnabledValue(user.desktop_notifications_enabled);
     setNotificationSoundEnabledValue(user.notification_sound_enabled ?? false);
     setTabBadgeEnabledValue(user.tab_badge_enabled ?? true);
+    setAutoFollowEnabledValue(user.auto_follow_enabled ?? true);
     setQuietHoursEnabledValue(user.quiet_hours_enabled ?? false);
     setQuietHoursStartValue(user.quiet_hours_start ?? "22:00");
     setQuietHoursEndValue(user.quiet_hours_end ?? "07:00");
@@ -366,6 +370,12 @@ export function useProfileManager(): ProfileManagerApi {
     void saveNotificationPreferences({ notification_sound_enabled: next_value });
   };
 
+  const toggleAutoFollow = () => {
+    const next_value = !auto_follow_enabled;
+    setAutoFollowEnabledValue(next_value);
+    void saveNotificationPreferences({ auto_follow_enabled: next_value });
+  };
+
   const toggleTabBadge = () => {
     const next_value = !tab_badge_enabled;
     setTabBadgeEnabledValue(next_value);
@@ -497,6 +507,8 @@ export function useProfileManager(): ProfileManagerApi {
     toggleNotificationSound,
     tab_badge_enabled,
     toggleTabBadge,
+    auto_follow_enabled,
+    toggleAutoFollow,
     is_desktop_banner_dismissed,
     dismissDesktopBanner: () => setIsDesktopBannerDismissed(true),
     desktop_notifications_enabled,

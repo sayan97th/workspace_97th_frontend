@@ -1,6 +1,12 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import type { MentionOption } from "./mentionOptions";
 
+/** One person who reacted with an emoji, for the "who reacted" popover. */
+export type DrawerReactor = BoardPersonOption & {
+  /** ISO time they reacted, absent on client-side-only mock data. */
+  reacted_at?: string;
+};
+
 /** A single emoji reaction pill on a comment or reply, with its live tally. */
 export type DrawerReaction = {
   emoji: string;
@@ -8,6 +14,8 @@ export type DrawerReaction = {
   reacted_by_me: boolean;
   /** Display names of everyone who reacted with this emoji (the current user shows as "You") — powers the pill's hover tooltip. */
   reactor_names: string[];
+  /** Everyone who reacted with this emoji, oldest first, for the popover. Absent on client-side-only mock data and until the server confirms a fresh reaction. */
+  reactors?: DrawerReactor[];
 };
 
 export type DrawerAttachmentTag = "PDF" | "DOC" | "XLS" | "IMG" | "PPT" | "FILE";
@@ -102,6 +110,12 @@ export type DrawerComment = DrawerReply & {
   seen_by: DrawerSeenBy[];
   /** True once pinned via the composer's pin action — pinned updates sort ahead of the rest of the thread. Absent (falsy) on client-side-only mock data. */
   pinned?: boolean;
+  /** True once someone marked the update as done, the thread then collapses. Absent (falsy) on client-side-only mock data. */
+  is_resolved?: boolean;
+  /** Who resolved it. */
+  resolved_by?: { id: string; name: string };
+  /** ISO time it was resolved. */
+  resolved_at?: string;
   /** Ids of people explicitly flagged via "Notify", distinct from `@mentions` in the body. Absent on client-side-only mock data. */
   notified_user_ids?: string[];
   attachments: DrawerAttachment[];
@@ -229,6 +243,8 @@ export type CommentCollaborationApi = {
   quote_requests: Record<string, CommentQuoteRequest>;
   /** The comment a deep link points at, kept for a few seconds so the thread can scroll to it and highlight it. */
   highlighted_comment_id: string | null;
+  /** Marks an update as resolved, or reopens it. Only offered to people who can edit the board. */
+  toggleResolved: (comment_id: string) => void;
 
   /** The viewer's own comments and replies waiting to be sent, soonest first. */
   scheduled_comments: DrawerScheduledComment[];

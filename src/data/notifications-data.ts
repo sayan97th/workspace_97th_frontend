@@ -58,6 +58,12 @@ export type WorkspaceNotification = {
   category: NotificationCategory;
   /** Frontend route to navigate to on click, e.g. `/boards/12`. */
   link?: string;
+  /** The item the notification is about, what "Mute this item" targets. Absent for a board level notification. */
+  board_item_id?: number;
+  /** The viewer muted that item, so nothing new about it arrives. */
+  is_item_muted: boolean;
+  /** Feed id of the comment that triggered it, what the inline quick reply attaches to. Absent when there is nothing to reply to. */
+  reply_to?: string;
   /** Raw ISO timestamp, used to bucket the list into date sections (Today/Yesterday/This week/Older). */
   created_at: string;
   /** Notifications of the same type on the same thread share a key, so the drawer can collapse them into one card. */

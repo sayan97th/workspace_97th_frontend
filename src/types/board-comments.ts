@@ -15,11 +15,22 @@ export type BoardItemCommentAuthorDto = {
   is_deactivated?: boolean;
 } | null;
 
+/** One person who reacted with an emoji, with when they did. */
+export type CommentReactorDto = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+  is_deactivated?: boolean;
+  reacted_at: string | null;
+};
+
 export type BoardItemCommentReactionDto = {
   emoji: string;
   count: number;
   reacted_by_me: boolean;
   reactor_names: string[];
+  /** Who reacted and when, oldest first. */
+  reactors: CommentReactorDto[];
 };
 
 export type BoardItemCommentAttachmentDto = {
@@ -60,6 +71,10 @@ export type BoardItemCommentDto = {
   /** Set while the comment is scheduled and not visible to anyone else yet, null once it is live. */
   scheduled_at: string | null;
   pinned: boolean;
+  /** True once someone marked this update as done. Only top-level updates can be resolved. */
+  is_resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: { id: number; full_name: string } | null;
   notified_user_ids: number[];
   reactions: BoardItemCommentReactionDto[];
   mentioned_user_ids: number[];

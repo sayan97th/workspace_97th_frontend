@@ -63,6 +63,9 @@ const AppTopBar: React.FC = () => {
     snoozeNotification,
     saveNotification,
     unsaveNotification,
+    muteNotificationItem,
+    unmuteNotificationItem,
+    replyToNotification,
     bulkAction,
     summary: notification_summary,
     loadSummary: loadNotificationSummary,
@@ -298,6 +301,9 @@ const AppTopBar: React.FC = () => {
         onSnoozeNotification={snoozeNotification}
         onSaveNotification={saveNotification}
         onUnsaveNotification={unsaveNotification}
+        onReplyToNotification={replyToNotification}
+        onMuteNotificationItem={muteNotificationItem}
+        onUnmuteNotificationItem={unmuteNotificationItem}
         summary={notification_summary}
         onLoadSummary={loadNotificationSummary}
         onBulkAction={bulkAction}

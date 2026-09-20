@@ -17,6 +17,9 @@ type NotificationGroupCardProps = {
   onSnooze?: (id: string, preset: NotificationSnoozePresetId) => void;
   onSave?: (id: string) => void;
   onUnsave?: (id: string) => void;
+  onReply?: (id: string, body: string) => Promise<void>;
+  onMuteItem?: (id: string) => void;
+  onUnmuteItem?: (id: string) => void;
   /** The keyboard cursor (j and k) is on this group. */
   is_focused?: boolean;
   /** Multi-select mode: a tick box shows and a click toggles the whole group instead of opening it. */
@@ -52,6 +55,9 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
   onSnooze,
   onSave,
   onUnsave,
+  onReply,
+  onMuteItem,
+  onUnmuteItem,
   is_focused = false,
   is_selecting = false,
   is_selected = false,
@@ -148,6 +154,9 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
                 onSnooze={onSnooze}
                 onSave={onSave}
                 onUnsave={onUnsave}
+                onReply={onReply}
+                onMuteItem={onMuteItem}
+                onUnmuteItem={onUnmuteItem}
                 is_nested
               />
             ))}

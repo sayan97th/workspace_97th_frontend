@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { showDesktopNotification } from "@/lib/desktop-notifications";
 import { playNotificationSound } from "@/lib/notification-sound";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { boardMuteService } from "@/services/board-mute.service";
+import { feedService } from "@/services/feed.service";
 import { notificationsService, type NotificationBulkAction } from "@/services/notifications.service";
 import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import { useTabBadge } from "@/hooks/useTabBadge";
@@ -359,6 +362,67 @@ export function useNotifications() {
     [notifications, loadNotifications, loadUnreadCount, loadSummary]
   );
 
+  /**
+   * Mutes (or unmutes) the item a notification is about, so nothing new about it
+   * or its comment thread arrives. Every card of that item flips at once, and a
+   * failed request puts them back. Muting raises a toast with an Undo.
+   */
+  const setNotificationItemMuted = useCallback(
+    (id: string, is_muted: boolean) => {
+      const notification = notifications.find((item) => item.id === id);
+      const board_id = Number(notification?.board.id);
+      const board_item_id = notification?.board_item_id;
+      if (!notification || !board_item_id || !Number.isFinite(board_id) || notification.is_item_muted === is_muted) return;
+
+      const applyState = (value: boolean) =>
+        setNotifications((previous) => previous.map((item) => (item.board_item_id === board_item_id ? { ...item, is_item_muted: value } : item)));
+
+      applyState(is_muted);
+      const request = is_muted ? boardMuteService.muteItem(board_id, board_item_id) : boardMuteService.unmuteItem(board_id, board_item_id);
+      request
+        .then(() =>
+          showToast(
+            is_muted
+              ? {
+                  variant: "success",
+                  title: "Item muted",
+                  description: "You will not get notifications about it any more.",
+                  action_text: "Undo",
+                  onAction: () => setNotificationItemMuted(id, false),
+                  dedupe_key: `item-mute-${board_item_id}`,
+                }
+              : { variant: "success", title: "Item unmuted", dedupe_key: `item-mute-${board_item_id}` }
+          )
+        )
+        .catch((error) => {
+          applyState(!is_muted);
+          showToast({ variant: "error", title: getApiErrorMessage(error, "Couldn't update that item. Please try again.") });
+        });
+    },
+    [notifications, showToast]
+  );
+
+  const muteNotificationItem = useCallback((id: string) => setNotificationItemMuted(id, true), [setNotificationItemMuted]);
+  const unmuteNotificationItem = useCallback((id: string) => setNotificationItemMuted(id, false), [setNotificationItemMuted]);
+
+  /**
+   * The inline quick reply: posts `body` as a reply on the thread the
+   * notification is about, without opening the drawer, then counts the
+   * notification as read. Rejects with the server's message so the card's own
+   * composer can show it and keep the text.
+   */
+  const replyToNotification = useCallback(
+    async (id: string, body: string): Promise<void> => {
+      const notification = notifications.find((item) => item.id === id);
+      if (!notification?.reply_to) throw new Error("There is nothing to reply to.");
+
+      await feedService.reply(notification.reply_to, body.trim());
+      setNotificationUnread(id, false);
+      showToast({ variant: "success", title: "Reply sent", dedupe_key: `notification-reply-${id}` });
+    },
+    [notifications, setNotificationUnread, showToast]
+  );
+
   useTabBadge(unread_count, user?.tab_badge_enabled ?? true);
 
   return {
@@ -380,6 +444,9 @@ export function useNotifications() {
     snoozeNotification,
     saveNotification,
     unsaveNotification,
+    muteNotificationItem,
+    unmuteNotificationItem,
+    replyToNotification,
     bulkAction,
     summary,
     loadSummary,

@@ -11,6 +11,8 @@ export type CommentFilters = {
   with_files: boolean;
   /** Only threads where the current user is `@mentioned`. */
   mentioning_me: boolean;
+  /** Hides the threads somebody marked as resolved (the "Hide resolved" chip). */
+  only_unresolved: boolean;
 };
 
 export const default_comment_filters: CommentFilters = {
@@ -20,11 +22,12 @@ export const default_comment_filters: CommentFilters = {
   only_bookmarked: false,
   with_files: false,
   mentioning_me: false,
+  only_unresolved: false,
 };
 
 /** How many filters are narrowing the thread, for the "Clear" button and the empty state. */
 export const countActiveCommentFilters = (filters: CommentFilters): number =>
-  [filters.search.trim() !== "", filters.author_id !== null, filters.only_pinned, filters.only_bookmarked, filters.with_files, filters.mentioning_me].filter(Boolean).length;
+  [filters.search.trim() !== "", filters.author_id !== null, filters.only_pinned, filters.only_bookmarked, filters.with_files, filters.mentioning_me, filters.only_unresolved].filter(Boolean).length;
 
 /**
  * A rough plain-text reading of a Markdown body, so searching for "budget"
@@ -60,6 +63,7 @@ export function filterComments(comments: DrawerComment[], filters: CommentFilter
   return comments.filter((comment) => {
     if (filters.only_pinned && !comment.pinned) return false;
     if (filters.with_files && comment.attachments.length === 0) return false;
+    if (filters.only_unresolved && comment.is_resolved) return false;
 
     const messages = messagesOf(comment);
     if (filters.only_bookmarked && !messages.some((message) => message.bookmarked_by_me)) return false;
@@ -88,3 +92,20 @@ export function commentAuthors(comments: DrawerComment[]): { id: string; name: s
   }
   return [...authors.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
 }
+
+/** Which end of the thread comes first. */
+export type CommentSortOrder = "newest" | "oldest";
+
+const timeOf = (comment: DrawerComment): number => {
+  const parsed = Date.parse(comment.posted_at_iso ?? "");
+  return Number.isNaN(parsed) ? Date.now() : parsed;
+};
+
+/** The threads ordered by when the update was posted, oldest or newest first. Ties keep their order. */
+export function sortComments(comments: DrawerComment[], order: CommentSortOrder): DrawerComment[] {
+  const direction = order === "newest" ? -1 : 1;
+  return [...comments].sort((a, b) => direction * (timeOf(a) - timeOf(b)));
+}
+
+/** How many of the threads are resolved, for the "N resolved" hint. */
+export const countResolvedComments = (comments: DrawerComment[]): number => comments.filter((comment) => comment.is_resolved).length;

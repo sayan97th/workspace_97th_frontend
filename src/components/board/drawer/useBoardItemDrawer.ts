@@ -6,7 +6,7 @@ import { boardCommentsService } from "@/services/board-comments.service";
 import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
+import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
@@ -49,7 +49,7 @@ const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReactio
     : current.reactor_names.filter((name) => name !== "You");
   return reactions.map((reaction, existing_index) =>
     existing_index === index
-      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names }
+      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names, reactors: undefined }
       : reaction
   );
 };
@@ -507,7 +507,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     const item_id = Number(open_row_id);
     boardCommentsService
       .toggleReaction(board_id, item_id, Number(reply_id ?? comment_id), emoji)
-      .then((dto) => applyServerReactions(open_row_id, comment_id, reply_id, dto.reactions))
+      .then((dto) => applyServerReactions(open_row_id, comment_id, reply_id, dto.reactions.map(mapReactionDto)))
       .catch(() => {
         applyReactionToggle(open_row_id, comment_id, reply_id, emoji);
         setCommentsError("Couldn't update that reaction. Please try again.");
@@ -568,8 +568,15 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
     if (!is_api_backed) return;
     const item_id = Number(row_id);
+    const deleted_id = Number(reply_id ?? comment_id);
     boardCommentsService
-      .deleteComment(board_id, item_id, Number(reply_id ?? comment_id))
+      .deleteComment(board_id, item_id, deleted_id)
+      .then(() =>
+        offerUndoDelete({
+          title: reply_id ? "Reply deleted" : "Update deleted",
+          restore: () => boardCommentsService.restoreComment(board_id, item_id, deleted_id),
+        })
+      )
       .catch(() => {
         setCommentsByRow((current) => ({ ...current, [row_id]: previous_comments }));
         setCommentsError("Couldn't delete that comment. Please try again.");
@@ -812,7 +819,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setCommentsByRow((current) => ({ ...current, [row_id]: dtos.map(mapCommentDtoToDrawerComment) }));
   };
 
-  const { collaboration, addScheduledComment, resetComposerExtras } = useCommentCollaboration({
+  const { collaboration, addScheduledComment, resetComposerExtras, offerUndoDelete } = useCommentCollaboration({
     is_api_backed,
     scope_key: open_row_id,
     can_edit,
@@ -829,6 +836,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       updateSchedule: (comment_id, scheduled_at) => boardCommentsService.updateSchedule(board_id!, Number(open_row_id), comment_id, scheduled_at),
       cancelScheduled: (comment_id) => boardCommentsService.deleteComment(board_id!, Number(open_row_id), comment_id),
       toggleBookmark: (comment_id) => boardCommentsService.toggleBookmark(board_id!, Number(open_row_id), comment_id),
+      toggleResolve: (comment_id) => boardCommentsService.toggleResolve(board_id!, Number(open_row_id), comment_id),
     },
     onError: setCommentsError,
   });

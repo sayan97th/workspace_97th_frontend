@@ -7,6 +7,8 @@
  * single row).
  */
 
+import type { CommentReactorDto } from "@/types/board-comments";
+
 export type BoardDiscussionCommentAuthorDto = {
   id: number;
   full_name: string;
@@ -18,6 +20,8 @@ export type BoardDiscussionCommentReactionDto = {
   count: number;
   reacted_by_me: boolean;
   reactor_names: string[];
+  /** Who reacted and when, oldest first. */
+  reactors: CommentReactorDto[];
 };
 
 export type BoardDiscussionCommentAttachmentDto = {
@@ -56,6 +60,10 @@ export type BoardDiscussionCommentDto = {
   /** Set while the update is scheduled and not visible to anyone else yet, null once it is live. */
   scheduled_at: string | null;
   pinned: boolean;
+  /** True once someone marked this update as done. Only top-level updates can be resolved. */
+  is_resolved: boolean;
+  resolved_at: string | null;
+  resolved_by: { id: number; full_name: string } | null;
   notified_user_ids: number[];
   reactions: BoardDiscussionCommentReactionDto[];
   mentioned_user_ids: number[];

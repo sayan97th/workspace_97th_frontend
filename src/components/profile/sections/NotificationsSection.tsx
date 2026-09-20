@@ -195,6 +195,15 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) 
 
       <div className="mt-[14px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
         <SettingsToggleRow
+          label="Follow items I comment on"
+          description="Add an item to the Following tab of your Update Feed when you comment on it or someone mentions you in it. You can unfollow from the feed at any time."
+          is_on={profile.auto_follow_enabled}
+          onToggle={profile.toggleAutoFollow}
+        />
+      </div>
+
+      <div className="mt-[14px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
+        <SettingsToggleRow
           label="Quiet hours"
           description="Pause emails, Slack messages, pop-ups and desktop notifications during these hours. Notifications still collect in your bell."
           is_on={profile.quiet_hours_enabled}

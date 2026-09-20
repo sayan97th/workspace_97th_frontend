@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { CheckCircle2 } from "lucide-react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import DeactivatedBadge from "../DeactivatedBadge";
@@ -11,13 +12,14 @@ import { LikeIcon, QuoteIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } 
 import { BookmarkIcon, LinkIcon } from "@/icons/workspace-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import { useCommentCollaborationContext } from "./CommentCollaborationContext";
+import { markdownToPlainText } from "./commentFilters";
 import CommentComposer from "./CommentComposer";
 import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EditedMarker from "./EditedMarker";
 import EmojiPalette from "./EmojiPalette";
 import type { MentionOption } from "./mentionOptions";
-import { formatReactorNames } from "./reactionFormatting";
+import ReactionPill from "./ReactionPill";
 import RichTextContent from "./RichTextContent";
 import SeenByList from "./SeenByList";
 import type { DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
@@ -64,6 +66,13 @@ export type CommentThreadProps = {
   reference_items?: DrawerReferenceItem[];
 };
 
+/** A thread with more replies than this folds its older ones behind a "View N earlier replies" button. */
+const COLLAPSE_REPLIES_OVER = 3;
+/** How many of the newest replies stay visible while the older ones are folded. */
+const VISIBLE_REPLY_TAIL = 2;
+/** How much of an update's text the collapsed "Resolved" row quotes. */
+const RESOLVED_EXCERPT_LENGTH = 120;
+
 type ReactionsRowProps = {
   reactions: DrawerReaction[];
   is_palette_open: boolean;
@@ -76,8 +85,8 @@ type ReactionsRowProps = {
  * A comment or reply's reaction pills, plus a trailing "+" that opens the
  * same Slack-style quick-react popover as the action row's "React" trigger —
  * only rendered once at least one reaction exists, so there's always exactly
- * one way to open the picker (never two competing triggers). Each pill's
- * `title` surfaces who reacted, and clicking a pill toggles the current
+ * one way to open the picker (never two competing triggers). Hovering a pill
+ * lists who reacted (see {@link ReactionPill}), and clicking it toggles the current
  * user's own reaction for that emoji, so a comment can carry any number of
  * different emoji, each from any number of people, at once.
  */
@@ -89,20 +98,7 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
   return (
     <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
       {reactions.map((reaction) => (
-        <button
-          key={reaction.emoji}
-          type="button"
-          onClick={() => onToggle(reaction.emoji)}
-          title={`${formatReactorNames(reaction.reactor_names)} reacted with ${reaction.emoji}`}
-          className="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors"
-          style={{
-            background: reaction.reacted_by_me ? "rgba(87,155,252,0.18)" : "var(--color-shell-hover)",
-            borderColor: reaction.reacted_by_me ? "#579bfc" : "var(--color-shell-border-strong)",
-          }}
-        >
-          <span className="text-sm">{reaction.emoji}</span>
-          {reaction.count}
-        </button>
+        <ReactionPill key={reaction.emoji} reaction={reaction} onToggle={() => onToggle(reaction.emoji)} />
       ))}
       <button
         ref={add_trigger_ref}
@@ -152,6 +148,8 @@ type ReplyRowProps = {
   onToggleBookmark?: () => void;
   /** A deep link points at this reply, so it is outlined for a few seconds. */
   is_highlighted?: boolean;
+  /** The drawer offers "Undo" after a delete, so the confirm dialog is skipped. */
+  has_undo?: boolean;
 };
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
@@ -176,6 +174,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   extra_menu_items,
   onToggleBookmark,
   is_highlighted = false,
+  has_undo = false,
 }) => {
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === reaction_palette_key;
@@ -203,6 +202,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
               onDelete={reply.author.id === current_user_id ? onDelete : undefined}
               extra_items={extra_menu_items}
               kind="reply"
+              confirm_delete={!has_undo}
             />
           </span>
         </div>
@@ -309,6 +309,9 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === comment.id;
   const collaboration = useCommentCollaborationContext();
+  // A resolved thread stays folded to one row until it is opened, and a long one keeps only its newest replies in view.
+  const [is_resolved_open, setIsResolvedOpen] = useState(false);
+  const [are_replies_expanded, setAreRepliesExpanded] = useState(false);
 
   const focusReplyComposer = () =>
     (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
@@ -346,6 +349,56 @@ const CommentThread: React.FC<CommentThreadProps> = ({
     return () => cancelAnimationFrame(frame_id);
   }, [is_thread_highlighted, highlighted_id]);
   const can_pin = onTogglePin !== undefined && (collaboration?.can_edit ?? true);
+  const can_resolve = collaboration !== null && collaboration.can_edit;
+
+  // Replies are folded when there are many, unless something in the hidden part needs to be seen.
+  const is_collapsible = comment.replies.length > COLLAPSE_REPLIES_OVER;
+  const hidden_reply_count = comment.replies.length - VISIBLE_REPLY_TAIL;
+  const hidden_replies = comment.replies.slice(0, hidden_reply_count);
+  const is_hidden_reply_needed =
+    is_collapsible &&
+    (hidden_replies.some((reply) => reply.id === highlighted_id || `${comment.id}:${reply.id}` === editing_key) ||
+      hidden_replies.some((reply) => fresh_comment_ids.includes(reply.id)));
+  const are_replies_folded = is_collapsible && !are_replies_expanded && !is_hidden_reply_needed;
+  const visible_replies = are_replies_folded ? comment.replies.slice(hidden_reply_count) : comment.replies;
+
+  // A deep link into a resolved thread, or editing it, opens it.
+  const is_edited_here = editing_key !== null && (editing_key === comment.id || editing_key.startsWith(`${comment.id}:`));
+  const is_resolved_folded = Boolean(comment.is_resolved) && !is_resolved_open && !is_thread_highlighted && !is_edited_here;
+
+  if (is_resolved_folded) {
+    const excerpt = markdownToPlainText(comment.body);
+    return (
+      <div
+        id={`comment-${comment.id}`}
+        className="mt-4 flex items-center gap-2.5 rounded-[14px] border border-shell-border bg-shell-panel-alt px-4 py-3"
+      >
+        <CheckCircle2 size={17} className="flex-none text-[#00c875]" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[12.5px] font-semibold text-shell-text-secondary">
+            {comment.author.name}
+            {excerpt ? `: ${excerpt.length > RESOLVED_EXCERPT_LENGTH ? `${excerpt.slice(0, RESOLVED_EXCERPT_LENGTH)}...` : excerpt}` : ""}
+          </div>
+          <div className="text-[11.5px] text-shell-text-faint">
+            Resolved{comment.resolved_by ? ` by ${comment.resolved_by.name}` : ""}
+            {comment.replies.length > 0 ? ` · ${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}` : ""}
+          </div>
+        </div>
+        <button type="button" onClick={() => setIsResolvedOpen(true)} className="flex-none text-[12px] font-semibold text-[#7fb2ff] hover:text-[#9cc4ff]">
+          Show thread
+        </button>
+        {can_resolve && collaboration && (
+          <button
+            type="button"
+            onClick={() => collaboration.toggleResolved(comment.id)}
+            className="flex-none rounded-md border border-shell-border px-2 py-0.5 text-[12px] font-semibold text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+          >
+            Reopen
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -355,6 +408,19 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       } ${highlighted_id === comment.id ? "shadow-[0_0_0_2px_#579bfc]" : ""}`}
     >
       <div className="px-4 pb-[13px] pt-[15px]">
+        {comment.is_resolved && (
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#00c875]">
+            <CheckCircle2 size={12} aria-hidden="true" />
+            Resolved{comment.resolved_by ? ` by ${comment.resolved_by.name}` : ""}
+            <button
+              type="button"
+              onClick={() => setIsResolvedOpen(false)}
+              className="ml-auto text-[11px] font-semibold normal-case tracking-normal text-shell-text-muted hover:text-shell-text"
+            >
+              Hide thread
+            </button>
+          </div>
+        )}
         {comment.pinned && (
           <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#f5a623]">
             <PinIcon size={11} />
@@ -398,6 +464,19 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               <BookmarkIcon size={13} filled={comment.bookmarked_by_me ?? false} />
             </button>
           )}
+          {can_resolve && collaboration && (
+            <button
+              type="button"
+              onClick={() => collaboration.toggleResolved(comment.id)}
+              aria-label={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
+              aria-pressed={comment.is_resolved ?? false}
+              title={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
+              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
+              style={{ color: comment.is_resolved ? "#00c875" : "var(--color-shell-text-muted)" }}
+            >
+              <CheckCircle2 size={14} />
+            </button>
+          )}
           {can_pin && onTogglePin && (
             <button
               type="button"
@@ -416,6 +495,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             onDelete={comment.author.id === current_user.id ? () => onDeleteComment(comment.id) : undefined}
             extra_items={buildExtraItems()}
             kind="comment"
+            confirm_delete={collaboration === null}
           />
         </div>
 
@@ -496,7 +576,25 @@ const CommentThread: React.FC<CommentThreadProps> = ({
 
       {comment.replies.length > 0 && (
         <div className="border-t border-shell-border bg-shell-hover py-1">
-          {comment.replies.map((reply) => (
+          {are_replies_folded && (
+            <button
+              type="button"
+              onClick={() => setAreRepliesExpanded(true)}
+              className="w-full px-5 py-2 text-left text-[12px] font-semibold text-[#7fb2ff] hover:text-[#9cc4ff]"
+            >
+              View {hidden_reply_count} earlier {hidden_reply_count === 1 ? "reply" : "replies"}
+            </button>
+          )}
+          {is_collapsible && are_replies_expanded && (
+            <button
+              type="button"
+              onClick={() => setAreRepliesExpanded(false)}
+              className="w-full px-5 py-2 text-left text-[12px] font-semibold text-shell-text-muted hover:text-shell-text"
+            >
+              Show fewer replies
+            </button>
+          )}
+          {visible_replies.map((reply) => (
             <ReplyRow
               key={reply.id}
               reply={reply}
@@ -520,6 +618,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               extra_menu_items={buildExtraItems(reply.id)}
               onToggleBookmark={collaboration ? () => collaboration.toggleBookmark(comment.id, reply.id) : undefined}
               is_highlighted={highlighted_id === reply.id}
+              has_undo={collaboration !== null}
             />
           ))}
         </div>

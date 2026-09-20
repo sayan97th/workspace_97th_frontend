@@ -5,6 +5,13 @@ export type MutedBoardDto = {
   board_name: string;
 };
 
+export type MutedItemDto = {
+  board_id: number;
+  board_item_id: number;
+  item_name: string;
+  board_name: string;
+};
+
 /**
  * Talks to `App\Http\Controllers\Board\BoardNotificationMuteController`
  * (workspace_97th_api) — per-user, per-board notification muting, checked by
@@ -26,5 +33,21 @@ export const boardMuteService = {
   /** DELETE /api/boards/{board_id}/mute */
   async unmuteBoard(board_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/mute`);
+  },
+
+  /** GET /api/boards/muted-items, every item the viewer muted, for the notification settings list. */
+  async listMutedItems(): Promise<MutedItemDto[]> {
+    const response = await apiClient.get<{ data: MutedItemDto[] }>("/api/boards/muted-items");
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/mute, silences one item and its comment thread. */
+  async muteItem(board_id: number, item_id: number): Promise<void> {
+    await apiClient.post(`/api/boards/${board_id}/items/${item_id}/mute`);
+  },
+
+  /** DELETE /api/boards/{board_id}/items/{item_id}/mute */
+  async unmuteItem(board_id: number, item_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/mute`);
   },
 };

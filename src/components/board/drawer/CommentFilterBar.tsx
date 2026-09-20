@@ -2,7 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import FilterMenu from "@/components/ui/filter-menu/FilterMenu";
 import { SearchIcon } from "@/icons/workspace-icons";
-import { countActiveCommentFilters, type CommentFilters } from "./commentFilters";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
+import { countActiveCommentFilters, type CommentFilters, type CommentSortOrder } from "./commentFilters";
 
 export type CommentFilterBarProps = {
   filters: CommentFilters;
@@ -13,24 +14,29 @@ export type CommentFilterBarProps = {
   /** Threads that pass the filters, and how many exist, for the "N of M" summary. */
   visible_count: number;
   total_count: number;
+  /** How many threads are resolved. The Hide resolved chip only shows once there is at least one. */
+  resolved_count?: number;
+  sort_order: CommentSortOrder;
+  onSortChange: (order: CommentSortOrder) => void;
 };
 
 const SEARCH_DEBOUNCE_MS = 200;
 
-const CHIPS: { key: "only_pinned" | "only_bookmarked" | "with_files" | "mentioning_me"; label: string }[] = [
+const CHIPS: { key: "only_pinned" | "only_bookmarked" | "with_files" | "mentioning_me" | "only_unresolved"; label: string }[] = [
   { key: "only_pinned", label: "Pinned" },
   { key: "only_bookmarked", label: "Bookmarked" },
   { key: "with_files", label: "With files" },
   { key: "mentioning_me", label: "Mentions me" },
+  { key: "only_unresolved", label: "Hide resolved" },
 ];
 
 /**
  * The slim search and filter row above an update thread, shared by the item
  * drawer and the board discussion drawer: search, author, and Pinned,
- * Bookmarked, With files and Mentions me chips. Filtering happens on the threads already
- * loaded, so it needs no request.
+ * Bookmarked, With files, Mentions me and Hide resolved chips, plus the newest or oldest first
+ * order. Filtering happens on the threads already loaded, so it needs no request.
  */
-const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, onClear, authors, visible_count, total_count }) => {
+const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, onClear, authors, visible_count, total_count, resolved_count = 0, sort_order, onSortChange }) => {
   const [search_text, setSearchText] = useState(filters.search);
   const active_count = countActiveCommentFilters(filters);
   const author_options = useMemo(() => authors, [authors]);
@@ -69,7 +75,7 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
         />
       </div>
       <div className="flex flex-wrap items-center gap-1.5">
-        {CHIPS.map((chip) => (
+        {CHIPS.filter((chip) => chip.key !== "only_unresolved" || resolved_count > 0 || filters.only_unresolved).map((chip) => (
           <button
             key={chip.key}
             type="button"
@@ -82,6 +88,7 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
             }`}
           >
             {chip.label}
+            {chip.key === "only_unresolved" && resolved_count > 0 ? ` (${resolved_count})` : ""}
           </button>
         ))}
         {active_count > 0 && (
@@ -94,6 +101,16 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
             </button>
           </>
         )}
+        <button
+          type="button"
+          onClick={() => onSortChange(sort_order === "newest" ? "oldest" : "newest")}
+          aria-label={sort_order === "newest" ? "Sorted newest first, switch to oldest first" : "Sorted oldest first, switch to newest first"}
+          title={sort_order === "newest" ? "Newest first" : "Oldest first"}
+          className="ml-auto inline-flex items-center gap-1 rounded-full border border-shell-border px-2.5 py-0.5 text-[11.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
+        >
+          {sort_order === "newest" ? <ArrowDownWideNarrow size={12} /> : <ArrowUpNarrowWide size={12} />}
+          {sort_order === "newest" ? "Newest first" : "Oldest first"}
+        </button>
       </div>
     </div>
   );

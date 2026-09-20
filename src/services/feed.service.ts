@@ -71,6 +71,15 @@ export const feedService = {
     return apiClient.get<FeedUpdatesPageDto>(`/api/feed/updates?${params.toString()}`);
   },
 
+  /** GET /api/feed/updates/export?tab=&board_id=&q=&author_id=&kind=&from=&to=&unread=, the tab and filters the viewer has open as an .xlsx workbook. */
+  async exportUpdates(tab: UpdateFeedTabId, board_id?: string, filters?: FeedFilters): Promise<Blob> {
+    const params = new URLSearchParams({ tab });
+    if (board_id && board_id !== "all-boards") params.set("board_id", board_id);
+    if (filters) appendFilterParams(params, filters);
+
+    return apiClient.get<Blob>(`/api/feed/updates/export?${params.toString()}`, { responseType: "blob" });
+  },
+
   /** GET /api/feed/boards/{board_id}/people, the workspace members a reply on that board can `@mention`. */
   async listBoardPeople(board_id: string): Promise<FeedPersonDto[]> {
     const response = await apiClient.get<{ data: FeedPersonDto[] }>(`/api/feed/boards/${board_id}/people`);

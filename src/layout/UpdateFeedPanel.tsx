@@ -1,16 +1,20 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useAuth } from "@/context/AuthContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
+import { getApiErrorMessage } from "@/lib/api-error";
+import { downloadBlob } from "@/lib/download-blob";
 import { getUserInitials } from "@/lib/user";
+import { feedService } from "@/services/feed.service";
 import FeedFilterBar from "@/components/feed/FeedFilterBar";
 import FeedSavedViewsMenu from "@/components/feed/FeedSavedViewsMenu";
 import SlideOverDrawer from "./SlideOverDrawer";
 import UpdateFeedCard from "./UpdateFeedCard";
 import { useFeedSavedViews } from "@/hooks/useFeedSavedViews";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";
-import { PinIcon } from "@/icons/board-icons";
+import { DownloadIcon, PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
   ChatBubbleIcon,
@@ -72,6 +76,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const [filters, setFilters] = useState<FeedFilters>(default_feed_filters);
 
   const { user } = useAuth();
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [is_exporting, setIsExporting] = useState(false);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
 
   const {
@@ -131,6 +137,21 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     root_ref: scroll_area_ref,
     watch: updates.length,
   });
+
+  /** Downloads the open tab, board and filters as an Excel workbook. */
+  const exportFeed = async () => {
+    if (is_exporting) return;
+    setIsExporting(true);
+    try {
+      const blob = await feedService.exportUpdates(active_tab, active_board, filters);
+      downloadBlob(blob, `update_feed_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      toastSuccess("Update feed exported");
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Couldn't export the update feed. Please try again."));
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const showNewUpdates = () => {
     showPendingUpdates();
@@ -288,11 +309,21 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   onSave={saveCurrentView}
                   can_save={active_filter_count > 0 || active_tab !== update_feed_default_tab || active_board !== feed_default_board_filter}
                 />
+                <button
+                  type="button"
+                  onClick={() => void exportFeed()}
+                  disabled={is_exporting || updates.length === 0}
+                  title={active_filter_count > 0 ? "Export the filtered updates to Excel" : "Export these updates to Excel"}
+                  className="ml-auto flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <DownloadIcon size={13} />
+                  {is_exporting ? "Exporting..." : "Export"}
+                </button>
                 {unread_count > 0 && (
                   <button
                     type="button"
                     onClick={() => void markAllSeen()}
-                    className="ml-auto whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+                    className="whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
                   >
                     Mark all as read
                   </button>

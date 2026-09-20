@@ -4,11 +4,12 @@ import PersonAvatar from "../PersonAvatar";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentFilterBar from "./CommentFilterBar";
-import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
+import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
 import type { BoardItemDrawerApi, DrawerActivityEntry, DrawerComment } from "./types";
+import { useCommentSortOrder } from "./useCommentSortOrder";
 import type { CommentPresenceUser } from "./useCommentPresence";
 
 export type UpdatesPanelProps<TRow> = {
@@ -43,12 +44,18 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
     [drawer.comments, filters, drawer.current_user.id]
   );
   const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
+  const resolved_count = useMemo(() => countResolvedComments(drawer.comments), [drawer.comments]);
+  // A conversation reads oldest first by default, the choice is remembered in this browser.
+  const { sort_order, setSortOrder } = useCommentSortOrder("item-drawer", "oldest");
 
-  // The thread reads oldest to newest, so freshly loaded updates land at the
-  // bottom: after loading them, bring that end into view.
+  // Freshly loaded updates land at the end the thread grows from, the bottom
+  // when it reads oldest first and the top when newest first: after loading
+  // them, bring that end into view.
   const showPendingUpdates = () => {
     drawer.loadPendingUpdates();
-    requestAnimationFrame(() => scroll_area_ref.current?.scrollTo({ top: scroll_area_ref.current.scrollHeight, behavior: "smooth" }));
+    requestAnimationFrame(() =>
+      scroll_area_ref.current?.scrollTo({ top: sort_order === "newest" ? 0 : scroll_area_ref.current.scrollHeight, behavior: "smooth" })
+    );
   };
   const handleComposerChange = (value: string) => {
     drawer.onComposerTextChange(value);
@@ -63,13 +70,13 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
   const collaboration = drawer.collaboration;
   const is_api_backed = drawer.board_id !== undefined;
 
-  const pinned_comments = visible_comments.filter((comment) => comment.pinned);
+  const pinned_comments = sortComments(visible_comments.filter((comment) => comment.pinned), sort_order);
   const unpinned_comments = visible_comments.filter((comment) => !comment.pinned);
 
   const feed: FeedEntry[] = [
     ...unpinned_comments.map((comment): FeedEntry => ({ kind: "comment", sort_key: sortKeyOf(comment.posted_at_iso), comment })),
     ...(is_filtering ? [] : drawer.activity_log).map((entry): FeedEntry => ({ kind: "activity", sort_key: sortKeyOf(entry.occurred_at_iso), entry })),
-  ].sort((a, b) => a.sort_key - b.sort_key);
+  ].sort((a, b) => (sort_order === "newest" ? b.sort_key - a.sort_key : a.sort_key - b.sort_key));
 
   const renderThread = (comment: DrawerComment) => (
     <CommentThread
@@ -164,6 +171,9 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
             authors={authors}
             visible_count={visible_comments.length}
             total_count={drawer.comments.length}
+            resolved_count={resolved_count}
+            sort_order={sort_order}
+            onSortChange={setSortOrder}
           />
         )}
       </div>

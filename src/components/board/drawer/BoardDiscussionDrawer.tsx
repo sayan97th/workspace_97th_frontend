@@ -6,9 +6,10 @@ import { BellIcon, FolderPathIcon } from "@/icons/workspace-icons";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentFilterBar from "./CommentFilterBar";
-import { commentAuthors, countActiveCommentFilters, default_comment_filters, filterComments, type CommentFilters } from "./commentFilters";
+import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
+import { useCommentSortOrder } from "./useCommentSortOrder";
 import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
 import SlideOverPanel from "./SlideOverPanel";
 import type { BoardDiscussionDrawerApi } from "./useBoardDiscussionDrawer";
@@ -52,11 +53,21 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
     [drawer.comments, filters, drawer.current_user.id]
   );
   const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
+  const resolved_count = useMemo(() => countResolvedComments(drawer.comments), [drawer.comments]);
+  // A discussion reads newest first by default, the choice is remembered in this browser.
+  const { sort_order, setSortOrder } = useCommentSortOrder("board-discussion", "newest");
+  const sorted_comments = useMemo(
+    () => sortComments(visible_comments, sort_order).sort((a, b) => Number(b.pinned) - Number(a.pinned)),
+    [visible_comments, sort_order]
+  );
 
-  // The thread reads newest first here, so freshly loaded updates land at the top: bring that end into view.
+  // Freshly loaded updates land at the top when the thread reads newest first and
+  // at the bottom when oldest first: after loading them, bring that end into view.
   const showPendingUpdates = () => {
     drawer.loadPendingUpdates();
-    requestAnimationFrame(() => scroll_area_ref.current?.scrollTo({ top: 0, behavior: "smooth" }));
+    requestAnimationFrame(() =>
+      scroll_area_ref.current?.scrollTo({ top: sort_order === "newest" ? 0 : scroll_area_ref.current.scrollHeight, behavior: "smooth" })
+    );
   };
   const handleComposerChange = (value: string) => {
     drawer.onComposerTextChange(value);
@@ -150,6 +161,9 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             authors={authors}
             visible_count={visible_comments.length}
             total_count={drawer.comments.length}
+            resolved_count={resolved_count}
+            sort_order={sort_order}
+            onSortChange={setSortOrder}
           />
         )}
       </div>
@@ -200,10 +214,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
           <div className="mt-6 text-center text-[13px] text-shell-text-faint">No updates match these filters.</div>
         )}
 
-        {visible_comments
-          .slice()
-          .sort((a, b) => Number(b.pinned) - Number(a.pinned))
-          .map((comment) => (
+        {sorted_comments.map((comment) => (
             <CommentThread
               key={comment.id}
               comment={comment}

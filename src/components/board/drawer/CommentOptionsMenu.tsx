@@ -13,6 +13,8 @@ export type CommentOptionsMenuProps = {
   extra_items?: AnchoredMenuItem[];
   /** Only used for the trigger's aria-label and the delete confirm dialog's copy. */
   kind?: "comment" | "reply";
+  /** Ask before deleting. Turned off where the drawer offers an "Undo" toast afterwards, which is the friendlier safety net. Defaults to true. */
+  confirm_delete?: boolean;
   class_name?: string;
   style?: React.CSSProperties;
   icon_size?: number;
@@ -33,6 +35,7 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
   onDelete,
   extra_items = [],
   kind = "comment",
+  confirm_delete = true,
   class_name,
   style,
   icon_size = 13,
@@ -45,7 +48,7 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
     ...extra_items,
     ...(onEdit ? [{ key: "edit", label: "Edit", icon: <EditPencilIcon size={14} />, onClick: onEdit }] : []),
     ...(onDelete
-      ? [{ key: "delete", label: "Delete", icon: <DeleteIcon size={14} />, onClick: () => setIsConfirmOpen(true), danger: true }]
+      ? [{ key: "delete", label: "Delete", icon: <DeleteIcon size={14} />, onClick: () => (confirm_delete ? setIsConfirmOpen(true) : onDelete()), danger: true }]
       : []),
   ];
 

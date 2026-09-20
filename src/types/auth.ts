@@ -33,6 +33,8 @@ export interface User {
   notification_sound_enabled: boolean;
   /** Prefixes the browser tab title with the unread notification count. */
   tab_badge_enabled: boolean;
+  /** Follows an item in the Update Feed when the person comments on it or is mentioned in it. */
+  auto_follow_enabled: boolean;
   /** Do Not Disturb window: while active, notifications reach the bell only, with no email, Slack, toast or desktop push. */
   quiet_hours_enabled: boolean;
   /** "HH:MM" wall-clock time, read in the user's own `timezone`. */
@@ -164,6 +166,8 @@ export interface ProfileResponse extends ProfileData {
   notification_sound_enabled: boolean;
   /** Prefixes the browser tab title with the unread notification count. */
   tab_badge_enabled: boolean;
+  /** Follows an item in the Update Feed when the person comments on it or is mentioned in it. */
+  auto_follow_enabled: boolean;
   /** Do Not Disturb window: while active, notifications reach the bell only, with no email, Slack, toast or desktop push. */
   quiet_hours_enabled: boolean;
   /** "HH:MM" wall-clock time, read in the user's own `timezone`. */
