@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type { NotificationFilters, NotificationSummary } from "@/data/notifications-data";
-import type { NotificationFiltersDto, NotificationsPageDto } from "@/types/notifications";
+import type { NotificationFiltersDto, NotificationsLatestDto, NotificationsPageDto } from "@/types/notifications";
 
 /** What a multi-select toolbar can do to a batch of notifications. */
 export type NotificationBulkAction = "read" | "unread" | "dismiss" | "save" | "unsave";
@@ -35,6 +35,15 @@ export const notificationsService = {
   async getFilterOptions(): Promise<NotificationFiltersDto> {
     const response = await apiClient.get<{ data: NotificationFiltersDto }>("/api/notifications/filters");
     return response.data;
+  },
+
+  /**
+   * GET /api/notifications/latest, the polling fallback for the live toast. Without `after_id` it only
+   * returns the newest id (the baseline), with it the visible notifications created after that id, oldest first.
+   */
+  async getLatest(after_id?: string): Promise<NotificationsLatestDto> {
+    const query = after_id ? `?after_id=${encodeURIComponent(after_id)}` : "";
+    return apiClient.get<NotificationsLatestDto>(`/api/notifications/latest${query}`);
   },
 
   /** GET /api/notifications/unread-count */

@@ -279,6 +279,31 @@
   }
 }
 
+/* Enter and leave animations for `Toast`. The leave keyframes end hidden and the
+   toast keeps that state until the provider removes it. Skipped entirely for
+   `prefers-reduced-motion` through Tailwind's `motion-reduce:` variant. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
 /* Workspace shell (sidebar + dropdown menus) scrollbar and controls.
    Thumb color comes from --color-shell-scrollbar-thumb, which is themed
    alongside the other shell-* tokens above (light default, dark override),

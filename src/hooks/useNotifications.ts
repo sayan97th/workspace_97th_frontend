@@ -3,11 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getToken } from "@/lib/api-client";
 import { showDesktopNotification } from "@/lib/desktop-notifications";
-import { getEcho } from "@/lib/echo";
 import { playNotificationSound } from "@/lib/notification-sound";
 import { notificationsService, type NotificationBulkAction } from "@/services/notifications.service";
+import { useNotificationDelivery } from "@/hooks/useNotificationDelivery";
 import { useTabBadge } from "@/hooks/useTabBadge";
 import { mapNotificationDto, type NotificationDto } from "@/types/notifications";
 import {
@@ -30,7 +29,8 @@ const BULK_BATCH_SIZE = 100;
 /**
  * Fetches the current user's notifications (cursor paginated, filtered
  * server-side) and unread count, keeps them live via the
- * `notifications.{user_id}` Reverb channel, raises a Slack-style toast (and,
+ * `notifications.{user_id}` Reverb channel (with a REST polling fallback for
+ * when the websocket is blocked), raises a Slack-style toast (and,
  * when the tab is in the background, a desktop notification) for each incoming
  * one unless the user's quiet hours are active (with a short chime when they
  * turned the sound on), prefixes the tab title with the unread count when they
@@ -148,68 +148,65 @@ export function useNotifications() {
     }
   }, []);
 
-  useEffect(() => {
-    const token = getToken();
-    if (!user || !token) return;
+  /**
+   * Handles one live notification, whichever channel delivered it (websocket or
+   * the REST fallback, see {@link useNotificationDelivery}): updates the list and
+   * the unread count, then raises the toast, chime and desktop notification.
+   */
+  const handleIncoming = useCallback(
+    (payload: NotificationDto) => {
+      const notification = mapNotificationDto(payload);
+      const openNotification = () => {
+        setNotifications((previous) =>
+          previous.map((item) => (item.id === notification.id ? { ...item, is_unread: false } : item))
+        );
+        setUnreadCount((previous) => Math.max(0, previous - 1));
+        notificationsService.markAsRead(notification.id).catch(() => {});
+        if (notification.link) router.push(notification.link);
+      };
 
-    const echo = getEcho(token);
-    const channel_name = `notifications.${user.id}`;
-    const channel = echo
-      .private(channel_name)
-      .listen(".new_notification", (payload: NotificationDto) => {
-        const notification = mapNotificationDto(payload);
-        const openNotification = () => {
-          setNotifications((previous) =>
-            previous.map((item) => (item.id === notification.id ? { ...item, is_unread: false } : item))
-          );
-          setUnreadCount((previous) => Math.max(0, previous - 1));
-          notificationsService.markAsRead(notification.id).catch(() => {});
-          if (notification.link) router.push(notification.link);
-        };
-
-        // A woken snooze arrives with an id the list may already hold: replace it in place, and only count it as newly unread when it was not.
-        const existing = notifications_ref.current.find((item) => item.id === notification.id);
-        setUnreadCount((count) => (existing?.is_unread ? count : count + 1));
-        setNotifications((previous) => {
-          const without_existing = previous.filter((item) => item.id !== notification.id);
-          return matchesNotificationFilters(notification, filters_ref.current)
-            ? [notification, ...without_existing]
-            : without_existing;
-        });
-
-        // Quiet hours keep the notification in the bell but never interrupt.
-        if (payload.is_silenced) return;
-
-        if (sound_enabled_ref.current) playNotificationSound();
-
-        showToast({
-          actor_name: notification.actor.name,
-          actor_initials: notification.actor.initials,
-          avatar_gradient: notification.actor.avatar_gradient,
-          avatar_url: notification.actor.avatar_url,
-          action_label: notification.action_label,
-          action_target: notification.action_target,
-          board_name: notification.board.name || undefined,
-          link: notification.link,
-          onAction: openNotification,
-        });
-
-        // The toast already covers a visible tab, the desktop notification is for one in the background.
-        if (desktop_enabled_ref.current && !payload.is_push_muted && document.visibilityState !== "visible") {
-          showDesktopNotification({
-            title: `${notification.actor.name} ${notification.action_label.toLowerCase()}`,
-            body: [notification.action_target, notification.board.name].filter(Boolean).join(" · "),
-            tag: `notification-${notification.group_key}`,
-            onClick: openNotification,
-          });
-        }
+      // A woken snooze arrives with an id the list may already hold: replace it in place, and only count it as newly unread when it was not.
+      const existing = notifications_ref.current.find((item) => item.id === notification.id);
+      setUnreadCount((count) => (existing?.is_unread ? count : count + 1));
+      setNotifications((previous) => {
+        const without_existing = previous.filter((item) => item.id !== notification.id);
+        return matchesNotificationFilters(notification, filters_ref.current)
+          ? [notification, ...without_existing]
+          : without_existing;
       });
 
-    return () => {
-      channel.stopListening(".new_notification");
-      echo.leave(channel_name);
-    };
-  }, [user, showToast, router]);
+      // Quiet hours keep the notification in the bell but never interrupt.
+      if (payload.is_silenced) return;
+
+      if (sound_enabled_ref.current) playNotificationSound();
+
+      showToast({
+        dedupe_key: `notification-${notification.id}`,
+        actor_name: notification.actor.name,
+        actor_initials: notification.actor.initials,
+        avatar_gradient: notification.actor.avatar_gradient,
+        avatar_url: notification.actor.avatar_url,
+        action_label: notification.action_label,
+        action_target: notification.action_target,
+        board_name: notification.board.name || undefined,
+        link: notification.link,
+        onAction: openNotification,
+      });
+
+      // The toast already covers a visible tab, the desktop notification is for one in the background.
+      if (desktop_enabled_ref.current && !payload.is_push_muted && document.visibilityState !== "visible") {
+        showDesktopNotification({
+          title: `${notification.actor.name} ${notification.action_label.toLowerCase()}`,
+          body: [notification.action_target, notification.board.name].filter(Boolean).join(" · "),
+          tag: `notification-${notification.group_key}`,
+          onClick: openNotification,
+        });
+      }
+    },
+    [showToast, router]
+  );
+
+  useNotificationDelivery(user?.id, handleIncoming);
 
   const selectNotification = useCallback(
     (id: string): WorkspaceNotification | undefined => {

@@ -33,6 +33,12 @@ export type NotificationsPageDto = {
   meta: { next_cursor: string | null; has_more: boolean };
 };
 
+/** `GET /api/notifications/latest`: the polling fallback for the live toast. */
+export type NotificationsLatestDto = {
+  data: NotificationDto[];
+  meta: { latest_id: string };
+};
+
 /** `GET /api/notifications/filters`. */
 export type NotificationFiltersDto = {
   boards: { id: number; name: string }[];

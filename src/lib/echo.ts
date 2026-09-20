@@ -79,6 +79,24 @@ export function resetEcho(): void {
   }
 }
 
+/**
+ * Follows the websocket connection state (`connected`, `connecting`,
+ * `unavailable`, `failed`, `disconnected`...), so callers can fall back to the
+ * REST API when the browser, an extension or the network blocks the socket.
+ * Calls `handler` right away with the current state.
+ *
+ * @returns A function that stops listening.
+ */
+export function subscribeToConnectionState(token: string, handler: (state: string) => void): () => void {
+  const connection = getEcho(token).connector.pusher.connection;
+  const onStateChange = (states: { current: string }) => handler(states.current);
+
+  connection.bind("state_change", onStateChange);
+  handler(connection.state);
+
+  return () => connection.unbind("state_change", onStateChange);
+}
+
 const private_channel_subscribers = new Map<string, number>();
 
 /**
