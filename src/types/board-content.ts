@@ -329,9 +329,17 @@ export type CreateBoardItemPayload = {
   group_id?: number;
   /** Creates a subitem of this item instead of a top-level row. */
   parent_id?: number;
+  /** Creates the row as the next sibling of this item (same table, same parent), shifting later siblings down. Row menu's "Create new item below". */
+  after_item_id?: number;
   position?: number;
   is_priority?: boolean;
   values?: Record<string, BoardItemValue>;
+};
+
+/** Row menu's "Convert to subitem" / "Convert to item" / "Move to item". `group_id` is only read when `parent_id` is null, it names the table the promoted row lands in. */
+export type UpdateBoardItemParentPayload = {
+  parent_id: number | null;
+  group_id?: number;
 };
 
 export type UpdateBoardItemPayload = {

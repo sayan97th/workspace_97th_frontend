@@ -77,16 +77,16 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               convert_targets={[]}
               copied={state.copied_row_id === sub.id}
               is_priority={!!sub.is_priority}
-              onOpen={() => {}}
+              onOpen={() => actions.openItem(sub.id)}
               onCopyLink={() => actions.copyRowLink(sub.id)}
               onCreateBelow={() => actions.createBelow(sub.id)}
               onAddSubitem={() => {}}
               onDuplicate={(with_subs) => actions.duplicateNode(sub.id, with_subs)}
-              onMoveTo={(target_id) => actions.convertItemToSub(sub.id, target_id)}
+              onMoveTo={(target_id) => actions.moveSubToItem(sub.id, target_id)}
               onConvertToItem={() => actions.convertSubToItem(sub.id)}
               onConvertToSubOf={() => {}}
               onTogglePriority={() => actions.toggleNodePriority(sub.id)}
-              onArchive={() => actions.deleteNode(sub.id)}
+              onArchive={() => actions.archiveNode(sub.id)}
               onDelete={() => actions.deleteNode(sub.id)}
               onClose={actions.closeRowMenu}
             />

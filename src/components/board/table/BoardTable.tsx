@@ -69,6 +69,25 @@ export interface BoardTableProps {
    */
   onDuplicateNode?: (node_id: string, with_subs: boolean) => Promise<void>;
   /**
+   * Row menu's "Create new item/subitem below", like `onCreateItem`, the
+   * caller persists the row first (as the next sibling of `node_id`) and
+   * resolves with its real id, and only then does `BoardTable` open it for
+   * naming under that id. Resolves with null when the row couldn't be created,
+   * then nothing is added. Omitted, the row is only created locally.
+   */
+  onCreateBelow?: (node_id: string) => Promise<string | null>;
+  /** Row menu's "Move to group" for a root item. Resolves once persisted, the caller's own `items` state then feeds the new placement back in through `initial_groups`. Omitted, the move stays local-only. */
+  onMoveItemToGroup?: (item_id: string, group_key: string) => Promise<void>;
+  /**
+   * Row menu's "Convert to subitem" (`parent_id` is the item it now hangs
+   * under), "Convert to item" (`parent_id` is null) and a subitem's "Move to
+   * item" (`parent_id` is the new parent). Same "await, then let
+   * `initial_groups` bring the result in" contract as `onMoveItemToGroup`.
+   */
+  onChangeNodeParent?: (node_id: string, parent_id: string | null) => Promise<void>;
+  /** Row menu's "Archive", hides the row without deleting it. Same contract as `onMoveItemToGroup`. */
+  onArchiveNode?: (node_id: string) => Promise<void>;
+  /**
    * Persists a column picked from the "+" gallery (`ColumnPicker`, main-table
    * or subitem header). Once the caller's real create call resolves and its
    * own column list updates, the new column reaches `BoardTable` again as
@@ -159,6 +178,10 @@ export default function BoardTable({
   onCreateGroup,
   onDuplicateGroup,
   onDuplicateNode,
+  onCreateBelow,
+  onMoveItemToGroup,
+  onChangeNodeParent,
+  onArchiveNode,
   onAddColumn,
   onDuplicateColumn,
   onDuplicateColumnToBoard,
@@ -233,6 +256,56 @@ export default function BoardTable({
     [onDuplicateNode, base_actions]
   );
 
+  const createBelowReal = useCallback(
+    (id: string) => {
+      if (!onCreateBelow) return base_actions.createBelow(id);
+      void onCreateBelow(id).then((real_id) => {
+        if (real_id) base_actions.createBelow(id, real_id);
+      });
+    },
+    [onCreateBelow, base_actions]
+  );
+
+  const moveItemToGroupReal = useCallback(
+    (item_id: string, group_key: string) => {
+      if (!onMoveItemToGroup) return base_actions.moveItemToGroup(item_id, group_key);
+      void onMoveItemToGroup(item_id, group_key);
+    },
+    [onMoveItemToGroup, base_actions]
+  );
+
+  const convertItemToSubReal = useCallback(
+    (item_id: string, target_item_id: string) => {
+      if (!onChangeNodeParent) return base_actions.convertItemToSub(item_id, target_item_id);
+      void onChangeNodeParent(item_id, target_item_id);
+    },
+    [onChangeNodeParent, base_actions]
+  );
+
+  const convertSubToItemReal = useCallback(
+    (sub_id: string) => {
+      if (!onChangeNodeParent) return base_actions.convertSubToItem(sub_id);
+      void onChangeNodeParent(sub_id, null);
+    },
+    [onChangeNodeParent, base_actions]
+  );
+
+  const moveSubToItemReal = useCallback(
+    (sub_id: string, target_item_id: string) => {
+      if (!onChangeNodeParent) return base_actions.moveSubToItem(sub_id, target_item_id);
+      void onChangeNodeParent(sub_id, target_item_id);
+    },
+    [onChangeNodeParent, base_actions]
+  );
+
+  const archiveNodeReal = useCallback(
+    (id: string) => {
+      if (!onArchiveNode) return base_actions.archiveNode(id);
+      void onArchiveNode(id);
+    },
+    [onArchiveNode, base_actions]
+  );
+
   // Formula/Connect-board/Mirror need setup (an operation + source columns, a
   // linked board, ...) before they show anything useful — monday.com opens
   // that setup dialog immediately after adding one of these, rather than
@@ -282,6 +355,12 @@ export default function BoardTable({
       addGroup: addGroupReal,
       duplicateGroup: duplicateGroupReal,
       duplicateNode: duplicateNodeReal,
+      createBelow: createBelowReal,
+      moveItemToGroup: moveItemToGroupReal,
+      convertItemToSub: convertItemToSubReal,
+      convertSubToItem: convertSubToItemReal,
+      moveSubToItem: moveSubToItemReal,
+      archiveNode: archiveNodeReal,
       addColumn: addColumnReal,
       duplicateColumn: duplicateColumnReal,
       duplicateColumnToBoard: duplicateColumnToBoardReal,
@@ -293,6 +372,12 @@ export default function BoardTable({
       addGroupReal,
       duplicateGroupReal,
       duplicateNodeReal,
+      createBelowReal,
+      moveItemToGroupReal,
+      convertItemToSubReal,
+      convertSubToItemReal,
+      moveSubToItemReal,
+      archiveNodeReal,
       addColumnReal,
       duplicateColumnReal,
       duplicateColumnToBoardReal,

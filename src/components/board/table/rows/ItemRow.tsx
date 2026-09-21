@@ -129,8 +129,9 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               anchor_el={menu_btn_ref.current}
               move_targets={move_targets}
               convert_targets={convert_targets}
+              convert_blocked_reason={item.subs.length > 0 ? "Move or delete its subitems first" : undefined}
               copied={state.copied_row_id === item.id}
-              onOpen={() => {}}
+              onOpen={() => actions.openItem(item.id)}
               is_priority={!!item.is_priority}
               recurrence={item.recurrence}
               onCopyLink={() => actions.copyRowLink(item.id)}
@@ -143,7 +144,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               onTogglePriority={() => actions.toggleNodePriority(item.id)}
               onSetRecurrence={(frequency, interval_count) => actions.setItemRecurrence(item.id, { frequency, interval_count })}
               onClearRecurrence={() => actions.clearItemRecurrence(item.id)}
-              onArchive={() => actions.deleteNode(item.id)}
+              onArchive={() => actions.archiveNode(item.id)}
               onDelete={() => actions.deleteNode(item.id)}
               onClose={actions.closeRowMenu}
             />

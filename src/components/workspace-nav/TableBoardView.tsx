@@ -82,8 +82,10 @@ import {
 } from "@/icons/board-icons";
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { buildPageTitle } from "@/lib/page-title";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
@@ -246,6 +248,27 @@ const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | 
   }
   return undefined;
 };
+
+/**
+ * Inserts `created` right after `reference` among its siblings and shifts every
+ * later sibling of the same table down by one, mirroring the backend's
+ * `after_item_id` create. Works on any sibling list (the root items, or one
+ * item's subitems), since `items` renders a table's rows in array order.
+ */
+const insertAfterSibling = (siblings: BoardItemDto[], reference: BoardItemDto, created: BoardItemDto): BoardItemDto[] => {
+  const shifted = siblings.map((sibling) =>
+    sibling.group_id === created.group_id && sibling.position >= created.position ? { ...sibling, position: sibling.position + 1 } : sibling
+  );
+  const index = shifted.findIndex((sibling) => sibling.id === reference.id);
+  return [...shifted.slice(0, index + 1), created, ...shifted.slice(index + 1)];
+};
+
+/** `item` and its whole subtree pointed at `group_id`, since a subitem's group is denormalized from its parent. */
+const withGroupInTree = (item: BoardItemDto, group_id: number): BoardItemDto => ({
+  ...item,
+  group_id,
+  children: item.children.map((child) => withGroupInTree(child, group_id)),
+});
 
 /** Every item of the tree (root items, then their subitems) as the `id` and `name` pairs a comment's `#` picker can link to. */
 const listReferenceItems = (items: BoardItemDto[]): { id: string; name: string }[] =>
@@ -690,6 +713,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const pathname = usePathname();
   const search_params = useSearchParams();
   const { user } = useAuth();
+  const toast = useToast();
   const board_id = node.id;
 
   // ── Board options menu ("...") state — rename/archive both apply in place
@@ -1884,15 +1908,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleDrawerMoveItemToGroup = async (item_id: string, group_id: string) => {
     const [moved] = await boardContentService.moveItems(board_id, [Number(item_id)], Number(group_id));
     // A subitem's `group_id` is denormalized from its parent, so the whole
-    // subtree takes the new group, mirroring the backend's own cascade.
-    const applyGroup = (item: BoardItemDto): BoardItemDto => ({
-      ...item,
-      group_id: moved.group_id,
-      children: item.children.map(applyGroup),
+    // subtree takes the new group, mirroring the backend's own cascade. The
+    // table renders a group's rows in `items` array order, so a root item that
+    // lands at the end of its new table is also moved to the end of the array.
+    setItems((current) => {
+      const target = findItemInTree(current, Number(item_id));
+      if (!target) return current;
+      const relocated = { ...withGroupInTree(target, moved.group_id), position: moved.position };
+      return target.parent_id === null
+        ? [...removeItemFromTree(current, target.id), relocated]
+        : mapItemInTree(current, target.id, () => relocated);
     });
-    setItems((current) =>
-      mapItemInTree(current, Number(item_id), (item) => ({ ...applyGroup(item), position: moved.position }))
-    );
   };
 
   const handleDrawerMoveItemToBoard = async (item_id: string, target_board_id: number, target_group_id: number) => {
@@ -2251,6 +2277,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   /**
+   * A row menu edit the table already applied locally (priority, recurrence)
+   * that the server then refused: tells the viewer and hands the table a fresh
+   * copy of `items`, which re-syncs its local state back to what was saved.
+   */
+  const handleRowMenuSaveError = (error: unknown, fallback: string) => {
+    toast.error(getApiErrorMessage(error, fallback));
+    setItems((current) => [...current]);
+  };
+
+  /**
    * Bridges `BoardTable` to this component's own real handlers — rename,
    * cell edits and group rename/delete persist immediately; row/subitem/
    * group *creation* instead goes through `handleCreateTableItem`/
@@ -2351,11 +2387,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onUpdateColumnFormula: (column_id, formula) => void handleUpdateColumnFormula(column_id, formula),
       onUpdateColumnLinkedBoard: (column_id, linked_board_id) => void handleUpdateColumnLinkedBoard(column_id, linked_board_id),
       onUpdateColumnMirror: (column_id, mirror) => void handleUpdateColumnMirror(column_id, mirror),
+      // The row menu's "Delete" is optimistic: the row disappears right away and
+      // comes back, with a toast, if the server refuses.
       onDeleteNode: (node_id) => {
-        void boardContentService
-          .deleteItem(board_id, Number(node_id))
-          .then(() => setItems((current) => removeItemFromTree(current, Number(node_id))));
+        const previous_items = items;
+        setItems((current) => removeItemFromTree(current, Number(node_id)));
+        void boardContentService.deleteItem(board_id, Number(node_id)).catch((error) => {
+          setItems(previous_items);
+          toast.error(getApiErrorMessage(error, "Couldn't delete the row. Please try again."));
+        });
       },
+      getNodeLink: (node_id) => `${window.location.origin}/boards/${board_id}/pulses/${node_id}`,
       onReorderItems: handleReorderTableItems,
       onReorderColumns: handleReorderTableColumns,
       onRenameGroup: (group_key, title) => {
@@ -2376,17 +2418,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onToggleNodePriority: (node_id, is_priority) => {
         void boardContentService
           .updateItem(board_id, Number(node_id), { is_priority })
-          .then((updated) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, is_priority: updated.is_priority }))));
+          .then((updated) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, is_priority: updated.is_priority }))))
+          .catch((error) => handleRowMenuSaveError(error, "Couldn't update the priority. Please try again."));
       },
       onSetItemRecurrence: (node_id, recurrence) => {
         void boardContentService
           .setItemRecurrence(board_id, Number(node_id), recurrence)
-          .then((saved) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: saved }))));
+          .then((saved) => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: saved }))))
+          .catch((error) => handleRowMenuSaveError(error, "Couldn't save the recurrence. Please try again."));
       },
       onClearItemRecurrence: (node_id) => {
         void boardContentService
           .clearItemRecurrence(board_id, Number(node_id))
-          .then(() => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: null }))));
+          .then(() => setItems((current) => mapItemInTree(current, Number(node_id), (item) => ({ ...item, recurrence: null }))))
+          .catch((error) => handleRowMenuSaveError(error, "Couldn't stop the recurrence. Please try again."));
       },
       onRenameColumn: (_group_key, _scope, column_id, title) =>
         void boardContentService
@@ -2536,13 +2581,105 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // one place both root-item and subitem duplication are already handled
   // the same way `handleCreateTableItem`/`handleCreateTableSubitem` are. ──
   const handleDuplicateTableNode = async (node_id: string, with_subs: boolean) => {
-    const [duplicate] = await boardContentService.duplicateItems(board_id, [Number(node_id)], with_subs);
-    if (!duplicate) return;
-    setItems((current) =>
-      duplicate.parent_id == null
-        ? [...current, duplicate]
-        : mapItemInTree(current, duplicate.parent_id, (item) => ({ ...item, children: [...item.children, duplicate] }))
-    );
+    try {
+      const [duplicate] = await boardContentService.duplicateItems(board_id, [Number(node_id)], with_subs);
+      if (!duplicate) return;
+      setItems((current) =>
+        duplicate.parent_id == null
+          ? [...current, duplicate]
+          : mapItemInTree(current, duplicate.parent_id, (item) => ({ ...item, children: [...item.children, duplicate] }))
+      );
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't duplicate the row. Please try again."));
+    }
+  };
+
+  // ── Row menu's remaining structural actions. Each one awaits the real API
+  // call and only then updates `items`, which flows back into the table as
+  // `initial_groups`, so a row is never shown in a place the server doesn't
+  // agree with. A failure is reported as a toast and leaves the table as it was. ──
+
+  /** "Create new item/subitem below": persists the row as the next sibling of `node_id` and resolves with its real id, or null when it couldn't be created. */
+  const handleCreateTableBelow = async (node_id: string): Promise<string | null> => {
+    const reference = findItemInTree(items, Number(node_id));
+    if (!reference) return null;
+    try {
+      const created = await boardContentService.createItem(board_id, {
+        name: reference.parent_id === null ? "New item" : "New subitem",
+        after_item_id: reference.id,
+      });
+      setItems((current) =>
+        reference.parent_id === null
+          ? insertAfterSibling(current, reference, created)
+          : mapItemInTree(current, reference.parent_id, (parent) => ({
+              ...parent,
+              subitem_count: parent.subitem_count + 1,
+              children: insertAfterSibling(parent.children, reference, created),
+            }))
+      );
+      return String(created.id);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't create the row. Please try again."));
+      return null;
+    }
+  };
+
+  /** "Move to group" for a root item. */
+  const handleMoveTableItemToGroup = async (item_id: string, group_key: string) => {
+    try {
+      await handleDrawerMoveItemToGroup(item_id, group_key);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't move the item. Please try again."));
+    }
+  };
+
+  /**
+   * "Convert to subitem" (`parent_id` is the item it now hangs under), "Convert
+   * to item" (`parent_id` is null, the row lands at the end of its own table)
+   * and a subitem's "Move to item". The response only carries the row's new
+   * placement and its re-keyed cell values (see `updateItemParent`), so the
+   * rest of the row, its counts included, is kept from the local copy.
+   */
+  const handleChangeTableNodeParent = async (node_id: string, parent_id: string | null) => {
+    const node = findItemInTree(items, Number(node_id));
+    if (!node) return;
+    try {
+      const updated = await boardContentService.updateItemParent(
+        board_id,
+        node.id,
+        parent_id === null ? { parent_id: null, group_id: node.group_id } : { parent_id: Number(parent_id) }
+      );
+      const relocated: BoardItemDto = {
+        ...withGroupInTree(node, updated.group_id),
+        parent_id: updated.parent_id,
+        position: updated.position,
+        values: updated.values,
+      };
+      setItems((current) => {
+        const detached = removeItemFromTree(current, node.id).map((item) =>
+          item.id === node.parent_id ? { ...item, subitem_count: Math.max(0, item.subitem_count - 1) } : item
+        );
+        return updated.parent_id === null
+          ? [...detached, relocated]
+          : mapItemInTree(detached, updated.parent_id, (parent) => ({
+              ...parent,
+              subitem_count: parent.subitem_count + 1,
+              children: [...parent.children, relocated],
+            }));
+      });
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't convert the row. Please try again."));
+    }
+  };
+
+  /** "Archive": hides the row from the board, it stays restorable from the board's archive panel. */
+  const handleArchiveTableNode = async (node_id: string) => {
+    try {
+      await boardContentService.archiveItems(board_id, [Number(node_id)]);
+      setItems((current) => removeItemFromTree(current, Number(node_id)));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't archive the row. Please try again."));
+    }
   };
 
   const kanban_lanes: BoardKanbanLane<BoardItemDto>[] = useMemo(() => {
@@ -3181,6 +3318,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onCreateGroup={handleCreateTableGroup}
           onDuplicateGroup={handleDuplicateTableGroup}
           onDuplicateNode={handleDuplicateTableNode}
+          onCreateBelow={handleCreateTableBelow}
+          onMoveItemToGroup={handleMoveTableItemToGroup}
+          onChangeNodeParent={handleChangeTableNodeParent}
+          onArchiveNode={handleArchiveTableNode}
           onAddColumn={handleAddTableColumn}
           onDuplicateColumn={handleDuplicateTableColumn}
           onAddColumnRight={handleAddColumnRight}

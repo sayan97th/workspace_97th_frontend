@@ -17,6 +17,8 @@ interface RowMenuProps {
   anchor_el: HTMLElement | null;
   move_targets: RowMenuTarget[];
   convert_targets: RowMenuTarget[];
+  /** Root items only. Set when this item can't become a subitem right now (it has subitems of its own), the "Convert to subitem" row then renders disabled with this as its tooltip. */
+  convert_blocked_reason?: string;
   copied: boolean;
   is_priority: boolean;
   /** Root items only (`is_sub` false) — a subitem can't recur on its own, see `BoardTableNode.recurrence`. */
@@ -61,7 +63,7 @@ const CHEVRON_ICON = (
  * hover-gap for the cursor to fall out of on the way to the submenu.
  */
 export default function RowMenu({
-  is_sub, anchor_el, move_targets, convert_targets, copied, is_priority, recurrence,
+  is_sub, anchor_el, move_targets, convert_targets, convert_blocked_reason, copied, is_priority, recurrence,
   onOpen, onCopyLink, onCreateBelow, onAddSubitem, onDuplicate, onMoveTo, onConvertToItem, onConvertToSubOf, onTogglePriority,
   onSetRecurrence, onClearRecurrence, onArchive, onDelete, onClose,
 }: RowMenuProps) {
@@ -72,6 +74,9 @@ export default function RowMenu({
   const recur_row_ref = useRef<HTMLButtonElement>(null);
   const [recur_frequency, setRecurFrequency] = useState<RecurrenceFrequency>(recurrence?.frequency ?? "weekly");
   const [recur_interval, setRecurInterval] = useState(String(recurrence?.interval_count ?? 1));
+
+  // A subitem always converts straight to an item, a root item needs another item to hang under.
+  const convert_disabled_reason = is_sub ? undefined : (convert_blocked_reason ?? (convert_targets.length === 0 ? "There is no other item to convert this into" : undefined));
 
   const closeSubmenu = () => setOpenSubmenu(null);
   const toggleSubmenu = (key: SubmenuKey) => setOpenSubmenu((current) => (current === key ? null : key));
@@ -179,15 +184,17 @@ export default function RowMenu({
           <button
             type="button"
             ref={convert_row_ref}
-            onClick={() => { if (is_sub) { onConvertToItem(); onClose(); } else if (convert_targets.length > 0) { toggleSubmenu("convert"); } }}
-            className={SUBMENU_TRIGGER}
+            disabled={convert_disabled_reason !== undefined}
+            title={convert_disabled_reason}
+            onClick={() => { if (is_sub) { onConvertToItem(); onClose(); } else { toggleSubmenu("convert"); } }}
+            className={`${SUBMENU_TRIGGER} disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent`}
             style={{ background: open_submenu === "convert" ? "var(--color-boardtree-hover)" : "transparent" }}
           >
             <span className="flex w-4 items-center justify-center text-boardtree-text-muted">
               <svg viewBox="0 0 16 16" width="15" height="15"><path d="M4.2 2.8 V10.4 a1.4 1.4 0 0 0 1.4 1.4 H11.6 M9.4 9.4 L12 11.8 L9.4 14.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </span>
             <span className="flex-1 text-left">{is_sub ? "Convert to item" : "Convert to subitem"}</span>
-            {!is_sub && convert_targets.length > 0 && (
+            {!is_sub && convert_disabled_reason === undefined && (
               <span className="flex text-boardtree-text-faint">{CHEVRON_ICON}</span>
             )}
           </button>
@@ -291,7 +298,7 @@ export default function RowMenu({
         </MenuFlyout>
       )}
 
-      {!is_sub && convert_targets.length > 0 && (
+      {!is_sub && convert_disabled_reason === undefined && (
         <MenuFlyout anchor_el={convert_row_ref.current} is_open={open_submenu === "convert"} onClose={closeSubmenu} side="right" width={238}>
           <div className="max-h-[260px] overflow-y-auto p-1.5">
             <div className="px-2.5 pb-2 pt-1.5 text-[12px] text-boardtree-text-muted">Make it a subitem of</div>

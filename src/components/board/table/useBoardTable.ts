@@ -217,6 +217,13 @@ export interface UseBoardTableConfig {
   onUpdateColumnMirror?: (column_id: string, mirror: MirrorConfig) => void;
   onDeleteNode?: (node_id: string) => void;
   /**
+   * The shareable link the row menu's "Copy item link" puts on the clipboard,
+   * the real board's `/boards/{board_id}/pulses/{item_id}` deep link that
+   * opens the item's drawer. Omitted (the standalone demo), the link falls
+   * back to the current page with the node id as its hash.
+   */
+  getNodeLink?: (node_id: string) => string;
+  /**
    * Fires once per completed drag that actually changed a list's order — a
    * table's own root items reordered within their group, or one item's
    * subitems reordered within it (see `ReorderPayload`). The local drag
@@ -1123,12 +1130,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onDeleteNode?.(id);
   }, []);
 
+  /** `preset_id` is the real backend id of the row a real board already created below `id`, see `addItem`'s own doc comment. */
   const createBelow = useCallback(
-    (id: string) => {
+    (id: string, preset_id?: string) => {
       setState((s) => {
         const location = locateNode(s.groups, id);
         if (!location) return s;
-        const new_id = nextId("new");
+        const new_id = preset_id ?? nextId("new");
         if (location.kind === "item") {
           return {
             ...s,
@@ -1184,6 +1192,20 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (!removed_item) return s;
       return { ...s, groups: insertItemIntoGroup(without, target_group_key, removed_item), open_row_menu_id: null };
     });
+  }, []);
+
+  /** A subitem's "Move to item": re-parents it under another item. Local-only, a real board persists it through `BoardTable`'s `onChangeNodeParent`. */
+  const moveSubToItem = useCallback((sub_id: string, target_item_id: string) => {
+    setState((s) => {
+      const { groups: without, removed_sub } = removeNodeById(s.groups, sub_id);
+      if (!removed_sub) return s;
+      return { ...s, groups: insertSubIntoItem(without, target_item_id, removed_sub), open_row_menu_id: null };
+    });
+  }, []);
+
+  /** Row menu's "Archive". Local-only, a real board persists it through `BoardTable`'s `onArchiveNode`. */
+  const archiveNode = useCallback((id: string) => {
+    setState((s) => ({ ...s, groups: removeNodeById(s.groups, id).groups, open_row_menu_id: null, selected_map: { ...s.selected_map, [id]: false } }));
   }, []);
 
   const convertSubToItem = useCallback((sub_id: string) => {
@@ -2005,13 +2027,24 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onRequestGroupItems?.(group_key);
   }, []);
 
+  const copied_row_timer_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (copied_row_timer_ref.current) clearTimeout(copied_row_timer_ref.current);
+  }, []);
+
+  /** Puts the row's link on the clipboard and flashes the menu's "copied" note for a moment, only once the browser actually accepted the write. */
   const copyRowLink = useCallback((id: string) => {
-    setState((s) => ({ ...s, copied_row_id: id }));
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      navigator.clipboard
-        .writeText(`${typeof window !== "undefined" ? `${window.location.origin}${window.location.pathname}` : ""}#${id}`)
-        .catch(() => {});
-    }
+    if (typeof navigator === "undefined" || !navigator.clipboard) return;
+    const link = config_ref.current.getNodeLink?.(id) ?? `${window.location.origin}${window.location.pathname}#${id}`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => {
+        setState((s) => ({ ...s, copied_row_id: id }));
+        if (copied_row_timer_ref.current) clearTimeout(copied_row_timer_ref.current);
+        copied_row_timer_ref.current = setTimeout(() => setState((s) => (s.copied_row_id === id ? { ...s, copied_row_id: null } : s)), 1600);
+      })
+      .catch(() => {});
   }, []);
 
   const selected_count = useMemo(() => Object.values(state.selected_map).filter(Boolean).length, [state.selected_map]);
@@ -2057,6 +2090,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setItemRecurrence,
       clearItemRecurrence,
       moveItemToGroup,
+      moveSubToItem,
+      archiveNode,
       convertSubToItem,
       convertItemToSub,
       setHoverRow,
@@ -2150,7 +2185,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       clearCellValue, uploadCellFiles, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
-      convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
+      moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,

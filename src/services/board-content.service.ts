@@ -22,6 +22,7 @@ import type {
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
   UpdateBoardGroupPayload,
+  UpdateBoardItemParentPayload,
   UpdateBoardItemPayload,
   UpdateBoardTagPayload,
   UpdateChecklistItemPayload,
@@ -215,6 +216,20 @@ export const boardContentService = {
   async updateItem(board_id: number, item_id: number, payload: UpdateBoardItemPayload): Promise<BoardItemDto> {
     const response = await apiClient.patch<{ item: BoardItemDto }>(
       `/api/boards/${board_id}/items/${item_id}`,
+      payload
+    );
+    return response.item;
+  },
+
+  /**
+   * PATCH /api/boards/{board_id}/items/{item_id}/parent, row menu's "Convert to
+   * subitem" / "Convert to item" and a subitem's "Move to item". The response
+   * carries the row's new `parent_id`, `group_id`, `position` and re-keyed
+   * `values`, but none of the rollup counts (only `getItems` returns those).
+   */
+  async updateItemParent(board_id: number, item_id: number, payload: UpdateBoardItemParentPayload): Promise<BoardItemDto> {
+    const response = await apiClient.patch<{ item: BoardItemDto }>(
+      `/api/boards/${board_id}/items/${item_id}/parent`,
       payload
     );
     return response.item;
