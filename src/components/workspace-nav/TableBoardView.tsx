@@ -83,6 +83,14 @@ import {
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastProvider";
+import {
+  findItemInTree,
+  insertItemBelowInTree,
+  mapItemInTree,
+  relocateItemInTree,
+  removeItemFromTree,
+  withGroupInTree,
+} from "./boardItemTree";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { getApiErrorMessage } from "@/lib/api-error";
@@ -214,61 +222,6 @@ const attachFormulaSources = (defs: TableColumnDef[], name_title: string): Table
   ];
   return defs.map((def) => (def.kind === "formula" ? { ...def, formula_sources: sources } : def));
 };
-
-/**
- * `items` is a tree (each root's `children` holds its subitems, recursively),
- * not a flat list — a subitem's id never appears at the top level. These
- * three helpers let every per-item mutation handler (rename, edit a cell,
- * delete, ...) find/update/remove an item regardless of how deep it's
- * nested, without each handler having to walk the tree itself.
- */
-const mapItemInTree = (
-  items: BoardItemDto[],
-  item_id: number,
-  updater: (item: BoardItemDto) => BoardItemDto
-): BoardItemDto[] =>
-  items.map((item) =>
-    item.id === item_id
-      ? updater(item)
-      : item.children.length
-        ? { ...item, children: mapItemInTree(item.children, item_id, updater) }
-        : item
-  );
-
-const removeItemFromTree = (items: BoardItemDto[], item_id: number): BoardItemDto[] =>
-  items
-    .filter((item) => item.id !== item_id)
-    .map((item) => (item.children.length ? { ...item, children: removeItemFromTree(item.children, item_id) } : item));
-
-const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
-  for (const item of items) {
-    if (item.id === item_id) return item;
-    const found = findItemInTree(item.children, item_id);
-    if (found) return found;
-  }
-  return undefined;
-};
-
-/**
- * Inserts `created` right after `reference` among its siblings and shifts every
- * later sibling of the same table down by one, mirroring the backend's
- * `after_item_id` create. Works on any sibling list (the root items, or one
- * item's subitems), since `items` renders a table's rows in array order.
- */
-const insertAfterSibling = (siblings: BoardItemDto[], reference: BoardItemDto, created: BoardItemDto): BoardItemDto[] => {
-  const shifted = siblings.map((sibling) =>
-    sibling.group_id === created.group_id && sibling.position >= created.position ? { ...sibling, position: sibling.position + 1 } : sibling
-  );
-  const index = shifted.findIndex((sibling) => sibling.id === reference.id);
-  return [...shifted.slice(0, index + 1), created, ...shifted.slice(index + 1)];
-};
-
-/** `item` and its whole subtree pointed at `group_id`, since a subitem's group is denormalized from its parent. */
-const withGroupInTree = (item: BoardItemDto, group_id: number): BoardItemDto => ({
-  ...item,
-  group_id,
-  children: item.children.map((child) => withGroupInTree(child, group_id)),
-});
 
 /** Every item of the tree (root items, then their subitems) as the `id` and `name` pairs a comment's `#` picker can link to. */
 const listReferenceItems = (items: BoardItemDto[]): { id: string; name: string }[] =>
@@ -2608,15 +2561,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         name: reference.parent_id === null ? "New item" : "New subitem",
         after_item_id: reference.id,
       });
-      setItems((current) =>
-        reference.parent_id === null
-          ? insertAfterSibling(current, reference, created)
-          : mapItemInTree(current, reference.parent_id, (parent) => ({
-              ...parent,
-              subitem_count: parent.subitem_count + 1,
-              children: insertAfterSibling(parent.children, reference, created),
-            }))
-      );
+      setItems((current) => insertItemBelowInTree(current, reference, created));
       return String(created.id);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Couldn't create the row. Please try again."));
@@ -2649,24 +2594,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         node.id,
         parent_id === null ? { parent_id: null, group_id: node.group_id } : { parent_id: Number(parent_id) }
       );
-      const relocated: BoardItemDto = {
-        ...withGroupInTree(node, updated.group_id),
-        parent_id: updated.parent_id,
-        position: updated.position,
-        values: updated.values,
-      };
-      setItems((current) => {
-        const detached = removeItemFromTree(current, node.id).map((item) =>
-          item.id === node.parent_id ? { ...item, subitem_count: Math.max(0, item.subitem_count - 1) } : item
-        );
-        return updated.parent_id === null
-          ? [...detached, relocated]
-          : mapItemInTree(detached, updated.parent_id, (parent) => ({
-              ...parent,
-              subitem_count: parent.subitem_count + 1,
-              children: [...parent.children, relocated],
-            }));
-      });
+      setItems((current) => relocateItemInTree(current, node, updated));
     } catch (error) {
       toast.error(getApiErrorMessage(error, "Couldn't convert the row. Please try again."));
     }

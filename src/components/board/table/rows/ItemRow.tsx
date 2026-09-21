@@ -6,6 +6,7 @@ import type { BoardTableGroup, BoardTableItem } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
+import { getConvertBlockedReason } from "../menus/rowMenuRules";
 import TreeBar from "./TreeBar";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
@@ -129,7 +130,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               anchor_el={menu_btn_ref.current}
               move_targets={move_targets}
               convert_targets={convert_targets}
-              convert_blocked_reason={item.subs.length > 0 ? "Move or delete its subitems first" : undefined}
+              convert_blocked_reason={getConvertBlockedReason(item.subs.length)}
               copied={state.copied_row_id === item.id}
               onOpen={() => actions.openItem(item.id)}
               is_priority={!!item.is_priority}

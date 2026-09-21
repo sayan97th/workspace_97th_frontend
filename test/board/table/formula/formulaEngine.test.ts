@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { evaluateExample, inferFormulaType, runFormula, toDisplayExpression, toStoredExpression, validateFormula } from "./formulaEngine";
-import { FORMULA_FUNCTIONS } from "./formulaFunctions";
-import type { FormulaSourceColumn } from "../types";
+import { evaluateExample, inferFormulaType, runFormula, toDisplayExpression, toStoredExpression, validateFormula } from "@/components/board/table/formula/formulaEngine";
+import { FORMULA_FUNCTIONS } from "@/components/board/table/formula/formulaFunctions";
+import type { FormulaSourceColumn } from "@/components/board/table/types";
 
-// Pure engine tests, no browser: run with `npm test`.
+// Pure engine tests, no browser: run with `yarn test:run`.
 
 const sources: FormulaSourceColumn[] = [
   { id: "1", title: "Budget", kind: "number" },

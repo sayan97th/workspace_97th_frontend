@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import BoardPopover from "../../toolbar/BoardPopover";
+import { getConvertDisabledReason } from "./rowMenuRules";
 
 export interface RowMenuTarget {
   id: string;
@@ -76,7 +77,7 @@ export default function RowMenu({
   const [recur_interval, setRecurInterval] = useState(String(recurrence?.interval_count ?? 1));
 
   // A subitem always converts straight to an item, a root item needs another item to hang under.
-  const convert_disabled_reason = is_sub ? undefined : (convert_blocked_reason ?? (convert_targets.length === 0 ? "There is no other item to convert this into" : undefined));
+  const convert_disabled_reason = getConvertDisabledReason({ is_sub, blocked_reason: convert_blocked_reason, target_count: convert_targets.length });
 
   const closeSubmenu = () => setOpenSubmenu(null);
   const toggleSubmenu = (key: SubmenuKey) => setOpenSubmenu((current) => (current === key ? null : key));
