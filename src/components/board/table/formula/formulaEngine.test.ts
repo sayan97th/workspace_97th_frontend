@@ -1,9 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { describe, expect, test } from "vitest";
 import { evaluateExample, inferFormulaType, runFormula, toDisplayExpression, toStoredExpression, validateFormula } from "./formulaEngine";
 import { FORMULA_FUNCTIONS } from "./formulaFunctions";
 import type { FormulaSourceColumn } from "../types";
 
-// Pure engine tests, no browser: run with `npx playwright test src/components/board/table/formula`.
+// Pure engine tests, no browser: run with `npm test`.
 
 const sources: FormulaSourceColumn[] = [
   { id: "1", title: "Budget", kind: "number" },
@@ -77,7 +77,7 @@ const CASES: [string, string][] = [
   ["IF(1)", "#VALUE!"],
 ];
 
-test.describe("formula evaluation", () => {
+describe("formula evaluation", () => {
   for (const [expression, expected] of CASES) {
     test(`${expression} = ${expected || "(blank)"}`, () => {
       expect(run(expression)).toBe(expected);
@@ -92,7 +92,7 @@ test.describe("formula evaluation", () => {
   });
 });
 
-test.describe("formula validation", () => {
+describe("formula validation", () => {
   test("accepts a valid formula", () => {
     expect(validateFormula("{Budget} + {Spent}", sources)).toEqual([]);
   });
@@ -111,7 +111,7 @@ test.describe("formula validation", () => {
   });
 });
 
-test.describe("formula types", () => {
+describe("formula types", () => {
   const infer = (expression: string) => inferFormulaType(expression, sources);
 
   test("infers the result type from the expression alone", () => {
@@ -125,7 +125,7 @@ test.describe("formula types", () => {
   });
 });
 
-test.describe("column references", () => {
+describe("column references", () => {
   test("converts titles to stable ids and back", () => {
     const { stored, unresolved } = toStoredExpression('{budget} - {Spent} & "{Not a ref}" & {Missing}', sources);
     expect(stored).toBe('{#1} - {#2} & "{Not a ref}" & {Missing}');
