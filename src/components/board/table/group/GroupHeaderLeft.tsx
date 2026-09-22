@@ -8,8 +8,6 @@ import EmojiInsertButton from "../../EmojiInsertButton";
 
 interface GroupHeaderLeftProps {
   group: BoardTableGroup;
-  group_index: number;
-  group_count: number;
   state: BoardTableState;
   actions: BoardTableActions;
   /** Set to false when the caller renders the "..." menu button itself (e.g. the collapsed
@@ -20,7 +18,7 @@ interface GroupHeaderLeftProps {
 /** The interactive left-hand cluster shared by the expanded group header (`GroupHeaderBar`)
  *  and the collapsed group's summary card (`CollapsedGroupSummaryRow`): group menu, collapse
  *  toggle, editable title, item/subitem count, and the priority-client flag. */
-export default function GroupHeaderLeft({ group, group_index, group_count, state, actions, show_menu_button = true }: GroupHeaderLeftProps) {
+export default function GroupHeaderLeft({ group, state, actions, show_menu_button = true }: GroupHeaderLeftProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const is_hovered = state.hover_group_key === group.key;
   const is_editing = state.editing_group_key === group.key;
@@ -40,8 +38,6 @@ export default function GroupHeaderLeft({ group, group_index, group_count, state
       {show_menu_button && (
         <GroupMenuButton
           group={group}
-          group_index={group_index}
-          group_count={group_count}
           state={state}
           actions={actions}
           is_visible={is_hovered}

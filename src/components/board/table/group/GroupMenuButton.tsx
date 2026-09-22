@@ -6,8 +6,6 @@ import GroupMenu from "../menus/GroupMenu";
 
 interface GroupMenuButtonProps {
   group: BoardTableGroup;
-  group_index: number;
-  group_count: number;
   state: BoardTableState;
   actions: BoardTableActions;
   is_visible: boolean;
@@ -19,9 +17,13 @@ interface GroupMenuButtonProps {
  *  header (`GroupHeaderLeft`, rendered inline) and the collapsed group's summary card
  *  (`CollapsedGroupSummaryRow`, rendered outside the card so the popover isn't clipped
  *  by the card's `overflow-hidden` border). */
-export default function GroupMenuButton({ group, group_index, group_count, state, actions, is_visible, className = "", panel_style }: GroupMenuButtonProps) {
+export default function GroupMenuButton({ group, state, actions, is_visible, className = "", panel_style }: GroupMenuButtonProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const is_menu_open = state.open_group_menu_key === group.key;
+  // Priority client groups always render above the rest (see `deriveBoardRows`), so a
+  // group can only move within its own tier: "first" and "last" mean first and last of it.
+  const tier = state.groups.filter((g) => !!g.is_priority === !!group.is_priority);
+  const tier_index = tier.findIndex((g) => g.key === group.key);
 
   return (
     <div className={`relative flex-none ${className}`}>
@@ -37,8 +39,8 @@ export default function GroupMenuButton({ group, group_index, group_count, state
         <GroupMenu
           panel_style={panel_style ?? { top: 28 }}
           is_collapsed={is_collapsed}
-          is_first={group_index === 0}
-          is_last={group_index === group_count - 1}
+          is_first={tier_index <= 0}
+          is_last={tier_index === tier.length - 1}
           current_color={group.color}
           is_priority={group.is_priority}
           onExpandThis={() => actions.toggleGroupCollapsed(group.key)}
@@ -53,7 +55,7 @@ export default function GroupMenuButton({ group, group_index, group_count, state
           onChangeColor={(color) => actions.setGroupColor(group.key, color)}
           onTogglePriority={() => actions.togglePriority(group.key)}
           onDelete={() => actions.removeGroup(group.key)}
-          onArchive={() => actions.removeGroup(group.key)}
+          onArchive={() => actions.archiveGroup(group.key)}
           onClose={actions.closeGroupMenu}
         />
       )}

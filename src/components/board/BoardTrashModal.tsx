@@ -3,12 +3,14 @@ import React, { useEffect, useState } from "react";
 import { ArchiveIcon, CloseIcon, DeleteIcon } from "@/icons/workspace-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
 import { boardOptionsService } from "@/services/board-options.service";
-import type { BoardTrashEntry, BoardTrashIndex } from "@/types/board-options";
+import type { BoardTrashEntry, BoardTrashGroupEntry, BoardTrashIndex } from "@/types/board-options";
 
 export type BoardTrashModalProps = {
   board_id: number;
   is_open: boolean;
   onClose: () => void;
+  /** Fires after an archived group was restored, so the open board can refetch its tables. */
+  onGroupsChanged?: () => void;
 };
 
 type TabId = "archived" | "trashed";
@@ -17,8 +19,8 @@ const TAB_COPY: Record<TabId, { label: string; icon: React.ReactNode; empty: str
   archived: {
     label: "Archive",
     icon: <ArchiveIcon size={14} />,
-    empty: "No archived items on this board.",
-    description: "Items archived from the selection action bar. Restore one to bring it back onto the board.",
+    empty: "No archived items or groups on this board.",
+    description: "Items archived from the selection action bar and groups archived from the group menu. Restore one to bring it back onto the board.",
   },
   trashed: {
     label: "Trash",
@@ -45,7 +47,7 @@ const formatTimestamp = (value: string): string => {
  * to one board (see `BoardTrashController`), as opposed to the account-wide
  * Trash dialog opened from the top bar (`@/components/trash`).
  */
-const BoardTrashModal: React.FC<BoardTrashModalProps> = ({ board_id, is_open, onClose }) => {
+const BoardTrashModal: React.FC<BoardTrashModalProps> = ({ board_id, is_open, onClose, onGroupsChanged }) => {
   const [active_tab, setActiveTab] = useState<TabId>("trashed");
   const [index, setIndex] = useState<BoardTrashIndex | null>(null);
   const [busy_id, setBusyId] = useState<string | null>(null);
@@ -78,12 +80,35 @@ const BoardTrashModal: React.FC<BoardTrashModalProps> = ({ board_id, is_open, on
   if (!is_open) return null;
 
   const entries: BoardTrashEntry[] = active_tab === "archived" ? (index?.archived ?? []) : (index?.trashed ?? []);
+  const group_entries: BoardTrashGroupEntry[] = active_tab === "archived" ? (index?.archived_groups ?? []) : [];
   const copy = TAB_COPY[active_tab];
 
   const handleRestore = async (entry: BoardTrashEntry) => {
     setBusyId(entry.id);
     try {
       await boardOptionsService.restoreTrashItem(board_id, entry.id);
+      load();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRestoreGroup = async (entry: BoardTrashGroupEntry) => {
+    setBusyId(`group-${entry.id}`);
+    try {
+      await boardOptionsService.restoreTrashGroup(board_id, entry.id);
+      load();
+      // The board's tables are already on screen, so a restored group only shows up after a reload.
+      onGroupsChanged?.();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDeleteGroupForever = async (entry: BoardTrashGroupEntry) => {
+    setBusyId(`group-${entry.id}`);
+    try {
+      await boardOptionsService.deleteTrashGroupForever(board_id, entry.id);
       load();
     } finally {
       setBusyId(null);
@@ -134,8 +159,41 @@ const BoardTrashModal: React.FC<BoardTrashModalProps> = ({ board_id, is_open, on
         <div className="shell-scrollbar min-h-0 flex-1 overflow-y-auto px-[26px] pb-6 pt-4">
           {has_error && <p className="py-10 text-center text-[13px] text-shell-text-faint">We couldn&apos;t load this list. Please try again.</p>}
           {!has_error && index === null && <p className="py-10 text-center text-[13px] text-shell-text-faint">Loading…</p>}
-          {!has_error && index !== null && entries.length === 0 && (
+          {!has_error && index !== null && entries.length === 0 && group_entries.length === 0 && (
             <p className="py-10 text-center text-[13px] text-shell-text-faint">{copy.empty}</p>
+          )}
+          {group_entries.length > 0 && (
+            <div className="flex flex-col">
+              {group_entries.map((entry) => (
+                <div key={`group-${entry.id}`} className="flex items-center gap-3 rounded-[10px] px-2 py-2.5 hover:bg-shell-hover">
+                  <span className="h-[26px] w-[5px] flex-none rounded-full" style={{ background: entry.accent_color }} aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-medium text-shell-text">{entry.name}</p>
+                    <p className="truncate text-[12px] text-shell-text-muted">
+                      Group · {entry.item_count} {entry.item_count === 1 ? "item" : "items"} · {formatTimestamp(entry.timestamp)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreGroup(entry)}
+                    disabled={busy_id === `group-${entry.id}`}
+                    className="flex flex-none items-center gap-[6px] rounded-[9px] border border-shell-border-strong px-3 py-1.5 text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover-strong disabled:opacity-50"
+                  >
+                    <RestoreIcon size={13} />
+                    Restore
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteGroupForever(entry)}
+                    disabled={busy_id === `group-${entry.id}`}
+                    className="flex flex-none items-center gap-[6px] rounded-[9px] border border-error-500/40 px-3 py-1.5 text-[12.5px] font-medium text-error-400 transition-colors hover:bg-error-500/[0.12] disabled:opacity-50"
+                  >
+                    <DeleteIcon size={13} />
+                    Delete forever
+                  </button>
+                </div>
+              ))}
+            </div>
           )}
           {entries.length > 0 && (
             <div className="flex flex-col">

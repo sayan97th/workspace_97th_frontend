@@ -124,6 +124,21 @@ export const boardContentService = {
     return response.group;
   },
 
+  /**
+   * PATCH /api/boards/{board_id}/groups/{group_id}/move, group menu's "Move group". `position` is the
+   * zero-based slot among the tab's groups. Resolves with the moved group plus the whole resequenced
+   * list, so the caller can reconcile every position at once.
+   */
+  async moveGroup(board_id: number, group_id: number, position: number): Promise<{ group: BoardGroupDto; groups: BoardGroupDto[] }> {
+    return apiClient.patch<{ group: BoardGroupDto; groups: BoardGroupDto[] }>(`/api/boards/${board_id}/groups/${group_id}/move`, { position });
+  },
+
+  /** PATCH /api/boards/{board_id}/groups/{group_id}/archive, group menu's "Archive group". Hides the table until it is restored from the board's archive panel. */
+  async archiveGroup(board_id: number, group_id: number): Promise<BoardGroupDto> {
+    const response = await apiClient.patch<{ group: BoardGroupDto }>(`/api/boards/${board_id}/groups/${group_id}/archive`);
+    return response.group;
+  },
+
   /** DELETE /api/boards/{board_id}/groups/{group_id} — cascades to its items. */
   async deleteGroup(board_id: number, group_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/groups/${group_id}`);

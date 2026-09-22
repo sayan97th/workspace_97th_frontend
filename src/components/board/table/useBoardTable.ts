@@ -247,6 +247,28 @@ export interface UseBoardTableConfig {
   onRenameGroup?: (group_key: string, title: string) => void;
   onRemoveGroup?: (group_key: string) => void;
   /**
+   * Group menu's "Delete group" asks the caller to confirm first: when this is
+   * set, `removeGroup` only reports the request here and leaves the group in
+   * place, and the caller runs its own confirmation and the real delete
+   * (feeding the result back through `initial_groups`). Omitted, `removeGroup`
+   * deletes right away and reports it through `onRemoveGroup`.
+   */
+  onRequestRemoveGroup?: (group_key: string) => void;
+  /**
+   * Group menu's "Archive group", hides the table without deleting it. The
+   * caller persists it and stops feeding the group back through
+   * `initial_groups`, so it stays hidden.
+   */
+  onArchiveGroup?: (group_key: string) => void;
+  /** Group menu's "Change group color", `color` is a `#rrggbb` value from `GROUP_PALETTE`. */
+  onChangeGroupColor?: (group_key: string, color: string) => void;
+  /**
+   * Group menu's "Move group" (top, up, down, bottom). `ordered_group_keys` is
+   * the whole table order after the move, so the caller can persist the moved
+   * group's new slot without replaying the direction.
+   */
+  onMoveGroup?: (group_key: string, ordered_group_keys: string[]) => void;
+  /**
    * Group menu / header star's "Mark as priority client" toggle — persists
    * server-side so the flag (and the "their tasks sort above all" ordering
    * it drives) is shared across every viewer, not just a local UI state.
@@ -1360,24 +1382,44 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [nextId]
   );
 
+  /**
+   * Moves a group within its own priority tier: priority client groups always render
+   * above the rest (see `deriveBoardRows`), so a move across that line would snap back
+   * on the next sync. The move is applied locally and the resulting order is reported
+   * through `onMoveGroup`. A move that would not change anything is skipped.
+   */
   const moveGroupByKey = useCallback((key: string, dir: "top" | "up" | "down" | "bottom") => {
-    setState((s) => {
-      const index = s.groups.findIndex((g) => g.key === key);
-      if (index < 0) return s;
-      const groups = s.groups.slice();
-      const [group] = groups.splice(index, 1);
-      let target = index;
-      if (dir === "top") target = 0;
-      else if (dir === "up") target = Math.max(0, index - 1);
-      else if (dir === "down") target = Math.min(groups.length, index + 1);
-      else target = groups.length;
-      groups.splice(target, 0, group);
-      return { ...s, groups, open_group_menu_key: null };
-    });
+    const groups = state_ref.current.groups;
+    const group = findGroup(groups, key);
+    if (!group) return;
+
+    const is_priority = !!group.is_priority;
+    const tier = groups.filter((g) => !!g.is_priority === is_priority);
+    const index = tier.findIndex((g) => g.key === key);
+    let target = index;
+    if (dir === "top") target = 0;
+    else if (dir === "up") target = Math.max(0, index - 1);
+    else if (dir === "down") target = Math.min(tier.length - 1, index + 1);
+    else target = tier.length - 1;
+
+    if (target === index) {
+      setState((s) => ({ ...s, open_group_menu_key: null }));
+      return;
+    }
+
+    const next_tier = tier.slice();
+    const [moved] = next_tier.splice(index, 1);
+    next_tier.splice(target, 0, moved);
+    let cursor = 0;
+    const next_groups = groups.map((g) => (!!g.is_priority === is_priority ? next_tier[cursor++] : g));
+
+    setState((s) => ({ ...s, groups: next_groups, open_group_menu_key: null }));
+    config_ref.current.onMoveGroup?.(key, next_groups.map((g) => g.key));
   }, []);
 
   const setGroupColor = useCallback((key: string, color: string) => {
     setState((s) => ({ ...s, groups: s.groups.map((g) => (g.key === key ? { ...g, color, tint: color } : g)), open_group_menu_key: null }));
+    config_ref.current.onChangeGroupColor?.(key, color);
   }, []);
 
   const togglePriority = useCallback((key: string) => {
@@ -1387,8 +1429,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const removeGroup = useCallback((key: string) => {
+    if (config_ref.current.onRequestRemoveGroup) {
+      setState((s) => ({ ...s, open_group_menu_key: null }));
+      config_ref.current.onRequestRemoveGroup(key);
+      return;
+    }
     setState((s) => ({ ...s, groups: s.groups.filter((g) => g.key !== key), open_group_menu_key: null }));
     config_ref.current.onRemoveGroup?.(key);
+  }, []);
+
+  const archiveGroup = useCallback((key: string) => {
+    setState((s) => ({ ...s, groups: s.groups.filter((g) => g.key !== key), open_group_menu_key: null }));
+    config_ref.current.onArchiveGroup?.(key);
   }, []);
 
   const selectAllInGroup = useCallback((key: string) => {
@@ -2108,6 +2160,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setGroupColor,
       togglePriority,
       removeGroup,
+      archiveGroup,
       selectAllInGroup,
       expandAllGroups,
       setAllSubsOpen,
@@ -2186,7 +2239,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
-      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, selectAllInGroup,
+      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,

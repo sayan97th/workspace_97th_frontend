@@ -42,6 +42,16 @@ export const boardOptionsService = {
     await apiClient.delete(`/api/boards/${board_id}/trash/${item_id}`);
   },
 
+  /** PATCH /api/boards/{id}/trash/groups/{group_id}/restore, brings an archived group back at the end of its tab. */
+  async restoreTrashGroup(board_id: number, group_id: string): Promise<void> {
+    await apiClient.patch(`/api/boards/${board_id}/trash/groups/${group_id}/restore`);
+  },
+
+  /** DELETE /api/boards/{id}/trash/groups/{group_id}, permanent, deletes the group and every item in it. */
+  async deleteTrashGroupForever(board_id: number, group_id: string): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/trash/groups/${group_id}`);
+  },
+
   /** GET /api/boards/{id}/export — downloads the active tab as an .xlsx workbook. */
   async exportToExcel(board_id: number, view_id?: number | null): Promise<Blob> {
     const query = view_id ? `?view_id=${view_id}` : "";

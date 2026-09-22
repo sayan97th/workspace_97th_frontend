@@ -9,8 +9,6 @@ import GroupMenuButton from "../group/GroupMenuButton";
 
 interface CollapsedGroupSummaryRowProps {
   group: BoardTableGroup;
-  group_index: number;
-  group_count: number;
   name_col_width: number;
   min_width: number;
   state: BoardTableState;
@@ -23,7 +21,7 @@ const ROW_HEIGHT = 58;
  *  hidden while collapsed, this single card keeps every column's aggregate (status
  *  distribution, number sum, timeline span) visible at a glance, mirroring Monday's own
  *  collapsed-group preview. */
-export default function CollapsedGroupSummaryRow({ group, group_index, group_count, name_col_width, min_width, state, actions }: CollapsedGroupSummaryRowProps) {
+export default function CollapsedGroupSummaryRow({ group, name_col_width, min_width, state, actions }: CollapsedGroupSummaryRowProps) {
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const columns = group.base_columns.concat(group.custom_columns);
   const is_hovered = state.hover_group_key === group.key;
@@ -47,8 +45,6 @@ export default function CollapsedGroupSummaryRow({ group, group_index, group_cou
       <div className="absolute right-[calc(100%+3px)] top-1/2 -translate-y-1/2">
         <GroupMenuButton
           group={group}
-          group_index={group_index}
-          group_count={group_count}
           state={state}
           actions={actions}
           is_visible={is_hovered}
@@ -63,7 +59,7 @@ export default function CollapsedGroupSummaryRow({ group, group_index, group_cou
             className="flex items-center pl-8"
             style={{ gridColumn: "span 3", height: ROW_HEIGHT, position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}
           >
-            <GroupHeaderLeft group={group} group_index={group_index} group_count={group_count} state={state} actions={actions} show_menu_button={false} />
+            <GroupHeaderLeft group={group} state={state} actions={actions} show_menu_button={false} />
           </div>
 
           {columns.map((col) => {

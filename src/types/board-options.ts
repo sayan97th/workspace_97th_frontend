@@ -26,7 +26,18 @@ export type BoardTrashEntry = {
   created_by: BoardOptionsPerson | null;
 };
 
+/** One archived group (table) in a board's own "View archive / trash" panel, archived from the group menu's "Archive group". */
+export type BoardTrashGroupEntry = {
+  id: string;
+  name: string;
+  accent_color: string;
+  /** Root items the group holds, excluding archived ones. */
+  item_count: number;
+  timestamp: string;
+};
+
 export type BoardTrashIndex = {
   archived: BoardTrashEntry[];
   trashed: BoardTrashEntry[];
+  archived_groups: BoardTrashGroupEntry[];
 };

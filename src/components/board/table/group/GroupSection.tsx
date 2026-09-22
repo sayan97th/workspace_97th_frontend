@@ -30,7 +30,6 @@ const RENDER_CHUNK_SIZE = 50;
 interface GroupSectionProps {
   group: BoardTableGroup;
   group_index: number;
-  group_count: number;
   name_col_width: number;
   state: BoardTableState;
   actions: BoardTableActions;
@@ -44,7 +43,6 @@ interface GroupSectionProps {
 export default function GroupSection({
   group,
   group_index,
-  group_count,
   name_col_width,
   state,
   actions,
@@ -127,9 +125,9 @@ export default function GroupSection({
     // sticky header and the next completely contiguous while looking identical at rest.
     <div ref={section_ref} style={{ paddingTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
-        <CollapsedGroupSummaryRow group={group} group_index={group_index} group_count={group_count} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
+        <CollapsedGroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
       ) : (
-        <GroupHeaderBar group={group} group_index={group_index} group_count={group_count} min_width={min_width} state={state} actions={actions} />
+        <GroupHeaderBar group={group} min_width={min_width} state={state} actions={actions} />
       )}
 
       {!is_collapsed && (

@@ -135,3 +135,43 @@ describe("failed requests", () => {
     expect(getApiErrorMessage(error, "Couldn't delete the row. Please try again.")).toBe("An unexpected error occurred");
   });
 });
+
+describe("group menu requests", () => {
+  test("Change group color sends the new accent color to the group endpoint", async () => {
+    stubFetch(200, { group: { id: 4, name: "Backlog", accent_color: "#e04455", position: 0 } });
+    const group = await boardContentService.updateGroup(5, 4, { accent_color: "#e04455" });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject({ method: "PATCH", body: { accent_color: "#e04455" } });
+    expect(calls[0].url).toMatch(/\/api\/boards\/5\/groups\/4$/);
+    expect(group.accent_color).toBe("#e04455");
+  });
+
+  test("Move group sends the target slot and returns the resequenced list", async () => {
+    stubFetch(200, { group: { id: 4, position: 0 }, groups: [{ id: 4, position: 0 }, { id: 3, position: 1 }] });
+    const result = await boardContentService.moveGroup(5, 4, 0);
+    expect(calls[0]).toMatchObject({ method: "PATCH", body: { position: 0 } });
+    expect(calls[0].url).toMatch(/\/api\/boards\/5\/groups\/4\/move$/);
+    expect(result.groups.map((group) => group.id)).toEqual([4, 3]);
+  });
+
+  test("Archive group patches the archive endpoint, it does not delete", async () => {
+    stubFetch(200, { group: { id: 4, name: "Backlog" } });
+    await boardContentService.archiveGroup(5, 4);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("PATCH");
+    expect(calls[0].url).toMatch(/\/api\/boards\/5\/groups\/4\/archive$/);
+  });
+
+  test("Duplicate this group sends whether the items come along", async () => {
+    stubFetch(201, { group: { id: 8, name: "Backlog copy" } });
+    await boardContentService.duplicateGroup(5, 4, false);
+    expect(calls[0]).toMatchObject({ method: "POST", body: { with_items: false } });
+    expect(calls[0].url).toMatch(/\/api\/boards\/5\/groups\/4\/duplicate$/);
+  });
+
+  test("a rejected move surfaces the server message so the board can report it", async () => {
+    stubFetch(403, { errors: { board: ["You have view-only access to this board."] } });
+    const error = await rejectionOf(boardContentService.moveGroup(5, 4, 1));
+    expect(error.status_code).toBe(403);
+  });
+});

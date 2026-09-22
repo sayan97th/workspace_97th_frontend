@@ -184,12 +184,16 @@ export default function GroupMenu({
             <span className="flex-1">Change group color</span>
           </div>
           {sub === "color" && (
-            <div onMouseEnter={cancelClose} className="absolute left-[260px] top-[-6px] z-10 w-[218px] rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
+            // Bottom aligned (the palette is the tallest submenu and this row sits near the bottom of
+            // the menu), so it always stays within the menu's own height and thus inside the window.
+            <div onMouseEnter={cancelClose} className="absolute bottom-[-6px] left-[260px] z-10 w-[218px] rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
               <div className="grid max-h-[190px] grid-cols-6 gap-[7px] overflow-auto">
                 {GROUP_PALETTE.map((color) => (
                   <button
                     type="button"
                     key={color}
+                    aria-label={`Set group color to ${color}`}
+                    aria-pressed={color === current_color}
                     onClick={() => { onChangeColor(color); onClose(); }}
                     className="h-6 rounded-[5px]"
                     style={{ background: color, boxShadow: color === current_color ? "0 0 0 2px var(--color-boardtree-ring)" : "none" }}

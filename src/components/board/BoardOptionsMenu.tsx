@@ -62,6 +62,8 @@ export type BoardOptionsMenuProps = {
   onDuplicate: () => Promise<void>;
   /** "More actions" > "Import items" — fired once the background import job has actually written rows, so the caller can refresh its columns/groups/items. */
   onImportItems: (result: { group_id: number }) => void;
+  /** Fired once the trash panel restored an archived group, so the caller can refetch the board's tables. */
+  onGroupsRestored?: () => void;
   /** Archives the board in place — the board stays open, its menu just flips to "Restore from archive". */
   onArchive: () => Promise<void>;
   /** Un-archives the board in place, from either "Restore from archive" or the trash panel's Archive tab. */
@@ -101,6 +103,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   onUnarchive,
   onDelete,
   onImportItems,
+  onGroupsRestored,
 }) => {
   const [is_rename_open, setIsRenameOpen] = useState(false);
   const [is_permissions_open, setIsPermissionsOpen] = useState(false);
@@ -232,7 +235,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
 
       <BoardActivityLogDrawer board_id={board_id} is_open={is_activity_log_open} onClose={() => setIsActivityLogOpen(false)} />
 
-      <BoardTrashModal board_id={board_id} is_open={is_trash_open} onClose={() => setIsTrashOpen(false)} />
+      <BoardTrashModal board_id={board_id} is_open={is_trash_open} onClose={() => setIsTrashOpen(false)} onGroupsChanged={onGroupsRestored} />
 
       <GiveFeedbackModal
         is_open={is_feedback_open}

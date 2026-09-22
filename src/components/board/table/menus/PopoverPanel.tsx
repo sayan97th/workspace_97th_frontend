@@ -4,6 +4,9 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "../useOutsideClick";
 
+/** Gap kept between a nudged panel and the window's bottom edge. */
+const VIEWPORT_MARGIN = 8;
+
 interface PopoverPanelProps {
   onClose: () => void;
   className?: string;
@@ -32,6 +35,8 @@ export default function PopoverPanel({ onClose, className, style, children }: Po
   const marker_ref = useRef<HTMLDivElement>(null);
   const [anchor_rect, setAnchorRect] = useState<DOMRect | null>(null);
   const panel_ref = useOutsideClick<HTMLDivElement>(true, onClose);
+  // How far the panel is nudged up so its bottom edge stays inside the window, see `useLayoutEffect` below.
+  const [shift_y, setShiftY] = useState(0);
 
   useLayoutEffect(() => {
     const marker_el = marker_ref.current;
@@ -54,6 +59,19 @@ export default function PopoverPanel({ onClose, className, style, children }: Po
     };
   }, []);
 
+  // A tall menu opened near the bottom of the window (a group menu on a lower table, say)
+  // would run off the screen with its last rows out of reach, since the panel is `fixed` and
+  // the page can't scroll it back into view. Nudge it up just enough to fit. `offsetTop` and
+  // `offsetHeight` ignore the nudge itself, so this settles in one pass and re-runs on scroll.
+  useLayoutEffect(() => {
+    const panel_el = panel_ref.current;
+    if (!anchor_rect || !panel_el) return;
+
+    const natural_top = anchor_rect.top + panel_el.offsetTop;
+    const overflow = natural_top + panel_el.offsetHeight - (window.innerHeight - VIEWPORT_MARGIN);
+    setShiftY(overflow > 0 ? -Math.min(overflow, Math.max(0, natural_top - VIEWPORT_MARGIN)) : 0);
+  }, [anchor_rect, panel_ref]);
+
   return (
     <>
       <div ref={marker_ref} className="absolute inset-0" style={{ pointerEvents: "none" }} />
@@ -68,7 +86,7 @@ export default function PopoverPanel({ onClose, className, style, children }: Po
               ref={panel_ref}
               onClick={(e) => e.stopPropagation()}
               className={`absolute rounded-[10px] border border-boardtree-border bg-boardtree-surface text-left shadow-[0_16px_40px_rgba(30,34,55,0.20)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5)] ${className || ""}`}
-              style={style}
+              style={shift_y ? { ...style, transform: `translateY(${shift_y}px)` } : style}
             >
               {children}
             </div>

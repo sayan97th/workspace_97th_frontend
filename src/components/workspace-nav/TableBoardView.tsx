@@ -83,6 +83,7 @@ import {
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastProvider";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import {
   findItemInTree,
   insertItemBelowInTree,
@@ -114,6 +115,7 @@ import type {
   BoardTimelineValue,
   BoardTimeTrackingValue,
   BoardGroupDto,
+  UpdateBoardGroupPayload,
   BoardItemDetailDto,
   BoardItemDto,
   BoardItemValue,
@@ -704,6 +706,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [tags, setTags] = useState(initial_tags);
   const [columns, setColumns] = useState(initial_columns);
   const [groups, setGroups] = useState(initial_groups);
+  // The group whose "Delete group" is waiting on the confirmation dialog.
+  const [group_pending_delete, setGroupPendingDelete] = useState<BoardGroupDto | null>(null);
   const [items, setItems] = useState(initial_items);
   // ── Automations ("Automate" header button) — table-view-scoped, so this
   // refetches whenever the active tab changes, mirroring `handleUpdateColumnFormula`'s
@@ -1173,6 +1177,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     },
     [board_id, view_tabs.active_view_id, mergeFetchedItems]
   );
+
+  /** The board's trash panel restored an archived group: refetch the tab's groups so it shows up again (its rows lazy-load as usual). */
+  const handleGroupsRestored = useCallback(() => {
+    boardContentService
+      .getGroups(board_id, view_tabs.active_view_id)
+      .then((groups_index) => setGroups(groups_index.groups))
+      .catch(() => {});
+  }, [board_id, view_tabs.active_view_id]);
 
   // Whenever filter/sort/"group by column" becomes active, those features
   // need every table's rows to be correct — trigger the fallback above
@@ -2260,6 +2272,90 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return { node_id: match.row_id, column_id: match.column_id === ITEM_COLUMN_ID ? "__name" : match.column_id };
   }, [toolbar.search_matches, toolbar.active_match_index]);
 
+  // ── Group menu. Every action changes `groups` first (which flows back into the
+  // table as `initial_groups`) and then persists, so the table never shows a state
+  // the server has not agreed to: a failure puts the change back and raises a toast.
+  // A group key that is not a real group id (a "group by column" bucket) is ignored. ──
+
+  /** Puts a group back after a failed archive, at the slot its `position` says. */
+  const reinsertTableGroup = (removed: BoardGroupDto) => {
+    setGroups((current) =>
+      current.some((group) => group.id === removed.id) ? current : [...current, removed].sort((a, b) => a.position - b.position)
+    );
+  };
+
+  /** Rename, "Change group color" and "Mark as priority client": one optimistic PATCH of the changed field, rolled back field by field on failure. */
+  const patchTableGroup = (group_key: string, patch: Pick<UpdateBoardGroupPayload, "name" | "accent_color" | "is_priority">, fallback_message: string) => {
+    const group_id = Number(group_key);
+    const original = groups.find((group) => group.id === group_id);
+    if (!original) return;
+
+    const previous: Partial<BoardGroupDto> = {};
+    (Object.keys(patch) as (keyof typeof patch)[]).forEach((field) => Object.assign(previous, { [field]: original[field] }));
+
+    setGroups((current) => current.map((group) => (group.id === group_id ? { ...group, ...patch } : group)));
+    void boardContentService.updateGroup(board_id, group_id, patch).catch((error) => {
+      setGroups((current) => current.map((group) => (group.id === group_id ? { ...group, ...previous } : group)));
+      toast.error(getApiErrorMessage(error, fallback_message));
+    });
+  };
+
+  /**
+   * "Move group". `ordered_group_keys` is the table order after the move; the
+   * server wants the moved group's slot among the tab's groups, which is one
+   * past the group now sitting right above it (or 0 when it landed on top).
+   * The server answers with every resequenced position, which are applied so
+   * the local order and the saved one cannot drift apart.
+   */
+  const handleMoveTableGroup = (group_key: string, ordered_group_keys: string[]) => {
+    const group_id = Number(group_key);
+    const moved = groups.find((group) => group.id === group_id);
+    if (!moved) return;
+
+    const previous_groups = groups;
+    const remaining = groups.filter((group) => group.id !== group_id);
+    const above_key = ordered_group_keys[ordered_group_keys.indexOf(group_key) - 1];
+    const position = above_key === undefined ? 0 : remaining.findIndex((group) => String(group.id) === above_key) + 1;
+
+    setGroups([...remaining.slice(0, position), moved, ...remaining.slice(position)].map((group, index) => ({ ...group, position: index })));
+    void boardContentService
+      .moveGroup(board_id, group_id, position)
+      .then(({ groups: saved }) => {
+        const saved_positions = new Map(saved.map((group) => [group.id, group.position]));
+        setGroups((current) =>
+          current.map((group) => ({ ...group, position: saved_positions.get(group.id) ?? group.position })).sort((a, b) => a.position - b.position)
+        );
+      })
+      .catch((error) => {
+        setGroups(previous_groups);
+        toast.error(getApiErrorMessage(error, "Couldn't move the group. Please try again."));
+      });
+  };
+
+  /** "Archive group": hides the table right away, restorable from the board's archive panel. */
+  const handleArchiveTableGroup = (group_key: string) => {
+    const group_id = Number(group_key);
+    const archived = groups.find((group) => group.id === group_id);
+    if (!archived) return;
+
+    setGroups((current) => current.filter((group) => group.id !== group_id));
+    void boardContentService
+      .archiveGroup(board_id, group_id)
+      .then(() => toast.success(`"${archived.name}" archived. Restore it from the board's archive.`))
+      .catch((error) => {
+        reinsertTableGroup(archived);
+        toast.error(getApiErrorMessage(error, "Couldn't archive the group. Please try again."));
+      });
+  };
+
+  /** "Delete group" is confirmed first (see `ConfirmActionModal` below), the group is only removed once the server has deleted it. */
+  const handleConfirmDeleteTableGroup = async () => {
+    if (!group_pending_delete) return;
+    await boardContentService.deleteGroup(board_id, group_pending_delete.id);
+    const deleted_id = group_pending_delete.id;
+    setGroups((current) => current.filter((group) => group.id !== deleted_id));
+  };
+
   const table_config: UseBoardTableConfig = useMemo(
     () => ({
       initial_groups: table_groups,
@@ -2353,20 +2449,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       getNodeLink: (node_id) => `${window.location.origin}/boards/${board_id}/pulses/${node_id}`,
       onReorderItems: handleReorderTableItems,
       onReorderColumns: handleReorderTableColumns,
-      onRenameGroup: (group_key, title) => {
-        void boardContentService
-          .updateGroup(board_id, Number(group_key), { name: title })
-          .then((updated) => setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g))));
-      },
-      onRemoveGroup: (group_key) => {
-        void boardContentService
-          .deleteGroup(board_id, Number(group_key))
-          .then(() => setGroups((current) => current.filter((g) => g.id !== Number(group_key))));
-      },
-      onToggleGroupPriority: (group_key, is_priority) => {
-        void boardContentService
-          .updateGroup(board_id, Number(group_key), { is_priority })
-          .then((updated) => setGroups((current) => current.map((g) => (g.id === updated.id ? updated : g))));
+      onRenameGroup: (group_key, name) => patchTableGroup(group_key, { name }, "Couldn't rename the group. Please try again."),
+      onChangeGroupColor: (group_key, accent_color) => patchTableGroup(group_key, { accent_color }, "Couldn't change the group color. Please try again."),
+      onToggleGroupPriority: (group_key, is_priority) => patchTableGroup(group_key, { is_priority }, "Couldn't update the group. Please try again."),
+      onMoveGroup: handleMoveTableGroup,
+      onArchiveGroup: handleArchiveTableGroup,
+      onRequestRemoveGroup: (group_key) => {
+        const group = groups.find((g) => String(g.id) === group_key);
+        if (group) setGroupPendingDelete(group);
       },
       onToggleNodePriority: (node_id, is_priority) => {
         void boardContentService
@@ -2518,13 +2608,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // with the lazy per-table loading model — not a whole-tab refetch) to pick
   // up the copied rows under their real backend ids. ──
   const handleDuplicateTableGroup = async (group_key: string, with_items: boolean) => {
-    const created = await boardContentService.duplicateGroup(board_id, Number(group_key), with_items);
-    setGroups((current) => [...current, created]);
-    if (with_items) {
-      const fetched = await boardContentService.getItems(board_id, view_tabs.active_view_id, undefined, [created.id]);
-      mergeFetchedItems(fetched);
+    try {
+      const created = await boardContentService.duplicateGroup(board_id, Number(group_key), with_items);
+      // The copy lands right below the original and the server shifted every later group down, see `handleCreateTableGroup`.
+      setGroups((current) => insertGroupAtPosition(current, created));
+      if (with_items) {
+        const fetched = await boardContentService.getItems(board_id, view_tabs.active_view_id, undefined, [created.id]);
+        mergeFetchedItems(fetched);
+      }
+      setLoadedGroupIds((current) => new Set(current).add(created.id));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't duplicate the group. Please try again."));
     }
-    setLoadedGroupIds((current) => new Set(current).add(created.id));
   };
 
   // ── Row menu's own single-item "Duplicate" (an item or a subitem, with or
@@ -3167,6 +3262,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onUnarchive: handleUnarchiveBoard,
           onDelete: handleDeleteBoard,
           onImportItems: handleImportItems,
+          onGroupsRestored: handleGroupsRestored,
         },
         presence: active_view_type === "table" ? <PresenceAvatarStack board_id={board_id} /> : undefined,
       }}
@@ -3545,6 +3641,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onCreate={handleCreateAutomation}
         onToggle={handleToggleAutomation}
         onDelete={handleDeleteAutomation}
+      />
+      <ConfirmActionModal
+        is_open={group_pending_delete !== null}
+        variant="danger"
+        title="Delete group"
+        description={
+          <>
+            Delete <strong>{group_pending_delete?.name}</strong> from this board? This cannot be undone.
+          </>
+        }
+        risk_items={[
+          `${group_pending_delete?.item_count ?? 0} ${group_pending_delete?.item_count === 1 ? "item" : "items"} and all their subitems, updates and files will be deleted with it.`,
+          "To keep them, use Archive group instead.",
+        ]}
+        confirm_label="Delete group"
+        onConfirm={handleConfirmDeleteTableGroup}
+        onClose={() => setGroupPendingDelete(null)}
       />
     </BoardShell>
   );

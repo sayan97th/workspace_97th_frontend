@@ -457,7 +457,6 @@ export default function BoardTable({
           key={group.key}
           group={group}
           group_index={index}
-          group_count={state.groups.length}
           name_col_width={name_col_width}
           state={state}
           actions={actions}
