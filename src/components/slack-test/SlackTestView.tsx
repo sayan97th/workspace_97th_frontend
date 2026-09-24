@@ -7,9 +7,11 @@ import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
 import { useAuth } from "@/context/AuthContext";
 import { useSlackDiagnostics } from "@/hooks/useSlackDiagnostics";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
+import { useSlackUserNotification } from "@/hooks/useSlackUserNotification";
 import SlackAppSetupCard from "./SlackAppSetupCard";
 import SlackChecklistCard from "./SlackChecklistCard";
 import SlackLiveTestsCard from "./SlackLiveTestsCard";
+import SlackUserNotificationCard from "./SlackUserNotificationCard";
 
 /** Matches the `role:super_admin,admin` gate on the diagnostics endpoints. */
 const SLACK_TEST_ROLES = ["super_admin", "admin"];
@@ -17,7 +19,7 @@ const SLACK_TEST_ROLES = ["super_admin", "admin"];
 /**
  * Admin diagnostic screen at /admin/test/slack. Checks every piece the Slack integration depends
  * on (credentials, redirect URL, signing secret, workspace, bot token, scopes, channels and
- * the admin's own link) and runs real messages through Slack, so a broken setup can be
+ * the admin's own link) and runs real messages through Slack, including a custom notification to any linked member, so a broken setup can be
  * narrowed down without reading server logs.
  */
 const SlackTestView: React.FC = () => {
@@ -40,6 +42,7 @@ const SlackTestView: React.FC = () => {
 const SlackTestContent: React.FC = () => {
   const slack = useSlackIntegration();
   const diagnostics = useSlackDiagnostics();
+  const notification = useSlackUserNotification(diagnostics.has_working_bot, diagnostics.diagnostics?.ran_at ?? null);
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6 sm:p-8">
@@ -73,6 +76,8 @@ const SlackTestContent: React.FC = () => {
       </div>
 
       <SlackLiveTestsCard slack={slack} diagnostics={diagnostics} />
+
+      <SlackUserNotificationCard notification={notification} has_working_bot={diagnostics.has_working_bot} />
     </div>
   );
 };

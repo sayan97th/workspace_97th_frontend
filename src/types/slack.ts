@@ -63,3 +63,16 @@ export type SlackDiagnosticsDto = {
   app: SlackAppSetupDto;
   checks: SlackDiagnosticCheckDto[];
 };
+
+/** A member who linked their Slack account and can receive a direct message, from the diagnostics recipients endpoint. */
+export type SlackRecipientDto = {
+  user_id: number;
+  full_name: string;
+  email: string;
+  profile_photo_url: string | null;
+  slack_user_id: string;
+  slack_display_name: string | null;
+};
+
+/** Mirrors `SlackUserTestRequest::MESSAGE_MAX_LENGTH` on the API. */
+export const SLACK_TEST_MESSAGE_MAX_LENGTH = 1000;

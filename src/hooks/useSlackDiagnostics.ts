@@ -9,6 +9,8 @@ export type SlackDiagnosticsApi = {
   is_running: boolean;
   run_error: string | null;
   runDiagnostics: () => Promise<void>;
+  /** Whether the last run confirmed a working bot token, which every live message test needs. */
+  has_working_bot: boolean;
   channels: SlackChannelDto[];
   is_loading_channels: boolean;
   is_sending_channel_test: boolean;
@@ -95,6 +97,7 @@ export function useSlackDiagnostics(): SlackDiagnosticsApi {
     is_running,
     run_error,
     runDiagnostics,
+    has_working_bot,
     channels,
     is_loading_channels,
     is_sending_channel_test,
