@@ -30,6 +30,9 @@ const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   wrong_workspace: "That Slack account belongs to a different workspace than the one connected here.",
   not_installed: "Slack is not connected to this account yet.",
   not_configured: "Slack is not configured on this server yet.",
+  bad_client_secret: "Slack rejected the client secret. Check SLACK_CLIENT_SECRET in the API environment.",
+  invalid_client_id: "Slack does not recognize the client ID. Check SLACK_CLIENT_ID in the API environment.",
+  bad_redirect_uri: "The redirect URL is not registered in the Slack app under OAuth & Permissions.",
 };
 
 const callbackErrorMessage = (reason: string | null): string =>

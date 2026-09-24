@@ -37,3 +37,29 @@ export type SlackChannelDto = {
 
 /** What the backend redirects the browser back with after a Slack OAuth round trip (`?slack=...&reason=...`). */
 export type SlackCallbackResult = "connected" | "error";
+
+export type SlackDiagnosticStatus = "passed" | "warning" | "failed" | "skipped";
+
+/** One live check run by `App\Services\Slack\SlackDiagnosticsService`. */
+export type SlackDiagnosticCheckDto = {
+  key: string;
+  label: string;
+  status: SlackDiagnosticStatus;
+  detail: string;
+};
+
+/** Values an administrator copies into the Slack app settings, never includes a secret. */
+export type SlackAppSetupDto = {
+  client_id: string | null;
+  redirect_uri: string;
+  events_url: string;
+  bot_scopes: string[];
+  user_scopes: string[];
+};
+
+export type SlackDiagnosticsDto = {
+  ran_at: string;
+  summary: Record<SlackDiagnosticStatus, number>;
+  app: SlackAppSetupDto;
+  checks: SlackDiagnosticCheckDto[];
+};

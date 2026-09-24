@@ -84,8 +84,9 @@ const IntegrationsSection: React.FC = () => {
         {!status?.is_configured ? (
           <div className="mt-4 rounded-[9px] border border-shell-border bg-shell-panel px-3.5 py-3 text-[12.5px] leading-relaxed text-shell-text-muted">
             Slack is not configured on the server yet. Create a Slack app, then set{" "}
-            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_ID</span> and{" "}
-            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_SECRET</span> in the API environment.
+            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_ID</span>,{" "}
+            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_SECRET</span> and{" "}
+            <span className="font-semibold text-shell-text-secondary">SLACK_SIGNING_SECRET</span> in the API environment.
           </div>
         ) : null}
 
@@ -152,10 +153,16 @@ const IntegrationsSection: React.FC = () => {
           ))}
         </ul>
 
+        {can_manage ? (
+          <Link href="/admin/test/slack" className="mt-5 block text-[13px] font-semibold text-brand-200 hover:underline">
+            Test the Slack connection
+          </Link>
+        ) : null}
+
         {workspace ? (
           <Link
             href="/profile?section=notifications"
-            className="mt-5 inline-block text-[13px] font-semibold text-brand-200 hover:underline"
+            className="mt-3 inline-block text-[13px] font-semibold text-brand-200 hover:underline"
           >
             Connect your own Slack account in My Profile
           </Link>

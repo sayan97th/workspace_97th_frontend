@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { SlackChannelDto, SlackStatusDto } from "@/types/slack";
+import type { SlackChannelDto, SlackDiagnosticsDto, SlackStatusDto } from "@/types/slack";
 
 /**
  * Talks to `App\Http\Controllers\Integration\SlackIntegrationController`. Both OAuth flows
@@ -47,5 +47,15 @@ export const slackService = {
   /** POST /api/integrations/slack/link/test, sends the caller a direct message. */
   async sendTestMessage(): Promise<{ message: string }> {
     return apiClient.post<{ message: string }>("/api/integrations/slack/link/test");
+  },
+
+  /** GET /api/integrations/slack/diagnostics, administrators only. Runs every check live. */
+  async runDiagnostics(): Promise<SlackDiagnosticsDto> {
+    return apiClient.get<SlackDiagnosticsDto>("/api/integrations/slack/diagnostics");
+  },
+
+  /** POST /api/integrations/slack/diagnostics/channel-test, administrators only. */
+  async sendChannelTestMessage(channel_id: string): Promise<{ message: string }> {
+    return apiClient.post<{ message: string }>("/api/integrations/slack/diagnostics/channel-test", { channel_id });
   },
 };
