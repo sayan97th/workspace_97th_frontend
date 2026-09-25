@@ -16,6 +16,7 @@ import type {
   ReorderPayload,
   SortState,
   StatusDef,
+  TableClipboard,
   TagDef,
   BoardTableGroup,
   BoardTableItem,
@@ -42,8 +43,29 @@ import {
   updateNodeById,
   visibleRowSequence,
 } from "./treeUtils";
+import { cellKey, isMultiCellRange, rangeBounds, rangeCellKeys, rangeRows, type CellRangeRow } from "./cellRange";
+import {
+  cellValueToText,
+  convertCellValue,
+  fillSeries,
+  isPasteTarget,
+  parseTsv,
+  textToCellValue,
+  toTsv,
+  type CellTextContext,
+} from "./cellClipboard";
 
 export type ColumnScope = "main" | "sub";
+
+/** One cell written by a multi cell action, see `UseBoardTableConfig.onCellValuesChange`. */
+export interface CellValueChange {
+  node_id: string;
+  column_id: string;
+  value: CellValue;
+}
+
+/** How many cells one paste may write, a guard against pasting a whole spreadsheet by mistake. */
+const MAX_PASTE_CELLS = 5000;
 
 /**
  * In-flight column-header drag — the column-reorder analogue of `DragState`
@@ -166,6 +188,13 @@ export interface UseBoardTableConfig {
   current_user_id?: string;
   onRenameNode?: (node_id: string, name: string) => void;
   onCellValueChange?: (node_id: string, column_id: string, value: CellValue) => void;
+  /**
+   * Multi cell writes (a range paste, a fill handle drag, clearing a
+   * selected range, or undoing one of them), sent as one batch so a real
+   * board saves them in a single request. Omitted, each cell goes through
+   * `onCellValueChange` on its own.
+   */
+  onCellValuesChange?: (changes: CellValueChange[]) => void;
   /**
    * A `files`-type cell's "Upload" button — persists the given files and
    * resolves with that cell's *entire* updated file list (existing files
@@ -425,10 +454,18 @@ export interface UseBoardTableConfig {
   can_edit_structure?: boolean;
   /** Board permissions: false when the viewer may not add new items ("Assigned items only"). Defaults to true. */
   can_create_items?: boolean;
+  /**
+   * Whether groups can be dragged into a new order. False while the table is
+   * grouped by a column, since those groups are computed, not saved. Defaults
+   * to true (still subject to `can_edit_structure`).
+   */
+  can_reorder_groups?: boolean;
   /** Board permissions ("Assigned items only"): whether the viewer may edit this row. Every row is editable when omitted. */
   canEditNode?: (node_id: string) => boolean;
   /** Column permissions: whether the viewer may edit this column's cells. Every column is editable when omitted. */
   canEditColumn?: (column_id: string) => boolean;
+  /** Called after a paste with how many cells were written, skipped (read only, not allowed, or a value the column cannot take) and how many copied rows had no row to go into. */
+  onCellPasteResult?: (result: { written: number; skipped: number; rows_left_out: number }) => void;
 }
 
 export interface BoardTableState {
@@ -511,12 +548,28 @@ export interface BoardTableState {
   can_edit_structure: boolean;
   /** See `UseBoardTableConfig.can_create_items`. Hides the "Add item" rows when false. */
   can_create_items: boolean;
-  /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
+  /** See `UseBoardTableConfig.can_reorder_groups`. Combined with `can_edit_structure` and `read_only`. */
+  can_reorder_groups: boolean;
+  /** The cell focused for Excel style keyboard navigation, see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
-  /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
-  clipboard_cell: { value: CellValue } | null;
-  /** An in-progress fill-handle drag — see `FillDragState`'s own doc comment. */
+  /**
+   * The other corner of a multi cell selection, set by Shift+click,
+   * Shift+arrow keys or dragging across cells. Null while a single cell is
+   * selected. See `cellRange.ts`.
+   */
+  selection_anchor: ActiveCell | null;
+  /** True while the mouse button is held down after pressing on a cell, so moving over other cells extends the selection. */
+  is_range_dragging: boolean;
+  /** What the table copied last, see `TableClipboard`. */
+  clipboard: TableClipboard | null;
+  /** An in progress fill handle drag, see `FillDragState`'s own doc comment. */
   fill_drag: FillDragState | null;
+  /** Derived on every render (see `view_state` in `useBoardTable`): the selected cells as `node_id:column_id` keys. */
+  selected_cell_keys: Set<string>;
+  /** Derived: the cells a fill handle drag in progress would write, for the dashed preview. */
+  fill_target_keys: Set<string>;
+  /** Derived: the bottom right cell of the selection, where the fill handle is drawn. */
+  fill_handle_cell: ActiveCell | null;
   /** See `UseBoardTableConfig.current_user_id`'s own doc comment. */
   current_user_id: string | null;
   /**
@@ -594,9 +647,15 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     read_only: config.read_only ?? false,
     can_edit_structure: config.can_edit_structure ?? true,
     can_create_items: config.can_create_items ?? true,
+    can_reorder_groups: (config.can_reorder_groups ?? true) && (config.can_edit_structure ?? true) && !config.read_only,
     active_cell: null,
-    clipboard_cell: null,
+    selection_anchor: null,
+    is_range_dragging: false,
+    clipboard: null,
     fill_drag: null,
+    selected_cell_keys: new Set(),
+    fill_target_keys: new Set(),
+    fill_handle_cell: null,
     current_user_id: config.current_user_id ?? null,
     history_past: [],
     history_future: [],
@@ -723,8 +782,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, [config.read_only]);
 
   useEffect(() => {
-    setState((s) => ({ ...s, can_edit_structure: config.can_edit_structure ?? true, can_create_items: config.can_create_items ?? true }));
-  }, [config.can_edit_structure, config.can_create_items]);
+    setState((s) => ({
+      ...s,
+      can_edit_structure: config.can_edit_structure ?? true,
+      can_create_items: config.can_create_items ?? true,
+      can_reorder_groups: (config.can_reorder_groups ?? true) && (config.can_edit_structure ?? true) && !config.read_only,
+    }));
+  }, [config.can_edit_structure, config.can_create_items, config.can_reorder_groups, config.read_only]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key
@@ -930,126 +994,386 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [setCellValueLocal]
   );
 
-  // ---- active cell: Excel-style keyboard navigation, copy/paste, fill-down ----
+  // ---- multi cell writes ----------------------------------------------------
 
-  /** A data cell was clicked (not the item/subitem name, checkbox, or comment column — see `ItemRow`/`SubitemRow`). */
-  const setActiveCell = useCallback((node_id: string, column_id: string) => {
-    setState((s) => ({ ...s, active_cell: { node_id, column_id } }));
+  /** Writes several cells at once: one local state update, and one batch to the real board (see `UseBoardTableConfig.onCellValuesChange`). */
+  const applyCellValues = useCallback((changes: CellValueChange[]) => {
+    if (changes.length === 0) return;
+    const values_by_node = new Map<string, Record<string, CellValue>>();
+    for (const change of changes) {
+      values_by_node.set(change.node_id, { ...(values_by_node.get(change.node_id) ?? {}), [change.column_id]: change.value });
+    }
+    setState((s) => {
+      let groups = s.groups;
+      for (const [node_id, values] of values_by_node) {
+        groups = updateNodeById<BoardTableNode>(groups, node_id, (n) => ({ ...n, values: { ...n.values, ...values } }));
+      }
+      return { ...s, groups };
+    });
+    const current_config = config_ref.current;
+    if (current_config.onCellValuesChange) current_config.onCellValuesChange(changes);
+    else for (const change of changes) current_config.onCellValueChange?.(change.node_id, change.column_id, change.value);
+  }, []);
+
+  /** Like `setCellValue` for many cells: unchanged cells are dropped and the rest become one undo step. */
+  const setCellValues = useCallback(
+    (changes: CellValueChange[]) => {
+      const groups = state_ref.current.groups;
+      const previous_of = (change: CellValueChange): CellValue => findNode(groups, change.node_id)?.values[change.column_id] ?? null;
+      const effective = changes.filter((change) => JSON.stringify(previous_of(change) ?? null) !== JSON.stringify(change.value ?? null));
+      if (effective.length === 0) return;
+      const previous = effective.map((change) => ({ ...change, value: previous_of(change) }));
+      pushHistory({ undo: () => applyCellValues(previous), redo: () => applyCellValues(effective) });
+      applyCellValues(effective);
+    },
+    [applyCellValues, pushHistory]
+  );
+
+  /** Whether a paste, fill or clear may write this cell: the board is not read only, the column is not computed, and the viewer may edit both the row and the column. */
+  const isCellWritable = useCallback((node_id: string, column: ColumnDef): boolean => {
+    const current_config = config_ref.current;
+    if (current_config.read_only || !isPasteTarget(column)) return false;
+    return (current_config.canEditNode?.(node_id) ?? true) && (current_config.canEditColumn?.(column.id) ?? true);
+  }, []);
+
+  // ---- selection: Excel style navigation, ranges, copy, paste, fill ---------
+
+  /** Clicking a cell selects it; with `extend` (Shift+click) the selection grows from the current cell to this one. */
+  const setActiveCell = useCallback((node_id: string, column_id: string, extend = false) => {
+    setState((s) =>
+      extend && s.active_cell
+        ? { ...s, selection_anchor: s.selection_anchor ?? s.active_cell, active_cell: { node_id, column_id } }
+        : { ...s, active_cell: { node_id, column_id }, selection_anchor: null }
+    );
+  }, []);
+
+  /** Mouse down on a data cell. Without Shift it also starts a drag, so moving over other cells selects a range. */
+  const pointerDownCell = useCallback((node_id: string, column_id: string, extend: boolean) => {
+    setState((s) => {
+      if (extend && s.active_cell) {
+        // A cell's picker opened by the first click would otherwise stay open over the range.
+        return {
+          ...s,
+          open_cell_menu_key: null,
+          selection_anchor: s.selection_anchor ?? s.active_cell,
+          active_cell: { node_id, column_id },
+          is_range_dragging: false,
+        };
+      }
+      return { ...s, active_cell: { node_id, column_id }, selection_anchor: null, is_range_dragging: true };
+    });
+  }, []);
+
+  /** The pointer moved over a data cell: grows a fill handle drag or a range drag, whichever is in progress. */
+  const pointerEnterCell = useCallback((node_id: string, column_id: string) => {
+    const s = state_ref.current;
+    if (s.fill_drag) {
+      if (s.fill_drag.hovered_node_id !== node_id) {
+        setState((current) => (current.fill_drag ? { ...current, fill_drag: { ...current.fill_drag, hovered_node_id: node_id } } : current));
+      }
+      return;
+    }
+    if (!s.is_range_dragging || !s.active_cell) return;
+    if (s.active_cell.node_id === node_id && s.active_cell.column_id === column_id) return;
+    // Leaving the first cell turns the gesture into a range selection, so a
+    // text cell that took focus on mouse down gives it back to the table.
+    if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    // The browser may already have started selecting text under the pointer.
+    if (typeof window !== "undefined") window.getSelection()?.removeAllRanges();
+    setState((current) =>
+      current.is_range_dragging && current.active_cell
+        ? { ...current, selection_anchor: current.selection_anchor ?? current.active_cell, active_cell: { node_id, column_id } }
+        : current
+    );
   }, []);
 
   const clearActiveCell = useCallback(() => {
-    setState((s) => (s.active_cell || s.fill_drag ? { ...s, active_cell: null, fill_drag: null } : s));
+    setState((s) => (s.active_cell || s.fill_drag || s.selection_anchor ? { ...s, active_cell: null, selection_anchor: null, fill_drag: null } : s));
   }, []);
 
-  /** Arrow-key navigation from the active cell — see `visibleRowSequence`'s own doc comment for the row order this walks. */
-  const moveActiveCell = useCallback((direction: "up" | "down" | "left" | "right") => {
+  /** Arrow key navigation from the active cell, see `visibleRowSequence`'s own doc comment for the row order this walks. With `extend` (Shift) the selection grows instead of moving. */
+  const moveActiveCell = useCallback((direction: "up" | "down" | "left" | "right", extend = false) => {
     setState((s) => {
       if (!s.active_cell) return s;
       const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
       const row_index = rows.findIndex((r) => r.node_id === s.active_cell!.node_id);
       if (row_index < 0) return s;
       const row = rows[row_index];
+      const next_anchor = extend ? s.selection_anchor ?? s.active_cell : null;
 
       if (direction === "left" || direction === "right") {
         const col_index = row.columns.findIndex((c) => c.id === s.active_cell!.column_id);
         if (col_index < 0) return s;
         const next_index = direction === "left" ? col_index - 1 : col_index + 1;
         if (next_index < 0 || next_index >= row.columns.length) return s;
-        return { ...s, active_cell: { node_id: row.node_id, column_id: row.columns[next_index].id } };
+        return { ...s, selection_anchor: next_anchor, active_cell: { node_id: row.node_id, column_id: row.columns[next_index].id } };
       }
 
       const next_row_index = direction === "up" ? row_index - 1 : row_index + 1;
       if (next_row_index < 0 || next_row_index >= rows.length) return s;
       const next_row = rows[next_row_index];
       // Item and subitem rows have independent column sets, so up/down keeps
-      // the same column id only when the row actually has one — falling back
-      // to that row's first column rather than clamping to a no-op, so
-      // vertical navigation across the item/subitem boundary still lands
-      // somewhere useful instead of silently doing nothing.
+      // the same column id only when the row actually has one, falling back
+      // to that row's column at the same position (or its first column).
+      const col_index = row.columns.findIndex((c) => c.id === s.active_cell!.column_id);
       const next_column_id = next_row.columns.some((c) => c.id === s.active_cell!.column_id)
         ? s.active_cell!.column_id
-        : next_row.columns[0]?.id;
+        : (next_row.columns[Math.min(Math.max(col_index, 0), next_row.columns.length - 1)] ?? next_row.columns[0])?.id;
       if (!next_column_id) return s;
-      return { ...s, active_cell: { node_id: next_row.node_id, column_id: next_column_id } };
+      return { ...s, selection_anchor: next_anchor, active_cell: { node_id: next_row.node_id, column_id: next_column_id } };
     });
   }, []);
 
-  /** Ctrl/Cmd+C on the active cell — also best-effort mirrors the value onto the OS clipboard as plain text, for pasting into Excel/Sheets. */
-  const copyActiveCell = useCallback(() => {
-    const active_cell = state_ref.current.active_cell;
-    if (!active_cell) return;
-    const node = findNode(state_ref.current.groups, active_cell.node_id);
-    if (!node) return;
-    const value = node.values[active_cell.column_id] ?? null;
-    setState((s) => ({ ...s, clipboard_cell: { value } }));
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      const text = Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value);
-      navigator.clipboard.writeText(text).catch(() => {});
-    }
-  }, []);
-
-  /** Ctrl/Cmd+V on the active cell — pastes the last cell copied via `copyActiveCell` (an external paste from outside the board has no structured value to reuse, so it's a no-op rather than guessing at a conversion). */
-  const pasteIntoActiveCell = useCallback(() => {
-    const s = state_ref.current;
-    if (!s.active_cell || !s.clipboard_cell) return;
-    setCellValue(s.active_cell.node_id, s.active_cell.column_id, s.clipboard_cell.value);
-  }, [setCellValue]);
-
-  /** Mouse-down on the active cell's fill handle — the little square at its bottom-right corner. */
-  const startFillDrag = useCallback((node_id: string, column_id: string) => {
-    setState((s) => ({ ...s, fill_drag: { column_id, anchor_node_id: node_id, hovered_node_id: node_id } }));
-  }, []);
-
-  /** The pointer, while dragging, entered a different row's cell in the same column. */
-  const updateFillDragHover = useCallback((node_id: string) => {
-    setState((s) => (s.fill_drag ? { ...s, fill_drag: { ...s.fill_drag, hovered_node_id: node_id } } : s));
-  }, []);
-
-  /** Mouse-up while dragging — copies the anchor cell's value onto every row the drag passed over. */
-  const commitFillDrag = useCallback(() => {
-    const s = state_ref.current;
-    const fill_drag = s.fill_drag;
-    if (!fill_drag) return;
-    setState((current) => ({ ...current, fill_drag: null }));
-    if (fill_drag.hovered_node_id === fill_drag.anchor_node_id) return;
-
+  /** The rows and columns currently selected, top to bottom. Empty when nothing is selected. */
+  const selectedRangeRows = useCallback((s: BoardTableState): CellRangeRow[] => {
     const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
-    const anchor_index = rows.findIndex((r) => r.node_id === fill_drag.anchor_node_id);
-    const hovered_index = rows.findIndex((r) => r.node_id === fill_drag.hovered_node_id);
-    if (anchor_index < 0 || hovered_index < 0) return;
+    const bounds = rangeBounds(rows, s.selection_anchor, s.active_cell);
+    return bounds ? rangeRows(rows, bounds) : [];
+  }, []);
 
-    const anchor_node = findNode(s.groups, fill_drag.anchor_node_id);
-    if (!anchor_node) return;
-    const value = anchor_node.values[fill_drag.column_id] ?? null;
+  const textContext = (s: BoardTableState): CellTextContext => ({ people: s.people, tag_defs: s.tag_defs, status_defs: s.status_defs, label_defs: s.label_defs });
 
-    const [start, end] = anchor_index < hovered_index ? [anchor_index, hovered_index] : [hovered_index, anchor_index];
-    for (let i = start; i <= end; i++) {
-      const row = rows[i];
-      if (row.node_id === fill_drag.anchor_node_id) continue;
-      // Only fills rows that actually have this column (an item column
-      // dragged across the item/subitem boundary skips subitem rows, which
-      // have their own independent column set — see `visibleRowSequence`).
-      if (row.columns.some((c) => c.id === fill_drag.column_id)) {
-        setCellValue(row.node_id, fill_drag.column_id, value);
+  /**
+   * Ctrl/Cmd+C: remembers the selected cells and returns them as TSV (labels
+   * and names, not ids) so the caller can put them on the system clipboard,
+   * ready to paste into Excel, Google Sheets or another board.
+   */
+  const copySelection = useCallback((): string | null => {
+    const s = state_ref.current;
+    const range = selectedRangeRows(s);
+    if (range.length === 0) return null;
+    const context = textContext(s);
+    const rows = range.map((row) => {
+      const node = findNode(s.groups, row.node_id);
+      return row.columns.map((column) => ({ column, value: node?.values[column.id] ?? null }));
+    });
+    const text = toTsv(rows.map((row) => row.map((cell) => cellValueToText(cell.value, cell.column, context))));
+    const clipboard: TableClipboard = { text, rows };
+    setState((current) => ({ ...current, clipboard }));
+    return text;
+  }, [selectedRangeRows]);
+
+  /** Delete or Backspace: empties every selected cell the viewer may edit, as one undo step. */
+  const clearSelectedCells = useCallback(() => {
+    const s = state_ref.current;
+    const changes: CellValueChange[] = [];
+    for (const row of selectedRangeRows(s)) {
+      for (const column of row.columns) {
+        if (isCellWritable(row.node_id, column)) changes.push({ node_id: row.node_id, column_id: column.id, value: null });
       }
     }
-  }, [setCellValue]);
+    setCellValues(changes);
+  }, [selectedRangeRows, isCellWritable, setCellValues]);
+
+  /** Ctrl/Cmd+X: copies the selection, then empties it. */
+  const cutSelection = useCallback((): string | null => {
+    const text = copySelection();
+    if (text !== null) clearSelectedCells();
+    return text;
+  }, [copySelection, clearSelectedCells]);
+
+  /**
+   * Ctrl/Cmd+V with clipboard text. Rows and columns are written from the
+   * selection's top left cell, like a spreadsheet. A single copied value (or
+   * a block that fits the selection an exact number of times) is repeated
+   * over the whole selection. Text copied from this table is pasted with its
+   * original values; anything else is read per column kind (labels, names,
+   * dates, numbers). Cells that cannot take the value are skipped and
+   * reported through `onCellPasteResult`.
+   */
+  const pasteText = useCallback(
+    (text: string) => {
+      const s = state_ref.current;
+      if (!s.active_cell || s.read_only) return;
+      const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
+      const bounds = rangeBounds(rows, s.selection_anchor, s.active_cell);
+      if (!bounds) return;
+
+      const normalize = (value: string) => value.replace(/\r\n/g, "\n").replace(/\n$/, "");
+      const internal = s.clipboard && normalize(s.clipboard.text) === normalize(text) ? s.clipboard.rows : null;
+      const parsed = internal ? null : parseTsv(text);
+      const source_height = internal ? internal.length : parsed!.length;
+      const source_width = Math.max(0, ...(internal ? internal.map((row) => row.length) : parsed!.map((row) => row.length)));
+      if (source_height === 0 || source_width === 0) return;
+
+      const selection_height = bounds.row_end - bounds.row_start + 1;
+      const selection_width = bounds.col_end - bounds.col_start + 1;
+      const tiles =
+        isMultiCellRange(bounds) &&
+        selection_height % source_height === 0 &&
+        selection_width % source_width === 0;
+      const out_height = tiles ? selection_height : source_height;
+      const out_width = tiles ? selection_width : source_width;
+
+      const context = textContext(s);
+      const changes: CellValueChange[] = [];
+      let skipped = 0;
+      let last_cell: ActiveCell | null = null;
+      for (let r = 0; r < out_height; r++) {
+        const row = rows[bounds.row_start + r];
+        if (!row) break;
+        for (let c = 0; c < out_width; c++) {
+          const column = row.columns[bounds.col_start + c];
+          if (!column) continue;
+          last_cell = { node_id: row.node_id, column_id: column.id };
+          if (!isCellWritable(row.node_id, column)) {
+            skipped++;
+            continue;
+          }
+          const source_row = r % source_height;
+          const source_col = c % source_width;
+          let value: CellValue | undefined;
+          if (internal) {
+            const cell = internal[source_row]?.[source_col];
+            value = cell ? convertCellValue(cell.value, cell.column, column, context) : undefined;
+          } else {
+            value = textToCellValue(parsed![source_row]?.[source_col] ?? "", column, context);
+          }
+          if (value === undefined) {
+            skipped++;
+            continue;
+          }
+          changes.push({ node_id: row.node_id, column_id: column.id, value });
+        }
+      }
+
+      const rows_left_out = Math.max(0, bounds.row_start + out_height - rows.length);
+      setCellValues(changes.slice(0, MAX_PASTE_CELLS));
+      const first_row = rows[bounds.row_start];
+      const first_column = first_row.columns[bounds.col_start];
+      if (last_cell && first_column) {
+        const anchor = { node_id: first_row.node_id, column_id: first_column.id };
+        const focus = last_cell;
+        setState((current) => ({ ...current, selection_anchor: anchor, active_cell: focus }));
+      }
+      config_ref.current.onCellPasteResult?.({ written: Math.min(changes.length, MAX_PASTE_CELLS), skipped, rows_left_out });
+    },
+    [isCellWritable, setCellValues]
+  );
+
+  /** Mouse down on the fill handle: the drag reads from the whole selection when the handle belongs to it, otherwise from that one cell. */
+  const startFillDrag = useCallback(
+    (node_id: string, column_id: string) => {
+      setState((s) => {
+        const range = selectedRangeRows(s);
+        const in_range = range.some((row) => row.node_id === node_id && row.columns.some((column) => column.id === column_id));
+        const source_node_ids = in_range ? range.map((row) => row.node_id) : [node_id];
+        const column_ids = in_range ? range[0].columns.map((column) => column.id) : [column_id];
+        return { ...s, is_range_dragging: false, fill_drag: { column_ids, source_node_ids, hovered_node_id: node_id } };
+      });
+    },
+    [selectedRangeRows]
+  );
+
+  /** The pointer, while dragging the fill handle, entered another row. Kept for callers that only know the row. */
+  const updateFillDragHover = useCallback((node_id: string) => {
+    setState((s) => (s.fill_drag && s.fill_drag.hovered_node_id !== node_id ? { ...s, fill_drag: { ...s.fill_drag, hovered_node_id: node_id } } : s));
+  }, []);
+
+  /**
+   * Writes the fill: every target row (ordered away from the selection) gets
+   * the next values of each filled column's series, see `fillSeries`. Rows
+   * without that column (an item column over a subitem row) are skipped.
+   * The selection then grows to cover the filled cells.
+   */
+  const fillRows = useCallback(
+    (fill: FillDragState, target_node_ids: string[], direction: "down" | "up") => {
+      const s = state_ref.current;
+      if (target_node_ids.length === 0) return;
+      const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
+      const row_by_id = new Map(rows.map((row) => [row.node_id, row]));
+      const ordered_sources = direction === "down" ? fill.source_node_ids : fill.source_node_ids.slice().reverse();
+
+      const changes: CellValueChange[] = [];
+      for (const column_id of fill.column_ids) {
+        const column = ordered_sources.map((id) => row_by_id.get(id)?.columns.find((c) => c.id === column_id)).find(Boolean);
+        if (!column) continue;
+        const source_values = ordered_sources
+          .filter((id) => row_by_id.get(id)?.columns.some((c) => c.id === column_id))
+          .map((id) => findNode(s.groups, id)?.values[column_id] ?? null);
+        const targets = target_node_ids.filter((id) => row_by_id.get(id)?.columns.some((c) => c.id === column_id));
+        const series = fillSeries(source_values, column, targets.length);
+        targets.forEach((id, index) => {
+          if (isCellWritable(id, column)) changes.push({ node_id: id, column_id, value: series[index] ?? null });
+        });
+      }
+      setCellValues(changes);
+
+      const edge_node_id = direction === "down" ? fill.source_node_ids[0] : fill.source_node_ids[fill.source_node_ids.length - 1];
+      const far_node_id = target_node_ids[target_node_ids.length - 1];
+      const first_column_id = fill.column_ids[0];
+      const last_column_id = fill.column_ids[fill.column_ids.length - 1];
+      const far_row = row_by_id.get(far_node_id);
+      setState((current) => ({
+        ...current,
+        selection_anchor: { node_id: edge_node_id, column_id: first_column_id },
+        active_cell: {
+          node_id: far_node_id,
+          column_id: far_row?.columns.some((c) => c.id === last_column_id) ? last_column_id : far_row?.columns[0]?.id ?? last_column_id,
+        },
+      }));
+    },
+    [isCellWritable, setCellValues]
+  );
+
+  /** Mouse up while dragging the fill handle. */
+  const commitFillDrag = useCallback(() => {
+    const s = state_ref.current;
+    const fill = s.fill_drag;
+    if (!fill) return;
+    setState((current) => ({ ...current, fill_drag: null }));
+
+    const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
+    const indexes = fill.source_node_ids.map((id) => rows.findIndex((row) => row.node_id === id)).filter((index) => index >= 0);
+    const hovered_index = rows.findIndex((row) => row.node_id === fill.hovered_node_id);
+    if (indexes.length === 0 || hovered_index < 0) return;
+    const first = Math.min(...indexes);
+    const last = Math.max(...indexes);
+
+    if (hovered_index > last) {
+      fillRows(fill, rows.slice(last + 1, hovered_index + 1).map((row) => row.node_id), "down");
+    } else if (hovered_index < first) {
+      fillRows(fill, rows.slice(hovered_index, first).map((row) => row.node_id).reverse(), "up");
+    }
+  }, [fillRows]);
+
+  /** Double click on the fill handle: fills down to the last row of the same group, like Excel's double click fill. */
+  const fillDownToGroupEnd = useCallback(
+    (node_id: string, column_id: string) => {
+      const s = state_ref.current;
+      const range = selectedRangeRows(s);
+      const in_range = range.some((row) => row.node_id === node_id && row.columns.some((column) => column.id === column_id));
+      const fill: FillDragState = {
+        column_ids: in_range ? range[0].columns.map((column) => column.id) : [column_id],
+        source_node_ids: in_range ? range.map((row) => row.node_id) : [node_id],
+        hovered_node_id: node_id,
+      };
+      const rows = visibleRowSequence(s.groups, s.collapsed_groups, s.open_map);
+      const last_index = Math.max(...fill.source_node_ids.map((id) => rows.findIndex((row) => row.node_id === id)));
+      if (last_index < 0) return;
+      const group_key = rows[last_index].group_key;
+      const targets: string[] = [];
+      for (let index = last_index + 1; index < rows.length && rows[index].group_key === group_key; index++) targets.push(rows[index].node_id);
+      setState((current) => ({ ...current, fill_drag: null }));
+      fillRows(fill, targets, "down");
+    },
+    [selectedRangeRows, fillRows]
+  );
 
   const cancelFillDrag = useCallback(() => {
     setState((s) => (s.fill_drag ? { ...s, fill_drag: null } : s));
   }, []);
 
-  // Ctrl/Cmd+C / Ctrl/Cmd+V / arrow keys act on the active cell from
-  // anywhere on the page — skipped while the pointer's actual target is a
-  // text input/textarea/contenteditable (the item-name editor, a column
-  // rename field, a picker's search box, ...) so this never hijacks normal
-  // typing, and skipped while any menu/popover/rename is open so its own
-  // keyboard handling (if any) isn't shadowed.
+  // Keyboard and clipboard shortcuts act on the selection from anywhere on
+  // the page. They are skipped while the event's target is a text input,
+  // textarea or contenteditable (the item name editor, a text cell, a
+  // picker's search box, ...) so normal typing and native copy and paste are
+  // never hijacked, and while any menu, popover or rename is open.
   useEffect(() => {
     const isTypingTarget = (target: EventTarget | null): boolean => {
       if (!(target instanceof HTMLElement)) return false;
       const tag = target.tagName;
-      return tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable;
+      return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable;
     };
     const hasOverlayOpen = (s: BoardTableState): boolean =>
       !!(
@@ -1062,23 +1386,39 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         s.open_owner_menu_key ||
         s.open_picker_key ||
         s.label_editor_kind ||
-        s.tag_editor_open
+        s.tag_editor_open ||
+        s.config_editor
       );
+    const isActive = (event: Event): boolean => {
+      const s = state_ref.current;
+      return !!s.active_cell && !hasOverlayOpen(s) && !isTypingTarget(event.target);
+    };
+
+    // A keyboard paste normally arrives as a `paste` event, which carries the
+    // clipboard text without asking for permission. This flag lets the
+    // Ctrl/Cmd+V fallback below know whether that already happened.
+    let is_paste_pending = false;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       const s = state_ref.current;
+      // Escape closes a cell's own picker (Status, Date, People...) and keeps the cell selected.
+      if (event.key === "Escape" && s.open_cell_menu_key && !isTypingTarget(event.target)) {
+        setState((current) => ({ ...current, open_cell_menu_key: null }));
+        return;
+      }
       if (hasOverlayOpen(s) || isTypingTarget(event.target)) return;
+      const is_mod = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
 
-      // Undo/redo act page-wide (no active cell needed), mirroring every
-      // other editor's Ctrl/Cmd+Z — unlike copy/paste/arrow-nav below, which
-      // are meaningless without one already focused.
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+      // Undo/redo act page wide (no active cell needed), mirroring every
+      // other editor's Ctrl/Cmd+Z.
+      if (is_mod && key === "z") {
         event.preventDefault();
         if (event.shiftKey) redo();
         else undo();
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+      if (is_mod && key === "y") {
         event.preventDefault();
         redo();
         return;
@@ -1088,42 +1428,101 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
       if (event.key === "Escape") {
         if (s.fill_drag) cancelFillDrag();
+        else if (s.selection_anchor) setState((current) => ({ ...current, selection_anchor: null }));
         else clearActiveCell();
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
-        event.preventDefault();
-        copyActiveCell();
+      if (is_mod && key === "v") {
+        // Left to the browser so the `paste` event fires. Some browsers skip
+        // that event when nothing editable has focus, so the async clipboard
+        // API is tried shortly after when it did not arrive.
+        is_paste_pending = true;
+        window.setTimeout(() => {
+          if (!is_paste_pending) return;
+          is_paste_pending = false;
+          navigator.clipboard?.readText?.().then(pasteText).catch(() => {});
+        }, 80);
         return;
       }
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
+      if (is_mod && (key === "c" || key === "x")) {
+        // The `copy`/`cut` handlers below write the clipboard; this also
+        // covers browsers that do not fire them without a text selection.
+        const text = key === "x" ? cutSelection() : copySelection();
+        if (text !== null) {
+          event.preventDefault();
+          navigator.clipboard?.writeText?.(text).catch(() => {});
+        }
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
         event.preventDefault();
-        pasteIntoActiveCell();
+        clearSelectedCells();
         return;
       }
       if (event.key === "ArrowUp" || event.key === "ArrowDown" || event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
         moveActiveCell(
-          event.key === "ArrowUp" ? "up" : event.key === "ArrowDown" ? "down" : event.key === "ArrowLeft" ? "left" : "right"
+          event.key === "ArrowUp" ? "up" : event.key === "ArrowDown" ? "down" : event.key === "ArrowLeft" ? "left" : "right",
+          event.shiftKey
         );
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [clearActiveCell, copyActiveCell, pasteIntoActiveCell, moveActiveCell, cancelFillDrag, undo, redo]);
+    // Text and number cells are inputs, so a click gives them focus. A paste
+    // of several cells (text with tabs or line breaks, from a spreadsheet)
+    // into such an input still goes to the table, the way Google Sheets does.
+    const isMultiCellPasteIntoCellInput = (event: ClipboardEvent): boolean => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.closest("[data-filter-cell]")) return false;
+      if (target.tagName === "TEXTAREA") return false;
+      const text = event.clipboardData?.getData("text/plain") ?? "";
+      return /[\t\n]/.test(text.replace(/\r?\n$/, ""));
+    };
 
-  // Commits (or cancels) an in-progress fill-handle drag as soon as the
-  // mouse button is released anywhere on the page — the drag doesn't rely on
-  // the native HTML5 drag-and-drop API, so nothing else guarantees `mouseup`
+    const handlePaste = (event: ClipboardEvent) => {
+      const s = state_ref.current;
+      const is_cell_input_paste = !!s.active_cell && !hasOverlayOpen(s) && isMultiCellPasteIntoCellInput(event);
+      if (!is_cell_input_paste && !isActive(event)) return;
+      is_paste_pending = false;
+      const text = event.clipboardData?.getData("text/plain");
+      if (text == null) return;
+      event.preventDefault();
+      pasteText(text);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [clearActiveCell, copySelection, cutSelection, clearSelectedCells, pasteText, moveActiveCell, cancelFillDrag, undo, redo]);
+
+  // Ends a range drag, and commits (or cancels) a fill handle drag, as soon
+  // as the mouse button is released anywhere on the page. Neither relies on
+  // the native HTML5 drag and drop API, so nothing else guarantees `mouseup`
   // fires on a particular element.
   useEffect(() => {
     const handleMouseUp = () => {
-      if (state_ref.current.fill_drag) commitFillDrag();
+      const s = state_ref.current;
+      if (s.fill_drag) commitFillDrag();
+      if (s.is_range_dragging) setState((current) => ({ ...current, is_range_dragging: false }));
     };
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
   }, [commitFillDrag]);
+
+  // While a range or fill drag is under way the browser's own text selection
+  // would paint over the cells, so it is switched off for the page.
+  const is_selecting_cells = (state.is_range_dragging && !!state.selection_anchor) || !!state.fill_drag;
+  useEffect(() => {
+    if (!is_selecting_cells || typeof document === "undefined") return;
+    const previous = document.body.style.userSelect;
+    document.body.style.userSelect = "none";
+    return () => {
+      document.body.style.userSelect = previous;
+    };
+  }, [is_selecting_cells]);
 
   // ---- row menu / structural item ops -------------------------------------
 
@@ -1437,6 +1836,34 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     const next_groups = groups.map((g) => (!!g.is_priority === is_priority ? next_tier[cursor++] : g));
 
     setState((s) => ({ ...s, groups: next_groups, open_group_menu_key: null }));
+    config_ref.current.onMoveGroup?.(key, next_groups.map((g) => g.key));
+  }, []);
+
+  /**
+   * Group drag and drop: moves `key` to where `over_key` sits. Priority
+   * client groups always render above the rest (see `moveGroupByKey`), so a
+   * drop across that line lands at the edge of the group's own tier instead.
+   */
+  const moveGroupToKey = useCallback((key: string, over_key: string) => {
+    const groups = state_ref.current.groups;
+    const group = findGroup(groups, key);
+    const over = findGroup(groups, over_key);
+    if (!group || !over || key === over_key) return;
+
+    const is_priority = !!group.is_priority;
+    const tier = groups.filter((g) => !!g.is_priority === is_priority);
+    const from = tier.findIndex((g) => g.key === key);
+    let to = tier.findIndex((g) => g.key === over_key);
+    if (to < 0) to = over.is_priority ? 0 : tier.length - 1;
+    if (from === to) return;
+
+    const next_tier = tier.slice();
+    const [moved] = next_tier.splice(from, 1);
+    next_tier.splice(to, 0, moved);
+    let cursor = 0;
+    const next_groups = groups.map((g) => (!!g.is_priority === is_priority ? next_tier[cursor++] : g));
+
+    setState((s) => ({ ...s, groups: next_groups }));
     config_ref.current.onMoveGroup?.(key, next_groups.map((g) => g.key));
   }, []);
 
@@ -2148,11 +2575,16 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setActiveCell,
       clearActiveCell,
       moveActiveCell,
-      copyActiveCell,
-      pasteIntoActiveCell,
+      pointerDownCell,
+      pointerEnterCell,
+      copySelection,
+      cutSelection,
+      pasteText,
+      clearSelectedCells,
       startFillDrag,
       updateFillDragHover,
       commitFillDrag,
+      fillDownToGroupEnd,
       cancelFillDrag,
       openRowMenu,
       closeRowMenu,
@@ -2180,6 +2612,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addGroup,
       duplicateGroup,
       moveGroupByKey,
+      moveGroupToKey,
       setGroupColor,
       togglePriority,
       removeGroup,
@@ -2258,11 +2691,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [
       toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
-      clearCellValue, uploadCellFiles, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
-      startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
+      clearCellValue, uploadCellFiles, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, pointerDownCell, pointerEnterCell,
+      copySelection, cutSelection, pasteText, clearSelectedCells, startFillDrag, updateFillDragHover, commitFillDrag, fillDownToGroupEnd, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
-      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
+      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToKey, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
@@ -2280,7 +2713,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    */
   const READ_ONLY_SAFE_ACTIONS = new Set<keyof typeof actions>([
     "toggleItemOpen", "toggleSelected", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup",
-    "setActiveCell", "clearActiveCell", "moveActiveCell", "copyActiveCell",
+    "setActiveCell", "clearActiveCell", "moveActiveCell", "pointerDownCell", "pointerEnterCell", "copySelection",
     "openRowMenu", "closeRowMenu", "setHoverRow", "setHoverGroup", "setHoverHead",
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
@@ -2295,7 +2728,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * settings and labels). No-ops when `config.can_edit_structure` is false.
    */
   const STRUCTURE_ACTIONS: (keyof typeof actions)[] = [
-    "addGroup", "duplicateGroup", "moveGroupByKey", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
+    "addGroup", "duplicateGroup", "moveGroupByKey", "moveGroupToKey", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
     "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
     "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
@@ -2349,11 +2782,6 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("clearCellValue", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("uploadCellFiles", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
-    wrap("startFillDrag", (node_id, column_id) => isCellEditable(node_id, column_id));
-    wrap("pasteIntoActiveCell", () => {
-      const active_cell = state_ref.current.active_cell;
-      return active_cell ? isCellEditable(active_cell.node_id, active_cell.column_id) : false;
-    });
 
     if (canEditNode) {
       for (const key of NODE_ACTIONS) {
@@ -2365,7 +2793,42 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actions, config.read_only, config.can_edit_structure, config.can_create_items, config.canEditNode, config.canEditColumn]);
 
-  return { state, actions: guarded_actions, summary_text, findNode: (id: string) => findNode(state.groups, id) };
+  // The selection highlight, the fill handle's position and the fill
+  // preview are derived here instead of stored, so they always match the
+  // rows on screen (a collapsed group, a row that moved, a new sort).
+  const derived_selection = useMemo(() => {
+    const rows = visibleRowSequence(state.groups, state.collapsed_groups, state.open_map);
+    const bounds = rangeBounds(rows, state.selection_anchor, state.active_cell);
+    const selected_cell_keys = rangeCellKeys(rows, bounds);
+    let fill_handle_cell: ActiveCell | null = null;
+    if (bounds) {
+      const corner_row = rows[bounds.row_end];
+      const corner_column = corner_row.columns[Math.min(bounds.col_end, corner_row.columns.length - 1)];
+      if (corner_column) fill_handle_cell = { node_id: corner_row.node_id, column_id: corner_column.id };
+    }
+
+    const fill_target_keys = new Set<string>();
+    const fill = state.fill_drag;
+    if (fill) {
+      const indexes = fill.source_node_ids.map((id) => rows.findIndex((row) => row.node_id === id)).filter((index) => index >= 0);
+      const hovered_index = rows.findIndex((row) => row.node_id === fill.hovered_node_id);
+      if (indexes.length > 0 && hovered_index >= 0) {
+        const first = Math.min(...indexes);
+        const last = Math.max(...indexes);
+        const targets = hovered_index > last ? rows.slice(last + 1, hovered_index + 1) : hovered_index < first ? rows.slice(hovered_index, first) : [];
+        for (const row of targets) {
+          for (const column_id of fill.column_ids) {
+            if (row.columns.some((column) => column.id === column_id)) fill_target_keys.add(cellKey(row.node_id, column_id));
+          }
+        }
+      }
+    }
+    return { selected_cell_keys, fill_target_keys, fill_handle_cell };
+  }, [state.groups, state.collapsed_groups, state.open_map, state.selection_anchor, state.active_cell, state.fill_drag]);
+
+  const view_state = useMemo<BoardTableState>(() => ({ ...state, ...derived_selection }), [state, derived_selection]);
+
+  return { state: view_state, actions: guarded_actions, summary_text, findNode: (id: string) => findNode(state.groups, id) };
 }
 
 export type BoardTableActions = ReturnType<typeof useBoardTable>["actions"];

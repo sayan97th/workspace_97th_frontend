@@ -48,6 +48,16 @@ export const ChartViewIcon: React.FC<IconProps> = ({ className, size = 15 }) => 
   </svg>
 );
 
+/** Two people rows with load bars, the "Workload" board view type. */
+export const WorkloadViewIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="3.5" cy="4.5" r="1.7" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="3.5" cy="11.5" r="1.7" stroke="currentColor" strokeWidth="1.2" />
+    <rect x="7" y="3.4" width="7.5" height="2.2" rx="1.1" fill="currentColor" />
+    <rect x="7" y="10.4" width="4.5" height="2.2" rx="1.1" fill="currentColor" />
+  </svg>
+);
+
 /** Grid with a marked date — the "Calendar" board view type. */
 export const CalendarViewIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">

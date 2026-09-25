@@ -26,6 +26,11 @@ import type {
  * Talks to the Laravel workspace API. Every call goes through the shared
  * {@link apiClient}, so it inherits the bearer-token auth + 401 refresh handling.
  */
+/** What a "Duplicate board" copies, see `DuplicateBoardModal`. */
+export type DuplicateBoardMode = "structure" | "items" | "items_updates";
+
+export type DuplicateNavItemOptions = { mode?: DuplicateBoardMode; label?: string };
+
 export const workspaceService = {
   /** GET /api/workspaces — the full catalog for the switcher / browse modal. */
   async getWorkspaces(): Promise<Workspace[]> {
@@ -313,13 +318,19 @@ export const workspaceService = {
     return response.items;
   },
 
-  /** POST /api/workspaces/{slug}/navigation/{id}/duplicate — deep-copy a subtree. */
+  /**
+   * POST /api/workspaces/{slug}/navigation/{id}/duplicate, deep copies a
+   * subtree. `mode` picks what a board copy includes (structure only, with
+   * items, or with items and updates) and `label` names the copy.
+   */
   async duplicateNavItem(
     workspace_slug: string,
-    item_id: number
+    item_id: number,
+    options: DuplicateNavItemOptions = {}
   ): Promise<WorkspaceNavNode> {
     const response = await apiClient.post<{ item: WorkspaceNavNode }>(
-      `/api/workspaces/${workspace_slug}/navigation/${item_id}/duplicate`
+      `/api/workspaces/${workspace_slug}/navigation/${item_id}/duplicate`,
+      options
     );
     return response.item;
   },

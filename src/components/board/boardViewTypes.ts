@@ -6,6 +6,7 @@ import {
   GanttViewIcon,
   KanbanViewIcon,
   TableViewIcon,
+  WorkloadViewIcon,
 } from "@/icons/board-icons";
 import { BoardGridIcon, DashboardIcon, FileIcon, type IconComponent } from "@/icons/workspace-icons";
 
@@ -28,7 +29,8 @@ export type BoardViewKind =
   | "doc"
   | "file_gallery"
   | "form"
-  | "dashboard";
+  | "dashboard"
+  | "workload";
 
 /** A view kind offered from the "+" (Board views) picker on a board's tab bar. */
 export type BoardViewTypeOption = {
@@ -121,7 +123,14 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Dashboard",
     description: "Combine widgets from across your boards",
     Icon: DashboardIcon,
-    is_available: false,
+    is_available: true,
+  },
+  {
+    kind: "workload",
+    label: "Workload",
+    description: "See who has too much or too little work",
+    Icon: WorkloadViewIcon,
+    is_available: true,
   },
 ];
 

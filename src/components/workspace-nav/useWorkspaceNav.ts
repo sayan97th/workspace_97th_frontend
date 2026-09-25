@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
-import { workspaceService } from "@/services/workspace.service";
+import { workspaceService, type DuplicateNavItemOptions } from "@/services/workspace.service";
+import { boardTemplateService } from "@/services/board-template.service";
 import { FAVORITES_CHANGED_EVENT, personalService } from "@/services/personal.service";
 import type {
   CreateNavItemPayload,
@@ -30,7 +31,10 @@ export type WorkspaceNavApi = {
   moveItemUp: (item_id: number) => Promise<void>;
   /** Swaps an item with its next sibling (kebab menu's "Move down"); a no-op when it's already last. */
   moveItemDown: (item_id: number) => Promise<void>;
-  duplicateItem: (item_id: number) => Promise<void>;
+  /** Copies an item. For a board, `options` picks what the copy includes and names it (see `DuplicateBoardModal`). */
+  duplicateItem: (item_id: number, options?: DuplicateNavItemOptions) => Promise<void>;
+  /** Template center's "Use template": creates the board at the workspace root (or in `parent_id`), reloads the tree and returns the new board. */
+  createFromTemplate: (payload: { template_id: string; label: string; parent_id?: number | null }) => Promise<WorkspaceNavNode | null>;
   deleteItem: (item_id: number) => Promise<void>;
 };
 
@@ -172,9 +176,19 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
   const moveItemDown = useCallback((item_id: number) => swapWithSibling(item_id, "down"), [swapWithSibling]);
 
   const duplicateItem = useCallback(
-    (item_id: number) =>
-      runMutation((slug) => workspaceService.duplicateNavItem(slug, item_id)),
+    (item_id: number, options?: DuplicateNavItemOptions) =>
+      runMutation((slug) => workspaceService.duplicateNavItem(slug, item_id, options)),
     [runMutation]
+  );
+
+  const createFromTemplate = useCallback(
+    async (payload: { template_id: string; label: string; parent_id?: number | null }) => {
+      if (!workspace_slug) return null;
+      const created = await boardTemplateService.createBoardFromTemplate(workspace_slug, payload);
+      await load();
+      return created;
+    },
+    [workspace_slug, load]
   );
 
   const deleteItem = useCallback(
@@ -199,6 +213,7 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     moveItemUp,
     moveItemDown,
     duplicateItem,
+    createFromTemplate,
     deleteItem,
   };
 }

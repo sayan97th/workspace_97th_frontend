@@ -5,6 +5,7 @@ import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
 import GroupMenuButton from "./GroupMenuButton";
 import EmojiInsertButton from "../../EmojiInsertButton";
+import type { GroupDragHandle } from "./SortableGroup";
 
 interface GroupHeaderLeftProps {
   group: BoardTableGroup;
@@ -13,12 +14,14 @@ interface GroupHeaderLeftProps {
   /** Set to false when the caller renders the "..." menu button itself (e.g. the collapsed
    *  group's summary card renders it outside its `overflow-hidden` card). Defaults to true. */
   show_menu_button?: boolean;
+  /** Present when groups can be reordered: the cluster becomes the group's drag handle, see `SortableGroup`. */
+  drag_handle?: GroupDragHandle;
 }
 
 /** The interactive left-hand cluster shared by the expanded group header (`GroupHeaderBar`)
  *  and the collapsed group's summary card (`CollapsedGroupSummaryRow`): group menu, collapse
  *  toggle, editable title, item/subitem count, and the priority-client flag. */
-export default function GroupHeaderLeft({ group, state, actions, show_menu_button = true }: GroupHeaderLeftProps) {
+export default function GroupHeaderLeft({ group, state, actions, show_menu_button = true, drag_handle }: GroupHeaderLeftProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const is_hovered = state.hover_group_key === group.key;
   const is_editing = state.editing_group_key === group.key;
@@ -29,12 +32,39 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
   // pick's own text update lands and commit the rename out from under it.
   const is_emoji_palette_open_ref = useRef(false);
 
+  // Renaming needs normal pointer behavior inside the input, so dragging is paused meanwhile.
+  const can_drag = !!drag_handle?.is_enabled && !is_editing;
+
   return (
     <div
+      {...(can_drag ? drag_handle!.pointer_listeners : {})}
       onMouseEnter={() => actions.setHoverGroup(group.key)}
       onMouseLeave={() => actions.setHoverGroup(null)}
-      className="left-0 flex w-max items-center gap-2"
+      className="group/header relative left-0 flex w-max items-center gap-2"
     >
+      {can_drag && (
+        <button
+          type="button"
+          ref={drag_handle!.setGripRef}
+          {...drag_handle!.grip_props}
+          aria-label={`Move group ${group.title}`}
+          title="Drag to move this group"
+          // Sits in the gap between the "..." menu button and the collapse arrow (or, on a collapsed group's card, in its left padding).
+          className={`absolute top-1/2 flex h-5 w-[9px] -translate-y-1/2 cursor-grab items-center justify-center rounded-[3px] text-boardtree-text-faint hover:bg-boardtree-hover-strong focus-visible:opacity-100 active:cursor-grabbing ${
+            show_menu_button ? "-left-[5px]" : "-left-[16px]"
+          }`}
+          style={{ opacity: is_hovered ? 1 : 0 }}
+        >
+          <svg viewBox="0 0 6 14" width="6" height="11" aria-hidden>
+            <circle cx="1.5" cy="3" r="1" fill="currentColor" />
+            <circle cx="4.5" cy="3" r="1" fill="currentColor" />
+            <circle cx="1.5" cy="7" r="1" fill="currentColor" />
+            <circle cx="4.5" cy="7" r="1" fill="currentColor" />
+            <circle cx="1.5" cy="11" r="1" fill="currentColor" />
+            <circle cx="4.5" cy="11" r="1" fill="currentColor" />
+          </svg>
+        </button>
+      )}
       {show_menu_button && (
         <GroupMenuButton
           group={group}

@@ -6,6 +6,7 @@ import { mainGridTemplate } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
+import type { GroupDragHandle } from "../group/SortableGroup";
 
 interface CollapsedGroupSummaryRowProps {
   group: BoardTableGroup;
@@ -13,6 +14,7 @@ interface CollapsedGroupSummaryRowProps {
   min_width: number;
   state: BoardTableState;
   actions: BoardTableActions;
+  drag_handle?: GroupDragHandle;
 }
 
 const ROW_HEIGHT = 58;
@@ -21,7 +23,7 @@ const ROW_HEIGHT = 58;
  *  hidden while collapsed, this single card keeps every column's aggregate (status
  *  distribution, number sum, timeline span) visible at a glance, mirroring Monday's own
  *  collapsed-group preview. */
-export default function CollapsedGroupSummaryRow({ group, name_col_width, min_width, state, actions }: CollapsedGroupSummaryRowProps) {
+export default function CollapsedGroupSummaryRow({ group, name_col_width, min_width, state, actions, drag_handle }: CollapsedGroupSummaryRowProps) {
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const columns = group.base_columns.concat(group.custom_columns);
   const is_hovered = state.hover_group_key === group.key;
@@ -59,7 +61,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
             className="flex items-center pl-8"
             style={{ gridColumn: "span 3", height: ROW_HEIGHT, position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}
           >
-            <GroupHeaderLeft group={group} state={state} actions={actions} show_menu_button={false} />
+            <GroupHeaderLeft group={group} state={state} actions={actions} show_menu_button={false} drag_handle={drag_handle} />
           </div>
 
           {columns.map((col) => {

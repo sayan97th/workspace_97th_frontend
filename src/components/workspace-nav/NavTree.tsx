@@ -33,6 +33,7 @@ import NavTreeRow from "./NavTreeRow";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
+import DuplicateBoardModal from "@/components/board/DuplicateBoardModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { getLeafHref, locateNavNode } from "./helpers";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
@@ -91,6 +92,8 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
   const [move, setMove] = useState<MoveState>({ is_open: false, node: null });
   const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode | null>(null);
+  // A board opens the duplicate options first, a folder is copied straight away.
+  const [pending_duplicate, setPendingDuplicate] = useState<WorkspaceNavNode | null>(null);
   const [active_drag_id, setActiveDragId] = useState<number | null>(null);
 
   const sensors = useSensors(
@@ -241,7 +244,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         key: "duplicate",
         label: "Duplicate",
         icon: <DuplicateIcon />,
-        onClick: () => void nav.duplicateItem(node.id),
+        onClick: () => (node.type === "leaf" ? setPendingDuplicate(node) : void nav.duplicateItem(node.id)),
       },
       {
         key: "delete",
@@ -357,6 +360,15 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug }) => {
         placeholder={form.mode === "create-folder" ? "Folder name" : "View name"}
         onSubmit={submitForm}
         onClose={() => setForm(CLOSED_FORM)}
+      />
+
+      <DuplicateBoardModal
+        is_open={pending_duplicate !== null}
+        board_label={pending_duplicate?.label ?? ""}
+        onSubmit={async (options) => {
+          if (pending_duplicate) await nav.duplicateItem(pending_duplicate.id, options);
+        }}
+        onClose={() => setPendingDuplicate(null)}
       />
 
       <MoveNavItemModal

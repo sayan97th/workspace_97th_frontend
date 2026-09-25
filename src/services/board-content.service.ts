@@ -383,6 +383,19 @@ export const boardContentService = {
   },
 
   /** PATCH /api/boards/{board_id}/items/values — selection action bar's "Edit column" bulk action. */
+  /**
+   * PATCH /api/boards/{board_id}/items/cell-values, the table's multi cell
+   * writes (range paste, fill handle, clearing a range) saved in one request
+   * and one transaction.
+   */
+  async batchUpdateCellValues(
+    board_id: number,
+    cells: { item_id: number; values: Record<string, BoardItemValue> }[]
+  ): Promise<BoardItemDto[]> {
+    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/cell-values`, { cells });
+    return response.items;
+  },
+
   async bulkSetColumnValue(board_id: number, item_ids: number[], column_id: number, value: BoardItemValue): Promise<BoardItemDto[]> {
     const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/values`, {
       item_ids,

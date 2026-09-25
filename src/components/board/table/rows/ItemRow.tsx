@@ -5,6 +5,7 @@ import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
+import { cellPointerHandlers, cellSelectionFlags, FillHandle, SelectionTint } from "./CellSelection";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import { getConvertBlockedReason } from "../menus/rowMenuRules";
 import TreeBar from "./TreeBar";
@@ -51,12 +52,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   // pick's own text update lands and commit the edit out from under it.
   const is_emoji_palette_open_ref = useRef(false);
   // A native `dragstart` event's own `target` is always the row (the
-  // `draggable` element itself), never the fill handle the gesture actually
-  // began on — so the row's `onDragStart` can't tell the two apart just by
-  // inspecting the event. This ref is set synchronously by the handle's own
-  // `onMouseDown` (which always fires first) and read once by the very next
-  // `onDragStart`, letting the row cancel its own native drag when that's
-  // where the gesture really came from.
+  // `draggable` element itself), never the value cell or fill handle the
+  // gesture actually began on, so the row's `onDragStart` can't tell them
+  // apart just by inspecting the event. This ref is set synchronously on
+  // mouse down (which always fires first) and read once by the very next
+  // `onDragStart`, letting the row cancel its own native drag when the
+  // gesture began on a value cell (a range selection) or the fill handle.
   const fill_handle_mousedown_ref = useRef(false);
   // A fill-drag ends on a plain `mouseup` (no native `dragend` ever fires,
   // since `dragstart` was cancelled) — this is what clears the ref again for
@@ -86,6 +87,12 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         outlineOffset: is_active_match ? "-2px" : undefined,
       }}
       draggable={!state.read_only}
+      // Pressing on a value cell selects cells (a drag over other cells selects
+      // a range, see `cellPointerHandlers`), so only the rest of the row, like
+      // its grip and name, starts a row reorder.
+      onMouseDownCapture={(e) => {
+        if ((e.target as Element).closest("[data-value-cell]")) fill_handle_mousedown_ref.current = true;
+      }}
       onDragStart={(e) => {
         // See `fill_handle_mousedown_ref`'s own doc comment — a fill-handle
         // drag starts inside this same `draggable` row, and must cancel the
@@ -277,12 +284,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         </div>
 
         {group.base_columns.concat(group.custom_columns).map((col, col_index) => {
-          const is_active = state.active_cell?.node_id === item.id && state.active_cell?.column_id === col.id;
-          const is_fill_target =
-            !!state.fill_drag &&
-            state.fill_drag.column_id === col.id &&
-            state.fill_drag.hovered_node_id === item.id &&
-            state.fill_drag.anchor_node_id !== item.id;
+          const { is_active, is_selected, is_fill_target, has_fill_handle } = cellSelectionFlags(state, item.id, col.id);
           const is_pinned = col_index < pinned_columns.length;
           const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, item.values[col.id]);
           const is_search_match = is_active_match && state.active_search_match?.column_id === col.id;
@@ -316,22 +318,18 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 outlineOffset: is_active || is_fill_target || is_search_match || is_invalid ? "-2px" : undefined,
                 zIndex: is_pinned ? 15 : is_active ? 5 : undefined,
               }}
-              onMouseDown={() => actions.setActiveCell(item.id, col.id)}
-              onMouseEnter={() => {
-                if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(item.id);
-              }}
+              data-value-cell="true"
+              {...cellPointerHandlers(actions, item.id, col.id)}
             >
               <CellRenderer node_id={item.id} column={col} values={item.values} node_name={item.name} state={state} actions={actions} />
-              {is_active && (
-                <div
-                  data-fill-handle="true"
-                  draggable={false}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
+              {is_selected && <SelectionTint />}
+              {has_fill_handle && (
+                <FillHandle
+                  onStart={() => {
                     fill_handle_mousedown_ref.current = true;
                     actions.startFillDrag(item.id, col.id);
                   }}
-                  className="absolute -bottom-[4px] -right-[4px] z-10 h-[9px] w-[9px] cursor-crosshair rounded-[1.5px] border border-white bg-boardtree-accent"
+                  onDoubleClick={() => actions.fillDownToGroupEnd(item.id, col.id)}
                 />
               )}
             </div>

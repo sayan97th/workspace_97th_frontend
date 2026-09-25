@@ -70,6 +70,7 @@ import {
   type ReorderColumnsPayload as TableReorderColumnsPayload,
   type ReorderPayload as TableReorderPayload,
   type UseBoardTableConfig,
+  type CellValueChange,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
 import {
@@ -100,6 +101,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
+import { BoardWorkloadView } from "@/components/board/workload";
+import { BoardDashboardView } from "@/components/board/dashboard";
 import {
   findItemInTree,
   insertItemBelowInTree,
@@ -124,7 +127,7 @@ import { boardItemCellFilesService } from "@/services/board-item-cell-files.serv
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
 import { peopleService } from "@/services/people.service";
-import { workspaceService } from "@/services/workspace.service";
+import { workspaceService, type DuplicateNavItemOptions } from "@/services/workspace.service";
 import type {
   BoardCellFile,
   BoardColumnConfig,
@@ -767,8 +770,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setBoardLabel(label);
   };
 
-  const handleDuplicateBoard = async () => {
-    const copy = await workspaceService.duplicateNavItem(node.workspace.slug, board_id);
+  const handleDuplicateBoard = async (options: DuplicateNavItemOptions) => {
+    const copy = await workspaceService.duplicateNavItem(node.workspace.slug, board_id, options);
     router.push(`/boards/${copy.id}`);
   };
 
@@ -795,6 +798,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // The group whose "Delete group" is waiting on the confirmation dialog.
   const [group_pending_delete, setGroupPendingDelete] = useState<BoardGroupDto | null>(null);
   const [items, setItems] = useState(initial_items);
+  // Latest items for handlers that outlive the render they were created in (the table config is memoized).
+  const items_ref = useRef(items);
+  items_ref.current = items;
   // ── Automations ("Automate" header button) — table-view-scoped, so this
   // refetches whenever the active tab changes, mirroring `handleUpdateColumnFormula`'s
   // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
@@ -1901,6 +1907,41 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     }
   };
 
+  // ── Multi cell writes from the table (a range paste, the fill handle,
+  // clearing a selected range, or undoing one of them), saved in a single
+  // request. If it fails only those cells go back to what they were, so
+  // edits made in the meantime are kept. ──
+  const handleUpdateCellValues = async (changes: CellValueChange[]) => {
+    const values_by_item = new Map<number, Record<string, BoardItemValue>>();
+    for (const change of changes) {
+      const item_id = Number(change.node_id);
+      values_by_item.set(item_id, { ...(values_by_item.get(item_id) ?? {}), [change.column_id]: (change.value ?? null) as BoardItemValue });
+    }
+    const previous_by_item = new Map<number, Record<string, BoardItemValue>>();
+    for (const [item_id, values] of values_by_item) {
+      const item = findItemInTree(items_ref.current, item_id);
+      previous_by_item.set(item_id, Object.fromEntries(Object.keys(values).map((column_id) => [column_id, (item?.values[column_id] ?? null) as BoardItemValue])));
+    }
+    const applyValues = (values_map: Map<number, Record<string, BoardItemValue>>) =>
+      setItems((current) =>
+        Array.from(values_map).reduce(
+          (tree, [item_id, values]) => mapItemInTree(tree, item_id, (item) => ({ ...item, values: { ...item.values, ...values } })),
+          current
+        )
+      );
+
+    applyValues(values_by_item);
+    try {
+      await boardContentService.batchUpdateCellValues(
+        board_id,
+        Array.from(values_by_item, ([item_id, values]) => ({ item_id, values }))
+      );
+    } catch (error) {
+      applyValues(previous_by_item);
+      toast.error(getApiErrorMessage(error, "Couldn't save the pasted cells. Please try again."));
+    }
+  };
+
   // ── Add option to a status/dropdown column, inline from its cell picker —
   // persists the option to the column's config and resolves to it (with its
   // generated id) so the cell can select it right away. ──
@@ -2349,6 +2390,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const suffix =
       view_tabs.active_view && !view_tabs.active_view.is_primary ? `?view_id=${view_tabs.active_view.id}` : "";
     router.push(`/boards/${board_id}/pulses/${row.id}${suffix}`);
+  };
+
+  // Workload and Dashboard tabs list items that live on another tab (or, for
+  // a dashboard widget, another board), so an item opens on its own item page.
+  const openItemPage = (target_board_id: number, item_id: number, source_view_id: number | null) => {
+    router.push(`/boards/${target_board_id}/pulses/${item_id}${source_view_id ? `?view_id=${source_view_id}` : ""}`);
   };
 
   const handleDrawerClose = () => {
@@ -2816,6 +2863,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       read_only: !node.can_edit,
       can_edit_structure: node.can_edit_structure ?? true,
       can_create_items: !is_assigned_only,
+      // Grouped by a column, the tables on screen are computed buckets rather than saved groups, so they cannot be reordered.
+      can_reorder_groups: toolbar.group_by_option_id === BOARD_DEFAULT_GROUP_BY_ID,
       canEditNode: is_assigned_only ? canEditTableNode : undefined,
       canEditColumn: canEditTableColumn,
       current_user_id: user ? String(user.id) : undefined,
@@ -2836,6 +2885,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
+      onCellValuesChange: (changes) => void handleUpdateCellValues(changes),
+      onCellPasteResult: ({ written, skipped, rows_left_out }) => {
+        if (rows_left_out > 0) {
+          toast.warning(`${rows_left_out} copied ${rows_left_out === 1 ? "row" : "rows"} did not fit. Add more items to paste them.`);
+        } else if (skipped > 0) {
+          toast.warning(
+            `${skipped} ${skipped === 1 ? "cell was" : "cells were"} skipped. They are read only or the value does not match the column.`
+          );
+        } else if (written === 0) {
+          toast.info("Nothing to paste into the selected cells.");
+        }
+      },
       onAddColumnOption: (column_id, option) => handleAddColumnOption(column_id, option),
       // Dropdown cell's inline "Edit labels" mode (`DropdownMenu.tsx`) —
       // rename/recolor/delete all funnel through the same `patchColumnOptions`
@@ -2961,6 +3022,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       table_pinned_count,
       user,
       requestGroupItems,
+      toolbar.group_by_option_id,
     ]
   );
 
@@ -3719,7 +3781,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         // search, filter or sort — the item-grid toolbar would be pure noise
         // above any of them (Files Gallery and Chart render their own
         // dedicated toolbar/config panel instead).
-        active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" || active_view_type === "form" ? undefined : (
+        active_view_type === "doc" ||
+        active_view_type === "file_gallery" ||
+        active_view_type === "chart" ||
+        active_view_type === "form" ||
+        active_view_type === "workload" ||
+        active_view_type === "dashboard" ? undefined : (
           <BoardToolbar
             toolbar={toolbar}
             onNewItem={handleNewItemAtTop}
@@ -3928,6 +3995,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardChartView board_id={board_id} view_id={view_tabs.active_view_id} />
       ) : active_view_type === "form" && view_tabs.active_view_id != null ? (
         <BoardFormView board_id={board_id} view_id={view_tabs.active_view_id} can_edit={node.can_edit_structure ?? node.can_edit} />
+      ) : active_view_type === "workload" && view_tabs.active_view_id != null ? (
+        <BoardWorkloadView
+          key={view_tabs.active_view_id}
+          board_id={board_id}
+          view_id={view_tabs.active_view_id}
+          can_edit={node.can_edit}
+          onOpenItem={(item_id, source_view_id) => openItemPage(board_id, item_id, source_view_id)}
+        />
+      ) : active_view_type === "dashboard" && view_tabs.active_view_id != null ? (
+        <BoardDashboardView
+          key={view_tabs.active_view_id}
+          board_id={board_id}
+          view_id={view_tabs.active_view_id}
+          can_edit={node.can_edit_structure ?? node.can_edit}
+          onOpenItem={(target) => openItemPage(target.board_id, target.item_id, target.view_id)}
+        />
       ) : (
         <BoardComingSoonView view_type={active_view_type} />
       )}

@@ -16,6 +16,8 @@ import GroupSkeletonRows from "../rows/GroupSkeletonRows";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
+import GroupDragPreview from "./GroupDragPreview";
+import type { GroupDragHandle } from "./SortableGroup";
 
 /**
  * How many of a loaded table's rows get mounted into the DOM per reveal —
@@ -40,6 +42,10 @@ interface GroupSectionProps {
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
   active_sort_column_id?: string | null;
   active_sort_direction?: "asc" | "desc" | null;
+  /** Lets the group header start a drag of this group, see `SortableGroup`. */
+  drag_handle?: GroupDragHandle;
+  /** While any group is being dragged, every group shows only a compact bar. */
+  is_drag_compact?: boolean;
 }
 
 export default function GroupSection({
@@ -54,6 +60,8 @@ export default function GroupSection({
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
+  drag_handle,
+  is_drag_compact = false,
 }: GroupSectionProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
@@ -117,6 +125,14 @@ export default function GroupSection({
     return () => observer.disconnect();
   }, [is_items_loaded, has_more_rows, visible_count]);
 
+  if (is_drag_compact) {
+    return (
+      <div ref={section_ref} style={{ paddingTop: group_index === 0 ? 0 : 8 }}>
+        <GroupDragPreview group={group} />
+      </div>
+    );
+  }
+
   return (
     // `paddingTop`, not `marginTop`. A sticky child (`GroupHeaderBar`) can only stay pinned
     // to `top: 0` while some part of ITS OWN containing block (this very div) is still on
@@ -128,9 +144,9 @@ export default function GroupSection({
     // sticky header and the next completely contiguous while looking identical at rest.
     <div ref={section_ref} style={{ paddingTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
-        <CollapsedGroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
+        <CollapsedGroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} drag_handle={drag_handle} />
       ) : (
-        <GroupHeaderBar group={group} min_width={min_width} state={state} actions={actions} />
+        <GroupHeaderBar group={group} min_width={min_width} state={state} actions={actions} drag_handle={drag_handle} />
       )}
 
       {!is_collapsed && (

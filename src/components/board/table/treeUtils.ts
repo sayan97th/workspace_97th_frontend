@@ -145,6 +145,8 @@ export function insertSubIntoItem(
 
 export interface VisibleRow {
   node_id: string;
+  /** The group (table) the row sits in, a subitem shares its parent's group. */
+  group_key: string;
   /** The value columns actually rendered for this row (item vs. subitem each have their own set) — an active cell's arrow-key navigation only ever moves within this list. */
   columns: ColumnDef[];
 }
@@ -168,10 +170,10 @@ export function visibleRowSequence(
     const columns = group.base_columns.concat(group.custom_columns);
     const sub_columns = group.sub_base_columns.concat(group.sub_custom_columns);
     for (const item of group.items) {
-      rows.push({ node_id: item.id, columns });
+      rows.push({ node_id: item.id, group_key: group.key, columns });
       if (open_map[item.id] && item.subs.length > 0) {
         for (const sub of item.subs) {
-          rows.push({ node_id: sub.id, columns: sub_columns });
+          rows.push({ node_id: sub.id, group_key: group.key, columns: sub_columns });
         }
       }
     }

@@ -209,7 +209,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "timeline") {
-    const { start_iso, end_iso } = parseRangeValue(asString(value));
+    const { start_iso, end_iso } = parseRangeValue(value);
     return (
       <div className="relative flex flex-1 items-center px-3">
         <button

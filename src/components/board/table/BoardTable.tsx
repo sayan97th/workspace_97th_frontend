@@ -1,6 +1,21 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  MeasuringStrategy,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
 import type { ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
@@ -9,6 +24,8 @@ import { boardTreeFontClassName } from "../board-tree-font";
 import TableHeader from "./toolbar/TableHeader";
 import TableToolbar from "./toolbar/TableToolbar";
 import GroupSection from "./group/GroupSection";
+import SortableGroup from "./group/SortableGroup";
+import GroupDragPreview from "./group/GroupDragPreview";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
@@ -473,25 +490,85 @@ export default function BoardTable({
     return rows;
   }, [state.groups, state.config_editor?.kind, config_editor_column]);
 
+  // ── Group drag and drop. While a group is dragged every group shrinks to a
+  // compact bar (like monday.com), so even long tables are easy to reorder.
+  // The drop is persisted through `moveGroupToKey` > `onMoveGroup`. ──
+  const [dragging_group_key, setDraggingGroupKey] = useState<string | null>(null);
+  const group_sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+  const group_keys = useMemo(() => state.groups.map((group) => group.key), [state.groups]);
+  const dragging_group = dragging_group_key ? state.groups.find((group) => group.key === dragging_group_key) ?? null : null;
+
+  const handleGroupDragStart = useCallback(
+    (event: DragStartEvent) => {
+      base_actions.clearActiveCell();
+      base_actions.closeGroupMenu();
+      setDraggingGroupKey(String(event.active.id));
+    },
+    [base_actions]
+  );
+
+  const handleGroupDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setDraggingGroupKey(null);
+      const moved_key = String(event.active.id);
+      if (event.over && event.over.id !== event.active.id) actions.moveGroupToKey(moved_key, String(event.over.id));
+      // Groups expand again after the drop, so bring the moved one back into view.
+      window.requestAnimationFrame(() => {
+        document.querySelector(`[data-group-key="${CSS.escape(moved_key)}"]`)?.scrollIntoView({ block: "nearest" });
+      });
+    },
+    [actions]
+  );
+
   const grid = (
     <>
       {!embedded && <div className="h-[26px]" />}
-      {state.groups.map((group, index) => (
-        <GroupSection
-          key={group.key}
-          group={group}
-          group_index={index}
-          name_col_width={name_col_width}
-          state={state}
-          actions={actions}
-          onRequestColumnFilter={onRequestColumnFilter}
-          onRequestColumnPermissions={onRequestColumnPermissions}
-          onRequestGroupByColumn={onRequestGroupByColumn}
-          onRequestColumnSort={onRequestColumnSort}
-          active_sort_column_id={active_sort_column_id}
-          active_sort_direction={active_sort_direction}
-        />
-      ))}
+      <DndContext
+        sensors={group_sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis]}
+        measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        onDragStart={handleGroupDragStart}
+        onDragEnd={handleGroupDragEnd}
+        onDragCancel={() => setDraggingGroupKey(null)}
+        accessibility={{
+          screenReaderInstructions: { draggable: "To move a group, press space or enter, use the arrow keys, then press space or enter again to drop it." },
+        }}
+      >
+        <SortableContext items={group_keys} strategy={verticalListSortingStrategy}>
+          {state.groups.map((group, index) => (
+            <SortableGroup key={group.key} group_key={group.key} is_enabled={state.can_reorder_groups && state.groups.length > 1}>
+              {(drag_handle) => (
+                <GroupSection
+                  group={group}
+                  group_index={index}
+                  name_col_width={name_col_width}
+                  state={state}
+                  actions={actions}
+                  onRequestColumnFilter={onRequestColumnFilter}
+                  onRequestColumnPermissions={onRequestColumnPermissions}
+                  onRequestGroupByColumn={onRequestGroupByColumn}
+                  onRequestColumnSort={onRequestColumnSort}
+                  active_sort_column_id={active_sort_column_id}
+                  active_sort_direction={active_sort_direction}
+                  drag_handle={drag_handle}
+                  is_drag_compact={dragging_group_key !== null}
+                />
+              )}
+            </SortableGroup>
+          ))}
+        </SortableContext>
+        {typeof document !== "undefined" &&
+          createPortal(
+            <DragOverlay dropAnimation={null} zIndex={1000}>
+              {dragging_group ? <GroupDragPreview group={dragging_group} is_overlay /> : null}
+            </DragOverlay>,
+            document.body
+          )}
+      </DndContext>
       {!state.read_only && state.can_edit_structure && state.can_create_items && (
         <button
           type="button"

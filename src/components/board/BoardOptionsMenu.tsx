@@ -37,6 +37,10 @@ import ShareViewModal, { isShareableViewKind } from "./ShareViewModal";
 import GiveFeedbackModal from "./GiveFeedbackModal";
 import ImportItemsModal from "./import/ImportItemsModal";
 import RenameBoardModal from "./RenameBoardModal";
+import DuplicateBoardModal from "./DuplicateBoardModal";
+import SaveAsTemplateModal from "./SaveAsTemplateModal";
+import type { DuplicateBoardMode } from "@/services/workspace.service";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 
 export type BoardOptionsMenuProps = {
   anchor_el: HTMLElement | null;
@@ -69,8 +73,8 @@ export type BoardOptionsMenuProps = {
   /** Opens the existing board-type picker, shared by "Settings" and "Permissions". */
   onChangeBoardTypeClick: () => void;
   onRename: (label: string) => Promise<void>;
-  /** Duplicates the whole board (every tab, its columns/groups/items) and navigates to the copy. */
-  onDuplicate: () => Promise<void>;
+  /** Duplicates the whole board (every tab, plus items and updates depending on `mode`) and navigates to the copy. */
+  onDuplicate: (options: { mode: DuplicateBoardMode; label: string }) => Promise<void>;
   /** "More actions" > "Import items" — fired once the background import job has actually written rows, so the caller can refresh its columns/groups/items. */
   onImportItems: (result: { group_id: number }) => void;
   /** Fired once the trash panel restored an archived group, so the caller can refetch the board's tables. */
@@ -129,7 +133,9 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   const [is_feedback_open, setIsFeedbackOpen] = useState(false);
   const [is_import_open, setIsImportOpen] = useState(false);
   const [confirm_kind, setConfirmKind] = useState<ConfirmKind>(null);
-  const [is_duplicating, setIsDuplicating] = useState(false);
+  const [is_duplicate_open, setIsDuplicateOpen] = useState(false);
+  const [is_save_template_open, setIsSaveTemplateOpen] = useState(false);
+  const toast = useToast();
   const [is_fullscreen, setIsFullscreen] = useState(false);
   const router = useRouter();
 
@@ -159,14 +165,6 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
     URL.revokeObjectURL(url);
   };
 
-  const handleDuplicate = async () => {
-    setIsDuplicating(true);
-    try {
-      await onDuplicate();
-    } finally {
-      setIsDuplicating(false);
-    }
-  };
 
   const items: AnchoredMenuItem[] = [
     { key: "convert-project", label: "Convert board to project", icon: <ConvertProjectIcon />, onClick: () => { }, disabled: true },
@@ -204,17 +202,11 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
       icon: <MoreDotsIcon />,
       onClick: () => { },
       submenu: [
-        { key: "save-template", label: "Save as a template", icon: <ReportIcon />, onClick: () => { }, disabled: true },
+        { key: "save-template", label: "Save as a template", icon: <ReportIcon />, onClick: () => setIsSaveTemplateOpen(true) },
         { key: "build-report", label: "Build a report from board", icon: <ReportIcon />, onClick: () => { }, disabled: true },
         { key: "export-excel", label: "Export board to Excel", icon: <DownloadIcon />, onClick: () => void handleExport() },
         { key: "import-items", label: "Import items", icon: <ImportIcon />, onClick: () => setIsImportOpen(true) },
-        {
-          key: "duplicate-board",
-          label: is_duplicating ? "Duplicating…" : "Duplicate board",
-          icon: <DuplicateIcon />,
-          onClick: () => void handleDuplicate(),
-          disabled: is_duplicating,
-        },
+        { key: "duplicate-board", label: "Duplicate board", icon: <DuplicateIcon />, onClick: () => setIsDuplicateOpen(true) },
         { key: "full-screen", label: is_fullscreen ? "Exit full screen" : "Full screen", icon: <FullscreenIcon />, onClick: handleToggleFullscreen },
       ],
     },
@@ -242,6 +234,16 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
       <AnchoredMenu anchor_el={anchor_el} is_open={is_open} onClose={onClose} items={items} width={240} align="end" />
 
       <RenameBoardModal is_open={is_rename_open} initial_label={board_label} onSubmit={onRename} onClose={() => setIsRenameOpen(false)} />
+
+      <DuplicateBoardModal is_open={is_duplicate_open} board_label={board_label} onSubmit={onDuplicate} onClose={() => setIsDuplicateOpen(false)} />
+
+      <SaveAsTemplateModal
+        is_open={is_save_template_open}
+        board_id={board_id}
+        board_label={board_label}
+        onSaved={(name) => toast.success(`"${name}" was added to the Template center`)}
+        onClose={() => setIsSaveTemplateOpen(false)}
+      />
 
       <BoardPermissionsModal
         is_open={is_permissions_open}

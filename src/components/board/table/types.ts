@@ -254,22 +254,39 @@ export type ReorderPayload =
   | { scope: "root"; moved_id: string; group_key: string; ordered_ids: string[] }
   | { scope: "subitem"; moved_id: string; parent_id: string; ordered_ids: string[] };
 
-/** The single cell currently focused for Excel-style keyboard navigation/copy-paste — see `useBoardTable`'s `moveActiveCell`/`copyActiveCell`/`pasteIntoActiveCell`. */
+/** The single cell currently focused for Excel style keyboard navigation, see `useBoardTable`'s `moveActiveCell`. With `BoardTableState.selection_anchor` it also marks one corner of the selected range. */
 export interface ActiveCell {
   node_id: string;
   column_id: string;
 }
 
 /**
- * An in-progress "fill handle" drag (the little square at an active cell's
- * bottom-right corner) — dragging it down/up copies that cell's value into
- * every row the pointer passes over, mirroring Excel/Google Sheets. Confined
- * to a single column: `column_id` never changes once the drag starts.
+ * An in progress "fill handle" drag (the little square at the bottom right
+ * corner of the selection). Dragging it down or up writes the selected
+ * cells' values into every row the pointer passes, continuing number and
+ * date series like Excel or Google Sheets. The columns never change once the
+ * drag starts, only the rows grow.
  */
 export interface FillDragState {
-  column_id: string;
-  anchor_node_id: string;
+  /** The selected columns being filled, left to right. */
+  column_ids: string[];
+  /** The selected rows the values are read from, top to bottom. */
+  source_node_ids: string[];
+  /** The row the pointer is over, the fill runs from the selection up to it. */
   hovered_node_id: string;
+}
+
+/**
+ * What the table copied last (Ctrl/Cmd+C or Cut). The same text also goes on
+ * the system clipboard as TSV. When a paste brings back exactly that text,
+ * the structured values here are used instead of parsing the text again, so
+ * values that have no text form (a checklist, a dependency) survive a copy
+ * and paste inside the board.
+ */
+export interface TableClipboard {
+  text: string;
+  /** One entry per copied row, one cell per copied column. */
+  rows: { column: ColumnDef; value: CellValue }[][];
 }
 
 /** Which popover/picker/menu is open, addressed by a scoped string key. */

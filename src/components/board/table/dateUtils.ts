@@ -117,7 +117,18 @@ export function monthLabelOf(cursor: MonthCursor): string {
   return `${MONTH_LABELS[cursor.month]} ${cursor.year}`;
 }
 
-export function parseRangeValue(value: string | undefined): { start_iso: string; end_iso: string } {
+/**
+ * Reads a Timeline value in either stored form: the `start..end` string the
+ * table writes, or the `{ start, end }` object the Gantt view writes.
+ */
+export function parseRangeValue(value: unknown): { start_iso: string; end_iso: string } {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const range = value as { start?: unknown; end?: unknown };
+    return {
+      start_iso: typeof range.start === "string" ? range.start.slice(0, 10) : "",
+      end_iso: typeof range.end === "string" ? range.end.slice(0, 10) : "",
+    };
+  }
   const parts = String(value || "").split("..");
   return { start_iso: parts[0] || "", end_iso: parts[1] || "" };
 }

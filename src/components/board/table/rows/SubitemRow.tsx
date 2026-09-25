@@ -5,6 +5,7 @@ import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "../types";
 import { SUB_ROW_HEIGHT_PX, subGridTemplate, subStickyOffsets } from "../layoutUtils";
 import CellRenderer from "../cells/CellRenderer";
+import { cellPointerHandlers, cellSelectionFlags, FillHandle, SelectionTint } from "./CellSelection";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import TreeHook from "./TreeHook";
@@ -103,6 +104,12 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         className="flex-1 border-r border-b border-boardtree-border-soft"
         style={{ display: "grid", gridTemplateColumns: sub_tpl, background: is_selected ? "var(--color-boardtree-selected)" : "var(--color-boardtree-surface)", opacity: is_dragging ? 0.45 : 1 }}
         draggable={!state.read_only}
+        // Pressing on a value cell selects cells (a drag over other cells selects
+        // a range, see `cellPointerHandlers`), so only the rest of the row, like
+        // its grip and name, starts a row reorder.
+        onMouseDownCapture={(e) => {
+          if ((e.target as Element).closest("[data-value-cell]")) fill_handle_mousedown_ref.current = true;
+        }}
         onDragStart={(e) => {
           if (fill_handle_mousedown_ref.current) {
             e.preventDefault();
@@ -207,12 +214,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => {
-          const is_active = state.active_cell?.node_id === sub.id && state.active_cell?.column_id === col.id;
-          const is_fill_target =
-            !!state.fill_drag &&
-            state.fill_drag.column_id === col.id &&
-            state.fill_drag.hovered_node_id === sub.id &&
-            state.fill_drag.anchor_node_id !== sub.id;
+          const { is_active, is_selected, is_fill_target, has_fill_handle } = cellSelectionFlags(state, sub.id, col.id);
           const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, sub.values[col.id]);
           return (
             <div
@@ -233,22 +235,18 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 outlineOffset: is_active || is_fill_target || is_invalid ? "-2px" : undefined,
                 zIndex: is_active ? 5 : undefined,
               }}
-              onMouseDown={() => actions.setActiveCell(sub.id, col.id)}
-              onMouseEnter={() => {
-                if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(sub.id);
-              }}
+              data-value-cell="true"
+              {...cellPointerHandlers(actions, sub.id, col.id)}
             >
               <CellRenderer node_id={sub.id} column={col} values={sub.values} node_name={sub.name} state={state} actions={actions} />
-              {is_active && (
-                <div
-                  data-fill-handle="true"
-                  draggable={false}
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
+              {is_selected && <SelectionTint />}
+              {has_fill_handle && (
+                <FillHandle
+                  onStart={() => {
                     fill_handle_mousedown_ref.current = true;
                     actions.startFillDrag(sub.id, col.id);
                   }}
-                  className="absolute -bottom-[4px] -right-[4px] z-10 h-[9px] w-[9px] cursor-crosshair rounded-[1.5px] border border-white bg-boardtree-accent"
+                  onDoubleClick={() => actions.fillDownToGroupEnd(sub.id, col.id)}
                 />
               )}
             </div>

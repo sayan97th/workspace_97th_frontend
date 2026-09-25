@@ -3,6 +3,8 @@ import React, { useRef, useState } from "react";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import NavItemFormModal from "./NavItemFormModal";
+import TemplateCenterModal from "@/components/board/templates/TemplateCenterModal";
+import { useRouter } from "next/navigation";
 import type { CreateNavItemPayload } from "@/types/workspace";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
 import {
@@ -145,12 +147,14 @@ const row_class =
  * workspace switcher. Mirrors the "97 Workspace Menu" design's ADD NEW popover: Board,
  * Doc and Project management expand into a side {@link MenuFlyout}, the rest create
  * directly. Every option ultimately opens {@link NavItemFormModal} to collect a name,
- * then calls {@link WorkspaceNavApi.createItem} — new items land at the workspace root,
+ * except "Start with template", which opens the {@link TemplateCenterModal}, then calls {@link WorkspaceNavApi.createItem} — new items land at the workspace root,
  * the same place {@link NavTree}'s own "add at root" control creates them.
  */
 const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_open, onClose, nav }) => {
   const [open_submenu, setOpenSubmenu] = useState<SubmenuKey | null>(null);
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
+  const [is_template_center_open, setIsTemplateCenterOpen] = useState(false);
+  const router = useRouter();
 
   const board_row_ref = useRef<HTMLButtonElement>(null);
   const doc_row_ref = useRef<HTMLButtonElement>(null);
@@ -163,6 +167,11 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
 
   const chooseOption = (option: ContentOption) => {
     closeAll();
+    // "Start with template" opens the Template center instead of just asking for a name.
+    if (option.key === "board-template") {
+      setIsTemplateCenterOpen(true);
+      return;
+    }
     setForm({ is_open: true, option });
   };
 
@@ -249,6 +258,16 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
       {renderSubmenu("board", board_row_ref, BOARD_SUBMENU)}
       {renderSubmenu("doc", doc_row_ref, DOC_SUBMENU)}
       {renderSubmenu("pm", pm_row_ref, PM_SUBMENU)}
+
+      <TemplateCenterModal
+        is_open={is_template_center_open}
+        onClose={() => setIsTemplateCenterOpen(false)}
+        onUseTemplate={async (template, label) => {
+          const created = await nav.createFromTemplate({ template_id: template.id, label });
+          setIsTemplateCenterOpen(false);
+          if (created) router.push(`/boards/${created.id}`);
+        }}
+      />
 
       <NavItemFormModal
         is_open={form.is_open}
