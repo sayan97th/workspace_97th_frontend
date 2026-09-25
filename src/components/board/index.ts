@@ -69,6 +69,13 @@ export type { ColorSwatchPickerProps } from "./toolbar/ColorSwatchPicker";
 export { default as ConditionalColoringPanel } from "./toolbar/ConditionalColoringPanel";
 export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColoringPanel";
 export * from "./toolbar/types";
+export {
+  BOARD_FILTER_BLANK_OPTION_ID,
+  BOARD_FILTER_GROUP_FIELD_ID,
+  BOARD_FILTER_ME_VALUE,
+  buildRuleFromRowValue,
+  isRuleComplete,
+} from "./toolbar/filterEngine";
 export * from "./drawer";
 export * from "./kanban";
 export * from "./table";

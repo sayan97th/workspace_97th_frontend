@@ -2,7 +2,7 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { CollapseTableIcon } from "@/icons/board-icons";
-import type { BoardToolbarApi } from "./toolbar/types";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./toolbar/types";
 import SearchControl from "./toolbar/SearchControl";
 import PersonControl from "./toolbar/PersonControl";
 import FilterControl from "./toolbar/FilterControl";
@@ -13,19 +13,22 @@ import GroupByControl from "./toolbar/GroupByControl";
 import OverflowControl from "./toolbar/OverflowControl";
 import ConditionalColoringPanel from "./toolbar/ConditionalColoringPanel";
 import BoardPopover from "./toolbar/BoardPopover";
+import ActiveFiltersBar from "./toolbar/ActiveFiltersBar";
 
 /** The inline panel's width matches the toolbar row's own width, capped at this value. */
-const INLINE_PANEL_MAX_WIDTH = 832;
+const INLINE_PANEL_MAX_WIDTH = 900;
 
 export type BoardToolbarProps<TRow> = {
   new_item_label?: string;
   /** Wires the "New item" button to create a row. Omit to keep it display-only. */
   onNewItem?: () => void;
   toolbar: BoardToolbarApi<TRow>;
+  /** Wires the panels' "Save to this view"/"Save as new view" buttons. Omit to hide them. */
+  view_actions?: BoardToolbarViewActions;
 };
 
 /** Board toolbar: the accent "New item" split button plus the filter/sort/group controls. */
-function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar }: BoardToolbarProps<TRow>) {
+function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar, view_actions }: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
   const is_color_open = toolbar.active_panel === "color";
   const is_inline_panel_open = is_filter_open || is_color_open;
@@ -48,49 +51,52 @@ function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar }:
   }, []);
 
   return (
-    <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
-      <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-boardtree-accent">
-        <button type="button" onClick={onNewItem} className="px-3.5 py-2 text-[13px] font-semibold text-white">
-          {new_item_label}
-        </button>
+    <div>
+      <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
+        <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-boardtree-accent">
+          <button type="button" onClick={onNewItem} className="px-3.5 py-2 text-[13px] font-semibold text-white">
+            {new_item_label}
+          </button>
+          <button
+            type="button"
+            className="flex items-center border-l border-white/25 py-2 pl-2 pr-2 text-white"
+            aria-label="New item options"
+          >
+            <ChevronDownIcon size={11} />
+          </button>
+        </div>
+
+        <SearchControl toolbar={toolbar} />
+        <PersonControl toolbar={toolbar} view_actions={view_actions} />
+        <FilterControl toolbar={toolbar} />
+        <SortControl toolbar={toolbar} view_actions={view_actions} />
+        <HideColumnsControl toolbar={toolbar} />
+        <GroupByControl toolbar={toolbar} view_actions={view_actions} />
+        <OverflowControl toolbar={toolbar} />
+
+        <div className="flex-1" />
+
         <button
           type="button"
-          className="flex items-center border-l border-white/25 py-2 pl-2 pr-2 text-white"
-          aria-label="New item options"
+          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-boardtree-text-muted transition-colors hover:bg-boardtree-hover"
+          aria-label="Collapse all groups"
         >
-          <ChevronDownIcon size={11} />
+          <CollapseTableIcon />
         </button>
+
+        <BoardPopover
+          anchor_el={toolbar_row_ref.current}
+          is_open={is_inline_panel_open}
+          onClose={toolbar.closePanel}
+          width={inline_panel_width}
+          align="start"
+          unstyled
+        >
+          {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} />}
+          {is_color_open && <ConditionalColoringPanel toolbar={toolbar} view_actions={view_actions} />}
+        </BoardPopover>
       </div>
-
-      <SearchControl toolbar={toolbar} />
-      <PersonControl toolbar={toolbar} />
-      <FilterControl toolbar={toolbar} />
-      <SortControl toolbar={toolbar} />
-      <HideColumnsControl toolbar={toolbar} />
-      <GroupByControl toolbar={toolbar} />
-      <OverflowControl toolbar={toolbar} />
-
-      <div className="flex-1" />
-
-      <button
-        type="button"
-        className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-boardtree-text-muted transition-colors hover:bg-boardtree-hover"
-        aria-label="Collapse all groups"
-      >
-        <CollapseTableIcon />
-      </button>
-
-      <BoardPopover
-        anchor_el={toolbar_row_ref.current}
-        is_open={is_inline_panel_open}
-        onClose={toolbar.closePanel}
-        width={inline_panel_width}
-        align="start"
-        unstyled
-      >
-        {is_filter_open && <FilterPanel toolbar={toolbar} />}
-        {is_color_open && <ConditionalColoringPanel toolbar={toolbar} />}
-      </BoardPopover>
+      <ActiveFiltersBar toolbar={toolbar} />
     </div>
   );
 }

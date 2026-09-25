@@ -11,12 +11,12 @@
  * translation.
  */
 import type {
-  BoardAdvancedFilterRow,
   BoardChartConfig,
   BoardColumnKind,
   BoardConditionalColorRule,
   BoardRowHeight,
   BoardSortRule,
+  BoardToolbarFilterState,
   BoardViewKind,
 } from "@/components/board";
 
@@ -206,14 +206,12 @@ export type BoardItemDetailDto = BoardItemDto & {
   checklist_items: BoardItemChecklistItemDto[];
 };
 
-/** The serializable subset of `useBoardToolbar` state a view saves/restores. */
-export type BoardFilterState = {
-  search_query: string;
-  search_column_ids: string[];
-  selected_person_ids: string[];
-  quick_filter_selections: Record<string, string[]>;
-  advanced_filter_rows: BoardAdvancedFilterRow[];
-};
+/**
+ * The serializable subset of `useBoardToolbar` state a view saves/restores.
+ * The And/Or groups, top-level operator and Quick filters column choice are
+ * optional, since views saved before they existed do not carry them.
+ */
+export type BoardFilterState = BoardToolbarFilterState;
 
 export type BoardViewDto = {
   id: number;
@@ -401,6 +399,33 @@ export type UpdateChecklistItemPayload = {
 };
 
 /** Saves/creates a view — this is also the "save filters for this board view" payload. */
+/** The filter slice `GET /api/boards/{board_id}/items` narrows rows by (see `boardContentService.getItems`). */
+export type BoardItemsServerFilter = {
+  filter_state: Pick<
+    BoardFilterState,
+    "selected_person_ids" | "quick_filter_selections" | "advanced_filter_rows" | "advanced_filter_groups" | "advanced_filter_operator"
+  >;
+  /** The viewer's own date, `YYYY-MM-DD`. */
+  today: string;
+};
+
+/**
+ * POST /api/boards/{board_id}/views/{view_id}/duplicate. With no payload it is
+ * the tab menu's plain "Duplicate". The toolbar's "Save as new view" also sends
+ * the label and the live filter/sort/display state, which the API saves on the
+ * copy after remapping column and group ids onto the copied ones.
+ */
+export type DuplicateBoardViewPayload = {
+  label?: string;
+  filter_state?: BoardFilterState | null;
+  sort_state?: BoardSortRule[] | null;
+  group_by_option_id?: string | null;
+  hidden_column_ids?: string[] | null;
+  pinned_column_ids?: string[] | null;
+  row_height?: BoardRowHeight;
+  conditional_color_rules?: BoardConditionalColorRule[] | null;
+};
+
 export type SaveBoardViewPayload = {
   label?: string;
   /** Only meaningful on creation — the backend ignores it on update (a view's type is immutable). Defaults to `"table"` when omitted. */

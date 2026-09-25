@@ -6,13 +6,16 @@ import {
   BOARD_ADVANCED_FILTER_CONDITIONS,
   BOARD_CONDITIONAL_COLOR_SCOPES,
   type BoardToolbarApi,
+  type BoardToolbarViewActions,
 } from "./types";
 import ColorSwatchPicker from "./ColorSwatchPicker";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
 import InlineFieldMenu from "./InlineFieldMenu";
+import SaveViewButtons from "./SaveViewButtons";
 
 export type ConditionalColoringPanelProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  view_actions?: BoardToolbarViewActions;
 };
 
 /**
@@ -20,7 +23,7 @@ export type ConditionalColoringPanelProps<TRow> = {
  * "Where" row layout: color swatch, Row/Cell scope, column, condition and value,
  * one rule per row, evaluated top to bottom.
  */
-function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelProps<TRow>) {
+function ConditionalColoringPanel<TRow>({ toolbar, view_actions }: ConditionalColoringPanelProps<TRow>) {
   const colorable_columns = toolbar.columns.filter((column) => column.swatch);
 
   return (
@@ -38,9 +41,7 @@ function ConditionalColoringPanel<TRow>({ toolbar }: ConditionalColoringPanelPro
           <InfoIcon size={15} />
         </span>
         <div className="flex-1" />
-        <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-boardtree-border px-3.5 text-[13px] font-semibold text-boardtree-text-faint">
-          Save as new view
-        </div>
+        <SaveViewButtons view_actions={view_actions} />
       </div>
 
       <div className="flex flex-col gap-3 px-5 pb-1.5 pt-0.5">

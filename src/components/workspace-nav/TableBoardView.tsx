@@ -38,6 +38,8 @@ import {
   toIsoDate,
   useBoardDiscussionDrawer,
   useBoardItemDrawer,
+  buildRuleFromRowValue,
+  isRuleComplete,
   useBoardToolbar,
   type AddableColumnType,
   type BoardCalendarRange,
@@ -47,16 +49,14 @@ import {
   type BoardKanbanLane,
   type BoardOptionActions,
   type BoardGroup as BoardGroupRow,
-  type BoardGroupByOption,
   type BoardHeaderInfo,
   type BoardItemDrawerConfig,
   type BoardPersonOption,
-  type BoardQuickFilterFacet,
-  type BoardSortOption,
   type BoardTableGroup,
   type BoardTableItem,
   type BoardTableNode,
   type BoardToolbarConfig,
+  type BoardToolbarViewActions,
   type BoardViewKind,
   type DrawerActivityEntry,
   type ColumnDef as TableColumnDef,
@@ -68,6 +68,12 @@ import {
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
+import {
+  buildBoardFilterFields,
+  buildBoardGroupByOptions,
+  buildBoardSortOptions,
+  type BoardToolbarFieldSources,
+} from "./boardToolbarFields";
 import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/formula/formulaEngine";
 import { legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
 import type { FormulaSourceColumn } from "@/components/board/table/types";
@@ -97,6 +103,7 @@ import {
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { useBoardFilterUrlState } from "@/hooks/useBoardFilterUrlState";
 import { buildPageTitle } from "@/lib/page-title";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
@@ -938,6 +945,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       if (column?.type === "files" && Array.isArray(value)) {
         return value.map((file) => (typeof file === "object" && file ? file.file_name : "")).join(" ");
       }
+      if (column?.type === "checklist" && Array.isArray(value)) {
+        return (value as unknown[])
+          .map((entry) => (typeof entry === "object" && entry && "text" in entry ? String((entry as { text: unknown }).text ?? "") : ""))
+          .join(" ")
+          .trim();
+      }
       return Array.isArray(value) ? value.join(" ") : String(value);
     },
     [columns_by_id, people_names_by_id]
@@ -968,58 +981,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [workspace_members]
   );
 
-  const sort_options: BoardSortOption<BoardItemDto>[] = useMemo(
-    () => [
-      { id: ITEM_COLUMN_ID, label: "Name", getValue: (row) => row.name },
-      ...item_columns.map((c) => ({
-        id: String(c.id),
-        label: c.label,
-        swatch: COLUMN_KIND_SWATCH[c.type],
-        getValue: (row: BoardItemDto): string | number => {
-          const value = row.values[String(c.id)];
-          if (c.type === "number") return typeof value === "number" ? value : 0;
-          if (Array.isArray(value)) return value.join(", ");
-          return value == null ? "" : String(value);
-        },
-      })),
-    ],
-    [item_columns]
+  // Sort, Group by and filter descriptions per column type, see `boardToolbarFields.ts`.
+  const toolbar_field_sources: BoardToolbarFieldSources = useMemo(
+    () => ({
+      item_columns,
+      groups,
+      tags,
+      persons,
+      people_names_by_id,
+      item_column_id: ITEM_COLUMN_ID,
+      item_column_label,
+      getColumnText,
+    }),
+    [item_columns, groups, tags, persons, people_names_by_id, item_column_label, getColumnText]
   );
-
-  const group_by_options: BoardGroupByOption<BoardItemDto>[] = useMemo(() => {
-    const options: BoardGroupByOption<BoardItemDto>[] = [{ id: BOARD_DEFAULT_GROUP_BY_ID, label: "Default tables" }];
-    item_columns
-      .filter((c) => (c.type === "status" || c.type === "label") && c.config?.options?.length)
-      .forEach((c) => {
-        const option_by_id = new Map((c.config?.options ?? []).map((o) => [o.id, o]));
-        options.push({
-          id: String(c.id),
-          label: `By ${c.label}`,
-          swatch: COLUMN_KIND_SWATCH[c.type],
-          getGroupKey: (row) => String(row.values[String(c.id)] ?? "none"),
-          getGroupLabel: (key) => option_by_id.get(key)?.label ?? "No status",
-          getGroupColor: (key) => option_by_id.get(key)?.color ?? "#c4c4c4",
-        });
-      });
-    return options;
-  }, [item_columns]);
-
-  const quick_filter_facets: BoardQuickFilterFacet<BoardItemDto>[] = useMemo(
-    () =>
-      item_columns
-        .filter((c) => (c.type === "status" || c.type === "tags" || c.type === "label") && c.config?.options?.length)
-        .map((c) => ({
-          id: String(c.id),
-          label: c.label,
-          options: (c.config?.options ?? []).map((o) => ({ id: o.id, label: o.label, dot_color: o.color })),
-          getOptionIds: (row: BoardItemDto): string[] => {
-            const value = row.values[String(c.id)];
-            if (c.type === "tags") return Array.isArray(value) ? value.map(String) : [];
-            return value != null ? [String(value)] : [];
-          },
-        })),
-    [item_columns]
-  );
+  const sort_options = useMemo(() => buildBoardSortOptions(toolbar_field_sources), [toolbar_field_sources]);
+  const group_by_options = useMemo(() => buildBoardGroupByOptions(toolbar_field_sources), [toolbar_field_sources]);
+  const filter_fields = useMemo(() => buildBoardFilterFields(toolbar_field_sources), [toolbar_field_sources]);
+  const current_person_id = user ? String(user.id) : null;
 
   const toolbar_config: BoardToolbarConfig<BoardItemDto> = useMemo(
     () => ({
@@ -1029,11 +1008,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       getColumnText,
       persons,
       getPersonIds,
+      current_person_id,
       sort_options,
       group_by_options,
-      quick_filter_facets,
+      filter_fields,
     }),
-    [board_columns, default_groups, getColumnText, persons, getPersonIds, sort_options, group_by_options, quick_filter_facets]
+    [board_columns, default_groups, getColumnText, persons, getPersonIds, current_person_id, sort_options, group_by_options, filter_fields]
   );
 
   const toolbar = useBoardToolbar(toolbar_config);
@@ -1048,6 +1028,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     initial_personal_order,
     toolbar,
     onViewActivated: (view) => router.push(buildViewUrl(view)),
+  });
+
+  // Unsaved filter/sort/group-by state lives in `?filters=...`, so a filtered board can be shared as a link.
+  useBoardFilterUrlState({
+    toolbar,
+    active_view: view_tabs.active_view,
+    active_view_id: view_tabs.active_view_id,
+    is_view_applied: view_tabs.is_view_applied,
+    current_filter_state: view_tabs.current_filter_state,
   });
 
   const handleAddView = (view_type?: BoardViewKind) => view_tabs.addView(view_type);
@@ -1211,27 +1200,79 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       .catch(() => {});
   }, [board_id, view_tabs.active_view_id]);
 
-  // Whenever filter/sort/"group by column" becomes active, those features
-  // need every table's rows to be correct — trigger the fallback above
-  // rather than letting them silently operate over just the tables that
-  // happen to have scrolled into view so far. Search is handled separately
-  // below by a real server query instead of this "load everything" fallback.
+  // Sort, "group by column" and the open Quick filters panel (whose live
+  // counts are computed over every row) need every table's rows, so they
+  // trigger the load-everything fallback above. Plain filtering does not:
+  // it is answered by the server-side filter query below.
+  const is_quick_filter_panel_open = toolbar.active_panel === "filter" && toolbar.filter_mode === "quick";
   useEffect(() => {
-    const is_narrowed =
-      toolbar.selected_person_ids.length > 0 ||
-      Object.values(toolbar.quick_filter_selections).some((ids) => ids.length > 0) ||
-      toolbar.advanced_filter_rows.some((row) => row.column_id && row.condition) ||
+    const needs_every_row =
       toolbar.sort_rules.some((rule) => rule.sort_option_id) ||
-      toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID;
-    if (is_narrowed) loadAllRemainingGroups();
+      toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID ||
+      is_quick_filter_panel_open;
+    if (needs_every_row) loadAllRemainingGroups();
+  }, [toolbar.sort_rules, toolbar.group_by_option_id, is_quick_filter_panel_open, loadAllRemainingGroups]);
+
+  /**
+   * Server-side filtering (`BoardItemFilterService::applyFilterState()`): while
+   * any Person, Quick or Advanced filter applies, one request returns every
+   * matching row across all tables, instead of downloading every table first.
+   * The client-side filter still runs on top, so rows loaded earlier that no
+   * longer match stay hidden, and a condition the server cannot evaluate
+   * (it passes those through) is still applied. `server_filter_key` marks
+   * which filter the merged rows answer, so tables count as loaded for it,
+   * the same way an active search does.
+   */
+  const server_filter = useMemo(() => {
+    const filter_state = {
+      selected_person_ids: toolbar.selected_person_ids,
+      quick_filter_selections: toolbar.quick_filter_selections,
+      advanced_filter_rows: toolbar.advanced_filter_rows.filter(isRuleComplete),
+      advanced_filter_groups: toolbar.advanced_filter_groups
+        .map((group) => ({ ...group, rules: group.rules.filter(isRuleComplete) }))
+        .filter((group) => group.rules.length > 0),
+      advanced_filter_operator: toolbar.advanced_filter_operator,
+    };
+    const is_active =
+      filter_state.selected_person_ids.length > 0 ||
+      Object.values(filter_state.quick_filter_selections).some((ids) => ids.length > 0) ||
+      filter_state.advanced_filter_rows.length > 0 ||
+      filter_state.advanced_filter_groups.length > 0;
+    if (!is_active) return null;
+    const payload = { filter_state, today: toolbar.filter_context.today };
+    return { payload, key: JSON.stringify(payload) };
   }, [
     toolbar.selected_person_ids,
     toolbar.quick_filter_selections,
     toolbar.advanced_filter_rows,
-    toolbar.sort_rules,
-    toolbar.group_by_option_id,
-    loadAllRemainingGroups,
+    toolbar.advanced_filter_groups,
+    toolbar.advanced_filter_operator,
+    toolbar.filter_context.today,
   ]);
+  const [server_filter_key, setServerFilterKey] = useState<string | null>(null);
+  const is_server_filter_loaded = server_filter !== null && server_filter.key === server_filter_key;
+
+  useEffect(() => {
+    if (!server_filter || is_all_items_loaded) return;
+    let is_cancelled = false;
+    const timeout = window.setTimeout(() => {
+      boardContentService
+        .getItems(board_id, view_tabs.active_view_id, undefined, undefined, server_filter.payload)
+        .then((fetched) => {
+          if (is_cancelled) return;
+          mergeFetchedItems(fetched);
+          setServerFilterKey(server_filter.key);
+        })
+        .catch(() => {
+          // Fall back to loading every table, so the filter is still correct.
+          if (!is_cancelled) loadAllRemainingGroups();
+        });
+    }, 300);
+    return () => {
+      is_cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [server_filter, is_all_items_loaded, board_id, view_tabs.active_view_id, mergeFetchedItems, loadAllRemainingGroups]);
 
   /**
    * Real server-side search (`BoardItemFilterService::applySearch()`, which
@@ -1514,9 +1555,44 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Column-header menu's "Filter"/"Group by" rows — bridge into the
   // toolbar's own Filter/Group-by state, which `BoardTable` (a sibling of the
   // toolbar, not a descendant) has no access to on its own. ──
+  // ── Toolbar panels' "Save to this view"/"Save as new view" ──
+  const toolbar_view_actions: BoardToolbarViewActions = {
+    can_save: node.can_edit && view_tabs.active_view !== null,
+    // A locked tab keeps its saved filters, so only "Save as new view" is offered there.
+    is_dirty: view_tabs.is_dirty && !view_tabs.active_view?.is_locked,
+    active_view_label: view_tabs.active_view?.label ?? null,
+    saveToActiveView: async () => {
+      try {
+        await view_tabs.saveActiveView();
+        toast.success(`Saved to "${view_tabs.active_view?.label ?? "this view"}"`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Couldn't save this view. Please try again."));
+      }
+    },
+    saveAsNewView: async () => {
+      try {
+        const created = await view_tabs.saveAsNewView();
+        if (created) toast.success(`Created "${created.label}" with the current filters`);
+      } catch (error) {
+        toast.error(getApiErrorMessage(error, "Couldn't create the new view. Please try again."));
+      }
+    },
+  };
+
+  // ── Right-click a cell > "Filter by this value" / "Exclude this value" ──
+  // Adds an Advanced filters rule for the cell's own value (see
+  // `buildRuleFromRowValue`) without opening the panel; the rule shows up as a
+  // chip in the toolbar's summary bar, where it can be edited or removed.
+  const handleFilterByCellValue = (item_id: string, column_id: string, exclude: boolean) => {
+    const field = filter_fields.find((candidate) => candidate.id === (column_id === "__name" ? ITEM_COLUMN_ID : column_id));
+    const row = items.find((item) => String(item.id) === item_id);
+    if (!field || !row) return;
+    toolbar.addAdvancedFilterRule(buildRuleFromRowValue(field, row, exclude));
+  };
+
   const handleRequestColumnFilter = (column_id: string) => {
     toolbar.setFilterMode("advanced");
-    toolbar.addAdvancedFilterRowForColumn(column_id);
+    toolbar.addAdvancedFilterRowForColumn(column_id === "__name" ? ITEM_COLUMN_ID : column_id);
     toolbar.openPanel("filter");
   };
 
@@ -2167,7 +2243,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         // for every group (not just matched ones): a group with zero matches
         // should render as empty, not sit behind a perpetual skeleton
         // waiting for a real lazy-load that a search never triggers.
-        const is_items_loaded = is_all_items_loaded || loaded_group_ids.has(group_id) || toolbar.search_query.trim() !== "";
+        const is_items_loaded =
+          is_all_items_loaded || loaded_group_ids.has(group_id) || toolbar.search_query.trim() !== "" || is_server_filter_loaded;
         return {
           key: g.id,
           title: g.name,
@@ -2186,7 +2263,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, toolbar.search_query, groups_by_id]
+    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, toolbar.search_query, is_server_filter_loaded, groups_by_id]
   );
 
   // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
@@ -3366,7 +3443,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         // above any of them (Files Gallery and Chart render their own
         // dedicated toolbar/config panel instead).
         active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" || active_view_type === "form" ? undefined : (
-          <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
+          <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} view_actions={toolbar_view_actions} />
         )
       }
       selectionBar={
@@ -3429,6 +3506,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onDuplicateColumn={handleDuplicateTableColumn}
           onAddColumnRight={handleAddColumnRight}
           onRequestColumnFilter={handleRequestColumnFilter}
+          onFilterByCellValue={handleFilterByCellValue}
           onRequestColumnPermissions={node.is_owner ? (column_id) => setPermissionsColumnId(Number(column_id)) : undefined}
           onRequestGroupByColumn={handleRequestGroupByColumn}
           onRequestColumnSort={handleRequestColumnSort}

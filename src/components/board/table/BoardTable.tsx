@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
 import type { ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
@@ -13,6 +13,7 @@ import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
 import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEditorModal";
+import CellFilterContextMenu, { type CellFilterContextMenuTarget } from "./menus/CellFilterContextMenu";
 import "./table-board.css";
 
 /** How many rows the Formula dialog collects to preview against, before it trims to what fits on screen. */
@@ -136,6 +137,12 @@ export interface BoardTableProps {
   onRequestColumnPermissions?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
   /**
+   * Right-click a root item's cell > "Filter by this value"/"Exclude this value",
+   * bridged to the board's toolbar like `onRequestColumnFilter`. `column_id` is
+   * `"__name"` for the item-title column. Omitted, right-click keeps the browser's own menu.
+   */
+  onFilterByCellValue?: (item_id: string, column_id: string, exclude: boolean) => void;
+  /**
    * Main-table column-header sort arrow — bridges into the same toolbar
    * (`toolbar.sort_rules` is the single source of sort truth), mirroring
    * `onRequestColumnFilter`/`onRequestGroupByColumn`. `column_id` is
@@ -191,6 +198,7 @@ export default function BoardTable({
   onRequestColumnFilter,
   onRequestColumnPermissions,
   onRequestGroupByColumn,
+  onFilterByCellValue,
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
@@ -198,6 +206,19 @@ export default function BoardTable({
   clear_selection_signal,
 }: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
+
+  const [cell_menu_target, setCellMenuTarget] = useState<CellFilterContextMenuTarget | null>(null);
+  const closeCellFilterMenu = useCallback(() => setCellMenuTarget(null), []);
+  /** Opens the "Filter by this value" menu for any cell tagged with `data-filter-cell` (see `ItemRow`). */
+  const handleGridContextMenu = (event: React.MouseEvent) => {
+    if (!onFilterByCellValue) return;
+    const cell = (event.target as Element).closest<HTMLElement>("[data-filter-cell]");
+    const item_id = cell?.dataset.itemId;
+    const column_id = cell?.dataset.columnId;
+    if (!item_id || !column_id) return;
+    event.preventDefault();
+    setCellMenuTarget({ x: event.clientX, y: event.clientY, item_id, column_id });
+  };
 
   const selected_root_ids = useMemo(
     () => state.groups.flatMap((g) => g.items.filter((it) => state.selected_map[it.id]).map((it) => it.id)),
@@ -486,6 +507,13 @@ export default function BoardTable({
 
   const modals = (
     <>
+      {cell_menu_target && onFilterByCellValue && (
+        <CellFilterContextMenu
+          target={cell_menu_target}
+          onFilter={(exclude) => onFilterByCellValue(cell_menu_target.item_id, cell_menu_target.column_id, exclude)}
+          onClose={closeCellFilterMenu}
+        />
+      )}
       {state.label_editor_kind === "status" && (is_real_label_editor_column ? (
         <LabelEditorModal
           title="Edit status labels"
@@ -578,7 +606,7 @@ export default function BoardTable({
           competition to this subtree, so the table's own headers only ever
           out-rank content inside the table, never the shell around it.
         */}
-        <div className="isolate">{grid}</div>
+        <div className="isolate" onContextMenu={handleGridContextMenu}>{grid}</div>
         {modals}
       </div>
     );
@@ -596,7 +624,7 @@ export default function BoardTable({
             checkbox columns, leaving a gap once horizontal scroll sticks them. */}
         <div className="table-board-scroll h-full overflow-auto pb-[60px]">
           {/* See the `embedded` branch above for why this needs `isolate`. */}
-          <div className="isolate px-7">{grid}</div>
+          <div className="isolate px-7" onContextMenu={handleGridContextMenu}>{grid}</div>
         </div>
       </div>
 

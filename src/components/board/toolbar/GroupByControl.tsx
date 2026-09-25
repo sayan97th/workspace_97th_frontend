@@ -2,14 +2,16 @@
 import React, { useRef } from "react";
 import { CheckIcon, CommentIcon, GroupByIcon, SortAscendingIcon, SortDescendingIcon } from "@/icons/board-icons";
 import { InfoIcon } from "@/icons/workspace-icons";
-import { BOARD_DEFAULT_GROUP_BY_ID, type BoardSortDirection, type BoardToolbarApi } from "./types";
+import { BOARD_DEFAULT_GROUP_BY_ID, type BoardSortDirection, type BoardToolbarApi, type BoardToolbarViewActions } from "./types";
 import BoardPopover from "./BoardPopover";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
 import InlineFieldMenu from "./InlineFieldMenu";
+import SaveViewButtons from "./SaveViewButtons";
 import ToolbarButton from "./ToolbarButton";
 
 export type GroupByControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  view_actions?: BoardToolbarViewActions;
 };
 
 const DIRECTION_OPTIONS: { id: BoardSortDirection; label: string; Icon: typeof SortAscendingIcon }[] = [
@@ -17,7 +19,7 @@ const DIRECTION_OPTIONS: { id: BoardSortDirection; label: string; Icon: typeof S
   { id: "desc", label: "Descending", Icon: SortDescendingIcon },
 ];
 
-function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
+function GroupByControl<TRow>({ toolbar, view_actions }: GroupByControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const is_open = toolbar.active_panel === "group";
   const is_non_default = toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID;
@@ -55,15 +57,15 @@ function GroupByControl<TRow>({ toolbar }: GroupByControlProps<TRow>) {
               Clear
             </button>
           )}
-          <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-boardtree-border px-3.5 text-[13px] font-semibold text-boardtree-text-faint">
-            Save as new view
-          </div>
+          <SaveViewButtons view_actions={view_actions} />
         </div>
 
         <div className="flex items-center gap-2.5 px-5 pb-1.5 pt-0.5">
           <InlineFieldMenu
             menu_heading="Column options"
             menu_max_height={308}
+            getSearchText={(option) => option.label}
+            search_placeholder="Search columns"
             options={column_options}
             getOptionId={(option) => option.id}
             isSelected={(option) => option.id === toolbar.group_by_option_id}

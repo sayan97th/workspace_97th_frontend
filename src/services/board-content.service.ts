@@ -19,6 +19,8 @@ import type {
   MoveBoardItemToBoardPayload,
   ReorderBoardColumnsPayload,
   ReorderBoardItemsPayload,
+  BoardItemsServerFilter,
+  DuplicateBoardViewPayload,
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
   UpdateBoardColumnPermissionsPayload,
@@ -216,11 +218,24 @@ export const boardContentService = {
    * tab with many/large tables doesn't fetch every row up front. Omitted,
    * every table in the tab is returned, unchanged from before.
    */
-  async getItems(board_id: number, view_id?: number | null, search?: string, group_ids?: number[]): Promise<BoardItemDto[]> {
+  async getItems(
+    board_id: number,
+    view_id?: number | null,
+    search?: string,
+    group_ids?: number[],
+    filter?: BoardItemsServerFilter
+  ): Promise<BoardItemDto[]> {
     const params = new URLSearchParams();
     if (view_id) params.set("view_id", String(view_id));
     if (search) params.set("search", search);
     group_ids?.forEach((group_id) => params.append("group_ids[]", String(group_id)));
+    // Server-side filtering (`BoardItemFilterService::applyFilterState()`): only
+    // the rows matching the toolbar's Person/Quick/Advanced filters come back.
+    // `today` keeps relative dates ("This week") in the viewer's own time zone.
+    if (filter) {
+      params.set("filter_state", JSON.stringify(filter.filter_state));
+      params.set("today", filter.today);
+    }
     const query = params.toString() ? `?${params.toString()}` : "";
     const response = await apiClient.get<{ data: BoardItemDto[] }>(`/api/boards/${board_id}/items${query}`);
     return response.data;
@@ -424,8 +439,8 @@ export const boardContentService = {
   },
 
   /** POST /api/boards/{board_id}/views/{view_id}/duplicate — clone a tab's label + saved config. */
-  async duplicateView(board_id: number, view_id: number): Promise<BoardViewDto> {
-    const response = await apiClient.post<{ view: BoardViewDto }>(`/api/boards/${board_id}/views/${view_id}/duplicate`);
+  async duplicateView(board_id: number, view_id: number, payload?: DuplicateBoardViewPayload): Promise<BoardViewDto> {
+    const response = await apiClient.post<{ view: BoardViewDto }>(`/api/boards/${board_id}/views/${view_id}/duplicate`, payload ?? {});
     return response.view;
   },
 

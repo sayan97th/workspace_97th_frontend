@@ -2,18 +2,20 @@
 import React, { useRef, useState } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { InfoIcon, PersonIcon, SearchIcon } from "@/icons/workspace-icons";
-import type { BoardToolbarApi } from "./types";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import BoardPopover from "./BoardPopover";
+import SaveViewButtons from "./SaveViewButtons";
 import SelectablePersonAvatar from "./SelectablePersonAvatar";
 import ToolbarButton from "./ToolbarButton";
 
 export type PersonControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  view_actions?: BoardToolbarViewActions;
 };
 
 const POPOVER_WIDTH = 430;
 
-function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
+function PersonControl<TRow>({ toolbar, view_actions }: PersonControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const [query, setQuery] = useState("");
   const [is_search_focused, setSearchFocused] = useState(false);
@@ -54,9 +56,7 @@ function PersonControl<TRow>({ toolbar }: PersonControlProps<TRow>) {
             <InfoIcon size={15} />
           </span>
           <div className="flex-1" />
-          <span className="flex h-[30px] flex-none cursor-default items-center rounded-lg border border-boardtree-border px-3 text-[12.5px] font-semibold text-boardtree-text-muted">
-            Save as new view
-          </span>
+          <SaveViewButtons view_actions={view_actions} />
         </div>
 
         <div className="px-[18px] pb-3.5">

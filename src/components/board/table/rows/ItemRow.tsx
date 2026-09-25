@@ -179,7 +179,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               <svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
             )}
           </button>
-          <div className="flex min-w-0 flex-1 items-center">
+          {/* `data-filter-cell` feeds the table's right-click "Filter by this value" menu (see `BoardTable`). */}
+          <div className="flex min-w-0 flex-1 items-center" data-filter-cell="true" data-item-id={item.id} data-column-id="__name">
             {is_editing ? (
               <span className="relative flex min-w-0 flex-1 items-center">
                 <input
@@ -300,6 +301,9 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           return (
             <div
               key={col.id}
+              data-filter-cell="true"
+              data-item-id={item.id}
+              data-column-id={col.id}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{

@@ -1,86 +1,148 @@
 "use client";
 import React from "react";
 import { CloseIcon, PlusIcon } from "@/icons/board-icons";
-import { BOARD_ADVANCED_FILTER_CONDITIONS, type BoardToolbarApi } from "./types";
+import FilterRuleRow from "./FilterRuleRow";
+import InlineFieldMenu from "./InlineFieldMenu";
+import type { BoardFilterJoinOperator, BoardToolbarApi } from "./types";
 
 export type FilterPanelAdvancedProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
 };
 
-const select_class =
-  "h-[38px] rounded-lg border border-boardtree-border bg-boardtree-hover px-3 text-[13.5px] text-boardtree-text transition-colors hover:border-boardtree-text-faint focus:outline-none";
+const JOIN_OPTIONS: { id: BoardFilterJoinOperator; label: string }[] = [
+  { id: "and", label: "And" },
+  { id: "or", label: "Or" },
+];
 
-/** Native <option> popups ignore the <select>'s Tailwind background, so it must be set explicitly here or the options render invisible (light text on the browser's default white dropdown). */
-const option_class = "bg-boardtree-surface text-boardtree-text";
+const joinLabel = (operator: BoardFilterJoinOperator) => (operator === "or" ? "Or" : "And");
+
+/**
+ * The prefix in front of a rule, like monday: "Where" for the first one, an
+ * And/Or picker for the second (which sets the operator for the whole level),
+ * and a read-only echo of that operator for every rule after it.
+ */
+function JoinPrefix({
+  index,
+  operator,
+  onChange,
+}: {
+  index: number;
+  operator: BoardFilterJoinOperator;
+  onChange: (operator: BoardFilterJoinOperator) => void;
+}) {
+  if (index === 0) {
+    return <span className="text-[13.5px] font-semibold text-boardtree-text-secondary">Where</span>;
+  }
+  if (index === 1) {
+    return (
+      <InlineFieldMenu
+        width={74}
+        className="flex-none"
+        options={JOIN_OPTIONS}
+        getOptionId={(option) => option.id}
+        isSelected={(option) => option.id === operator}
+        onSelect={(option) => onChange(option.id)}
+        renderValue={() => <span className="text-[13.5px] font-semibold text-boardtree-text-secondary">{joinLabel(operator)}</span>}
+        renderOption={(option) => <span>{option.label}</span>}
+      />
+    );
+  }
+  return <span className="pl-3 text-[13.5px] font-semibold text-boardtree-text-muted">{joinLabel(operator)}</span>;
+}
 
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
+  const top_level_count = toolbar.advanced_filter_rows.length + toolbar.advanced_filter_groups.length;
+
   return (
     <div className="px-5 pb-4 pt-0.5">
-      {toolbar.advanced_filter_rows.map((row, index) => {
-        const is_value_disabled = row.condition === "is_empty" || row.condition === "is_not_empty";
-        return (
-          <div key={row.id} className="mb-2.5 flex items-center gap-3">
-            <span className="w-11 flex-none text-[13.5px] font-semibold text-boardtree-text-secondary">
-              {index === 0 ? "Where" : "And"}
-            </span>
-            <select
-              value={row.column_id ?? ""}
-              onChange={(event) =>
-                toolbar.updateAdvancedFilterRow(row.id, { column_id: event.target.value || null })
-              }
-              className={`${select_class} w-[170px]`}
-            >
-              <option value="" className={option_class}>Column</option>
-              {toolbar.columns.map((column) => (
-                <option key={column.id} value={column.id} className={option_class}>
-                  {column.label || column.id}
-                </option>
-              ))}
-            </select>
-            <select
-              value={row.condition ?? ""}
-              onChange={(event) =>
-                toolbar.updateAdvancedFilterRow(row.id, {
-                  condition: (event.target.value || null) as typeof row.condition,
-                })
-              }
-              className={`${select_class} w-[150px]`}
-            >
-              <option value="" className={option_class}>Condition</option>
-              {BOARD_ADVANCED_FILTER_CONDITIONS.map((condition) => (
-                <option key={condition.id} value={condition.id} className={option_class}>
-                  {condition.label}
-                </option>
-              ))}
-            </select>
-            <input
-              type="text"
-              value={row.value}
-              disabled={is_value_disabled}
-              onChange={(event) => toolbar.updateAdvancedFilterRow(row.id, { value: event.target.value })}
-              placeholder="Value"
-              className={`${select_class} min-w-0 flex-1 disabled:opacity-40`}
-            />
-            <button
-              type="button"
-              onClick={() => toolbar.removeAdvancedFilterRow(row.id)}
-              className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text"
-              aria-label="Remove filter"
-            >
-              <CloseIcon size={12} />
-            </button>
-          </div>
-        );
-      })}
+      {top_level_count === 0 && (
+        <p className="pb-3 text-[13px] text-boardtree-text-muted">
+          Build conditions on any column. Each column type offers its own conditions and values.
+        </p>
+      )}
 
-      <button
-        type="button"
-        onClick={toolbar.addAdvancedFilterRow}
-        className="mt-1 flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
-      >
-        <PlusIcon size={12} />
-        New filter
-      </button>
+      <div className="flex flex-col gap-2.5">
+        {toolbar.advanced_filter_rows.map((rule, index) => (
+          <FilterRuleRow
+            key={rule.id}
+            toolbar={toolbar}
+            rule={rule}
+            prefix={<JoinPrefix index={index} operator={toolbar.advanced_filter_operator} onChange={toolbar.setAdvancedFilterOperator} />}
+            onChange={(patch) => toolbar.updateAdvancedFilterRow(rule.id, patch)}
+            onRemove={() => toolbar.removeAdvancedFilterRow(rule.id)}
+          />
+        ))}
+
+        {toolbar.advanced_filter_groups.map((group, group_index) => (
+          <div key={group.id} className="flex items-start gap-2.5">
+            <div className="flex w-[74px] flex-none items-center pt-3">
+              <JoinPrefix
+                index={toolbar.advanced_filter_rows.length + group_index}
+                operator={toolbar.advanced_filter_operator}
+                onChange={toolbar.setAdvancedFilterOperator}
+              />
+            </div>
+            <div className="min-w-0 flex-1 rounded-lg border border-boardtree-border bg-boardtree-hover/40 px-3 pb-3 pt-2.5">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[12.5px] font-semibold text-boardtree-text-muted">Condition group</span>
+                <button
+                  type="button"
+                  onClick={() => toolbar.removeAdvancedFilterGroup(group.id)}
+                  className="flex h-6 w-6 items-center justify-center rounded-md text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-text"
+                  aria-label="Remove condition group"
+                >
+                  <CloseIcon size={11} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-2.5">
+                {group.rules.map((rule, index) => (
+                  <FilterRuleRow
+                    key={rule.id}
+                    toolbar={toolbar}
+                    rule={rule}
+                    prefix={
+                      <JoinPrefix
+                        index={index}
+                        operator={group.join_operator}
+                        onChange={(operator) => toolbar.setAdvancedFilterGroupOperator(group.id, operator)}
+                      />
+                    }
+                    onChange={(patch) => toolbar.updateAdvancedFilterGroupRule(group.id, rule.id, patch)}
+                    onRemove={() => toolbar.removeAdvancedFilterGroupRule(group.id, rule.id)}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => toolbar.addAdvancedFilterGroupRule(group.id)}
+                className="mt-2.5 flex items-center gap-1.5 text-[13px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
+              >
+                <PlusIcon size={11} />
+                New filter in group
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-3 flex items-center gap-5">
+        <button
+          type="button"
+          onClick={toolbar.addAdvancedFilterRow}
+          className="flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
+        >
+          <PlusIcon size={12} />
+          New filter
+        </button>
+        <button
+          type="button"
+          onClick={toolbar.addAdvancedFilterGroup}
+          className="flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
+        >
+          <PlusIcon size={12} />
+          New group
+        </button>
+      </div>
     </div>
   );
 }

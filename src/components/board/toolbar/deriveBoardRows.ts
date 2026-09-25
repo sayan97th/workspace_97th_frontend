@@ -1,9 +1,16 @@
 import type { BoardColumn, BoardGroup } from "../types";
+import { buildAdvancedFilterMatcher, countActiveAdvancedRules } from "./filterEngine";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
+  BOARD_EMPTY_GROUP_KEY,
   type BoardAdvancedFilterCondition,
+  type BoardAdvancedFilterGroup,
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
+  type BoardFilterContext,
+  type BoardFilterField,
+  type BoardFilterJoinOperator,
+  type BoardQuickFilterFacet,
   type BoardSortDirection,
   type BoardSortRule,
   type BoardToolbarConfig,
@@ -15,12 +22,21 @@ export type BoardDerivationState = {
   selected_person_ids: string[];
   quick_filter_selections: Record<string, string[]>;
   advanced_filter_rows: BoardAdvancedFilterRow[];
+  advanced_filter_groups: BoardAdvancedFilterGroup[];
+  advanced_filter_operator: BoardFilterJoinOperator;
   sort_rules: BoardSortRule[];
   hidden_column_ids: string[];
   group_by_option_id: string;
   group_order_direction: BoardSortDirection;
   show_empty_groups: boolean;
   conditional_color_rules: BoardConditionalColorRule[];
+};
+
+/** Inputs derived once per config by `useBoardToolbar`, shared by every row check. */
+export type BoardFilterInputs<TRow> = {
+  quick_filter_facets: BoardQuickFilterFacet<TRow>[];
+  fields_by_id: Map<string, BoardFilterField<TRow>>;
+  filter_context: BoardFilterContext;
 };
 
 export type BoardDerivedRows<TRow> = {
@@ -33,7 +49,7 @@ export type BoardDerivedRows<TRow> = {
   cell_colors: Record<string, Record<string, string>>;
 };
 
-/** Shared by Advanced Filters and Conditional Coloring, both of which match a column's display text against a condition. */
+/** Used by Conditional coloring, which matches a column's display text against one of four text conditions. */
 export const evaluateCondition = (
   text: string,
   condition: BoardAdvancedFilterCondition,
@@ -55,60 +71,81 @@ export const evaluateCondition = (
 
 const compareValues = (a: string | number, b: string | number): number => {
   if (typeof a === "number" && typeof b === "number") return a - b;
-  return String(a).localeCompare(String(b));
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
 };
 
-export function deriveBoardRows<TRow>(
-  config: BoardToolbarConfig<TRow>,
-  state: BoardDerivationState
-): BoardDerivedRows<TRow> {
-  const flattened_rows = config.default_groups.flatMap((group) => group.rows);
+/** Sort comparator where an empty (null) value always lands last, whichever the direction. */
+const compareNullableValues = (
+  a: string | number | null,
+  b: string | number | null,
+  direction_multiplier: number
+): number => {
+  const is_a_empty = a === null || a === "";
+  const is_b_empty = b === null || b === "";
+  if (is_a_empty || is_b_empty) return Number(is_a_empty) - Number(is_b_empty);
+  return compareValues(a, b) * direction_multiplier;
+};
 
-  const matchesSearch = (row: TRow) => {
-    const query = state.search_query.trim().toLowerCase();
-    if (!query) return true;
-    // Empty `search_column_ids` means "no restriction, search every column"
-    // — matching how every sibling list (`hidden_column_ids`,
-    // `pinned_column_ids`, ...) treats an empty selection as the permissive
-    // default rather than "select nothing". Searching zero columns would
-    // otherwise make every query match nothing, always.
-    const column_ids = state.search_column_ids.length ? state.search_column_ids : config.columns.map((c) => c.id);
-    const haystack = column_ids
+/**
+ * Builds the predicate every visible row must pass: search, Person, Quick
+ * filters and Advanced filters, all combined with AND. `exclude_facet_id`
+ * leaves one Quick filters facet out, which is how each facet's live counts
+ * reflect every other active filter without being narrowed by its own picks.
+ */
+export function buildRowMatcher<TRow>(
+  config: BoardToolbarConfig<TRow>,
+  state: BoardDerivationState,
+  inputs: BoardFilterInputs<TRow>,
+  exclude_facet_id?: string
+): (row: TRow) => boolean {
+  const query = state.search_query.trim().toLowerCase();
+  // Empty `search_column_ids` means "no restriction, search every column",
+  // matching how every sibling list (`hidden_column_ids`,
+  // `pinned_column_ids`, ...) treats an empty selection as the permissive
+  // default rather than "select nothing".
+  const search_column_ids = state.search_column_ids.length ? state.search_column_ids : config.columns.map((c) => c.id);
+  const matchesSearch = (row: TRow) =>
+    !query ||
+    search_column_ids
       .map((column_id) => config.getColumnText(row, column_id))
       .join(" ")
-      .toLowerCase();
-    return haystack.includes(query);
-  };
+      .toLowerCase()
+      .includes(query);
 
+  const active_facets = inputs.quick_filter_facets
+    .filter((facet) => facet.id !== exclude_facet_id && state.quick_filter_selections[facet.id]?.length)
+    .map((facet) => ({ facet, selected: state.quick_filter_selections[facet.id] }));
   const matchesQuickFilters = (row: TRow) =>
-    config.quick_filter_facets.every((facet) => {
-      const selected = state.quick_filter_selections[facet.id];
-      if (!selected?.length) return true;
-      const option_ids = facet.getOptionIds(row);
-      return option_ids.some((id) => selected.includes(id));
-    });
-
-  const active_advanced_filter_rows = state.advanced_filter_rows.filter(
-    (row) => row.column_id && row.condition
-  );
-
-  const matchesAdvancedFilters = (row: TRow) =>
-    active_advanced_filter_rows.every((filter_row) =>
-      evaluateCondition(
-        config.getColumnText(row, filter_row.column_id!),
-        filter_row.condition!,
-        filter_row.value
-      )
+    active_facets.every(({ facet, selected }) =>
+      facet.getOptionIds(row, inputs.filter_context).some((id) => selected.includes(id))
     );
+
+  const matchesAdvancedFilters =
+    buildAdvancedFilterMatcher(
+      {
+        rules: state.advanced_filter_rows,
+        groups: state.advanced_filter_groups,
+        operator: state.advanced_filter_operator,
+      },
+      inputs.fields_by_id,
+      inputs.filter_context
+    ) ?? (() => true);
 
   const matchesPerson = (row: TRow) => {
     if (!state.selected_person_ids.length) return true;
-    const person_ids = config.getPersonIds(row);
-    return person_ids.some((id) => state.selected_person_ids.includes(id));
+    return config.getPersonIds(row).some((id) => state.selected_person_ids.includes(id));
   };
 
-  const matchesEverything = (row: TRow) =>
-    matchesSearch(row) && matchesQuickFilters(row) && matchesAdvancedFilters(row) && matchesPerson(row);
+  return (row: TRow) => matchesSearch(row) && matchesPerson(row) && matchesQuickFilters(row) && matchesAdvancedFilters(row);
+}
+
+export function deriveBoardRows<TRow>(
+  config: BoardToolbarConfig<TRow>,
+  state: BoardDerivationState,
+  inputs: BoardFilterInputs<TRow>
+): BoardDerivedRows<TRow> {
+  const flattened_rows = config.default_groups.flatMap((group) => group.rows);
+  const matchesEverything = buildRowMatcher(config, state, inputs);
 
   let groups: BoardGroup<TRow>[];
 
@@ -140,8 +177,12 @@ export function deriveBoardRows<TRow>(
       ? Array.from(seen_keys_for_empty_groups)
       : Array.from(buckets.keys());
 
+    // The empty bucket ("No status", "No date", ...) always renders last,
+    // whichever the direction, just like empty cells in a sort.
     const direction_multiplier = state.group_order_direction === "asc" ? 1 : -1;
-    keys.sort((a, b) => compareValues(a, b) * direction_multiplier);
+    const getSortValue = (key: string) =>
+      key === BOARD_EMPTY_GROUP_KEY ? null : option?.getGroupSortValue?.(key) ?? key;
+    keys.sort((a, b) => compareNullableValues(getSortValue(a), getSortValue(b), direction_multiplier));
 
     groups = keys.map((key) => ({
       id: key,
@@ -151,13 +192,16 @@ export function deriveBoardRows<TRow>(
     }));
   }
 
-  const active_sort_rules = state.sort_rules.filter((rule) => rule.sort_option_id);
+  // A rule pointing at a deleted column is skipped instead of crashing the comparator.
+  const active_sort_rules = state.sort_rules.filter((rule) =>
+    config.sort_options.some((option) => option.id === rule.sort_option_id)
+  );
   if (active_sort_rules.length) {
     const comparators = active_sort_rules.map((rule) => {
       const sort_option = config.sort_options.find((o) => o.id === rule.sort_option_id)!;
       const direction_multiplier = rule.direction === "asc" ? 1 : -1;
       return (a: TRow, b: TRow) =>
-        compareValues(sort_option.getValue(a), sort_option.getValue(b)) * direction_multiplier;
+        compareNullableValues(sort_option.getValue(a), sort_option.getValue(b), direction_multiplier);
     });
     groups = groups.map((group) => ({
       ...group,
@@ -177,9 +221,16 @@ export function deriveBoardRows<TRow>(
 
   const visible_row_count = groups.reduce((sum, group) => sum + group.rows.length, 0);
 
+  const facet_ids = new Set(inputs.quick_filter_facets.map((facet) => facet.id));
   const active_filter_count =
-    active_advanced_filter_rows.length +
-    Object.values(state.quick_filter_selections).reduce((sum, ids) => sum + ids.length, 0);
+    countActiveAdvancedRules(
+      { rules: state.advanced_filter_rows, groups: state.advanced_filter_groups, operator: state.advanced_filter_operator },
+      inputs.fields_by_id
+    ) +
+    Object.entries(state.quick_filter_selections).reduce(
+      (sum, [facet_id, ids]) => sum + (facet_ids.has(facet_id) ? ids.length : 0),
+      0
+    );
 
   const active_color_rules = state.conditional_color_rules.filter(
     (rule) => rule.column_id && rule.condition

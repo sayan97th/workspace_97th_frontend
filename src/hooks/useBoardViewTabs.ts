@@ -3,10 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   getBoardViewTypeOption,
+  type BoardAdvancedFilterGroup,
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
+  type BoardFilterJoinOperator,
   type BoardRowHeight,
   type BoardSortRule,
+  type BoardToolbarFilterState,
   type BoardViewKind,
   type BoardViewTabItem,
 } from "@/components/board";
@@ -48,25 +51,56 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   selected_person_ids: [],
   quick_filter_selections: {},
   advanced_filter_rows: [],
+  advanced_filter_groups: [],
+  advanced_filter_operator: "and",
+  quick_filter_column_ids: null,
 };
 
 /**
  * A saved rule's `value` can likewise come back as `null` (same root cause as
- * `search_query` above) — `evaluateCondition` always calls `.trim()` on it, so
- * any row replayed onto the toolbar needs the empty-string default restored.
+ * `search_query` above). Every filter and coloring rule is evaluated on a
+ * trimmed string, so any rule replayed onto the toolbar needs the empty-string
+ * default restored.
  */
 const withDefaultValues = <T extends { value: string }>(rows: T[]): T[] =>
   rows.map((row) => ({ ...row, value: row.value ?? "" }));
+
+/** Filter rules also get `values: []` back when a view saved before multi-value rules existed omits it. */
+const normalizeRules = (rules: BoardAdvancedFilterRow[]): BoardAdvancedFilterRow[] =>
+  withDefaultValues(rules).map((rule) => ({ ...rule, values: rule.values ?? [] }));
 
 const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilterState => {
   const base = filter_state ?? EMPTY_FILTER_STATE;
   return {
     ...base,
     search_query: base.search_query ?? "",
-    quick_filter_selections: Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
-    advanced_filter_rows: withDefaultValues(base.advanced_filter_rows ?? []),
+    search_column_ids: base.search_column_ids ?? [],
+    selected_person_ids: base.selected_person_ids ?? [],
+    quick_filter_selections:
+      !base.quick_filter_selections || Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
+    advanced_filter_rows: normalizeRules(base.advanced_filter_rows ?? []),
+    advanced_filter_groups: (base.advanced_filter_groups ?? []).map((group) => ({
+      ...group,
+      join_operator: group.join_operator === "or" ? "or" : "and",
+      rules: normalizeRules(group.rules ?? []),
+    })),
+    advanced_filter_operator: base.advanced_filter_operator === "or" ? "or" : "and",
+    quick_filter_column_ids: base.quick_filter_column_ids ?? null,
   };
 };
+
+/**
+ * The filter slice as the dirty check compares it: local rule and group ids
+ * (React keys, regenerated on every replay) are stripped at every level.
+ */
+const comparableFilterState = (filter_state: BoardFilterState) => ({
+  ...filter_state,
+  advanced_filter_rows: withoutIds(filter_state.advanced_filter_rows),
+  advanced_filter_groups: (filter_state.advanced_filter_groups ?? []).map((group) => ({
+    join_operator: group.join_operator,
+    rules: withoutIds(group.rules),
+  })),
+});
 
 /**
  * `JSON.stringify` on a plain object serializes keys in insertion order, but
@@ -108,7 +142,10 @@ export type BoardViewSyncToolbar = {
   search_column_ids: string[];
   selected_person_ids: string[];
   quick_filter_selections: Record<string, string[]>;
+  quick_filter_column_ids: string[] | null;
   advanced_filter_rows: BoardAdvancedFilterRow[];
+  advanced_filter_groups: BoardAdvancedFilterGroup[];
+  advanced_filter_operator: BoardFilterJoinOperator;
   sort_rules: BoardSortRule[];
   conditional_color_rules: BoardConditionalColorRule[];
   hidden_column_ids: string[];
@@ -116,19 +153,8 @@ export type BoardViewSyncToolbar = {
   row_height: BoardRowHeight;
   group_by_option_id: string;
 
-  setSearchQuery: (value: string) => void;
-  setAllSearchColumns: (selected: boolean) => void;
-  toggleSearchColumnId: (id: string) => void;
-  clearPersonFilter: () => void;
-  togglePersonId: (id: string) => void;
-  clearQuickFilters: () => void;
-  toggleQuickFilterOption: (facet_id: string, option_id: string) => void;
-  clearAdvancedFilters: () => void;
-  addAdvancedFilterRow: () => void;
-  updateAdvancedFilterRow: (id: string, patch: Partial<BoardAdvancedFilterRow>) => void;
-  clearSort: () => void;
-  addSortRule: () => void;
-  updateSortRule: (id: string, patch: Partial<BoardSortRule>) => void;
+  applyFilterState: (filter_state: BoardToolbarFilterState) => void;
+  applySortRules: (rules: Omit<BoardSortRule, "id">[]) => void;
   showAllColumns: () => void;
   toggleColumnHidden: (id: string) => void;
   unpinAllColumns: () => void;
@@ -160,6 +186,10 @@ export type UseBoardViewTabsApi = {
   tabs: BoardViewTabItem[];
   /** Whether the toolbar's live state has diverged from the active view's saved state. */
   is_dirty: boolean;
+  /** Whether the active view's saved state has finished replaying onto the toolbar (the dirty check is only meaningful after that). */
+  is_view_applied: boolean;
+  /** The toolbar's live filter slice, as a view saves it. */
+  current_filter_state: BoardFilterState;
   selectView: (id: number | string) => void;
   /** Creates a new tab, defaulting to a plain table when no kind is given (see `BoardViewTabs`'s "+" picker). */
   addView: (view_type?: BoardViewKind) => Promise<BoardViewDto>;
@@ -169,6 +199,8 @@ export type UseBoardViewTabsApi = {
   updateDocContent: (id: number, doc_content: string) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
   saveActiveView: () => Promise<void>;
+  /** "Save as new view": copies the active tab (columns, groups, items) into a new tab holding the toolbar's live state, then opens it. */
+  saveAsNewView: () => Promise<BoardViewDto | null>;
   duplicateView: (id: number) => Promise<BoardViewDto>;
   pinView: (id: number) => Promise<void>;
   lockView: (id: number) => Promise<void>;
@@ -204,14 +236,12 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
 
   // ── Apply the active view's saved filter/sort/display state to the toolbar ──
   //
-  // Two phases, because `addAdvancedFilterRow`/`addSortRule`/`addConditionalColorRule`
-  // each generate their OWN random id for the row they create — there's no way to
-  // tell them "use this id". Phase 1 resets the toolbar and adds one blank
-  // placeholder row per saved rule. Phase 2 waits for those placeholders to show
-  // up in `toolbar`'s state, then fills each one in by position using its real
-  // (now-known) generated id — calling `updateAdvancedFilterRow(rule.id, rule)`
-  // directly in phase 1 would silently no-op, since `rule.id` is the *saved* id,
-  // which never matches the freshly generated placeholder's id.
+  // Filters and sort rules are replaced in one call each (with fresh local
+  // ids). Conditional-coloring rules still go through two phases, because
+  // `addConditionalColorRule` generates its own id for each row: phase 1
+  // resets the toolbar and adds one blank placeholder per saved rule, phase 2
+  // waits for those placeholders to show up in `toolbar`'s state, then fills
+  // each one in by position using its real generated id.
   const [pending_view, setPendingView] = useState<BoardViewDto | null>(null);
 
   useEffect(() => {
@@ -219,20 +249,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     if (!view) return;
 
     const t = toolbar_ref.current;
-    const filter_state = normalizeFilterState(view.filter_state);
-    t.setSearchQuery(filter_state.search_query);
-    t.setAllSearchColumns(false);
-    filter_state.search_column_ids.forEach((id) => t.toggleSearchColumnId(id));
-    t.clearPersonFilter();
-    filter_state.selected_person_ids.forEach((id) => t.togglePersonId(id));
-    t.clearQuickFilters();
-    Object.entries(filter_state.quick_filter_selections).forEach(([facet_id, option_ids]) => {
-      option_ids.forEach((option_id) => t.toggleQuickFilterOption(facet_id, option_id));
-    });
-    t.clearAdvancedFilters();
-    filter_state.advanced_filter_rows.forEach(() => t.addAdvancedFilterRow());
-    t.clearSort();
-    (view.sort_state ?? []).forEach(() => t.addSortRule());
+    t.applyFilterState(normalizeFilterState(view.filter_state));
+    t.applySortRules(view.sort_state ?? []);
     t.showAllColumns();
     (view.hidden_column_ids ?? []).forEach((id) => t.toggleColumnHidden(id));
     t.unpinAllColumns();
@@ -242,8 +260,9 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     (view.conditional_color_rules ?? []).forEach(() => t.addConditionalColorRule());
     t.setGroupByOptionId(view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID);
 
+    setAppliedViewId(null);
     setPendingView(view);
-    // Deliberately only re-runs when the active view id changes — replays the
+    // Deliberately only re-runs when the active view id changes, replaying the
     // saved state onto the toolbar once per tab switch, not on every toolbar edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active_view_id]);
@@ -251,28 +270,11 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   useEffect(() => {
     if (!pending_view) return;
     const t = toolbar_ref.current;
-    const filter_state = normalizeFilterState(pending_view.filter_state);
-    const wanted_filters = filter_state.advanced_filter_rows;
-    const wanted_sorts = pending_view.sort_state ?? [];
     const wanted_colors = withDefaultValues(pending_view.conditional_color_rules ?? []);
 
-    // Not all placeholder rows have landed in toolbar state yet — wait for the render where they have.
-    if (
-      t.advanced_filter_rows.length !== wanted_filters.length ||
-      t.sort_rules.length !== wanted_sorts.length ||
-      t.conditional_color_rules.length !== wanted_colors.length
-    ) {
-      return;
-    }
+    // Not all placeholder rows have landed in toolbar state yet, wait for the render where they have.
+    if (t.conditional_color_rules.length !== wanted_colors.length) return;
 
-    wanted_filters.forEach((rule, index) => {
-      const actual_id = t.advanced_filter_rows[index]?.id;
-      if (actual_id) t.updateAdvancedFilterRow(actual_id, rule);
-    });
-    wanted_sorts.forEach((rule, index) => {
-      const actual_id = t.sort_rules[index]?.id;
-      if (actual_id) t.updateSortRule(actual_id, rule);
-    });
     wanted_colors.forEach((rule, index) => {
       const actual_id = t.conditional_color_rules[index]?.id;
       if (actual_id) t.updateConditionalColorRule(actual_id, rule);
@@ -281,7 +283,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     setAppliedViewId(pending_view.id);
     setPendingView(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending_view, toolbar.advanced_filter_rows.length, toolbar.sort_rules.length, toolbar.conditional_color_rules.length]);
+  }, [pending_view, toolbar.conditional_color_rules.length]);
 
   // ── "Save changes to this view" dirty check ──
   const active_view = views.find((v) => v.id === active_view_id) ?? null;
@@ -292,6 +294,9 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     selected_person_ids: toolbar.selected_person_ids,
     quick_filter_selections: toolbar.quick_filter_selections,
     advanced_filter_rows: toolbar.advanced_filter_rows,
+    advanced_filter_groups: toolbar.advanced_filter_groups,
+    advanced_filter_operator: toolbar.advanced_filter_operator,
+    quick_filter_column_ids: toolbar.quick_filter_column_ids,
   };
   // `id` on advanced-filter/sort/color rows is a local React-key concern, freshly
   // generated every time a view is replayed onto the toolbar — it never matches
@@ -302,7 +307,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     is_view_applied &&
     active_view !== null &&
     stableStringify({
-      filter_state: { ...current_filter_state, advanced_filter_rows: withoutIds(current_filter_state.advanced_filter_rows) },
+      filter_state: comparableFilterState(normalizeFilterState(current_filter_state)),
       sort_state: withoutIds(toolbar.sort_rules),
       hidden_column_ids: toolbar.hidden_column_ids,
       pinned_column_ids: toolbar.pinned_column_ids,
@@ -311,10 +316,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       group_by_option_id: toolbar.group_by_option_id,
     }) !==
       stableStringify({
-        filter_state: {
-          ...normalizeFilterState(active_view.filter_state),
-          advanced_filter_rows: withoutIds(normalizeFilterState(active_view.filter_state).advanced_filter_rows),
-        },
+        filter_state: comparableFilterState(normalizeFilterState(active_view.filter_state)),
         sort_state: withoutIds(active_view.sort_state ?? []),
         hidden_column_ids: active_view.hidden_column_ids ?? [],
         pinned_column_ids: active_view.pinned_column_ids ?? [],
@@ -323,18 +325,32 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
         group_by_option_id: active_view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
       });
 
+  const buildSavedState = () => ({
+    filter_state: current_filter_state,
+    sort_state: toolbar.sort_rules,
+    hidden_column_ids: toolbar.hidden_column_ids,
+    pinned_column_ids: toolbar.pinned_column_ids,
+    conditional_color_rules: toolbar.conditional_color_rules,
+    row_height: toolbar.row_height,
+    group_by_option_id: toolbar.group_by_option_id,
+  });
+
   const saveActiveView = async () => {
     if (!active_view) return;
-    const saved = await boardContentService.saveView(board_id, active_view.id, {
-      filter_state: current_filter_state,
-      sort_state: toolbar.sort_rules,
-      hidden_column_ids: toolbar.hidden_column_ids,
-      pinned_column_ids: toolbar.pinned_column_ids,
-      conditional_color_rules: toolbar.conditional_color_rules,
-      row_height: toolbar.row_height,
-      group_by_option_id: toolbar.group_by_option_id,
-    });
+    const saved = await boardContentService.saveView(board_id, active_view.id, buildSavedState());
     setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
+  };
+
+  const saveAsNewView = async (): Promise<BoardViewDto | null> => {
+    if (!active_view) return null;
+    const created = await boardContentService.duplicateView(board_id, active_view.id, {
+      label: dedupeLabel(`${active_view.label} (filtered)`, views),
+      ...buildSavedState(),
+    });
+    setViews((current) => [...current, created]);
+    setActiveViewId(created.id);
+    onViewActivated?.(created);
+    return created;
   };
 
   // ── Tabs ── primary first, then pinned/personal-order among the rest (see `sortSecondaryViews`).
@@ -431,6 +447,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     active_view,
     tabs,
     is_dirty,
+    is_view_applied,
+    current_filter_state,
     selectView,
     addView,
     renameView,
@@ -438,6 +456,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     updateDocContent,
     deleteView,
     saveActiveView,
+    saveAsNewView,
     duplicateView,
     pinView,
     lockView,
