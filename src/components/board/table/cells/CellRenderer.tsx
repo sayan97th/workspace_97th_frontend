@@ -22,6 +22,7 @@ import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import DependencyMenu from "../menus/DependencyMenu";
 import ChecklistMenu from "../menus/ChecklistMenu";
+import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
 
 interface CellRendererProps {
   node_id: string;
@@ -62,6 +63,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   // button and show a "Uploading…" label while a request is pending.
   const [is_uploading, setIsUploading] = useState(false);
 
+  // Text cell: whether it was clicked out of its search highlighted display into the input.
+  const [is_text_editing, setIsTextEditing] = useState(false);
+
   // Connect-board cell's linked item names — declared unconditionally (Rules
   // of Hooks, same as `running_since` above) even though only the
   // "connect_board" branch below reads `state.connect_board_items`.
@@ -73,10 +77,26 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }, [column.kind, column.linked_board_id, actions]);
 
   if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
+    // While the board is searched, a matching cell shows its text with the match highlighted
+    // (an input can't), and turns back into the input as soon as it is clicked.
+    if (!is_text_editing && containsSearchQuery(asString(value), state.search_query)) {
+      return (
+        <button
+          type="button"
+          onClick={() => setIsTextEditing(true)}
+          title={asString(value)}
+          className="h-full w-full min-w-0 truncate px-3 text-left font-[inherit] text-[12.5px] text-boardtree-text"
+        >
+          {highlightSearchMatches(asString(value), state.search_query)}
+        </button>
+      );
+    }
     return (
       <input
+        autoFocus={is_text_editing}
         value={asString(value)}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
+        onBlur={() => setIsTextEditing(false)}
         title={asString(value)}
         className="h-full w-full min-w-0 truncate bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
       />

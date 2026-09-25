@@ -179,6 +179,12 @@ export type BoardItemDto = {
   children: BoardItemDto[];
   /** The Row menu's "Set recurring..." schedule, when this item has one — only `getItems` populates this; every other call resolves it to null. */
   recurrence: { frequency: "daily" | "weekly" | "monthly"; interval_count: number } | null;
+  /** Who created the item, the "Created by" filter and sort field. Null for items created before authors were recorded. */
+  created_by_id?: number | null;
+  /** ISO timestamp the item was created, the "Creation date" filter and sort field. */
+  created_at?: string | null;
+  /** ISO timestamp of the latest change to the item or any of its values, the "Last updated" filter and sort field. */
+  last_updated_at?: string | null;
 };
 
 /** One line of a board item's subtask checklist — see `BoardItemDto.checklist_total_count`. */
@@ -256,6 +262,29 @@ export type BoardViewDto = {
 export type BoardViewsIndexDto = {
   views: BoardViewDto[];
   personal_order: number[] | null;
+  /** The viewer's remembered, unsaved toolbar changes per view id. Only views they changed have an entry. */
+  personal_states: Record<string, BoardViewPersonalStateDto>;
+};
+
+/**
+ * One viewer's remembered toolbar changes to one view ("Remember my filters"):
+ * what they filtered, sorted, hid or grouped by without saving it to the view.
+ * Private to them, and replayed instead of the view's saved state until they
+ * reset it or it matches the view again.
+ */
+export type BoardViewPersonalStateDto = {
+  filter_state: BoardFilterState | null;
+  sort_state: Omit<BoardSortRule, "id">[] | null;
+  hidden_column_ids: string[] | null;
+  group_by_option_id: string | null;
+};
+
+/** A personal, named filter one viewer saved on a board (the Filter panel's "Saved filters"). */
+export type BoardSavedFilterDto = {
+  id: number;
+  name: string;
+  filter_state: BoardFilterState;
+  created_at: string;
 };
 
 export type CreateBoardColumnPayload = {
@@ -403,10 +432,20 @@ export type UpdateChecklistItemPayload = {
 export type BoardItemsServerFilter = {
   filter_state: Pick<
     BoardFilterState,
-    "selected_person_ids" | "quick_filter_selections" | "advanced_filter_rows" | "advanced_filter_groups" | "advanced_filter_operator"
+    | "selected_person_ids"
+    | "selected_team_ids"
+    | "person_column_ids"
+    | "quick_filter_selections"
+    | "quick_filter_exclusions"
+    | "advanced_filter_rows"
+    | "advanced_filter_groups"
+    | "advanced_filter_operator"
+    | "include_subitems"
   >;
   /** The viewer's own date, `YYYY-MM-DD`. */
   today: string;
+  /** The viewer's IANA time zone, which turns Creation date and Last updated timestamps into the days they see. */
+  timezone: string;
 };
 
 /**

@@ -2,7 +2,12 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { CollapseTableIcon } from "@/icons/board-icons";
-import type { BoardToolbarApi, BoardToolbarViewActions } from "./toolbar/types";
+import type {
+  BoardSavedFilterActions,
+  BoardToolbarApi,
+  BoardToolbarExportOptions,
+  BoardToolbarViewActions,
+} from "./toolbar/types";
 import SearchControl from "./toolbar/SearchControl";
 import PersonControl from "./toolbar/PersonControl";
 import FilterControl from "./toolbar/FilterControl";
@@ -25,10 +30,21 @@ export type BoardToolbarProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   /** Wires the panels' "Save to this view"/"Save as new view" buttons. Omit to hide them. */
   view_actions?: BoardToolbarViewActions;
+  /** Wires the Filter panel's personal "Saved filters" menu. Omit to hide it. */
+  saved_filter_actions?: BoardSavedFilterActions;
+  /** Wires the "..." menu's export of the visible items. Omit to hide it. */
+  export_options?: BoardToolbarExportOptions;
 };
 
 /** Board toolbar: the accent "New item" split button plus the filter/sort/group controls. */
-function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar, view_actions }: BoardToolbarProps<TRow>) {
+function BoardToolbar<TRow>({
+  new_item_label = "New item",
+  onNewItem,
+  toolbar,
+  view_actions,
+  saved_filter_actions,
+  export_options,
+}: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
   const is_color_open = toolbar.active_panel === "color";
   const is_inline_panel_open = is_filter_open || is_color_open;
@@ -72,7 +88,7 @@ function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar, v
         <SortControl toolbar={toolbar} view_actions={view_actions} />
         <HideColumnsControl toolbar={toolbar} />
         <GroupByControl toolbar={toolbar} view_actions={view_actions} />
-        <OverflowControl toolbar={toolbar} />
+        <OverflowControl toolbar={toolbar} export_options={export_options} />
 
         <div className="flex-1" />
 
@@ -92,11 +108,11 @@ function BoardToolbar<TRow>({ new_item_label = "New item", onNewItem, toolbar, v
           align="start"
           unstyled
         >
-          {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} />}
+          {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} saved_filter_actions={saved_filter_actions} />}
           {is_color_open && <ConditionalColoringPanel toolbar={toolbar} view_actions={view_actions} />}
         </BoardPopover>
       </div>
-      <ActiveFiltersBar toolbar={toolbar} />
+      <ActiveFiltersBar toolbar={toolbar} view_actions={view_actions} />
     </div>
   );
 }

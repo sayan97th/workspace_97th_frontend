@@ -1,116 +1,60 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { CloseIcon } from "@/icons/board-icons";
-import { describeFilterRule, isRuleComplete } from "./filterEngine";
-import { BOARD_DEFAULT_GROUP_BY_ID, type BoardAdvancedFilterRow, type BoardToolbarApi, type BoardToolbarPanelId } from "./types";
+import { ACTIVE_FILTER_CHIP_PANELS, buildActiveFilterChips, isNarrowingChip, type ActiveFilterChip } from "./activeFilterSummary";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
 
 export type ActiveFiltersBarProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  view_actions?: BoardToolbarViewActions;
 };
 
-type ChipKind = "search" | "person" | "quick" | "advanced" | "sort" | "group_by";
+/** Browser key for the viewer's own "collapse the summary" choice. A per viewer convenience only, so losing it is harmless. */
+const COLLAPSED_STORAGE_KEY = "board_toolbar_summary_collapsed";
 
-type Chip = {
-  id: string;
-  kind: ChipKind;
-  label: string;
-  onRemove: () => void;
+const readCollapsed = () => {
+  try {
+    return window.localStorage.getItem(COLLAPSED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
 };
 
-/** Panel each chip kind opens, so a filter can be edited straight from its summary. */
-const CHIP_PANELS: Record<Exclude<ChipKind, "search">, BoardToolbarPanelId> = {
-  person: "person",
-  quick: "filter",
-  advanced: "filter",
-  sort: "sort",
-  group_by: "group",
+const writeCollapsed = (value: boolean) => {
+  try {
+    window.localStorage.setItem(COLLAPSED_STORAGE_KEY, value ? "1" : "0");
+  } catch {
+    // Storage can be blocked (private mode), the choice then lasts for this page only.
+  }
 };
-
-const joinWord = (operator: "and" | "or") => (operator === "or" ? " or " : " and ");
 
 /**
  * Summary strip under the toolbar: one removable chip per active filter
  * (Search, Person, each Quick filters facet, each Advanced rule or group) plus
  * the current Sort and Group by, the "Showing X of Y items" count and a Clear
- * filters shortcut. Hidden while nothing narrows or reorders the board.
+ * filters shortcut. It collapses into a single line on demand, and offers
+ * "Reset to view" while the viewer's remembered changes are applied. Hidden
+ * while nothing narrows or reorders the board.
  */
-function ActiveFiltersBar<TRow>({ toolbar }: ActiveFiltersBarProps<TRow>) {
-  const fields_by_id = new Map(toolbar.filter_fields.map((field) => [field.id, field]));
-  const describe = (rule: BoardAdvancedFilterRow) => {
-    const field = rule.column_id ? fields_by_id.get(rule.column_id) : undefined;
-    return field && isRuleComplete(rule) ? describeFilterRule(field, rule, toolbar.persons) : null;
+function ActiveFiltersBar<TRow>({ toolbar, view_actions }: ActiveFiltersBarProps<TRow>) {
+  const [is_collapsed, setIsCollapsed] = useState(false);
+  useEffect(() => setIsCollapsed(readCollapsed()), []);
+
+  const chips = buildActiveFilterChips(toolbar);
+  const filter_chip_count = chips.filter(isNarrowingChip).length;
+  const advanced_item_count = chips.filter((chip) => chip.kind === "advanced").length;
+  const can_reset = !!(view_actions?.has_personal_state && view_actions.resetToView);
+
+  if (!chips.length && !can_reset) return null;
+
+  const toggleCollapsed = () => {
+    setIsCollapsed((current) => {
+      writeCollapsed(!current);
+      return !current;
+    });
   };
 
-  const chips: Chip[] = [];
-
-  const search_query = toolbar.search_query.trim();
-  if (search_query) {
-    chips.push({ id: "search", kind: "search", label: `Search: "${search_query}"`, onRemove: toolbar.closeSearch });
-  }
-
-  if (toolbar.selected_person_ids.length) {
-    const names = toolbar.selected_person_ids.map((id) => toolbar.persons.find((person) => person.id === id)?.name ?? id);
-    chips.push({ id: "person", kind: "person", label: `Person: ${names.join(", ")}`, onRemove: toolbar.clearPersonFilter });
-  }
-
-  for (const facet of toolbar.quick_filter_facets) {
-    const selected = toolbar.quick_filter_selections[facet.id];
-    if (!selected?.length) continue;
-    const labels = selected.map((id) => facet.options.find((option) => option.id === id)?.label ?? id);
-    chips.push({
-      id: `quick-${facet.id}`,
-      kind: "quick",
-      label: `${facet.label}: ${labels.join(", ")}`,
-      onRemove: () => toolbar.clearQuickFilterFacet(facet.id),
-    });
-  }
-
-  for (const rule of toolbar.advanced_filter_rows) {
-    const label = describe(rule);
-    if (label) chips.push({ id: `rule-${rule.id}`, kind: "advanced", label, onRemove: () => toolbar.removeAdvancedFilterRow(rule.id) });
-  }
-
-  for (const group of toolbar.advanced_filter_groups) {
-    const labels = group.rules.map(describe).filter((label): label is string => label !== null);
-    if (!labels.length) continue;
-    chips.push({
-      id: `group-${group.id}`,
-      kind: "advanced",
-      label: labels.length === 1 ? labels[0] : `(${labels.join(joinWord(group.join_operator))})`,
-      onRemove: () => toolbar.removeAdvancedFilterGroup(group.id),
-    });
-  }
-
-  const filter_chip_count = chips.length;
-  const advanced_item_count =
-    toolbar.advanced_filter_rows.filter((rule) => describe(rule)).length +
-    toolbar.advanced_filter_groups.filter((group) => group.rules.some((rule) => describe(rule))).length;
-
-  const sort_labels = toolbar.sort_rules
-    .map((rule) => {
-      const option = toolbar.sort_options.find((candidate) => candidate.id === rule.sort_option_id);
-      return option ? `${option.label} (${rule.direction === "asc" ? "ascending" : "descending"})` : null;
-    })
-    .filter((label): label is string => label !== null);
-  if (sort_labels.length) {
-    chips.push({ id: "sort", kind: "sort", label: `Sorted by ${sort_labels.join(", ")}`, onRemove: toolbar.clearSort });
-  }
-
-  if (toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID) {
-    const option = toolbar.group_by_options.find((candidate) => candidate.id === toolbar.group_by_option_id);
-    if (option) {
-      chips.push({
-        id: "group-by",
-        kind: "group_by",
-        label: `Grouped ${option.label.replace(/^By /, "by ")}`,
-        onRemove: () => toolbar.setGroupByOptionId(BOARD_DEFAULT_GROUP_BY_ID),
-      });
-    }
-  }
-
-  if (!chips.length) return null;
-
-  const openChipPanel = (chip: Chip) => {
+  const openChipPanel = (chip: ActiveFilterChip) => {
     if (chip.kind === "search") {
       toolbar.openSearch();
       toolbar.focusSearch();
@@ -118,8 +62,60 @@ function ActiveFiltersBar<TRow>({ toolbar }: ActiveFiltersBarProps<TRow>) {
     }
     if (chip.kind === "advanced") toolbar.setFilterMode("advanced");
     if (chip.kind === "quick") toolbar.setFilterMode("quick");
-    toolbar.openPanel(CHIP_PANELS[chip.kind]);
+    toolbar.openPanel(ACTIVE_FILTER_CHIP_PANELS[chip.kind]);
   };
+
+  const trailing = (
+    <>
+      {filter_chip_count > 0 && (
+        <>
+          <span className="ml-1 text-[12.5px] text-boardtree-text-muted">
+            Showing {toolbar.visible_row_count} of {toolbar.total_row_count} items
+          </span>
+          <button
+            type="button"
+            onClick={toolbar.resetAllFilters}
+            className="text-[12.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
+          >
+            Clear filters
+          </button>
+        </>
+      )}
+      {can_reset && (
+        <button
+          type="button"
+          onClick={view_actions!.resetToView}
+          title="Your unsaved changes to this view are remembered for you. Reset to show the view as saved."
+          className="text-[12.5px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
+        >
+          Reset to view
+        </button>
+      )}
+      {chips.length > 0 && (
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          className="text-[12.5px] font-medium text-boardtree-text-faint hover:text-boardtree-text"
+        >
+          {is_collapsed ? "Show details" : "Hide details"}
+        </button>
+      )}
+    </>
+  );
+
+  if (is_collapsed) {
+    const setting_count = chips.length;
+    return (
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        {setting_count > 0 && (
+          <span className="flex h-7 items-center rounded-full border border-boardtree-border bg-boardtree-hover px-3 text-[12.5px] font-medium text-boardtree-text">
+            {setting_count === 1 ? "1 setting applied" : `${setting_count} settings applied`}
+          </span>
+        )}
+        {trailing}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -146,20 +142,7 @@ function ActiveFiltersBar<TRow>({ toolbar }: ActiveFiltersBarProps<TRow>) {
         <span className="text-[12px] font-medium text-boardtree-text-muted">Advanced rules match any</span>
       )}
 
-      {filter_chip_count > 0 && (
-        <>
-          <span className="ml-1 text-[12.5px] text-boardtree-text-muted">
-            Showing {toolbar.visible_row_count} of {toolbar.total_row_count} items
-          </span>
-          <button
-            type="button"
-            onClick={toolbar.resetAllFilters}
-            className="text-[12.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
-          >
-            Clear filters
-          </button>
-        </>
-      )}
+      {trailing}
     </div>
   );
 }

@@ -14,7 +14,10 @@ import {
   type BoardViewTabItem,
 } from "@/components/board";
 import { boardContentService } from "@/services/board-content.service";
-import type { BoardFilterState, BoardViewDto, SaveBoardViewPayload } from "@/types/board-content";
+import type { BoardFilterState, BoardViewDto, BoardViewPersonalStateDto, SaveBoardViewPayload } from "@/types/board-content";
+
+/** How long the toolbar has to stay unchanged before the viewer's changes are remembered on the server. */
+const PERSONAL_STATE_SAVE_DELAY_MS = 1000;
 
 /**
  * Sorts a board's non-primary views for display. When the viewer has a saved
@@ -54,6 +57,12 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
   advanced_filter_groups: [],
   advanced_filter_operator: "and",
   quick_filter_column_ids: null,
+  quick_filter_exclusions: {},
+  include_subitems: false,
+  person_column_ids: null,
+  selected_team_ids: [],
+  search_include_subitems: false,
+  search_include_updates: false,
 };
 
 /**
@@ -65,9 +74,20 @@ const EMPTY_FILTER_STATE: BoardFilterState = {
 const withDefaultValues = <T extends { value: string }>(rows: T[]): T[] =>
   rows.map((row) => ({ ...row, value: row.value ?? "" }));
 
-/** Filter rules also get `values: []` back when a view saved before multi-value rules existed omits it. */
+/**
+ * Filter rules also get `values: []` back when a view saved before multi-value
+ * rules existed omits it, and `is_disabled` is only kept while true, so a rule
+ * paused and switched back on compares equal to one that was never paused.
+ */
 const normalizeRules = (rules: BoardAdvancedFilterRow[]): BoardAdvancedFilterRow[] =>
-  withDefaultValues(rules).map((rule) => ({ ...rule, values: rule.values ?? [] }));
+  withDefaultValues(rules).map(({ is_disabled, ...rule }) => ({
+    ...rule,
+    values: rule.values ?? [],
+    ...(is_disabled ? { is_disabled: true } : {}),
+  }));
+
+const toSelectionMap = (value: Record<string, string[]> | undefined) =>
+  !value || Array.isArray(value) ? {} : value;
 
 const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilterState => {
   const base = filter_state ?? EMPTY_FILTER_STATE;
@@ -76,8 +96,13 @@ const normalizeFilterState = (filter_state: BoardFilterState | null): BoardFilte
     search_query: base.search_query ?? "",
     search_column_ids: base.search_column_ids ?? [],
     selected_person_ids: base.selected_person_ids ?? [],
-    quick_filter_selections:
-      !base.quick_filter_selections || Array.isArray(base.quick_filter_selections) ? {} : base.quick_filter_selections,
+    quick_filter_selections: toSelectionMap(base.quick_filter_selections),
+    quick_filter_exclusions: toSelectionMap(base.quick_filter_exclusions),
+    include_subitems: !!base.include_subitems,
+    person_column_ids: base.person_column_ids ?? null,
+    selected_team_ids: base.selected_team_ids ?? [],
+    search_include_subitems: !!base.search_include_subitems,
+    search_include_updates: !!base.search_include_updates,
     advanced_filter_rows: normalizeRules(base.advanced_filter_rows ?? []),
     advanced_filter_groups: (base.advanced_filter_groups ?? []).map((group) => ({
       ...group,
@@ -140,8 +165,14 @@ function dedupeLabel(base: string, views: BoardViewDto[]): string {
 export type BoardViewSyncToolbar = {
   search_query: string;
   search_column_ids: string[];
+  search_include_subitems: boolean;
+  search_include_updates: boolean;
   selected_person_ids: string[];
+  selected_team_ids: string[];
+  person_column_ids: string[] | null;
   quick_filter_selections: Record<string, string[]>;
+  quick_filter_exclusions: Record<string, string[]>;
+  include_subitems: boolean;
   quick_filter_column_ids: string[] | null;
   advanced_filter_rows: BoardAdvancedFilterRow[];
   advanced_filter_groups: BoardAdvancedFilterGroup[];
@@ -173,6 +204,8 @@ export type UseBoardViewTabsConfig = {
   initial_active_view_id?: number | null;
   /** The viewer's saved "Reorder (for you only)" tab order, if they have one. */
   initial_personal_order?: number[] | null;
+  /** The viewer's remembered, unsaved toolbar changes per view id (see {@link BoardViewPersonalStateDto}). */
+  initial_personal_states?: Record<string, BoardViewPersonalStateDto>;
   toolbar: BoardViewSyncToolbar;
   /** Called right after a tab becomes active — e.g. to push `/boards/{id}/views/{id}`. Most boards don't have view-scoped URLs, so this is optional. */
   onViewActivated?: (view: BoardViewDto) => void;
@@ -190,6 +223,10 @@ export type UseBoardViewTabsApi = {
   is_view_applied: boolean;
   /** The toolbar's live filter slice, as a view saves it. */
   current_filter_state: BoardFilterState;
+  /** Whether the toolbar shows the viewer's remembered changes to the active view rather than the view as saved. */
+  has_personal_state: boolean;
+  /** Forgets the viewer's remembered changes to the active view and replays it as saved. */
+  resetToView: () => void;
   selectView: (id: number | string) => void;
   /** Creates a new tab, defaulting to a plain table when no kind is given (see `BoardViewTabs`'s "+" picker). */
   addView: (view_type?: BoardViewKind) => Promise<BoardViewDto>;
@@ -221,8 +258,15 @@ export type UseBoardViewTabsApi = {
  * {@link BoardViewSyncToolbar} slice of it.
  */
 export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTabsApi {
-  const { board_id, initial_views, initial_active_view_id, initial_personal_order, toolbar, onViewActivated } =
-    config;
+  const {
+    board_id,
+    initial_views,
+    initial_active_view_id,
+    initial_personal_order,
+    initial_personal_states,
+    toolbar,
+    onViewActivated,
+  } = config;
 
   const [views, setViews] = useState(initial_views);
   const [personal_order, setPersonalOrder] = useState<number[] | null>(initial_personal_order ?? null);
@@ -230,9 +274,22 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     initial_active_view_id ?? initial_views.find((v) => v.is_primary)?.id ?? initial_views[0]?.id ?? null
   );
   const [applied_view_id, setAppliedViewId] = useState<number | null>(null);
+  const [personal_states, setPersonalStates] = useState<Record<string, BoardViewPersonalStateDto>>(initial_personal_states ?? {});
 
   const toolbar_ref = useRef(toolbar);
   toolbar_ref.current = toolbar;
+  const personal_states_ref = useRef(personal_states);
+  personal_states_ref.current = personal_states;
+
+  /** Replays the filter, sort, hidden columns and group by: the viewer's remembered changes when given, else the view as saved. */
+  const replayToolbarState = (view: BoardViewDto, personal: BoardViewPersonalStateDto | null) => {
+    const t = toolbar_ref.current;
+    t.applyFilterState(normalizeFilterState(personal?.filter_state ?? view.filter_state));
+    t.applySortRules(personal?.sort_state ?? view.sort_state ?? []);
+    t.showAllColumns();
+    (personal?.hidden_column_ids ?? view.hidden_column_ids ?? []).forEach((id) => t.toggleColumnHidden(id));
+    t.setGroupByOptionId(personal?.group_by_option_id ?? view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID);
+  };
 
   // ── Apply the active view's saved filter/sort/display state to the toolbar ──
   //
@@ -249,16 +306,12 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     if (!view) return;
 
     const t = toolbar_ref.current;
-    t.applyFilterState(normalizeFilterState(view.filter_state));
-    t.applySortRules(view.sort_state ?? []);
-    t.showAllColumns();
-    (view.hidden_column_ids ?? []).forEach((id) => t.toggleColumnHidden(id));
+    replayToolbarState(view, personal_states_ref.current[String(view.id)] ?? null);
     t.unpinAllColumns();
     (view.pinned_column_ids ?? []).forEach((id) => t.togglePinnedColumn(id));
     t.setRowHeight(view.row_height);
     t.clearConditionalColorRules();
     (view.conditional_color_rules ?? []).forEach(() => t.addConditionalColorRule());
-    t.setGroupByOptionId(view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID);
 
     setAppliedViewId(null);
     setPendingView(view);
@@ -291,8 +344,14 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   const current_filter_state: BoardFilterState = {
     search_query: toolbar.search_query,
     search_column_ids: toolbar.search_column_ids,
+    search_include_subitems: toolbar.search_include_subitems,
+    search_include_updates: toolbar.search_include_updates,
     selected_person_ids: toolbar.selected_person_ids,
+    selected_team_ids: toolbar.selected_team_ids,
+    person_column_ids: toolbar.person_column_ids,
     quick_filter_selections: toolbar.quick_filter_selections,
+    quick_filter_exclusions: toolbar.quick_filter_exclusions,
+    include_subitems: toolbar.include_subitems,
     advanced_filter_rows: toolbar.advanced_filter_rows,
     advanced_filter_groups: toolbar.advanced_filter_groups,
     advanced_filter_operator: toolbar.advanced_filter_operator,
@@ -324,6 +383,64 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
         conditional_color_rules: withoutIds(withDefaultValues(active_view.conditional_color_rules ?? [])),
         group_by_option_id: active_view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
       });
+
+  // ── "Remember my filters": the viewer's unsaved filter, sort, hidden column and
+  // group by changes are kept per view on the server, so they are still there
+  // the next time they open it (on any device). Saved a moment after the
+  // toolbar settles, and forgotten as soon as it matches the view again.
+  const personal_snapshot: BoardViewPersonalStateDto = {
+    filter_state: normalizeFilterState(current_filter_state),
+    sort_state: withoutIds(toolbar.sort_rules),
+    hidden_column_ids: toolbar.hidden_column_ids,
+    group_by_option_id: toolbar.group_by_option_id,
+  };
+  const toComparablePersonal = (state: BoardViewPersonalStateDto) =>
+    stableStringify({
+      filter_state: comparableFilterState(normalizeFilterState(state.filter_state)),
+      sort_state: state.sort_state ?? [],
+      hidden_column_ids: state.hidden_column_ids ?? [],
+      group_by_option_id: state.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
+    });
+  const personal_json = toComparablePersonal(personal_snapshot);
+  const active_view_json = active_view
+    ? toComparablePersonal({
+        filter_state: active_view.filter_state,
+        sort_state: withoutIds(active_view.sort_state ?? []),
+        hidden_column_ids: active_view.hidden_column_ids ?? [],
+        group_by_option_id: active_view.group_by_option_id,
+      })
+    : null;
+  const stored_personal = active_view_id !== null ? personal_states[String(active_view_id)] ?? null : null;
+  const stored_personal_json = stored_personal ? toComparablePersonal(stored_personal) : null;
+  const personal_snapshot_ref = useRef(personal_snapshot);
+  personal_snapshot_ref.current = personal_snapshot;
+
+  useEffect(() => {
+    if (!is_view_applied || active_view_id === null || active_view_json === null) return;
+    const view_key = String(active_view_id);
+    const matches_view = personal_json === active_view_json;
+    if (matches_view ? stored_personal_json === null : personal_json === stored_personal_json) return;
+
+    const timeout = window.setTimeout(() => {
+      if (matches_view) {
+        setPersonalStates(({ [view_key]: _removed, ...rest }) => rest);
+        boardContentService.deletePersonalViewState(board_id, active_view_id).catch(() => {});
+        return;
+      }
+      const snapshot = personal_snapshot_ref.current;
+      setPersonalStates((current) => ({ ...current, [view_key]: snapshot }));
+      boardContentService.savePersonalViewState(board_id, active_view_id, snapshot).catch(() => {});
+    }, PERSONAL_STATE_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [is_view_applied, active_view_id, active_view_json, personal_json, stored_personal_json, board_id]);
+
+  const resetToView = () => {
+    if (!active_view) return;
+    const view_key = String(active_view.id);
+    setPersonalStates(({ [view_key]: _removed, ...rest }) => rest);
+    boardContentService.deletePersonalViewState(board_id, active_view.id).catch(() => {});
+    replayToolbarState(active_view, null);
+  };
 
   const buildSavedState = () => ({
     filter_state: current_filter_state,
@@ -449,6 +566,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     is_dirty,
     is_view_applied,
     current_filter_state,
+    has_personal_state: stored_personal !== null,
+    resetToView,
     selectView,
     addView,
     renameView,

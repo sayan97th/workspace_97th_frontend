@@ -10,21 +10,9 @@ import { getConvertBlockedReason } from "../menus/rowMenuRules";
 import TreeBar from "./TreeBar";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
+import { highlightSearchMatches } from "../searchHighlight";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
-function highlightMatch(text: string, query: string) {
-  if (!query) return text;
-  const index = text.toLowerCase().indexOf(query.toLowerCase());
-  if (index === -1) return text;
-  return (
-    <>
-      {text.slice(0, index)}
-      <mark className="rounded-[2px] bg-[#fdab3d] text-[#1e2237]">{text.slice(index, index + query.length)}</mark>
-      {text.slice(index + query.length)}
-    </>
-  );
-}
-
 interface ItemRowProps {
   item: BoardTableItem;
   group: BoardTableGroup;
@@ -217,7 +205,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                         : "truncate"
                 }`}
               >
-                {is_active_name_match ? highlightMatch(item.name, state.search_query) : item.name}
+                {highlightSearchMatches(item.name, state.search_query, is_active_name_match)}
               </span>
             )}
           </div>

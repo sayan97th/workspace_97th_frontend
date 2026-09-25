@@ -1,8 +1,14 @@
 "use client";
 import { useMemo, useState } from "react";
 import type { BoardRowHeight } from "../types";
-import { buildRowMatcher, deriveBoardRows, type BoardDerivationState, type BoardFilterInputs } from "./deriveBoardRows";
-import { buildQuickFilterFacets, getDefaultOperator, getTodayIso } from "./filterEngine";
+import {
+  buildPersonIdsReader,
+  buildRowMatcher,
+  deriveBoardRows,
+  type BoardDerivationState,
+  type BoardFilterInputs,
+} from "./deriveBoardRows";
+import { buildQuickFilterFacets, buildRulesFromQuickFacet, getDefaultOperator, getTodayIso, isSubitemField } from "./filterEngine";
 import {
   BOARD_CONDITIONAL_COLOR_PALETTE,
   BOARD_DEFAULT_GROUP_BY_ID,
@@ -35,8 +41,24 @@ const withFreshRuleIds = (rules: Omit<BoardAdvancedFilterRow, "id">[] | BoardAdv
     condition: rule.condition ?? null,
     value: rule.value ?? "",
     values: rule.values ?? [],
+    ...(rule.is_disabled ? { is_disabled: true } : {}),
     id: createId(),
   }));
+
+/** Inserts a copy of the rule `id` (fresh id) right below it. */
+const duplicateById = (rules: BoardAdvancedFilterRow[], id: string): BoardAdvancedFilterRow[] => {
+  const index = rules.findIndex((rule) => rule.id === id);
+  if (index < 0) return rules;
+  const next = rules.slice();
+  next.splice(index + 1, 0, { ...rules[index], values: [...(rules[index].values ?? [])], id: createId() });
+  return next;
+};
+
+/** A selection map without empty entries, or picks for a facet id missing from `keep_ids`. */
+const pruneSelections = (selections: Record<string, string[]>, keep_ids: string[] | null) =>
+  Object.fromEntries(
+    Object.entries(selections).filter(([facet_id, ids]) => ids.length > 0 && (keep_ids === null || keep_ids.includes(facet_id)))
+  );
 
 /** Moves the item with `active_id` to the index of `over_id`, keeping everything else in order. */
 const moveById = <T extends { id: string }>(list: T[], active_id: string, over_id: string): T[] => {
@@ -66,9 +88,16 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     setActiveMatchIndex(0);
   };
 
+  const [search_include_subitems, setSearchIncludeSubitems] = useState(false);
+  const [search_include_updates, setSearchIncludeUpdates] = useState(false);
+
   const [selected_person_ids, setSelectedPersonIds] = useState<string[]>([]);
+  const [selected_team_ids, setSelectedTeamIds] = useState<string[]>([]);
+  const [person_column_ids, setPersonColumnIds] = useState<string[] | null>(null);
 
   const [quick_filter_selections, setQuickFilterSelections] = useState<Record<string, string[]>>({});
+  const [quick_filter_exclusions, setQuickFilterExclusions] = useState<Record<string, string[]>>({});
+  const [include_subitems, setIncludeSubitemsState] = useState(false);
   const [quick_filter_column_ids, setQuickFilterColumnIdsState] = useState<string[] | null>(null);
 
   const [filter_mode, setFilterMode] = useState<"quick" | "advanced">("quick");
@@ -122,30 +151,68 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     setSelectedPersonIds((current) =>
       current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id]
     );
-  const clearPersonFilter = () => setSelectedPersonIds([]);
+  const toggleTeamId = (id: string) =>
+    setSelectedTeamIds((current) => (current.includes(id) ? current.filter((existing) => existing !== id) : [...current, id]));
+  const clearPersonFilter = () => {
+    setSelectedPersonIds([]);
+    setSelectedTeamIds([]);
+  };
 
-  const toggleQuickFilterOption = (facet_id: string, option_id: string) =>
-    setQuickFilterSelections((current) => {
-      const selected = current[facet_id] ?? [];
-      const next = selected.includes(option_id)
-        ? selected.filter((id) => id !== option_id)
-        : [...selected, option_id];
-      return { ...current, [facet_id]: next };
-    });
-  const clearQuickFilterFacet = (facet_id: string) =>
-    setQuickFilterSelections((current) => {
+  const toggleIn = (map: Record<string, string[]>, facet_id: string, option_id: string) => {
+    const current = map[facet_id] ?? [];
+    return { ...map, [facet_id]: current.includes(option_id) ? current.filter((id) => id !== option_id) : [...current, option_id] };
+  };
+  const removeFrom = (map: Record<string, string[]>, facet_id: string, option_id: string) =>
+    map[facet_id]?.includes(option_id) ? { ...map, [facet_id]: map[facet_id].filter((id) => id !== option_id) } : map;
+
+  // A value is either picked or excluded, never both.
+  const toggleQuickFilterOption = (facet_id: string, option_id: string) => {
+    setQuickFilterSelections((current) => toggleIn(current, facet_id, option_id));
+    setQuickFilterExclusions((current) => removeFrom(current, facet_id, option_id));
+  };
+  const toggleQuickFilterExclusion = (facet_id: string, option_id: string) => {
+    setQuickFilterExclusions((current) => toggleIn(current, facet_id, option_id));
+    setQuickFilterSelections((current) => removeFrom(current, facet_id, option_id));
+  };
+  const selectOnlyQuickFilterOption = (facet_id: string, option_id: string) => {
+    setQuickFilterSelections((current) => ({ ...current, [facet_id]: [option_id] }));
+    setQuickFilterExclusions((current) => ({ ...current, [facet_id]: [] }));
+  };
+  const clearQuickFilterFacet = (facet_id: string) => {
+    const withoutFacet = (current: Record<string, string[]>) => {
       const { [facet_id]: _removed, ...rest } = current;
       return rest;
-    });
-  const clearQuickFilters = () => setQuickFilterSelections({});
+    };
+    setQuickFilterSelections(withoutFacet);
+    setQuickFilterExclusions(withoutFacet);
+  };
+  const clearQuickFilters = () => {
+    setQuickFilterSelections({});
+    setQuickFilterExclusions({});
+  };
   /** Hiding a facet also drops its picks, so no filter keeps applying from a facet nobody can see. */
   const setQuickFilterColumnIds = (ids: string[] | null) => {
     setQuickFilterColumnIdsState(ids);
     if (ids) {
-      setQuickFilterSelections((current) =>
-        Object.fromEntries(Object.entries(current).filter(([facet_id]) => ids.includes(facet_id)))
-      );
+      setQuickFilterSelections((current) => pruneSelections(current, ids));
+      setQuickFilterExclusions((current) => pruneSelections(current, ids));
     }
+  };
+
+  const subitem_field_ids = config.filter_fields.filter(isSubitemField).map((field) => field.id);
+  /** Switching "Filter subitems" off also drops every subitem rule and pick, so nothing keeps filtering from a hidden field. */
+  const setIncludeSubitems = (value: boolean) => {
+    setIncludeSubitemsState(value);
+    if (value) return;
+    const isItemRule = (rule: BoardAdvancedFilterRow) => !rule.column_id || !subitem_field_ids.includes(rule.column_id);
+    setAdvancedFilterRows((current) => current.filter(isItemRule));
+    setAdvancedFilterGroups((current) =>
+      current.map((group) => ({ ...group, rules: group.rules.filter(isItemRule) })).filter((group) => group.rules.length > 0)
+    );
+    const withoutSubitemFacets = (current: Record<string, string[]>) =>
+      Object.fromEntries(Object.entries(current).filter(([facet_id]) => !subitem_field_ids.includes(facet_id)));
+    setQuickFilterSelections(withoutSubitemFacets);
+    setQuickFilterExclusions(withoutSubitemFacets);
   };
 
   const findFieldKind = (column_id: string) => config.filter_fields.find((field) => field.id === column_id)?.kind;
@@ -162,6 +229,9 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     setAdvancedFilterRows((current) => [...current, ...withFreshRuleIds([rule])]);
   const removeAdvancedFilterRow = (id: string) =>
     setAdvancedFilterRows((current) => current.filter((row) => row.id !== id));
+  const duplicateAdvancedFilterRow = (id: string) => setAdvancedFilterRows((current) => duplicateById(current, id));
+  const moveAdvancedFilterRow = (active_id: string, over_id: string) =>
+    setAdvancedFilterRows((current) => moveById(current, active_id, over_id));
   const updateAdvancedFilterRow = (id: string, patch: Partial<BoardAdvancedFilterRow>) =>
     setAdvancedFilterRows((current) =>
       current.map((row) => (row.id === id ? { ...row, ...patch } : row))
@@ -182,6 +252,10 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       ...group,
       rules: group.rules.map((rule) => (rule.id === rule_id ? { ...rule, ...patch } : rule)),
     }));
+  const duplicateAdvancedFilterGroupRule = (group_id: string, rule_id: string) =>
+    updateGroup(group_id, (group) => ({ ...group, rules: duplicateById(group.rules, rule_id) }));
+  const moveAdvancedFilterGroupRule = (group_id: string, active_id: string, over_id: string) =>
+    updateGroup(group_id, (group) => ({ ...group, rules: moveById(group.rules, active_id, over_id) }));
   /** Removing a group's last rule removes the group itself, like monday. */
   const removeAdvancedFilterGroupRule = (group_id: string, rule_id: string) =>
     setAdvancedFilterGroups((current) =>
@@ -202,12 +276,18 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   };
 
   const applyFilterState = (filter_state: BoardToolbarFilterState) => {
+    // An empty PHP array json-encodes as a list, so a saved empty map can come back as `[]`.
+    const toMap = (value: Record<string, string[]> | undefined) => (!value || Array.isArray(value) ? {} : { ...value });
     setSearchQuery(filter_state.search_query ?? "");
     setSearchColumnIds(filter_state.search_column_ids ?? []);
+    setSearchIncludeSubitems(!!filter_state.search_include_subitems);
+    setSearchIncludeUpdates(!!filter_state.search_include_updates);
     setSelectedPersonIds(filter_state.selected_person_ids ?? []);
-    setQuickFilterSelections(
-      Array.isArray(filter_state.quick_filter_selections) ? {} : { ...(filter_state.quick_filter_selections ?? {}) }
-    );
+    setSelectedTeamIds(filter_state.selected_team_ids ?? []);
+    setPersonColumnIds(filter_state.person_column_ids ?? null);
+    setIncludeSubitemsState(!!filter_state.include_subitems);
+    setQuickFilterSelections(toMap(filter_state.quick_filter_selections));
+    setQuickFilterExclusions(toMap(filter_state.quick_filter_exclusions));
     setQuickFilterColumnIdsState(filter_state.quick_filter_column_ids ?? null);
     setAdvancedFilterRows(withFreshRuleIds(filter_state.advanced_filter_rows ?? []));
     setAdvancedFilterGroups(
@@ -301,18 +381,50 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     () => ({ today, current_person_id: config.current_person_id }),
     [today, config.current_person_id]
   );
+  // Subitem fields only exist while "Filter subitems" is on, for the pickers and for evaluation alike.
+  const active_filter_fields = useMemo(
+    () => (include_subitems ? config.filter_fields : config.filter_fields.filter((field) => !isSubitemField(field))),
+    [config.filter_fields, include_subitems]
+  );
   const quick_filter_facets = useMemo(
-    () => buildQuickFilterFacets(config.filter_fields, config.persons),
-    [config.filter_fields, config.persons]
+    () => buildQuickFilterFacets(active_filter_fields, config.persons),
+    [active_filter_fields, config.persons]
   );
   const filter_inputs: BoardFilterInputs<TRow> = useMemo(
     () => ({
       quick_filter_facets,
-      fields_by_id: new Map(config.filter_fields.map((field) => [field.id, field])),
+      fields_by_id: new Map(active_filter_fields.map((field) => [field.id, field])),
       filter_context,
     }),
-    [quick_filter_facets, config.filter_fields, filter_context]
+    [quick_filter_facets, active_filter_fields, filter_context]
   );
+
+  /** Quick and Advanced always combine with And, so picks can move into Advanced only while its top level is And too. */
+  const can_convert_quick_filters =
+    [quick_filter_selections, quick_filter_exclusions].some((map) => Object.values(map).some((ids) => ids.length > 0)) &&
+    (advanced_filter_operator === "and" || advanced_filter_rows.length + advanced_filter_groups.length === 0);
+
+  const convertQuickFiltersToAdvanced = () => {
+    if (!can_convert_quick_filters) return;
+    const new_rules: BoardAdvancedFilterRow[] = [];
+    const new_groups: BoardAdvancedFilterGroup[] = [];
+    for (const facet of quick_filter_facets) {
+      const field = filter_inputs.fields_by_id.get(facet.id);
+      if (!field) continue;
+      const { rules, or_group } = buildRulesFromQuickFacet(
+        field,
+        quick_filter_selections[facet.id] ?? [],
+        quick_filter_exclusions[facet.id] ?? []
+      );
+      new_rules.push(...withFreshRuleIds(rules));
+      if (or_group) new_groups.push({ id: createId(), join_operator: "or", rules: withFreshRuleIds(or_group) });
+    }
+    setAdvancedFilterRows((current) => [...current, ...new_rules]);
+    setAdvancedFilterGroups((current) => [...current, ...new_groups]);
+    setAdvancedFilterOperator("and");
+    clearQuickFilters();
+    setFilterMode("advanced");
+  };
 
   const derivation_state: BoardDerivationState = useMemo(
     () => ({
@@ -320,6 +432,12 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       search_column_ids,
       selected_person_ids,
       quick_filter_selections,
+      quick_filter_exclusions,
+      include_subitems,
+      person_column_ids,
+      selected_team_ids,
+      search_include_subitems,
+      search_include_updates,
       advanced_filter_rows,
       advanced_filter_groups,
       advanced_filter_operator,
@@ -335,6 +453,12 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       search_column_ids,
       selected_person_ids,
       quick_filter_selections,
+      quick_filter_exclusions,
+      include_subitems,
+      person_column_ids,
+      selected_team_ids,
+      search_include_subitems,
+      search_include_updates,
       advanced_filter_rows,
       advanced_filter_groups,
       advanced_filter_operator,
@@ -364,11 +488,16 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     if (!is_quick_panel_open) return counts;
     const rows = config.default_groups.flatMap((group) => group.rows);
     for (const facet of filter_inputs.quick_filter_facets) {
-      const matches = buildRowMatcher(config, derivation_state, filter_inputs, facet.id);
+      const matches = buildRowMatcher(config, derivation_state, filter_inputs, { exclude_facet_id: facet.id });
       const facet_counts: Record<string, number> = {};
       for (const row of rows) {
         if (!matches(row)) continue;
-        for (const option_id of facet.getOptionIds(row, filter_inputs.filter_context)) {
+        // A subitem facet counts parents: each option once per parent holding it on any subitem.
+        const option_ids =
+          facet.scope === "subitem"
+            ? new Set((config.getSubRows?.(row) ?? []).flatMap((sub_row) => facet.getOptionIds(sub_row, filter_inputs.filter_context)))
+            : facet.getOptionIds(row, filter_inputs.filter_context);
+        for (const option_id of option_ids) {
           facet_counts[option_id] = (facet_counts[option_id] ?? 0) + 1;
         }
       }
@@ -376,6 +505,20 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     }
     return counts;
   }, [is_quick_panel_open, config, derivation_state, filter_inputs]);
+
+  /** Person panel counts: rows per person given every other active filter. Only computed while the panel is open. */
+  const is_person_panel_open = active_panel === "person";
+  const person_counts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!is_person_panel_open) return counts;
+    const matches = buildRowMatcher(config, derivation_state, filter_inputs, { exclude_person: true });
+    const readPersonIds = buildPersonIdsReader(config, derivation_state, filter_inputs);
+    for (const row of config.default_groups.flatMap((group) => group.rows)) {
+      if (!matches(row)) continue;
+      for (const person_id of new Set(readPersonIds(row))) counts[person_id] = (counts[person_id] ?? 0) + 1;
+    }
+    return counts;
+  }, [is_person_panel_open, config, derivation_state, filter_inputs]);
 
   /**
    * Ctrl/Cmd+F jump-navigation targets: every (row, column) pair whose cell
@@ -406,6 +549,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
 
   return {
     ...config,
+    filter_fields: active_filter_fields,
     active_panel,
     openPanel,
     closePanel,
@@ -426,16 +570,28 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     active_match_index,
     nextMatch,
     prevMatch,
+    search_include_subitems,
+    setSearchIncludeSubitems,
+    search_include_updates,
+    setSearchIncludeUpdates,
 
     selected_person_ids,
     togglePersonId,
     clearPersonFilter,
+    selected_team_ids,
+    toggleTeamId,
+    person_column_ids,
+    setPersonColumnIds,
+    person_counts,
 
     filter_context,
     quick_filter_facets,
     quick_filter_selections,
     quick_filter_counts,
     toggleQuickFilterOption,
+    quick_filter_exclusions,
+    toggleQuickFilterExclusion,
+    selectOnlyQuickFilterOption,
     clearQuickFilterFacet,
     clearQuickFilters,
     quick_filter_column_ids,
@@ -458,6 +614,15 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     addAdvancedFilterGroupRule,
     updateAdvancedFilterGroupRule,
     removeAdvancedFilterGroupRule,
+    duplicateAdvancedFilterRow,
+    moveAdvancedFilterRow,
+    duplicateAdvancedFilterGroupRule,
+    moveAdvancedFilterGroupRule,
+    convertQuickFiltersToAdvanced,
+    can_convert_quick_filters,
+    include_subitems,
+    setIncludeSubitems,
+    has_subitem_fields: subitem_field_ids.length > 0,
     clearAdvancedFilters,
     clearAllFilters,
     resetAllFilters,

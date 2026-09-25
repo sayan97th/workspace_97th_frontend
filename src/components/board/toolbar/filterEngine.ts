@@ -38,6 +38,11 @@ export const BOARD_FILTER_BLANK_OPTION_ID = "__blank__";
 /** Virtual field id for the board's groups (tables). */
 export const BOARD_FILTER_GROUP_FIELD_ID = "__group__";
 
+/** Virtual item detail fields, filled from the item itself rather than from a column. */
+export const BOARD_FILTER_CREATED_BY_FIELD_ID = "__created_by__";
+export const BOARD_FILTER_CREATED_AT_FIELD_ID = "__created_at__";
+export const BOARD_FILTER_UPDATED_AT_FIELD_ID = "__updated_at__";
+
 /** Weeks start on Monday on both the client and the API, so "This week" means the same days everywhere. */
 const WEEK_OPTIONS = { weekStartsOn: 1 as const };
 
@@ -400,8 +405,29 @@ export type BoardAdvancedFilterTree = {
   operator: BoardFilterJoinOperator;
 };
 
-const isApplicable = <TRow>(rule: BoardAdvancedFilterRow, fields_by_id: Map<string, BoardFilterField<TRow>>) =>
-  isRuleComplete(rule) && fields_by_id.has(rule.column_id!);
+/** Whether a rule narrows rows: switched on, complete, and pointing at a field that still exists. */
+export const isRuleApplicable = <TRow>(rule: BoardAdvancedFilterRow, fields_by_id: Map<string, BoardFilterField<TRow>>) =>
+  !rule.is_disabled && isRuleComplete(rule) && fields_by_id.has(rule.column_id!);
+
+const isApplicable = isRuleApplicable;
+
+export const isSubitemField = <TRow>(field: BoardFilterField<TRow> | undefined): boolean => field?.scope === "subitem";
+
+/** The same field, reading as an empty cell. A subitem rule is checked against this for a parent with no subitems. */
+const toEmptyField = <TRow>(field: BoardFilterField<TRow>): BoardFilterField<TRow> => ({
+  ...field,
+  getText: () => "",
+  getOptionIds: () => [],
+  getNumber: () => null,
+  getDateRange: () => null,
+  getChecked: () => false,
+});
+
+/** Whether any applicable rule of the tree reads a subitem column. */
+export function hasSubitemRules<TRow>(tree: BoardAdvancedFilterTree, fields_by_id: Map<string, BoardFilterField<TRow>>): boolean {
+  const rules = [...tree.rules, ...tree.groups.flatMap((group) => group.rules)];
+  return rules.some((rule) => isApplicable(rule, fields_by_id) && isSubitemField(fields_by_id.get(rule.column_id!)));
+}
 
 /** Counts the rules that actually narrow rows: complete, and pointing at a field that still exists. */
 export function countActiveAdvancedRules<TRow>(
@@ -415,25 +441,40 @@ export function countActiveAdvancedRules<TRow>(
 }
 
 /**
+ * A row check that can also look at one of the row's subitems: item rules read
+ * `row`, subitem rules read `sub_row`, or an empty cell when it is null.
+ */
+export type BoardPairMatcher<TRow> = (row: TRow, sub_row: TRow | null) => boolean;
+
+/**
  * Builds a row predicate for the Advanced filters tree: top-level rules and
  * groups are combined with the top-level And/Or, each group's own rules with
- * the group's And/Or. Incomplete rules and empty groups are skipped, so a
- * half-configured filter never hides rows. Returns null when nothing applies.
+ * the group's And/Or. Incomplete and paused rules and empty groups are skipped,
+ * so a half-configured filter never hides rows. Returns null when nothing applies.
+ *
+ * The predicate takes a (row, subitem) pair, so a rule on a subitem column is
+ * checked against that one subitem. A parent matches when at least one of its
+ * subitems makes the whole tree pass (see `deriveBoardRows`).
  */
 export function buildAdvancedFilterMatcher<TRow>(
   tree: BoardAdvancedFilterTree,
   fields_by_id: Map<string, BoardFilterField<TRow>>,
   context: BoardFilterContext
-): ((row: TRow) => boolean) | null {
-  const combine = (checks: ((row: TRow) => boolean)[], operator: BoardFilterJoinOperator) =>
-    operator === "or" ? (row: TRow) => checks.some((check) => check(row)) : (row: TRow) => checks.every((check) => check(row));
+): BoardPairMatcher<TRow> | null {
+  const combine = (checks: BoardPairMatcher<TRow>[], operator: BoardFilterJoinOperator): BoardPairMatcher<TRow> =>
+    operator === "or"
+      ? (row, sub_row) => checks.some((check) => check(row, sub_row))
+      : (row, sub_row) => checks.every((check) => check(row, sub_row));
 
-  const ruleCheck = (rule: BoardAdvancedFilterRow) => {
+  const ruleCheck = (rule: BoardAdvancedFilterRow): BoardPairMatcher<TRow> => {
     const field = fields_by_id.get(rule.column_id!)!;
-    return (row: TRow) => evaluateFilterRule(field, row, rule, context);
+    if (!isSubitemField(field)) return (row) => evaluateFilterRule(field, row, rule, context);
+    const empty_field = toEmptyField(field);
+    return (row, sub_row) =>
+      sub_row === null ? evaluateFilterRule(empty_field, row, rule, context) : evaluateFilterRule(field, sub_row, rule, context);
   };
 
-  const checks: ((row: TRow) => boolean)[] = tree.rules.filter((rule) => isApplicable(rule, fields_by_id)).map(ruleCheck);
+  const checks: BoardPairMatcher<TRow>[] = tree.rules.filter((rule) => isApplicable(rule, fields_by_id)).map(ruleCheck);
   for (const group of tree.groups) {
     const group_checks = group.rules.filter((rule) => isApplicable(rule, fields_by_id)).map(ruleCheck);
     if (group_checks.length) checks.push(combine(group_checks, group.join_operator));
@@ -470,7 +511,7 @@ export function buildQuickFilterFacets<TRow>(
   persons: BoardPersonOption[]
 ): BoardQuickFilterFacet<TRow>[] {
   return fields.filter(isQuickFilterable).map((field): BoardQuickFilterFacet<TRow> => {
-    const base = { id: field.id, label: field.label, swatch: field.swatch };
+    const base = { id: field.id, label: field.label, swatch: field.swatch, scope: field.scope ?? ("item" as const) };
     switch (field.kind) {
       case "option":
       case "group":
@@ -616,4 +657,62 @@ export function buildRuleFromRowValue<TRow>(
       return { ...base, condition: exclude ? "is_not" : "is", value: text };
     }
   }
+}
+
+type QuickRuleDraft = Omit<BoardAdvancedFilterRow, "id">;
+
+/** The Advanced rule equivalent to picking (or, with `exclude`, excluding) one Quick filters option. Null when there is none. */
+const quickOptionToRule = <TRow>(field: BoardFilterField<TRow>, option_id: string, exclude: boolean): QuickRuleDraft | null => {
+  const base = { column_id: field.id, value: "", values: [] as string[] };
+  if (option_id === BOARD_FILTER_BLANK_OPTION_ID) return { ...base, condition: exclude ? "is_not_empty" : "is_empty" };
+  switch (field.kind) {
+    case "option":
+    case "people":
+    case "group":
+      return { ...base, condition: exclude ? "is_not" : "is", values: [option_id] };
+    case "checkbox":
+      return { ...base, condition: (option_id === "checked") !== exclude ? "is_checked" : "is_unchecked" };
+    case "number":
+      if (option_id === "has_value") return { ...base, condition: exclude ? "is_empty" : "is_not_empty" };
+      return { ...base, condition: exclude ? "not_equals" : "equals", value: option_id };
+    case "date":
+      if (option_id === "overdue") return { ...base, condition: exclude ? "on_or_after" : "before", value: "today" };
+      if (option_id === "upcoming") return { ...base, condition: exclude ? "on_or_before" : "after", value: "today" };
+      return { ...base, condition: exclude ? "is_not" : "is", value: option_id };
+    case "text":
+    default:
+      if (option_id === "has_value") return { ...base, condition: exclude ? "is_empty" : "is_not_empty" };
+      return null;
+  }
+};
+
+const isOptionKind = (kind: BoardFilterFieldKind) => kind === "option" || kind === "people" || kind === "group";
+
+/**
+ * Advanced rules equivalent to one Quick filters facet. Picks become a single
+ * rule when one is enough (option fields merge every picked value into one
+ * "Is" rule), or an Or group when several are needed. Each exclusion becomes
+ * its own rule, joined with And like Quick filters apply them.
+ */
+export function buildRulesFromQuickFacet<TRow>(
+  field: BoardFilterField<TRow>,
+  selected_ids: string[],
+  excluded_ids: string[]
+): { rules: QuickRuleDraft[]; or_group: QuickRuleDraft[] | null } {
+  const toRules = (ids: string[], exclude: boolean): QuickRuleDraft[] => {
+    if (!isOptionKind(field.kind)) {
+      return ids.map((id) => quickOptionToRule(field, id, exclude)).filter((rule): rule is QuickRuleDraft => rule !== null);
+    }
+    const value_ids = ids.filter((id) => id !== BOARD_FILTER_BLANK_OPTION_ID);
+    const rules: QuickRuleDraft[] = value_ids.length
+      ? [{ column_id: field.id, condition: exclude ? "is_not" : "is", value: "", values: value_ids }]
+      : [];
+    if (ids.includes(BOARD_FILTER_BLANK_OPTION_ID)) rules.push(quickOptionToRule(field, BOARD_FILTER_BLANK_OPTION_ID, exclude)!);
+    return rules;
+  };
+
+  const include_rules = toRules(selected_ids, false);
+  const exclude_rules = toRules(excluded_ids, true);
+  if (include_rules.length <= 1) return { rules: [...include_rules, ...exclude_rules], or_group: null };
+  return { rules: exclude_rules, or_group: include_rules };
 }

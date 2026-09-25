@@ -71,9 +71,13 @@ export type { ConditionalColoringPanelProps } from "./toolbar/ConditionalColorin
 export * from "./toolbar/types";
 export {
   BOARD_FILTER_BLANK_OPTION_ID,
+  BOARD_FILTER_CREATED_AT_FIELD_ID,
+  BOARD_FILTER_CREATED_BY_FIELD_ID,
   BOARD_FILTER_GROUP_FIELD_ID,
   BOARD_FILTER_ME_VALUE,
+  BOARD_FILTER_UPDATED_AT_FIELD_ID,
   buildRuleFromRowValue,
+  isRuleApplicable,
   isRuleComplete,
 } from "./toolbar/filterEngine";
 export * from "./drawer";

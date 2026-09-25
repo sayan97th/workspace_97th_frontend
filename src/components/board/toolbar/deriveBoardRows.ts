@@ -1,5 +1,5 @@
 import type { BoardColumn, BoardGroup } from "../types";
-import { buildAdvancedFilterMatcher, countActiveAdvancedRules } from "./filterEngine";
+import { BOARD_FILTER_BLANK_OPTION_ID, buildAdvancedFilterMatcher, countActiveAdvancedRules, hasSubitemRules } from "./filterEngine";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
@@ -21,6 +21,12 @@ export type BoardDerivationState = {
   search_column_ids: string[];
   selected_person_ids: string[];
   quick_filter_selections: Record<string, string[]>;
+  quick_filter_exclusions: Record<string, string[]>;
+  include_subitems: boolean;
+  person_column_ids: string[] | null;
+  selected_team_ids: string[];
+  search_include_subitems: boolean;
+  search_include_updates: boolean;
   advanced_filter_rows: BoardAdvancedFilterRow[];
   advanced_filter_groups: BoardAdvancedFilterGroup[];
   advanced_filter_operator: BoardFilterJoinOperator;
@@ -45,6 +51,7 @@ export type BoardDerivedRows<TRow> = {
   total_row_count: number;
   visible_row_count: number;
   active_filter_count: number;
+  visible_subitem_ids: Record<string, string[]> | null;
   row_colors: Record<string, string>;
   cell_colors: Record<string, Record<string, string>>;
 };
@@ -86,57 +93,134 @@ const compareNullableValues = (
   return compareValues(a, b) * direction_multiplier;
 };
 
+/** Whether a row's facet option ids pass that facet's picks (any of them) and exclusions (none of them). */
+const passesFacet = (ids: string[], selected: string[], excluded: string[]) =>
+  (selected.length === 0 || ids.some((id) => selected.includes(id))) && !ids.some((id) => excluded.includes(id));
+
+/** Which checks {@link buildRowEvaluator} leaves out, so a panel can count matches given every other filter. */
+export type BoardRowMatcherOptions = {
+  /** Leaves this Quick filters facet out (its own live counts). */
+  exclude_facet_id?: string;
+  /** Leaves the Person filter out (the Person panel's own counts). */
+  exclude_person?: boolean;
+};
+
+export type BoardRowEvaluation<TRow> = {
+  is_match: boolean;
+  /** The subitems that match the subitem filters, or null when no subitem filter applies. */
+  matching_sub_rows: TRow[] | null;
+};
+
+/** The person ids the Person filter reads on a row: the picked People columns, or every one of them. */
+export function buildPersonIdsReader<TRow>(
+  config: BoardToolbarConfig<TRow>,
+  state: Pick<BoardDerivationState, "person_column_ids">,
+  inputs: BoardFilterInputs<TRow>
+): (row: TRow) => string[] {
+  const field_ids = state.person_column_ids?.length ? state.person_column_ids : null;
+  const fields = (field_ids ?? [])
+    .map((id) => inputs.fields_by_id.get(id))
+    .filter((field): field is BoardFilterField<TRow> => !!field?.getOptionIds);
+  if (!field_ids || !fields.length) return config.getPersonIds;
+  return (row) => Array.from(new Set(fields.flatMap((field) => field.getOptionIds!(row))));
+}
+
 /**
- * Builds the predicate every visible row must pass: search, Person, Quick
- * filters and Advanced filters, all combined with AND. `exclude_facet_id`
- * leaves one Quick filters facet out, which is how each facet's live counts
- * reflect every other active filter without being narrowed by its own picks.
+ * Builds the check every visible row must pass: search, Person, Quick filters
+ * and Advanced filters, all combined with AND. With "Filter subitems" on, a
+ * subitem rule or facet is checked against each subitem, the parent matches
+ * when one of them passes together with every item rule, and those subitems
+ * are reported so only they stay visible beneath it.
  */
-export function buildRowMatcher<TRow>(
+export function buildRowEvaluator<TRow>(
   config: BoardToolbarConfig<TRow>,
   state: BoardDerivationState,
   inputs: BoardFilterInputs<TRow>,
-  exclude_facet_id?: string
-): (row: TRow) => boolean {
+  options: BoardRowMatcherOptions = {}
+): (row: TRow) => BoardRowEvaluation<TRow> {
   const query = state.search_query.trim().toLowerCase();
   // Empty `search_column_ids` means "no restriction, search every column",
   // matching how every sibling list (`hidden_column_ids`,
   // `pinned_column_ids`, ...) treats an empty selection as the permissive
   // default rather than "select nothing".
   const search_column_ids = state.search_column_ids.length ? state.search_column_ids : config.columns.map((c) => c.id);
-  const matchesSearch = (row: TRow) =>
-    !query ||
-    search_column_ids
+  const subitem_search_column_ids = config.subitem_search_column_ids ?? [];
+  const containsQuery = (row: TRow, column_ids: string[]) =>
+    column_ids
       .map((column_id) => config.getColumnText(row, column_id))
       .join(" ")
       .toLowerCase()
       .includes(query);
-
-  const active_facets = inputs.quick_filter_facets
-    .filter((facet) => facet.id !== exclude_facet_id && state.quick_filter_selections[facet.id]?.length)
-    .map((facet) => ({ facet, selected: state.quick_filter_selections[facet.id] }));
-  const matchesQuickFilters = (row: TRow) =>
-    active_facets.every(({ facet, selected }) =>
-      facet.getOptionIds(row, inputs.filter_context).some((id) => selected.includes(id))
-    );
-
-  const matchesAdvancedFilters =
-    buildAdvancedFilterMatcher(
-      {
-        rules: state.advanced_filter_rows,
-        groups: state.advanced_filter_groups,
-        operator: state.advanced_filter_operator,
-      },
-      inputs.fields_by_id,
-      inputs.filter_context
-    ) ?? (() => true);
-
-  const matchesPerson = (row: TRow) => {
-    if (!state.selected_person_ids.length) return true;
-    return config.getPersonIds(row).some((id) => state.selected_person_ids.includes(id));
+  const matchesSearch = (row: TRow) => {
+    if (!query) return true;
+    if (containsQuery(row, search_column_ids)) return true;
+    if (state.search_include_updates && config.update_match_row_ids?.has(config.getRowId(row))) return true;
+    if (state.search_include_subitems && config.getSubRows) {
+      return config.getSubRows(row).some((sub_row) => containsQuery(sub_row, subitem_search_column_ids));
+    }
+    return false;
   };
 
-  return (row: TRow) => matchesSearch(row) && matchesPerson(row) && matchesQuickFilters(row) && matchesAdvancedFilters(row);
+  const active_facets = inputs.quick_filter_facets
+    .filter(
+      (facet) =>
+        facet.id !== options.exclude_facet_id &&
+        (state.quick_filter_selections[facet.id]?.length || state.quick_filter_exclusions[facet.id]?.length)
+    )
+    .map((facet) => ({
+      facet,
+      selected: state.quick_filter_selections[facet.id] ?? [],
+      excluded: state.quick_filter_exclusions[facet.id] ?? [],
+    }));
+  const item_facets = active_facets.filter(({ facet }) => facet.scope !== "subitem");
+  const subitem_facets = active_facets.filter(({ facet }) => facet.scope === "subitem");
+  const matchesItemFacets = (row: TRow) =>
+    item_facets.every(({ facet, selected, excluded }) => passesFacet(facet.getOptionIds(row, inputs.filter_context), selected, excluded));
+  const matchesSubitemFacets = (sub_row: TRow | null) =>
+    subitem_facets.every(({ facet, selected, excluded }) =>
+      passesFacet(sub_row === null ? [BOARD_FILTER_BLANK_OPTION_ID] : facet.getOptionIds(sub_row, inputs.filter_context), selected, excluded)
+    );
+
+  const tree = {
+    rules: state.advanced_filter_rows,
+    groups: state.advanced_filter_groups,
+    operator: state.advanced_filter_operator,
+  };
+  const matchesAdvanced = buildAdvancedFilterMatcher(tree, inputs.fields_by_id, inputs.filter_context) ?? (() => true);
+  const has_subitem_filters = subitem_facets.length > 0 || hasSubitemRules(tree, inputs.fields_by_id);
+
+  const team_member_ids = (config.teams ?? [])
+    .filter((team) => state.selected_team_ids.includes(team.id))
+    .flatMap((team) => team.member_ids);
+  const wanted_person_ids = new Set([...state.selected_person_ids, ...team_member_ids]);
+  const is_person_active = !options.exclude_person && (state.selected_person_ids.length > 0 || state.selected_team_ids.length > 0);
+  const readPersonIds = buildPersonIdsReader(config, state, inputs);
+  const matchesPerson = (row: TRow) => !is_person_active || readPersonIds(row).some((id) => wanted_person_ids.has(id));
+
+  return (row: TRow) => {
+    const passes_item_checks = matchesSearch(row) && matchesPerson(row) && matchesItemFacets(row);
+    if (!has_subitem_filters) {
+      return { is_match: passes_item_checks && matchesAdvanced(row, null), matching_sub_rows: null };
+    }
+    if (!passes_item_checks) return { is_match: false, matching_sub_rows: [] };
+    const sub_rows = config.getSubRows?.(row) ?? [];
+    if (!sub_rows.length) {
+      return { is_match: matchesSubitemFacets(null) && matchesAdvanced(row, null), matching_sub_rows: [] };
+    }
+    const matching_sub_rows = sub_rows.filter((sub_row) => matchesSubitemFacets(sub_row) && matchesAdvanced(row, sub_row));
+    return { is_match: matching_sub_rows.length > 0, matching_sub_rows };
+  };
+}
+
+/** {@link buildRowEvaluator}, reduced to a yes/no per row. */
+export function buildRowMatcher<TRow>(
+  config: BoardToolbarConfig<TRow>,
+  state: BoardDerivationState,
+  inputs: BoardFilterInputs<TRow>,
+  options: BoardRowMatcherOptions = {}
+): (row: TRow) => boolean {
+  const evaluate = buildRowEvaluator(config, state, inputs, options);
+  return (row) => evaluate(row).is_match;
 }
 
 export function deriveBoardRows<TRow>(
@@ -145,7 +229,19 @@ export function deriveBoardRows<TRow>(
   inputs: BoardFilterInputs<TRow>
 ): BoardDerivedRows<TRow> {
   const flattened_rows = config.default_groups.flatMap((group) => group.rows);
-  const matchesEverything = buildRowMatcher(config, state, inputs);
+  const evaluate = buildRowEvaluator(config, state, inputs);
+  // Every row is evaluated once, which also records the subitems left visible under it.
+  let visible_subitem_ids: Record<string, string[]> | null = null;
+  const match_by_row = new Map<TRow, boolean>();
+  for (const row of flattened_rows) {
+    const { is_match, matching_sub_rows } = evaluate(row);
+    match_by_row.set(row, is_match);
+    if (matching_sub_rows && is_match) {
+      visible_subitem_ids ??= {};
+      visible_subitem_ids[config.getRowId(row)] = matching_sub_rows.map(config.getRowId);
+    }
+  }
+  const matchesEverything = (row: TRow) => match_by_row.get(row) ?? false;
 
   let groups: BoardGroup<TRow>[];
 
@@ -227,8 +323,9 @@ export function deriveBoardRows<TRow>(
       { rules: state.advanced_filter_rows, groups: state.advanced_filter_groups, operator: state.advanced_filter_operator },
       inputs.fields_by_id
     ) +
-    Object.entries(state.quick_filter_selections).reduce(
-      (sum, [facet_id, ids]) => sum + (facet_ids.has(facet_id) ? ids.length : 0),
+    [state.quick_filter_selections, state.quick_filter_exclusions].reduce(
+      (total, selections) =>
+        total + Object.entries(selections).reduce((sum, [facet_id, ids]) => sum + (facet_ids.has(facet_id) ? ids.length : 0), 0),
       0
     );
 
@@ -269,6 +366,7 @@ export function deriveBoardRows<TRow>(
     total_row_count: flattened_rows.length,
     visible_row_count,
     active_filter_count,
+    visible_subitem_ids,
     row_colors,
     cell_colors,
   };

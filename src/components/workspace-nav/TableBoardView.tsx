@@ -56,6 +56,10 @@ import {
   type BoardTableItem,
   type BoardTableNode,
   type BoardToolbarConfig,
+  type BoardAdvancedFilterRow,
+  type BoardSavedFilterActions,
+  type BoardTeamOption,
+  type BoardToolbarExportOptions,
   type BoardToolbarViewActions,
   type BoardViewKind,
   type DrawerActivityEntry,
@@ -72,11 +76,15 @@ import {
   buildBoardFilterFields,
   buildBoardGroupByOptions,
   buildBoardSortOptions,
+  getValueDateRange,
+  getValueIds,
+  getValueNumber,
+  isValueChecked,
   type BoardToolbarFieldSources,
 } from "./boardToolbarFields";
 import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/formula/formulaEngine";
-import { legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
-import type { FormulaSourceColumn } from "@/components/board/table/types";
+import { computeFormulaValue, legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
+import type { CellValue, FormulaSourceColumn } from "@/components/board/table/types";
 import {
   AttachmentIcon,
   CalendarViewIcon,
@@ -115,6 +123,7 @@ import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
+import { peopleService } from "@/services/people.service";
 import { workspaceService } from "@/services/workspace.service";
 import type {
   BoardCellFile,
@@ -129,8 +138,10 @@ import type {
   BoardItemDetailDto,
   BoardItemDto,
   BoardItemValue,
+  BoardSavedFilterDto,
   BoardTagDto,
   BoardViewDto,
+  BoardViewPersonalStateDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
@@ -149,6 +160,15 @@ export type WorkspaceViewProps = {
 };
 
 const ITEM_COLUMN_ID = "name";
+
+/** The viewer's IANA time zone, sent with server-side filters so timestamps turn into the days they see. */
+const VIEWER_TIME_ZONE = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+})();
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
 
@@ -416,6 +436,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     items: BoardItemDto[];
     views: BoardViewDto[];
     personal_order: number[] | null;
+    personal_states: Record<string, BoardViewPersonalStateDto>;
     collapsed_group_ids: number[];
     /**
      * Ids of every group whose items are already present in `items` above —
@@ -466,6 +487,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
             items,
             views: views.views,
             personal_order: views.personal_order,
+            personal_states: views.personal_states,
             collapsed_group_ids: groups_index.collapsed_group_ids,
             loaded_group_ids: is_lazy_table_view ? [] : groups_index.groups.map((group) => group.id),
           });
@@ -532,6 +554,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         initial_views={loaded.views}
         initial_active_view_id={active_view_id ?? null}
         initial_personal_order={loaded.personal_order}
+        initial_personal_states={loaded.personal_states}
         initial_collapsed_group_ids={loaded.collapsed_group_ids}
         initial_open_item_id={initial_open_item_id ?? null}
       />
@@ -583,6 +606,8 @@ type TableBoardBodyProps = {
   initial_views: BoardViewDto[];
   initial_active_view_id: number | null;
   initial_personal_order: number[] | null;
+  /** The viewer's remembered, unsaved toolbar changes per view id ("Remember my filters"). */
+  initial_personal_states: Record<string, BoardViewPersonalStateDto>;
   /** Ids of this tab's tables the viewer had collapsed the last time they visited — see `useBoardTable`'s `initial_collapsed_groups`. */
   initial_collapsed_group_ids: number[];
   initial_open_item_id: number | null;
@@ -672,6 +697,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_views,
   initial_active_view_id,
   initial_personal_order,
+  initial_personal_states,
   initial_collapsed_group_ids,
   initial_open_item_id,
 }) => {
@@ -800,6 +826,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   );
   // Every root-item-scoped column — drives Kanban's structural lanes and the toolbar.
   const item_columns = useMemo(() => columns.filter((c) => c.scope === "item"), [columns]);
+  // Every subitem-scoped column: the Table view's subitem rows, and the toolbar's "Filter subitems" fields.
+  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
   const people_names_by_id = useMemo(
     () => Object.fromEntries(roster_members.map((o) => [String(o.id), o.full_name])),
     [roster_members]
@@ -985,6 +1013,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const toolbar_field_sources: BoardToolbarFieldSources = useMemo(
     () => ({
       item_columns,
+      subitem_columns,
       groups,
       tags,
       persons,
@@ -993,12 +1022,84 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       item_column_label,
       getColumnText,
     }),
-    [item_columns, groups, tags, persons, people_names_by_id, item_column_label, getColumnText]
+    [item_columns, subitem_columns, groups, tags, persons, people_names_by_id, item_column_label, getColumnText]
   );
   const sort_options = useMemo(() => buildBoardSortOptions(toolbar_field_sources), [toolbar_field_sources]);
   const group_by_options = useMemo(() => buildBoardGroupByOptions(toolbar_field_sources), [toolbar_field_sources]);
   const filter_fields = useMemo(() => buildBoardFilterFields(toolbar_field_sources), [toolbar_field_sources]);
   const current_person_id = user ? String(user.id) : null;
+
+  // Account teams the Person filter can pick, each with its members who can see this board.
+  const [board_teams, setBoardTeams] = useState<BoardTeamOption[]>([]);
+  useEffect(() => {
+    let is_cancelled = false;
+    peopleService
+      .listBoardTeams(board_id)
+      .then((teams) => {
+        if (is_cancelled) return;
+        setBoardTeams(teams.map((team) => ({ id: String(team.id), name: team.name, member_ids: team.member_ids.map(String) })));
+      })
+      .catch(() => {});
+    return () => {
+      is_cancelled = true;
+    };
+  }, [board_id]);
+
+  // Root item ids whose updates match the search, while "Search in updates" is on (see the effect below the toolbar).
+  const [update_match_row_ids, setUpdateMatchRowIds] = useState<Set<string> | null>(null);
+
+  const subitem_search_column_ids = useMemo(
+    () => [ITEM_COLUMN_ID, ...subitem_columns.map((column) => String(column.id))],
+    [subitem_columns]
+  );
+
+  // Formula results are computed while rendering, so an export computes them the same way the cells do.
+  const formula_defs_by_id = useMemo(() => {
+    const defs = attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label);
+    return new Map(defs.filter((def) => def.kind === "formula").map((def) => [def.id, def]));
+  }, [item_columns, item_column_label]);
+  // Option ids read as their labels in a spreadsheet: Status, Label and Dropdown options per column, Tags board wide.
+  const export_option_labels = useMemo(() => {
+    const tag_labels = new Map(tags.map((tag) => [String(tag.id), tag.label]));
+    return new Map(
+      item_columns.map((column) => [
+        String(column.id),
+        column.type === "tags" ? tag_labels : new Map((column.config?.options ?? []).map((option) => [option.id, option.label])),
+      ])
+    );
+  }, [item_columns, tags]);
+  const getExportText = useCallback(
+    (row: BoardItemDto, column_id: string) => {
+      const formula_def = formula_defs_by_id.get(column_id);
+      if (formula_def) return computeFormulaValue(formula_def, row.values as Record<string, CellValue>, row.name);
+      const column = columns_by_id[column_id];
+      const value = row.values[column_id];
+      switch (column?.type) {
+        case "status":
+        case "label":
+        case "dropdown":
+        case "tags": {
+          const labels = export_option_labels.get(column_id);
+          return getValueIds(column, value)
+            .map((id) => labels?.get(id) ?? id)
+            .join(", ");
+        }
+        case "timeline": {
+          const range = getValueDateRange(column, value);
+          return range ? (range.start === range.end ? range.start : `${range.start} to ${range.end}`) : "";
+        }
+        case "checkbox":
+          return isValueChecked(value) ? "Yes" : "";
+        case "time_tracking": {
+          const hours = getValueNumber(column, value);
+          return hours === null ? "" : `${hours} h`;
+        }
+        default:
+          return getColumnText(row, column_id);
+      }
+    },
+    [formula_defs_by_id, columns_by_id, export_option_labels, getColumnText]
+  );
 
   const toolbar_config: BoardToolbarConfig<BoardItemDto> = useMemo(
     () => ({
@@ -1012,8 +1113,32 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       sort_options,
       group_by_options,
       filter_fields,
+      getSubRows: (row) => row.children ?? [],
+      subitem_search_column_ids,
+      person_field_ids: people_column_ids,
+      teams: board_teams,
+      update_match_row_ids,
+      can_search_updates: true,
+      recent_search_storage_key: `board_recent_searches_${board_id}`,
+      getExportText,
     }),
-    [board_columns, default_groups, getColumnText, persons, getPersonIds, current_person_id, sort_options, group_by_options, filter_fields]
+    [
+      board_columns,
+      default_groups,
+      getColumnText,
+      persons,
+      getPersonIds,
+      current_person_id,
+      sort_options,
+      group_by_options,
+      filter_fields,
+      subitem_search_column_ids,
+      people_column_ids,
+      board_teams,
+      update_match_row_ids,
+      board_id,
+      getExportText,
+    ]
   );
 
   const toolbar = useBoardToolbar(toolbar_config);
@@ -1026,6 +1151,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     initial_views,
     initial_active_view_id,
     initial_personal_order,
+    initial_personal_states,
     toolbar,
     onViewActivated: (view) => router.push(buildViewUrl(view)),
   });
@@ -1205,13 +1331,41 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // trigger the load-everything fallback above. Plain filtering does not:
   // it is answered by the server-side filter query below.
   const is_quick_filter_panel_open = toolbar.active_panel === "filter" && toolbar.filter_mode === "quick";
+  // The Person panel's per person counts are computed over every row too.
+  const is_person_panel_open = toolbar.active_panel === "person";
+  // The server search only reads item names and values, so matching subitems or updates is answered client-side over every row.
+  const is_wide_search = toolbar.search_query.trim() !== "" && (toolbar.search_include_subitems || toolbar.search_include_updates);
   useEffect(() => {
     const needs_every_row =
       toolbar.sort_rules.some((rule) => rule.sort_option_id) ||
       toolbar.group_by_option_id !== BOARD_DEFAULT_GROUP_BY_ID ||
-      is_quick_filter_panel_open;
+      is_quick_filter_panel_open ||
+      is_person_panel_open ||
+      is_wide_search;
     if (needs_every_row) loadAllRemainingGroups();
-  }, [toolbar.sort_rules, toolbar.group_by_option_id, is_quick_filter_panel_open, loadAllRemainingGroups]);
+  }, [toolbar.sort_rules, toolbar.group_by_option_id, is_quick_filter_panel_open, is_person_panel_open, is_wide_search, loadAllRemainingGroups]);
+
+  // "Search in updates": which root items have an update or reply containing the query.
+  const update_search_query = toolbar.search_include_updates ? toolbar.search_query.trim() : "";
+  useEffect(() => {
+    if (!update_search_query) {
+      setUpdateMatchRowIds(null);
+      return;
+    }
+    let is_cancelled = false;
+    const timeout = window.setTimeout(() => {
+      boardContentService
+        .getUpdateMatchItemIds(board_id, update_search_query, view_tabs.active_view_id)
+        .then((item_ids) => {
+          if (!is_cancelled) setUpdateMatchRowIds(new Set(item_ids.map(String)));
+        })
+        .catch(() => {});
+    }, 300);
+    return () => {
+      is_cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [update_search_query, board_id, view_tabs.active_view_id]);
 
   /**
    * Server-side filtering (`BoardItemFilterService::applyFilterState()`): while
@@ -1224,29 +1378,41 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
    * the same way an active search does.
    */
   const server_filter = useMemo(() => {
+    const isSent = (rule: BoardAdvancedFilterRow) => !rule.is_disabled && isRuleComplete(rule);
     const filter_state = {
       selected_person_ids: toolbar.selected_person_ids,
+      selected_team_ids: toolbar.selected_team_ids,
+      person_column_ids: toolbar.person_column_ids,
       quick_filter_selections: toolbar.quick_filter_selections,
-      advanced_filter_rows: toolbar.advanced_filter_rows.filter(isRuleComplete),
+      quick_filter_exclusions: toolbar.quick_filter_exclusions,
+      advanced_filter_rows: toolbar.advanced_filter_rows.filter(isSent),
       advanced_filter_groups: toolbar.advanced_filter_groups
-        .map((group) => ({ ...group, rules: group.rules.filter(isRuleComplete) }))
+        .map((group) => ({ ...group, rules: group.rules.filter(isSent) }))
         .filter((group) => group.rules.length > 0),
       advanced_filter_operator: toolbar.advanced_filter_operator,
+      include_subitems: toolbar.include_subitems,
     };
+    const hasPicks = (selections: Record<string, string[]>) => Object.values(selections).some((ids) => ids.length > 0);
     const is_active =
       filter_state.selected_person_ids.length > 0 ||
-      Object.values(filter_state.quick_filter_selections).some((ids) => ids.length > 0) ||
+      filter_state.selected_team_ids.length > 0 ||
+      hasPicks(filter_state.quick_filter_selections) ||
+      hasPicks(filter_state.quick_filter_exclusions) ||
       filter_state.advanced_filter_rows.length > 0 ||
       filter_state.advanced_filter_groups.length > 0;
     if (!is_active) return null;
-    const payload = { filter_state, today: toolbar.filter_context.today };
+    const payload = { filter_state, today: toolbar.filter_context.today, timezone: VIEWER_TIME_ZONE };
     return { payload, key: JSON.stringify(payload) };
   }, [
     toolbar.selected_person_ids,
+    toolbar.selected_team_ids,
+    toolbar.person_column_ids,
     toolbar.quick_filter_selections,
+    toolbar.quick_filter_exclusions,
     toolbar.advanced_filter_rows,
     toolbar.advanced_filter_groups,
     toolbar.advanced_filter_operator,
+    toolbar.include_subitems,
     toolbar.filter_context.today,
   ]);
   const [server_filter_key, setServerFilterKey] = useState<string | null>(null);
@@ -1555,8 +1721,71 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Column-header menu's "Filter"/"Group by" rows — bridge into the
   // toolbar's own Filter/Group-by state, which `BoardTable` (a sibling of the
   // toolbar, not a descendant) has no access to on its own. ──
+  // ── Filter panel's personal "Saved filters": private to the viewer, independent from the shared views ──
+  const [saved_filters, setSavedFilters] = useState<BoardSavedFilterDto[]>([]);
+  useEffect(() => {
+    let is_cancelled = false;
+    boardContentService
+      .getSavedFilters(board_id)
+      .then((data) => {
+        if (!is_cancelled) setSavedFilters(data);
+      })
+      .catch(() => {});
+    return () => {
+      is_cancelled = true;
+    };
+  }, [board_id]);
+
+  const saved_filter_actions: BoardSavedFilterActions = {
+    saved_filters,
+    saveCurrentFilter: async (name) => {
+      // The search box is not part of a saved filter, it stays whatever the viewer is typing.
+      const { search_query: _search_query, search_column_ids: _search_column_ids, ...filter_state } = view_tabs.current_filter_state;
+      const created = await boardContentService.createSavedFilter(board_id, {
+        name,
+        filter_state: { ...filter_state, search_query: "", search_column_ids: [] },
+      });
+      setSavedFilters((current) => [...current, created]);
+      toast.success(`Saved "${created.name}"`);
+    },
+    renameSavedFilter: async (id, name) => {
+      const updated = await boardContentService.updateSavedFilter(board_id, id, { name });
+      setSavedFilters((current) => current.map((entry) => (entry.id === updated.id ? updated : entry)));
+    },
+    deleteSavedFilter: async (id) => {
+      await boardContentService.deleteSavedFilter(board_id, id);
+      setSavedFilters((current) => current.filter((entry) => entry.id !== id));
+    },
+  };
+
+  // ── "..." menu's export of exactly the rows and columns the board shows ──
+  const export_options: BoardToolbarExportOptions = {
+    board_name: view_tabs.active_view && !view_tabs.active_view.is_primary ? `${board_label} ${view_tabs.active_view.label}` : board_label,
+    is_ready: is_all_items_loaded,
+    onPrepare: loadAllRemainingGroups,
+  };
+
+  // ── Title pill: how many items the active filters leave, even while the chips bar is collapsed ──
+  const is_board_filtered =
+    toolbar.active_filter_count > 0 ||
+    toolbar.selected_person_ids.length > 0 ||
+    toolbar.selected_team_ids.length > 0 ||
+    toolbar.search_query.trim() !== "";
+  const filtered_title_badge = is_board_filtered ? (
+    <button
+      type="button"
+      onClick={() => toolbar.openPanel("filter")}
+      title="Open filters"
+      className="flex h-6 flex-none items-center rounded-full bg-boardtree-accent/15 px-2.5 text-[12px] font-semibold text-boardtree-accent transition-colors hover:bg-boardtree-accent/25"
+    >
+      Filtered: {toolbar.visible_row_count} of {toolbar.total_row_count}
+    </button>
+  ) : undefined;
+
   // ── Toolbar panels' "Save to this view"/"Save as new view" ──
   const toolbar_view_actions: BoardToolbarViewActions = {
+    has_personal_state: view_tabs.has_personal_state,
+    resetToView: view_tabs.resetToView,
     can_save: node.can_edit && view_tabs.active_view !== null,
     // A locked tab keeps its saved filters, so only "Save as new view" is offered there.
     is_dirty: view_tabs.is_dirty && !view_tabs.active_view?.is_locked,
@@ -2170,8 +2399,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const active_doc_view = view_tabs.active_view;
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
-  // ── Table view — every subitem-scoped column, mirroring `item_columns` above. ──
-  const subitem_columns = useMemo(() => columns.filter((c) => c.scope === "subitem"), [columns]);
 
   // Active people first, so their avatar colors do not shift when someone is deactivated.
   const table_people: TablePersonDef[] = useMemo(
@@ -2223,7 +2450,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     is_priority: item.is_priority,
     recurrence: item.recurrence,
   });
-  const adaptTableItem = (item: BoardItemDto): BoardTableItem => ({ ...adaptTableNode(item), subs: item.children.map(adaptTableNode) });
+  // While subitem filters apply, only the subitems that match stay under their parent.
+  const adaptTableItem = (item: BoardItemDto): BoardTableItem => {
+    const visible_sub_ids = toolbar.visible_subitem_ids?.[String(item.id)];
+    const subs = visible_sub_ids ? item.children.filter((child) => visible_sub_ids.includes(String(child.id))) : item.children;
+    return { ...adaptTableNode(item), subs: subs.map(adaptTableNode) };
+  };
 
   // Looked up (rather than threaded through `toolbar.groups`'s generic,
   // Kanban/Calendar-shared `BoardGroup<TRow>` type) so `is_items_loaded`/
@@ -2263,7 +2495,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolbar.groups, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, toolbar.search_query, is_server_filter_loaded, groups_by_id]
+    [toolbar.groups, toolbar.visible_subitem_ids, table_base_columns, table_sub_base_columns, item_column_label, is_all_items_loaded, loaded_group_ids, toolbar.search_query, is_server_filter_loaded, groups_by_id]
   );
 
   // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
@@ -3419,6 +3651,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onGroupsRestored: handleGroupsRestored,
         },
         presence: active_view_type === "table" ? <PresenceAvatarStack board_id={board_id} /> : undefined,
+        title_badge: filtered_title_badge,
       }}
       tabs={{
         tabs: view_tabs.tabs,
@@ -3443,7 +3676,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         // above any of them (Files Gallery and Chart render their own
         // dedicated toolbar/config panel instead).
         active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" || active_view_type === "form" ? undefined : (
-          <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} view_actions={toolbar_view_actions} />
+          <BoardToolbar
+            toolbar={toolbar}
+            onNewItem={handleNewItemAtTop}
+            view_actions={toolbar_view_actions}
+            saved_filter_actions={saved_filter_actions}
+            export_options={export_options}
+          />
         )
       }
       selectionBar={

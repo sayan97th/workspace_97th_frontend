@@ -78,7 +78,9 @@ export type BoardQuickFilterFacet<TRow> = {
   label: string;
   swatch?: BoardColumnSwatch;
   options: BoardQuickFilterFacetOption[];
+  /** For a `subitem` facet this reads one subitem, and a parent matches when any of its subitems does. */
   getOptionIds: (row: TRow, context: BoardFilterContext) => string[];
+  scope: BoardFilterFieldScope;
 };
 
 /**
@@ -108,7 +110,17 @@ export type BoardFilterField<TRow> = {
   getChecked?: (row: TRow) => boolean;
   /** Whether the field is offered as a Quick filters facet. Defaults to true for every kind except `text`. */
   is_quick_filterable?: boolean;
+  /**
+   * `subitem` fields read a subitem's own column, and only apply while "Filter
+   * subitems" is on. A parent row matches when one of its subitems does, and
+   * only the matching subitems stay visible beneath it. Defaults to `item`.
+   */
+  scope?: BoardFilterFieldScope;
+  /** Picker section the field is listed under, e.g. "Item details" for Created by or Last updated. */
+  section?: string;
 };
+
+export type BoardFilterFieldScope = "item" | "subitem";
 
 /** Every condition a filter rule can use. Which ones a column offers depends on its {@link BoardFilterFieldKind}. */
 export type BoardFilterOperator =
@@ -154,6 +166,8 @@ export type BoardAdvancedFilterRow = {
   value: string;
   /** Multi value: option/person/group ids, or the two bounds of a `between` rule. */
   values?: string[];
+  /** A paused rule stays in the list but narrows nothing, so it can be switched back on later without rebuilding it. */
+  is_disabled?: boolean;
 };
 
 /** A nested set of rules combined with its own And/Or, like monday's "New group" in Advanced filters. */
@@ -174,6 +188,50 @@ export type BoardToolbarFilterState = {
   advanced_filter_operator?: BoardFilterJoinOperator;
   /** Which fields show as Quick filters facets. `null` (or omitted) shows every eligible field. */
   quick_filter_column_ids?: string[] | null;
+  /** Facet id to the option ids a row must NOT hold ("Status is not Done"), picked with Alt+click or the option's Exclude button. */
+  quick_filter_exclusions?: Record<string, string[]>;
+  /** "Filter subitems": subitem columns become filterable and a parent shows when one of its subitems matches. */
+  include_subitems?: boolean;
+  /** Which People columns the Person filter looks at. `null` (or omitted) means every People column. */
+  person_column_ids?: string[] | null;
+  /** Teams picked in the Person filter. A row matches when any member of a picked team is assigned. */
+  selected_team_ids?: string[];
+  /** Search also matches subitem names and values. */
+  search_include_subitems?: boolean;
+  /** Search also matches the text of updates (comments) posted on an item or its subitems. */
+  search_include_updates?: boolean;
+};
+
+/** Wires the "..." menu's "Export visible items". Omit to hide it. */
+export type BoardToolbarExportOptions = {
+  /** Used in the file name and the Excel sheet name. */
+  board_name: string;
+  /** Whether every row is loaded, so an export holds the whole filtered board and not just the tables loaded so far. */
+  is_ready: boolean;
+  /** Starts loading whatever rows are still missing. Called when the "..." menu opens. */
+  onPrepare: () => void;
+};
+
+/** A personal, named filter the viewer saved for this board. Private to them and independent from the shared views. */
+export type BoardSavedFilter = {
+  id: number;
+  name: string;
+  filter_state: BoardToolbarFilterState;
+};
+
+/** What the Filter panel's "Saved filters" menu does, wired by the board that stores them. Omit to hide the menu. */
+export type BoardSavedFilterActions = {
+  saved_filters: BoardSavedFilter[];
+  saveCurrentFilter: (name: string) => Promise<void>;
+  renameSavedFilter: (id: number, name: string) => Promise<void>;
+  deleteSavedFilter: (id: number) => Promise<void>;
+};
+
+/** An account team the Person filter can pick, with the ids of its members who can see the board. */
+export type BoardTeamOption = {
+  id: string;
+  name: string;
+  member_ids: string[];
 };
 
 /** What "Save as new view"/"Save to this view" do, wired by the board that owns the saved views. Omit to hide those buttons. */
@@ -183,6 +241,10 @@ export type BoardToolbarViewActions = {
   active_view_label: string | null;
   saveToActiveView: () => Promise<void>;
   saveAsNewView: () => Promise<void>;
+  /** Whether the toolbar is showing the viewer's remembered (unsaved) changes rather than the view as saved. */
+  has_personal_state?: boolean;
+  /** Drops the viewer's remembered changes and replays the view as saved. */
+  resetToView?: () => void;
 };
 
 export type BoardToolbarPanelId =
@@ -241,6 +303,22 @@ export type BoardToolbarConfig<TRow> = {
   group_by_options: BoardGroupByOption<TRow>[];
   /** Filterable fields, in picker order. Advanced filters and Quick filters facets are both built from these. */
   filter_fields: BoardFilterField<TRow>[];
+  /** A row's subitems, which "Filter subitems" and "Search in subitems" look at. Omit on boards without subitems. */
+  getSubRows?: (row: TRow) => TRow[];
+  /** Column ids searched on a subitem when "Search in subitems" is on, including the name column. */
+  subitem_search_column_ids?: string[];
+  /** The ids of the filter fields (People columns) the Person filter can look at, in picker order. Defaults to none, which falls back to `getPersonIds`. */
+  person_field_ids?: string[];
+  /** Teams offered by the Person filter. */
+  teams?: BoardTeamOption[];
+  /** Ids of rows whose updates (comments) match the current search, looked up by the caller. Only used while "Search in updates" is on. */
+  update_match_row_ids?: Set<string> | null;
+  /** Whether the caller looks up `update_match_row_ids`, which offers "Search in updates". */
+  can_search_updates?: boolean;
+  /** Browser storage key for this board's recent searches. Omit to not remember them. */
+  recent_search_storage_key?: string;
+  /** A cell's text in an export. Defaults to `getColumnText`, override it for values computed while rendering (formulas). */
+  getExportText?: (row: TRow, column_id: string) => string;
 };
 
 /** Full live state + actions + derived render output returned by {@link useBoardToolbar}. */
@@ -269,9 +347,21 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   nextMatch: () => void;
   prevMatch: () => void;
 
+  search_include_subitems: boolean;
+  setSearchIncludeSubitems: (value: boolean) => void;
+  search_include_updates: boolean;
+  setSearchIncludeUpdates: (value: boolean) => void;
+
   selected_person_ids: string[];
   togglePersonId: (id: string) => void;
   clearPersonFilter: () => void;
+  selected_team_ids: string[];
+  toggleTeamId: (id: string) => void;
+  /** Which People columns the Person filter looks at, `null` for all of them. */
+  person_column_ids: string[] | null;
+  setPersonColumnIds: (ids: string[] | null) => void;
+  /** Person id to matching row count given every other active filter. Empty while the Person panel is closed. */
+  person_counts: Record<string, number>;
 
   /** Today's date and the viewer's id, shared by every filter evaluation (and sent to the API for server-side filtering). */
   filter_context: BoardFilterContext;
@@ -281,6 +371,11 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   /** Facet id to option id to matching row count, given every other active filter. Empty while the Quick filters panel is closed. */
   quick_filter_counts: Record<string, Record<string, number>>;
   toggleQuickFilterOption: (facet_id: string, option_id: string) => void;
+  quick_filter_exclusions: Record<string, string[]>;
+  /** Adds or removes an option from the facet's exclusions (and from its picks, since a value can't be both). */
+  toggleQuickFilterExclusion: (facet_id: string, option_id: string) => void;
+  /** "Only": picks just this option in the facet, dropping every other pick and exclusion there. */
+  selectOnlyQuickFilterOption: (facet_id: string, option_id: string) => void;
   clearQuickFilterFacet: (facet_id: string) => void;
   clearQuickFilters: () => void;
   quick_filter_column_ids: string[] | null;
@@ -305,6 +400,22 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   addAdvancedFilterGroupRule: (group_id: string) => void;
   updateAdvancedFilterGroupRule: (group_id: string, rule_id: string, patch: Partial<BoardAdvancedFilterRow>) => void;
   removeAdvancedFilterGroupRule: (group_id: string, rule_id: string) => void;
+  duplicateAdvancedFilterRow: (id: string) => void;
+  moveAdvancedFilterRow: (active_id: string, over_id: string) => void;
+  duplicateAdvancedFilterGroupRule: (group_id: string, rule_id: string) => void;
+  moveAdvancedFilterGroupRule: (group_id: string, active_id: string, over_id: string) => void;
+  /**
+   * Turns every Quick filters pick and exclusion into equivalent Advanced rules,
+   * then clears Quick filters and opens Advanced. Only possible while the
+   * top-level Advanced operator is And (or nothing is there yet), since Quick
+   * and Advanced filters always combine with And.
+   */
+  convertQuickFiltersToAdvanced: () => void;
+  can_convert_quick_filters: boolean;
+  include_subitems: boolean;
+  setIncludeSubitems: (value: boolean) => void;
+  /** Whether the board has subitem columns at all, which decides whether "Filter subitems" is offered. */
+  has_subitem_fields: boolean;
   clearAdvancedFilters: () => void;
   /** Clears Quick and Advanced filters (the Filter panel's own "Clear all"). */
   clearAllFilters: () => void;
@@ -357,6 +468,8 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   visible_row_count: number;
   /** Complete Advanced filter rules plus selected Quick filter options. Person and Search are counted by their own controls. */
   active_filter_count: number;
+  /** Root row id to the ids of its subitems that match the subitem filters. Null while no subitem filter applies, so every subitem shows. */
+  visible_subitem_ids: Record<string, string[]> | null;
   /** Row-id → color, for rules scoped to "row" (first match wins). */
   row_colors: Record<string, string>;
   /** Row-id → column-id → color, for rules scoped to "cell" (first match per column wins). */

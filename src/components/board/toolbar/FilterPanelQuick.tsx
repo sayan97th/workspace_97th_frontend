@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, CloseIcon } from "@/icons/board-icons";
-import { ChevronDownIcon, SearchIcon } from "@/icons/workspace-icons";
+import { ChevronDownIcon, MinusIcon, SearchIcon } from "@/icons/workspace-icons";
 import PersonAvatar from "../PersonAvatar";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
 import type { BoardQuickFilterFacet, BoardQuickFilterFacetOption, BoardToolbarApi } from "./types";
@@ -157,6 +157,8 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
         <div className="board-filter-scroll flex items-start gap-6 overflow-x-auto px-5 pb-4">
           {visible_facets.map(({ facet, options }) => {
             const selected = toolbar.quick_filter_selections[facet.id] ?? [];
+            const excluded = toolbar.quick_filter_exclusions[facet.id] ?? [];
+            const has_picks = selected.length + excluded.length > 0;
             const counts = toolbar.quick_filter_counts[facet.id] ?? {};
             const is_expanded = expanded_facet_ids.includes(facet.id) || !!trimmed_query;
             const shown_options = is_expanded ? options : options.slice(0, COLLAPSED_OPTION_COUNT);
@@ -165,8 +167,15 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
             return (
               <div key={facet.id} className="flex w-[180px] flex-none flex-col gap-2">
                 <div className="flex h-5 items-center justify-between gap-2 pb-0.5">
-                  <span className="truncate text-[13px] font-medium text-boardtree-text-muted">{facet.label}</span>
-                  {selected.length > 0 && (
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-[13px] font-medium text-boardtree-text-muted">{facet.label}</span>
+                    {facet.scope === "subitem" && (
+                      <span className="flex-none rounded bg-boardtree-hover-strong px-1 text-[10.5px] font-semibold text-boardtree-text-faint">
+                        Subitem
+                      </span>
+                    )}
+                  </span>
+                  {has_picks && (
                     <button
                       type="button"
                       onClick={() => toolbar.clearQuickFilterFacet(facet.id)}
@@ -180,28 +189,69 @@ function FilterPanelQuick<TRow>({ toolbar }: FilterPanelQuickProps<TRow>) {
                 <div className="shell-scrollbar flex max-h-[260px] flex-col gap-2 overflow-y-auto pr-1">
                   {shown_options.map((option) => {
                     const is_selected = selected.includes(option.id);
+                    const is_excluded = excluded.includes(option.id);
                     const count = counts[option.id] ?? 0;
                     const person = option.person_id ? findPerson(option.person_id) : undefined;
                     return (
-                      <button
-                        key={option.id}
-                        type="button"
-                        onClick={() => toolbar.toggleQuickFilterOption(facet.id, option.id)}
-                        className={`flex h-[34px] flex-none items-center justify-between gap-2 rounded-[7px] border px-[11px] transition-colors ${
-                          is_selected
-                            ? "border-boardtree-accent bg-boardtree-accent/10"
-                            : "border-boardtree-border-soft bg-boardtree-hover hover:border-boardtree-border hover:bg-boardtree-hover-strong"
-                        } ${count === 0 && !is_selected ? "opacity-50" : ""}`}
-                      >
-                        <span className="flex min-w-0 items-center gap-2">
-                          {option.dot_color && !person ? (
-                            <span className="h-2 w-2 flex-none rounded-full" style={{ background: option.dot_color }} />
-                          ) : null}
-                          {person ? <PersonAvatar person={person} size={20} /> : null}
-                          <span className="truncate text-[13px] font-medium text-boardtree-text">{option.label}</span>
+                      <div key={option.id} className="group relative flex-none">
+                        <button
+                          type="button"
+                          // Alt (Option) + click excludes the value instead of picking it.
+                          onClick={(event) =>
+                            event.altKey
+                              ? toolbar.toggleQuickFilterExclusion(facet.id, option.id)
+                              : toolbar.toggleQuickFilterOption(facet.id, option.id)
+                          }
+                          title={is_excluded ? `Excluding ${option.label}` : "Click to filter, Alt+click to exclude"}
+                          className={`flex h-[34px] w-full items-center justify-between gap-2 rounded-[7px] border px-[11px] transition-colors ${
+                            is_excluded
+                              ? "border-[#e2445c] bg-[#e2445c]/10"
+                              : is_selected
+                                ? "border-boardtree-accent bg-boardtree-accent/10"
+                                : "border-boardtree-border-soft bg-boardtree-hover hover:border-boardtree-border hover:bg-boardtree-hover-strong"
+                          } ${count === 0 && !is_selected && !is_excluded ? "opacity-50" : ""}`}
+                        >
+                          <span className="flex min-w-0 items-center gap-2">
+                            {is_excluded ? (
+                              <span className="flex flex-none text-[#e2445c]">
+                                <MinusIcon size={11} />
+                              </span>
+                            ) : option.dot_color && !person ? (
+                              <span className="h-2 w-2 flex-none rounded-full" style={{ background: option.dot_color }} />
+                            ) : null}
+                            {person ? <PersonAvatar person={person} size={20} /> : null}
+                            <span
+                              className={`truncate text-[13px] font-medium ${
+                                is_excluded ? "text-boardtree-text-muted line-through" : "text-boardtree-text"
+                              }`}
+                            >
+                              {option.label}
+                            </span>
+                          </span>
+                          <span className="flex-none text-[12.5px] font-medium text-boardtree-text-faint group-hover:invisible">{count}</span>
+                        </button>
+                        {/* Hover actions, over the count: pick only this value, or exclude it. */}
+                        <span className="absolute right-1.5 top-1/2 hidden -translate-y-1/2 items-center gap-0.5 group-hover:flex">
+                          <button
+                            type="button"
+                            onClick={() => toolbar.selectOnlyQuickFilterOption(facet.id, option.id)}
+                            className="rounded px-1.5 py-0.5 text-[11.5px] font-semibold text-boardtree-accent hover:bg-boardtree-surface"
+                          >
+                            Only
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toolbar.toggleQuickFilterExclusion(facet.id, option.id)}
+                            aria-label={is_excluded ? `Stop excluding ${option.label}` : `Exclude ${option.label}`}
+                            title={is_excluded ? "Stop excluding" : "Exclude"}
+                            className={`flex h-5 w-5 items-center justify-center rounded hover:bg-boardtree-surface ${
+                              is_excluded ? "text-[#e2445c]" : "text-boardtree-text-faint hover:text-[#e2445c]"
+                            }`}
+                          >
+                            <MinusIcon size={11} />
+                          </button>
                         </span>
-                        <span className="flex-none text-[12.5px] font-medium text-boardtree-text-faint">{count}</span>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

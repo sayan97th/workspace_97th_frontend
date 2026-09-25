@@ -1,9 +1,10 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { ColorFillIcon, EditPencilIcon, ItemHeightIcon, PinIcon, RowHeightIcon } from "@/icons/board-icons";
+import { ColorFillIcon, DownloadIcon, EditPencilIcon, ItemHeightIcon, PinIcon, RowHeightIcon } from "@/icons/board-icons";
 import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import type { BoardRowHeight } from "../types";
-import type { BoardToolbarApi } from "./types";
+import type { BoardToolbarApi, BoardToolbarExportOptions } from "./types";
+import { exportVisibleRows, type BoardExportFormat } from "./exportBoardRows";
 import BoardPopover from "./BoardPopover";
 import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import PinColumnsControl from "./PinColumnsControl";
@@ -11,7 +12,13 @@ import ToolbarButton from "./ToolbarButton";
 
 export type OverflowControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  export_options?: BoardToolbarExportOptions;
 };
+
+const EXPORT_FORMATS: { id: BoardExportFormat; label: string }[] = [
+  { id: "xlsx", label: "Export to Excel" },
+  { id: "csv", label: "Export to CSV" },
+];
 
 /** Selected-row accent used by the "..." menu and its "Item height" submenu, matching the design's active-state blue. */
 const MENU_ACTIVE_BG = "#4f6bed";
@@ -23,7 +30,23 @@ const ROW_HEIGHT_OPTIONS: { id: BoardRowHeight; label: string; lines: 1 | 2 | 3 
   { id: "quad", label: "Extra large", lines: 4 },
 ];
 
-function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
+function OverflowControl<TRow>({ toolbar, export_options }: OverflowControlProps<TRow>) {
+  const [exporting_format, setExportingFormat] = useState<BoardExportFormat | null>(null);
+  const [export_error, setExportError] = useState<string | null>(null);
+
+  const runExport = async (export_format: BoardExportFormat) => {
+    if (!export_options?.is_ready || exporting_format) return;
+    setExportingFormat(export_format);
+    setExportError(null);
+    try {
+      await exportVisibleRows(toolbar, export_options.board_name, export_format);
+      toolbar.closePanel();
+    } catch {
+      setExportError("The export failed. Please try again.");
+    } finally {
+      setExportingFormat(null);
+    }
+  };
   const button_ref = useRef<HTMLButtonElement>(null);
   const height_row_ref = useRef<HTMLButtonElement>(null);
   const [is_height_sub_open, setIsHeightSubOpen] = useState(false);
@@ -43,8 +66,10 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
         is_open={is_menu_open || is_pin_open || is_color_open}
         has_selection={toolbar.pinned_column_ids.length > 0}
         onClick={() => {
+          if (!is_menu_open) export_options?.onPrepare();
           toolbar.togglePanel("overflow");
           setIsHeightSubOpen(false);
+          setExportError(null);
         }}
       />
       <BoardPopover anchor_el={button_ref.current} is_open={is_menu_open} onClose={toolbar.closePanel} width={236}>
@@ -102,6 +127,31 @@ function OverflowControl<TRow>({ toolbar }: OverflowControlProps<TRow>) {
               </span>
             )}
           </button>
+          {export_options && (
+            <>
+              <div className="my-1 h-px bg-boardtree-border-soft" />
+              <p className="px-2.5 pb-0.5 pt-1 text-[11.5px] font-semibold text-boardtree-text-faint">
+                {export_options.is_ready
+                  ? `Export ${toolbar.visible_row_count} visible ${toolbar.visible_row_count === 1 ? "item" : "items"}`
+                  : "Loading every item..."}
+              </p>
+              {EXPORT_FORMATS.map((export_format) => (
+                <button
+                  key={export_format.id}
+                  type="button"
+                  disabled={!export_options.is_ready || exporting_format !== null}
+                  onClick={() => void runExport(export_format.id)}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-[13.5px] text-boardtree-text hover:bg-boardtree-hover disabled:cursor-wait disabled:opacity-60"
+                >
+                  <span className="flex flex-none text-boardtree-text-muted">
+                    <DownloadIcon size={15} />
+                  </span>
+                  {exporting_format === export_format.id ? "Exporting..." : export_format.label}
+                </button>
+              ))}
+              {export_error && <p className="px-2.5 pb-1 text-[12px] text-[#e2445c]">{export_error}</p>}
+            </>
+          )}
           {/* Decorative, matching the design's disabled "Default item values" entry — same convention as BoardHeader's Integrate/Automate buttons. */}
           <button
             type="button"

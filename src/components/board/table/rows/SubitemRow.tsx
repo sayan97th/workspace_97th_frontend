@@ -10,6 +10,7 @@ import TreeBar from "./TreeBar";
 import TreeHook from "./TreeHook";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
+import { highlightSearchMatches } from "../searchHighlight";
 
 interface SubitemRowProps {
   sub: BoardTableNode;
@@ -154,7 +155,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               </span>
             ) : (
               <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
-                {sub.name}
+                {highlightSearchMatches(sub.name, state.search_query)}
               </span>
             )}
           </div>

@@ -1,5 +1,8 @@
 "use client";
 import React from "react";
+import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CloseIcon, PlusIcon } from "@/icons/board-icons";
 import FilterRuleRow from "./FilterRuleRow";
 import InlineFieldMenu from "./InlineFieldMenu";
@@ -50,6 +53,35 @@ function JoinPrefix({
   return <span className="pl-3 text-[13.5px] font-semibold text-boardtree-text-muted">{joinLabel(operator)}</span>;
 }
 
+/** A vertical drag and drop list of rules. Each level (top level, each group) reorders on its own. */
+function SortableRuleList({
+  rule_ids,
+  onMove,
+  children,
+}: {
+  rule_ids: string[];
+  onMove: (active_id: string, over_id: string) => void;
+  children: React.ReactNode;
+}) {
+  // A small drag threshold keeps a plain click on the handle from starting a drag.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id) onMove(String(active.id), String(over.id));
+  };
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={rule_ids} strategy={verticalListSortingStrategy}>
+        <div className="flex flex-col gap-2.5">{children}</div>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) {
   const top_level_count = toolbar.advanced_filter_rows.length + toolbar.advanced_filter_groups.length;
 
@@ -62,19 +94,24 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
       )}
 
       <div className="flex flex-col gap-2.5">
-        {toolbar.advanced_filter_rows.map((rule, index) => (
-          <FilterRuleRow
-            key={rule.id}
-            toolbar={toolbar}
-            rule={rule}
-            prefix={<JoinPrefix index={index} operator={toolbar.advanced_filter_operator} onChange={toolbar.setAdvancedFilterOperator} />}
-            onChange={(patch) => toolbar.updateAdvancedFilterRow(rule.id, patch)}
-            onRemove={() => toolbar.removeAdvancedFilterRow(rule.id)}
-          />
-        ))}
+        <SortableRuleList rule_ids={toolbar.advanced_filter_rows.map((rule) => rule.id)} onMove={toolbar.moveAdvancedFilterRow}>
+          {toolbar.advanced_filter_rows.map((rule, index) => (
+            <FilterRuleRow
+              key={rule.id}
+              toolbar={toolbar}
+              rule={rule}
+              prefix={<JoinPrefix index={index} operator={toolbar.advanced_filter_operator} onChange={toolbar.setAdvancedFilterOperator} />}
+              onChange={(patch) => toolbar.updateAdvancedFilterRow(rule.id, patch)}
+              onRemove={() => toolbar.removeAdvancedFilterRow(rule.id)}
+              onDuplicate={() => toolbar.duplicateAdvancedFilterRow(rule.id)}
+            />
+          ))}
+        </SortableRuleList>
 
         {toolbar.advanced_filter_groups.map((group, group_index) => (
           <div key={group.id} className="flex items-start gap-2.5">
+            {/* Lines the group's prefix up with the rules' own, which start after a drag handle. */}
+            <span className="w-[14px] flex-none" />
             <div className="flex w-[74px] flex-none items-center pt-3">
               <JoinPrefix
                 index={toolbar.advanced_filter_rows.length + group_index}
@@ -94,7 +131,10 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
                   <CloseIcon size={11} />
                 </button>
               </div>
-              <div className="flex flex-col gap-2.5">
+              <SortableRuleList
+                rule_ids={group.rules.map((rule) => rule.id)}
+                onMove={(active_id, over_id) => toolbar.moveAdvancedFilterGroupRule(group.id, active_id, over_id)}
+              >
                 {group.rules.map((rule, index) => (
                   <FilterRuleRow
                     key={rule.id}
@@ -109,9 +149,10 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
                     }
                     onChange={(patch) => toolbar.updateAdvancedFilterGroupRule(group.id, rule.id, patch)}
                     onRemove={() => toolbar.removeAdvancedFilterGroupRule(group.id, rule.id)}
+                    onDuplicate={() => toolbar.duplicateAdvancedFilterGroupRule(group.id, rule.id)}
                   />
                 ))}
-              </div>
+              </SortableRuleList>
               <button
                 type="button"
                 onClick={() => toolbar.addAdvancedFilterGroupRule(group.id)}

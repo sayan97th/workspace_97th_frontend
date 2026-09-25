@@ -48,7 +48,14 @@ const stripRule = (rule: BoardAdvancedFilterRow): Omit<BoardAdvancedFilterRow, "
   condition: rule.condition,
   value: rule.value ?? "",
   values: rule.values ?? [],
+  ...(rule.is_disabled ? { is_disabled: true } : {}),
 });
+
+/** Non-empty entries of a facet id map, sorted by facet id so equal maps serialize identically. */
+const compactSelections = (selections: Record<string, string[]> | undefined) =>
+  Object.entries(!selections || Array.isArray(selections) ? {} : selections)
+    .filter(([, ids]) => ids.length > 0)
+    .sort(([a], [b]) => a.localeCompare(b));
 
 /**
  * Builds the compact, id free state for a filter slice + sort + group by. Keys
@@ -65,11 +72,16 @@ const buildUrlState = (
   if (filter_state) {
     if (filter_state.search_query?.trim()) f.search_query = filter_state.search_query;
     if (filter_state.search_column_ids?.length) f.search_column_ids = filter_state.search_column_ids;
+    if (filter_state.search_include_subitems) f.search_include_subitems = true;
+    if (filter_state.search_include_updates) f.search_include_updates = true;
     if (filter_state.selected_person_ids?.length) f.selected_person_ids = filter_state.selected_person_ids;
-    const quick = Object.entries(Array.isArray(filter_state.quick_filter_selections) ? {} : filter_state.quick_filter_selections ?? {})
-      .filter(([, ids]) => ids.length > 0)
-      .sort(([a], [b]) => a.localeCompare(b));
+    if (filter_state.selected_team_ids?.length) f.selected_team_ids = filter_state.selected_team_ids;
+    if (filter_state.person_column_ids) f.person_column_ids = filter_state.person_column_ids;
+    const quick = compactSelections(filter_state.quick_filter_selections);
     if (quick.length) f.quick_filter_selections = Object.fromEntries(quick);
+    const exclusions = compactSelections(filter_state.quick_filter_exclusions);
+    if (exclusions.length) f.quick_filter_exclusions = Object.fromEntries(exclusions);
+    if (filter_state.include_subitems) f.include_subitems = true;
     if (filter_state.quick_filter_column_ids) f.quick_filter_column_ids = filter_state.quick_filter_column_ids;
     const rules = (filter_state.advanced_filter_rows ?? []).map(stripRule);
     if (rules.length) f.advanced_filter_rows = rules as BoardAdvancedFilterRow[];
@@ -141,6 +153,12 @@ export function useBoardFilterUrlState(config: UseBoardFilterUrlStateConfig): vo
       advanced_filter_groups: f.advanced_filter_groups ?? [],
       advanced_filter_operator: f.advanced_filter_operator ?? "and",
       quick_filter_column_ids: f.quick_filter_column_ids ?? null,
+      quick_filter_exclusions: f.quick_filter_exclusions ?? {},
+      include_subitems: f.include_subitems ?? false,
+      person_column_ids: f.person_column_ids ?? null,
+      selected_team_ids: f.selected_team_ids ?? [],
+      search_include_subitems: f.search_include_subitems ?? false,
+      search_include_updates: f.search_include_updates ?? false,
     });
     toolbar.applySortRules(pending_state.s ?? []);
     toolbar.setGroupByOptionId(pending_state.g ?? BOARD_DEFAULT_GROUP_BY_ID);

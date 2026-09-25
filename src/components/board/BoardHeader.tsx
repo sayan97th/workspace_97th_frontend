@@ -73,6 +73,8 @@ export type BoardHeaderProps = {
   options_menu?: Omit<BoardOptionsMenuProps, "anchor_el" | "is_open" | "onClose">;
   /** Face-pile of the other users currently viewing this board (see `PresenceAvatarStack`); hidden when omitted. */
   presence?: React.ReactNode;
+  /** Small status pill right after the title, e.g. how many items the active filters leave; hidden when omitted. */
+  title_badge?: React.ReactNode;
 };
 
 const action_button_class =
@@ -102,6 +104,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   automation_count = 0,
   options_menu,
   presence,
+  title_badge,
 }) => {
   const [is_info_open, setIsInfoOpen] = useState(false);
   const info_button_ref = useRef<HTMLButtonElement>(null);
@@ -160,6 +163,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       >
         <ChevronDownIcon size={13} className={is_info_open ? "rotate-180" : ""} />
       </button>
+      {title_badge}
       {info && (
         <InfoDropdown
           anchor_el={info_button_ref.current}

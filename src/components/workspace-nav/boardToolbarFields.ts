@@ -2,10 +2,14 @@ import { format, parseISO, startOfWeek } from "date-fns";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
+  BOARD_FILTER_CREATED_AT_FIELD_ID,
+  BOARD_FILTER_CREATED_BY_FIELD_ID,
   BOARD_FILTER_GROUP_FIELD_ID,
+  BOARD_FILTER_UPDATED_AT_FIELD_ID,
   COLUMN_KIND_SWATCH,
   type BoardFilterField,
   type BoardFilterFieldKind,
+  type BoardFilterFieldScope,
   type BoardGroupByOption,
   type BoardPersonOption,
   type BoardQuickFilterFacetOption,
@@ -123,6 +127,8 @@ const buildOptionLookup = (column: BoardColumnDto, tags: BoardTagDto[]): Map<str
 
 export type BoardToolbarFieldSources = {
   item_columns: BoardColumnDto[];
+  /** Subitem-scoped columns, offered as filter fields while "Filter subitems" is on. */
+  subitem_columns?: BoardColumnDto[];
   groups: BoardGroupDto[];
   tags: BoardTagDto[];
   persons: BoardPersonOption[];
@@ -134,7 +140,7 @@ export type BoardToolbarFieldSources = {
 
 /** Filterable fields in picker order: the item Name, the board's Group, then every filterable column. */
 export function buildBoardFilterFields(sources: BoardToolbarFieldSources): BoardFilterField<BoardItemDto>[] {
-  const { item_columns, groups, tags, persons, item_column_id, item_column_label, getColumnText } = sources;
+  const { item_columns, groups, persons, item_column_id, item_column_label } = sources;
   const person_options = persons.map((person) => ({ id: person.id, label: person.name, person_id: person.id }));
 
   const name_field: BoardFilterField<BoardItemDto> = {
@@ -155,51 +161,113 @@ export function buildBoardFilterFields(sources: BoardToolbarFieldSources): Board
     getOptionIds: (row) => [String(row.group_id)],
   };
 
-  const column_fields = item_columns.flatMap((column): BoardFilterField<BoardItemDto>[] => {
-    const kind = FILTER_KIND_BY_COLUMN_TYPE[column.type];
-    if (!kind) return [];
-    const column_id = String(column.id);
-    const base = {
-      id: column_id,
-      label: column.label,
-      kind,
-      swatch: COLUMN_KIND_SWATCH[column.type],
-      getText: (row: BoardItemDto) => getColumnText(row, column_id),
-    };
-    switch (kind) {
-      case "option": {
-        const lookup = buildOptionLookup(column, tags);
-        return [
-          {
-            ...base,
-            options: Array.from(lookup.values()).map((option) => ({ id: option.id, label: option.label, dot_color: option.color })),
-            getOptionIds: (row) => getValueIds(column, row.values[column_id]),
-          },
-        ];
-      }
-      case "people":
-        return [{ ...base, options: person_options, getOptionIds: (row) => getValueIds(column, row.values[column_id]) }];
-      case "number":
-        return [
-          {
-            ...base,
-            options: column.type === "rating" ? RATING_OPTIONS : undefined,
-            // Auto numbers are unique per item, so a Quick filters facet of them would be noise.
-            is_quick_filterable: column.type !== "auto_number",
-            getNumber: (row) => getValueNumber(column, row.values[column_id]),
-          },
-        ];
-      case "date":
-        return [{ ...base, getDateRange: (row) => getValueDateRange(column, row.values[column_id]) }];
-      case "checkbox":
-        return [{ ...base, getChecked: (row) => isValueChecked(row.values[column_id]) }];
-      case "text":
-      default:
-        return [base];
-    }
-  });
+  const column_fields = item_columns.flatMap((column) => buildColumnField(column, sources, "item"));
+  const subitem_fields = (sources.subitem_columns ?? []).flatMap((column) => buildColumnField(column, sources, "subitem"));
 
-  return [name_field, group_field, ...column_fields];
+  return [name_field, group_field, ...column_fields, ...buildItemDetailFields(person_options), ...subitem_fields];
+}
+
+/** The filter field for one column, or none when its type isn't filterable. `subitem` fields read a subitem's own value. */
+function buildColumnField(
+  column: BoardColumnDto,
+  sources: BoardToolbarFieldSources,
+  scope: BoardFilterFieldScope
+): BoardFilterField<BoardItemDto>[] {
+  const { tags, persons, getColumnText } = sources;
+  const person_options = persons.map((person) => ({ id: person.id, label: person.name, person_id: person.id }));
+  const kind = FILTER_KIND_BY_COLUMN_TYPE[column.type];
+  if (!kind) return [];
+  const column_id = String(column.id);
+  const base = {
+    id: column_id,
+    label: column.label,
+    kind,
+    scope,
+    swatch: COLUMN_KIND_SWATCH[column.type],
+    getText: (row: BoardItemDto) => getColumnText(row, column_id),
+  };
+  switch (kind) {
+    case "option": {
+      const lookup = buildOptionLookup(column, tags);
+      return [
+        {
+          ...base,
+          options: Array.from(lookup.values()).map((option) => ({ id: option.id, label: option.label, dot_color: option.color })),
+          getOptionIds: (row) => getValueIds(column, row.values[column_id]),
+        },
+      ];
+    }
+    case "people":
+      return [{ ...base, options: person_options, getOptionIds: (row) => getValueIds(column, row.values[column_id]) }];
+    case "number":
+      return [
+        {
+          ...base,
+          options: column.type === "rating" ? RATING_OPTIONS : undefined,
+          // Auto numbers are unique per item, so a Quick filters facet of them would be noise.
+          is_quick_filterable: column.type !== "auto_number",
+          getNumber: (row) => getValueNumber(column, row.values[column_id]),
+        },
+      ];
+    case "date":
+      return [{ ...base, getDateRange: (row) => getValueDateRange(column, row.values[column_id]) }];
+    case "checkbox":
+      return [{ ...base, getChecked: (row) => isValueChecked(row.values[column_id]) }];
+    case "text":
+    default:
+      return [base];
+  }
+}
+
+/** A timestamp as the day the viewer sees it, in their own time zone. */
+export const toLocalDay = (timestamp: string | null | undefined): string | null => {
+  if (!timestamp) return null;
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime()) ? null : format(date, "yyyy-MM-dd");
+};
+
+const ITEM_DETAILS_SECTION = "Item details";
+
+/** Created by, Creation date and Last updated: filled from the item itself, so every board has them without a column. */
+function buildItemDetailFields(person_options: BoardQuickFilterFacetOption[]): BoardFilterField<BoardItemDto>[] {
+  const toDayRange = (timestamp: string | null | undefined) => {
+    const day = toLocalDay(timestamp);
+    return day ? { start: day, end: day } : null;
+  };
+  return [
+    {
+      id: BOARD_FILTER_CREATED_BY_FIELD_ID,
+      label: "Created by",
+      kind: "people",
+      section: ITEM_DETAILS_SECTION,
+      swatch: COLUMN_KIND_SWATCH.people,
+      options: person_options,
+      getText: () => "",
+      getOptionIds: (row) => (row.created_by_id != null ? [String(row.created_by_id)] : []),
+      // Most items share a handful of authors, which makes a useful facet.
+      is_quick_filterable: true,
+    },
+    {
+      id: BOARD_FILTER_CREATED_AT_FIELD_ID,
+      label: "Creation date",
+      kind: "date",
+      section: ITEM_DETAILS_SECTION,
+      swatch: COLUMN_KIND_SWATCH.date,
+      getText: (row) => toLocalDay(row.created_at) ?? "",
+      getDateRange: (row) => toDayRange(row.created_at),
+      is_quick_filterable: false,
+    },
+    {
+      id: BOARD_FILTER_UPDATED_AT_FIELD_ID,
+      label: "Last updated",
+      kind: "date",
+      section: ITEM_DETAILS_SECTION,
+      swatch: COLUMN_KIND_SWATCH.date,
+      getText: (row) => toLocalDay(row.last_updated_at) ?? "",
+      getDateRange: (row) => toDayRange(row.last_updated_at),
+      is_quick_filterable: false,
+    },
+  ];
 }
 
 /**
@@ -257,6 +325,24 @@ export function buildBoardSortOptions(sources: BoardToolbarFieldSources): BoardS
       };
       return { id: column_id, label: column.label, swatch: COLUMN_KIND_SWATCH[column.type], getValue };
     }),
+    {
+      id: BOARD_FILTER_CREATED_AT_FIELD_ID,
+      label: "Creation date",
+      swatch: COLUMN_KIND_SWATCH.date,
+      getValue: (row) => row.created_at ?? null,
+    },
+    {
+      id: BOARD_FILTER_UPDATED_AT_FIELD_ID,
+      label: "Last updated",
+      swatch: COLUMN_KIND_SWATCH.date,
+      getValue: (row) => row.last_updated_at ?? null,
+    },
+    {
+      id: BOARD_FILTER_CREATED_BY_FIELD_ID,
+      label: "Created by",
+      swatch: COLUMN_KIND_SWATCH.people,
+      getValue: (row) => (row.created_by_id != null ? people_names_by_id[String(row.created_by_id)] ?? null : null),
+    },
   ];
 }
 
@@ -377,6 +463,16 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
         break;
     }
   }
+
+  options.push({
+    id: BOARD_FILTER_CREATED_BY_FIELD_ID,
+    label: "By Created by",
+    swatch: COLUMN_KIND_SWATCH.people,
+    getGroupKey: (row) => (row.created_by_id != null ? String(row.created_by_id) : BOARD_EMPTY_GROUP_KEY),
+    getGroupLabel: (key) => (key === BOARD_EMPTY_GROUP_KEY ? "Unknown author" : people_names_by_id[key] ?? key),
+    getGroupColor: () => "#a358df",
+    getGroupSortValue: (key) => (people_names_by_id[key] ?? key).toLowerCase(),
+  });
 
   return options;
 }

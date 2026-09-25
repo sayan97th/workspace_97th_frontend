@@ -11,6 +11,9 @@ import type {
   BoardTagDto,
   BoardViewDto,
   BoardViewsIndexDto,
+  BoardViewPersonalStateDto,
+  BoardSavedFilterDto,
+  BoardFilterState,
   CreateBoardColumnPayload,
   CreateBoardGroupPayload,
   CreateBoardItemPayload,
@@ -235,6 +238,7 @@ export const boardContentService = {
     if (filter) {
       params.set("filter_state", JSON.stringify(filter.filter_state));
       params.set("today", filter.today);
+      params.set("timezone", filter.timezone);
     }
     const query = params.toString() ? `?${params.toString()}` : "";
     const response = await apiClient.get<{ data: BoardItemDto[] }>(`/api/boards/${board_id}/items${query}`);
@@ -409,10 +413,66 @@ export const boardContentService = {
 
   /** GET /api/boards/{board_id}/views — the board's tabs + the viewer's personal tab order, if saved. */
   async getViews(board_id: number): Promise<BoardViewsIndexDto> {
-    const response = await apiClient.get<{ data: BoardViewDto[]; personal_order: number[] | null }>(
-      `/api/boards/${board_id}/views`
+    const response = await apiClient.get<{
+      data: BoardViewDto[];
+      personal_order: number[] | null;
+      personal_states?: Record<string, BoardViewPersonalStateDto> | BoardViewPersonalStateDto[];
+    }>(`/api/boards/${board_id}/views`);
+    // An empty PHP map json-encodes as a list.
+    const personal_states = !response.personal_states || Array.isArray(response.personal_states) ? {} : response.personal_states;
+    return { views: response.data, personal_order: response.personal_order, personal_states };
+  },
+
+  /** PUT /api/boards/{board_id}/views/{view_id}/personal-state, remembers the viewer's unsaved toolbar changes to a view. */
+  async savePersonalViewState(board_id: number, view_id: number, payload: BoardViewPersonalStateDto): Promise<BoardViewPersonalStateDto> {
+    const response = await apiClient.put<{ personal_state: BoardViewPersonalStateDto }>(
+      `/api/boards/${board_id}/views/${view_id}/personal-state`,
+      payload
     );
-    return { views: response.data, personal_order: response.personal_order };
+    return response.personal_state;
+  },
+
+  /** DELETE /api/boards/{board_id}/views/{view_id}/personal-state, forgets them, so the view shows as saved again. */
+  async deletePersonalViewState(board_id: number, view_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/views/${view_id}/personal-state`);
+  },
+
+  /** GET /api/boards/{board_id}/saved-filters, the viewer's own named filters for the board. */
+  async getSavedFilters(board_id: number): Promise<BoardSavedFilterDto[]> {
+    const response = await apiClient.get<{ data: BoardSavedFilterDto[] }>(`/api/boards/${board_id}/saved-filters`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/saved-filters */
+  async createSavedFilter(board_id: number, payload: { name: string; filter_state: BoardFilterState }): Promise<BoardSavedFilterDto> {
+    const response = await apiClient.post<{ saved_filter: BoardSavedFilterDto }>(`/api/boards/${board_id}/saved-filters`, payload);
+    return response.saved_filter;
+  },
+
+  /** PATCH /api/boards/{board_id}/saved-filters/{saved_filter_id} */
+  async updateSavedFilter(board_id: number, saved_filter_id: number, payload: { name: string }): Promise<BoardSavedFilterDto> {
+    const response = await apiClient.patch<{ saved_filter: BoardSavedFilterDto }>(
+      `/api/boards/${board_id}/saved-filters/${saved_filter_id}`,
+      payload
+    );
+    return response.saved_filter;
+  },
+
+  /** DELETE /api/boards/{board_id}/saved-filters/{saved_filter_id} */
+  async deleteSavedFilter(board_id: number, saved_filter_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/saved-filters/${saved_filter_id}`);
+  },
+
+  /**
+   * GET /api/boards/{board_id}/items/update-matches, the ids of the root items
+   * whose updates or replies (on the item or one of its subitems) contain the
+   * query. Powers the Search box's "Updates and replies" option.
+   */
+  async getUpdateMatchItemIds(board_id: number, query: string, view_id?: number | null): Promise<number[]> {
+    const params = new URLSearchParams({ q: query });
+    if (view_id) params.set("view_id", String(view_id));
+    const response = await apiClient.get<{ data: number[] }>(`/api/boards/${board_id}/items/update-matches?${params.toString()}`);
+    return response.data;
   },
 
   /** POST /api/boards/{board_id}/views — add a new tab. */
