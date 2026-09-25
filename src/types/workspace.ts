@@ -96,7 +96,21 @@ export type BoardDetail = WorkspaceNavNode & {
   can_manage: boolean;
   /** Whether the current user may edit this board's content (cells, rows, groups, columns) rather than just browse it — false for a workspace `viewer` (a board-invited guest). Drives the Table view's read-only mode. */
   can_edit: boolean;
+  /** The board permission mode members work under, chosen by a board owner. */
+  edit_permission: BoardEditPermission;
+  /** What `edit_permission` resolves to for the current user: `full` (content and structure), `content`, `assigned` (only items they are in a People column of) or `none`. */
+  permission_level: BoardPermissionLevel;
+  /** Whether the current user may change columns, groups and views. */
+  can_edit_structure: boolean;
+  /** Whether the current user is a board owner (never limited by `edit_permission`, manages column permissions and share links). */
+  is_owner: boolean;
 };
+
+/** monday.com's board permission modes, see `App\Enums\BoardEditPermission` on the API. */
+export type BoardEditPermission = "everything" | "content" | "assigned_items" | "view_only";
+
+/** The edit level a board permission mode resolves to for one user, see `BoardEditGate` on the API. */
+export type BoardPermissionLevel = "full" | "content" | "assigned" | "none";
 
 export type Workspace = {
   id: number;

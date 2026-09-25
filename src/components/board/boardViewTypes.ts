@@ -114,7 +114,7 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Form",
     description: "Collect submissions into this board",
     Icon: FormViewIcon,
-    is_available: false,
+    is_available: true,
   },
   {
     kind: "dashboard",

@@ -46,6 +46,8 @@ export type BoardHeaderInfo = {
 export type BoardHeaderProps = {
   title: string;
   is_favorite?: boolean;
+  /** Stars or unstars the board in the current user's Favorites. The star is display only when omitted. */
+  onToggleFavorite?: () => void;
   invite_count?: number;
   /** Id of the board whose activity log the avatar button opens; the button is hidden when omitted. */
   board_id?: number;
@@ -86,6 +88,7 @@ const icon_button_class =
 const BoardHeader: React.FC<BoardHeaderProps> = ({
   title,
   is_favorite = false,
+  onToggleFavorite,
   invite_count = 0,
   board_id,
   current_user,
@@ -128,10 +131,23 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
       <span className="text-[23px] font-extrabold tracking-[-0.015em] text-shell-text">
         {title}
       </span>
-      {is_favorite && (
-        <span className="flex flex-none text-sunset-200">
-          <StarIcon filled size={19} />
-        </span>
+      {onToggleFavorite ? (
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          aria-pressed={is_favorite}
+          aria-label={is_favorite ? "Remove from favorites" : "Add to favorites"}
+          title={is_favorite ? "Remove from favorites" : "Add to favorites"}
+          className={`flex flex-none rounded-md p-0.5 transition-colors hover:bg-shell-hover ${is_favorite ? "text-sunset-200" : "text-shell-text-faint hover:text-shell-text-muted"}`}
+        >
+          <StarIcon filled={is_favorite} size={19} />
+        </button>
+      ) : (
+        is_favorite && (
+          <span className="flex flex-none text-sunset-200">
+            <StarIcon filled size={19} />
+          </span>
+        )
       )}
       <button
         ref={info_button_ref}

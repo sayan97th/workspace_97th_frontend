@@ -132,6 +132,8 @@ export interface BoardTableProps {
   ) => Promise<string | void>;
   /** Column menu's "Filter"/"Group by" rows — bridges to the board's toolbar (a sibling of `BoardTable`, not a descendant), which owns Filter/Sort/GroupBy state. Omitted, those rows still render but are no-ops. */
   onRequestColumnFilter?: (column_id: string) => void;
+  /** Opens the column permissions dialog for a column, only passed for board owners. */
+  onRequestColumnPermissions?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
   /**
    * Main-table column-header sort arrow — bridges into the same toolbar
@@ -187,6 +189,7 @@ export default function BoardTable({
   onDuplicateColumnToBoard,
   onAddColumnRight,
   onRequestColumnFilter,
+  onRequestColumnPermissions,
   onRequestGroupByColumn,
   onRequestColumnSort,
   active_sort_column_id = null,
@@ -461,13 +464,14 @@ export default function BoardTable({
           state={state}
           actions={actions}
           onRequestColumnFilter={onRequestColumnFilter}
+          onRequestColumnPermissions={onRequestColumnPermissions}
           onRequestGroupByColumn={onRequestGroupByColumn}
           onRequestColumnSort={onRequestColumnSort}
           active_sort_column_id={active_sort_column_id}
           active_sort_direction={active_sort_direction}
         />
       ))}
-      {!state.read_only && (
+      {!state.read_only && state.can_edit_structure && state.can_create_items && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); actions.addGroup(); }}

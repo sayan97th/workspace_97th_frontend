@@ -53,6 +53,10 @@ interface ColumnHeaderCellProps {
   onEditConnectBoard?: () => void;
   onRequestFilter?: () => void;
   onRequestGroupBy?: () => void;
+  /** See `ColumnMenu`'s `onRequestPermissions`. */
+  onRequestPermissions?: () => void;
+  /** Shows a lock next to the title, see `ColumnDef.is_restricted`. */
+  is_restricted?: boolean;
   onCollapseAll: () => void;
   onDuplicate: () => void;
   /** Undefined for the item-title/sub-title virtual columns, which have no real column to copy onto another board. */
@@ -76,7 +80,7 @@ export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
-  onRequestFilter, onRequestGroupBy, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
+  onRequestFilter, onRequestGroupBy, onRequestPermissions, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -154,6 +158,11 @@ export default function ColumnHeaderCell({
           {title}
         </button>
       )}
+      {is_restricted && (
+        <span className="flex flex-none text-boardtree-text-faint" title="This column has restricted permissions" aria-label="Restricted column">
+          <svg viewBox="0 0 16 16" width="11" height="11"><rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M5.4 7 V5.2 a2.6 2.6 0 0 1 5.2 0 V7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+        </span>
+      )}
       <button
         type="button"
         onClick={onOpenMenu}
@@ -185,6 +194,7 @@ export default function ColumnHeaderCell({
           onChangeType={onChangeType ?? (() => {})}
           onDelete={onDelete}
           onClose={onCloseMenu}
+          onRequestPermissions={onRequestPermissions}
         />
       )}
       {((column && onUpdateSettings) || (resizable_width !== undefined && onResizeEnd)) && (

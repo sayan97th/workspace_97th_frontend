@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import WorkspaceHomeRedirect from "./_components/WorkspaceHomeRedirect";
+import HomeView from "@/components/personal/HomeView";
 
 export const metadata: Metadata = {
-  title: "Workspace home",
-  description: "Home for Workspace 97th",
+  title: "Home",
+  description: "Recently visited boards, your work and notifications",
 };
 
 export default function WorkspaceHomePage() {
-  return <WorkspaceHomeRedirect />;
+  return <HomeView />;
 }

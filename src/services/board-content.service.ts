@@ -21,6 +21,7 @@ import type {
   ReorderBoardItemsPayload,
   SaveBoardViewPayload,
   UpdateBoardColumnPayload,
+  UpdateBoardColumnPermissionsPayload,
   UpdateBoardGroupPayload,
   UpdateBoardItemParentPayload,
   UpdateBoardItemPayload,
@@ -53,6 +54,15 @@ export const boardContentService = {
   async updateColumn(board_id: number, column_id: number, payload: UpdateBoardColumnPayload): Promise<BoardColumnDto> {
     const response = await apiClient.patch<{ column: BoardColumnDto }>(
       `/api/boards/${board_id}/columns/${column_id}`,
+      payload
+    );
+    return response.column;
+  },
+
+  /** PATCH /api/boards/{id}/columns/{column_id}/permissions, board owners only. */
+  async updateColumnPermissions(board_id: number, column_id: number, payload: UpdateBoardColumnPermissionsPayload): Promise<BoardColumnDto> {
+    const response = await apiClient.patch<{ column: BoardColumnDto }>(
+      `/api/boards/${board_id}/columns/${column_id}/permissions`,
       payload
     );
     return response.column;

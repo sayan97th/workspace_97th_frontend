@@ -8,6 +8,7 @@ import {
   BoardCalendar,
   BoardChartView,
   BoardComingSoonView,
+  BoardFormView,
   BoardDiscussionDrawer,
   BoardDocView,
   BoardFileGalleryView,
@@ -84,6 +85,7 @@ import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
 import {
   findItemInTree,
   insertItemBelowInTree,
@@ -105,6 +107,7 @@ import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
+import { personalService } from "@/services/personal.service";
 import { workspaceService } from "@/services/workspace.service";
 import type {
   BoardCellFile,
@@ -123,7 +126,7 @@ import type {
   BoardViewDto,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardDetail, BoardType, WorkspaceMember } from "@/types/workspace";
+import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 
 export type WorkspaceViewProps = {
@@ -191,6 +194,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     title: column.label,
     kind,
     width: column.width,
+    is_restricted: column.view_restriction != null || column.edit_restriction != null,
     options: toTableOptions(column),
     // Only a people column's picker ever reads this, but setting it
     // regardless of `type` is harmless and matches `options` above.
@@ -677,6 +681,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `handleDeleteBoard`. ──
   const [board_label, setBoardLabel] = useState(node.label);
   const [is_board_archived, setIsBoardArchived] = useState(node.is_archived);
+  // Board permissions: only the mode shown in the Permissions dialog changes
+  // locally, the owner changing it keeps full access either way.
+  const [board_edit_permission, setBoardEditPermission] = useState(node.edit_permission ?? "everything");
+  const [is_board_favorite, setIsBoardFavorite] = useState(node.is_favorite);
+
+  const handleToggleFavorite = async () => {
+    const next_value = !is_board_favorite;
+    setIsBoardFavorite(next_value);
+    try {
+      await personalService.setFavorite(board_id, next_value);
+    } catch {
+      setIsBoardFavorite(!next_value);
+    }
+  };
+
+  const handleEditPermissionChange = async (edit_permission: BoardEditPermission) => {
+    const updated = await boardOptionsService.updateBoardPermission(board_id, edit_permission);
+    setBoardEditPermission(updated.edit_permission);
+  };
 
   const handleRenameBoard = async (label: string) => {
     await workspaceService.updateNavItem(node.workspace.slug, board_id, { label });
@@ -705,6 +728,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const [tags, setTags] = useState(initial_tags);
   const [columns, setColumns] = useState(initial_columns);
+  // Column menu's "Column permissions" (board owners only).
+  const [permissions_column_id, setPermissionsColumnId] = useState<number | null>(null);
   const [groups, setGroups] = useState(initial_groups);
   // The group whose "Delete group" is waiting on the confirmation dialog.
   const [group_pending_delete, setGroupPendingDelete] = useState<BoardGroupDto | null>(null);
@@ -2356,6 +2381,44 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setGroups((current) => current.filter((group) => group.id !== deleted_id));
   };
 
+  // ── Board and column permissions (see `BoardEditGate` and
+  // `ColumnPermissionService` server-side). The server enforces both, these
+  // callbacks only keep the grid from offering edits that would be refused.
+  // They read through refs so the table's action guards stay stable while
+  // rows and columns change underneath them.
+  const permission_items_ref = useRef(items);
+  permission_items_ref.current = items;
+  const permission_columns_ref = useRef(columns_by_id);
+  permission_columns_ref.current = columns_by_id;
+  const is_assigned_only = node.permission_level === "assigned";
+
+  const canEditTableNode = useCallback(
+    (node_id: string) => {
+      const current_user_id = user ? Number(user.id) : null;
+      if (current_user_id === null) return false;
+
+      const isAssigned = (item: BoardItemDto | undefined) =>
+        !!item &&
+        Object.entries(item.values).some(([column_id, value]) => {
+          const column = permission_columns_ref.current[column_id];
+          return column?.type === "people" && Array.isArray(value) && value.map(Number).includes(current_user_id);
+        });
+
+      for (const item of permission_items_ref.current) {
+        if (String(item.id) === node_id) return isAssigned(item);
+        const child = item.children?.find((candidate) => String(candidate.id) === node_id);
+        if (child) return isAssigned(child) || isAssigned(item);
+      }
+      return false;
+    },
+    [user]
+  );
+
+  const canEditTableColumn = useCallback(
+    (column_id: string) => permission_columns_ref.current[column_id]?.can_edit_values ?? true,
+    []
+  );
+
   const table_config: UseBoardTableConfig = useMemo(
     () => ({
       initial_groups: table_groups,
@@ -2404,6 +2467,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // A workspace `viewer` (e.g. a board-invited guest) can open and
       // browse the table but never edit it — see `BoardEditGate` server-side.
       read_only: !node.can_edit,
+      can_edit_structure: node.can_edit_structure ?? true,
+      can_create_items: !is_assigned_only,
+      canEditNode: is_assigned_only ? canEditTableNode : undefined,
+      canEditColumn: canEditTableColumn,
       current_user_id: user ? String(user.id) : undefined,
       onUploadCellFiles: (node_id, column_id, files) =>
         boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
@@ -2540,6 +2607,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       active_search_match_grid,
       toolbar.search_query,
       node.can_edit,
+      node.can_edit_structure,
+      is_assigned_only,
+      canEditTableNode,
+      canEditTableColumn,
       table_pinned_count,
       user,
       requestGroupItems,
@@ -3233,7 +3304,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     <BoardShell
       header={{
         title: board_label,
-        is_favorite: node.is_favorite,
+        is_favorite: is_board_favorite,
+        onToggleFavorite: () => void handleToggleFavorite(),
         invite_count,
         board_id,
         current_user,
@@ -3252,6 +3324,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           is_archived: is_board_archived,
           can_manage: node.can_manage,
           view_id: view_tabs.active_view_id,
+          view_label: view_tabs.active_view?.label ?? null,
+          view_type: view_tabs.active_view?.view_type ?? null,
+          edit_permission: board_edit_permission,
+          is_owner: node.is_owner ?? node.can_manage,
+          onEditPermissionChange: handleEditPermissionChange,
           access,
           onAccessChange,
           onBoardUpdatesClick: discussion_drawer.open,
@@ -3270,13 +3347,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         tabs: view_tabs.tabs,
         active_view_id: view_tabs.active_view_id,
         onSelectView: view_tabs.selectView,
-        onAddView: handleAddView,
+        // Adding, renaming, deleting and duplicating views changes the
+        // board's structure, so those are only offered with structure access.
+        onAddView: node.can_edit_structure ? handleAddView : undefined,
         view_type_options: BOARD_VIEW_TYPES,
-        onRenameView: handleRenameView,
+        onRenameView: node.can_edit_structure ? handleRenameView : undefined,
         onChangeEmoji: handleChangeViewEmoji,
-        onDeleteView: handleDeleteView,
+        onDeleteView: node.can_edit_structure ? handleDeleteView : undefined,
         onPinView: handlePinView,
-        onDuplicateView: handleDuplicateView,
+        onDuplicateView: node.can_edit_structure ? handleDuplicateView : undefined,
         onLockView: handleLockView,
         getViewUrl: (tab) => (tab.id === view_tabs.tabs[0]?.id ? `/boards/${board_id}` : `/boards/${board_id}/views/${tab.id}`),
         onReorderPersonalTabs: handleReorderPersonalTabs,
@@ -3286,7 +3365,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         // search, filter or sort — the item-grid toolbar would be pure noise
         // above any of them (Files Gallery and Chart render their own
         // dedicated toolbar/config panel instead).
-        active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" ? undefined : (
+        active_view_type === "doc" || active_view_type === "file_gallery" || active_view_type === "chart" || active_view_type === "form" ? undefined : (
           <BoardToolbar toolbar={toolbar} onNewItem={handleNewItemAtTop} />
         )
       }
@@ -3350,6 +3429,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onDuplicateColumn={handleDuplicateTableColumn}
           onAddColumnRight={handleAddColumnRight}
           onRequestColumnFilter={handleRequestColumnFilter}
+          onRequestColumnPermissions={node.is_owner ? (column_id) => setPermissionsColumnId(Number(column_id)) : undefined}
           onRequestGroupByColumn={handleRequestGroupByColumn}
           onRequestColumnSort={handleRequestColumnSort}
           active_sort_column_id={active_sort_column_id}
@@ -3485,6 +3565,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardFileGalleryView board_id={board_id} view_id={active_doc_view.id} />
       ) : active_view_type === "chart" && view_tabs.active_view_id != null ? (
         <BoardChartView board_id={board_id} view_id={view_tabs.active_view_id} />
+      ) : active_view_type === "form" && view_tabs.active_view_id != null ? (
+        <BoardFormView board_id={board_id} view_id={view_tabs.active_view_id} can_edit={node.can_edit_structure ?? node.can_edit} />
       ) : (
         <BoardComingSoonView view_type={active_view_type} />
       )}
@@ -3642,6 +3724,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onToggle={handleToggleAutomation}
         onDelete={handleDeleteAutomation}
       />
+      <ColumnPermissionsModal
+        is_open={permissions_column_id !== null}
+        onClose={() => setPermissionsColumnId(null)}
+        board_id={board_id}
+        column={columns.find((column) => column.id === permissions_column_id) ?? null}
+        people={workspace_members}
+        onSave={async (payload) => {
+          if (permissions_column_id === null) return;
+          const updated = await boardContentService.updateColumnPermissions(board_id, permissions_column_id, payload);
+          setColumns((current) => current.map((column) => (column.id === updated.id ? updated : column)));
+        }}
+      />
+
       <ConfirmActionModal
         is_open={group_pending_delete !== null}
         variant="danger"

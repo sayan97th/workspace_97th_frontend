@@ -82,6 +82,8 @@ export interface ColumnDef {
   title: string;
   kind: ColumnKind;
   width: number;
+  /** Column permissions: true when viewing or editing this column is limited to some people, shows a lock next to its title. */
+  is_restricted?: boolean;
   align_left?: boolean;
   /**
    * Per-column option palette for the status/label/dropdown/tags kinds.

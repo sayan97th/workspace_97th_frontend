@@ -416,6 +416,19 @@ export interface UseBoardTableConfig {
    * otherwise do nothing when clicked.
    */
   read_only?: boolean;
+  /**
+   * Board permissions: false when the viewer may edit items but not the
+   * board's structure ("Edit content" or "Assigned items only", see
+   * `BoardEditGate` server-side). Column and group actions become no-ops,
+   * see `STRUCTURE_ACTIONS`. Defaults to true.
+   */
+  can_edit_structure?: boolean;
+  /** Board permissions: false when the viewer may not add new items ("Assigned items only"). Defaults to true. */
+  can_create_items?: boolean;
+  /** Board permissions ("Assigned items only"): whether the viewer may edit this row. Every row is editable when omitted. */
+  canEditNode?: (node_id: string) => boolean;
+  /** Column permissions: whether the viewer may edit this column's cells. Every column is editable when omitted. */
+  canEditColumn?: (column_id: string) => boolean;
 }
 
 export interface BoardTableState {
@@ -494,6 +507,10 @@ export interface BoardTableState {
   search_query: string;
   /** See `UseBoardTableConfig.read_only`'s own doc comment. */
   read_only: boolean;
+  /** See `UseBoardTableConfig.can_edit_structure`. Hides the "Add new group" button when false. */
+  can_edit_structure: boolean;
+  /** See `UseBoardTableConfig.can_create_items`. Hides the "Add item" rows when false. */
+  can_create_items: boolean;
   /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
   /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
@@ -575,6 +592,8 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     active_search_match: config.active_search_match ?? null,
     search_query: config.search_query ?? "",
     read_only: config.read_only ?? false,
+    can_edit_structure: config.can_edit_structure ?? true,
+    can_create_items: config.can_create_items ?? true,
     active_cell: null,
     clipboard_cell: null,
     fill_drag: null,
@@ -702,6 +721,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     setState((s) => ({ ...s, read_only: config.read_only ?? false }));
   }, [config.read_only]);
+
+  useEffect(() => {
+    setState((s) => ({ ...s, can_edit_structure: config.can_edit_structure ?? true, can_create_items: config.can_create_items ?? true }));
+  }, [config.can_edit_structure, config.can_create_items]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key
@@ -2267,14 +2290,80 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
 
+  /**
+   * Actions that change the board's structure (groups, columns, column
+   * settings and labels). No-ops when `config.can_edit_structure` is false.
+   */
+  const STRUCTURE_ACTIONS: (keyof typeof actions)[] = [
+    "addGroup", "duplicateGroup", "moveGroupByKey", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
+    "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
+    "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
+    "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
+    "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "renameColumnOption",
+    "recolorColumnOption", "deleteColumnOption", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
+    "updateColumnLinkedBoard", "updateColumnMirror",
+  ];
+
+  /** Row actions whose first argument is the row id, checked against `config.canEditNode`. */
+  const NODE_ACTIONS = [
+    "startEditName", "deleteNode", "createBelow", "duplicateNode", "toggleNodePriority", "setItemRecurrence",
+    "clearItemRecurrence", "moveItemToGroup", "moveSubToItem", "archiveNode", "convertSubToItem", "convertItemToSub",
+    "addSubitem", "onDragStart",
+  ] as const;
+
   const guarded_actions = useMemo(() => {
-    if (!config.read_only) return actions;
     const noop = () => {};
-    return Object.fromEntries(
-      Object.entries(actions).map(([key, fn]) => [key, READ_ONLY_SAFE_ACTIONS.has(key as keyof typeof actions) ? fn : noop])
-    ) as typeof actions;
+
+    if (config.read_only) {
+      return Object.fromEntries(
+        Object.entries(actions).map(([key, fn]) => [key, READ_ONLY_SAFE_ACTIONS.has(key as keyof typeof actions) ? fn : noop])
+      ) as typeof actions;
+    }
+
+    const can_edit_structure = config.can_edit_structure ?? true;
+    const can_create_items = config.can_create_items ?? true;
+    const canEditNode = config.canEditNode;
+    const canEditColumn = config.canEditColumn;
+
+    if (can_edit_structure && can_create_items && !canEditNode && !canEditColumn) return actions;
+
+    const isCellEditable = (node_id: string, column_id: string) =>
+      (canEditNode?.(node_id) ?? true) && (canEditColumn?.(column_id) ?? true);
+
+    const guarded = { ...actions } as Record<string, unknown>;
+    const wrap = <K extends keyof typeof actions>(key: K, isAllowed: (...args: Parameters<(typeof actions)[K]>) => boolean) => {
+      const original = actions[key] as (...args: Parameters<(typeof actions)[K]>) => unknown;
+      guarded[key] = (...args: Parameters<(typeof actions)[K]>) => (isAllowed(...args) ? original(...args) : undefined);
+    };
+
+    if (!can_edit_structure) {
+      for (const key of STRUCTURE_ACTIONS) guarded[key] = noop;
+    }
+    if (!can_create_items) {
+      guarded.addItem = noop;
+      guarded.addGroup = noop;
+    }
+
+    wrap("setCellValue", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("toggleArrayValue", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("clearCellValue", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("uploadCellFiles", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("startFillDrag", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("pasteIntoActiveCell", () => {
+      const active_cell = state_ref.current.active_cell;
+      return active_cell ? isCellEditable(active_cell.node_id, active_cell.column_id) : false;
+    });
+
+    if (canEditNode) {
+      for (const key of NODE_ACTIONS) {
+        wrap(key, (...args: unknown[]) => canEditNode(String(args[0])));
+      }
+    }
+
+    return guarded as typeof actions;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [actions, config.read_only]);
+  }, [actions, config.read_only, config.can_edit_structure, config.can_create_items, config.canEditNode, config.canEditColumn]);
 
   return { state, actions: guarded_actions, summary_text, findNode: (id: string) => findNode(state.groups, id) };
 }

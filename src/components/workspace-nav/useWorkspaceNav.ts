@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
 import { workspaceService } from "@/services/workspace.service";
+import { FAVORITES_CHANGED_EVENT, personalService } from "@/services/personal.service";
 import type {
   CreateNavItemPayload,
   MoveNavItemPayload,
@@ -108,13 +109,19 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  // Favorites are personal (see `UserFavoriteService` on the API). The
+  // change fires `FAVORITES_CHANGED_EVENT`, which reloads this tree below
+  // and the sidebar's Favorites section alike.
   const toggleFavorite = useCallback(
-    (item_id: number, is_favorite: boolean) =>
-      runMutation((slug) =>
-        workspaceService.updateNavItem(slug, item_id, { is_favorite })
-      ),
-    [runMutation]
+    (item_id: number, is_favorite: boolean) => personalService.setFavorite(item_id, is_favorite),
+    []
   );
+
+  useEffect(() => {
+    const handleFavoritesChanged = () => void load();
+    window.addEventListener(FAVORITES_CHANGED_EVENT, handleFavoritesChanged);
+    return () => window.removeEventListener(FAVORITES_CHANGED_EVENT, handleFavoritesChanged);
+  }, [load]);
 
   const togglePriority = useCallback(
     (item_id: number, is_priority: boolean) =>

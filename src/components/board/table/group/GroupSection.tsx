@@ -34,6 +34,8 @@ interface GroupSectionProps {
   state: BoardTableState;
   actions: BoardTableActions;
   onRequestColumnFilter?: (column_id: string) => void;
+  /** Opens the column permissions dialog for a column, only passed for board owners. */
+  onRequestColumnPermissions?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
   active_sort_column_id?: string | null;
@@ -47,6 +49,7 @@ export default function GroupSection({
   state,
   actions,
   onRequestColumnFilter,
+  onRequestColumnPermissions,
   onRequestGroupByColumn,
   onRequestColumnSort,
   active_sort_column_id = null,
@@ -139,6 +142,7 @@ export default function GroupSection({
             state={state}
             actions={actions}
             onRequestColumnFilter={onRequestColumnFilter}
+            onRequestColumnPermissions={onRequestColumnPermissions}
             onRequestGroupByColumn={onRequestGroupByColumn}
             onRequestColumnSort={onRequestColumnSort}
             active_sort_column_id={active_sort_column_id}
@@ -183,6 +187,7 @@ export default function GroupSection({
                           state={state}
                           actions={actions}
                           onRequestColumnFilter={onRequestColumnFilter}
+                          onRequestColumnPermissions={onRequestColumnPermissions}
                           onRequestGroupByColumn={onRequestGroupByColumn}
                         />
                         {sorted_subs.map((sub) => (
@@ -215,7 +220,7 @@ export default function GroupSection({
                 </div>
               )}
 
-              {!state.read_only && (
+              {!state.read_only && state.can_create_items && (
                 <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
               )}
 

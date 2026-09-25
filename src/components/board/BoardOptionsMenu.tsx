@@ -21,16 +21,19 @@ import {
   MoreDotsIcon,
   PermissionsIcon,
   RenameIcon,
+  ShareIcon,
   WorkspaceTypeIcon,
 } from "@/icons/workspace-icons";
 import { CommentIcon, DownloadIcon } from "@/icons/board-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
 import { boardOptionsService } from "@/services/board-options.service";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardType } from "@/types/workspace";
+import type { BoardViewKind } from "./boardViewTypes";
+import type { BoardEditPermission, BoardType } from "@/types/workspace";
 import BoardActivityLogDrawer from "./BoardActivityLogDrawer";
 import BoardPermissionsModal from "./BoardPermissionsModal";
 import BoardTrashModal from "./BoardTrashModal";
+import ShareViewModal, { isShareableViewKind } from "./ShareViewModal";
 import GiveFeedbackModal from "./GiveFeedbackModal";
 import ImportItemsModal from "./import/ImportItemsModal";
 import RenameBoardModal from "./RenameBoardModal";
@@ -49,6 +52,14 @@ export type BoardOptionsMenuProps = {
   can_manage: boolean;
   /** Scopes "Export board to Excel" to the tab currently open; omitted exports the primary tab. */
   view_id?: number | null;
+  /** The open tab's name and kind, for "Share view". */
+  view_label?: string | null;
+  view_type?: BoardViewKind | null;
+  /** Board permissions, see `BoardPermissionsModal`. */
+  edit_permission: BoardEditPermission;
+  /** Board owners manage board permissions and share links. */
+  is_owner: boolean;
+  onEditPermissionChange: (edit_permission: BoardEditPermission) => Promise<void>;
 
   access: BoardAccessEntry[];
   onAccessChange: (access: BoardAccessEntry[]) => void;
@@ -93,6 +104,11 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   is_archived,
   can_manage,
   view_id,
+  view_label,
+  view_type,
+  edit_permission,
+  is_owner,
+  onEditPermissionChange,
   access,
   onAccessChange,
   onBoardUpdatesClick,
@@ -107,6 +123,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
 }) => {
   const [is_rename_open, setIsRenameOpen] = useState(false);
   const [is_permissions_open, setIsPermissionsOpen] = useState(false);
+  const [is_share_view_open, setIsShareViewOpen] = useState(false);
   const [is_activity_log_open, setIsActivityLogOpen] = useState(false);
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [is_feedback_open, setIsFeedbackOpen] = useState(false);
@@ -164,6 +181,13 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
       onClick: () => router.push("/profile?section=notifications"),
     },
     { key: "permissions", label: "Permissions", icon: <PermissionsIcon />, onClick: () => setIsPermissionsOpen(true) },
+    {
+      key: "share-view",
+      label: "Share view",
+      icon: <ShareIcon />,
+      onClick: () => setIsShareViewOpen(true),
+      disabled: view_id == null || !isShareableViewKind(view_type),
+    },
     {
       key: "settings",
       label: "Settings",
@@ -231,7 +255,21 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
           setIsPermissionsOpen(false);
           onChangeBoardTypeClick();
         }}
+        edit_permission={edit_permission}
+        is_owner={is_owner}
+        onEditPermissionChange={onEditPermissionChange}
       />
+
+      {view_id != null && (
+        <ShareViewModal
+          is_open={is_share_view_open}
+          onClose={() => setIsShareViewOpen(false)}
+          board_id={board_id}
+          view_id={view_id}
+          view_label={view_label ?? "this view"}
+          is_owner={is_owner}
+        />
+      )}
 
       <BoardActivityLogDrawer board_id={board_id} is_open={is_activity_log_open} onClose={() => setIsActivityLogOpen(false)} />
 

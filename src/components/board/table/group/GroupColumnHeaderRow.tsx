@@ -13,6 +13,8 @@ interface GroupColumnHeaderRowProps {
   state: BoardTableState;
   actions: BoardTableActions;
   onRequestColumnFilter?: (column_id: string) => void;
+  /** Opens the column permissions dialog for a column, only passed for board owners. */
+  onRequestColumnPermissions?: (column_id: string) => void;
   onRequestGroupByColumn?: (column_id: string) => void;
   /** See `BoardTable`'s own doc comment — when provided, the header sort arrow reads/writes through this instead of `state.sort`/`actions.setSort`. */
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
@@ -28,6 +30,7 @@ export default function GroupColumnHeaderRow({
   actions,
   onRequestColumnFilter,
   onRequestGroupByColumn,
+  onRequestColumnPermissions,
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
@@ -154,6 +157,8 @@ export default function GroupColumnHeaderRow({
             onEditConnectBoard={col.kind === "connect_board" ? () => actions.openConfigEditor("connect_board", col.id) : undefined}
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
+            onRequestPermissions={onRequestColumnPermissions ? () => onRequestColumnPermissions(col.id) : undefined}
+            is_restricted={col.is_restricted}
             onCollapseAll={actions.collapseAllGroups}
             onDuplicate={() => actions.duplicateColumn(group.key, "main", col.id)}
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "main", kind, label, width, col.id)}
@@ -168,7 +173,7 @@ export default function GroupColumnHeaderRow({
         ))}
 
         <div className="relative flex h-[38px] items-center justify-center">
-          <button type="button" onClick={() => actions.openPicker(picker_key)} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
+          <button type="button" onClick={() => actions.openPicker(picker_key)} hidden={!state.can_edit_structure || state.read_only} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
             <svg viewBox="0 0 14 14" width="14" height="14"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
           {state.open_picker_key === picker_key && (

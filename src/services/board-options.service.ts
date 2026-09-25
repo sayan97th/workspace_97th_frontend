@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type { BoardActivityLogEntry, BoardTrashIndex } from "@/types/board-options";
-import type { BoardDetail } from "@/types/workspace";
+import type { BoardDetail, BoardEditPermission } from "@/types/workspace";
 
 /**
  * Talks to the board options menu's own endpoints — archive/unarchive the
@@ -18,6 +18,12 @@ export const boardOptionsService = {
   /** POST /api/boards/{id}/unarchive — "View archive / trash" > Archive tab's "Restore". */
   async unarchiveBoard(board_id: number): Promise<BoardDetail> {
     const response = await apiClient.post<{ item: BoardDetail }>(`/api/boards/${board_id}/unarchive`);
+    return response.item;
+  },
+
+  /** PATCH /api/boards/{id}/permissions, board options menu's "Board permissions". */
+  async updateBoardPermission(board_id: number, edit_permission: BoardEditPermission): Promise<BoardDetail> {
+    const response = await apiClient.patch<{ item: BoardDetail }>(`/api/boards/${board_id}/permissions`, { edit_permission });
     return response.item;
   },
 

@@ -82,6 +82,23 @@ export type BoardColumnDto = {
   config: BoardColumnConfig | null;
   hideable: boolean;
   pinnable: boolean;
+  /** Column permissions: who may see this column's values. `null` means everyone. */
+  view_restriction: BoardColumnRestriction | null;
+  /** Column permissions: who may change this column's values. `null` means everyone. */
+  edit_restriction: BoardColumnRestriction | null;
+  /** Whether the current user may change this column's cells (board owners always may). */
+  can_edit_values: boolean;
+};
+
+/** The people and teams a restricted column lets through, on top of the board owners. */
+export type BoardColumnRestriction = {
+  user_ids: number[];
+  team_ids: number[];
+};
+
+export type UpdateBoardColumnPermissionsPayload = {
+  view_restriction?: BoardColumnRestriction | null;
+  edit_restriction?: BoardColumnRestriction | null;
 };
 
 export type BoardGroupDto = {

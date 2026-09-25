@@ -24,6 +24,8 @@ export type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
 export { default as AddBoardViewMenu } from "./AddBoardViewMenu";
 export type { AddBoardViewMenuProps } from "./AddBoardViewMenu";
 export { default as BoardComingSoonView } from "./BoardComingSoonView";
+export { BoardFormView } from "./form";
+export type { BoardFormViewProps } from "./form";
 export type { BoardComingSoonViewProps } from "./BoardComingSoonView";
 export * from "./cells";
 export { default as InlineTitleEditor } from "./InlineTitleEditor";

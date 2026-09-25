@@ -10,6 +10,7 @@ import WorkspaceSwitcherSkeleton from "./WorkspaceSwitcherSkeleton";
 import BrowseWorkspacesModal from "./BrowseWorkspacesModal";
 import CreateWorkspaceModal, { type CreateWorkspaceSubmission } from "./CreateWorkspaceModal";
 import SidebarResizeHandle from "./SidebarResizeHandle";
+import SidebarPersonalNav from "./SidebarPersonalNav";
 import {
   CollapseSidebarIcon,
   ExpandSidebarIcon,
@@ -97,7 +98,11 @@ const AppSidebar: React.FC = () => {
             an element can't have one axis scroll and the other stay visible, so the parent's own
             overflow would otherwise clip the handle's horizontal overhang along with it. */}
         <div className="shell-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-shell-surface px-4 pb-2.5 pt-5">
+          <div className="pt-3">
+            <SidebarPersonalNav />
+          </div>
+
+          <div className="sticky top-0 z-[5] flex flex-none flex-col gap-3.5 bg-shell-surface px-4 pb-2.5 pt-4">
             <div className="flex items-center justify-between">
               <span className="text-base font-semibold tracking-[-0.01em] text-shell-text">
                 Workspace

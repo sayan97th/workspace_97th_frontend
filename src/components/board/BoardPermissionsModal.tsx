@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { CloseIcon, CrownIcon, WorkspaceTypeIcon } from "@/icons/workspace-icons";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import type { BoardType } from "@/types/workspace";
+import type { BoardEditPermission, BoardType } from "@/types/workspace";
 import { BOARD_TYPE_OPTIONS } from "./BoardTypePicker";
 
 export type BoardPermissionsModalProps = {
@@ -16,7 +16,21 @@ export type BoardPermissionsModalProps = {
   access: BoardAccessEntry[];
   onAccessChange: (access: BoardAccessEntry[]) => void;
   onChangeBoardTypeClick: () => void;
+  /** The board permission mode members work under. */
+  edit_permission: BoardEditPermission;
+  /** Only board owners may change `edit_permission`. */
+  is_owner: boolean;
+  /** Saves a new board permission mode. Rejects when the server refuses it. */
+  onEditPermissionChange: (edit_permission: BoardEditPermission) => Promise<void>;
 };
+
+/** monday.com's four board permission modes, in the order its own dialog lists them. */
+export const BOARD_EDIT_PERMISSION_OPTIONS: { value: BoardEditPermission; label: string; description: string }[] = [
+  { value: "everything", label: "Edit everything", description: "Members can edit items, columns, groups and views." },
+  { value: "content", label: "Edit content", description: "Members can edit items, but not columns, groups or views." },
+  { value: "assigned_items", label: "Edit only assigned items", description: "Members can only edit items they are assigned to in a People column." },
+  { value: "view_only", label: "View only", description: "Only board owners can make changes, members can just view." },
+];
 
 const getInitials = (name: string | null, fallback: string): string =>
   (name ?? fallback)
@@ -42,9 +56,13 @@ const BoardPermissionsModal: React.FC<BoardPermissionsModalProps> = ({
   access,
   onAccessChange,
   onChangeBoardTypeClick,
+  edit_permission,
+  is_owner,
+  onEditPermissionChange,
 }) => {
   const [removing_key, setRemovingKey] = useState<string | null>(null);
   const [error_message, setErrorMessage] = useState<string | null>(null);
+  const [saving_permission, setSavingPermission] = useState<BoardEditPermission | null>(null);
 
   useEffect(() => {
     if (!is_open) return;
@@ -58,6 +76,19 @@ const BoardPermissionsModal: React.FC<BoardPermissionsModalProps> = ({
   if (!is_open) return null;
 
   const board_type_label = BOARD_TYPE_OPTIONS.find((option) => option.value === board_type)?.label ?? "Main";
+
+  const handleEditPermissionChange = async (next_permission: BoardEditPermission) => {
+    if (!is_owner || next_permission === edit_permission || saving_permission) return;
+    setSavingPermission(next_permission);
+    setErrorMessage(null);
+    try {
+      await onEditPermissionChange(next_permission);
+    } catch {
+      setErrorMessage("We couldn't change the board permissions. Please try again.");
+    } finally {
+      setSavingPermission(null);
+    }
+  };
 
   const handleRemove = async (entry: BoardAccessEntry) => {
     setRemovingKey(entry.key);
@@ -110,6 +141,45 @@ const BoardPermissionsModal: React.FC<BoardPermissionsModalProps> = ({
               </span>
             </span>
           </button>
+
+          <fieldset className="mt-6" disabled={!is_owner}>
+            <legend className="mb-1 block text-[12.5px] font-semibold text-shell-text-secondary">What members can edit</legend>
+            <p className="mb-2.5 text-[12px] text-shell-text-muted">
+              {is_owner ? "Board owners can always edit everything." : "Only board owners can change this."}
+            </p>
+            <div className="flex flex-col gap-1.5" role="radiogroup" aria-label="What members can edit">
+              {BOARD_EDIT_PERMISSION_OPTIONS.map((option) => {
+                const is_selected = option.value === edit_permission;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={is_selected}
+                    onClick={() => void handleEditPermissionChange(option.value)}
+                    className={`flex w-full items-start gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors disabled:cursor-default ${
+                      is_selected ? "border-brand-500 bg-brand-500/10" : "border-shell-border hover:bg-shell-hover"
+                    } ${!is_owner && !is_selected ? "opacity-60" : ""}`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 ${
+                        is_selected ? "border-brand-500" : "border-shell-border-strong"
+                      }`}
+                    >
+                      {is_selected && <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-semibold text-shell-text">
+                        {option.label}
+                        {saving_permission === option.value && <span className="ml-2 text-[12px] font-normal text-shell-text-faint">Saving...</span>}
+                      </span>
+                      <span className="block text-[12px] text-shell-text-muted">{option.description}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
           {error_message && (
             <p className="mt-4 rounded-[10px] border border-error-500/30 bg-error-500/10 px-3.5 py-3 text-[13px] leading-[1.5] text-error-400">

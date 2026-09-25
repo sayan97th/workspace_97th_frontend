@@ -36,6 +36,8 @@ interface ColumnMenuProps {
   onChangeType: (kind: ColumnKind, default_width: number) => void;
   onDelete: () => void;
   onClose: () => void;
+  /** Opens the column permissions dialog. Only passed for board owners on a real column. */
+  onRequestPermissions?: () => void;
 }
 
 const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
@@ -54,7 +56,7 @@ const HOVER_INTENT_DELAY_MS = 250;
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
   onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions,
 }: ColumnMenuProps) {
   const [draft, setDraft] = useState(title);
   const [sub, setSub] = useState<Sub>(null);
@@ -213,6 +215,15 @@ export default function ColumnMenu({
         {column && (
           <>
             <div className="my-1 h-px bg-boardtree-border-soft" />
+
+            {onRequestPermissions && (
+              <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onRequestPermissions(); onClose(); }} className={ROW_ITEM}>
+                <span className="w-4 text-boardtree-text-muted">
+                  <svg viewBox="0 0 16 16" width="14" height="14"><rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M5.4 7 V5.2 a2.6 2.6 0 0 1 5.2 0 V7" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                </span>
+                <span className="flex-1">Column permissions</span>
+              </button>
+            )}
 
             <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onDuplicate(); onClose(); }} className={ROW_ITEM}>
               <span className="w-4 text-boardtree-text-muted">

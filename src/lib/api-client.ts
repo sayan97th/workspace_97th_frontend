@@ -21,6 +21,16 @@ function removeToken(): void {
   document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax";
 }
 
+/**
+ * Public pages (a shared form or view) are open to anyone, so an expired
+ * session left in this browser must not bounce the visitor to sign in.
+ */
+const PUBLIC_PATH_PREFIXES = ["/forms/", "/share/"];
+
+function isPublicPage(): boolean {
+  return typeof window !== "undefined" && PUBLIC_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix));
+}
+
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -95,7 +105,7 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
       response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     } else {
       removeToken();
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && !isPublicPage()) {
         window.location.href = "/signin";
       }
       throw new Error("Session expired");
@@ -151,7 +161,7 @@ async function requestFormData<T>(
       response = await fetch(`${API_BASE_URL}${endpoint}`, config);
     } else {
       removeToken();
-      if (typeof window !== "undefined") {
+      if (typeof window !== "undefined" && !isPublicPage()) {
         window.location.href = "/signin";
       }
       throw new Error("Session expired");
