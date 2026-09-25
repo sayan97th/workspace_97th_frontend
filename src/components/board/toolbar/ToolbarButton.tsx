@@ -11,12 +11,16 @@ export type ToolbarButtonProps = {
   variant?: "neutral" | "accent";
   /** Defaults to `label` when set; required when `label` is empty (e.g. the icon-only overflow button). */
   aria_label?: string;
+  /** Marks the button as an on/off toggle (e.g. "Starred") and reports its state to assistive tech. */
+  is_pressed?: boolean;
+  /** Native tooltip, for toggles whose effect the label alone doesn't spell out. */
+  title?: string;
   onClick: () => void;
 };
 
 /** Shared toolbar button for Person/Filter/Sort/Hide/Group by/"...". `forwardRef` so callers can anchor a popover to it. */
 const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-  ({ label, Icon, is_open, has_selection, badge_count, variant = "neutral", aria_label, onClick }, ref) => {
+  ({ label, Icon, is_open, has_selection, badge_count, variant = "neutral", aria_label, is_pressed, title, onClick }, ref) => {
     const is_active = is_open || has_selection;
     const active_class =
       variant === "accent"
@@ -29,6 +33,8 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         type="button"
         onClick={onClick}
         aria-label={aria_label ?? label}
+        aria-pressed={is_pressed}
+        title={title}
         className={`flex items-center gap-[7px] rounded-lg px-[11px] py-2 text-[13px] font-medium transition-colors ${
           is_active ? active_class : "text-boardtree-text-secondary hover:bg-boardtree-hover"
         }`}

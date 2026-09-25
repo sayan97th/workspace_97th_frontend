@@ -2,9 +2,12 @@ import { format, parseISO, startOfWeek } from "date-fns";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
+  BOARD_FILTER_CHECKED_OPTION_ID,
   BOARD_FILTER_CREATED_AT_FIELD_ID,
   BOARD_FILTER_CREATED_BY_FIELD_ID,
   BOARD_FILTER_GROUP_FIELD_ID,
+  BOARD_FILTER_STARRED_FIELD_ID,
+  BOARD_FILTER_UNCHECKED_OPTION_ID,
   BOARD_FILTER_UPDATED_AT_FIELD_ID,
   COLUMN_KIND_SWATCH,
   type BoardFilterField,
@@ -228,13 +231,26 @@ export const toLocalDay = (timestamp: string | null | undefined): string | null 
 
 const ITEM_DETAILS_SECTION = "Item details";
 
-/** Created by, Creation date and Last updated: filled from the item itself, so every board has them without a column. */
+/** Starred, Created by, Creation date and Last updated: filled from the item itself, so every board has them without a column. */
 function buildItemDetailFields(person_options: BoardQuickFilterFacetOption[]): BoardFilterField<BoardItemDto>[] {
   const toDayRange = (timestamp: string | null | undefined) => {
     const day = toLocalDay(timestamp);
     return day ? { start: day, end: day } : null;
   };
   return [
+    {
+      id: BOARD_FILTER_STARRED_FIELD_ID,
+      label: "Starred",
+      kind: "checkbox",
+      section: ITEM_DETAILS_SECTION,
+      swatch: { accent_color: "#fdab3d", glyph: "★" },
+      options: [
+        { id: BOARD_FILTER_CHECKED_OPTION_ID, label: "Starred", dot_color: "#fdab3d" },
+        { id: BOARD_FILTER_UNCHECKED_OPTION_ID, label: "Not starred", dot_color: "#c4c4c4" },
+      ],
+      getText: (row) => (row.is_priority ? "Starred" : ""),
+      getChecked: (row) => row.is_priority,
+    },
     {
       id: BOARD_FILTER_CREATED_BY_FIELD_ID,
       label: "Created by",

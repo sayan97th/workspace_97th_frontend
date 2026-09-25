@@ -12,6 +12,7 @@ import SearchControl from "./toolbar/SearchControl";
 import PersonControl from "./toolbar/PersonControl";
 import FilterControl from "./toolbar/FilterControl";
 import FilterPanel from "./toolbar/FilterPanel";
+import StarredFilterControl from "./toolbar/StarredFilterControl";
 import SortControl from "./toolbar/SortControl";
 import HideColumnsControl from "./toolbar/HideColumnsControl";
 import GroupByControl from "./toolbar/GroupByControl";
@@ -85,6 +86,7 @@ function BoardToolbar<TRow>({
         <SearchControl toolbar={toolbar} />
         <PersonControl toolbar={toolbar} view_actions={view_actions} />
         <FilterControl toolbar={toolbar} />
+        <StarredFilterControl toolbar={toolbar} />
         <SortControl toolbar={toolbar} view_actions={view_actions} />
         <HideColumnsControl toolbar={toolbar} />
         <GroupByControl toolbar={toolbar} view_actions={view_actions} />

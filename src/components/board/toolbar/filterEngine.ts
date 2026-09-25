@@ -43,6 +43,13 @@ export const BOARD_FILTER_CREATED_BY_FIELD_ID = "__created_by__";
 export const BOARD_FILTER_CREATED_AT_FIELD_ID = "__created_at__";
 export const BOARD_FILTER_UPDATED_AT_FIELD_ID = "__updated_at__";
 
+/** Virtual checkbox field for the row star (`is_priority`). Its Quick filters option {@link BOARD_FILTER_CHECKED_OPTION_ID} powers the toolbar's "Starred" toggle. */
+export const BOARD_FILTER_STARRED_FIELD_ID = "__starred__";
+
+/** Quick filters option ids of a checkbox facet. The API evaluator uses the same ids. */
+export const BOARD_FILTER_CHECKED_OPTION_ID = "checked";
+export const BOARD_FILTER_UNCHECKED_OPTION_ID = "unchecked";
+
 /** Weeks start on Monday on both the client and the API, so "This week" means the same days everywhere. */
 const WEEK_OPTIONS = { weekStartsOn: 1 as const };
 
@@ -539,11 +546,12 @@ export function buildQuickFilterFacets<TRow>(
       case "checkbox":
         return {
           ...base,
-          options: [
-            { id: "checked", label: "Checked", dot_color: "#00c875" },
-            { id: "unchecked", label: "Unchecked", dot_color: "#c4c4c4" },
+          // A field can rename both options (e.g. Starred/Not starred), the ids stay the same.
+          options: field.options ?? [
+            { id: BOARD_FILTER_CHECKED_OPTION_ID, label: "Checked", dot_color: "#00c875" },
+            { id: BOARD_FILTER_UNCHECKED_OPTION_ID, label: "Unchecked", dot_color: "#c4c4c4" },
           ],
-          getOptionIds: (row) => [field.getChecked?.(row) ? "checked" : "unchecked"],
+          getOptionIds: (row) => [field.getChecked?.(row) ? BOARD_FILTER_CHECKED_OPTION_ID : BOARD_FILTER_UNCHECKED_OPTION_ID],
         };
       case "date":
         return {
@@ -671,7 +679,7 @@ const quickOptionToRule = <TRow>(field: BoardFilterField<TRow>, option_id: strin
     case "group":
       return { ...base, condition: exclude ? "is_not" : "is", values: [option_id] };
     case "checkbox":
-      return { ...base, condition: (option_id === "checked") !== exclude ? "is_checked" : "is_unchecked" };
+      return { ...base, condition: (option_id === BOARD_FILTER_CHECKED_OPTION_ID) !== exclude ? "is_checked" : "is_unchecked" };
     case "number":
       if (option_id === "has_value") return { ...base, condition: exclude ? "is_empty" : "is_not_empty" };
       return { ...base, condition: exclude ? "not_equals" : "equals", value: option_id };
