@@ -13,31 +13,12 @@ import {
   type BoardViewKind,
   type BoardViewTabItem,
 } from "@/components/board";
+import { sortBoardViews } from "@/components/board/view-tabs/viewTabOrder";
 import { boardContentService } from "@/services/board-content.service";
 import type { BoardFilterState, BoardViewDto, BoardViewPersonalStateDto, SaveBoardViewPayload } from "@/types/board-content";
 
 /** How long the toolbar has to stay unchanged before the viewer's changes are remembered on the server. */
 const PERSONAL_STATE_SAVE_DELAY_MS = 1000;
-
-/**
- * Sorts a board's non-primary views for display. When the viewer has a saved
- * "Reorder (for you only)" order, it wins outright — any view id missing
- * from it (created after the order was last saved) is appended at the end in
- * its normal position order. Otherwise, pinned views sort ahead of unpinned
- * ones, each group by `position`.
- */
-function sortSecondaryViews(views: BoardViewDto[], personal_order: number[] | null): BoardViewDto[] {
-  const by_position = views.slice().sort((a, b) => a.position - b.position);
-  if (!personal_order) {
-    return by_position.slice().sort((a, b) => Number(b.pinned) - Number(a.pinned));
-  }
-
-  const rank = new Map(personal_order.map((id, index) => [id, index]));
-  const ordered = by_position.filter((v) => rank.has(v.id));
-  const unordered = by_position.filter((v) => !rank.has(v.id));
-  ordered.sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
-  return [...ordered, ...unordered];
-}
 
 /**
  * A saved `filter_state` blob's `quick_filter_selections` may come back as `[]`
@@ -204,6 +185,10 @@ export type UseBoardViewTabsConfig = {
   initial_active_view_id?: number | null;
   /** The viewer's saved "Reorder (for you only)" tab order, if they have one. */
   initial_personal_order?: number[] | null;
+  /** Tabs the viewer hid for themselves. */
+  initial_hidden_view_ids?: number[];
+  /** The tab the viewer wants opened first, or null for the primary tab. */
+  initial_default_view_id?: number | null;
   /** The viewer's remembered, unsaved toolbar changes per view id (see {@link BoardViewPersonalStateDto}). */
   initial_personal_states?: Record<string, BoardViewPersonalStateDto>;
   toolbar: BoardViewSyncToolbar;
@@ -215,8 +200,10 @@ export type UseBoardViewTabsApi = {
   views: BoardViewDto[];
   active_view_id: number | null;
   active_view: BoardViewDto | null;
-  /** Ready for `<BoardViewTabs tabs={...} .../>`, sorted primary-first then pinned/personal order. */
+  /** Ready for `<BoardViewTabs tabs={...} .../>`, in display order (personal order, else primary, pinned, position). Hidden tabs are included and flagged. */
   tabs: BoardViewTabItem[];
+  /** Whether the viewer has a personal tab order saved (so "Reset to default order" has something to reset). */
+  has_personal_order: boolean;
   /** Whether the toolbar's live state has diverged from the active view's saved state. */
   is_dirty: boolean;
   /** Whether the active view's saved state has finished replaying onto the toolbar (the dirty check is only meaningful after that). */
@@ -241,8 +228,15 @@ export type UseBoardViewTabsApi = {
   duplicateView: (id: number) => Promise<BoardViewDto>;
   pinView: (id: number) => Promise<void>;
   lockView: (id: number) => Promise<void>;
-  /** Saves the viewer's own tab order — does not affect other collaborators. */
+  /** Saves the viewer's own tab order, applied at once and rolled back if the save fails. Does not affect other collaborators. */
   reorderPersonalTabs: (ordered_ids: Array<number | string>) => Promise<void>;
+  /** "Reset to default order": forgets the viewer's own tab order. */
+  resetPersonalTabOrder: () => Promise<void>;
+  /** Hides a tab for the viewer only, or shows it again. At least one tab always stays visible. */
+  toggleHiddenView: (id: number) => Promise<void>;
+  /** Picks the tab the viewer wants opened first (null clears it). */
+  setDefaultView: (id: number | null) => Promise<void>;
+  changeViewDescription: (id: number, description: string | null) => Promise<void>;
 };
 
 /**
@@ -263,6 +257,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     initial_views,
     initial_active_view_id,
     initial_personal_order,
+    initial_hidden_view_ids,
+    initial_default_view_id,
     initial_personal_states,
     toolbar,
     onViewActivated,
@@ -270,6 +266,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
 
   const [views, setViews] = useState(initial_views);
   const [personal_order, setPersonalOrder] = useState<number[] | null>(initial_personal_order ?? null);
+  const [hidden_view_ids, setHiddenViewIds] = useState<number[]>(initial_hidden_view_ids ?? []);
+  const [default_view_id, setDefaultViewId] = useState<number | null>(initial_default_view_id ?? null);
   const [active_view_id, setActiveViewId] = useState<number | null>(
     initial_active_view_id ?? initial_views.find((v) => v.is_primary)?.id ?? initial_views[0]?.id ?? null
   );
@@ -470,18 +468,24 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     return created;
   };
 
-  // ── Tabs ── primary first, then pinned/personal-order among the rest (see `sortSecondaryViews`).
-  const primary_views = views.filter((v) => v.is_primary);
-  const secondary_views = sortSecondaryViews(
-    views.filter((v) => !v.is_primary),
-    personal_order
-  );
-  const tabs: BoardViewTabItem[] = [...primary_views, ...secondary_views].map((v) => ({
+  // ── Tabs ── personal order when saved, else primary, pinned, position (see `sortBoardViews`).
+  const sorted_views = sortBoardViews(views, personal_order);
+  const tabs: BoardViewTabItem[] = sorted_views.map((v) => ({
     id: v.id,
     label: v.label,
     emoji: v.emoji,
     pinned: v.pinned,
     is_locked: v.is_locked,
+    is_primary: v.is_primary,
+    view_type: v.view_type,
+    description: v.description,
+    creator_name: v.creator?.full_name ?? null,
+    created_at: v.created_at,
+    is_hidden: hidden_view_ids.includes(v.id),
+    is_default: default_view_id === null ? v.is_primary : default_view_id === v.id,
+    // Only the active tab can be compared against the live toolbar; any other
+    // tab is unsaved when the viewer left remembered changes on it.
+    has_unsaved_changes: v.id === active_view_id ? is_dirty : Boolean(personal_states[String(v.id)]),
   }));
 
   const selectView = (id: number | string) => {
@@ -550,19 +554,71 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
   };
 
+  // Personal preferences are applied optimistically, so a dropped tab stays
+  // where it landed instead of snapping back while the request is in flight.
   const reorderPersonalTabs = async (ordered_ids: Array<number | string>) => {
-    const saved = await boardContentService.updatePersonalViewOrder(
-      board_id,
-      ordered_ids.map((id) => Number(id))
-    );
-    setPersonalOrder(saved);
+    const previous_order = personal_order;
+    const next_order = ordered_ids.map((id) => Number(id));
+    setPersonalOrder(next_order);
+    try {
+      setPersonalOrder(await boardContentService.updatePersonalViewOrder(board_id, next_order));
+    } catch (error) {
+      setPersonalOrder(previous_order);
+      throw error;
+    }
   };
+
+  const resetPersonalTabOrder = async () => {
+    const previous_order = personal_order;
+    setPersonalOrder(null);
+    try {
+      await boardContentService.resetPersonalViewOrder(board_id);
+    } catch (error) {
+      setPersonalOrder(previous_order);
+      throw error;
+    }
+  };
+
+  const toggleHiddenView = async (id: number) => {
+    const previous_hidden = hidden_view_ids;
+    const is_hidden = previous_hidden.includes(id);
+    const next_hidden = is_hidden ? previous_hidden.filter((hidden_id) => hidden_id !== id) : [...previous_hidden, id];
+    const visible_views = sorted_views.filter((v) => !next_hidden.includes(v.id));
+    if (visible_views.length === 0) return;
+
+    setHiddenViewIds(next_hidden);
+    // Hiding the tab on screen moves the viewer to the first tab still visible.
+    if (!is_hidden && active_view_id === id) selectView(visible_views[0].id);
+    try {
+      const saved = await boardContentService.updatePersonalViewPreferences(board_id, { hidden_view_ids: next_hidden });
+      setHiddenViewIds(saved.personal_hidden_view_ids);
+    } catch (error) {
+      setHiddenViewIds(previous_hidden);
+      throw error;
+    }
+  };
+
+  const setDefaultView = async (id: number | null) => {
+    const previous_default = default_view_id;
+    setDefaultViewId(id);
+    try {
+      const saved = await boardContentService.updatePersonalViewPreferences(board_id, { default_view_id: id });
+      setDefaultViewId(saved.personal_default_view_id);
+    } catch (error) {
+      setDefaultViewId(previous_default);
+      throw error;
+    }
+  };
+
+  const changeViewDescription = (id: number, description: string | null) =>
+    patchView(id, { description: description?.trim() ? description.trim() : null });
 
   return {
     views,
     active_view_id,
     active_view,
     tabs,
+    has_personal_order: personal_order !== null && personal_order.length > 0,
     is_dirty,
     is_view_applied,
     current_filter_state,
@@ -580,6 +636,10 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     pinView,
     lockView,
     reorderPersonalTabs,
+    resetPersonalTabOrder,
+    toggleHiddenView,
+    setDefaultView,
+    changeViewDescription,
   };
 }
 

@@ -229,8 +229,10 @@ export type BoardViewDto = {
   doc_content: string | null;
   /** Chart type/data source/grouping for a `chart`-type view (see `BoardChartView`) — null/unused for every other kind. */
   chart_config: BoardChartConfig | null;
-  /** A single emoji carried by the tab; null renders the default per-position icon. */
+  /** A single emoji carried by the tab; null renders the view type's icon. */
   emoji: string | null;
+  /** Short explanation of what the tab is for, shown in its hover card and the "Manage views" panel. */
+  description: string | null;
   position: number;
   is_primary: boolean;
   /** Sorts ahead of unpinned tabs (behind the primary tab) whenever the viewer has no personal tab order saved. */
@@ -255,13 +257,17 @@ export type BoardViewDto = {
 };
 
 /**
- * `GET /api/boards/{board_id}/views` — the board's tabs plus the
- * authenticated viewer's own "Reorder (for you only)" tab order, if they've
- * ever saved one for this board.
+ * `GET /api/boards/{board_id}/views`, the board's tabs plus the authenticated
+ * viewer's own tab preferences for this board: their personal order (if they
+ * ever saved one), the tabs they hid and the tab they want opened first.
  */
 export type BoardViewsIndexDto = {
   views: BoardViewDto[];
   personal_order: number[] | null;
+  /** Tabs the viewer hid for themselves ("Hide view for me"). */
+  personal_hidden_view_ids: number[];
+  /** The tab the viewer wants opened first when they open the board, or null for the primary tab. */
+  personal_default_view_id: number | null;
   /** The viewer's remembered, unsaved toolbar changes per view id. Only views they changed have an entry. */
   personal_states: Record<string, BoardViewPersonalStateDto>;
 };
@@ -272,6 +278,12 @@ export type BoardViewsIndexDto = {
  * Private to them, and replayed instead of the view's saved state until they
  * reset it or it matches the view again.
  */
+/** `PUT /api/boards/{board_id}/views/preferences` payload and response. Only the fields sent are changed. */
+export type BoardViewPreferencesDto = {
+  personal_hidden_view_ids: number[];
+  personal_default_view_id: number | null;
+};
+
 export type BoardViewPersonalStateDto = {
   filter_state: BoardFilterState | null;
   sort_state: Omit<BoardSortRule, "id">[] | null;
@@ -470,6 +482,7 @@ export type SaveBoardViewPayload = {
   /** Only meaningful on creation — the backend ignores it on update (a view's type is immutable). Defaults to `"table"` when omitted. */
   view_type?: BoardViewKind;
   emoji?: string | null;
+  description?: string | null;
   position?: number;
   is_primary?: boolean;
   filter_state?: BoardFilterState | null;

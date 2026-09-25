@@ -11,6 +11,7 @@ import type {
   BoardTagDto,
   BoardViewDto,
   BoardViewsIndexDto,
+  BoardViewPreferencesDto,
   BoardViewPersonalStateDto,
   BoardSavedFilterDto,
   BoardFilterState,
@@ -411,16 +412,24 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items`, { item_ids });
   },
 
-  /** GET /api/boards/{board_id}/views — the board's tabs + the viewer's personal tab order, if saved. */
+  /** GET /api/boards/{board_id}/views, the board's tabs plus the viewer's own tab order, hidden tabs and default tab. */
   async getViews(board_id: number): Promise<BoardViewsIndexDto> {
     const response = await apiClient.get<{
       data: BoardViewDto[];
       personal_order: number[] | null;
+      personal_hidden_view_ids?: number[] | null;
+      personal_default_view_id?: number | null;
       personal_states?: Record<string, BoardViewPersonalStateDto> | BoardViewPersonalStateDto[];
     }>(`/api/boards/${board_id}/views`);
     // An empty PHP map json-encodes as a list.
     const personal_states = !response.personal_states || Array.isArray(response.personal_states) ? {} : response.personal_states;
-    return { views: response.data, personal_order: response.personal_order, personal_states };
+    return {
+      views: response.data,
+      personal_order: response.personal_order,
+      personal_hidden_view_ids: response.personal_hidden_view_ids ?? [],
+      personal_default_view_id: response.personal_default_view_id ?? null,
+      personal_states,
+    };
   },
 
   /** PUT /api/boards/{board_id}/views/{view_id}/personal-state, remembers the viewer's unsaved toolbar changes to a view. */
@@ -522,6 +531,23 @@ export const boardContentService = {
       view_ids,
     });
     return response.personal_order;
+  },
+
+  /** DELETE /api/boards/{board_id}/views/order, "Reset to default order": forgets the viewer's own tab order. */
+  async resetPersonalViewOrder(board_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/views/order`);
+  },
+
+  /** PUT /api/boards/{board_id}/views/preferences, saves the viewer's hidden tabs and/or default tab. */
+  async updatePersonalViewPreferences(
+    board_id: number,
+    payload: { hidden_view_ids?: number[]; default_view_id?: number | null }
+  ): Promise<BoardViewPreferencesDto> {
+    const response = await apiClient.put<BoardViewPreferencesDto>(`/api/boards/${board_id}/views/preferences`, payload);
+    return {
+      personal_hidden_view_ids: response.personal_hidden_view_ids ?? [],
+      personal_default_view_id: response.personal_default_view_id ?? null,
+    };
   },
 
   /**

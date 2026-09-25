@@ -436,6 +436,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     items: BoardItemDto[];
     views: BoardViewDto[];
     personal_order: number[] | null;
+    personal_hidden_view_ids: number[];
+    personal_default_view_id: number | null;
     personal_states: Record<string, BoardViewPersonalStateDto>;
     collapsed_group_ids: number[];
     /**
@@ -449,6 +451,11 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     loaded_group_ids: number[];
   } | null>(null);
   const [has_error, setHasError] = useState(false);
+  const loader_router = useRouter();
+  // The board whose "Set as my default view" preference was already applied.
+  // Only the first load of a board opens the default view, so clicking the
+  // primary tab afterwards still lands on the primary tab.
+  const default_view_board_ref = useRef<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -473,6 +480,17 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       boardContentService.getViews(node.id),
     ])
       .then(async ([columns, groups_index, views]) => {
+        if (cancelled) return;
+        const is_first_load = default_view_board_ref.current !== node.id;
+        default_view_board_ref.current = node.id;
+        const default_view = views.views.find((view) => view.id === views.personal_default_view_id);
+        // A link that carries its own view or filters wins over the default view.
+        const has_explicit_target = active_view_id != null || window.location.search.length > 0;
+        if (is_first_load && !has_explicit_target && default_view && !default_view.is_primary) {
+          loader_router.replace(`/boards/${node.id}/views/${default_view.id}`);
+          return;
+        }
+
         const active_view =
           views.views.find((view) => view.id === active_view_id) ??
           views.views.find((view) => view.is_primary) ??
@@ -487,6 +505,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
             items,
             views: views.views,
             personal_order: views.personal_order,
+            personal_hidden_view_ids: views.personal_hidden_view_ids,
+            personal_default_view_id: views.personal_default_view_id,
             personal_states: views.personal_states,
             collapsed_group_ids: groups_index.collapsed_group_ids,
             loaded_group_ids: is_lazy_table_view ? [] : groups_index.groups.map((group) => group.id),
@@ -500,7 +520,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [node.id, active_view_id]);
+  }, [node.id, active_view_id, loader_router]);
 
   const handleChangeBoardType = async (next_board_type: BoardType) => {
     await import("@/services/workspace.service").then(({ workspaceService }) =>
@@ -554,6 +574,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         initial_views={loaded.views}
         initial_active_view_id={active_view_id ?? null}
         initial_personal_order={loaded.personal_order}
+        initial_hidden_view_ids={loaded.personal_hidden_view_ids}
+        initial_default_view_id={loaded.personal_default_view_id}
         initial_personal_states={loaded.personal_states}
         initial_collapsed_group_ids={loaded.collapsed_group_ids}
         initial_open_item_id={initial_open_item_id ?? null}
@@ -606,6 +628,10 @@ type TableBoardBodyProps = {
   initial_views: BoardViewDto[];
   initial_active_view_id: number | null;
   initial_personal_order: number[] | null;
+  /** Tabs the viewer hid for themselves. */
+  initial_hidden_view_ids: number[];
+  /** The tab the viewer wants opened first, or null for the primary tab. */
+  initial_default_view_id: number | null;
   /** The viewer's remembered, unsaved toolbar changes per view id ("Remember my filters"). */
   initial_personal_states: Record<string, BoardViewPersonalStateDto>;
   /** Ids of this tab's tables the viewer had collapsed the last time they visited — see `useBoardTable`'s `initial_collapsed_groups`. */
@@ -697,6 +723,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   initial_views,
   initial_active_view_id,
   initial_personal_order,
+  initial_hidden_view_ids,
+  initial_default_view_id,
   initial_personal_states,
   initial_collapsed_group_ids,
   initial_open_item_id,
@@ -1151,6 +1179,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     initial_views,
     initial_active_view_id,
     initial_personal_order,
+    initial_hidden_view_ids,
+    initial_default_view_id,
     initial_personal_states,
     toolbar,
     onViewActivated: (view) => router.push(buildViewUrl(view)),
@@ -1170,9 +1200,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handlePinView = (id: number | string) => view_tabs.pinView(Number(id));
   const handleDuplicateView = (id: number | string) => view_tabs.duplicateView(Number(id));
   const handleLockView = (id: number | string) => view_tabs.lockView(Number(id));
-  const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) => view_tabs.reorderPersonalTabs(ordered_ids);
+  // The hook already rolls the order back when the save fails.
+  const handleReorderPersonalTabs = (ordered_ids: Array<number | string>) =>
+    void view_tabs.reorderPersonalTabs(ordered_ids).catch(() => {});
   const handleChangeViewEmoji = (id: number | string, emoji: string | null) => view_tabs.changeViewEmoji(Number(id), emoji);
   const handleDeleteView = (id: number | string) => view_tabs.deleteView(Number(id));
+  const handleResetPersonalTabOrder = () => void view_tabs.resetPersonalTabOrder().catch(() => {});
+  const handleToggleHiddenView = (id: number | string) => void view_tabs.toggleHiddenView(Number(id)).catch(() => {});
+  const handleSetDefaultView = (id: number | string | null) =>
+    void view_tabs.setDefaultView(id === null ? null : Number(id)).catch(() => {});
+  const handleChangeViewDescription = (id: number | string, description: string | null) =>
+    view_tabs.changeViewDescription(Number(id), description);
 
   useEffect(() => {
     let cancelled = false;
@@ -3667,8 +3705,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onPinView: handlePinView,
         onDuplicateView: node.can_edit_structure ? handleDuplicateView : undefined,
         onLockView: handleLockView,
-        getViewUrl: (tab) => (tab.id === view_tabs.tabs[0]?.id ? `/boards/${board_id}` : `/boards/${board_id}/views/${tab.id}`),
+        getViewUrl: (tab) => (tab.is_primary ? `/boards/${board_id}` : `/boards/${board_id}/views/${tab.id}`),
         onReorderPersonalTabs: handleReorderPersonalTabs,
+        has_personal_order: view_tabs.has_personal_order,
+        onResetPersonalTabOrder: handleResetPersonalTabOrder,
+        onToggleHiddenView: handleToggleHiddenView,
+        onSetDefaultView: handleSetDefaultView,
+        // A description is part of the board's structure, like the tab's name.
+        onChangeDescription: node.can_edit_structure ? handleChangeViewDescription : undefined,
       }}
       toolbar={
         // A Doc, Files Gallery or Chart tab has no items/columns of its own to
