@@ -6,6 +6,9 @@ const buildQuery = (query?: AdminSessionsQuery): string => {
   if (query?.search) params.set("search", query.search);
   if (query?.page) params.set("page", String(query.page));
   if (query?.per_page) params.set("per_page", String(query.per_page));
+  if (query?.sort_field) params.set("sort_field", query.sort_field);
+  if (query?.sort_direction) params.set("sort_direction", query.sort_direction);
+  Object.entries(query?.filter_params ?? {}).forEach(([key, value]) => params.set(key, value));
   const search = params.toString();
   return search ? `?${search}` : "";
 };
@@ -25,6 +28,12 @@ export const adminSessionsService = {
   /** DELETE /api/admin/sessions */
   async revokeAllSessions(): Promise<number> {
     const response = await apiClient.delete<{ revoked_count: number }>("/api/admin/sessions");
+    return response.revoked_count;
+  },
+
+  /** DELETE /api/admin/sessions/users/{id}, logs one person out on every device. */
+  async revokeUserSessions(user_id: number): Promise<number> {
+    const response = await apiClient.delete<{ revoked_count: number }>(`/api/admin/sessions/users/${user_id}`);
     return response.revoked_count;
   },
 };

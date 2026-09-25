@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   AccountSettingsDto,
+  UpdateAccountDefaultsPayload,
   UpdateAccountPreferencesPayload,
   UpdateAdvancedSettingsPayload,
   UpdateAuthenticationSettingsPayload,
@@ -31,6 +32,15 @@ export const accountSettingsService = {
   async updatePreferences(payload: UpdateAccountPreferencesPayload): Promise<AccountSettingsDto> {
     const response = await apiClient.patch<{ account_settings: AccountSettingsDto }>(
       "/api/admin/account-settings/preferences",
+      payload
+    );
+    return response.account_settings;
+  },
+
+  /** PATCH /api/admin/account-settings/defaults, preferences every new user starts with. */
+  async updateDefaults(payload: UpdateAccountDefaultsPayload): Promise<AccountSettingsDto> {
+    const response = await apiClient.patch<{ account_settings: AccountSettingsDto }>(
+      "/api/admin/account-settings/defaults",
       payload
     );
     return response.account_settings;

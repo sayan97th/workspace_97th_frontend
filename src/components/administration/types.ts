@@ -11,7 +11,12 @@ export type AdminSectionId =
   | "authentication"
   | "audit"
   | "advanced"
-  | "sessions";
+  | "sessions"
+  | "usage"
+  | "profile_fields"
+  | "content_directory"
+  | "tidy_up"
+  | "permissions";
 
 /** Which collapsible group of the left rail a given section lives under, if any. */
 export type AdminNavGroupId = "customization" | "directory" | "security";

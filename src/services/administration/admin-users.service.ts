@@ -1,6 +1,9 @@
 import { apiClient } from "@/lib/api-client";
 import type {
+  AdminUserDetailsDto,
   AdminUserDto,
+  BulkUserActionPayload,
+  BulkUserActionResult,
   AdminUsersPage,
   AdminUsersQuery,
   InviteUserPayload,
@@ -21,6 +24,8 @@ const buildQuery = (query?: AdminUsersQuery): string => {
   if (query?.account_status) params.set("account_status", query.account_status);
   if (query?.sort_field) params.set("sort_field", query.sort_field);
   if (query?.sort_direction) params.set("sort_direction", query.sort_direction);
+  if (query?.ids?.length) params.set("ids", query.ids.join(","));
+  Object.entries(query?.filter_params ?? {}).forEach(([key, value]) => params.set(key, value));
   const search = params.toString();
   return search ? `?${search}` : "";
 };
@@ -96,5 +101,28 @@ export const adminUsersService = {
   async inviteUser(payload: InviteUserPayload): Promise<StaffInvitationDto> {
     const response = await apiClient.post<{ invitation: StaffInvitationDto }>("/api/admin/users/invite", payload);
     return response.invitation;
+  },
+
+  /** GET /api/admin/users/{id}/details, everything the user details drawer shows. */
+  async getUserDetails(user_id: number): Promise<AdminUserDetailsDto> {
+    return apiClient.get<AdminUserDetailsDto>(`/api/admin/users/${user_id}/details`);
+  },
+
+  /** POST /api/admin/users/bulk, one action applied to many users. Users the caller cannot manage are skipped. */
+  async bulkAction(payload: BulkUserActionPayload): Promise<BulkUserActionResult> {
+    return apiClient.post<BulkUserActionResult>("/api/admin/users/bulk", payload);
+  },
+
+  /** GET /api/admin/users/export, a CSV of the filtered (or selected) users. */
+  async exportUsers(query?: AdminUsersQuery): Promise<Blob> {
+    return apiClient.get<Blob>(`/api/admin/users/export${buildQuery(query)}`, { responseType: "blob" });
+  },
+
+  /** PUT /api/admin/users/{id}/profile-fields, sets (or clears with null) custom profile field values. */
+  async updateProfileFieldValues(user_id: number, values: Record<string, string | null>): Promise<AdminUserDto> {
+    const response = await apiClient.put<{ user: AdminUserDto }>(`/api/admin/users/${user_id}/profile-fields`, {
+      values,
+    });
+    return response.user;
   },
 };

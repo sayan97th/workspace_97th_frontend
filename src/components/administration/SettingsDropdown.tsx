@@ -15,6 +15,8 @@ export type SettingsDropdownProps = {
   className?: string;
   /** Muted trigger styling for "unassigned" states (e.g. a user with no department yet). */
   is_muted?: boolean;
+  /** Adds a search box above the options, for long lists such as timezones. */
+  is_searchable?: boolean;
 };
 
 const FALLBACK_WIDTH = 220;
@@ -32,9 +34,14 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
   placeholder = "Select…",
   className = "",
   is_muted = false,
+  is_searchable = false,
 }) => {
   const [anchor_el, setAnchorEl] = useState<HTMLButtonElement | null>(null);
   const [is_open, setIsOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const needle = query.trim().toLowerCase();
+  const visible_options = is_searchable && needle ? options.filter((option) => option.label.toLowerCase().includes(needle)) : options;
 
   const selected_label = options.find((option) => option.id === value)?.label;
 
@@ -43,7 +50,10 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
       <button
         type="button"
         ref={setAnchorEl}
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          setQuery("");
+          setIsOpen((current) => !current);
+        }}
         className={`flex items-center justify-between gap-2 rounded-lg border border-shell-border-strong bg-shell-hover-strong px-[10px] py-2 text-[12.5px] font-medium transition-colors hover:border-shell-text-muted ${
           selected_label && !is_muted ? "text-shell-text-secondary" : "text-shell-text-muted"
         } ${className}`}
@@ -68,8 +78,19 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
         align="start"
         width={anchor_el?.getBoundingClientRect().width ?? FALLBACK_WIDTH}
       >
+        {is_searchable ? (
+          <div className="p-[5px] pb-0">
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search…"
+              className="h-[32px] w-full rounded-md border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+            />
+          </div>
+        ) : null}
         <div className="max-h-[220px] overflow-y-auto p-[5px]">
-          {options.map((option) => (
+          {visible_options.map((option) => (
             <div
               key={option.id}
               onClick={() => {

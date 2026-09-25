@@ -1,12 +1,17 @@
 import {
+  ArchiveIcon,
   BoardGridIcon,
   BuildingIcon,
   CameraIcon,
   ClockIcon,
+  ContentTabIcon,
+  DashboardIcon,
+  FileIcon,
   FolderIcon,
   KeyIcon,
   LinkIcon,
   LockIcon,
+  PermissionsIcon,
   PersonIcon,
   ShieldIcon,
   TeamsIcon,
@@ -27,6 +32,8 @@ export type AdministrationNavItem = {
   icon: IconComponent;
   /** Which collapsible group this item renders under, or null for the always-visible "General" rows. */
   group: AdminNavGroupId | null;
+  /** Restricts the item to these platform roles, mirroring the API route's role gate. Visible to every Administration role when absent. */
+  roles?: string[];
 };
 
 /**
@@ -35,6 +42,9 @@ export type AdministrationNavItem = {
  * instead of touching the nav JSX, the section-title map, and the section-panel map
  * separately, which is what made the old {@link AdministrationNav} easy to drift out of sync.
  */
+/** Roles allowed on the admin only pages (the API gates them with `role:super_admin,admin`). */
+const ADMIN_ROLES = ["super_admin", "admin"];
+
 export const ADMINISTRATION_NAV_GROUPS: AdministrationNavGroup[] = [
   { id: "customization", label: "Customization", own_section_id: "customization" },
   { id: "directory", label: "Directory" },
@@ -44,16 +54,27 @@ export const ADMINISTRATION_NAV_GROUPS: AdministrationNavGroup[] = [
 export const ADMINISTRATION_NAV_ITEMS: AdministrationNavItem[] = [
   { id: "profile", label: "Profile", icon: PersonIcon, group: null },
   { id: "account", label: "Account", icon: BuildingIcon, group: null },
+  { id: "usage", label: "Usage stats", icon: DashboardIcon, group: null },
   { id: "integrations", label: "Integrations", icon: LinkIcon, group: null },
   { id: "branding", label: "Branding", icon: CameraIcon, group: "customization" },
+  { id: "profile_fields", label: "Profile fields", icon: FileIcon, group: "customization" },
   { id: "users", label: "Users", icon: TeamsIcon, group: "directory" },
   { id: "departments", label: "Departments", icon: FolderIcon, group: "directory" },
   { id: "board_ownership", label: "Board ownership", icon: BoardGridIcon, group: "directory" },
+  { id: "content_directory", label: "Content directory", icon: ContentTabIcon, group: "directory", roles: ADMIN_ROLES },
+  { id: "tidy_up", label: "Tidy up", icon: ArchiveIcon, group: "directory", roles: ADMIN_ROLES },
+  { id: "permissions", label: "Permissions", icon: PermissionsIcon, group: "security" },
   { id: "authentication", label: "Authentication", icon: ShieldIcon, group: "security" },
   { id: "audit", label: "Audit", icon: ClockIcon, group: "security" },
   { id: "advanced", label: "Advanced", icon: KeyIcon, group: "security" },
   { id: "sessions", label: "Sessions", icon: LockIcon, group: "security" },
 ];
+
+/** Whether a user holding `hasAnyRole` may open `item`. */
+export const canSeeAdministrationItem = (
+  item: AdministrationNavItem,
+  hasAnyRole: (...roles: string[]) => boolean
+): boolean => !item.roles || hasAnyRole(...item.roles);
 
 /** Section ids rendered outside any collapsible group, always visible under "General". */
 export const ADMINISTRATION_GENERAL_ITEMS = ADMINISTRATION_NAV_ITEMS.filter((item) => item.group === null);

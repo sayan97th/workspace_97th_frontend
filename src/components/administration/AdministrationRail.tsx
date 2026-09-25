@@ -1,11 +1,13 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { ChevronRightIcon } from "@/icons/workspace-icons";
 import {
   ADMINISTRATION_GENERAL_ITEMS,
   ADMINISTRATION_NAV_GROUPS,
   administrationGroupForSection,
   administrationItemsForGroup,
+  canSeeAdministrationItem,
   type AdministrationNavItem,
 } from "./administrationNavConfig";
 import type { AdminNavGroupId, AdminSectionId } from "./types";
@@ -65,6 +67,7 @@ const NavGroupToggle: React.FC<{
  * section's own internal link (see `CustomizationSection`/`DepartmentsSection`).
  */
 const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section, onSelectSection }) => {
+  const { hasAnyRole } = useAuth();
   const [expanded_groups, setExpandedGroups] = useState<Record<AdminNavGroupId, boolean>>({
     customization: true,
     directory: true,
@@ -90,7 +93,7 @@ const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section,
       ))}
 
       {ADMINISTRATION_NAV_GROUPS.map((group) => {
-        const items = administrationItemsForGroup(group.id);
+        const items = administrationItemsForGroup(group.id).filter((item) => canSeeAdministrationItem(item, hasAnyRole));
         const is_expanded = expanded_groups[group.id];
         const is_group_active = group.own_section_id ? active_section === group.own_section_id : false;
 

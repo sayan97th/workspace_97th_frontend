@@ -11,6 +11,12 @@ export type AccountSettingsDto = {
   weekend_start: "fri_sat" | "sat_sun";
   show_weekends: boolean;
   home_page: "default" | "dashboard";
+  /** Account defaults applied to every new user, see Administration > Account. */
+  default_timezone: string | null;
+  default_language: string;
+  default_date_format: "long" | "euro";
+  default_time_format: "12" | "24";
+  default_first_day_of_week: "sunday" | "monday";
   logo_url: string | null;
   email_header_url: string | null;
   two_factor_enforced: boolean;
@@ -36,6 +42,17 @@ export type UpdateProfileSettingsPayload = Partial<Pick<AccountSettingsDto, "acc
 
 export type UpdateAccountPreferencesPayload = Partial<
   Pick<AccountSettingsDto, "weekend_start" | "show_weekends" | "home_page">
+>;
+
+export type UpdateAccountDefaultsPayload = Partial<
+  Pick<
+    AccountSettingsDto,
+    | "default_timezone"
+    | "default_language"
+    | "default_date_format"
+    | "default_time_format"
+    | "default_first_day_of_week"
+  >
 >;
 
 export type UpdateAuthenticationSettingsPayload = Partial<

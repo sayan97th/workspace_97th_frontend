@@ -26,6 +26,12 @@ import AuthenticationSection from "./sections/AuthenticationSection";
 import AuditSection from "./sections/AuditSection";
 import AdvancedSection from "./sections/AdvancedSection";
 import SessionsSection from "./sections/SessionsSection";
+import UsageSection from "./sections/UsageSection";
+import ProfileFieldsSection from "./sections/ProfileFieldsSection";
+import ContentDirectorySection from "./sections/ContentDirectorySection";
+import TidyUpSection from "./sections/TidyUpSection";
+import PermissionsSection from "./sections/PermissionsSection";
+import { ADMINISTRATION_NAV_ITEMS, canSeeAdministrationItem } from "./administrationNavConfig";
 
 /** Roles allowed onto the Administration view at all, mirroring the Laravel API's `/admin` route group floor. */
 const ADMINISTRATION_ROLES = ["super_admin", "admin", "staff"];
@@ -43,6 +49,11 @@ const SECTION_TITLES: Record<AdminSectionId, string> = {
   audit: "Audit log",
   advanced: "Advanced",
   sessions: "Active user sessions",
+  usage: "Usage stats",
+  profile_fields: "Profile fields",
+  content_directory: "Content directory",
+  tidy_up: "Tidy up",
+  permissions: "Account permissions",
 };
 
 /**
@@ -80,7 +91,7 @@ const AdministrationView: React.FC = () => {
   const users = useUsersManager(departments.department_rows);
   const { reloadUsers } = users;
 
-  // Department assignments can change from the Departments tab, so refresh the roster on each visit.
+  // Department assignments and profile fields can change from their own tabs, so refresh the roster on each visit.
   useEffect(() => {
     if (active_section === "users") reloadUsers();
   }, [active_section, reloadUsers]);
@@ -105,6 +116,13 @@ const AdministrationView: React.FC = () => {
   }
 
   const renderActiveSection = () => {
+    const nav_item = ADMINISTRATION_NAV_ITEMS.find((item) => item.id === active_section);
+    if (nav_item && !canSeeAdministrationItem(nav_item, hasAnyRole)) {
+      return (
+        <p className="text-[13px] text-shell-text-muted">Only account admins can open {nav_item.label}.</p>
+      );
+    }
+
     switch (active_section) {
       case "profile":
         return <ProfileSection account={account_settings} />;
@@ -130,6 +148,16 @@ const AdministrationView: React.FC = () => {
         return <AdvancedSection advanced={advanced} />;
       case "sessions":
         return <SessionsSection sessions={sessions} />;
+      case "usage":
+        return <UsageSection />;
+      case "profile_fields":
+        return <ProfileFieldsSection />;
+      case "content_directory":
+        return <ContentDirectorySection />;
+      case "tidy_up":
+        return <TidyUpSection />;
+      case "permissions":
+        return <PermissionsSection />;
       default:
         return null;
     }
