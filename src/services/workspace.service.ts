@@ -1,10 +1,12 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   BoardDetail,
+  BulkNavItemsPayload,
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
   ReorderNavItemsPayload,
+  SortNavItemsPayload,
   UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
   UpdateWorkspaceMemberRolePayload,
@@ -311,6 +313,16 @@ export const workspaceService = {
       payload
     );
     return response.items;
+  },
+
+  /** POST /api/workspaces/{slug}/navigation/bulk, the sidebar's multi-select bulk bar (move, archive, delete). */
+  async bulkNavItems(workspace_slug: string, payload: BulkNavItemsPayload): Promise<void> {
+    await apiClient.post(`/api/workspaces/${workspace_slug}/navigation/bulk`, payload);
+  },
+
+  /** PATCH /api/workspaces/{slug}/navigation/sort, the sidebar's "Sort A to Z" (folders first, saved as the manual order). */
+  async sortNavItems(workspace_slug: string, payload: SortNavItemsPayload): Promise<void> {
+    await apiClient.patch(`/api/workspaces/${workspace_slug}/navigation/sort`, payload);
   },
 
   /** POST /api/workspaces/{slug}/navigation/{id}/duplicate — deep-copy a subtree. */

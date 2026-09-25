@@ -4,12 +4,14 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { workspaceService } from "@/services/workspace.service";
 import { FAVORITES_CHANGED_EVENT, personalService } from "@/services/personal.service";
 import type {
+  BulkNavItemsPayload,
   CreateNavItemPayload,
   MoveNavItemPayload,
   ReorderNavItemsPayload,
   WorkspaceNavNode,
 } from "@/types/workspace";
 import { collectGroupIds, locateNavNode } from "./helpers";
+import { applyReorderToTree } from "./navTreeUtils";
 
 export type WorkspaceNavApi = {
   tree: WorkspaceNavNode[];
@@ -17,6 +19,10 @@ export type WorkspaceNavApi = {
   error: string | null;
   expanded_group_ids: Record<string, boolean>;
   toggleGroup: (group_id: string) => void;
+  /** Whether a folder is open; folders start open until the user collapses them. */
+  isGroupExpanded: (group_id: number) => boolean;
+  /** Opens or closes several folders at once ("Expand all" / "Collapse all", search, drag hover) and saves the result. */
+  setGroupsExpanded: (group_ids: number[], is_expanded: boolean) => void;
   reload: () => Promise<void>;
   createItem: (payload: CreateNavItemPayload) => Promise<void>;
   renameItem: (item_id: number, label: string) => Promise<void>;
@@ -32,6 +38,12 @@ export type WorkspaceNavApi = {
   moveItemDown: (item_id: number) => Promise<void>;
   duplicateItem: (item_id: number) => Promise<void>;
   deleteItem: (item_id: number) => Promise<void>;
+  /** Sets or clears (null) a folder's color. */
+  setItemColor: (item_id: number, color: string | null) => Promise<void>;
+  /** Move, archive or delete several items at once, see the sidebar's multi-select bulk bar. */
+  bulkAction: (payload: BulkNavItemsPayload) => Promise<void>;
+  /** "Sort A to Z": folders first, then boards, at every level, saved as the new manual order. */
+  sortAlphabetically: () => Promise<void>;
 };
 
 /**
@@ -73,19 +85,46 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     void load();
   }, [load]);
 
-  const toggleGroup = useCallback(
-    (group_id: string) => {
+  const persistCollapsedState = useCallback(
+    (next: Record<string, boolean>) => {
       if (!workspace_slug) return;
-      setExpandedGroupIds((prev) => {
-        const next = { ...prev, [group_id]: !prev[group_id] };
-        const collapsed_group_ids = Object.entries(next)
-          .filter(([, is_expanded]) => !is_expanded)
-          .map(([id]) => Number(id));
-        void workspaceService.updateNavCollapseState(workspace_slug, { collapsed_group_ids });
-        return next;
-      });
+      const collapsed_group_ids = Object.entries(next)
+        .filter(([, is_expanded]) => !is_expanded)
+        .map(([id]) => Number(id));
+      void workspaceService.updateNavCollapseState(workspace_slug, { collapsed_group_ids });
     },
     [workspace_slug]
+  );
+
+  const toggleGroup = useCallback(
+    (group_id: string) => {
+      const next = { ...expanded_group_ids, [group_id]: !(expanded_group_ids[group_id] ?? true) };
+      setExpandedGroupIds(next);
+      persistCollapsedState(next);
+    },
+    [expanded_group_ids, persistCollapsedState]
+  );
+
+  const isGroupExpanded = useCallback(
+    (group_id: number) => expanded_group_ids[String(group_id)] ?? true,
+    [expanded_group_ids]
+  );
+
+  const setGroupsExpanded = useCallback(
+    (group_ids: number[], is_expanded: boolean) => {
+      const next = { ...expanded_group_ids };
+      let has_changed = false;
+      for (const group_id of group_ids) {
+        if ((next[String(group_id)] ?? true) !== is_expanded) {
+          next[String(group_id)] = is_expanded;
+          has_changed = true;
+        }
+      }
+      if (!has_changed) return;
+      setExpandedGroupIds(next);
+      persistCollapsedState(next);
+    },
+    [expanded_group_ids, persistCollapsedState]
   );
 
   const runMutation = useCallback(
@@ -137,10 +176,19 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  // Optimistic: the drop shows right away, the reload afterwards settles
+  // whatever the server decided (or undoes the drop when it failed).
   const reorderItem = useCallback(
-    (payload: ReorderNavItemsPayload) =>
-      runMutation((slug) => workspaceService.reorderNavItems(slug, payload)),
-    [runMutation]
+    async (payload: ReorderNavItemsPayload) => {
+      if (!workspace_slug) return;
+      setTree((current) => applyReorderToTree(current, payload));
+      try {
+        await workspaceService.reorderNavItems(workspace_slug, payload);
+      } finally {
+        await load();
+      }
+    },
+    [workspace_slug, load]
   );
 
   /** Shared by `moveItemUp`/`moveItemDown`: swaps `item_id` with its previous/next sibling and persists the new order. */
@@ -183,12 +231,30 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  const setItemColor = useCallback(
+    (item_id: number, color: string | null) =>
+      runMutation((slug) => workspaceService.updateNavItem(slug, item_id, { color })),
+    [runMutation]
+  );
+
+  const bulkAction = useCallback(
+    (payload: BulkNavItemsPayload) => runMutation((slug) => workspaceService.bulkNavItems(slug, payload)),
+    [runMutation]
+  );
+
+  const sortAlphabetically = useCallback(
+    () => runMutation((slug) => workspaceService.sortNavItems(slug, { parent_id: null, recursive: true })),
+    [runMutation]
+  );
+
   return {
     tree,
     is_loading,
     error,
     expanded_group_ids,
     toggleGroup,
+    isGroupExpanded,
+    setGroupsExpanded,
     reload: load,
     createItem,
     renameItem,
@@ -200,6 +266,9 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     moveItemDown,
     duplicateItem,
     deleteItem,
+    setItemColor,
+    bulkAction,
+    sortAlphabetically,
   };
 }
 

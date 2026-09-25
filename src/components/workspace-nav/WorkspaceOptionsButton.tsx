@@ -9,6 +9,7 @@ import EditWorkspaceModal, {
 } from "@/layout/EditWorkspaceModal";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import type { UpdateWorkspacePayload } from "@/types/workspace";
+import useFavorites from "@/hooks/useFavorites";
 
 /** Which single-field/confirm dialog the "…" menu currently has open. */
 type OptionsDialog = "edit" | "rename" | "change-type" | "leave" | "delete" | null;
@@ -84,6 +85,8 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);
   const button_ref = useRef<HTMLButtonElement>(null);
+  const { isWorkspaceFavorite, toggleWorkspaceFavorite } = useFavorites();
+  const is_favorite = isWorkspaceFavorite(workspace.id);
 
   if (!workspace.role) return null;
 
@@ -183,6 +186,8 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
           onChangeType={() => openDialog("change-type")}
           is_priority={!!workspace.is_priority}
           onTogglePriority={togglePriority ? handleTogglePriority : undefined}
+          is_favorite={is_favorite}
+          onToggleFavorite={() => void toggleWorkspaceFavorite(workspace.id, !is_favorite)}
           onLeave={() => openDialog("leave")}
           onDelete={() => openDialog("delete")}
         />

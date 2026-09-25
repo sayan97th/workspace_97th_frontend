@@ -51,6 +51,9 @@ export interface User {
 
   /** The viewer's own saved workspace-sidebar width in pixels, null until they drag its resize handle for the first time. */
   sidebar_width: number | null;
+
+  /** Order, visibility and collapse state of the sidebar's personal sections, always complete (the API fills in defaults). */
+  sidebar_preferences: SidebarPreferences;
 }
 
 export interface AuthResponse {
@@ -184,6 +187,9 @@ export interface ProfileResponse extends ProfileData {
 
   /** The viewer's own saved workspace-sidebar width in pixels, null until they drag its resize handle for the first time. */
   sidebar_width: number | null;
+
+  /** Order, visibility and collapse state of the sidebar's personal sections, always complete (the API fills in defaults). */
+  sidebar_preferences: SidebarPreferences;
 }
 
 /** Partial update payload for PATCH /api/profile. */
@@ -249,3 +255,18 @@ export interface TwoFactorMessageResponse {
 export interface TwoFactorRecoveryCodesResponse {
   recovery_codes: string[];
 }
+
+/** A personal block of the workspace sidebar, see `SidebarPersonalNav`. */
+export type SidebarSectionKey = "home" | "my_work" | "favorites" | "recent";
+
+export type SidebarSectionPreference = {
+  key: SidebarSectionKey;
+  is_visible: boolean;
+};
+
+/** `users.sidebar_preferences`, see `SidebarPreferences` on the API. */
+export type SidebarPreferences = {
+  sections: SidebarSectionPreference[];
+  /** Folded sections: "favorites", "recent", or a Favorites workspace group as "favorites_workspace:{id}". */
+  collapsed_sections: string[];
+};

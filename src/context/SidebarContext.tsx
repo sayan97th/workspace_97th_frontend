@@ -2,7 +2,13 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { profilePreferencesService } from "@/services/profile-preferences.service";
-import { DEFAULT_SIDEBAR_WIDTH, SIDEBAR_WIDTH_STORAGE_KEY, clampSidebarWidth } from "@/layout/sidebarConstants";
+import {
+  DEFAULT_SIDEBAR_PREFERENCES,
+  DEFAULT_SIDEBAR_WIDTH,
+  SIDEBAR_WIDTH_STORAGE_KEY,
+  clampSidebarWidth,
+} from "@/layout/sidebarConstants";
+import type { SidebarPreferences, SidebarSectionPreference } from "@/types/auth";
 
 type SidebarContextType = {
   isExpanded: boolean;
@@ -20,6 +26,16 @@ type SidebarContextType = {
   previewSidebarWidth: (width: number) => void;
   /** Fired once on the resize drag's end, persists the final width for the current user (see doc comment below). */
   commitSidebarWidth: (width: number) => void;
+  /** Order, visibility and collapse state of the personal sections (Home, My work, Favorites, Recent). */
+  sidebar_preferences: SidebarPreferences;
+  /** Saves a new order and visibility of the personal sections ("Customize sidebar"). */
+  updateSidebarSections: (sections: SidebarSectionPreference[]) => void;
+  isSectionCollapsed: (section_key: string) => boolean;
+  /** Folds or unfolds a personal section (or a Favorites workspace group) and saves it on the account. */
+  toggleSectionCollapsed: (section_key: string) => void;
+  /** True while the collapsed sidebar is shown as a temporary overlay because the pointer is over its rail. */
+  is_peeking: boolean;
+  setIsPeeking: (is_peeking: boolean) => void;
 };
 
 const SidebarContext = createContext<SidebarContextType | undefined>(undefined);
@@ -62,12 +78,17 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   // Applies the server-persisted width once per signed-in user, so it wins over
   // whatever was cached locally without fighting a drag already in progress.
   const hydrated_user_id_ref = useRef<number | null>(null);
+  const [sidebar_preferences, setSidebarPreferences] = useState<SidebarPreferences>(DEFAULT_SIDEBAR_PREFERENCES);
+  const [is_peeking, setIsPeeking] = useState(false);
 
   useEffect(() => {
     if (!user || hydrated_user_id_ref.current === user.id) return;
     hydrated_user_id_ref.current = user.id;
     if (user.sidebar_width != null) {
       setSidebarWidth(clampSidebarWidth(user.sidebar_width));
+    }
+    if (user.sidebar_preferences) {
+      setSidebarPreferences(user.sidebar_preferences);
     }
   }, [user]);
 
@@ -88,9 +109,10 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
+    setIsPeeking(false);
     setIsExpanded((prev) => !prev);
-  };
+  }, []);
 
   const toggleMobileSidebar = () => {
     setIsMobileOpen((prev) => !prev);
@@ -118,6 +140,30 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
+  const updateSidebarSections = useCallback((sections: SidebarSectionPreference[]) => {
+    setSidebarPreferences((current) => ({ ...current, sections }));
+    profilePreferencesService.updateSidebarPreference({ sections }).catch(() => {
+      // Best-effort like the width: the layout already changed locally.
+    });
+  }, []);
+
+  const isSectionCollapsed = useCallback(
+    (section_key: string) => sidebar_preferences.collapsed_sections.includes(section_key),
+    [sidebar_preferences.collapsed_sections]
+  );
+
+  const toggleSectionCollapsed = useCallback((section_key: string) => {
+    setSidebarPreferences((current) => {
+      const collapsed_sections = current.collapsed_sections.includes(section_key)
+        ? current.collapsed_sections.filter((key) => key !== section_key)
+        : [...current.collapsed_sections, section_key];
+      profilePreferencesService.updateSidebarPreference({ collapsed_sections }).catch(() => {
+        // Best-effort, the section is already folded locally.
+      });
+      return { ...current, collapsed_sections };
+    });
+  }, []);
+
   return (
     <SidebarContext.Provider
       value={{
@@ -133,6 +179,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
         setActiveItem,
         previewSidebarWidth,
         commitSidebarWidth,
+        sidebar_preferences,
+        updateSidebarSections,
+        isSectionCollapsed,
+        toggleSectionCollapsed,
+        is_peeking,
+        setIsPeeking,
       }}
     >
       {children}

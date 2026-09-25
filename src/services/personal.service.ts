@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { FavoriteItemDto, MyWorkResponseDto, RecentBoardDto } from "@/types/personal";
+import type { FavoritesResponseDto, MyWorkResponseDto, RecentBoardDto } from "@/types/personal";
 
 /**
  * Window event fired whenever a favorite is added or removed anywhere in the
@@ -14,9 +14,19 @@ export const notifyFavoritesChanged = (): void => {
 
 /** The signed in user's own navigation: Favorites, My Work and recently visited boards. */
 export const personalService = {
-  async getFavorites(): Promise<FavoriteItemDto[]> {
-    const response = await apiClient.get<{ data: FavoriteItemDto[] }>("/api/favorites");
-    return response.data;
+  async getFavorites(): Promise<FavoritesResponseDto> {
+    const response = await apiClient.get<Partial<FavoritesResponseDto>>("/api/favorites");
+    return { data: response.data ?? [], workspaces: response.workspaces ?? [] };
+  },
+
+  /** Stars or unstars a whole workspace, by its slug. */
+  async setWorkspaceFavorite(workspace_slug: string, is_favorite: boolean): Promise<void> {
+    if (is_favorite) {
+      await apiClient.put(`/api/favorites/workspaces/${workspace_slug}`);
+    } else {
+      await apiClient.delete(`/api/favorites/workspaces/${workspace_slug}`);
+    }
+    notifyFavoritesChanged();
   },
 
   async setFavorite(item_id: number, is_favorite: boolean): Promise<void> {

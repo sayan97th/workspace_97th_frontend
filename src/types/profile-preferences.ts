@@ -5,7 +5,7 @@
  * form-request shapes.
  */
 
-import type { EmailDigestFrequency, ProfileResponse } from "./auth";
+import type { EmailDigestFrequency, ProfileResponse, SidebarSectionPreference } from "./auth";
 
 export type WorkingStatusPayload = {
   working_status?: string | null;
@@ -34,8 +34,11 @@ export type LocalePreferencesPayload = {
   first_day_of_week?: "sunday" | "monday";
 };
 
+/** Every field is optional, each control saves only what it changed. */
 export type SidebarPreferencePayload = {
-  width: number;
+  width?: number;
+  sections?: SidebarSectionPreference[];
+  collapsed_sections?: string[];
 };
 
 /** Common envelope returned by every `PATCH /api/profile/*` preference endpoint. */

@@ -93,6 +93,29 @@ export const FolderIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/** A real folder glyph for sidebar folders; `FolderIcon` above is the board glyph. Filled with a soft tint of `currentColor`. */
+export const SidebarFolderIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M1.8 4.2 a1.2 1.2 0 0 1 1.2 -1.2 H6.2 L7.7 4.6 H13 a1.2 1.2 0 0 1 1.2 1.2 V12 a1.2 1.2 0 0 1 -1.2 1.2 H3 a1.2 1.2 0 0 1 -1.2 -1.2 Z"
+      fill="currentColor"
+      fillOpacity="0.18"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** "Sort A to Z": two letters over a down arrow. */
+export const SortIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M4.5 2.5 V13 M2.3 10.8 L4.5 13 L6.7 10.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 6.5 L10.9 2.5 L12.8 6.5 M9.6 5.3 H12.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9.2 9 H12.8 L9.2 13 H12.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const FileIcon: React.FC<IconProps> = ({ className, size = 17 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path d="M4 1.5 h6 l2.5 2.5 v10.5 h-8.5 z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />

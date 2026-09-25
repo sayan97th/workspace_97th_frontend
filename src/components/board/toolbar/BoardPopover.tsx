@@ -139,6 +139,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   return createPortal(
     <div
       ref={popover_ref}
+      data-floating-layer
       className={`fixed z-[1000] ${unstyled ? "" : CHROME_CLASS}`}
       style={{
         width: hug_content ? undefined : width,

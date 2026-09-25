@@ -43,6 +43,8 @@ export type WorkspaceNavNode = {
   description: string | null;
   slug: string;
   icon: string | null;
+  /** A folder's hex color, shown on its sidebar icon, null for the default. */
+  color: string | null;
   view_key: string | null;
   href: string | null;
   display_style: string | null;
@@ -162,6 +164,7 @@ export type CreateNavItemPayload = {
 export type UpdateNavItemPayload = {
   label?: string;
   icon?: string | null;
+  color?: string | null;
   view_key?: string | null;
   href?: string | null;
   display_style?: string | null;
@@ -209,6 +212,17 @@ export type ReorderNavItemsPayload = {
 export type WorkspaceNavigationTreeResponse = {
   data: WorkspaceNavNode[];
   collapsed_group_ids: number[];
+};
+
+/** Payload for `POST /api/workspaces/{slug}/navigation/bulk`, the sidebar's multi-select bulk bar. */
+export type BulkNavItemsPayload =
+  | { action: "move"; item_ids: number[]; parent_id: number | null }
+  | { action: "archive" | "delete"; item_ids: number[] };
+
+/** Payload for `PATCH /api/workspaces/{slug}/navigation/sort`, the sidebar's "Sort A to Z". */
+export type SortNavItemsPayload = {
+  parent_id: number | null;
+  recursive: boolean;
 };
 
 /** Payload for `PUT /api/workspaces/{slug}/navigation/collapsed-state`. */

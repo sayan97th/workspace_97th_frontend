@@ -17,6 +17,12 @@ export type FavoriteItemDto = {
   workspace: PersonalWorkspaceSummary | null;
 };
 
+/** `GET /api/favorites`: starred boards and folders plus whole starred workspaces. */
+export type FavoritesResponseDto = {
+  data: FavoriteItemDto[];
+  workspaces: PersonalWorkspaceSummary[];
+};
+
 /** `GET /api/home/recent-boards`, one board the user opened recently. */
 export type RecentBoardDto = {
   id: number;

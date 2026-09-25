@@ -27,6 +27,10 @@ export type WorkspaceOptionsMenuProps = {
   is_priority?: boolean;
   /** Flags/unflags the workspace as a priority client; the menu item stays hidden when omitted. */
   onTogglePriority?: () => void;
+  /** Whether the viewer starred this whole workspace (it heads a group in the sidebar's Favorites). */
+  is_favorite?: boolean;
+  /** Stars/unstars the workspace for the viewer only; the menu item stays hidden when omitted. */
+  onToggleFavorite?: () => void;
   onLeave: () => void;
   onDelete: () => void;
 };
@@ -48,6 +52,8 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
   onTransferOwnership,
   is_priority = false,
   onTogglePriority,
+  is_favorite = false,
+  onToggleFavorite,
   onLeave,
   onDelete,
 }) => {
@@ -81,6 +87,16 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
             label: is_priority ? "Remove as priority client" : "Mark as priority client",
             icon: <StarIcon filled={is_priority} />,
             onClick: onTogglePriority,
+          },
+        ] satisfies AnchoredMenuItem[])
+      : []),
+    ...(onToggleFavorite
+      ? ([
+          {
+            key: "favorite",
+            label: is_favorite ? "Remove from favorites" : "Add to favorites",
+            icon: <StarIcon filled={is_favorite} />,
+            onClick: onToggleFavorite,
           },
         ] satisfies AnchoredMenuItem[])
       : []),
