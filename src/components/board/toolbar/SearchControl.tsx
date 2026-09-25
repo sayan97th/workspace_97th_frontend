@@ -79,7 +79,7 @@ function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
 
   return (
     <div
-      className={`relative flex h-[34px] flex-none items-center gap-2 rounded-lg border px-3 transition-[width,border-color] duration-200 ease-out ${
+      className={`relative flex h-8 flex-none items-center gap-2 rounded-lg border px-3 transition-[width,border-color] duration-200 ease-out ${
         is_expanded ? "border-boardtree-border bg-boardtree-hover-strong" : "border-boardtree-border-soft bg-boardtree-hover"
       } ${is_expanded ? SEARCH_WIDTH_EXPANDED : SEARCH_WIDTH_COLLAPSED}`}
     >
@@ -102,7 +102,7 @@ function SearchControl<TRow>({ toolbar }: SearchControlProps<TRow>) {
           }
         }}
         placeholder="Search this board..."
-        className="min-w-0 flex-1 bg-transparent text-[13.5px] text-boardtree-text placeholder:text-boardtree-text-muted focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-board-nav text-boardtree-text placeholder:text-boardtree-text-muted focus:outline-none"
       />
       {toolbar.search_query && (
         <div className="flex flex-none items-center gap-0.5">

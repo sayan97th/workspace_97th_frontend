@@ -71,12 +71,12 @@ function BoardToolbar<TRow>({
     <div>
       <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
         <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-boardtree-accent">
-          <button type="button" onClick={onNewItem} className="px-3.5 py-2 text-[13px] font-semibold text-white">
+          <button type="button" onClick={onNewItem} className="px-3.5 py-[6px] text-board-nav text-white">
             {new_item_label}
           </button>
           <button
             type="button"
-            className="flex items-center border-l border-white/25 py-2 pl-2 pr-2 text-white"
+            className="flex items-center self-stretch border-l border-white/25 px-2 text-white"
             aria-label="New item options"
           >
             <ChevronDownIcon size={11} />

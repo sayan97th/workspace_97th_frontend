@@ -99,7 +99,7 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
 
   return (
     <div className="flex items-center gap-0.5 border-b border-shell-border">
-      <span className="-mb-px flex items-center gap-2 border-b-2 border-brand-500 px-3 py-[9px] text-[13.5px] font-semibold text-shell-text">
+      <span className="-mb-px flex items-center gap-2 border-b-2 border-brand-500 px-3 py-[9px] text-board-nav text-shell-text">
         <span className="text-[#00c875]">
           <TableViewIcon />
         </span>
@@ -112,7 +112,7 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
       {views.map((view, index) => (
         <span
           key={`${view}-${index}`}
-          className="-mb-px cursor-pointer whitespace-nowrap border-b-2 border-transparent px-3 py-[9px] text-[13.5px] font-medium text-shell-text-muted transition-colors hover:text-shell-text"
+          className="-mb-px cursor-pointer whitespace-nowrap border-b-2 border-transparent px-3 py-[9px] text-board-nav text-shell-text transition-colors hover:border-shell-border-strong"
         >
           {view}
         </span>
@@ -320,7 +320,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
               <InlineTitleEditor
                 value={tab.label}
                 aria_label="Tab name"
-                className="w-[120px] text-[13.5px] font-semibold"
+                className="w-[120px] text-board-nav"
                 onCommit={(label) => {
                   onRenameView?.(tab.id, label);
                   setEditingId(null);
@@ -332,11 +332,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
                 type="button"
                 onClick={() => onSelectView(tab.id)}
                 onDoubleClick={() => onRenameView && !tab.is_locked && setEditingId(tab.id)}
-                className={
-                  is_active
-                    ? "flex items-center gap-1 whitespace-nowrap text-[13.5px] font-semibold text-shell-text"
-                    : "flex items-center gap-1 whitespace-nowrap text-[13.5px] font-medium text-shell-text-muted transition-colors group-hover:text-shell-text"
-                }
+                className="flex items-center gap-1 whitespace-nowrap text-board-nav text-shell-text"
               >
                 {tab.label}
                 {tab.is_locked && (

@@ -35,8 +35,8 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         aria-label={aria_label ?? label}
         aria-pressed={is_pressed}
         title={title}
-        className={`flex items-center gap-[7px] rounded-lg px-[11px] py-2 text-[13px] font-medium transition-colors ${
-          is_active ? active_class : "text-boardtree-text-secondary hover:bg-boardtree-hover"
+        className={`flex items-center gap-[7px] rounded-lg px-[11px] py-[6px] text-board-nav transition-colors ${
+          is_active ? active_class : "text-boardtree-text hover:bg-boardtree-hover"
         }`}
       >
         <Icon />

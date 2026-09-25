@@ -77,8 +77,10 @@ export type BoardHeaderProps = {
   title_badge?: React.ReactNode;
 };
 
+// Header actions, view tabs and toolbar controls share the regular Figtree
+// `text-board-nav` style (see `src/styles/typography.css`).
 const action_button_class =
-  "flex items-center gap-[7px] rounded-lg px-[11px] py-[7px] text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover";
+  "flex items-center gap-[7px] rounded-lg px-[11px] py-[6px] text-board-nav text-shell-text transition-colors hover:bg-shell-hover";
 
 const icon_button_class =
   "flex h-[34px] w-[34px] items-center justify-center rounded-lg text-shell-text-secondary transition-colors hover:bg-shell-hover";
@@ -131,9 +133,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
   return (
     <div className="flex items-center gap-[9px]">
-      <span className="text-[23px] font-extrabold tracking-[-0.015em] text-shell-text">
+      <h1 className="min-w-0 truncate font-heading text-board-title text-shell-text">
         {title}
-      </span>
+      </h1>
       {onToggleFavorite ? (
         <button
           type="button"
@@ -247,13 +249,13 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
       <div className="flex items-center gap-0.5">
         <button type="button" onClick={onIntegrateClick} className={`${action_button_class} hidden md:flex`}>
-          <span className="text-shell-text-muted">
+          <span className="text-shell-text-secondary">
             <IntegrateIcon />
           </span>
           Integrate
         </button>
         <button type="button" onClick={onAutomateClick} className={`${action_button_class} relative hidden md:flex`}>
-          <span className="text-shell-text-muted">
+          <span className="text-shell-text-secondary">
             <AutomateIcon />
           </span>
           Automate
@@ -317,7 +319,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
         <button
           type="button"
           onClick={onInviteClick}
-          className="flex items-center gap-[7px] rounded-lg border border-shell-border-strong px-[13px] py-[7px] text-[13px] font-semibold text-shell-text transition-colors hover:border-brand-500"
+          className="flex items-center gap-[7px] rounded-lg border border-shell-border-strong px-[13px] py-[6px] text-board-nav text-shell-text transition-colors hover:border-brand-500"
         >
           <InviteIcon size={14} />
           Invite / {invite_count}

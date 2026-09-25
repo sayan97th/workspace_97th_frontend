@@ -72,6 +72,22 @@
   --text-body-sm: 12px;
   --text-body-sm--line-height: 16px;
   --text-body-sm--font-weight: 400;
+
+  /*
+   * Board chrome scale, the rows above a board body (title, view tabs and
+   * toolbar), tuned to match monday.com's own board header. The title pairs
+   * with `font-heading` (Poppins at a medium weight, not bold), while tabs,
+   * header actions and toolbar controls all share one regular Figtree 14px
+   * style, so that whole strip reads as a single calm line of navigation.
+   */
+  --text-board-title: 24px;
+  --text-board-title--line-height: 32px;
+  --text-board-title--font-weight: 500;
+  --text-board-title--letter-spacing: -0.1px;
+
+  --text-board-nav: 14px;
+  --text-board-nav--line-height: 20px;
+  --text-board-nav--font-weight: 400;
 }
 
 /*
@@ -96,6 +112,18 @@
 }
 .font-boardtree-mono {
   --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
+}
+
+/*
+  Same trap for `--font-heading`: `--font-poppins`/`--font-figtree` come from
+  the `next/font` classes on `<body>` (see `src/app/layout.tsx`), so at
+  `:root` the token resolves to the invalid value and the `font-heading`
+  utility silently falls back to the inherited Figtree. Re-resolving it on
+  the utility's own selector, which always sits below `<body>`, lets any
+  element opt into Poppins with `font-heading` (e.g. the board title).
+*/
+.font-heading {
+  --font-heading: var(--font-poppins), var(--font-figtree), ui-sans-serif, sans-serif;
 }
 
 /*
