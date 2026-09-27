@@ -141,8 +141,13 @@ export interface TimeTrackingValue {
 }
 
 /** One file in a `files`-type column's cell — the cell's value is an array of these, mirroring `BoardItemAttachment` but scoped to one column instead of the whole item. */
+/** `file` is an upload kept in storage, `link` an external URL added through "From Link". Entries saved before links existed have no `kind` and are uploads. */
+export type CellFileKind = "file" | "link";
+
 export interface CellFile {
   id: string;
+  kind?: CellFileKind;
+  /** For a link, its display text (or the URL itself when none was given). */
   file_name: string;
   url: string;
   mime_type: string;

@@ -129,8 +129,8 @@ export type BoardLinkValue = { url: string; text: string };
 /** A `time_tracking`-type column's value — see the Table kit's own `TimeTrackingValue` for the field meanings. */
 export type BoardTimeTrackingValue = { seconds: number; running_since: string | null };
 
-/** One file in a `files`-type column's cell — mirrors the Table kit's own `CellFile`. */
-export type BoardCellFile = { id: string; file_name: string; url: string; mime_type: string; size_bytes: number };
+/** One file or external link in a `files`-type column's cell, mirrors the Table kit's own `CellFile`. */
+export type BoardCellFile = { id: string; kind?: "file" | "link"; file_name: string; url: string; mime_type: string; size_bytes: number };
 
 /** A cell value, shaped per the owning column's type — see {@link BoardColumnType}. */
 export type BoardItemValue =

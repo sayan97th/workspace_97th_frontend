@@ -22,6 +22,15 @@ export const boardItemCellFilesService = {
     return response.files;
   },
 
+  /** POST /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files/link, the cell menu's "From Link". `text` is optional, the API falls back to the URL. */
+  async addCellFileLink(board_id: number, item_id: number, column_id: number, url: string, text: string): Promise<BoardCellFile[]> {
+    const response = await apiClient.post<{ files: BoardCellFile[] }>(
+      `/api/boards/${board_id}/items/${item_id}/columns/${column_id}/files/link`,
+      { url, text }
+    );
+    return response.files;
+  },
+
   /** DELETE /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files/{file_id} */
   async deleteCellFile(board_id: number, item_id: number, column_id: number, file_id: string): Promise<BoardCellFile[]> {
     const response = await apiClient.delete<{ files: BoardCellFile[] }>(

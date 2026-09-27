@@ -177,6 +177,8 @@ export interface UseBoardTableConfig {
   onUploadCellFiles?: (node_id: string, column_id: string, files: File[]) => Promise<CellFile[]>;
   /** A `files`-type cell's per-chip delete "×" — resolves with the cell's updated file list, same contract as `onUploadCellFiles`. */
   onDeleteCellFile?: (node_id: string, column_id: string, file_id: string) => Promise<CellFile[]>;
+  /** A `files`-type cell's "From Link" dialog, resolves with the cell's updated file list, same contract as `onUploadCellFiles`. Rejects with the API's validation error so the dialog can show it. */
+  onAddCellFileLink?: (node_id: string, column_id: string, url: string, text: string) => Promise<CellFile[]>;
   /**
    * Row star / row menu's "Mark as priority" toggle for a single item or
    * subitem — the per-row counterpart of `onToggleGroupPriority`, persisted
@@ -916,6 +918,15 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const uploadCellFiles = useCallback(
     async (node_id: string, column_id: string, files: File[]) => {
       const updated = await config_ref.current.onUploadCellFiles?.(node_id, column_id, files);
+      if (updated) setCellValueLocal(node_id, column_id, updated);
+    },
+    [setCellValueLocal]
+  );
+
+  /** Files cell's "From Link" dialog. Errors propagate to the caller, which keeps the dialog open to show them. */
+  const addCellFileLink = useCallback(
+    async (node_id: string, column_id: string, url: string, text: string) => {
+      const updated = await config_ref.current.onAddCellFileLink?.(node_id, column_id, url, text);
       if (updated) setCellValueLocal(node_id, column_id, updated);
     },
     [setCellValueLocal]
@@ -2144,6 +2155,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       toggleArrayValue,
       clearCellValue,
       uploadCellFiles,
+      addCellFileLink,
       deleteCellFile,
       setActiveCell,
       clearActiveCell,
@@ -2258,7 +2270,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [
       toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
-      clearCellValue, uploadCellFiles, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
+      clearCellValue, uploadCellFiles, addCellFileLink, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
@@ -2348,6 +2360,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("toggleArrayValue", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("clearCellValue", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("uploadCellFiles", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("addCellFileLink", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("startFillDrag", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("pasteIntoActiveCell", () => {

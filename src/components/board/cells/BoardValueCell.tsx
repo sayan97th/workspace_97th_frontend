@@ -24,8 +24,8 @@ export type BoardCellLinkValue = { url: string; text: string };
 /** A `time_tracking`-type column's value — see the Table kit's own `TimeTrackingValue`. */
 export type BoardCellTimeTrackingValue = { seconds: number; running_since: string | null };
 
-/** One file in a `files`-type column's cell — see the Table kit's own `CellFile`. */
-export type BoardCellFileValue = { id: string; file_name: string; url: string; mime_type: string; size_bytes: number };
+/** One file or external link in a `files`-type column's cell, see the Table kit's own `CellFile`. */
+export type BoardCellFileValue = { id: string; kind?: "file" | "link"; file_name: string; url: string; mime_type: string; size_bytes: number };
 
 /**
  * A cell value, shaped per the owning column's kind. `link`/`time_tracking`/

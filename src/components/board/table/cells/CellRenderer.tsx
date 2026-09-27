@@ -20,6 +20,7 @@ import DropdownMenu from "../menus/DropdownMenu";
 import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
+import FileLinkModal from "../menus/FileLinkModal";
 import DependencyMenu from "../menus/DependencyMenu";
 import ChecklistMenu from "../menus/ChecklistMenu";
 import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
@@ -60,8 +61,11 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }, [running_since]);
 
   // Files cell's own "Upload" in-flight state, so the popover can disable its
-  // button and show a "Uploading…" label while a request is pending.
+  // button and show a "Uploading…" label while a request is pending, plus the
+  // last failed upload's message and whether the "From Link" dialog is open.
   const [is_uploading, setIsUploading] = useState(false);
+  const [upload_error, setUploadError] = useState<string | null>(null);
+  const [is_file_link_modal_open, setIsFileLinkModalOpen] = useState(false);
 
   // Text cell: whether it was clicked out of its search highlighted display into the input.
   const [is_text_editing, setIsTextEditing] = useState(false);
@@ -497,12 +501,35 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           <FilesMenu
             files={files}
             is_uploading={is_uploading}
+            upload_error={upload_error}
             onUpload={(picked) => {
               setIsUploading(true);
-              void actions.uploadCellFiles(node_id, column.id, picked).finally(() => setIsUploading(false));
+              setUploadError(null);
+              // `Promise.resolve`: the read only guard returns undefined instead of a promise.
+              Promise.resolve(actions.uploadCellFiles(node_id, column.id, picked))
+                .catch((error: { errors?: Record<string, string[]>; message?: string }) => {
+                  const first_field_error = error?.errors ? Object.values(error.errors).flat()[0] : undefined;
+                  setUploadError(first_field_error ?? error?.message ?? "The file could not be uploaded.");
+                })
+                .finally(() => setIsUploading(false));
+            }}
+            onAddLink={() => {
+              actions.closeCellMenu();
+              setIsFileLinkModalOpen(true);
             }}
             onDelete={(file_id) => void actions.deleteCellFile(node_id, column.id, file_id)}
-            onClose={actions.closeCellMenu}
+            onClose={() => {
+              setUploadError(null);
+              actions.closeCellMenu();
+            }}
+          />
+        )}
+        {is_file_link_modal_open && (
+          <FileLinkModal
+            onSave={async (url, text) => {
+              await actions.addCellFileLink(node_id, column.id, url, text);
+            }}
+            onClose={() => setIsFileLinkModalOpen(false)}
           />
         )}
       </div>
