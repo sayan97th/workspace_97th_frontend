@@ -13,6 +13,8 @@ export type BoardImportSourceColumn = {
   label: string;
   sample_values: string[];
   suggested_type: BoardColumnType;
+  /** Why the backend guessed `suggested_type`, e.g. "100% of values are dates" — shown under the column so the guess can be checked. */
+  detection_reason: string;
 };
 
 /** How one source column is handled on commit — mirrors the "Map columns" step's per-row picker. */

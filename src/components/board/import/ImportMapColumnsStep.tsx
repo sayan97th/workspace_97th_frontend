@@ -36,6 +36,34 @@ const TYPE_LABELS: Record<BoardColumnType, string> = {
 
 const NEW_GROUP_VALUE = "__new__";
 
+/**
+ * The line under a "+ Create new column" row: which type the backend
+ * detected and why (e.g. "Date · 100% of values are dates"), or — once the
+ * user picks a different type — that override alongside the original guess,
+ * so it's always clear whether a type came from the data or from a person.
+ */
+const CreateColumnCaption: React.FC<{
+  chosen_type: BoardColumnType;
+  suggested_type: BoardColumnType;
+  detection_reason: string;
+}> = ({ chosen_type, suggested_type, detection_reason }) => {
+  const is_overridden = chosen_type !== suggested_type;
+
+  return (
+    <span className="pl-0.5 text-[11px] leading-snug text-shell-text-muted" title={detection_reason}>
+      {is_overridden ? (
+        <>
+          New {TYPE_LABELS[chosen_type]} column · detected as {TYPE_LABELS[suggested_type]}
+        </>
+      ) : (
+        <>
+          New <span className="font-semibold text-shell-text-secondary">{TYPE_LABELS[chosen_type]}</span> column · {detection_reason}
+        </>
+      )}
+    </span>
+  );
+};
+
 export type ImportMapColumnsStepProps = {
   file_name: string;
   row_count: number;
@@ -72,7 +100,8 @@ const select_class =
  * — an exact label match onto an existing board column, or (failing that) a
  * brand-new column typed from the uploaded values themselves — so the user
  * never has to hand-pick a destination for every column; the caption under
- * each select just makes that automatic choice visible, and any row can
+ * each select makes that automatic choice visible, including the backend's
+ * reason for the detected type (see `CreateColumnCaption`), and any row can
  * still be overridden or set to "Don't import".
  */
 const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
@@ -222,9 +251,11 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
                     <span className="pl-0.5 text-[11px] text-shell-text-muted">Auto-matched to an existing column</span>
                   )}
                   {mapping.mode === "create" && (
-                    <span className="pl-0.5 text-[11px] text-shell-text-muted">
-                      Auto-detected as {TYPE_LABELS[mapping.new_type ?? source.suggested_type]} — a new column will be created
-                    </span>
+                    <CreateColumnCaption
+                      chosen_type={mapping.new_type ?? source.suggested_type}
+                      suggested_type={source.suggested_type}
+                      detection_reason={source.detection_reason}
+                    />
                   )}
                 </div>
 

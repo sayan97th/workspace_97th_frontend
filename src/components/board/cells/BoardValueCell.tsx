@@ -131,9 +131,16 @@ const formatIsoDateLocal = (date: Date, has_time: boolean): string => {
 
 // Only ever called from the "timeline" case below, so the object shape is
 // safely known even though `BoardCellValue`'s other object-shaped members
-// (link/time-tracking) aren't structurally distinguishable from it here.
-const asTimelineValue = (value: BoardCellValue): BoardCellTimelineValue | null =>
-  value && typeof value === "object" && !Array.isArray(value) ? (value as BoardCellTimelineValue) : null;
+// (link/time-tracking) aren't structurally distinguishable from it here. The
+// Table view's own Timeline cell stores `"start..end"` instead, so that
+// string shape is read too.
+const asTimelineValue = (value: BoardCellValue): BoardCellTimelineValue | null => {
+  if (typeof value === "string" && value.includes("..")) {
+    const [start, end] = value.split("..");
+    return start || end ? { start: start || end, end: end || start } : null;
+  }
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as BoardCellTimelineValue) : null;
+};
 
 const asStringArray = (value: BoardCellValue): string[] =>
   Array.isArray(value) ? value.map(String) : [];

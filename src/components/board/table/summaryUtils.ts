@@ -38,17 +38,12 @@ function numberValueOf(item: BoardTableItem, column_id: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function rangeValueOf(item: BoardTableItem, column_id: string): string {
-  const raw = item.values[column_id];
-  return typeof raw === "string" ? raw : "";
-}
-
 /** Widest span covering every item's timeline range in a column: the earliest start and the latest end (falling back to that same item's start when it has no end yet). */
 function widestRangeOf(items: BoardTableItem[], column_id: string): { start_iso: string; end_iso: string } {
   let start_iso = "";
   let end_iso = "";
   items.forEach((item) => {
-    const parsed = parseRangeValue(rangeValueOf(item, column_id));
+    const parsed = parseRangeValue(item.values[column_id]);
     if (!parsed.start_iso) return;
     const item_end_iso = parsed.end_iso || parsed.start_iso;
     if (!start_iso || parsed.start_iso < start_iso) start_iso = parsed.start_iso;

@@ -117,7 +117,19 @@ export function monthLabelOf(cursor: MonthCursor): string {
   return `${MONTH_LABELS[cursor.month]} ${cursor.year}`;
 }
 
-export function parseRangeValue(value: string | undefined): { start_iso: string; end_iso: string } {
+/**
+ * Reads a Timeline value in either stored shape: the `"start..end"` string
+ * this cell itself writes, or the `{ start, end }` object the Gantt view and
+ * the monday.com importers write. Either side may carry a `THH:mm` time, which
+ * a range ignores.
+ */
+export function parseRangeValue(value: unknown): { start_iso: string; end_iso: string } {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const range = value as { start?: unknown; end?: unknown };
+    const start_iso = typeof range.start === "string" ? range.start.slice(0, 10) : "";
+    const end_iso = typeof range.end === "string" ? range.end.slice(0, 10) : "";
+    return { start_iso: start_iso || end_iso, end_iso: end_iso || start_iso };
+  }
   const parts = String(value || "").split("..");
   return { start_iso: parts[0] || "", end_iso: parts[1] || "" };
 }
