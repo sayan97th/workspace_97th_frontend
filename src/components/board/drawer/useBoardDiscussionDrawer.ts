@@ -64,7 +64,7 @@ export type BoardDiscussionDrawerConfig = {
 
 /** Full live state + actions returned by {@link useBoardDiscussionDrawer}. */
 export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
-  /** Bookmarks, copy link, quote and scheduling, see {@link CommentCollaborationApi}. Assigning does not apply to a whole board. */
+  /** Bookmarks, copy link, quote and scheduling, see {@link CommentCollaborationApi}. */
   collaboration: CommentCollaborationApi;
   is_open: boolean;
   open: () => void;
@@ -636,7 +636,6 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     is_api_backed: true,
     scope_key: is_open ? String(board_id) : null,
     can_edit: config.can_edit ?? true,
-    supports_assignment: false,
     comments,
     updateComments: setComments,
     reloadThread: async () => {

@@ -70,12 +70,6 @@ export type DrawerScheduledComment = {
   scheduled_at: string;
 };
 
-/** The composer's "Assign" action: who to add to the item's People column, and an optional due date (`YYYY-MM-DD`). */
-export type ComposerAssignment = {
-  user_ids: string[];
-  due_date: string | null;
-};
-
 /** Asks a reply composer to append a quoted comment. `key` changes on every request so quoting the same comment twice still fires. */
 export type CommentQuoteRequest = {
   key: number;
@@ -204,10 +198,8 @@ export type BoardItemDrawerConfig<TRow> = {
   getRowGroupId?: (row: TRow) => string;
   /** Whether `row` is a top-level item rather than a subitem. Moving and archiving are only offered for top-level items, since a subitem's group follows its parent's. Defaults to true. */
   isTopLevelRow?: (row: TRow) => boolean;
-  /** Whether the viewer may edit the board. Pinning an update and the composer's "Assign" action need it. Defaults to true. */
+  /** Whether the viewer may edit the board. Pinning an update needs it. Defaults to true. */
   can_edit?: boolean;
-  /** Called after a comment assigned people or a due date to the open item, so the caller can refresh that row's cells. */
-  onCommentAssigned?: (row_id: string) => void;
   /** Items of the board a comment can link to by typing `#`. Omit to hide the reference picker. */
   reference_items?: { id: string; name: string }[];
   /** Tables the "Move to group" action can move the open item into. Omit to hide that action. */
@@ -225,11 +217,11 @@ export type BoardItemDrawerConfig<TRow> = {
 /**
  * What the comment drawers add on top of plain threads: bookmarks, copy link
  * and quote for a comment, deep link highlighting, and the composer's
- * "Schedule send" and "Assign" actions. Shared by the item drawer and the board
+ * "Schedule send" action. Shared by the item drawer and the board
  * discussion drawer through `useCommentCollaboration`.
  */
 export type CommentCollaborationApi = {
-  /** Whether the viewer may pin updates and assign from a comment. Read-only members see neither. */
+  /** Whether the viewer may pin updates. Read-only members cannot. */
   can_edit: boolean;
   /** Bookmarks a comment (or reply when `reply_id` is given) for the viewer. */
   toggleBookmark: (comment_id: string, reply_id?: string) => void;
@@ -257,17 +249,11 @@ export type CommentCollaborationApi = {
   sendScheduledNow: (comment_id: string) => Promise<void>;
   /** Cancels a scheduled comment for good. */
   cancelScheduledComment: (comment_id: string) => Promise<void>;
-
-  /** False for the board discussion, which has no item to assign. */
-  supports_assignment: boolean;
-  /** People and due date the update in the composer will assign to the item. */
-  composer_assignment: ComposerAssignment;
-  setComposerAssignment: (assignment: ComposerAssignment) => void;
 };
 
 /** Full live state + actions returned by {@link useBoardItemDrawer}. */
 export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
-  /** Bookmarks, copy link, quote, scheduling and assigning, see {@link CommentCollaborationApi}. */
+  /** Bookmarks, copy link, quote and scheduling, see {@link CommentCollaborationApi}. */
   collaboration: CommentCollaborationApi;
   is_open: boolean;
   open_row_id: string | null;

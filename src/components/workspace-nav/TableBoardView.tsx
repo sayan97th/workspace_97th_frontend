@@ -2269,16 +2269,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setItems((current) => removeItemFromTree(current, Number(item_id)));
   };
 
-  // A comment that assigned people or a due date changed the open item's cells on the server, so its row is refreshed.
-  const handleDrawerCommentAssigned = async (item_id: string) => {
-    try {
-      const detail = await boardContentService.getItem(board_id, Number(item_id));
-      setItems((current) => mapItemInTree(current, Number(item_id), (item) => ({ ...item, values: detail.values })));
-    } catch {
-      // The row keeps its old cells until the next refresh.
-    }
-  };
-
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
       getRowId: (row) => String(row.id),
@@ -2302,7 +2292,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onArchiveItem: handleDrawerArchiveItem,
       onDeleteItem: handleDrawerDeleteItem,
       can_edit: node.can_edit,
-      onCommentAssigned: handleDrawerCommentAssigned,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [node.label, node.can_edit, current_user.id, persons, board_id, getInfoBoxes, getActivityLog, items, selection_move_targets]

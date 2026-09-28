@@ -284,9 +284,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       const mentioned_user_ids = (mention_ids_by_target.composer ?? []).map(Number);
       const notified_user_ids = (notified_ids_by_target.composer ?? []).map(Number);
       const files = composer_attachment_drafts.map((draft) => draft.file);
-      const { composer_schedule_at, composer_assignment } = collaboration;
-      const assign_user_ids = composer_assignment.user_ids.map(Number);
-      const is_assigning = assign_user_ids.length > 0 || composer_assignment.due_date !== null;
+      const { composer_schedule_at } = collaboration;
       setCommentsError(null);
       boardCommentsService
         .postComment(board_id, item_id, {
@@ -295,8 +293,6 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
           notified_user_ids,
           attachments: files,
           scheduled_at: composer_schedule_at ?? undefined,
-          assign_user_ids: assign_user_ids.length > 0 ? assign_user_ids : undefined,
-          assign_due_date: composer_assignment.due_date ?? undefined,
         })
         .then((dto) => {
           // A scheduled update waits in its own list until it goes out, it is not part of the thread yet.
@@ -307,7 +303,6 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
           setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
           setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
           resetComposerExtras();
-          if (is_assigning) config.onCommentAssigned?.(open_row_id);
         })
         .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
       return;
@@ -823,7 +818,6 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     is_api_backed,
     scope_key: open_row_id,
     can_edit,
-    supports_assignment: is_api_backed,
     comments,
     updateComments: (updater) => {
       if (open_row_id) updateComments(open_row_id, updater);

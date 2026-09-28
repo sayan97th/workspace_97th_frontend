@@ -2,12 +2,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
-import { AssignPersonIcon, AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
+import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon, ClockIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import { useSavedReplies } from "@/hooks/useSavedReplies";
 import CommentAttachmentChip from "./CommentAttachmentChip";
-import ComposerAssignMenu from "./ComposerAssignMenu";
 import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
@@ -15,10 +14,9 @@ import MentionPicker from "./MentionPicker";
 import type { MentionOption } from "./mentionOptions";
 import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from "./RichTextComposer";
 import SavedRepliesMenu from "./SavedRepliesMenu";
-import { formatDueDate, formatScheduledTime } from "./scheduleFormat";
+import { formatScheduledTime } from "./scheduleFormat";
 import { buildSlashSuggestions, filterReferenceItems, type SlashSuggestion } from "./slashCommands";
-import { empty_assignment } from "./useCommentCollaboration";
-import type { CommentQuoteRequest, ComposerAssignment, DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
+import type { CommentQuoteRequest, DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
 
 export type CommentComposerProps = {
   /** Identifies this composer among the drawer's shared mention/emoji palette state: "composer" for the top-level update box, or the parent comment id for a reply box. */
@@ -61,9 +59,6 @@ export type CommentComposerProps = {
   /** ISO time the update will be sent at. Passing `onScheduleChange` switches the "Schedule send" button on. */
   schedule_at?: string | null;
   onScheduleChange?: (scheduled_at: string | null) => void;
-  /** Who and when the update assigns on the item. Passing `onAssignmentChange` switches the "Assign" button on. */
-  assignment?: ComposerAssignment;
-  onAssignmentChange?: (assignment: ComposerAssignment) => void;
   /** A comment to quote into this box, appended below whatever is already typed. */
   quote_request?: CommentQuoteRequest;
 };
@@ -107,8 +102,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   reference_items = [],
   schedule_at = null,
   onScheduleChange,
-  assignment = empty_assignment,
-  onAssignmentChange,
   quote_request,
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
@@ -118,10 +111,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const editor_root_ref = useRef<HTMLDivElement>(null);
   const rich_text_ref = useRef<RichTextComposerRef>(null);
   const is_update = variant === "update";
-  const can_schedule = Boolean(onScheduleChange);
-  const can_assign = Boolean(onAssignmentChange);
-  const is_assigning = assignment.user_ids.length > 0 || assignment.due_date !== null;
-  const assigned_people = mentionable_people.filter((person) => assignment.user_ids.includes(person.id));
   const effective_submit_label = schedule_at ? "Schedule" : submit_label;
   // Only quote requests that arrive after this box mounted count, so remounting a thread never replays an old one.
   const handled_quote_key_ref = useRef(quote_request?.key ?? 0);
@@ -170,16 +159,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     handled_quote_key_ref.current = quote_request.key;
     rich_text_ref.current?.appendMarkdownBlock(quote_request.markdown);
   }, [quote_request]);
-
-  // A schedule and an assignment cannot go out together (the assignment happens the moment the update is posted), so choosing one clears the other.
-  const changeSchedule = (next: string | null) => {
-    onScheduleChange?.(next);
-    if (next !== null && is_assigning) onAssignmentChange?.(empty_assignment);
-  };
-  const changeAssignment = (next: ComposerAssignment) => {
-    onAssignmentChange?.(next);
-    if ((next.user_ids.length > 0 || next.due_date !== null) && schedule_at !== null) onScheduleChange?.(null);
-  };
 
   useEffect(() => {
     if (trigger?.kind === "slash") ensureSavedRepliesLoaded();
@@ -284,39 +263,20 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
-        {(schedule_at || is_assigning) && (
+        {schedule_at && (
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            {schedule_at && (
-              <span className="flex items-center gap-1.5 rounded-full bg-shell-hover-strong px-2.5 py-0.5 text-[11.5px] font-semibold text-[#7fb2ff]">
-                <ClockIcon size={11} />
-                Sends {formatScheduledTime(schedule_at)}
-                <button
-                  type="button"
-                  onClick={() => changeSchedule(null)}
-                  aria-label="Send right away instead"
-                  className="text-shell-text-faint hover:text-shell-text"
-                >
-                  ×
-                </button>
-              </span>
-            )}
-            {is_assigning && (
-              <span className="flex items-center gap-1.5 rounded-full bg-shell-hover-strong px-2.5 py-0.5 text-[11.5px] font-semibold text-shell-text-secondary">
-                <AssignPersonIcon size={11} className="text-[#7fb2ff]" />
-                {assigned_people.length > 0
-                  ? `Assigns ${assigned_people.map((person) => person.name).join(", ")}`
-                  : "Sets a due date"}
-                {assignment.due_date ? `, due ${formatDueDate(assignment.due_date)}` : ""}
-                <button
-                  type="button"
-                  onClick={() => changeAssignment(empty_assignment)}
-                  aria-label="Do not assign"
-                  className="text-shell-text-faint hover:text-shell-text"
-                >
-                  ×
-                </button>
-              </span>
-            )}
+            <span className="flex items-center gap-1.5 rounded-full bg-shell-hover-strong px-2.5 py-0.5 text-[11.5px] font-semibold text-[#7fb2ff]">
+              <ClockIcon size={11} />
+              Sends {formatScheduledTime(schedule_at)}
+              <button
+                type="button"
+                onClick={() => onScheduleChange?.(null)}
+                aria-label="Send right away instead"
+                className="text-shell-text-faint hover:text-shell-text"
+              >
+                ×
+              </button>
+            </span>
           </div>
         )}
 
@@ -420,15 +380,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                     </button>
                   </span>
                 )}
-                {can_schedule && <ComposerScheduleMenu value={schedule_at} onChange={changeSchedule} icon_size={is_update ? 16 : 15} />}
-                {can_assign && (
-                  <ComposerAssignMenu
-                    people={mentionable_people}
-                    value={assignment}
-                    onChange={changeAssignment}
-                    icon_size={is_update ? 16 : 15}
-                  />
-                )}
+                {onScheduleChange && <ComposerScheduleMenu value={schedule_at} onChange={onScheduleChange} icon_size={is_update ? 16 : 15} />}
               </div>
               <div className="flex items-center gap-2.5">
                 <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>

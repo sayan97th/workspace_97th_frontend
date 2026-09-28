@@ -103,8 +103,4 @@ export type CreateBoardItemCommentPayload = {
   attachments?: File[];
   /** ISO time to publish the comment at instead of posting it now. */
   scheduled_at?: string;
-  /** The composer's "Assign" action: people to add to the item's People column. Cannot be combined with `scheduled_at`. */
-  assign_user_ids?: number[];
-  /** Due date (`YYYY-MM-DD`) to set on the item's Date column. */
-  assign_due_date?: string;
 };

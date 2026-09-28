@@ -66,7 +66,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
     }
   };
 
-  // Scheduling, assigning and the per-comment extras only exist for a real, saved item.
+  // Scheduling and the per-comment extras only exist for a real, saved item.
   const collaboration = drawer.collaboration;
   const is_api_backed = drawer.board_id !== undefined;
 
@@ -151,8 +151,6 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
           reference_items={drawer.reference_items_with_links}
           schedule_at={collaboration.composer_schedule_at}
           onScheduleChange={is_api_backed ? collaboration.setComposerScheduleAt : undefined}
-          assignment={collaboration.composer_assignment}
-          onAssignmentChange={is_api_backed && collaboration.supports_assignment && collaboration.can_edit ? collaboration.setComposerAssignment : undefined}
         />
         {is_api_backed && (
           <ScheduledCommentsPanel

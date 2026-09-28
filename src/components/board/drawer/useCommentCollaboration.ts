@@ -7,7 +7,6 @@ import { buildQuoteMarkdown } from "./quoteComment";
 import type {
   CommentCollaborationApi,
   CommentQuoteRequest,
-  ComposerAssignment,
   DrawerComment,
   DrawerReply,
   DrawerScheduledComment,
@@ -18,8 +17,6 @@ const COPIED_HINT_MS = 1800;
 const HIGHLIGHT_MS = 4000;
 /** How long the "Undo" toast of a deleted comment stays. The server keeps the comment for days, this is only how long the shortcut is offered. */
 const UNDO_TOAST_MS = 9000;
-
-export const empty_assignment: ComposerAssignment = { user_ids: [], due_date: null };
 
 /** The fields of a comment or update DTO the scheduled list reads, common to both drawers' endpoints. */
 type ScheduledSource = { id: number; parent_id: number | null; body: string; scheduled_at: string | null };
@@ -40,7 +37,6 @@ type UseCommentCollaborationOptions = {
   /** Identifies the open thread (the open item, or the open discussion). Everything transient resets when it changes, null while closed. */
   scope_key: string | null;
   can_edit: boolean;
-  supports_assignment: boolean;
   /** The open thread's top-level comments, used to resolve ids to text and to find a deep link's target. */
   comments: DrawerComment[];
   updateComments: (updater: (comments: DrawerComment[]) => DrawerComment[]) => void;
@@ -68,17 +64,16 @@ const findComment = (comments: DrawerComment[], comment_id: string, reply_id?: s
 /**
  * The behavior both comment drawers share on top of their plain threads:
  * bookmarking, copy link and quote reply, a deep link's highlight, and the
- * composer's schedule and assign state together with the list of comments still
+ * composer's schedule state together with the list of comments still
  * waiting to be sent. Each drawer hands in its own endpoints and thread state,
  * so the two stay in step without duplicating any of this.
  */
 export function useCommentCollaboration(options: UseCommentCollaborationOptions) {
-  const { is_api_backed, scope_key, can_edit, supports_assignment, comments, updateComments, reloadThread, buildCommentPath, deep_link_param, api, onError } = options;
+  const { is_api_backed, scope_key, can_edit, comments, updateComments, reloadThread, buildCommentPath, deep_link_param, api, onError } = options;
 
   const { showToast } = useToast();
   const [scheduled_comments, setScheduledComments] = useState<DrawerScheduledComment[]>([]);
   const [composer_schedule_at, setComposerScheduleAt] = useState<string | null>(null);
-  const [composer_assignment, setComposerAssignment] = useState<ComposerAssignment>(empty_assignment);
   const [quote_requests, setQuoteRequests] = useState<Record<string, CommentQuoteRequest>>({});
   const [copied_link_id, setCopiedLinkId] = useState<string | null>(null);
   const [highlighted_comment_id, setHighlightedCommentId] = useState<string | null>(null);
@@ -91,11 +86,10 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
     latest_ref.current = { api, onError, reloadThread };
   });
 
-  // A new thread starts clean: its own scheduled list, no draft schedule or assignment, no stale quote.
+  // A new thread starts clean: its own scheduled list, no draft schedule, no stale quote.
   useEffect(() => {
     setScheduledComments([]);
     setComposerScheduleAt(null);
-    setComposerAssignment(empty_assignment);
     setQuoteRequests({});
     setCopiedLinkId(null);
     setHighlightedCommentId(null);
@@ -281,10 +275,9 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
     setScheduledComments((current) => [...current, mapScheduledDto(dto)].sort((a, b) => a.scheduled_at.localeCompare(b.scheduled_at)));
   }, []);
 
-  /** Clears the composer's schedule and assignment once its update went out. */
+  /** Clears the composer's schedule once its update went out. */
   const resetComposerExtras = useCallback(() => {
     setComposerScheduleAt(null);
-    setComposerAssignment(empty_assignment);
   }, []);
 
   const collaboration: CommentCollaborationApi = {
@@ -302,9 +295,6 @@ export function useCommentCollaboration(options: UseCommentCollaborationOptions)
     rescheduleComment,
     sendScheduledNow,
     cancelScheduledComment,
-    supports_assignment,
-    composer_assignment,
-    setComposerAssignment,
   };
 
   return { collaboration, addScheduledComment, resetComposerExtras, offerUndoDelete };

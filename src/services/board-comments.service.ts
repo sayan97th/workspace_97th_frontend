@@ -29,8 +29,6 @@ export const boardCommentsService = {
     (payload.notified_user_ids ?? []).forEach((user_id) => form_data.append("notified_user_ids[]", String(user_id)));
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
     if (payload.scheduled_at) form_data.append("scheduled_at", payload.scheduled_at);
-    (payload.assign_user_ids ?? []).forEach((user_id) => form_data.append("assign_user_ids[]", String(user_id)));
-    if (payload.assign_due_date) form_data.append("assign_due_date", payload.assign_due_date);
 
     const response = await apiClient.postFormData<{ comment: BoardItemCommentDto }>(
       `/api/boards/${board_id}/items/${item_id}/comments`,
