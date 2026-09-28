@@ -1,68 +1,10 @@
 "use client";
-import React from "react";
-import ColumnSwatchBadge from "../toolbar/ColumnSwatchBadge";
-import { COLUMN_KIND_SWATCH } from "../columnTypes";
+import React, { useState } from "react";
 import type { BoardColumnDto, BoardColumnType, BoardGroupDto } from "@/types/board-content";
 import type { BoardImportMapping, BoardImportSourceColumn } from "@/types/board-import";
-
-/** "Create a new column" mapping mode offers a curated subset of real types — see `creatable_column_types` from the analyze response. */
-const TYPE_LABELS: Record<BoardColumnType, string> = {
-  text: "Text",
-  long_text: "Long text",
-  status: "Status",
-  label: "Label",
-  people: "People",
-  date: "Date",
-  tags: "Tags",
-  dropdown: "Dropdown",
-  number: "Numbers",
-  checkbox: "Checkbox",
-  progress: "Progress",
-  phone: "Phone",
-  email: "Email",
-  timeline: "Timeline",
-  dependency: "Dependency",
-  rating: "Rating",
-  vote: "Vote",
-  link: "Link",
-  files: "Files",
-  time_tracking: "Time Tracking",
-  auto_number: "Item ID",
-  formula: "Formula",
-  connect_board: "Connect boards",
-  mirror: "Mirror",
-  checklist: "Checklist",
-};
+import ImportMapColumnRow, { mappingNeedsReview } from "./ImportMapColumnRow";
 
 const NEW_GROUP_VALUE = "__new__";
-
-/**
- * The line under a "+ Create new column" row: which type the backend
- * detected and why (e.g. "Date · 100% of values are dates"), or — once the
- * user picks a different type — that override alongside the original guess,
- * so it's always clear whether a type came from the data or from a person.
- */
-const CreateColumnCaption: React.FC<{
-  chosen_type: BoardColumnType;
-  suggested_type: BoardColumnType;
-  detection_reason: string;
-}> = ({ chosen_type, suggested_type, detection_reason }) => {
-  const is_overridden = chosen_type !== suggested_type;
-
-  return (
-    <span className="pl-0.5 text-[11px] leading-snug text-shell-text-muted" title={detection_reason}>
-      {is_overridden ? (
-        <>
-          New {TYPE_LABELS[chosen_type]} column · detected as {TYPE_LABELS[suggested_type]}
-        </>
-      ) : (
-        <>
-          New <span className="font-semibold text-shell-text-secondary">{TYPE_LABELS[chosen_type]}</span> column · {detection_reason}
-        </>
-      )}
-    </span>
-  );
-};
 
 export type ImportMapColumnsStepProps = {
   file_name: string;
@@ -72,6 +14,8 @@ export type ImportMapColumnsStepProps = {
   groups: BoardGroupDto[];
   creatable_column_types: BoardColumnType[];
   mappings: BoardImportMapping[];
+  /** What the backend pre-filled, for "Reset to suggestions" and for telling automatic matches apart from hand-picked ones. */
+  suggested_mappings: BoardImportMapping[];
   onChangeMappings: (mappings: BoardImportMapping[]) => void;
   target_group_id: number | null;
   onChangeTargetGroupId: (group_id: number | null) => void;
@@ -80,29 +24,25 @@ export type ImportMapColumnsStepProps = {
   error: string | null;
 };
 
-/** Encodes a mapping's mode+target into one `<select>` value. */
-function optionValue(mapping: BoardImportMapping): string {
-  if (mapping.mode === "map") return `map:${mapping.target_column_id ?? ""}`;
-  return mapping.mode;
-}
-
-const select_class =
-  "w-full rounded-lg border border-shell-border-strong bg-shell-bg px-3 py-2 text-[13px] font-medium text-shell-text outline-none focus:border-brand-500 disabled:cursor-default disabled:opacity-60";
+const toolbar_button_class =
+  "rounded-lg border border-shell-border-strong px-2.5 py-1 text-[12px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
 
 /**
- * Step 2 ("Map columns") — one row per column the uploaded file actually
- * has, each with a single destination picker: the item's own name, an
- * existing board column, a freshly-created one, or "Don't import". Also owns
- * the "Add items to" table picker above the list, mirroring the approved
- * design's header row.
+ * Step 2 ("Map columns"): one row per column the uploaded file actually
+ * has (see `ImportMapColumnRow`), each with a single destination picker: the
+ * item's own name, an existing board column, a freshly-created one, or
+ * "Don't import". Also owns the "Add items to" table picker above the list.
  *
- * Every row arrives already auto-mapped by the backend's `suggestMappings()`
- * — an exact label match onto an existing board column, or (failing that) a
- * brand-new column typed from the uploaded values themselves — so the user
- * never has to hand-pick a destination for every column; the caption under
- * each select makes that automatic choice visible, including the backend's
- * reason for the detected type (see `CreateColumnCaption`), and any row can
- * still be overridden or set to "Don't import".
+ * Every row arrives already auto-mapped by the backend's `suggestMappings()`:
+ * an exact label match onto an existing (writable) board column, or
+ * (failing that) a brand-new column typed from the uploaded values
+ * themselves, so the user never has to hand-pick a destination for every
+ * column. Columns a value was split across in the file (a Timeline's
+ * "- Start"/"- End" pair, a checklist's repeated "Task | Status" pairs)
+ * arrive already merged into one row. A row whose destination can't hold
+ * every value is flagged, and the "Needs review" filter narrows the list to
+ * just those; "Don't import empty columns" clears out the columns a
+ * monday.com export often carries with nothing in them.
  */
 const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   file_name,
@@ -112,6 +52,7 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   groups,
   creatable_column_types,
   mappings,
+  suggested_mappings,
   onChangeMappings,
   target_group_id,
   onChangeTargetGroupId,
@@ -119,19 +60,19 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   onChangeNewGroupName,
   error,
 }) => {
+  const [is_review_only, setIsReviewOnly] = useState(false);
+
   const updateMapping = (source_index: number, patch: Partial<BoardImportMapping>) => {
-    onChangeMappings(
-      mappings.map((mapping) => (mapping.source_index === source_index ? { ...mapping, ...patch } : mapping))
-    );
+    onChangeMappings(mappings.map((mapping) => (mapping.source_index === source_index ? { ...mapping, ...patch } : mapping)));
   };
 
-  const handleSelectChange = (source_index: number, source_label: string, suggested_type: BoardColumnType, value: string) => {
+  const handleDestinationChange = (source: BoardImportSourceColumn, value: string) => {
     if (value === "name") {
-      // Only one column can feed the item's own name — reassigning it here
+      // Only one column can feed the item's own name, reassigning it here
       // demotes whichever column held it before back to unmapped.
       onChangeMappings(
         mappings.map((mapping) => {
-          if (mapping.source_index === source_index) return { ...mapping, mode: "name", target_column_id: null };
+          if (mapping.source_index === source.index) return { ...mapping, mode: "name", target_column_id: null };
           if (mapping.mode === "name") return { ...mapping, mode: "skip" };
           return mapping;
         })
@@ -140,23 +81,35 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
     }
 
     if (value === "skip") {
-      updateMapping(source_index, { mode: "skip", target_column_id: null });
+      updateMapping(source.index, { mode: "skip", target_column_id: null });
       return;
     }
 
     if (value === "create") {
-      updateMapping(source_index, {
-        mode: "create",
-        target_column_id: null,
-        new_label: source_label,
-        new_type: suggested_type,
-      });
+      const suggested_type = creatable_column_types.includes(source.suggested_type) ? source.suggested_type : "text";
+      updateMapping(source.index, { mode: "create", target_column_id: null, new_label: source.label, new_type: suggested_type });
       return;
     }
 
-    const target_column_id = Number(value.slice("map:".length));
-    updateMapping(source_index, { mode: "map", target_column_id });
+    updateMapping(source.index, { mode: "map", target_column_id: Number(value.slice("map:".length)) });
   };
+
+  const empty_indexes = new Set(source_columns.filter((source) => source.filled_count === 0).map((source) => source.index));
+  const importable_empty_count = mappings.filter((mapping) => empty_indexes.has(mapping.source_index) && mapping.mode !== "skip" && mapping.mode !== "name").length;
+
+  const skipEmptyColumns = () => {
+    onChangeMappings(
+      mappings.map((mapping) =>
+        empty_indexes.has(mapping.source_index) && mapping.mode !== "name" ? { ...mapping, mode: "skip", target_column_id: null } : mapping
+      )
+    );
+  };
+
+  const rows = source_columns
+    .map((source) => ({ source, mapping: mappings.find((candidate) => candidate.source_index === source.index) }))
+    .filter((row): row is { source: BoardImportSourceColumn; mapping: BoardImportMapping } => row.mapping !== undefined);
+  const review_count = rows.filter((row) => mappingNeedsReview(row.mapping, row.source, board_columns)).length;
+  const visible_rows = is_review_only ? rows.filter((row) => mappingNeedsReview(row.mapping, row.source, board_columns)) : rows;
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -194,98 +147,50 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
         {error && <span className="text-[12.5px] text-error-500">{error}</span>}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 border-b border-shell-border px-7 py-2.5">
+        <button
+          type="button"
+          onClick={() => setIsReviewOnly((current) => !current)}
+          disabled={review_count === 0 && !is_review_only}
+          aria-pressed={is_review_only}
+          className={`${toolbar_button_class} ${is_review_only ? "border-warning-500 bg-warning-500/10 text-warning-600" : ""}`}
+        >
+          {review_count === 0 ? "Every column fits its destination" : `Needs review (${review_count})`}
+        </button>
+        <button type="button" onClick={skipEmptyColumns} disabled={importable_empty_count === 0} className={toolbar_button_class}>
+          Don&apos;t import empty columns{importable_empty_count > 0 ? ` (${importable_empty_count})` : ""}
+        </button>
+        <button type="button" onClick={() => onChangeMappings(suggested_mappings)} className={toolbar_button_class}>
+          Reset to suggestions
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-7 py-4">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 gap-y-1 pb-2 text-[11.5px] font-semibold uppercase tracking-wide text-shell-text-muted">
-          <span>{file_name}</span>
-          <span />
+          <span className="truncate">{file_name}</span>
+          <span className="w-4" />
           <span>Board columns</span>
         </div>
 
-        <div className="flex flex-col divide-y divide-shell-border">
-          {source_columns.map((source) => {
-            const mapping = mappings.find((m) => m.source_index === source.index);
-            if (!mapping) return null;
-
-            return (
-              <div key={source.index} className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4 py-3">
-                <div className="flex flex-col gap-0.5 overflow-hidden">
-                  <span className="truncate text-[13.5px] font-medium text-shell-text">{source.label}</span>
-                  {source.sample_values.length > 0 && (
-                    <span className="truncate text-[12px] text-shell-text-muted">{source.sample_values.join(", ")}</span>
-                  )}
-                </div>
-
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-shell-text-muted">
-                  <path d="M5 12h13M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    {mapping.mode === "name" && <ColumnSwatchBadge swatch={{ accent_color: "#fdab3d", glyph: "T", glyph_text_color: "#3a2a00" }} />}
-                    {mapping.mode === "map" && mapping.target_column_id != null && (
-                      <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[board_columns.find((c) => c.id === mapping.target_column_id)?.type ?? "text"]} />
-                    )}
-                    {mapping.mode === "create" && <ColumnSwatchBadge swatch={COLUMN_KIND_SWATCH[mapping.new_type ?? source.suggested_type]} />}
-
-                    <select
-                      value={optionValue(mapping)}
-                      onChange={(event) => handleSelectChange(source.index, source.label, source.suggested_type, event.target.value)}
-                      className={select_class}
-                    >
-                      <option value="skip">Don&apos;t import</option>
-                      <option value="name">Item (name)</option>
-                      {board_columns.length > 0 && (
-                        <optgroup label="Existing columns">
-                          {board_columns.map((column) => (
-                            <option key={column.id} value={`map:${column.id}`}>
-                              {column.label}
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                      <option value="create">+ Create new column</option>
-                    </select>
-                  </div>
-
-                  {mapping.mode === "map" && (
-                    <span className="pl-0.5 text-[11px] text-shell-text-muted">Auto-matched to an existing column</span>
-                  )}
-                  {mapping.mode === "create" && (
-                    <CreateColumnCaption
-                      chosen_type={mapping.new_type ?? source.suggested_type}
-                      suggested_type={source.suggested_type}
-                      detection_reason={source.detection_reason}
-                    />
-                  )}
-                </div>
-
-                {mapping.mode === "create" && (
-                  <div className="col-span-3 -mt-1 flex items-center gap-2 pl-0">
-                    <input
-                      type="text"
-                      value={mapping.new_label ?? ""}
-                      onChange={(event) => updateMapping(source.index, { new_label: event.target.value })}
-                      placeholder="Column name"
-                      maxLength={255}
-                      className="w-[220px] rounded-lg border border-shell-border-strong bg-shell-bg px-3 py-1.5 text-[13px] font-medium text-shell-text outline-none focus:border-brand-500"
-                    />
-                    <select
-                      value={mapping.new_type ?? source.suggested_type}
-                      onChange={(event) => updateMapping(source.index, { new_type: event.target.value as BoardColumnType })}
-                      className="rounded-lg border border-shell-border-strong bg-shell-bg px-3 py-1.5 text-[13px] font-medium text-shell-text outline-none focus:border-brand-500"
-                    >
-                      {creatable_column_types.map((type) => (
-                        <option key={type} value={type}>
-                          {TYPE_LABELS[type]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        {visible_rows.length === 0 ? (
+          <p className="py-10 text-center text-[13px] text-shell-text-muted">Nothing left to review.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-shell-border">
+            {visible_rows.map(({ source, mapping }) => (
+              <ImportMapColumnRow
+                key={source.index}
+                source={source}
+                mapping={mapping}
+                suggested_mapping={suggested_mappings.find((candidate) => candidate.source_index === source.index)}
+                row_count={row_count}
+                board_columns={board_columns}
+                creatable_column_types={creatable_column_types}
+                onChangeDestination={(value) => handleDestinationChange(source, value)}
+                onChangeMapping={(patch) => updateMapping(source.index, patch)}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

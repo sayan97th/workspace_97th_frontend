@@ -123,6 +123,10 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       setMapError("Choose which column is the item's name before continuing.");
       return;
     }
+    if (mappings.some((mapping) => mapping.mode === "map" && mapping.target_column_id == null)) {
+      setMapError("Pick an existing column for every row mapped to one, or choose another destination.");
+      return;
+    }
     if (target_group_id === null && new_group_name.trim() === "") {
       setMapError("Give the new table a name before continuing.");
       return;
@@ -284,6 +288,7 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
             groups={analysis.groups}
             creatable_column_types={analysis.creatable_column_types}
             mappings={mappings}
+            suggested_mappings={analysis.suggested_mappings}
             onChangeMappings={setMappings}
             target_group_id={target_group_id}
             onChangeTargetGroupId={setTargetGroupId}

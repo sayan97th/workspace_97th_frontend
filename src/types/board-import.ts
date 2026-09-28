@@ -15,6 +15,12 @@ export type BoardImportSourceColumn = {
   suggested_type: BoardColumnType;
   /** Why the backend guessed `suggested_type`, e.g. "100% of values are dates" — shown under the column so the guess can be checked. */
   detection_reason: string;
+  /** Every creatable type that can hold (nearly) all of this column's values: the type picker recommends these and warns about any other choice. Every type when the column is empty. */
+  compatible_types: BoardColumnType[];
+  /** The file's own columns this one was merged from (e.g. `["Timeline - Start", "Timeline - End"]`, or a checklist's repeated "Task | Status" pairs); empty for an ordinary column. */
+  combined_from: string[];
+  /** How many rows actually have a value in this column. */
+  filled_count: number;
 };
 
 /** How one source column is handled on commit — mirrors the "Map columns" step's per-row picker. */
