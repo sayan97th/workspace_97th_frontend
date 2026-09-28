@@ -208,13 +208,25 @@ export default function CommunicationRecipeForm({ template, columns, people, sla
           {slack.error && <div className={HINT}>{slack.error}</div>}
           {is_slack_connected && (
             <>
-              <input
-                value={channel_search}
-                onChange={(e) => setChannelSearch(e.target.value)}
-                placeholder="Search channels"
-                className={`${TEXT_FIELD} mb-1 h-9`}
-              />
-              <div className="flex max-h-40 flex-col gap-0.5 overflow-y-auto">
+              <div className="mb-1 flex items-center gap-2">
+                <input
+                  value={channel_search}
+                  onChange={(e) => setChannelSearch(e.target.value)}
+                  placeholder="Search channels"
+                  aria-label="Search Slack channels"
+                  className={`${TEXT_FIELD} h-9 flex-1`}
+                />
+                <button
+                  type="button"
+                  onClick={() => void slack.refreshChannels()}
+                  disabled={slack.is_loading || slack.is_refreshing}
+                  title="Load the channel list from Slack again"
+                  className="flex h-9 flex-none items-center rounded-[6px] border border-boardtree-border px-3 text-[12.5px] text-boardtree-text-muted hover:bg-boardtree-hover disabled:opacity-50"
+                >
+                  {slack.is_refreshing ? "Refreshing..." : "Refresh"}
+                </button>
+              </div>
+              <div aria-label="Slack channels" className="flex max-h-64 flex-col gap-0.5 overflow-y-auto overscroll-contain rounded-[6px] border border-boardtree-border-soft p-1">
                 {visible_channels.map((c) => (
                   <button key={c.id} type="button" onClick={() => setSlackChannelId(c.id)} className={ROW}>
                     <Radio checked={slack_channel_id === c.id} />
@@ -225,8 +237,22 @@ export default function CommunicationRecipeForm({ template, columns, people, sla
                   </button>
                 ))}
                 {visible_channels.length === 0 && (
-                  <div className={HINT}>{slack.is_loading ? "Loading channels..." : "No channels found. Invite the app to a private channel to see it here."}</div>
+                  <div className={HINT}>
+                    {slack.is_loading
+                      ? "Loading channels..."
+                      : slack.channels.length > 0
+                        ? `No channel matches "${channel_search.trim()}".`
+                        : "No channels found."}
+                  </div>
                 )}
+              </div>
+              {!slack.is_loading && slack.channels.length > 0 && (
+                <div className="mt-1 px-2.5 text-[12px] text-boardtree-text-faint">
+                  {slack.channels.length} {slack.channels.length === 1 ? "channel" : "channels"}.
+                </div>
+              )}
+              <div className="mt-1 px-2.5 text-[12px] leading-relaxed text-boardtree-text-faint">
+                All public channels are listed. A private channel appears after you invite the app to it in Slack with /invite, then click Refresh.
               </div>
             </>
           )}

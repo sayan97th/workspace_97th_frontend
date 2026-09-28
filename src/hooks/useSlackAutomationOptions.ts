@@ -1,13 +1,17 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { slackService } from "@/services/slack.service";
+import { apiErrorMessage } from "@/services/profile-preferences.service";
 import type { SlackChannelDto, SlackStatusDto } from "@/types/slack";
 
 export type SlackAutomationOptions = {
   status: SlackStatusDto | null;
   channels: SlackChannelDto[];
   is_loading: boolean;
+  is_refreshing: boolean;
   error: string | null;
+  /** Reads the channels from Slack again, skipping the API cache. */
+  refreshChannels: () => Promise<void>;
 };
 
 /**
@@ -19,6 +23,7 @@ export function useSlackAutomationOptions(is_open: boolean): SlackAutomationOpti
   const [status, setStatus] = useState<SlackStatusDto | null>(null);
   const [channels, setChannels] = useState<SlackChannelDto[]>([]);
   const [is_loading, setIsLoading] = useState(false);
+  const [is_refreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -39,8 +44,8 @@ export function useSlackAutomationOptions(is_open: boolean): SlackAutomationOpti
         } else {
           setChannels([]);
         }
-      } catch {
-        if (!cancelled) setError("Slack channels could not be loaded.");
+      } catch (failure) {
+        if (!cancelled) setError(apiErrorMessage(failure, "Slack channels could not be loaded."));
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -53,5 +58,17 @@ export function useSlackAutomationOptions(is_open: boolean): SlackAutomationOpti
     };
   }, [is_open]);
 
-  return { status, channels, is_loading, error };
+  const refreshChannels = useCallback(async () => {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      setChannels(await slackService.getChannels(true));
+    } catch (failure) {
+      setError(apiErrorMessage(failure, "Slack channels could not be refreshed."));
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  return { status, channels, is_loading, is_refreshing, error, refreshChannels };
 }

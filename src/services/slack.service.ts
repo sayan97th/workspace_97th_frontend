@@ -13,9 +13,13 @@ export const slackService = {
     return apiClient.get<SlackStatusDto>("/api/integrations/slack");
   },
 
-  /** GET /api/integrations/slack/channels */
-  async getChannels(): Promise<SlackChannelDto[]> {
-    const response = await apiClient.get<{ data: SlackChannelDto[] }>("/api/integrations/slack/channels");
+  /**
+   * GET /api/integrations/slack/channels. Every public channel plus the private channels the
+   * app was invited to. `refresh` skips the API's short lived cache, for a channel just
+   * created or joined in Slack.
+   */
+  async getChannels(refresh = false): Promise<SlackChannelDto[]> {
+    const response = await apiClient.get<{ data: SlackChannelDto[] }>(`/api/integrations/slack/channels${refresh ? "?refresh=1" : ""}`);
     return response.data;
   },
 
