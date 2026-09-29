@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
 import type {
+  AccountAutomationsResponse,
   AccountAutomationTemplateDto,
   BoardAutomationBulkAction,
   BoardAutomationBulkResult,
@@ -149,6 +150,16 @@ export const boardAutomationService = {
   /** POST /api/boards/{board_id}/automations/bulk */
   async bulkUpdate(board_id: number, automation_ids: number[], action: BoardAutomationBulkAction): Promise<BoardAutomationBulkResult> {
     return apiClient.post<BoardAutomationBulkResult>(`/api/boards/${board_id}/automations/bulk`, { automation_ids, action });
+  },
+
+  /** GET /api/automations, the account wide Automations center: every automation on the boards the viewer may open. */
+  async getAccountAutomations(): Promise<AccountAutomationsResponse> {
+    return apiClient.get<AccountAutomationsResponse>("/api/automations");
+  },
+
+  /** POST /api/automations/bulk, turns automations of any boards on or off. */
+  async bulkUpdateAccount(automation_ids: number[], action: "enable" | "disable"): Promise<BoardAutomationBulkResult> {
+    return apiClient.post<BoardAutomationBulkResult>("/api/automations/bulk", { automation_ids, action });
   },
 
   /** POST /api/boards/{board_id}/automations/copy, the copies start turned off. */

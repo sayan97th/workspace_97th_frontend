@@ -1,16 +1,22 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import type { BoardAutomationActionParams, BoardAutomationFieldMapping } from "@/types/board-automation";
+import type { BoardAutomationActionParams, BoardAutomationFieldMapping, BoardAutomationTriggerType } from "@/types/board-automation";
 import { boardContentService } from "@/services/board-content.service";
 import type { ColumnKind } from "../../table/types";
 import {
   CLEARABLE_KINDS,
   COPYABLE_SOURCE_KINDS,
   DATE_KINDS,
+  DYNAMIC_TARGET_KINDS,
+  LIST_SOURCE_KINDS,
   NUMERIC_KINDS,
   READ_ONLY_KINDS,
+  RECIPIENT_SOURCE_LABELS,
   SETTABLE_KINDS,
+  TRIGGER_MESSAGE_TOKENS,
   actionSections,
+  dynamicFamilyOfKind,
+  recipientSourcesFor,
   type ActionPickerId,
   type AutomationBuilderContext,
 } from "./automationCatalog";
@@ -19,6 +25,7 @@ import {
   boardGroupLabel,
   boardLabel,
   columnLabel,
+  dynamicLabel,
   findColumn,
   groupLabel,
   personLabel,
@@ -31,9 +38,11 @@ import {
 } from "./automationSentence";
 import { ActionIcon } from "./actionIcons";
 import ActionRowBulk, { BULK_ACTION_IDS } from "./ActionRowBulk";
+import ActionRowCollaboration, { COLLABORATION_ACTION_IDS } from "./ActionRowCollaboration";
 import ActionRowExtras, { EXTRA_ACTION_IDS, EmailRecipientEditor } from "./ActionRowExtras";
 import { actionFromPicker, type ActionDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
+import { DynamicValueEditor, FixedOrDynamic } from "./dynamicValues";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, MessageEditor, PersonPicker } from "./valueEditors";
 
 export type ActionRowProps = {
@@ -50,6 +59,8 @@ export type ActionRowProps = {
   lead: "Then" | "and" | "Otherwise";
   /** The trigger is a webhook, so messages and new item columns can read `{payload.*}`. */
   is_webhook?: boolean;
+  /** The automation's trigger, for the tokens and people only it knows (the mentioned person, the update text). */
+  trigger_type?: BoardAutomationTriggerType | null;
   onChange: (next: ActionDraft) => void;
 };
 
@@ -82,9 +93,17 @@ function ActionSwitch({ label, action, context, only_itemless, onChange, is_plac
   );
 }
 
-/** Who a notify, email or Slack action reaches: a person, or whoever a people column holds on the item. */
-function RecipientEditor({ params, context, has_trigger_item, onApply }: { params: BoardAutomationActionParams; context: AutomationBuilderContext; has_trigger_item: boolean; onApply: (patch: BoardAutomationActionParams) => void }) {
+/** Picker ids of the recipient sources, kept apart from people ids. */
+const SOURCE_PREFIX = "__source_";
+
+/**
+ * Who a notify, email or Slack action reaches: a person, someone known only on the run (the person
+ * who made the change, the item creator, the automation owner, the mentioned person, the item's
+ * subscribers), or whoever a people column holds on the item.
+ */
+function RecipientEditor({ params, context, has_trigger_item, trigger_type, onApply }: { params: BoardAutomationActionParams; context: AutomationBuilderContext; has_trigger_item: boolean; trigger_type?: BoardAutomationTriggerType | null; onApply: (patch: BoardAutomationActionParams) => void }) {
   const [mode, setMode] = useState<"person" | "column">(params.notify_from_people_column_id && has_trigger_item ? "column" : "person");
+  const sources = recipientSourcesFor(trigger_type, has_trigger_item);
   return (
     <>
       {has_trigger_item && (
@@ -93,13 +112,24 @@ function RecipientEditor({ params, context, has_trigger_item, onApply }: { param
         </div>
       )}
       {mode === "person" ? (
-        <PersonPicker context={context} selected={params.notify_user_id ? String(params.notify_user_id) : null} onPick={(id) => onApply({ notify_user_id: Number(id), notify_from_people_column_id: undefined })} />
+        <PersonPicker
+          context={context}
+          selected={params.recipient_source ? `${SOURCE_PREFIX}${params.recipient_source}` : params.notify_user_id ? String(params.notify_user_id) : null}
+          extra_entries={sources.map((source) => ({ id: `${SOURCE_PREFIX}${source}`, label: RECIPIENT_SOURCE_LABELS[source] }))}
+          onPick={(id) =>
+            onApply(
+              id.startsWith(SOURCE_PREFIX)
+                ? { recipient_source: id.slice(SOURCE_PREFIX.length) as BoardAutomationActionParams["recipient_source"], notify_user_id: undefined, notify_from_people_column_id: undefined }
+                : { notify_user_id: Number(id), notify_from_people_column_id: undefined, recipient_source: null }
+            )
+          }
+        />
       ) : (
         <ColumnPicker
           context={context}
           kinds={["people"]}
           selected={params.notify_from_people_column_id ? String(params.notify_from_people_column_id) : null}
-          onPick={(id) => onApply({ notify_from_people_column_id: Number(id), notify_user_id: undefined })}
+          onPick={(id) => onApply({ notify_from_people_column_id: Number(id), notify_user_id: undefined, recipient_source: null })}
           empty_text="Add a People column to this table first."
         />
       )}
@@ -107,7 +137,8 @@ function RecipientEditor({ params, context, has_trigger_item, onApply }: { param
   );
 }
 
-function SubitemNamesEditor({ names, onApply }: { names: string[]; onApply: (names: string[]) => void }) {
+/** One subitem name per line, tokens such as `{item_name}` filled in. `allow_empty` when a list column makes the subitems. */
+function SubitemNamesEditor({ names, allow_empty = false, onApply }: { names: string[]; allow_empty?: boolean; onApply: (names: string[]) => void }) {
   const [draft, setDraft] = useState(names.filter(Boolean).join("\n"));
   const parsed = draft.split("\n").map((name) => name.trim()).filter(Boolean);
   return (
@@ -122,7 +153,8 @@ function SubitemNamesEditor({ names, onApply }: { names: string[]; onApply: (nam
         aria-label="Subitem names"
         className="w-full resize-none rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2.5 py-2 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
       />
-      <PopoverFooter onDone={() => onApply(parsed.slice(0, 20))} is_disabled={parsed.length === 0} />
+      <div className="mt-1.5 text-[11.5px] text-boardtree-text-faint">Tokens such as {"{item_name}"}, {"{date}"} and {"{week}"} are filled in.</div>
+      <PopoverFooter onDone={() => onApply(parsed.slice(0, 20))} is_disabled={parsed.length === 0 && !allow_empty} />
     </>
   );
 }
@@ -340,7 +372,7 @@ function LinkCreatedItemToken({ context, params, onPatch }: { context: Automatio
 }
 
 /** One "Then ..." sentence. Each action type lays out its own tokens. */
-export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, onChange }: ActionRowProps) {
+export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, trigger_type = null, onChange }: ActionRowProps) {
   const params = action.params;
   const patch = (next: BoardAutomationActionParams) => onChange({ ...action, params: { ...params, ...next } });
   const switchProps = { action, context, only_itemless, onChange };
@@ -357,6 +389,20 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   if (BULK_ACTION_IDS.includes(action.picker_id)) {
     return <ActionRowBulk action={action} context={context} lead={lead} has_trigger_item={has_trigger_item} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
   }
+  if (COLLABORATION_ACTION_IDS.includes(action.picker_id)) {
+    return (
+      <ActionRowCollaboration
+        action={action}
+        context={context}
+        lead={lead}
+        has_trigger_item={has_trigger_item}
+        trigger_type={trigger_type}
+        renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />}
+        onPatch={patch}
+      />
+    );
+  }
+  const extra_tokens = trigger_type ? TRIGGER_MESSAGE_TOKENS[trigger_type] ?? [] : [];
 
   /** "counting every day" or "counting working days", for the date actions that can skip weekends and holidays. */
   const workingDaysToken = (
@@ -479,6 +525,7 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
             with_subject={options.with_subject}
             is_required={options.is_required}
             with_payload={is_webhook}
+            extra_tokens={extra_tokens}
             onApply={(next_message, next_subject) => {
               patch({ message: next_message.trim() || null, ...(options.with_subject ? { subject: next_subject.trim() || null } : {}) });
               close();
@@ -490,8 +537,8 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   };
 
   const recipientToken = (
-    <Token label={recipientLabel(context, params)} is_placeholder={!params.notify_user_id && !params.notify_from_people_column_id} aria_label="Who to reach">
-      {(close) => <RecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} onApply={(next) => { patch(next); close(); }} />}
+    <Token label={recipientLabel(context, params)} is_placeholder={!params.notify_user_id && !params.notify_from_people_column_id && !params.recipient_source} aria_label="Who to reach">
+      {(close) => <RecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} trigger_type={trigger_type} onApply={(next) => { patch(next); close(); }} />}
     </Token>
   );
 
@@ -548,12 +595,37 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
     }
     case "create_subitem": {
       const names = (params.subitem_names ?? []).filter((name) => name.trim());
+      const list_columns = context.columns.filter((column) => column.scope === "item" && LIST_SOURCE_KINDS.includes(column.kind));
       return (
         <>
           <Words>{lead} </Words><ActionSwitch {...switchProps} label="create subitems" />{" "}
-          <Token label={names.length ? truncate(names.join(", "), 36) : "names"} is_placeholder={!names.length} aria_label="Subitem names" popover_width={300}>
-            {(close) => <SubitemNamesEditor names={params.subitem_names ?? []} onApply={(subitem_names) => { patch({ subitem_names }); close(); }} />}
+          <Token label={names.length ? truncate(names.join(", "), 36) : params.source_column_id ? "no fixed names" : "names"} is_placeholder={!names.length} aria_label="Subitem names" popover_width={300}>
+            {(close) => <SubitemNamesEditor names={params.subitem_names ?? []} allow_empty={Boolean(params.source_column_id)} onApply={(subitem_names) => { patch({ subitem_names }); close(); }} />}
           </Token>
+          {has_trigger_item && (
+            <>
+              {" "}
+              <Token
+                label={params.source_column_id ? `and one per entry of ${columnLabel(context, params.source_column_id)}` : "and none from a list"}
+                is_placeholder={!params.source_column_id}
+                aria_label="List column"
+                popover_width={300}
+              >
+                {(close) =>
+                  list_columns.length === 0 ? (
+                    <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">Add a Text, Long text, Checklist, Tags, Dropdown or People column to create one subitem per entry.</div>
+                  ) : (
+                    <PickerList
+                      sections={[{ entries: [{ id: "__none__", label: "No list column" }] }, { title: "One subitem per line, task, label or person of", entries: list_columns.map((column) => ({ id: column.id, label: column.title, hint: column.kind })) }]}
+                      selected={params.source_column_id ? String(params.source_column_id) : "__none__"}
+                      onPick={(id) => { patch({ source_column_id: id === "__none__" ? undefined : Number(id) }); close(); }}
+                      placeholder="Search columns"
+                    />
+                  )
+                }
+              </Token>
+            </>
+          )}
         </>
       );
     }
@@ -577,12 +649,41 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
     case "change_status":
     case "set_column_value": {
       const kinds: ColumnKind[] = action.picker_id === "change_status" ? ["status", "label"] : SETTABLE_KINDS;
+      const dynamic_family = target_column && DYNAMIC_TARGET_KINDS.includes(target_column.kind) ? dynamicFamilyOfKind(target_column.kind) : undefined;
+      const has_value = Boolean(params.dynamic_value) || !(params.value === undefined || params.value === null || params.value === "");
       return (
         <>
           <Words>{lead} </Words><ActionSwitch {...switchProps} label={action.picker_id === "change_status" ? "change status" : "change"} />{" "}
-          {columnToken(kinds, action.picker_id === "change_status" ? "status" : "column", (column_id) => ({ target_column_id: Number(column_id), value: undefined }))} <Words>to </Words>
-          <Token label={valueLabel(context, target_column, params.value)} is_placeholder={params.value === undefined || params.value === null || params.value === ""} disabled={!target_column} aria_label="Value">
-            {(close) => (target_column ? <ColumnValueEditor context={context} column={target_column} value={params.value} mode="set" onApply={(value) => { patch({ value }); close(); }} /> : null)}
+          {columnToken(kinds, action.picker_id === "change_status" ? "status" : "column", (column_id) => ({ target_column_id: Number(column_id), value: undefined, dynamic_value: null }))} <Words>to </Words>
+          <Token
+            label={params.dynamic_value ? dynamicLabel(context, params.dynamic_value) : valueLabel(context, target_column, params.value)}
+            is_placeholder={!has_value}
+            disabled={!target_column}
+            aria_label="Value"
+            popover_width={dynamic_family && has_trigger_item ? 310 : undefined}
+          >
+            {(close) => {
+              if (!target_column) return null;
+              const fixed = <ColumnValueEditor context={context} column={target_column} value={params.value} mode="set" onApply={(value) => { patch({ value, dynamic_value: null }); close(); }} />;
+              if (!dynamic_family || !has_trigger_item) return fixed;
+              return (
+                <FixedOrDynamic
+                  is_dynamic={Boolean(params.dynamic_value)}
+                  dynamic={
+                    <DynamicValueEditor
+                      context={context}
+                      family={dynamic_family}
+                      value={params.dynamic_value}
+                      scopes={scopes}
+                      allow_mentioned={trigger_type === "user_mentioned"}
+                      onApply={(dynamic_value) => { patch({ dynamic_value, value: null }); close(); }}
+                    />
+                  }
+                >
+                  {fixed}
+                </FixedOrDynamic>
+              );
+            }}
           </Token>
         </>
       );
@@ -667,12 +768,12 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
     case "notify_person":
       return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="notify" /> {recipientToken} <Words>with </Words>{messageToken()}</>;
     case "send_email": {
-      const has_recipient = Boolean(params.notify_user_id || params.notify_from_people_column_id || params.email_column_id || params.email_addresses?.length);
+      const has_recipient = Boolean(params.notify_user_id || params.notify_from_people_column_id || params.recipient_source || params.email_column_id || params.email_addresses?.length);
       return (
         <>
           <Words>{lead} </Words><ActionSwitch {...switchProps} label="send an email" /> <Words>to </Words>
           <Token label={recipientLabel(context, params)} is_placeholder={!has_recipient} aria_label="Who to email" popover_width={340}>
-            {(close) => <EmailRecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} onApply={(next) => { patch(next); close(); }} />}
+            {(close) => <EmailRecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} trigger_type={trigger_type} onApply={(next) => { patch(next); close(); }} />}
           </Token>{" "}
           <Words>with </Words>{messageToken({ with_subject: true })}
         </>

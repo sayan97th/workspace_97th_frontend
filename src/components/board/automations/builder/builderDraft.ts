@@ -5,6 +5,7 @@ import type {
   BoardAutomationCondition,
   BoardAutomationDefinition,
   BoardAutomationDto,
+  BoardAutomationDynamicValue,
   BoardAutomationFailureAlert,
   BoardAutomationImportance,
   BoardAutomationTriggerConfig,
@@ -246,6 +247,15 @@ export function defaultActionParams(picker_id: ActionPickerId, context: Automati
     }
     case "group_items":
       return { from_item_group: true, operation: "archive" };
+    case "subscribe_people":
+    case "unsubscribe_people":
+      return { user_ids: [] };
+    case "clear_subitems":
+      return { operation: "archive" };
+    case "send_digest": {
+      const shown = context.columns.filter((column) => column.scope === "item" && ["status", "people", "date", "timeline"].includes(column.kind)).slice(0, 3);
+      return { user_ids: [], column_ids: shown.map((column) => Number(column.id)), digest_rules: [], digest_operator: "and", max_items: 50, send_when_empty: false };
+    }
     default:
       return {};
   }
@@ -258,11 +268,16 @@ export function actionFromPicker(picker_id: ActionPickerId, context: AutomationB
 
 const isBlank = (value: unknown): boolean => value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
 
+/** Whether a dynamic value names its source, a column source also its column. */
+export const isDynamicComplete = (dynamic: BoardAutomationDynamicValue | null | undefined): boolean =>
+  Boolean(dynamic?.source) && (dynamic?.source !== "column" || Boolean(dynamic.column_id));
+
 /** Whether a condition row is filled in enough to save. A "subitems" row needs its subitem rule too. */
 export function isConditionComplete(condition: BoardAutomationCondition): boolean {
   if (!condition.column_id || !condition.condition) return false;
   if (condition.column_id === "__subitems__") return Boolean(condition.subitem_rule) && isConditionComplete({ ...condition.subitem_rule!, subitem_rule: null });
   if (AUTOMATION_VALUELESS_OPERATORS.includes(condition.condition)) return true;
+  if (condition.dynamic) return isDynamicComplete(condition.dynamic);
   if (condition.condition === "all_done" || condition.condition === "has_unfinished") return condition.value !== "" && condition.values.length > 0;
   if (condition.condition === "between") return condition.values.length === 2 && condition.values.every((value) => value !== "");
   return condition.values.length > 0 || condition.value.trim() !== "";
@@ -296,21 +311,30 @@ function actionProblem(action: ActionDraft, index: number, context: AutomationBu
     case "create_item":
       return params.target_group_id ? null : `Choose where ${where} creates the item.`;
     case "create_subitem":
-      return (params.subitem_names ?? []).some((name) => name.trim() !== "") ? null : `Name at least one subitem for ${where}.`;
+      return (params.subitem_names ?? []).some((name) => name.trim() !== "") || params.source_column_id ? null : `Name at least one subitem for ${where}, or choose a list column.`;
     case "set_column_value":
+      if (params.dynamic_value) return isDynamicComplete(params.dynamic_value) ? null : `Finish the dynamic value of ${where}.`;
+      return isBlank(params.value) && typeof params.value !== "boolean" ? `Choose the value for ${where}.` : null;
     case "set_subitems_value":
     case "set_parent_value":
       return isBlank(params.value) && typeof params.value !== "boolean" ? `Choose the value for ${where}.` : null;
+    case "subscribe_people":
+    case "unsubscribe_people":
+      if (action.type === "unsubscribe_people" && params.everyone) return null;
+      return params.user_ids?.length || params.notify_from_people_column_id || params.team_id || params.recipient_source ? null : `Choose who ${where} ${action.type === "subscribe_people" ? "subscribes" : "unsubscribes"}.`;
+    case "send_digest":
+      if (!params.user_ids?.length && !params.team_id) return `Choose who receives the digest of ${where}.`;
+      return (params.digest_rules ?? []).every(isConditionComplete) ? null : `Finish or remove the filter rules of ${where}.`;
     case "assign_person":
       return params.assign_mode === "user" && !params.user_id ? `Choose the person ${where} assigns.` : null;
     case "adjust_number":
       return params.amount ? null : `Set a number other than zero for ${where}.`;
     case "notify_person":
     case "slack_notify_person":
-      return params.notify_user_id || params.notify_from_people_column_id ? null : `Choose who ${where} reaches.`;
+      return params.notify_user_id || params.notify_from_people_column_id || params.recipient_source ? null : `Choose who ${where} reaches.`;
     case "send_email":
       if ((params.email_addresses ?? []).some((address) => !EMAIL_PATTERN.test(address))) return `Fix the email addresses of ${where}.`;
-      return params.notify_user_id || params.notify_from_people_column_id || params.email_column_id || params.email_addresses?.length ? null : `Choose who ${where} reaches.`;
+      return params.notify_user_id || params.notify_from_people_column_id || params.recipient_source || params.email_column_id || params.email_addresses?.length ? null : `Choose who ${where} reaches.`;
     case "wait":
       return params.amount && params.amount > 0 ? null : `Set how long ${where} waits.`;
     case "shift_dependents":
@@ -392,7 +416,10 @@ export function draftProblems(draft: AutomationDraft, context: AutomationBuilder
     if (trigger.type === "number_threshold" && typeof draft.trigger_config.threshold !== "number") problems.push("Enter the number the column must reach.");
     if (trigger.type === "item_overdue" && draft.trigger_config.status_column_id && !(draft.trigger_config.done_values ?? []).length) problems.push("Choose the labels that mean an item is done.");
     const match = draft.trigger_config.match;
-    if (trigger.type === "column_changed" && match?.operator === "between" && (match.values ?? []).filter((value) => value !== "").length !== 2) problems.push("Enter both ends of the range the column must reach.");
+    if ((trigger.type === "column_changed" || trigger.type === "subitem_column_changed") && match?.operator === "between" && (match.values ?? []).filter((value) => value !== "").length !== 2) {
+      problems.push("Enter both ends of the range the column must reach.");
+    }
+    if (trigger.type === "update_keyword" && !(draft.trigger_config.keywords ?? []).some((keyword) => keyword.trim() !== "")) problems.push("Type at least one word the update must contain.");
   }
 
   allConditions(draft).forEach((condition, index) => {
@@ -445,13 +472,27 @@ function cleanParams(params: BoardAutomationActionParams): BoardAutomationAction
       if (mappings.length) cleaned[key] = mappings;
       return;
     }
+    if (key === "digest_rules" && Array.isArray(value)) {
+      cleaned[key] = completeRules(value as BoardAutomationCondition[]);
+      return;
+    }
+    if ((key === "dynamic_value" || key === "recipient_source") && value === null) return;
     cleaned[key] = value;
   });
   return cleaned as BoardAutomationActionParams;
 }
 
-const completeRules = (rules: ConditionDraft[]): BoardAutomationCondition[] =>
-  rules.filter(isConditionComplete).map(({ column_id, condition, value, values, subitem_rule }) => ({ column_id, condition, value, values, ...(column_id === "__subitems__" && subitem_rule ? { subitem_rule } : {}) }));
+/** The complete rules, in the shape the API stores, a dynamic value kept only where it is set. */
+function completeRules(rules: BoardAutomationCondition[]): BoardAutomationCondition[] {
+  return rules.filter(isConditionComplete).map(({ column_id, condition, value, values, subitem_rule, dynamic }) => ({
+    column_id,
+    condition,
+    value: dynamic ? "" : value,
+    values: dynamic ? [] : values,
+    ...(column_id === "__subitems__" && subitem_rule ? { subitem_rule } : {}),
+    ...(dynamic && !AUTOMATION_VALUELESS_OPERATORS.includes(condition) ? { dynamic } : {}),
+  }));
+}
 
 const toActions = (actions: ActionDraft[]): BoardAutomationAction[] =>
   actions

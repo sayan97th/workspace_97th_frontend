@@ -257,7 +257,7 @@ export interface TwoFactorRecoveryCodesResponse {
 }
 
 /** A personal block of the workspace sidebar, see `SidebarPersonalNav`. */
-export type SidebarSectionKey = "home" | "my_work" | "favorites" | "recent";
+export type SidebarSectionKey = "home" | "my_work" | "automations" | "favorites" | "recent";
 
 export type SidebarSectionPreference = {
   key: SidebarSectionKey;

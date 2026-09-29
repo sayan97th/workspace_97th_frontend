@@ -336,6 +336,8 @@ const TOKEN_PREVIEWS: Record<string, string> = {
   "{old_value}": "Working on it",
   "{update_text}": "Looks good to me",
   "{automation_name}": "My automation",
+  "{subitem_name}": "Design review",
+  "{mentioned_name}": "Grace Hopper",
 };
 
 /** The message with its tokens replaced by sample values, so the user sees roughly what people will read. */
@@ -361,7 +363,7 @@ function previewMessage(template: string, context: AutomationBuilderContext | un
  * the table can be inserted: it shows as `{#Status}` while editing and is saved as `{column:12}`,
  * so renaming the column never breaks the message.
  */
-export function MessageEditor({ context, message, subject, with_subject = false, is_required = false, with_payload = false, onApply }: {
+export function MessageEditor({ context, message, subject, with_subject = false, is_required = false, with_payload = false, extra_tokens = [], onApply }: {
   context?: AutomationBuilderContext;
   message: string;
   subject?: string;
@@ -369,6 +371,8 @@ export function MessageEditor({ context, message, subject, with_subject = false,
   is_required?: boolean;
   /** A webhook trigger: offers `{payload.field}` for the values of the JSON it receives. */
   with_payload?: boolean;
+  /** Tokens only the automation's trigger fills in, such as `{update_text}` or `{mentioned_name}`. */
+  extra_tokens?: { token: string; label: string }[];
   onApply: (message: string, subject: string) => void;
 }) {
   const toDisplay = (text: string) => (context ? columnTokensToDisplay(text, context) : text);
@@ -412,7 +416,7 @@ export function MessageEditor({ context, message, subject, with_subject = false,
         className="w-full resize-none rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2.5 py-2 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
       />
       <div className="mt-1.5 flex flex-wrap gap-1">
-        {MESSAGE_TOKENS.map((item) => (
+        {[...MESSAGE_TOKENS, ...extra_tokens].map((item) => (
           <button key={item.token} type="button" onClick={() => insertToken(item.token)} title={item.token} className="rounded-full border border-boardtree-border px-2 py-0.5 text-[11.5px] text-boardtree-text-secondary hover:border-boardtree-accent hover:text-boardtree-accent">
             {item.label}
           </button>
@@ -474,11 +478,11 @@ export function conditionKind(context: AutomationBuilderContext, field_id: strin
  * The fields a condition can read. A subitem trigger, or the rule inside a "subitems" condition,
  * reads subitem columns and the details a subitem has too.
  */
-export function ConditionFieldPicker({ context, scope, selected, onPick }: { context: AutomationBuilderContext; scope: "item" | "subitem"; selected: string; onPick: (field_id: string) => void }) {
+export function ConditionFieldPicker({ context, scope, selected, onPick, exclude_fields = [] }: { context: AutomationBuilderContext; scope: "item" | "subitem"; selected: string; onPick: (field_id: string) => void; exclude_fields?: string[] }) {
   const columns = context.columns
     .filter((column) => column.scope === scope && CONDITION_KIND_BY_COLUMN[column.kind])
     .map((column): PickerEntry<string> => ({ id: column.id, label: column.title, hint: column.kind.replace("_", " ") }));
-  const details = VIRTUAL_CONDITION_FIELDS.filter((field) => scope === "item" || !field.is_item_only).map((field): PickerEntry<string> => ({ id: field.id, label: field.label }));
+  const details = VIRTUAL_CONDITION_FIELDS.filter((field) => (scope === "item" || !field.is_item_only) && !exclude_fields.includes(field.id)).map((field): PickerEntry<string> => ({ id: field.id, label: field.label }));
   return <PickerList sections={[{ title: "Columns", entries: columns }, { title: "Item details", entries: details }]} selected={selected || null} onPick={onPick} placeholder="Search columns" />;
 }
 

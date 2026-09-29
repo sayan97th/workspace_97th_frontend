@@ -1,8 +1,8 @@
 "use client";
 import React, { useState } from "react";
-import type { BoardAutomationActionParams } from "@/types/board-automation";
+import type { BoardAutomationActionParams, BoardAutomationRecipientSource, BoardAutomationTriggerType } from "@/types/board-automation";
 import type { ColumnKind } from "../../table/types";
-import { MAX_WAIT_DAYS, SETTABLE_KINDS, type ActionPickerId, type AutomationBuilderContext } from "./automationCatalog";
+import { MAX_WAIT_DAYS, RECIPIENT_SOURCE_LABELS, SETTABLE_KINDS, recipientSourcesFor, type ActionPickerId, type AutomationBuilderContext } from "./automationCatalog";
 import { columnLabel, findColumn, rotationLabel, valueLabel, waitLabel } from "./automationSentence";
 import type { ActionDraft } from "./builderDraft";
 import { MiniAvatar, PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token } from "./builderUi";
@@ -254,16 +254,24 @@ export default function ActionRowExtras({ action, context, lead, renderSwitch, o
 }
 
 /** Who "send an email" reaches: a person, the people of a People column, the address in an Email column, and typed addresses. */
-export function EmailRecipientEditor({ params, context, has_trigger_item, onApply }: { params: BoardAutomationActionParams; context: AutomationBuilderContext; has_trigger_item: boolean; onApply: (patch: BoardAutomationActionParams) => void }) {
+export function EmailRecipientEditor({ params, context, has_trigger_item, trigger_type = null, onApply }: {
+  params: BoardAutomationActionParams;
+  context: AutomationBuilderContext;
+  has_trigger_item: boolean;
+  trigger_type?: BoardAutomationTriggerType | null;
+  onApply: (patch: BoardAutomationActionParams) => void;
+}) {
   const [mode, setMode] = useState<"person" | "column" | "email_column">(params.email_column_id && has_trigger_item ? "email_column" : params.notify_from_people_column_id && has_trigger_item ? "column" : "person");
   const [addresses, setAddresses] = useState((params.email_addresses ?? []).join(", "));
   const parsed = addresses.split(/[\s,;]+/).map((entry) => entry.trim()).filter(Boolean);
   const invalid = parsed.filter((entry) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(entry));
   const email_columns = context.columns.filter((column) => column.kind === "email");
+  const sources = recipientSourcesFor(trigger_type, has_trigger_item);
   const [draft, setDraft] = useState<BoardAutomationActionParams>({
     notify_user_id: params.notify_user_id,
     notify_from_people_column_id: params.notify_from_people_column_id,
     email_column_id: params.email_column_id ?? null,
+    recipient_source: params.recipient_source ?? null,
   });
 
   const options = [
@@ -279,9 +287,17 @@ export function EmailRecipientEditor({ params, context, has_trigger_item, onAppl
       {mode === "person" && (
         <PersonPicker
           context={context}
-          selected={draft.notify_user_id ? String(draft.notify_user_id) : "__none__"}
-          extra_entries={[{ id: "__none__", label: "Nobody from the board" }]}
-          onPick={(id) => setDraft((current) => ({ ...current, notify_user_id: id === "__none__" ? undefined : Number(id), notify_from_people_column_id: undefined }))}
+          selected={draft.recipient_source ? `__source_${draft.recipient_source}` : draft.notify_user_id ? String(draft.notify_user_id) : "__none__"}
+          extra_entries={[{ id: "__none__", label: "Nobody from the board" }, ...sources.map((source) => ({ id: `__source_${source}`, label: RECIPIENT_SOURCE_LABELS[source] }))]}
+          onPick={(id) =>
+            setDraft((current) => ({
+              ...current,
+              notify_from_people_column_id: undefined,
+              ...(id.startsWith("__source_")
+                ? { recipient_source: id.slice("__source_".length) as BoardAutomationRecipientSource, notify_user_id: undefined }
+                : { recipient_source: null, notify_user_id: id === "__none__" ? undefined : Number(id) }),
+            }))
+          }
         />
       )}
       {mode === "column" && (
@@ -289,7 +305,7 @@ export function EmailRecipientEditor({ params, context, has_trigger_item, onAppl
           context={context}
           kinds={["people"]}
           selected={draft.notify_from_people_column_id ? String(draft.notify_from_people_column_id) : null}
-          onPick={(id) => setDraft((current) => ({ ...current, notify_from_people_column_id: Number(id), notify_user_id: undefined }))}
+          onPick={(id) => setDraft((current) => ({ ...current, notify_from_people_column_id: Number(id), notify_user_id: undefined, recipient_source: null }))}
           empty_text="Add a People column to this table first."
         />
       )}
@@ -309,7 +325,7 @@ export function EmailRecipientEditor({ params, context, has_trigger_item, onAppl
       {invalid.length > 0 && <div className="mt-1.5 text-[11.5px] text-boardtree-danger">Check {invalid.join(", ")}.</div>}
       <div className="mt-1 text-[11.5px] text-boardtree-text-faint">Up to 10, separated by commas. People outside the account get the email too.</div>
       <PopoverFooter
-        is_disabled={invalid.length > 0 || parsed.length > 10 || (!draft.notify_user_id && !draft.notify_from_people_column_id && !draft.email_column_id && parsed.length === 0)}
+        is_disabled={invalid.length > 0 || parsed.length > 10 || (!draft.notify_user_id && !draft.notify_from_people_column_id && !draft.recipient_source && !draft.email_column_id && parsed.length === 0)}
         onDone={() => onApply({ ...draft, email_addresses: parsed })}
       />
     </>

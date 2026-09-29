@@ -7,7 +7,7 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronRightIcon, ClockIcon, FeedSettingsIcon, HomeIcon, StarIcon } from "@/icons/workspace-icons";
-import { CalendarViewIcon } from "@/icons/board-icons";
+import { AutomateIcon, CalendarViewIcon } from "@/icons/board-icons";
 import WorkspaceMonogram from "@/components/personal/WorkspaceMonogram";
 import NavItemIcon, { NavPrivacyBadge } from "@/components/workspace-nav/NavItemIcon";
 import useFavorites, { type FavoriteWorkspaceGroup } from "@/hooks/useFavorites";
@@ -257,6 +257,8 @@ const SidebarPersonalNav: React.FC = () => {
         return renderLink("/workspace-home", SIDEBAR_SECTION_LABELS.home, <HomeIcon size={16} />);
       case "my_work":
         return renderLink("/my-work", SIDEBAR_SECTION_LABELS.my_work, <CalendarViewIcon size={16} />);
+      case "automations":
+        return renderLink("/automations", SIDEBAR_SECTION_LABELS.automations, <AutomateIcon size={16} />);
       case "favorites":
         return renderFavorites();
       case "recent":

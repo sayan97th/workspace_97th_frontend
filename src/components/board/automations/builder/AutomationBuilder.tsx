@@ -1,6 +1,6 @@
 "use client";
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, ArrowDown, Check, ChevronLeft, Copy, CornerDownRight, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { AlertTriangle, AlignLeft, ArrowDown, Check, ChevronLeft, Copy, CornerDownRight, Plus, RefreshCw, Trash2, Workflow } from "lucide-react";
 import type { BoardAutomationDefinition, BoardAutomationDto, BoardAutomationFailureAlert, BoardAutomationImportance, BoardAutomationTestResult } from "@/types/board-automation";
 import { FAILURE_ALERT_LABELS, IMPORTANCE_LABELS, type AutomationBuilderContext, type NamedOption } from "./automationCatalog";
 import { findColumn } from "./automationSentence";
@@ -22,6 +22,7 @@ import {
 } from "./builderDraft";
 import { PickerList, Token } from "./builderUi";
 import ActionRow from "./ActionRow";
+import AutomationFlowView from "./AutomationFlowView";
 import ConditionRow from "./ConditionRow";
 import TestRunPanel from "./TestRunPanel";
 import TriggerRow from "./TriggerRow";
@@ -170,13 +171,18 @@ export default function AutomationBuilder({
 }: AutomationBuilderProps) {
   const [draft, setDraft] = useState<AutomationDraft>(initial_draft);
   const [has_tried_save, setHasTriedSave] = useState(false);
+  const [view_mode, setViewMode] = useState<"sentence" | "flow">("sentence");
 
   const change = (patch: Partial<AutomationDraft>) => setDraft((current) => ({ ...current, ...patch }));
   const problems = useMemo(() => draftProblems(draft, context), [draft, context]);
 
   const trigger_column = findColumn(context, draft.trigger_column_id);
-  // An "all subitems" trigger runs on the parent item, so its actions write item columns.
-  const is_subitem_trigger = draft.trigger_type === "subitem_created" || (trigger_column?.scope === "subitem" && draft.trigger_type !== "all_subitems_status");
+  // "All subitems" runs on the parent item, "a subitem's column changes" on the parent unless told
+  // otherwise, so their actions write item columns.
+  const is_subitem_trigger =
+    draft.trigger_type === "subitem_column_changed"
+      ? draft.trigger_config.run_on === "subitem"
+      : draft.trigger_type === "subitem_created" || (trigger_column?.scope === "subitem" && draft.trigger_type !== "all_subitems_status");
   const action_scopes: ("item" | "subitem")[] = is_subitem_trigger ? ["item", "subitem"] : ["item"];
   const is_itemless = isItemlessTrigger(draft.trigger_type);
   const is_webhook = draft.trigger_type === "webhook_received";
@@ -256,6 +262,7 @@ export default function AutomationBuilder({
               is_loading_boards={is_loading_boards}
               lead={index > 0 ? "and" : branch === "else_actions" ? "Otherwise" : "Then"}
               is_webhook={is_webhook}
+              trigger_type={draft.trigger_type}
               onChange={api.update}
             />
           </SentenceLine>
@@ -271,7 +278,24 @@ export default function AutomationBuilder({
           <ChevronLeft size={18} />
           Back
         </button>
-        <span className="text-[12.5px] text-boardtree-text-faint">{mode === "edit" ? "Editing automation" : "Custom automation"}</span>
+        <div className="flex items-center gap-3">
+          <div role="radiogroup" aria-label="How the automation is shown" className="flex overflow-hidden rounded-[6px] border border-boardtree-border">
+            {([["sentence", "Sentence", <AlignLeft key="icon" size={14} />], ["flow", "Flow", <Workflow key="icon" size={14} />]] as const).map(([id, label, icon]) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={view_mode === id}
+                onClick={() => setViewMode(id)}
+                className={`flex h-8 items-center gap-1.5 px-3 text-[12.5px] ${view_mode === id ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-secondary hover:bg-boardtree-hover"}`}
+              >
+                {icon}
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="hidden text-[12.5px] text-boardtree-text-faint sm:inline">{mode === "edit" ? "Editing automation" : "Custom automation"}</span>
+        </div>
       </div>
 
       <div className="mx-auto w-full max-w-[920px] flex-1 px-2 pb-8 pt-10 sm:px-6">
@@ -294,97 +318,106 @@ export default function AutomationBuilder({
 
         {is_webhook && <WebhookUrlBox url={automation?.webhook_url} onRegenerate={onRegenerateWebhook} />}
 
-        <SentenceLine
-          onAdd={can_have_conditions && can_add_condition ? addCondition : undefined}
-          add_label="Add a condition"
-          onRemove={resetTrigger}
-          remove_label="Clear the trigger"
-        >
-          <TriggerRow draft={draft} context={context} onChange={change} is_loading_boards={is_loading_boards} />
-        </SentenceLine>
+        {view_mode === "flow" ? (
+          <>
+            <p className="mb-3 text-[12.5px] text-boardtree-text-secondary">A read-only map of the automation. Click any card, or switch back to Sentence, to edit it.</p>
+            <AutomationFlowView draft={draft} context={context} onEdit={() => setViewMode("sentence")} />
+          </>
+        ) : (
+          <>
+            <SentenceLine
+              onAdd={can_have_conditions && can_add_condition ? addCondition : undefined}
+              add_label="Add a condition"
+              onRemove={resetTrigger}
+              remove_label="Clear the trigger"
+            >
+              <TriggerRow draft={draft} context={context} onChange={change} is_loading_boards={is_loading_boards} />
+            </SentenceLine>
 
-        {draft.conditions.map((condition, index) => (
-          <SentenceLine key={condition.key} onRemove={() => removeCondition(condition.key)} remove_label="Remove this condition">
-            <ConditionRow
-              condition={condition}
-              is_first={index === 0}
-              lead={index === 0 ? undefined : <><JoinerToken value={draft.condition_operator} onChange={(condition_operator) => change({ condition_operator })} label="How the conditions combine" />{" "}</>}
-              scope={condition_scope}
-              context={context}
-              onChange={updateCondition}
-            />
-          </SentenceLine>
-        ))}
+            {draft.conditions.map((condition, index) => (
+              <SentenceLine key={condition.key} onRemove={() => removeCondition(condition.key)} remove_label="Remove this condition">
+                <ConditionRow
+                  condition={condition}
+                  is_first={index === 0}
+                  lead={index === 0 ? undefined : <><JoinerToken value={draft.condition_operator} onChange={(condition_operator) => change({ condition_operator })} label="How the conditions combine" />{" "}</>}
+                  scope={condition_scope}
+                  context={context}
+                  onChange={updateCondition}
+                />
+              </SentenceLine>
+            ))}
 
-        {draft.condition_groups.map((group, group_index) => {
-          const is_first_clause = draft.conditions.length === 0 && group_index === 0;
-          return (
-            <div key={group.key} className="my-2 rounded-[10px] border border-dashed border-boardtree-border py-1.5 pl-4 pr-1" role="group" aria-label={`Condition group ${group_index + 1}`}>
-              <div className="flex items-center justify-between text-[12px] text-boardtree-text-faint">
-                <span>
-                  {is_first_clause ? "And only if all of this group matches" : <><JoinerToken value={draft.condition_operator} onChange={(condition_operator) => change({ condition_operator })} label="How the conditions combine" /> this group matches</>}
-                </span>
-                <span className="flex items-center gap-1">
-                  {can_add_condition && (
-                    <button type="button" onClick={() => updateGroup(group.key, { rules: [...group.rules, emptyCondition()] })} className="rounded-[6px] px-2 py-1 text-[12px] text-boardtree-accent hover:bg-boardtree-hover">
-                      + Condition
-                    </button>
-                  )}
-                  <button type="button" onClick={() => removeGroup(group.key)} aria-label="Remove this group" title="Remove this group" className={ROW_ICON}>
-                    <Trash2 size={15} />
-                  </button>
-                </span>
-              </div>
-              {group.rules.map((rule, rule_index) => (
-                <SentenceLine
-                  key={rule.key}
-                  onRemove={() => {
-                    const remaining = group.rules.filter((entry) => entry.key !== rule.key);
-                    if (remaining.length === 0) removeGroup(group.key);
-                    else updateGroup(group.key, { rules: remaining });
-                  }}
-                  remove_label="Remove this condition"
-                >
-                  <ConditionRow
-                    condition={rule}
-                    is_first={false}
-                    lead={rule_index === 0 ? <span className="text-boardtree-text">if </span> : <><JoinerToken value={group.join_operator} onChange={(join_operator) => updateGroup(group.key, { join_operator })} label="How this group's conditions combine" />{" "}</>}
-                    scope={condition_scope}
-                    context={context}
-                    onChange={(next) => updateGroup(group.key, { rules: group.rules.map((entry) => (entry.key === next.key ? next : entry)) })}
-                  />
-                </SentenceLine>
-              ))}
-            </div>
-          );
-        })}
+            {draft.condition_groups.map((group, group_index) => {
+              const is_first_clause = draft.conditions.length === 0 && group_index === 0;
+              return (
+                <div key={group.key} className="my-2 rounded-[10px] border border-dashed border-boardtree-border py-1.5 pl-4 pr-1" role="group" aria-label={`Condition group ${group_index + 1}`}>
+                  <div className="flex items-center justify-between text-[12px] text-boardtree-text-faint">
+                    <span>
+                      {is_first_clause ? "And only if all of this group matches" : <><JoinerToken value={draft.condition_operator} onChange={(condition_operator) => change({ condition_operator })} label="How the conditions combine" /> this group matches</>}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      {can_add_condition && (
+                        <button type="button" onClick={() => updateGroup(group.key, { rules: [...group.rules, emptyCondition()] })} className="rounded-[6px] px-2 py-1 text-[12px] text-boardtree-accent hover:bg-boardtree-hover">
+                          + Condition
+                        </button>
+                      )}
+                      <button type="button" onClick={() => removeGroup(group.key)} aria-label="Remove this group" title="Remove this group" className={ROW_ICON}>
+                        <Trash2 size={15} />
+                      </button>
+                    </span>
+                  </div>
+                  {group.rules.map((rule, rule_index) => (
+                    <SentenceLine
+                      key={rule.key}
+                      onRemove={() => {
+                        const remaining = group.rules.filter((entry) => entry.key !== rule.key);
+                        if (remaining.length === 0) removeGroup(group.key);
+                        else updateGroup(group.key, { rules: remaining });
+                      }}
+                      remove_label="Remove this condition"
+                    >
+                      <ConditionRow
+                        condition={rule}
+                        is_first={false}
+                        lead={rule_index === 0 ? <span className="text-boardtree-text">if </span> : <><JoinerToken value={group.join_operator} onChange={(join_operator) => updateGroup(group.key, { join_operator })} label="How this group's conditions combine" />{" "}</>}
+                        scope={condition_scope}
+                        context={context}
+                        onChange={(next) => updateGroup(group.key, { rules: group.rules.map((entry) => (entry.key === next.key ? next : entry)) })}
+                      />
+                    </SentenceLine>
+                  ))}
+                </div>
+              );
+            })}
 
-        {can_have_conditions && can_add_condition && draft.condition_groups.length < MAX_CONDITION_GROUPS && (
-          <button type="button" onClick={addGroup} className="mt-1 rounded-[6px] px-2 py-1 text-[12.5px] text-boardtree-text-secondary hover:bg-boardtree-hover hover:text-boardtree-accent">
-            + Add a condition group
-          </button>
-        )}
-
-        <div className="my-3 text-[#00854d]" aria-hidden="true">
-          <ArrowDown size={34} strokeWidth={1.6} />
-        </div>
-
-        {renderBranch("actions")}
-
-        {can_have_else && (
-          <div className="mt-6 border-t border-dashed border-boardtree-border-soft pt-4">
-            <div className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-boardtree-text-faint">
-              <CornerDownRight size={14} />
-              When the item does not meet the conditions
-            </div>
-            {draft.else_actions.length === 0 ? (
-              <button type="button" onClick={() => change({ else_actions: [emptyAction()] })} className="rounded-[6px] px-2 py-1 text-[13px] text-boardtree-accent hover:bg-boardtree-hover">
-                + Add &quot;otherwise&quot; actions
+            {can_have_conditions && can_add_condition && draft.condition_groups.length < MAX_CONDITION_GROUPS && (
+              <button type="button" onClick={addGroup} className="mt-1 rounded-[6px] px-2 py-1 text-[12.5px] text-boardtree-text-secondary hover:bg-boardtree-hover hover:text-boardtree-accent">
+                + Add a condition group
               </button>
-            ) : (
-              renderBranch("else_actions")
             )}
-          </div>
+
+            <div className="my-3 text-[#00854d]" aria-hidden="true">
+              <ArrowDown size={34} strokeWidth={1.6} />
+            </div>
+
+            {renderBranch("actions")}
+
+            {can_have_else && (
+              <div className="mt-6 border-t border-dashed border-boardtree-border-soft pt-4">
+                <div className="mb-1 flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide text-boardtree-text-faint">
+                  <CornerDownRight size={14} />
+                  When the item does not meet the conditions
+                </div>
+                {draft.else_actions.length === 0 ? (
+                  <button type="button" onClick={() => change({ else_actions: [emptyAction()] })} className="rounded-[6px] px-2 py-1 text-[13px] text-boardtree-accent hover:bg-boardtree-hover">
+                    + Add &quot;otherwise&quot; actions
+                  </button>
+                ) : (
+                  renderBranch("else_actions")
+                )}
+              </div>
+            )}
+          </>
         )}
 
         {draft.trigger_type && (

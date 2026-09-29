@@ -4,6 +4,7 @@ import type {
   BoardAutomationChangeMatch,
   BoardAutomationCondition,
   BoardAutomationDefinition,
+  BoardAutomationDynamicValue,
   BoardAutomationSchedule,
   BoardAutomationTriggerConfig,
 } from "@/types/board-automation";
@@ -11,6 +12,8 @@ import { BOARD_FILTER_DATE_PRESETS } from "../../toolbar/filterEngine";
 import {
   AUTOMATION_VALUELESS_OPERATORS,
   CONDITION_KIND_BY_COLUMN,
+  DYNAMIC_SOURCE_LABELS,
+  RECIPIENT_SOURCE_LABELS,
   VIRTUAL_CONDITION_FIELDS,
   WEEKDAY_LABELS,
   conditionOperatorText,
@@ -109,10 +112,22 @@ export function scheduleLabel(schedule: BoardAutomationSchedule | null | undefin
   return `${days.length ? days.join(", ") : "week"}${time}`;
 }
 
+/** `today + 3 working days`, `the item creator`, `the value of Due date - 2 days`: a dynamic value in words. */
+export function dynamicLabel(context: AutomationBuilderContext, dynamic: BoardAutomationDynamicValue | null | undefined): string {
+  if (!dynamic?.source) return "a dynamic value";
+  const offset = dynamic.offset_days ?? 0;
+  const noun = dynamic.use_working_days ? "working day" : "day";
+  const shift = offset === 0 ? "" : ` ${offset > 0 ? "+" : "-"} ${Math.abs(offset)} ${Math.abs(offset) === 1 ? noun : `${noun}s`}`;
+  if (dynamic.source === "today") return `today${shift}`;
+  if (dynamic.source === "column") return dynamic.column_id ? `the ${columnLabel(context, dynamic.column_id)}${shift}` : "the value of a column";
+  return DYNAMIC_SOURCE_LABELS[dynamic.source];
+}
+
 /** Who a notify or communication action reaches, email addresses included for "send an email". */
 export function recipientLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
   const parts: string[] = [];
   if (params.notify_user_id) parts.push(personLabel(context, params.notify_user_id));
+  else if (params.recipient_source) parts.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
   else if (params.notify_from_people_column_id) parts.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
   if (params.email_column_id) parts.push(`the address in ${columnLabel(context, params.email_column_id)}`);
   const addresses = params.email_addresses ?? [];
@@ -186,6 +201,7 @@ export function conditionValueLabel(context: AutomationBuilderContext, condition
   const column = findColumn(context, condition.column_id);
   const kind = kindOf(context, condition.column_id);
 
+  if (condition.dynamic?.source) return dynamicLabel(context, condition.dynamic);
   if (kind === "dependency") {
     const status = findColumn(context, condition.value);
     const labels = condition.values.map((id) => optionLabel(status, id)).join(", ");
@@ -209,7 +225,18 @@ export function conditionOperatorLabel(context: AutomationBuilderContext, condit
 
 // ── Sentences ─────────────────────────────────────────────────────────────────
 
-function triggerParts(definition: BoardAutomationDefinition, context: AutomationBuilderContext): SentencePart[] {
+/** `anyone`, `Ada`: who a mention or reply trigger waits for. */
+const anyonePersonLabel = (context: AutomationBuilderContext, user_id: unknown): string => (user_id == null ? "someone" : personLabel(context, user_id));
+
+/** `"urgent", "blocked"`: the words an update keyword trigger waits for. */
+export function keywordsLabel(keywords: string[] | null | undefined): string {
+  const words = (keywords ?? []).map((keyword) => keyword.trim()).filter(Boolean);
+  if (words.length === 0) return "a keyword";
+  const shown = words.slice(0, 3).map((word) => `"${word}"`).join(" or ");
+  return words.length > 3 ? `${shown} or ${words.length - 3} more` : shown;
+}
+
+export function triggerParts(definition: BoardAutomationDefinition, context: AutomationBuilderContext): SentencePart[] {
   const column = findColumn(context, definition.trigger_column_id);
   const config = definition.trigger_config ?? {};
 
@@ -288,6 +315,21 @@ function triggerParts(definition: BoardAutomationDefinition, context: Automation
       if (config.time) parts.push(plain(" at "), token(config.time));
       return parts;
     }
+    case "subitem_column_changed":
+      return [
+        plain("When "),
+        token(columnLabel(context, definition.trigger_column_id, "subitem column")),
+        plain(" changes to "),
+        token(changeMatchLabel(context, column, config.match)),
+        plain(", on "),
+        token(config.run_on === "subitem" ? "the subitem" : "the parent item"),
+      ];
+    case "user_mentioned":
+      return [plain("When "), token(anyonePersonLabel(context, definition.trigger_value)), plain(" is "), token("mentioned in an update")];
+    case "update_replied":
+      return [plain("When "), token(anyonePersonLabel(context, definition.trigger_value)), plain(" "), token("replies to an update")];
+    case "update_keyword":
+      return [plain(config.include_replies ? "When an update or reply contains " : "When an update contains "), token(keywordsLabel(config.keywords))];
     default:
       return [plain("When something happens")];
   }
@@ -338,7 +380,10 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
     }
     case "create_subitem": {
       const names = (params.subitem_names ?? []).filter((name) => name.trim());
-      return [token("create subitems"), plain(" "), token(names.length ? names.join(", ") : "names")];
+      if (!names.length && params.source_column_id) return [token("create subitems"), plain(" one per entry of "), token(columnLabel(context, params.source_column_id))];
+      const parts = [token("create subitems"), plain(" "), token(names.length ? columnTokensToDisplay(names.join(", "), context) : "names")];
+      if (params.source_column_id) parts.push(plain(" and one per entry of "), token(columnLabel(context, params.source_column_id)));
+      return parts;
     }
     case "duplicate_item":
       return [token("duplicate item"), plain(params.with_subitems === false ? "" : " with its subitems")];
@@ -347,7 +392,7 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
     case "delete_item":
       return [token("delete item")];
     case "set_column_value":
-      return [plain("set "), token(columnLabel(context, params.target_column_id)), plain(" to "), token(valueLabel(context, column, params.value))];
+      return [plain("set "), token(columnLabel(context, params.target_column_id)), plain(" to "), token(params.dynamic_value ? dynamicLabel(context, params.dynamic_value) : valueLabel(context, column, params.value))];
     case "clear_column":
       return [token("clear"), plain(" "), token(columnLabel(context, params.target_column_id))];
     case "assign_person": {
@@ -423,9 +468,43 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
       return [token("change"), plain(" the items connected in "), token(columnLabel(context, params.connect_column_id, "connect boards"))];
     case "group_items":
       return [token(groupOperationLabel(context, params)), plain(" every item of "), token(params.from_item_group ? "the item's group" : groupLabel(context, params.target_group_id))];
+    case "subscribe_people":
+      return [token("subscribe"), plain(" "), token(peopleSelectionLabel(context, params)), plain(" to the item")];
+    case "unsubscribe_people":
+      return [token("unsubscribe"), plain(" "), token(params.everyone ? "everyone" : peopleSelectionLabel(context, params)), plain(" from the item")];
+    case "notify_subscribers":
+      return [token("notify"), plain(" the item's "), token("subscribers")];
+    case "clear_subitems":
+      return [token(params.operation === "delete" ? "delete" : "archive"), plain(" every "), token("subitem")];
+    case "convert_subitem":
+      return [token("turn the subitem into an item"), plain(" of "), token(params.target_group_id ? groupLabel(context, params.target_group_id) : "its parent's group")];
+    case "send_digest":
+      return [plain("email a "), token("digest"), plain(" of "), token(digestFilterLabel(context, params)), plain(" to "), token(peopleSelectionLabel(context, params))];
     default:
       return [plain("do something")];
   }
+}
+
+/** `Ada and Grace`, `people in Owner`, `the team Design`, `the item creator`: who a subscribe, unsubscribe or digest action names. */
+export function peopleSelectionLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  const parts: string[] = [];
+  const ids = params.user_ids ?? [];
+  if (ids.length === 1) parts.push(personLabel(context, ids[0]));
+  else if (ids.length === 2) parts.push(`${personLabel(context, ids[0])} and ${personLabel(context, ids[1])}`);
+  else if (ids.length > 2) parts.push(`${ids.length} people`);
+  if (params.notify_from_people_column_id) parts.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  if (params.team_id) parts.push(`the team ${teamLabel(context, params.team_id)}`);
+  if (params.recipient_source) parts.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
+  return parts.length ? parts.join(" and ") : "people";
+}
+
+/** `every item`, `items where Status is Done`, `3 filtered items of Backlog`: which items a digest lists. */
+export function digestFilterLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  const rules = params.digest_rules ?? [];
+  const where = params.target_group_id ? ` of ${groupLabel(context, params.target_group_id)}` : "";
+  if (rules.length === 0) return `every item${where}`;
+  if (rules.length === 1) return `items${where} where ${sentenceText(conditionParts(rules[0], context))}`;
+  return `items${where} matching ${rules.length} rules`;
 }
 
 function joinActions(actions: SentencePart[][]): SentencePart[] {
@@ -435,7 +514,7 @@ function joinActions(actions: SentencePart[][]): SentencePart[] {
   });
 }
 
-function conditionParts(condition: BoardAutomationCondition, context: AutomationBuilderContext): SentencePart[] {
+export function conditionParts(condition: BoardAutomationCondition, context: AutomationBuilderContext): SentencePart[] {
   const kind = kindOf(context, condition.column_id);
   const parts = [token(conditionFieldLabel(context, condition.column_id)), plain(` ${conditionOperatorLabel(context, condition)}`)];
   if (kind === "subitems") {

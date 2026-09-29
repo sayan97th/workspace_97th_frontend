@@ -31,7 +31,11 @@ export type BoardAutomationTriggerType =
   | "checklist_item_checked"
   | "person_unassigned"
   | "file_uploaded"
-  | "item_overdue";
+  | "item_overdue"
+  | "subitem_column_changed"
+  | "user_mentioned"
+  | "update_replied"
+  | "update_keyword";
 
 export type BoardAutomationActionType =
   | "move_to_group"
@@ -73,7 +77,34 @@ export type BoardAutomationActionType =
   | "rename_item"
   | "change_values"
   | "update_connected_items"
-  | "group_items";
+  | "group_items"
+  | "subscribe_people"
+  | "unsubscribe_people"
+  | "notify_subscribers"
+  | "clear_subitems"
+  | "convert_subitem"
+  | "send_digest";
+
+/**
+ * Where a dynamic value comes from, see the Laravel `AutomationDynamicValueResolver`: whoever set
+ * the automation off, the item creator, the automation owner, the person a mention trigger fired
+ * for, today (plus `offset_days`) or what another column holds on the item.
+ */
+export type BoardAutomationDynamicSource = "actor" | "creator" | "owner" | "mentioned" | "today" | "column";
+
+/** A value read on every run instead of a fixed one, such as "today + 3 days" or "the item creator". */
+export type BoardAutomationDynamicValue = {
+  source: BoardAutomationDynamicSource;
+  /** `today` and date `column` sources: days added, negative to go back. */
+  offset_days?: number | null;
+  /** Count `offset_days` in working days of the board. */
+  use_working_days?: boolean;
+  /** `column` only: the column read. */
+  column_id?: number | null;
+};
+
+/** Who a recipient token stands for besides fixed people and people columns. `subscribers` is everyone following the item. */
+export type BoardAutomationRecipientSource = "actor" | "creator" | "owner" | "mentioned" | "subscribers";
 
 /** How the owner hears about a failed run. */
 export type BoardAutomationFailureAlert = "app" | "app_and_email" | "none";
@@ -137,8 +168,14 @@ export type BoardAutomationTriggerConfig = {
   /** `item_overdue` only: the status column that says an item is done, and its labels that mean done. */
   status_column_id?: number | null;
   done_values?: string[] | null;
-  /** `column_changed` only: a value condition by column type, instead of a single `trigger_value`. */
+  /** `column_changed` and `subitem_column_changed`: a value condition by column type, instead of a single `trigger_value`. */
   match?: BoardAutomationChangeMatch | null;
+  /** `subitem_column_changed` only: run the actions on the parent item (default) or on the subitem. */
+  run_on?: "parent" | "subitem" | null;
+  /** `update_keyword` only: the words an update must contain, one is enough. */
+  keywords?: string[] | null;
+  /** `update_keyword` only: replies count too. */
+  include_replies?: boolean;
 };
 
 /**
@@ -152,6 +189,8 @@ export type BoardAutomationCondition = {
   value: string;
   values: string[];
   subitem_rule?: BoardAutomationSubitemRule | null;
+  /** Compares with a value read on every run instead of `value`/`values`. */
+  dynamic?: BoardAutomationDynamicValue | null;
 };
 
 /** The rule on a subitem column a "subitems" condition checks. */
@@ -169,8 +208,8 @@ export type BoardAutomationConditionGroup = {
 };
 
 export type BoardAutomationActionParams = {
-  /** `move_to_group`/`move_to_board`/`create_item`. */
-  target_group_id?: number;
+  /** `move_to_group`/`move_to_board`/`create_item`, group actions and digests. Null once a group action reads the item's own group. */
+  target_group_id?: number | null;
   /** `move_to_board`, and `create_item` on another board. */
   target_board_id?: number | null;
   /** Notify and communication actions: a fixed recipient. */
@@ -269,10 +308,27 @@ export type BoardAutomationActionParams = {
   linked_column_id?: number;
   /** `create_item` on another board only: the connect boards column of this item the new item is added to. */
   link_column_id?: number | null;
-  /** `group_items` only: what happens to every item of the group. */
-  operation?: "set_column_value" | "clear_column" | "archive" | "move_to_group";
+  /** `group_items`: what happens to every item of the group. `clear_subitems`: `archive` or `delete` every subitem. */
+  operation?: "set_column_value" | "clear_column" | "archive" | "move_to_group" | "delete";
   /** `group_items` with `move_to_group` only: where the items go. */
   destination_group_id?: number | null;
+  /** `set_column_value` only: a value read on every run, `value` is then ignored. */
+  dynamic_value?: BoardAutomationDynamicValue | null;
+  /** Notify, email, Slack and subscribe actions: someone known only on the run. */
+  recipient_source?: BoardAutomationRecipientSource | null;
+  /** `unsubscribe_people` only: unsubscribe everyone. */
+  everyone?: boolean;
+  /** `notify_subscribers` only: notify the person who set the automation off too. */
+  include_actor?: boolean;
+  /** `send_digest` only: the columns shown after the item name. */
+  column_ids?: number[];
+  /** `send_digest` only: which items the digest lists, the same rules as the conditions. */
+  digest_rules?: BoardAutomationCondition[];
+  digest_operator?: "and" | "or";
+  /** `send_digest` only: most rows, 1 to 200. */
+  max_items?: number;
+  /** `send_digest` only: send it even when no item matches. */
+  send_when_empty?: boolean;
 };
 
 export type BoardAutomationFieldMapping = { column_id: number | null; source: string };
@@ -611,3 +667,36 @@ export type BoardItemAutomationsDto = {
 };
 
 export type BoardButtonPressResult = { message: string; automations_run: number; is_board_paused: boolean };
+
+/** One row of the account wide Automations center, an automation with its board and recent runs. */
+export type AccountAutomationDto = BoardAutomationDto & {
+  board: { id: number; label: string | null; workspace_name: string | null };
+  /** The tab the automation belongs to. */
+  view_label: string | null;
+  /** Whether the viewer may turn it on or off, which needs edit rights on its board. */
+  can_edit: boolean;
+  /** Runs and failed runs in the last `summary.recent_days` days. */
+  recent_runs: number;
+  recent_failures: number;
+};
+
+export type AccountAutomationsSummary = {
+  total: number;
+  enabled: number;
+  /** Switched themselves off, because something they use was deleted or they failed too often. */
+  paused: number;
+  /** Failed at least their latest run. */
+  failing: number;
+  /** Use something that no longer exists. */
+  broken: number;
+  boards: number;
+  recent_runs: number;
+  recent_days: number;
+};
+
+export type AccountAutomationsResponse = {
+  data: AccountAutomationDto[];
+  summary: AccountAutomationsSummary;
+  /** More automations exist than the center lists. */
+  is_truncated: boolean;
+};

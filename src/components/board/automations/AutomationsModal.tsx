@@ -176,12 +176,13 @@ function AutomationCenter(props: AutomationsModalProps) {
     }
   }
 
-  // Opened from another dialog to edit one automation, straight into the builder.
+  // Opened from another dialog, or a link of the account wide Automations center, to edit one
+  // automation, straight into the builder. The automations may still be loading, so it waits for them.
   const [handled_edit_id, setHandledEditId] = useState<number | null>(null);
   if (edit_automation_id && edit_automation_id !== handled_edit_id) {
     const automation = automations.find((entry) => entry.id === edit_automation_id);
-    setHandledEditId(edit_automation_id);
     if (automation) {
+      setHandledEditId(edit_automation_id);
       setMode("create");
       setScreen({ kind: "builder", draft: draftFromAutomation(automation, context), editing_id: automation.id, key: Date.now() });
     }

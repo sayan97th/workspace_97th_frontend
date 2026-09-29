@@ -1,4 +1,4 @@
-import type { BoardAutomationActionType, BoardAutomationTriggerType } from "@/types/board-automation";
+import type { BoardAutomationActionType, BoardAutomationDynamicSource, BoardAutomationRecipientSource, BoardAutomationTriggerType } from "@/types/board-automation";
 import { BOARD_FILTER_OPERATORS, getOperatorLabel } from "../../toolbar/filterEngine";
 import type { BoardFilterFieldKind, BoardFilterOperator } from "../../toolbar/types";
 import type { ColumnDef, ColumnKind, PersonDef } from "../../table/types";
@@ -46,13 +46,20 @@ export type TriggerDef = {
   column_kinds?: ColumnKind[];
 };
 
+/** Every column kind a "column changes" trigger can watch. */
+const CHANGEABLE_KINDS: ColumnKind[] = [
+  "text", "longtext", "number", "status", "label", "date", "people", "dropdown", "tags", "checkbox", "rating", "progress", "email", "phone", "link", "timeline", "vote", "files", "checklist",
+];
+
 export const TRIGGERS: TriggerDef[] = [
   { type: "status_changed", label: "status changes", section: "Most used", column_kinds: ["status", "label"] },
   { type: "item_created", label: "item is created", section: "Most used" },
   { type: "date_arrived", label: "date arrives", section: "Most used", column_kinds: ["date"] },
-  { type: "column_changed", label: "column changes", section: "Most used", column_kinds: [
-    "text", "longtext", "number", "status", "label", "date", "people", "dropdown", "tags", "checkbox", "rating", "progress", "email", "phone", "link", "timeline", "vote", "files", "checklist",
-  ] },
+  { type: "column_changed", label: "column changes", section: "Most used", column_kinds: CHANGEABLE_KINDS },
+  { type: "subitem_column_changed", label: "subitem column changes", section: "Subitems and groups", column_kinds: CHANGEABLE_KINDS },
+  { type: "user_mentioned", label: "someone is mentioned in an update", section: "Items and updates" },
+  { type: "update_replied", label: "update is replied to", section: "Items and updates" },
+  { type: "update_keyword", label: "update contains a keyword", section: "Items and updates" },
   { type: "person_assigned", label: "person is assigned", section: "Status and columns", column_kinds: ["people"] },
   { type: "subitem_created", label: "subitem is created", section: "Items and updates" },
   { type: "item_moved_to_group", label: "item is moved to group", section: "Items and updates" },
@@ -94,6 +101,7 @@ export const SUBITEM_AWARE_TRIGGERS: BoardAutomationTriggerType[] = ["status_cha
 export const TRIGGER_COLUMN_SCOPE: Partial<Record<BoardAutomationTriggerType, "item" | "subitem">> = {
   all_subitems_status: "subitem",
   all_group_items_status: "item",
+  subitem_column_changed: "subitem",
 };
 
 /** Triggers with no item of their own, they start with an itemless action like recurring ones. */
@@ -161,6 +169,12 @@ export const ACTIONS: ActionDef[] = [
   { id: "change_values", type: "change_values", label: "add or remove a label or person", section: "Columns" },
   { id: "update_connected_items", type: "update_connected_items", label: "change connected items", section: "Other boards" },
   { id: "group_items", type: "group_items", label: "change every item of a group", section: "Groups", is_itemless: true },
+  { id: "subscribe_people", type: "subscribe_people", label: "subscribe people to the item", section: "People" },
+  { id: "unsubscribe_people", type: "unsubscribe_people", label: "unsubscribe people from the item", section: "People" },
+  { id: "notify_subscribers", type: "notify_subscribers", label: "notify the item's subscribers", section: "Notifications" },
+  { id: "clear_subitems", type: "clear_subitems", label: "archive or delete every subitem", section: "Subitems" },
+  { id: "convert_subitem", type: "convert_subitem", label: "turn the subitem into an item", section: "Subitems" },
+  { id: "send_digest", type: "send_digest", label: "email a digest of items", section: "Email and Slack", is_itemless: true },
 ];
 
 export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemless).map((action) => action.type);
@@ -223,6 +237,12 @@ export const ACTION_LABELS: Record<BoardAutomationActionType, string> = {
   change_values: "Add or remove values",
   update_connected_items: "Change connected items",
   group_items: "Change group items",
+  subscribe_people: "Subscribe people",
+  unsubscribe_people: "Unsubscribe people",
+  notify_subscribers: "Notify subscribers",
+  clear_subitems: "Clear subitems",
+  convert_subitem: "Subitem to item",
+  send_digest: "Send digest",
 };
 
 export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
@@ -253,6 +273,10 @@ export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
   person_unassigned: "Person unassigned",
   file_uploaded: "File uploaded",
   item_overdue: "Item overdue",
+  subitem_column_changed: "Subitem column changes",
+  user_mentioned: "Someone mentioned",
+  update_replied: "Update replied to",
+  update_keyword: "Update keyword",
 };
 
 /** How long a "wait" step may wait, all waits of one branch together, in days. */
@@ -420,6 +444,92 @@ export const MESSAGE_TOKENS: { token: string; label: string }[] = [
   { token: "{week}", label: "Week number" },
   { token: "{month}", label: "Month" },
 ];
+
+/** Tokens only some triggers fill in, offered next to the others when the trigger has them. */
+export const TRIGGER_MESSAGE_TOKENS: Partial<Record<BoardAutomationTriggerType, { token: string; label: string }[]>> = {
+  update_posted: [{ token: "{update_text}", label: "Update text" }],
+  update_replied: [{ token: "{update_text}", label: "Reply text" }],
+  update_keyword: [{ token: "{update_text}", label: "Update text" }],
+  user_mentioned: [{ token: "{update_text}", label: "Update text" }, { token: "{mentioned_name}", label: "Mentioned person" }],
+  subitem_column_changed: [{ token: "{subitem_name}", label: "Subitem name" }],
+};
+
+// ── Dynamic values ────────────────────────────────────────────────────────────
+
+export type DynamicFamily = "people" | "date" | "number" | "text";
+
+/** What each dynamic source reads as, lower case like the sentence. */
+export const DYNAMIC_SOURCE_LABELS: Record<BoardAutomationDynamicSource, string> = {
+  actor: "the person who made the change",
+  creator: "the item creator",
+  owner: "the automation owner",
+  mentioned: "the mentioned person",
+  today: "today",
+  column: "the value of a column",
+};
+
+/** The sources a value of each family can come from. `mentioned` only exists for actions of a mention trigger. */
+export const DYNAMIC_SOURCES_BY_FAMILY: Record<DynamicFamily, BoardAutomationDynamicSource[]> = {
+  people: ["actor", "creator", "owner", "mentioned", "column"],
+  date: ["today", "column"],
+  number: ["column"],
+  text: ["actor", "creator", "owner", "mentioned", "column"],
+};
+
+/** The column kinds each family reads, for the "value of a column" source. */
+export const DYNAMIC_KINDS_BY_FAMILY: Record<DynamicFamily, ColumnKind[]> = {
+  people: ["people", "vote"],
+  date: ["date", "timeline"],
+  number: ["number", "rating", "progress", "auto_number", "time_tracking"],
+  text: ["text", "longtext", "email", "phone", "link", "mirror", "formula", "checklist", "files"],
+};
+
+/** Kinds "change column value" can fill from a dynamic value, mirrors the API's `DYNAMIC_TARGET_TYPES`. */
+export const DYNAMIC_TARGET_KINDS: ColumnKind[] = ["people", "vote", "date", "number", "rating", "progress", "text", "longtext", "email", "phone"];
+
+/** Operators a dynamic value cannot stand in for: no value, two values, or an automation only family. */
+export const DYNAMIC_EXCLUDED_OPERATORS = ["between", "is_empty", "is_not_empty", "is_checked", "is_unchecked", "all_match", "any_match", "none_match", "all_done", "has_unfinished", "is_running", "is_not_running"];
+
+/** The family a column kind reads as, undefined for kinds a dynamic value cannot fill. */
+export function dynamicFamilyOfKind(kind: ColumnKind): DynamicFamily | undefined {
+  return (Object.keys(DYNAMIC_KINDS_BY_FAMILY) as DynamicFamily[]).find((family) => DYNAMIC_KINDS_BY_FAMILY[family].includes(kind));
+}
+
+/** Item details a condition reads as a family, the rest cannot compare with a dynamic value. */
+export const DYNAMIC_FAMILY_BY_FIELD: Record<string, DynamicFamily> = {
+  __created_by__: "people",
+  __actor__: "people",
+  __created_at__: "date",
+  __updated_at__: "date",
+  __update_count__: "number",
+  __subitem_count__: "number",
+  name: "text",
+};
+
+/** Who a recipient token can stand for beyond a fixed person or a people column. */
+export const RECIPIENT_SOURCE_LABELS: Record<BoardAutomationRecipientSource, string> = {
+  actor: "Person who made the change",
+  creator: "Item creator",
+  owner: "Automation owner",
+  mentioned: "Mentioned person",
+  subscribers: "Item subscribers",
+};
+
+/**
+ * The recipient sources that make sense for a trigger: the person who made the change and the
+ * item's creator and subscribers need an item, the mentioned person a mention trigger.
+ */
+export function recipientSourcesFor(trigger_type: BoardAutomationTriggerType | null | undefined, has_trigger_item: boolean, with_subscribers = true): BoardAutomationRecipientSource[] {
+  return (["actor", "creator", "owner", "mentioned", "subscribers"] as BoardAutomationRecipientSource[]).filter((source) => {
+    if (source === "owner") return true;
+    if (source === "mentioned") return trigger_type === "user_mentioned";
+    if (source === "subscribers") return with_subscribers && has_trigger_item;
+    return has_trigger_item;
+  });
+}
+
+/** Kinds "create subitems" can read a list from, one subitem per entry. */
+export const LIST_SOURCE_KINDS: ColumnKind[] = ["text", "longtext", "checklist", "tags", "dropdown", "people"];
 
 /** A column's value in a message, stored by id so a renamed column keeps working: `{column:12}`. */
 export const COLUMN_TOKEN_PATTERN = /\{column:(\d+)\}/g;

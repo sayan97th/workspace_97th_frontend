@@ -22,6 +22,7 @@ export const clampSidebarWidth = (width: number): number =>
 export const SIDEBAR_SECTION_LABELS: Record<SidebarSectionKey, string> = {
   home: "Home",
   my_work: "My work",
+  automations: "Automations",
   favorites: "Favorites",
   recent: "Recent",
 };

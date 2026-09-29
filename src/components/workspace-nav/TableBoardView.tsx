@@ -1275,6 +1275,27 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       .catch(() => {});
   };
 
+  // `?automation=<id>`, a link from the account wide Automations center, opens that automation in
+  // the builder, `?automation=center` only the Automations center. Once per link.
+  const automation_param = search_params.get("automation");
+  const opened_automation_param = useRef<string | null>(null);
+  useEffect(() => {
+    if (!automation_param || opened_automation_param.current === automation_param) return;
+    opened_automation_param.current = automation_param;
+    const automation_id = Number(automation_param);
+    openAutomationCenter(Number.isInteger(automation_id) && automation_id > 0 ? automation_id : undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [automation_param]);
+
+  const clearAutomationParam = () => {
+    if (!search_params.has("automation")) return;
+    opened_automation_param.current = null;
+    const next_params = new URLSearchParams(search_params.toString());
+    next_params.delete("automation");
+    const query = next_params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
+
   const handleDuplicateAutomation = async (automation_id: number) => {
     const copy = await boardAutomationService.duplicateAutomation(board_id, automation_id);
     setAutomations((current) => [copy, ...current]);
@@ -4191,6 +4212,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           setIsAutomationsModalOpen(false);
           setAutomationEditId(null);
           setAutomationColumnId(null);
+          clearAutomationParam();
         }}
         board_id={board_id}
         view_id={view_tabs.active_view_id}

@@ -190,6 +190,67 @@ export function ExtensionsEditor({ extensions, onApply }: { extensions: string[]
   );
 }
 
+/** Most keywords one "update contains a keyword" trigger waits for, mirrors the API. */
+const MAX_KEYWORDS = 20;
+
+/** The words "update contains a keyword" waits for, one is enough, and whether replies count. */
+export function KeywordsEditor({ keywords, include_replies, onApply }: { keywords: string[]; include_replies: boolean; onApply: (keywords: string[], include_replies: boolean) => void }) {
+  const [words, setWords] = useState<string[]>(keywords.filter((keyword) => keyword.trim() !== ""));
+  const [draft, setDraft] = useState("");
+  const [replies, setReplies] = useState(include_replies);
+
+  const add = () => {
+    const entries = draft.split(",").map((entry) => entry.trim()).filter((entry) => entry !== "" && entry.length <= 60);
+    setWords((current) => Array.from(new Set([...current, ...entries])).slice(0, MAX_KEYWORDS));
+    setDraft("");
+  };
+
+  return (
+    <>
+      <div className={POPOVER_LABEL}>Words to look for</div>
+      <div className="flex items-center gap-1.5">
+        <input
+          autoFocus
+          value={draft}
+          maxLength={200}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              add();
+            }
+          }}
+          placeholder="urgent, blocked"
+          aria-label="Keyword"
+          className={`${POPOVER_INPUT} flex-1`}
+        />
+        <button type="button" onClick={add} className={POPOVER_SECONDARY}>Add</button>
+      </div>
+      {words.length > 0 && (
+        <div role="list" aria-label="Keywords" className="mt-2 flex flex-wrap gap-1">
+          {words.map((word) => (
+            <span key={word} role="listitem" className="flex h-7 items-center gap-1 rounded-full border border-boardtree-border px-2 text-[12px] text-boardtree-text">
+              {word}
+              <button type="button" onClick={() => setWords((current) => current.filter((entry) => entry !== word))} aria-label={`Remove ${word}`} className="text-boardtree-text-faint hover:text-boardtree-danger">
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="mt-1.5 text-[11.5px] text-boardtree-text-faint">Matched without case anywhere in the text, one word is enough.</div>
+      <label className="mt-2.5 flex items-center gap-2 text-[12.5px] text-boardtree-text-secondary">
+        <input type="checkbox" checked={replies} onChange={(event) => setReplies(event.target.checked)} className="accent-boardtree-accent" />
+        Replies count too
+      </label>
+      <PopoverFooter is_disabled={words.length === 0 && draft.trim() === ""} onDone={() => {
+        const pending = draft.split(",").map((entry) => entry.trim()).filter((entry) => entry !== "" && entry.length <= 60);
+        onApply(Array.from(new Set([...words, ...pending])).slice(0, MAX_KEYWORDS), replies);
+      }} />
+    </>
+  );
+}
+
 /** The status column and labels that mean an item is done, for "item becomes overdue". */
 export function DoneStatusEditor({ context, status_column_id, done_values, onApply }: { context: AutomationBuilderContext; status_column_id: number | null | undefined; done_values: string[]; onApply: (status_column_id: number | null, done_values: string[]) => void }) {
   const status_columns = context.columns.filter((column) => column.scope === "item" && (column.kind === "status" || column.kind === "label"));

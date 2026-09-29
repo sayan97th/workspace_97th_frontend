@@ -2,10 +2,10 @@
 import React, { useState } from "react";
 import type { BoardAutomationSchedule, BoardAutomationThresholdOperator, BoardAutomationTriggerType } from "@/types/board-automation";
 import { SCHEDULED_TRIGGERS, SUBITEM_AWARE_TRIGGERS, TRIGGER_BY_TYPE, TRIGGER_COLUMN_SCOPE, WEEKDAY_LABELS, triggerSections, type AutomationBuilderContext } from "./automationCatalog";
-import { boardLabel, changeMatchLabel, columnLabel, doneLabel, extensionsLabel, findColumn, formLabel, groupLabel, offsetLabel, optionLabel, personLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
+import { boardLabel, changeMatchLabel, columnLabel, doneLabel, extensionsLabel, findColumn, formLabel, groupLabel, keywordsLabel, offsetLabel, optionLabel, personLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
 import type { AutomationDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, Segmented, Token, WorkingDaysToggle } from "./builderUi";
-import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
+import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, KeywordsEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, PersonPicker } from "./valueEditors";
 
 export type TriggerRowProps = {
@@ -33,7 +33,11 @@ function pickTrigger(type: BoardAutomationTriggerType, context: AutomationBuilde
       ? { operator: "above" as const, threshold: null }
       : type === "item_overdue"
         ? { time: "09:00", ...(defaultDoneStatus(context) ?? {}) }
-        : {};
+        : type === "subitem_column_changed"
+          ? { run_on: "parent" as const }
+          : type === "update_keyword"
+            ? { keywords: [], include_replies: false }
+            : {};
   return { trigger_type: type, trigger_column_id: first_column?.id ?? null, trigger_value: null, trigger_config: config };
 }
 
@@ -324,6 +328,64 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
         </>
       );
     }
+    case "subitem_column_changed": {
+      const has_match = Boolean(config.match?.operator);
+      return (
+        <>
+          {switcher} {columnToken("subitem column")} <Words>changes to </Words>
+          <Token label={has_match ? changeMatchLabel(context, column, config.match) : "anything"} is_placeholder={!has_match} disabled={!column} aria_label="What the new value must be" popover_width={320}>
+            {(close) => (column ? <ChangeMatchEditor context={context} column={column} match={config.match} onApply={(match) => { onChange({ trigger_config: { ...config, match } }); close(); }} /> : null)}
+          </Token>
+          <Words>, run the actions on </Words>
+          <Token label={config.run_on === "subitem" ? "the subitem" : "the parent item"} aria_label="What the actions run on" popover_width={290}>
+            {(close) => (
+              <PickerList
+                is_searchable={false}
+                sections={[{ entries: [
+                  { id: "parent", label: "The parent item", hint: "item columns" },
+                  { id: "subitem", label: "The subitem itself", hint: "subitem columns" },
+                ] }]}
+                selected={config.run_on === "subitem" ? "subitem" : "parent"}
+                onPick={(id) => { onChange({ trigger_config: { ...config, run_on: id === "subitem" ? "subitem" : "parent" } }); close(); }}
+              />
+            )}
+          </Token>
+        </>
+      );
+    }
+    case "user_mentioned":
+    case "update_replied": {
+      const person_token = (
+        <Token label={draft.trigger_value == null ? "someone" : personLabel(context, draft.trigger_value)} is_placeholder={draft.trigger_value == null} aria_label={type === "user_mentioned" ? "Who is mentioned" : "Who replies"}>
+          {(close) => (
+            <PersonPicker
+              context={context}
+              selected={draft.trigger_value == null ? "__any__" : String(draft.trigger_value)}
+              extra_entries={[{ id: "__any__", label: "Anyone" }]}
+              onPick={(id) => { onChange({ trigger_value: id === "__any__" ? null : Number(id) }); close(); }}
+            />
+          )}
+        </Token>
+      );
+      return type === "user_mentioned"
+        ? <>{switcher} {person_token} <Words>is mentioned in an update</Words></>
+        : <>{switcher} {person_token} <Words>replies to an update</Words></>;
+    }
+    case "update_keyword":
+      return (
+        <>
+          {switcher} <Words>{config.include_replies ? "an update or reply contains " : "an update contains "}</Words>
+          <Token label={keywordsLabel(config.keywords)} is_placeholder={!(config.keywords ?? []).length} aria_label="Keywords" popover_width={320}>
+            {(close) => (
+              <KeywordsEditor
+                keywords={config.keywords ?? []}
+                include_replies={Boolean(config.include_replies)}
+                onApply={(keywords, include_replies) => { onChange({ trigger_config: { ...config, keywords, include_replies } }); close(); }}
+              />
+            )}
+          </Token>
+        </>
+      );
     case "person_unassigned":
       return (
         <>

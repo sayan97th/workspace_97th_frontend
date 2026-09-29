@@ -15,7 +15,7 @@ const renderPanel = (sections = DEFAULT_SIDEBAR_PREFERENCES.sections) => {
 describe("SidebarCustomizePanel", () => {
   it("lists every personal section with a visibility switch", () => {
     renderPanel();
-    for (const label of ["Home", "My work", "Favorites", "Recent"]) {
+    for (const label of ["Home", "My work", "Automations", "Favorites", "Recent"]) {
       expect(screen.getByRole("switch", { name: `Show ${label}` })).toHaveAttribute("aria-checked", "true");
     }
   });
@@ -26,6 +26,7 @@ describe("SidebarCustomizePanel", () => {
     expect(onChange).toHaveBeenCalledWith([
       { key: "home", is_visible: true },
       { key: "my_work", is_visible: true },
+      { key: "automations", is_visible: true },
       { key: "favorites", is_visible: true },
       { key: "recent", is_visible: false },
     ]);
