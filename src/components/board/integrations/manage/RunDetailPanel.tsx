@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Hourglass, RotateCcw } from "lucide-react";
+import { Hourglass, RotateCcw, Undo2 } from "lucide-react";
 import type { BoardAutomationRunDetail, BoardAutomationRunDto } from "@/types/board-automation";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
@@ -39,8 +39,8 @@ function StepRow({ step, is_focused, can_retry, is_retrying, onRetry }: { step: 
 
 /**
  * Every step of the execution a Run history row belongs to, in order, with a retry for a failed
- * step (it runs that step and the ones after it again) and the waiting part of a run, which can
- * be cancelled.
+ * step (it runs that step and the ones after it again), the waiting part of a run, which can be
+ * cancelled, and "Undo this run", which takes back what the run changed on the board.
  */
 export default function RunDetailPanel({ board_id, run, onChanged }: RunDetailPanelProps) {
   const [detail, setDetail] = useState<BoardAutomationRunDetail | null>(null);
@@ -79,6 +79,27 @@ export default function RunDetailPanel({ board_id, run, onChanged }: RunDetailPa
     }
   };
 
+  const [is_confirming_undo, setIsConfirmingUndo] = useState(false);
+  const [is_undoing, setIsUndoing] = useState(false);
+  const [skipped, setSkipped] = useState<string[]>([]);
+
+  const undo = async () => {
+    setIsUndoing(true);
+    setError(null);
+    try {
+      const result = await boardAutomationService.undoRun(board_id, run.id);
+      setNotice(result.message);
+      setSkipped(result.data.skipped);
+      setIsConfirmingUndo(false);
+      setReloadKey((key) => key + 1);
+      onChanged();
+    } catch (failure) {
+      setError(apiErrorMessage(failure, "The run could not be undone."));
+    } finally {
+      setIsUndoing(false);
+    }
+  };
+
   const cancelWait = async (waiting_id: number) => {
     try {
       await boardAutomationService.cancelWaitingRun(board_id, waiting_id);
@@ -97,9 +118,37 @@ export default function RunDetailPanel({ board_id, run, onChanged }: RunDetailPa
       {!detail && !error && <div className="text-[12.5px] text-boardtree-text-muted">Loading the steps of this run...</div>}
       {detail && (
         <>
-          <div className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-boardtree-text-faint">
-            Steps of this run{run.item_name ? ` on "${run.item_name}"` : ""}
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[12px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Steps of this run{run.item_name ? ` on "${run.item_name}"` : ""}</span>
+            {detail.undone_at ? (
+              <span className="flex items-center gap-1 rounded-full bg-boardtree-hover px-2 py-0.5 text-[11.5px] text-boardtree-text-secondary">
+                <Undo2 size={12} />
+                Undone {formatDateTime(detail.undone_at)}
+              </span>
+            ) : detail.can_undo && !is_confirming_undo ? (
+              <button type="button" onClick={() => setIsConfirmingUndo(true)} className="flex h-7 items-center gap-1 rounded-[6px] border border-boardtree-border px-2.5 text-[12px] text-boardtree-text hover:bg-boardtree-hover">
+                <Undo2 size={13} />
+                Undo this run
+              </button>
+            ) : null}
           </div>
+          {is_confirming_undo && !detail.undone_at && (
+            <div role="alertdialog" aria-label="Undo this run" className="mb-2 rounded-[8px] border border-boardtree-border bg-boardtree-surface px-3 py-2.5">
+              <div className="text-[12.5px] text-boardtree-text">Take back what this run changed on the board: values, moves, archives, deletes, renames and the items it created.</div>
+              <div className="mt-0.5 text-[11.5px] text-boardtree-text-faint">Emails, Slack messages, notifications and webhooks already went out and stay sent. Anything changed again since the run is left as it is.</div>
+              <div className="mt-2 flex justify-end gap-1.5">
+                <button type="button" onClick={() => setIsConfirmingUndo(false)} className="h-7 rounded-[6px] px-2.5 text-[12px] text-boardtree-text-secondary hover:bg-boardtree-hover">Keep it</button>
+                <button type="button" disabled={is_undoing} onClick={() => void undo()} className="h-7 rounded-[6px] bg-boardtree-accent px-2.5 text-[12px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40">
+                  {is_undoing ? "Undoing..." : "Undo the run"}
+                </button>
+              </div>
+            </div>
+          )}
+          {skipped.length > 0 && (
+            <ul className="mb-2 list-disc rounded-[8px] bg-boardtree-surface py-2 pl-7 pr-3 text-[12px] text-boardtree-text-secondary">
+              {skipped.map((reason) => <li key={reason}>{reason}</li>)}
+            </ul>
+          )}
           <ol className="flex flex-col gap-1.5">
             {detail.steps.map((step) => (
               <StepRow key={step.id} step={step} is_focused={step.id === run.id} can_retry={run.automation_id !== null} is_retrying={retrying_id === step.id} onRetry={() => void retry(step)} />

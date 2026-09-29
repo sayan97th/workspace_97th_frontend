@@ -1,14 +1,23 @@
 import type {
   BoardAutomationAction,
   BoardAutomationActionParams,
+  BoardAutomationChangeMatch,
   BoardAutomationCondition,
   BoardAutomationDefinition,
   BoardAutomationSchedule,
   BoardAutomationTriggerConfig,
 } from "@/types/board-automation";
-import { BOARD_FILTER_DATE_PRESETS, getOperatorLabel } from "../../toolbar/filterEngine";
-import type { BoardFilterOperator } from "../../toolbar/types";
-import { CONDITION_KIND_BY_COLUMN, VIRTUAL_CONDITION_FIELDS, WEEKDAY_LABELS, type AutomationBuilderContext, type AutomationColumn } from "./automationCatalog";
+import { BOARD_FILTER_DATE_PRESETS } from "../../toolbar/filterEngine";
+import {
+  AUTOMATION_VALUELESS_OPERATORS,
+  CONDITION_KIND_BY_COLUMN,
+  VIRTUAL_CONDITION_FIELDS,
+  WEEKDAY_LABELS,
+  conditionOperatorText,
+  type AutomationBuilderContext,
+  type AutomationColumn,
+  type AutomationConditionKind,
+} from "./automationCatalog";
 
 /**
  * Turns an automation into the words the builder's tokens and the Manage list show, like
@@ -167,10 +176,22 @@ export function conditionFieldLabel(context: AutomationBuilderContext, field_id:
   return VIRTUAL_CONDITION_FIELDS.find((field) => field.id === field_id)?.label ?? columnLabel(context, field_id);
 }
 
+/** The family a condition's field is read as, undefined once the column was deleted. */
+function kindOf(context: AutomationBuilderContext, field_id: string): AutomationConditionKind | undefined {
+  const column = findColumn(context, field_id);
+  return VIRTUAL_CONDITION_FIELDS.find((field) => field.id === field_id)?.kind ?? (column ? CONDITION_KIND_BY_COLUMN[column.kind] : undefined);
+}
+
 export function conditionValueLabel(context: AutomationBuilderContext, condition: BoardAutomationCondition): string {
   const column = findColumn(context, condition.column_id);
-  const kind = VIRTUAL_CONDITION_FIELDS.find((field) => field.id === condition.column_id)?.kind ?? (column ? CONDITION_KIND_BY_COLUMN[column.kind] : undefined);
+  const kind = kindOf(context, condition.column_id);
 
+  if (kind === "dependency") {
+    const status = findColumn(context, condition.value);
+    const labels = condition.values.map((id) => optionLabel(status, id)).join(", ");
+    return labels ? `${labels} in ${status?.title ?? "status"}` : "done labels";
+  }
+  if (kind === "timer") return condition.value ? `${condition.value} ${condition.value === "1" ? "hour" : "hours"}` : "hours";
   if (condition.condition === "between") return condition.values.filter(Boolean).join(" and ") || "a range";
   if (condition.values.length) {
     if (kind === "group") return condition.values.map((id) => groupLabel(context, id)).join(", ");
@@ -183,9 +204,7 @@ export function conditionValueLabel(context: AutomationBuilderContext, condition
 
 export function conditionOperatorLabel(context: AutomationBuilderContext, condition: BoardAutomationCondition): string {
   if (!condition.condition) return "is";
-  const column = findColumn(context, condition.column_id);
-  const kind = VIRTUAL_CONDITION_FIELDS.find((field) => field.id === condition.column_id)?.kind ?? (column ? CONDITION_KIND_BY_COLUMN[column.kind] : undefined) ?? "text";
-  return getOperatorLabel(kind, condition.condition as BoardFilterOperator).toLowerCase();
+  return conditionOperatorText(kindOf(context, condition.column_id) ?? "text", condition.condition);
 }
 
 // ── Sentences ─────────────────────────────────────────────────────────────────
@@ -202,6 +221,7 @@ function triggerParts(definition: BoardAutomationDefinition, context: Automation
       return parts;
     }
     case "column_changed":
+      if (config.match?.operator) return [plain("When "), token(columnLabel(context, definition.trigger_column_id)), plain(" changes to "), token(changeMatchLabel(context, column, config.match))];
       return definition.trigger_value == null
         ? [plain("When "), token(columnLabel(context, definition.trigger_column_id)), plain(" changes")]
         : [plain("When "), token(columnLabel(context, definition.trigger_column_id)), plain(" changes to "), token(valueLabel(context, column, definition.trigger_value))];
@@ -259,6 +279,15 @@ function triggerParts(definition: BoardAutomationDefinition, context: Automation
       return [plain("When an item is moved here from "), token(config.from_board_id ? boardLabel(context, config.from_board_id) : "any board")];
     case "item_restored":
       return [plain("When an item is "), token("restored")];
+    case "person_unassigned":
+      return [plain("When "), token(definition.trigger_value == null ? "someone" : personLabel(context, definition.trigger_value)), plain(" is removed from "), token(columnLabel(context, definition.trigger_column_id, "people"))];
+    case "file_uploaded":
+      return [plain("When "), token(extensionsLabel(config.extensions)), plain(" is added to "), token(columnLabel(context, definition.trigger_column_id, "files"))];
+    case "item_overdue": {
+      const parts = [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" has passed and "), token(doneLabel(context, config))];
+      if (config.time) parts.push(plain(" at "), token(config.time));
+      return parts;
+    }
     default:
       return [plain("When something happens")];
   }
@@ -304,6 +333,7 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
     case "create_item": {
       const parts = [token("create an item"), plain(" in "), token(boardGroupLabel(context, params.target_board_id, params.target_group_id))];
       if (params.target_board_id && Number(params.target_board_id) !== context.board_id) parts.push(plain(" on "), token(boardLabel(context, params.target_board_id)));
+      if (params.link_column_id) parts.push(plain(" and connect it in "), token(columnLabel(context, params.link_column_id)));
       return parts;
     }
     case "create_subitem": {
@@ -382,6 +412,17 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
       return [plain("set the parent's "), token(columnLabel(context, params.target_column_id, "column")), plain(" to "), token(valueLabel(context, column, params.value))];
     case "add_checklist_items":
       return [token("add"), plain(" "), token(`${(params.tasks ?? []).length || "some"} ${(params.tasks ?? []).length === 1 ? "task" : "tasks"}`), plain(" to "), token(columnLabel(context, params.target_column_id, "checklist"))];
+    case "rename_item":
+      return [token("rename item"), plain(" to "), token(`"${columnTokensToDisplay(params.name_template ?? "", context) || "a new name"}"`)];
+    case "change_values": {
+      const people = column && ["people", "vote"].includes(column.kind);
+      const names = (params.values ?? []).map((id) => (id === "__actor__" ? "the person who made the change" : id === "__creator__" ? "the item creator" : people ? personLabel(context, id) : optionLabel(column, id))).join(", ");
+      return [token(params.mode === "remove" ? "remove" : "add"), plain(" "), token(names || "values"), plain(params.mode === "remove" ? " from " : " to "), token(columnLabel(context, params.target_column_id))];
+    }
+    case "update_connected_items":
+      return [token("change"), plain(" the items connected in "), token(columnLabel(context, params.connect_column_id, "connect boards"))];
+    case "group_items":
+      return [token(groupOperationLabel(context, params)), plain(" every item of "), token(params.from_item_group ? "the item's group" : groupLabel(context, params.target_group_id))];
     default:
       return [plain("do something")];
   }
@@ -394,14 +435,80 @@ function joinActions(actions: SentencePart[][]): SentencePart[] {
   });
 }
 
-const VALUELESS_OPERATORS = ["is_empty", "is_not_empty", "is_checked", "is_unchecked"];
-
 function conditionParts(condition: BoardAutomationCondition, context: AutomationBuilderContext): SentencePart[] {
-  return [
-    token(conditionFieldLabel(context, condition.column_id)),
-    plain(` ${conditionOperatorLabel(context, condition)}`),
-    ...(VALUELESS_OPERATORS.includes(condition.condition) ? [] : [plain(" "), token(conditionValueLabel(context, condition))]),
-  ];
+  const kind = kindOf(context, condition.column_id);
+  const parts = [token(conditionFieldLabel(context, condition.column_id)), plain(` ${conditionOperatorLabel(context, condition)}`)];
+  if (kind === "subitems") {
+    return condition.subitem_rule?.column_id ? [...parts, plain(", where "), ...conditionParts(condition.subitem_rule, context)] : parts;
+  }
+  return AUTOMATION_VALUELESS_OPERATORS.includes(condition.condition) ? parts : [...parts, plain(" "), token(conditionValueLabel(context, condition))];
+}
+
+/** `contains "urgent"`, `between 10 and 20`, `is added: Urgent`: what a "column changes" trigger waits for. */
+export function changeMatchLabel(context: AutomationBuilderContext, column: AutomationColumn | undefined, match: BoardAutomationChangeMatch | null | undefined): string {
+  if (!match?.operator) return "anything";
+  const values = (match.values ?? []).filter(Boolean);
+  const names = column && ["people", "vote"].includes(column.kind) ? values.map((id) => personLabel(context, id)).join(", ") : values.map((id) => optionLabel(column, id)).join(", ");
+  switch (match.operator) {
+    case "is_empty":
+      return "empty";
+    case "is_not_empty":
+      return "any value";
+    case "is_checked":
+      return "checked";
+    case "is_unchecked":
+      return "unchecked";
+    case "between":
+      return `between ${values.join(" and ")}`;
+    case "added":
+      return names ? `get ${names} added` : "get something added";
+    case "removed":
+      return names ? `lose ${names}` : "lose something";
+    case "holds":
+      return names ? `hold ${names}` : "hold anything";
+    case "is":
+      return column && ["status", "label"].includes(column.kind) ? names || "something" : `"${match.value ?? ""}"`;
+    case "is_not":
+      return `anything but ${column && ["status", "label"].includes(column.kind) ? names : `"${match.value ?? ""}"`}`;
+    case "greater_than":
+      return `more than ${match.value ?? ""}`;
+    case "less_than":
+      return `less than ${match.value ?? ""}`;
+    case "equals":
+      return match.value ?? "";
+    case "before":
+    case "after":
+      return `${match.operator} ${match.value ?? ""}`;
+    default:
+      return `${match.operator.replace("_", " ")} "${match.value ?? ""}"`;
+  }
+}
+
+/** `pdf, png` or `any file`. */
+export const extensionsLabel = (extensions: string[] | null | undefined): string => (extensions?.length ? extensions.map((extension) => `.${extension}`).join(", ") : "any file");
+
+/** The labels an overdue trigger treats as done, `Done in Status`. */
+export function doneLabel(context: AutomationBuilderContext, config: BoardAutomationTriggerConfig): string {
+  const status = findColumn(context, config.status_column_id);
+  const labels = (config.done_values ?? []).map((id) => optionLabel(status, id)).join(", ");
+  return status && labels ? `${status.title} is not ${labels}` : "it is not done";
+}
+
+/** What a group wide action does, `archive every item`, `set Status to Done on every item`. */
+export function groupOperationLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  const column = findColumn(context, params.target_column_id);
+  switch (params.operation) {
+    case "set_column_value":
+      return `set ${columnLabel(context, params.target_column_id)} to ${valueLabel(context, column, params.value)} on`;
+    case "clear_column":
+      return `clear ${columnLabel(context, params.target_column_id)} on`;
+    case "move_to_group":
+      return `move to ${groupLabel(context, params.destination_group_id)}`;
+    case "archive":
+      return "archive";
+    default:
+      return "change";
+  }
 }
 
 /** The whole automation as one sentence, tokens marked so the list can bold them. */

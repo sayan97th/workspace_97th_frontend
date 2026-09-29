@@ -146,6 +146,7 @@ export default function RunHistoryTab({ board_id, view_id, automations, initial_
                     <RunStatusBadge status={run.status} />
                     {run.branch === "else" && <span className="ml-1.5 text-[11px] text-boardtree-text-faint">otherwise</span>}
                     {run.retry_of_id && <span className="ml-1.5 text-[11px] text-boardtree-text-faint">retry</span>}
+                    {run.undone_at && <span className="ml-1.5 text-[11px] text-boardtree-text-faint">undone</span>}
                   </td>
                   <td className={`${CELL} max-w-[300px]`}>{run.message}</td>
                   <td className={`${CELL} whitespace-nowrap`}>{run.actor_name ?? "System"}</td>

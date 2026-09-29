@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { BookmarkPlus, Building2, ChartLine, Code2, Copy, History, PenLine, Trash2, UserRoundCog } from "lucide-react";
+import { AlertTriangle, BookmarkPlus, Building2, ChartLine, Code2, Copy, History, PenLine, Trash2, UserRoundCog } from "lucide-react";
 import type { BoardAutomationDto, BoardAutomationImportance } from "@/types/board-automation";
 import { MoreDotsIcon, RenameIcon } from "@/icons/workspace-icons";
 import { useOutsideClick } from "../../table/useOutsideClick";
@@ -300,6 +300,29 @@ function BehaviorBadges({ automation }: { automation: BoardAutomationDto }) {
   );
 }
 
+/**
+ * How healthy the automation is: paused by itself (with why), or failing several runs in a row.
+ * Nothing when it runs fine.
+ */
+export function HealthBadge({ automation }: { automation: BoardAutomationDto }) {
+  const failures = automation.consecutive_failures ?? 0;
+  if (!automation.is_enabled && automation.paused_at) {
+    return (
+      <span title={automation.paused_reason ?? undefined} className="flex max-w-[360px] items-center gap-1 truncate rounded-full bg-boardtree-danger-hover px-2 py-0.5 text-[11px] text-boardtree-danger">
+        <AlertTriangle size={11} className="flex-none" />
+        <span className="truncate">Paused{automation.paused_reason ? `: ${automation.paused_reason}` : ""}</span>
+      </span>
+    );
+  }
+  if (failures === 0) return null;
+  return (
+    <span title={automation.last_failed_at ? `Last failed ${formatDateTime(automation.last_failed_at)}` : undefined} className="flex items-center gap-1 rounded-full bg-[#fff0d9] px-2 py-0.5 text-[11px] text-[#9a5b00] dark:bg-[#3a2a10] dark:text-[#f5b85c]">
+      <AlertTriangle size={11} className="flex-none" />
+      {failures === 1 ? "Last run failed" : `Failed ${failures} runs in a row`}
+    </span>
+  );
+}
+
 /** One automation as a wide card, monday's "Manage your board automations" layout. */
 export function AutomationCard(props: AutomationItemProps) {
   const { automation, sentence, context, actions, is_busy, is_editing, is_editing_description, is_transferring, is_confirming_delete, is_selected, versions_panel } = props;
@@ -331,6 +354,7 @@ export function AutomationCard(props: AutomationItemProps) {
             </span>
             <KindMark automation={automation} />
             <BehaviorBadges automation={automation} />
+            <HealthBadge automation={automation} />
           </div>
         </div>
         <div className="flex flex-none items-center gap-2 pt-1">
@@ -362,7 +386,12 @@ export function AutomationRow(props: AutomationItemProps) {
       <div className={ROW_GRID}>
         <SelectBox automation={automation} actions={actions} is_selected={is_selected} />
         <ToggleSwitch checked={automation.is_enabled} disabled={is_busy} onToggle={() => actions.onToggle(automation)} />
-        <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
+        <div className="min-w-0">
+          <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
+          <div className="mt-1 flex empty:hidden">
+            <HealthBadge automation={automation} />
+          </div>
+        </div>
         <ImportanceMenu automation={automation} actions={actions} is_busy={is_busy} />
         <span className="truncate text-[12.5px] text-boardtree-text-secondary">
           {ACTION_LABELS[first_action]}

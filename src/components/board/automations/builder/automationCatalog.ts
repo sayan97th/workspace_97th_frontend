@@ -1,5 +1,6 @@
 import type { BoardAutomationActionType, BoardAutomationTriggerType } from "@/types/board-automation";
-import type { BoardFilterFieldKind } from "../../toolbar/types";
+import { BOARD_FILTER_OPERATORS, getOperatorLabel } from "../../toolbar/filterEngine";
+import type { BoardFilterFieldKind, BoardFilterOperator } from "../../toolbar/types";
 import type { ColumnDef, ColumnKind, PersonDef } from "../../table/types";
 
 /**
@@ -72,6 +73,9 @@ export const TRIGGERS: TriggerDef[] = [
   { type: "checklist_completed", label: "checklist is completed", section: "Status and columns", column_kinds: ["checklist"] },
   { type: "item_moved_to_board", label: "item is moved to this board", section: "Items and updates" },
   { type: "item_restored", label: "item is restored", section: "Items and updates" },
+  { type: "person_unassigned", label: "person is unassigned", section: "Status and columns", column_kinds: ["people"] },
+  { type: "file_uploaded", label: "file is uploaded", section: "Status and columns", column_kinds: ["files"] },
+  { type: "item_overdue", label: "item becomes overdue", section: "Dates and time", column_kinds: ["date", "timeline"] },
 ];
 
 export const TRIGGER_BY_TYPE = Object.fromEntries(TRIGGERS.map((trigger) => [trigger.type, trigger])) as Record<BoardAutomationTriggerType, TriggerDef>;
@@ -153,12 +157,16 @@ export const ACTIONS: ActionDef[] = [
   { id: "set_subitems_value", type: "set_subitems_value", label: "set every subitem's column", section: "Subitems" },
   { id: "set_parent_value", type: "set_parent_value", label: "set the parent item's column", section: "Subitems" },
   { id: "add_checklist_items", type: "add_checklist_items", label: "add checklist tasks", section: "Columns" },
+  { id: "rename_item", type: "rename_item", label: "rename item", section: "Items" },
+  { id: "change_values", type: "change_values", label: "add or remove a label or person", section: "Columns" },
+  { id: "update_connected_items", type: "update_connected_items", label: "change connected items", section: "Other boards" },
+  { id: "group_items", type: "group_items", label: "change every item of a group", section: "Groups", is_itemless: true },
 ];
 
 export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemless).map((action) => action.type);
 
 /** Actions that name no item of their own but can take the item's group (`from_item_group`), which needs an item. */
-export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group"];
+export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group", "group_items"];
 
 export function actionSections(options: { only_itemless: boolean; is_slack_connected: boolean }): PickerSection<ActionPickerId>[] {
   const order: ActionDef["section"][] = ["Most used", "Flow", "Items", "Subitems", "Columns", "Dates", "Groups", "People", "Notifications", "Email and Slack", "Other boards", "Webhooks"];
@@ -211,6 +219,10 @@ export const ACTION_LABELS: Record<BoardAutomationActionType, string> = {
   set_subitems_value: "Set subitems",
   set_parent_value: "Set parent",
   add_checklist_items: "Add checklist tasks",
+  rename_item: "Rename item",
+  change_values: "Add or remove values",
+  update_connected_items: "Change connected items",
+  group_items: "Change group items",
 };
 
 export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
@@ -238,6 +250,9 @@ export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
   item_restored: "Item restored",
   checklist_completed: "Checklist completed",
   checklist_item_checked: "Checklist task checked",
+  person_unassigned: "Person unassigned",
+  file_uploaded: "File uploaded",
+  item_overdue: "Item overdue",
 };
 
 /** How long a "wait" step may wait, all waits of one branch together, in days. */
@@ -253,8 +268,11 @@ export const SETTABLE_KINDS: ColumnKind[] = ["status", "label", "dropdown", "tag
 /** Kinds a "clear column" action can empty. */
 export const CLEARABLE_KINDS: ColumnKind[] = [...SETTABLE_KINDS, "files", "vote", "time_tracking", "connect_board", "dependency"];
 
-/** Kinds "copy column value" reads from, every kind that stores a value. */
-export const COPYABLE_SOURCE_KINDS: ColumnKind[] = [...SETTABLE_KINDS, "vote", "auto_number"];
+/** Kinds "copy column value" reads from, every kind that stores a value, and formulas and mirrors, which the server computes. */
+export const COPYABLE_SOURCE_KINDS: ColumnKind[] = [...SETTABLE_KINDS, "vote", "auto_number", "formula", "mirror"];
+
+/** Kinds whose value is a list single values can be added to or removed from, for "add or remove a label or person". */
+export const MULTI_VALUE_KINDS: ColumnKind[] = ["dropdown", "tags", "people", "vote"];
 
 /** Date and timeline kinds, for the date actions. */
 export const DATE_KINDS: ColumnKind[] = ["date", "timeline"];
@@ -268,8 +286,84 @@ export const NUMERIC_KINDS: ColumnKind[] = ["number", "rating", "progress"];
 /** Kinds that are calculated and never written. */
 export const READ_ONLY_KINDS: ColumnKind[] = ["formula", "mirror", "auto_number", "button"];
 
-/** How a condition reads each column kind, the same families the board filters use. Kinds missing here cannot be used in a condition. */
-export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, BoardFilterFieldKind>> = {
+/**
+ * The families a condition reads a field as: the board filter ones, and the ones only automations
+ * have. `formula` compares a computed result, `files` its file names, `linked` a connect boards
+ * column's items, `dependency` whether the items it waits on are done, `timer` a time tracking
+ * column and `subitems` checks a rule on every subitem.
+ */
+export type AutomationConditionKind = BoardFilterFieldKind | "formula" | "files" | "linked" | "dependency" | "timer" | "subitems";
+
+type OperatorOption = { id: string; label: string };
+
+/** Operators of the automation only condition families, the board filter families use `BOARD_FILTER_OPERATORS`. */
+export const AUTOMATION_CONDITION_OPERATORS: Record<Exclude<AutomationConditionKind, BoardFilterFieldKind>, OperatorOption[]> = {
+  formula: [
+    { id: "is", label: "Is" },
+    { id: "is_not", label: "Is not" },
+    { id: "contains", label: "Contains" },
+    { id: "not_contains", label: "Does not contain" },
+    { id: "greater_than", label: ">" },
+    { id: "greater_or_equal", label: "≥" },
+    { id: "less_than", label: "<" },
+    { id: "less_or_equal", label: "≤" },
+    { id: "between", label: "Between" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
+  files: [
+    { id: "is_not_empty", label: "Has files" },
+    { id: "is_empty", label: "Has no files" },
+    { id: "contains", label: "Has a file named" },
+    { id: "not_contains", label: "Has no file named" },
+  ],
+  linked: [
+    { id: "is_not_empty", label: "Is linked to an item" },
+    { id: "is_empty", label: "Is not linked" },
+    { id: "contains", label: "Is linked to an item named" },
+    { id: "not_contains", label: "Is not linked to an item named" },
+  ],
+  dependency: [
+    { id: "all_done", label: "All dependencies are done" },
+    { id: "has_unfinished", label: "Waits on an unfinished item" },
+    { id: "is_not_empty", label: "Has dependencies" },
+    { id: "is_empty", label: "Has no dependencies" },
+  ],
+  timer: [
+    { id: "is_running", label: "Is running" },
+    { id: "is_not_running", label: "Is stopped" },
+    { id: "greater_than", label: "Tracked more than (hours)" },
+    { id: "less_than", label: "Tracked less than (hours)" },
+    { id: "is_empty", label: "Has no time" },
+  ],
+  subitems: [
+    { id: "all_match", label: "All match" },
+    { id: "any_match", label: "At least one matches" },
+    { id: "none_match", label: "None match" },
+  ],
+};
+
+const isAutomationOnlyKind = (kind: AutomationConditionKind): kind is Exclude<AutomationConditionKind, BoardFilterFieldKind> => kind in AUTOMATION_CONDITION_OPERATORS;
+
+/** The operators a condition of this family offers. */
+export function conditionOperatorOptions(kind: AutomationConditionKind): OperatorOption[] {
+  return isAutomationOnlyKind(kind) ? AUTOMATION_CONDITION_OPERATORS[kind] : BOARD_FILTER_OPERATORS[kind];
+}
+
+/** An operator's label, lower case as the sentence reads it. */
+export function conditionOperatorText(kind: AutomationConditionKind, operator: string): string {
+  const own = isAutomationOnlyKind(kind) ? AUTOMATION_CONDITION_OPERATORS[kind].find((option) => option.id === operator)?.label : undefined;
+  return (own ?? getOperatorLabel(isAutomationOnlyKind(kind) ? "text" : kind, operator as BoardFilterOperator)).toLowerCase();
+}
+
+/** The operator a condition starts with once its field is picked. */
+export const defaultOperatorFor = (kind: AutomationConditionKind): string => conditionOperatorOptions(kind)[0].id;
+
+/** Operators that need no value, beyond the board filter ones. */
+export const AUTOMATION_VALUELESS_OPERATORS = ["is_empty", "is_not_empty", "is_checked", "is_unchecked", "is_running", "is_not_running"];
+
+/** How a condition reads each column kind. Kinds missing here cannot be used in a condition. */
+export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, AutomationConditionKind>> = {
   status: "option",
   label: "option",
   dropdown: "option",
@@ -282,7 +376,7 @@ export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, BoardFilterFie
   rating: "number",
   progress: "number",
   auto_number: "number",
-  time_tracking: "number",
+  time_tracking: "timer",
   checkbox: "checkbox",
   text: "text",
   longtext: "text",
@@ -290,15 +384,29 @@ export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, BoardFilterFie
   phone: "text",
   link: "text",
   checklist: "text",
+  files: "files",
+  formula: "formula",
+  mirror: "text",
+  connect_board: "linked",
+  dependency: "dependency",
 };
 
 /** Condition fields that are not columns, the same ids the board filters use. */
-export const VIRTUAL_CONDITION_FIELDS: { id: string; label: string; kind: BoardFilterFieldKind }[] = [
+export const VIRTUAL_CONDITION_FIELDS: { id: string; label: string; kind: AutomationConditionKind; is_item_only?: boolean }[] = [
   { id: "name", label: "Item name", kind: "text" },
-  { id: "__group__", label: "Group", kind: "group" },
-  { id: "__created_by__", label: "Creator", kind: "people" },
-  { id: "__starred__", label: "Starred", kind: "checkbox" },
+  { id: "__group__", label: "Group", kind: "group", is_item_only: true },
+  { id: "__created_by__", label: "Creator", kind: "people", is_item_only: true },
+  { id: "__starred__", label: "Starred", kind: "checkbox", is_item_only: true },
+  { id: "__actor__", label: "Person who made the change", kind: "people" },
+  { id: "__created_at__", label: "Creation date", kind: "date", is_item_only: true },
+  { id: "__updated_at__", label: "Last updated", kind: "date", is_item_only: true },
+  { id: "__update_count__", label: "Number of updates", kind: "number" },
+  { id: "__subitem_count__", label: "Number of subitems", kind: "number", is_item_only: true },
+  { id: "__subitems__", label: "Subitems", kind: "subitems", is_item_only: true },
 ];
+
+/** File types offered by "file is uploaded", any other can be typed. */
+export const COMMON_FILE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "csv", "ppt", "pptx", "png", "jpg", "jpeg", "gif", "svg", "zip", "txt", "mp4"];
 
 /** Message tokens every communication and update action understands, see `BoardAutomationMessageRenderer`. */
 export const MESSAGE_TOKENS: { token: string; label: string }[] = [

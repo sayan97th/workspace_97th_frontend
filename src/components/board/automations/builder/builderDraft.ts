@@ -10,10 +10,9 @@ import type {
   BoardAutomationTriggerConfig,
   BoardAutomationTriggerType,
 } from "@/types/board-automation";
-import { isValuelessOperator } from "../../toolbar/filterEngine";
-import type { BoardFilterOperator } from "../../toolbar/types";
 import {
   ACTIONS,
+  AUTOMATION_VALUELESS_OPERATORS,
   GROUP_ACTION_TYPES,
   ITEMLESS_ACTION_TYPES,
   ITEMLESS_TRIGGERS,
@@ -112,7 +111,13 @@ function pickerIdFor(action: BoardAutomationAction, context: AutomationBuilderCo
   return action.type;
 }
 
-const toConditionDraft = (condition: BoardAutomationCondition): ConditionDraft => ({ ...condition, values: condition.values ?? [], value: condition.value ?? "", key: nextDraftKey("condition") });
+const toConditionDraft = (condition: BoardAutomationCondition): ConditionDraft => ({
+  ...condition,
+  values: condition.values ?? [],
+  value: condition.value ?? "",
+  subitem_rule: condition.subitem_rule ? { ...condition.subitem_rule, values: condition.subitem_rule.values ?? [], value: condition.subitem_rule.value ?? "" } : null,
+  key: nextDraftKey("condition"),
+});
 
 const toActionDraft = (action: BoardAutomationAction, context: AutomationBuilderContext): ActionDraft => ({ key: nextDraftKey("action"), picker_id: pickerIdFor(action, context), type: action.type, params: { ...action.params } });
 
@@ -229,6 +234,18 @@ export function defaultActionParams(picker_id: ActionPickerId, context: Automati
       const checklist = first(["checklist"]);
       return { tasks: [], ...(checklist ? { target_column_id: Number(checklist.id) } : {}) };
     }
+    case "rename_item":
+      return { name_template: "{item_name}" };
+    case "change_values": {
+      const multi = first(["tags", "dropdown", "people", "vote"]);
+      return { mode: "add", values: [], ...(multi ? { target_column_id: Number(multi.id) } : {}) };
+    }
+    case "update_connected_items": {
+      const connect = first(["connect_board"]);
+      return connect ? { connect_column_id: Number(connect.id) } : {};
+    }
+    case "group_items":
+      return { from_item_group: true, operation: "archive" };
     default:
       return {};
   }
@@ -241,10 +258,12 @@ export function actionFromPicker(picker_id: ActionPickerId, context: AutomationB
 
 const isBlank = (value: unknown): boolean => value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
 
-/** Whether a condition row is filled in enough to save. */
+/** Whether a condition row is filled in enough to save. A "subitems" row needs its subitem rule too. */
 export function isConditionComplete(condition: BoardAutomationCondition): boolean {
   if (!condition.column_id || !condition.condition) return false;
-  if (isValuelessOperator(condition.condition as BoardFilterOperator)) return true;
+  if (condition.column_id === "__subitems__") return Boolean(condition.subitem_rule) && isConditionComplete({ ...condition.subitem_rule!, subitem_rule: null });
+  if (AUTOMATION_VALUELESS_OPERATORS.includes(condition.condition)) return true;
+  if (condition.condition === "all_done" || condition.condition === "has_unfinished") return condition.value !== "" && condition.values.length > 0;
   if (condition.condition === "between") return condition.values.length === 2 && condition.values.every((value) => value !== "");
   return condition.values.length > 0 || condition.value.trim() !== "";
 }
@@ -253,7 +272,7 @@ export function isConditionComplete(condition: BoardAutomationCondition): boolea
 const COLUMN_ACTION_TYPES: BoardAutomationActionType[] = [
   "set_column_value", "clear_column", "assign_person", "unassign_people", "set_date", "adjust_number", "shift_date",
   "set_date_from_column", "ensure_date_after", "set_timeline", "copy_column_value", "time_tracking", "connect_items",
-  "shift_dependents", "assign_round_robin", "set_subitems_value", "set_parent_value", "add_checklist_items",
+  "shift_dependents", "assign_round_robin", "set_subitems_value", "set_parent_value", "add_checklist_items", "change_values",
 ];
 
 /** Action types that also read another column, `source_column_id` is required. */
@@ -323,6 +342,21 @@ function actionProblem(action: ActionDraft, index: number, context: AutomationBu
       return params.team_id ? null : `Choose the team ${where} notifies.`;
     case "send_webhook":
       return /^https?:\/\/\S+$/i.test((params.url ?? "").trim()) ? null : `Enter the URL ${where} sends to.`;
+    case "rename_item":
+      return (params.name_template ?? "").trim() ? null : `Write the new name for ${where}.`;
+    case "change_values":
+      return params.values?.length ? null : `Choose what ${where} ${params.mode === "remove" ? "removes" : "adds"}.`;
+    case "update_connected_items":
+      if (!params.connect_column_id) return `Choose the connect boards column of ${where}.`;
+      if (!context.columns.find((column) => column.id === String(params.connect_column_id))?.linked_board_id) return `Connect the column of ${where} to a board first.`;
+      if (!params.linked_column_id) return `Choose the column ${where} changes on the connected items.`;
+      return isBlank(params.value) && typeof params.value !== "boolean" ? `Choose the value for ${where}.` : null;
+    case "group_items":
+      if (!params.from_item_group && !params.target_group_id) return `Choose the group of ${where}.`;
+      if ((params.operation === "set_column_value" || params.operation === "clear_column") && !params.target_column_id) return `Choose the column ${where} changes.`;
+      if (params.operation === "set_column_value" && isBlank(params.value) && typeof params.value !== "boolean") return `Choose the value for ${where}.`;
+      if (params.operation === "move_to_group" && !params.destination_group_id) return `Choose where ${where} moves the items.`;
+      return null;
     default:
       return null;
   }
@@ -356,6 +390,9 @@ export function draftProblems(draft: AutomationDraft, context: AutomationBuilder
     }
     if (trigger.type === "item_scan" && allConditions(draft).length === 0) problems.push("Add a condition, it decides which items the scheduled check acts on.");
     if (trigger.type === "number_threshold" && typeof draft.trigger_config.threshold !== "number") problems.push("Enter the number the column must reach.");
+    if (trigger.type === "item_overdue" && draft.trigger_config.status_column_id && !(draft.trigger_config.done_values ?? []).length) problems.push("Choose the labels that mean an item is done.");
+    const match = draft.trigger_config.match;
+    if (trigger.type === "column_changed" && match?.operator === "between" && (match.values ?? []).filter((value) => value !== "").length !== 2) problems.push("Enter both ends of the range the column must reach.");
   }
 
   allConditions(draft).forEach((condition, index) => {
@@ -414,7 +451,7 @@ function cleanParams(params: BoardAutomationActionParams): BoardAutomationAction
 }
 
 const completeRules = (rules: ConditionDraft[]): BoardAutomationCondition[] =>
-  rules.filter(isConditionComplete).map(({ column_id, condition, value, values }) => ({ column_id, condition, value, values }));
+  rules.filter(isConditionComplete).map(({ column_id, condition, value, values, subitem_rule }) => ({ column_id, condition, value, values, ...(column_id === "__subitems__" && subitem_rule ? { subitem_rule } : {}) }));
 
 const toActions = (actions: ActionDraft[]): BoardAutomationAction[] =>
   actions
@@ -424,7 +461,7 @@ const toActions = (actions: ActionDraft[]): BoardAutomationAction[] =>
 /** The definition as it stands, for a save once {@link draftProblems} is empty, or for a test run. */
 export function draftToDefinition(draft: AutomationDraft): BoardAutomationDefinition {
   const trigger_type = draft.trigger_type as BoardAutomationTriggerType;
-  const needs_timezone = trigger_type === "date_arrived" || SCHEDULED_TRIGGERS.includes(trigger_type);
+  const needs_timezone = trigger_type === "date_arrived" || trigger_type === "item_overdue" || SCHEDULED_TRIGGERS.includes(trigger_type);
   const trigger_config: BoardAutomationTriggerConfig = { ...draft.trigger_config };
   if (needs_timezone) trigger_config.timezone = trigger_config.timezone ?? browserTimezone();
   if (SCHEDULED_TRIGGERS.includes(trigger_type) && trigger_config.schedule) {

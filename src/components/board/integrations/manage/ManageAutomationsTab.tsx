@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import type { BoardAutomationBulkAction, BoardAutomationCopyResult, BoardAutomationDto, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationBulkAction, BoardAutomationCopyResult, BoardAutomationDto, BoardAutomationImportResult, UpdateBoardAutomationPayload } from "@/types/board-automation";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { DownloadIcon, GridViewToggleIcon, ListViewToggleIcon } from "@/icons/board-icons";
 import { SearchIcon } from "@/icons/workspace-icons";
@@ -13,11 +13,14 @@ import AutomationFilterMenu, { NO_FILTERS, countActiveFilters, type AutomationFi
 import { AutomationCard, AutomationRow, ROW_GRID, type AutomationItemActions } from "./ManageAutomationItem";
 import { ACTION_LABELS, AUTOMATION_KIND_LABELS, automationActionTypes, automationKind, automationSearchText, formatDateTime } from "./manageFormat";
 import { ICON_BUTTON, InlineAlert, ManageEmptyState } from "./manageUi";
+import AutomationTransferButtons from "./AutomationTransferButtons";
 import BulkActionBar from "./BulkActionBar";
 import VersionHistoryPanel from "./VersionHistoryPanel";
 
 export type ManageAutomationsTabProps = {
   board_id: number;
+  /** The active tab, what Export reads from and Import writes to. */
+  view_id?: number | null;
   board_label: string;
   automations: BoardAutomationDto[];
   context: AutomationBuilderContext;
@@ -62,7 +65,7 @@ const fileSlug = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]
  * transfer or delete each one, like monday's "Manage your board automations".
  */
 export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
-  const { board_id, board_label, automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates, onPublishAccountTemplate, onReplaceAutomation, onReloadAutomations } = props;
+  const { board_id, view_id = null, board_label, automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates, onPublishAccountTemplate, onReplaceAutomation, onReloadAutomations } = props;
   const [selected_ids, setSelectedIds] = useState<number[]>([]);
   const [versions_id, setVersionsId] = useState<number | null>(null);
   const [is_bulk_busy, setIsBulkBusy] = useState(false);
@@ -278,13 +281,39 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
     );
   };
 
+  const imported = async (result: BoardAutomationImportResult) => {
+    await onReloadAutomations?.();
+    const unmapped = result.data.filter((entry) => entry.unmapped.length > 0).length;
+    setNotice(unmapped ? `${result.message} ${unmapped} of them need a column, label or group chosen again, open them to finish.` : result.message);
+  };
+
+  const transfer_buttons = (
+    <AutomationTransferButtons
+      board_id={board_id}
+      view_id={view_id}
+      board_label={board_label}
+      automation_ids={live_selected_ids}
+      can_export={automations.length > 0}
+      onImported={imported}
+      onError={setActionError}
+      onNotice={setNotice}
+    />
+  );
+
   if (automations.length === 0) {
     return (
-      <ManageEmptyState title="Create your first automation to save time" description="Start from a template or build your own sentence.">
-        <button type="button" onClick={onExploreTemplates} className="h-9 rounded-[6px] border border-boardtree-border px-4 text-[13.5px] text-boardtree-text hover:bg-boardtree-hover">
-          Explore templates
-        </button>
-      </ManageEmptyState>
+      <>
+        {action_error && <InlineAlert message={action_error} onDismiss={() => setActionError(null)} />}
+        {notice && <div role="status" className="mb-3 rounded-[8px] border border-[#00c875]/30 bg-[#00c875]/[0.08] px-3 py-2 text-[12.5px] text-boardtree-text-secondary">{notice}</div>}
+        <ManageEmptyState title="Create your first automation to save time" description="Start from a template, build your own sentence, or import automations exported from another table.">
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onExploreTemplates} className="h-9 rounded-[6px] border border-boardtree-border px-4 text-[13.5px] text-boardtree-text hover:bg-boardtree-hover">
+              Explore templates
+            </button>
+            {transfer_buttons}
+          </div>
+        </ManageEmptyState>
+      </>
     );
   }
 
@@ -343,6 +372,7 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
           <button type="button" onClick={exportCsv} disabled={visible_rows.length === 0} aria-label="Export automations as CSV" title="Export as CSV" className={ICON_BUTTON}>
             <DownloadIcon size={16} />
           </button>
+          {transfer_buttons}
           <div role="group" aria-label="Layout" className="flex overflow-hidden rounded-[6px] border border-boardtree-border">
             <button type="button" onClick={() => changeLayout("cards")} aria-pressed={layout === "cards"} aria-label="Card layout" className={`flex h-8 w-9 items-center justify-center ${layout === "cards" ? "bg-boardtree-accent-surface text-boardtree-accent" : "text-boardtree-text-muted hover:bg-boardtree-hover"}`}>
               <GridViewToggleIcon size={15} />

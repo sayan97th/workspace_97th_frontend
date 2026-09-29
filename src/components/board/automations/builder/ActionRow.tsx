@@ -30,6 +30,7 @@ import {
   valueLabel,
 } from "./automationSentence";
 import { ActionIcon } from "./actionIcons";
+import ActionRowBulk, { BULK_ACTION_IDS } from "./ActionRowBulk";
 import ActionRowExtras, { EXTRA_ACTION_IDS, EmailRecipientEditor } from "./ActionRowExtras";
 import { actionFromPicker, type ActionDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
@@ -315,6 +316,29 @@ function LinkedColumnPicker({ linked_board_id, selected, onPick }: { linked_boar
   return <PickerList sections={[{ entries: [{ id: "name", label: "Item name" }] }, { title: "Columns", entries: columns }]} selected={selected} onPick={onPick} placeholder="Search columns" />;
 }
 
+/** "and connect it in Tasks": links an item created on another board to the triggering item, through a connect boards column that points at that board. */
+function LinkCreatedItemToken({ context, params, onPatch }: { context: AutomationBuilderContext; params: BoardAutomationActionParams; onPatch: (next: BoardAutomationActionParams) => void }) {
+  const link_columns = context.columns.filter((column) => column.scope === "item" && column.kind === "connect_board" && column.linked_board_id === String(params.target_board_id));
+  return (
+    <Token label={params.link_column_id ? `and connect it in ${columnLabel(context, params.link_column_id)}` : "without connecting it"} is_placeholder={!params.link_column_id} aria_label="Connect the new item" popover_width={300}>
+      {(close) =>
+        link_columns.length === 0 ? (
+          <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">Add a Connect boards column linked to that board to connect the new item to this one.</div>
+        ) : (
+          <PickerList
+            sections={[{ entries: [{ id: "__none__", label: "Do not connect it" }] }, { title: "Connect boards columns", entries: link_columns.map((column) => ({ id: column.id, label: column.title })) }]}
+            selected={params.link_column_id ? String(params.link_column_id) : "__none__"}
+            onPick={(id) => {
+              onPatch({ link_column_id: id === "__none__" ? null : Number(id) });
+              close();
+            }}
+          />
+        )
+      }
+    </Token>
+  );
+}
+
 /** One "Then ..." sentence. Each action type lays out its own tokens. */
 export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, onChange }: ActionRowProps) {
   const params = action.params;
@@ -329,6 +353,9 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
 
   if (EXTRA_ACTION_IDS.includes(action.picker_id)) {
     return <ActionRowExtras action={action} context={context} lead={lead} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
+  }
+  if (BULK_ACTION_IDS.includes(action.picker_id)) {
+    return <ActionRowBulk action={action} context={context} lead={lead} has_trigger_item={has_trigger_item} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
   }
 
   /** "counting every day" or "counting working days", for the date actions that can skip weekends and holidays. */
@@ -429,7 +456,7 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
               selected={params.target_board_id ? String(params.target_board_id) : include_this_board ? "__this__" : null}
               empty_text="There is no other board you can add items to."
               onPick={(id) => {
-                patch({ target_board_id: id === "__this__" ? null : Number(id), target_group_id: undefined, ...(id === "__this__" ? {} : { copy_values: params.copy_values }) });
+                patch({ target_board_id: id === "__this__" ? null : Number(id), target_group_id: undefined, link_column_id: null, ...(id === "__this__" ? {} : { copy_values: params.copy_values }) });
                 close();
               }}
               placeholder="Search boards"
@@ -495,6 +522,12 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
               </Token>
             </>
           )}
+          {has_trigger_item && params.target_board_id && params.target_board_id !== context.board_id ? (
+            <>
+              {" "}
+              <LinkCreatedItemToken context={context} params={params} onPatch={patch} />
+            </>
+          ) : null}
           {has_trigger_item && (
             <>
               {" "}

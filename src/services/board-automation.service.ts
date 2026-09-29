@@ -5,6 +5,9 @@ import type {
   BoardAutomationBulkResult,
   BoardAutomationCopyResult,
   BoardAutomationDto,
+  BoardAutomationExportFile,
+  BoardAutomationImportResult,
+  BoardAutomationPreviewResult,
   BoardAutomationRunDetail,
   BoardAutomationRunDto,
   BoardAutomationSettingsDto,
@@ -16,6 +19,7 @@ import type {
   BoardAutomationRunFilters,
   BoardAutomationRunsPage,
   BoardAutomationTemplateDto,
+  BoardAutomationUndoResult,
   BoardAutomationUsageDto,
   CreateBoardAutomationPayload,
   TestBoardAutomationPayload,
@@ -173,6 +177,28 @@ export const boardAutomationService = {
   /** POST /api/boards/{board_id}/automations/runs/{run_id}/retry, runs a failed step and the ones after it again. */
   async retryRun(board_id: number, run_id: number): Promise<{ message: string; data: BoardAutomationRunDto[] }> {
     return apiClient.post<{ message: string; data: BoardAutomationRunDto[] }>(`/api/boards/${board_id}/automations/runs/${run_id}/retry`, {});
+  },
+
+  /** POST /api/boards/{board_id}/automations/runs/{run_id}/undo, takes back what that run changed inside the app. */
+  async undoRun(board_id: number, run_id: number): Promise<BoardAutomationUndoResult> {
+    return apiClient.post<BoardAutomationUndoResult>(`/api/boards/${board_id}/automations/runs/${run_id}/undo`, {});
+  },
+
+  /** POST /api/boards/{board_id}/automations/preview, the items a draft would act on, nothing saved. */
+  async previewImpact(board_id: number, payload: TestBoardAutomationPayload): Promise<BoardAutomationPreviewResult> {
+    const response = await apiClient.post<{ data: BoardAutomationPreviewResult }>(`/api/boards/${board_id}/automations/preview`, payload);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/export, the automations of a table (all of them when `automation_ids` is empty) as a file. */
+  async exportAutomations(board_id: number, view_id: number | null, automation_ids: number[] = []): Promise<BoardAutomationExportFile> {
+    const response = await apiClient.post<{ data: BoardAutomationExportFile }>(`/api/boards/${board_id}/automations/export`, { view_id, automation_ids });
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/import, creates the automations of an exported file, turned off. */
+  async importAutomations(board_id: number, view_id: number | null, file: unknown): Promise<BoardAutomationImportResult> {
+    return apiClient.post<BoardAutomationImportResult>(`/api/boards/${board_id}/automations/import`, { view_id, file });
   },
 
   /** DELETE /api/boards/{board_id}/automations/delayed/{delayed_id}, cancels a run waiting behind a "wait" step. */

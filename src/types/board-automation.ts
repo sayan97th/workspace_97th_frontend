@@ -28,7 +28,10 @@ export type BoardAutomationTriggerType =
   | "item_moved_to_board"
   | "item_restored"
   | "checklist_completed"
-  | "checklist_item_checked";
+  | "checklist_item_checked"
+  | "person_unassigned"
+  | "file_uploaded"
+  | "item_overdue";
 
 export type BoardAutomationActionType =
   | "move_to_group"
@@ -66,7 +69,11 @@ export type BoardAutomationActionType =
   | "assign_round_robin"
   | "set_subitems_value"
   | "set_parent_value"
-  | "add_checklist_items";
+  | "add_checklist_items"
+  | "rename_item"
+  | "change_values"
+  | "update_connected_items"
+  | "group_items";
 
 /** How the owner hears about a failed run. */
 export type BoardAutomationFailureAlert = "app" | "app_and_email" | "none";
@@ -88,6 +95,19 @@ export type BoardAutomationSchedule = {
   /** `HH:MM` in `timezone`. */
   time?: string | null;
   timezone?: string | null;
+};
+
+/**
+ * `column_changed` only: what the new value must be, read by the column's type (see the Laravel
+ * `BoardAutomationService::changeMatches()`). Text: `is`, `contains`, `starts_with`... Numbers:
+ * `equals`, `greater_than`, `less_than`, `between`. Dropdown, tags, people and votes: `added`,
+ * `removed`, `holds`. Checkbox: `is_checked`, `is_unchecked`. Date: `is`, `before`, `after`.
+ * Status: `is`, `is_not`. Any kind: `is_empty`, `is_not_empty`.
+ */
+export type BoardAutomationChangeMatch = {
+  operator: string;
+  value?: string;
+  values?: string[];
 };
 
 /** What a trigger needs beyond its column and value. */
@@ -112,10 +132,30 @@ export type BoardAutomationTriggerConfig = {
   from_board_id?: number | null;
   /** `date_arrived` only: count the offset in working days and never fire on a non working day. */
   working_days_only?: boolean;
+  /** `file_uploaded` only: file types to watch, such as `pdf`, empty for any file. */
+  extensions?: string[] | null;
+  /** `item_overdue` only: the status column that says an item is done, and its labels that mean done. */
+  status_column_id?: number | null;
+  done_values?: string[] | null;
+  /** `column_changed` only: a value condition by column type, instead of a single `trigger_value`. */
+  match?: BoardAutomationChangeMatch | null;
 };
 
-/** One "and only if" rule, the same shape as the toolbar's Advanced filter rules. */
+/**
+ * One "and only if" rule, the same shape as the toolbar's Advanced filter rules. A "subitems"
+ * rule (`column_id` `__subitems__`, `condition` `all_match`, `any_match` or `none_match`) carries
+ * the rule its subitems are checked against in `subitem_rule`.
+ */
 export type BoardAutomationCondition = {
+  column_id: string;
+  condition: string;
+  value: string;
+  values: string[];
+  subitem_rule?: BoardAutomationSubitemRule | null;
+};
+
+/** The rule on a subitem column a "subitems" condition checks. */
+export type BoardAutomationSubitemRule = {
   column_id: string;
   condition: string;
   value: string;
@@ -193,7 +233,7 @@ export type BoardAutomationActionParams = {
   source_group_id?: number | null;
   with_items?: boolean;
   /** `time_tracking`: start or stop. `shift_dependents`: keep the gap (`strict`) or only push when they would overlap (`flexible`). */
-  mode?: "start" | "stop" | "strict" | "flexible";
+  mode?: "start" | "stop" | "strict" | "flexible" | "add" | "remove";
   /** `connect_items` only: the column of this item to match, `name` for the item name. */
   match_column_id?: string;
   /** `connect_items` only: the column of the connected board to compare with, `name` for the item name. */
@@ -219,6 +259,20 @@ export type BoardAutomationActionParams = {
   tasks?: string[];
   /** `set_date`, `shift_date` (days), `set_timeline` and `shift_dependents`: count working days of the board. */
   use_working_days?: boolean;
+  /** `rename_item` only: the new name, tokens such as `{item_name}` and `{column:12}` are filled in. */
+  name_template?: string;
+  /** `change_values` only: the option ids or people to add or remove, `__actor__` and `__creator__` for people. `mode` says which. */
+  values?: string[];
+  /** `update_connected_items` only: the connect boards column whose linked items change. */
+  connect_column_id?: number;
+  /** `update_connected_items` only: the column of the connected board to set to `value`. */
+  linked_column_id?: number;
+  /** `create_item` on another board only: the connect boards column of this item the new item is added to. */
+  link_column_id?: number | null;
+  /** `group_items` only: what happens to every item of the group. */
+  operation?: "set_column_value" | "clear_column" | "archive" | "move_to_group";
+  /** `group_items` with `move_to_group` only: where the items go. */
+  destination_group_id?: number | null;
 };
 
 export type BoardAutomationFieldMapping = { column_id: number | null; source: string };
@@ -271,9 +325,12 @@ export type BoardAutomationDto = {
   owner?: BoardAutomationPersonRef | null;
   /** `webhook_received` only: the secret URL other services post to. */
   webhook_url?: string | null;
-  /** Set when the automation switched itself off because something it uses was deleted. */
+  /** Set when the automation switched itself off, because something it uses was deleted or it failed too often. */
   paused_at?: string | null;
   paused_reason?: string | null;
+  /** How many runs in a row failed, reset by a run that works. */
+  consecutive_failures?: number;
+  last_failed_at?: string | null;
   /** What it uses that no longer exists, empty when it can run. */
   problems?: BoardAutomationProblem[];
 };
@@ -353,6 +410,10 @@ export type BoardAutomationRunDto = {
   step_index?: number | null;
   /** Set on a step that retried a failed one. */
   retry_of_id?: number | null;
+  /** Set once the run this step belongs to was undone. */
+  undone_at?: string | null;
+  /** Whether the run still has changes "Undo" can take back. */
+  can_undo?: boolean;
 };
 
 /** Every step of one execution, what retried its failures, and whether it still waits. */
@@ -363,6 +424,44 @@ export type BoardAutomationRunDetail = {
   waiting_until: string | null;
   waiting_id: number | null;
   can_retry: boolean;
+  can_undo?: boolean;
+  undone_at?: string | null;
+};
+
+/** What "Undo" took back, and the changes it left alone because they changed again since. */
+export type BoardAutomationUndoResult = { message: string; data: { reverted: number; skipped: string[] } };
+
+/**
+ * "Preview impact": which items an automation that is not saved yet would act on. `mode` says what
+ * that means: `conditions` (the items that pass the conditions now), `scan` (a scheduled check's
+ * next run), `upcoming` (date and overdue triggers in the coming days, with `fires_on`) or
+ * `itemless` (recurring and webhook triggers, only the sample run applies).
+ */
+export type BoardAutomationPreviewResult = {
+  mode: "conditions" | "scan" | "upcoming" | "itemless";
+  total_items: number;
+  matching_count: number;
+  is_truncated: boolean;
+  items: { id: number; name: string; group_name: string; fires_on: string | null }[];
+  /** A test run on the first matching item, null when nothing matches. */
+  sample: BoardAutomationTestResult | null;
+};
+
+/** The JSON file "Export" writes and "Import" reads. */
+export type BoardAutomationExportFile = {
+  format: "workspace97.automations";
+  version: number;
+  exported_at: string;
+  source: { board_id: number; board_name: string; view_id: number };
+  columns: { id: number; label: string; type: string; scope: "item" | "subitem"; options: { id: string; label: string }[] }[];
+  groups: { id: number; name: string }[];
+  automations: (BoardAutomationDefinition & { name: string | null; description: string | null; importance: BoardAutomationImportance; failure_alert?: BoardAutomationFailureAlert })[];
+};
+
+export type BoardAutomationImportResult = {
+  message: string;
+  /** One entry per imported automation, with what found no match on this board. */
+  data: { automation_id: number; name: string | null; unmapped: string[] }[];
 };
 
 export type BoardAutomationRunFilters = {
@@ -456,9 +555,11 @@ export type BoardAutomationSettingsDto = {
   workdays: number[];
   /** `YYYY-MM-DD`. */
   holidays: string[];
+  /** An automation that fails this many runs in a row is paused, 0 never pauses. */
+  auto_pause_after_failures: number;
 };
 
-export type UpdateBoardAutomationSettingsPayload = Partial<Pick<BoardAutomationSettingsDto, "workdays" | "holidays">> & { is_paused?: boolean };
+export type UpdateBoardAutomationSettingsPayload = Partial<Pick<BoardAutomationSettingsDto, "workdays" | "holidays" | "auto_pause_after_failures">> & { is_paused?: boolean };
 
 /** The parts of the sentence a version changed compared with the one before. */
 export type BoardAutomationVersionPart = "trigger" | "conditions" | "actions" | "else_actions" | "details";

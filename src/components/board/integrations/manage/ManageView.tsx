@@ -178,6 +178,7 @@ export default function ManageView(props: ManageViewProps) {
         {tab === "automations" && (
           <ManageAutomationsTab
             board_id={board_id}
+            view_id={view_id}
             board_label={board_label}
             onPublishAccountTemplate={props.onPublishAccountTemplate}
             onReplaceAutomation={props.onReplaceAutomation}

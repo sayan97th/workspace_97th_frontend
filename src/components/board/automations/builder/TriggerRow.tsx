@@ -2,9 +2,10 @@
 import React, { useState } from "react";
 import type { BoardAutomationSchedule, BoardAutomationThresholdOperator, BoardAutomationTriggerType } from "@/types/board-automation";
 import { SCHEDULED_TRIGGERS, SUBITEM_AWARE_TRIGGERS, TRIGGER_BY_TYPE, TRIGGER_COLUMN_SCOPE, WEEKDAY_LABELS, triggerSections, type AutomationBuilderContext } from "./automationCatalog";
-import { boardLabel, columnLabel, findColumn, formLabel, groupLabel, offsetLabel, optionLabel, personLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
+import { boardLabel, changeMatchLabel, columnLabel, doneLabel, extensionsLabel, findColumn, formLabel, groupLabel, offsetLabel, optionLabel, personLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
 import type { AutomationDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, Segmented, Token, WorkingDaysToggle } from "./builderUi";
+import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, PersonPicker } from "./valueEditors";
 
 export type TriggerRowProps = {
@@ -26,12 +27,14 @@ function pickTrigger(type: BoardAutomationTriggerType, context: AutomationBuilde
   const schedule = type === "recurring"
     ? { frequency: "weekly" as const, weekdays: [1], time: "09:00" }
     : type === "item_scan" ? { frequency: "daily" as const, time: "09:00" } : null;
-  return {
-    trigger_type: type,
-    trigger_column_id: first_column?.id ?? null,
-    trigger_value: null,
-    trigger_config: schedule ? { schedule } : type === "number_threshold" ? { operator: "above", threshold: null } : {},
-  };
+  const config = schedule
+    ? { schedule }
+    : type === "number_threshold"
+      ? { operator: "above" as const, threshold: null }
+      : type === "item_overdue"
+        ? { time: "09:00", ...(defaultDoneStatus(context) ?? {}) }
+        : {};
+  return { trigger_type: type, trigger_column_id: first_column?.id ?? null, trigger_value: null, trigger_config: config };
 }
 
 /** A status label picker, for triggers waiting for one label. */
@@ -242,7 +245,7 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
           scopes={scopes}
           selected={draft.trigger_column_id}
           onPick={(column_id) => {
-            onChange({ trigger_column_id: column_id, trigger_value: null, trigger_config: { ...draft.trigger_config, from_value: null } });
+            onChange({ trigger_column_id: column_id, trigger_value: null, trigger_config: { ...draft.trigger_config, from_value: null, match: null } });
             close();
           }}
         />
@@ -299,23 +302,77 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
         </>
       );
     }
-    case "column_changed":
+    case "column_changed": {
+      // A value condition by column type (`trigger_config.match`), or the single value older automations saved.
+      const has_match = Boolean(config.match?.operator);
+      const uses_match = !column || matchOperatorsFor(column.kind).length > 0;
+      const label = has_match ? changeMatchLabel(context, column, config.match) : draft.trigger_value == null ? "anything" : valueLabel(context, column, draft.trigger_value);
       return (
         <>
           {switcher} {columnToken("column")} <Words>changes to </Words>
-          <Token label={draft.trigger_value == null ? "anything" : valueLabel(context, column, draft.trigger_value)} is_placeholder={draft.trigger_value == null} disabled={!column}>
+          <Token label={label} is_placeholder={!has_match && draft.trigger_value == null} disabled={!column} aria_label="What the new value must be" popover_width={320}>
             {(close) =>
               column ? (
-                <>
+                uses_match ? (
+                  <ChangeMatchEditor context={context} column={column} match={config.match} onApply={(match) => { onChange({ trigger_value: null, trigger_config: { ...config, match } }); close(); }} />
+                ) : (
                   <ColumnValueEditor context={context} column={column} value={draft.trigger_value} mode="match" onApply={(value) => { onChange({ trigger_value: value }); close(); }} />
-                  {draft.trigger_value != null && (
-                    <button type="button" onClick={() => { onChange({ trigger_value: null }); close(); }} className="mt-1 w-full rounded-[6px] px-2 py-1.5 text-left text-[12.5px] text-boardtree-accent hover:bg-boardtree-hover">
-                      Any change
-                    </button>
-                  )}
-                </>
+                )
               ) : null
             }
+          </Token>
+        </>
+      );
+    }
+    case "person_unassigned":
+      return (
+        <>
+          {switcher}{" "}
+          <Token label={draft.trigger_value == null ? "someone" : personLabel(context, draft.trigger_value)} is_placeholder={draft.trigger_value == null}>
+            {(close) => (
+              <PersonPicker
+                context={context}
+                selected={draft.trigger_value == null ? "__any__" : String(draft.trigger_value)}
+                extra_entries={[{ id: "__any__", label: "Anyone" }]}
+                onPick={(id) => {
+                  onChange({ trigger_value: id === "__any__" ? null : Number(id) });
+                  close();
+                }}
+              />
+            )}
+          </Token>{" "}
+          <Words>is removed from </Words>
+          {columnToken("people")}
+        </>
+      );
+    case "file_uploaded":
+      return (
+        <>
+          {switcher}{" "}
+          <Token label={extensionsLabel(config.extensions)} is_placeholder={!config.extensions?.length} aria_label="Which files" popover_width={330}>
+            {(close) => <ExtensionsEditor extensions={config.extensions ?? []} onApply={(extensions) => { onChange({ trigger_config: { ...config, extensions: extensions.length ? extensions : null } }); close(); }} />}
+          </Token>{" "}
+          <Words>is added to </Words>
+          {columnToken("files")}
+        </>
+      );
+    case "item_overdue":
+      return (
+        <>
+          {switcher} {columnToken("date")} <Words>has passed and </Words>
+          <Token label={doneLabel(context, config)} is_placeholder={!config.status_column_id} aria_label="What done means" popover_width={320}>
+            {(close) => (
+              <DoneStatusEditor
+                context={context}
+                status_column_id={config.status_column_id}
+                done_values={config.done_values ?? []}
+                onApply={(status_column_id, done_values) => { onChange({ trigger_config: { ...config, status_column_id, done_values: done_values.length ? done_values : null } }); close(); }}
+              />
+            )}
+          </Token>
+          <Words>, checked at </Words>
+          <Token label={config.time ?? "08:00"} aria_label="Time of day" popover_width={240}>
+            {(close) => <TimeEditor time={config.time ?? "08:00"} allow_clear={false} onApply={(time) => { onChange({ trigger_config: { ...config, time } }); close(); }} />}
           </Token>
         </>
       );

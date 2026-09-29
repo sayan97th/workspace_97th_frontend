@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { CalendarOff, PauseCircle, X } from "lucide-react";
+import { CalendarOff, PauseCircle, ShieldAlert, X } from "lucide-react";
 import type { BoardAutomationSettingsDto, UpdateBoardAutomationSettingsPayload } from "@/types/board-automation";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { ToggleSwitch } from "../../automations/automationFormParts";
@@ -16,9 +16,67 @@ export type AutomationSettingsTabProps = {
 
 const SECTION = "rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface p-5";
 
+/** How many failed runs in a row pause an automation, 0 turns it off. Saved on Enter or when the field loses focus. */
+function FailureStreakSection({ value, is_saving, onSave }: { value: number; is_saving: boolean; onSave: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value > 0 ? value : 5));
+  const [is_on, setIsOn] = useState(value > 0);
+  const number = Math.round(Number(draft));
+  const is_valid = Number.isFinite(number) && number >= 1 && number <= 100;
+  const commit = () => {
+    if (is_valid && number !== value) onSave(number);
+  };
+
+  return (
+    <section aria-label="Pause after failures" className={SECTION}>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h3 className="flex items-center gap-2 text-[15px] font-semibold text-boardtree-text">
+            <ShieldAlert size={17} className="text-boardtree-text-muted" />
+            Pause automations that keep failing
+          </h3>
+          <p className="mt-1 text-[13px] leading-snug text-boardtree-text-secondary">
+            An automation that fails several runs in a row is switched off, and its owner is told why, so a broken rule stops sending errors. A run that works starts the count again.
+          </p>
+        </div>
+        <ToggleSwitch
+          checked={is_on}
+          disabled={is_saving}
+          onToggle={() => {
+            const next = !is_on;
+            setIsOn(next);
+            onSave(next ? (is_valid ? number : 5) : 0);
+          }}
+        />
+      </div>
+      {is_on && (
+        <label className="mt-3 flex flex-wrap items-center gap-2 text-[13px] text-boardtree-text-secondary">
+          Pause after
+          <input
+            type="number"
+            min={1}
+            max={100}
+            value={draft}
+            disabled={is_saving}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") commit();
+            }}
+            aria-label="Failed runs in a row"
+            className={`${FIELD} w-20`}
+          />
+          failed runs in a row
+          {!is_valid && <span className="text-[12px] text-boardtree-danger">Enter a number from 1 to 100.</span>}
+        </label>
+      )}
+    </section>
+  );
+}
+
 /**
- * Manage > Settings. "Pause all automations" for the whole board, and the working calendar that
- * date triggers and date actions use when they are told to count working days only.
+ * Manage > Settings. "Pause all automations" for the whole board, pausing automations that keep
+ * failing, and the working calendar that date triggers and date actions use when they are told to
+ * count working days only.
  */
 export default function AutomationSettingsTab({ settings, is_loading, onSave }: AutomationSettingsTabProps) {
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +133,8 @@ export default function AutomationSettingsTab({ settings, is_loading, onSave }: 
           <ToggleSwitch checked={settings.is_paused} disabled={is_saving} onToggle={() => void save({ is_paused: !settings.is_paused })} />
         </div>
       </section>
+
+      <FailureStreakSection key={settings.auto_pause_after_failures} value={settings.auto_pause_after_failures} is_saving={is_saving} onSave={(auto_pause_after_failures) => void save({ auto_pause_after_failures })} />
 
       <section aria-label="Working days" className={SECTION}>
         <h3 className="text-[15px] font-semibold text-boardtree-text">Working days</h3>

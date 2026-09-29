@@ -1,10 +1,21 @@
 "use client";
 import React, { useRef, useState } from "react";
 import type { BoardAutomationCondition } from "@/types/board-automation";
-import { BOARD_FILTER_DATE_PRESETS, BOARD_FILTER_OPERATORS, getDefaultOperator, isValuelessOperator } from "../../toolbar/filterEngine";
-import type { BoardFilterFieldKind, BoardFilterOperator } from "../../toolbar/types";
+import { BOARD_FILTER_DATE_PRESETS } from "../../toolbar/filterEngine";
 import type { ColumnKind } from "../../table/types";
-import { ANY_CHANGE_ONLY_KINDS, CONDITION_KIND_BY_COLUMN, MESSAGE_TOKENS, PAYLOAD_TOKEN_HINT, VIRTUAL_CONDITION_FIELDS, type AutomationBuilderContext, type AutomationColumn } from "./automationCatalog";
+import {
+  ANY_CHANGE_ONLY_KINDS,
+  AUTOMATION_VALUELESS_OPERATORS,
+  CONDITION_KIND_BY_COLUMN,
+  MESSAGE_TOKENS,
+  PAYLOAD_TOKEN_HINT,
+  VIRTUAL_CONDITION_FIELDS,
+  conditionOperatorOptions,
+  defaultOperatorFor,
+  type AutomationBuilderContext,
+  type AutomationColumn,
+  type AutomationConditionKind,
+} from "./automationCatalog";
 import { columnTokensFromDisplay, columnTokensToDisplay } from "./automationSentence";
 import { MiniAvatar, PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, type PickerEntry } from "./builderUi";
 
@@ -67,19 +78,19 @@ export function GroupPicker({ groups, selected, onPick, extra_entries = [] }: {
 
 const toIdList = (value: unknown): string[] => (Array.isArray(value) ? value.map(String) : value == null || value === "" ? [] : [String(value)]);
 
-/** Toggles ids in a list and applies them with Done, for the multi value kinds. */
-function MultiPick({ entries, initial, onApply, placeholder }: { entries: PickerEntry<string>[]; initial: string[]; onApply: (ids: string[]) => void; placeholder: string }) {
+/** Toggles ids in a list and applies them with Done, for the multi value kinds. `allow_empty` lets Done apply no pick, meaning "any". */
+export function MultiPick({ entries, initial, onApply, placeholder, allow_empty = false }: { entries: PickerEntry<string>[]; initial: string[]; onApply: (ids: string[]) => void; placeholder: string; allow_empty?: boolean }) {
   const [ids, setIds] = useState<string[]>(initial);
   return (
     <>
       <PickerList sections={[{ entries }]} selected={ids} placeholder={placeholder} onPick={(id) => setIds((current) => (current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id]))} />
-      <PopoverFooter onDone={() => onApply(ids)} is_disabled={ids.length === 0} />
+      <PopoverFooter onDone={() => onApply(ids)} is_disabled={!allow_empty && ids.length === 0} />
     </>
   );
 }
 
 /** A single input applied with Done or Enter, for text, number and date values. */
-function SingleInput({ type, initial, onApply, placeholder, label }: { type: "text" | "number" | "date"; initial: string; onApply: (value: string) => void; placeholder: string; label: string }) {
+export function SingleInput({ type, initial, onApply, placeholder, label }: { type: "text" | "number" | "date"; initial: string; onApply: (value: string) => void; placeholder: string; label: string }) {
   const [draft, setDraft] = useState(initial);
   const can_apply = draft.trim() !== "" && (type !== "number" || Number.isFinite(Number(draft)));
   return (
@@ -451,43 +462,69 @@ export function MessageEditor({ context, message, subject, with_subject = false,
 
 // ── Conditions ────────────────────────────────────────────────────────────────
 
-/** The filter family of a condition field, a column or one of the item details. */
-export function conditionKind(context: AutomationBuilderContext, field_id: string): BoardFilterFieldKind | null {
+/** The family a condition field is read as, a column or one of the item details, null once it was deleted. */
+export function conditionKind(context: AutomationBuilderContext, field_id: string): AutomationConditionKind | null {
   const virtual = VIRTUAL_CONDITION_FIELDS.find((field) => field.id === field_id);
   if (virtual) return virtual.kind;
   const column = context.columns.find((entry) => entry.id === field_id);
   return column ? CONDITION_KIND_BY_COLUMN[column.kind] ?? null : null;
 }
 
+/**
+ * The fields a condition can read. A subitem trigger, or the rule inside a "subitems" condition,
+ * reads subitem columns and the details a subitem has too.
+ */
 export function ConditionFieldPicker({ context, scope, selected, onPick }: { context: AutomationBuilderContext; scope: "item" | "subitem"; selected: string; onPick: (field_id: string) => void }) {
   const columns = context.columns
     .filter((column) => column.scope === scope && CONDITION_KIND_BY_COLUMN[column.kind])
-    .map((column): PickerEntry<string> => ({ id: column.id, label: column.title }));
-  const details = VIRTUAL_CONDITION_FIELDS.filter((field) => scope === "item" || field.id === "name").map((field): PickerEntry<string> => ({ id: field.id, label: field.label }));
+    .map((column): PickerEntry<string> => ({ id: column.id, label: column.title, hint: column.kind.replace("_", " ") }));
+  const details = VIRTUAL_CONDITION_FIELDS.filter((field) => scope === "item" || !field.is_item_only).map((field): PickerEntry<string> => ({ id: field.id, label: field.label }));
   return <PickerList sections={[{ title: "Columns", entries: columns }, { title: "Item details", entries: details }]} selected={selected || null} onPick={onPick} placeholder="Search columns" />;
 }
 
-export function ConditionOperatorPicker({ kind, selected, onPick }: { kind: BoardFilterFieldKind; selected: string; onPick: (operator: BoardFilterOperator) => void }) {
+export function ConditionOperatorPicker({ kind, selected, onPick }: { kind: AutomationConditionKind; selected: string; onPick: (operator: string) => void }) {
   return (
     <PickerList
       is_searchable={false}
-      sections={[{ entries: BOARD_FILTER_OPERATORS[kind].map((operator) => ({ id: operator.id, label: operator.label })) }]}
-      selected={(selected || null) as BoardFilterOperator | null}
+      sections={[{ entries: conditionOperatorOptions(kind).map((operator) => ({ id: operator.id, label: operator.label })) }]}
+      selected={selected || null}
       onPick={onPick}
     />
   );
 }
 
-/** The value side of a condition, shaped like the board's Advanced filter values. */
+/** For "all dependencies are done": the status column of the items waited on, and its labels that mean done. */
+function DoneLabelsEditor({ context, condition, onApply }: { context: AutomationBuilderContext; condition: BoardAutomationCondition; onApply: (next: Pick<BoardAutomationCondition, "value" | "values">) => void }) {
+  const status_columns = context.columns.filter((column) => column.scope === "item" && (column.kind === "status" || column.kind === "label"));
+  const [column_id, setColumnId] = useState(condition.value || status_columns[0]?.id || "");
+  const column = status_columns.find((entry) => entry.id === column_id);
+  const entries = (column?.options ?? []).map((option): PickerEntry<string> => ({ id: option.id, label: option.label, color: option.color }));
+
+  if (status_columns.length === 0) return <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">Add a Status column to this table first, it says when an item is done.</div>;
+  return (
+    <>
+      <div className={POPOVER_LABEL}>Status column</div>
+      <select value={column_id} onChange={(event) => setColumnId(event.target.value)} aria-label="Status column" className={`${POPOVER_INPUT} mb-2`}>
+        {status_columns.map((entry) => <option key={entry.id} value={entry.id}>{entry.title}</option>)}
+      </select>
+      <div className={POPOVER_LABEL}>Labels that mean done</div>
+      <MultiPick key={column_id} entries={entries} initial={column_id === condition.value ? condition.values : []} onApply={(values) => onApply({ value: column_id, values })} placeholder="Search labels" />
+    </>
+  );
+}
+
+/** The value side of a condition, shaped like the board's Advanced filter values, or by the automation only families. */
 export function ConditionValueEditor({ context, condition, kind, onApply }: {
   context: AutomationBuilderContext;
   condition: BoardAutomationCondition;
-  kind: BoardFilterFieldKind;
+  kind: AutomationConditionKind;
   onApply: (next: Pick<BoardAutomationCondition, "value" | "values">) => void;
 }) {
   const column = context.columns.find((entry) => entry.id === condition.column_id);
   const [from, setFrom] = useState(condition.values[0] ?? "");
   const [to, setTo] = useState(condition.values[1] ?? "");
+
+  if (kind === "dependency") return <DoneLabelsEditor context={context} condition={condition} onApply={onApply} />;
 
   if (kind === "option" || kind === "people" || kind === "group") {
     const entries: PickerEntry<string>[] =
@@ -529,18 +566,22 @@ export function ConditionValueEditor({ context, condition, kind, onApply }: {
     );
   }
 
+  const is_number = kind === "number" || kind === "timer" || (kind === "formula" && ["greater_than", "greater_or_equal", "less_than", "less_or_equal"].includes(condition.condition));
+  const label = kind === "timer" ? "Hours" : kind === "files" ? "Part of the file name" : kind === "linked" ? "Part of the linked item name" : "Value";
   return (
     <SingleInput
-      type={kind === "number" ? "number" : "text"}
+      type={is_number ? "number" : "text"}
       initial={condition.value}
       onApply={(value) => onApply({ value, values: [] })}
-      placeholder={kind === "number" ? "0" : "Type a value"}
-      label="Value"
+      placeholder={is_number ? "0" : kind === "files" ? ".pdf" : "Type a value"}
+      label={label}
     />
   );
 }
 
 /** The operator a condition starts with once its field is picked. */
-export const defaultConditionOperator = (kind: BoardFilterFieldKind): BoardFilterOperator => getDefaultOperator(kind);
+export const defaultConditionOperator = (kind: AutomationConditionKind): string => defaultOperatorFor(kind);
 
-export const conditionNeedsValue = (operator: string): boolean => operator !== "" && !isValuelessOperator(operator as BoardFilterOperator);
+/** Whether a condition's operator asks for a value token. A "subitems" condition asks for its subitem rule instead. */
+export const conditionNeedsValue = (operator: string, kind?: AutomationConditionKind | null): boolean =>
+  operator !== "" && kind !== "subitems" && !AUTOMATION_VALUELESS_OPERATORS.includes(operator);
