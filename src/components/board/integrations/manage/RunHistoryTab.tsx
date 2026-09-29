@@ -10,6 +10,8 @@ export type RunHistoryTabProps = {
   board_id: number;
   view_id: number | null;
   automations: BoardAutomationDto[];
+  /** Opens the history already narrowed to one automation, the card menu's "Run history". */
+  initial_automation_id?: number | null;
   onAddAutomation: () => void;
 };
 
@@ -22,9 +24,9 @@ const CELL = "px-4 py-3 align-top text-[12.5px] text-boardtree-text-secondary";
  * Manage > Run history. Every time one of this table's automations ran, newest first, with what
  * came of it. Filter by result, automation and date, and page through the rest.
  */
-export default function RunHistoryTab({ board_id, view_id, automations, onAddAutomation }: RunHistoryTabProps) {
-  const [filters, setFilters] = useState<BoardAutomationRunFilters>(NO_FILTERS);
-  const [is_filter_bar_open, setIsFilterBarOpen] = useState(false);
+export default function RunHistoryTab({ board_id, view_id, automations, initial_automation_id = null, onAddAutomation }: RunHistoryTabProps) {
+  const [filters, setFilters] = useState<BoardAutomationRunFilters>({ ...NO_FILTERS, automation_id: initial_automation_id });
+  const [is_filter_bar_open, setIsFilterBarOpen] = useState(initial_automation_id !== null);
   const [page, setPage] = useState(1);
   const { runs, meta, is_loading, error, refresh } = useAutomationRuns(board_id, view_id, filters, page);
 

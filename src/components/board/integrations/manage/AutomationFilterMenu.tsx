@@ -1,19 +1,24 @@
 "use client";
 import React, { useState } from "react";
+import type { BoardAutomationImportance } from "@/types/board-automation";
 import { FilterIcon } from "@/icons/workspace-icons";
 import { useOutsideClick } from "../../table/useOutsideClick";
 import { Radio } from "../../automations/automationFormParts";
+import { IMPORTANCE_LABELS } from "../../automations/builder/automationCatalog";
+import { ImportanceIcon } from "../../automations/builder/ImportanceIcon";
 import { AUTOMATION_KIND_LABELS, type AutomationKind } from "./manageFormat";
 import { MENU_PANEL, TOOLBAR_BUTTON } from "./manageUi";
 
 export type StatusFilter = "all" | "enabled" | "disabled";
 export type KindFilter = "all" | AutomationKind;
+export type ImportanceFilter = "all" | BoardAutomationImportance;
 
-export type AutomationFilters = { status: StatusFilter; kind: KindFilter };
+export type AutomationFilters = { status: StatusFilter; kind: KindFilter; importance: ImportanceFilter };
 
-export const NO_FILTERS: AutomationFilters = { status: "all", kind: "all" };
+export const NO_FILTERS: AutomationFilters = { status: "all", kind: "all", importance: "all" };
 
-export const countActiveFilters = (filters: AutomationFilters): number => Number(filters.status !== "all") + Number(filters.kind !== "all");
+export const countActiveFilters = (filters: AutomationFilters): number =>
+  Number(filters.status !== "all") + Number(filters.kind !== "all") + Number(filters.importance !== "all");
 
 const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -28,10 +33,15 @@ const KIND_OPTIONS: { id: KindFilter; label: string }[] = [
   { id: "board", label: AUTOMATION_KIND_LABELS.board },
 ];
 
+const IMPORTANCE_OPTIONS: { id: ImportanceFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  ...(Object.keys(IMPORTANCE_LABELS) as BoardAutomationImportance[]).map((level) => ({ id: level, label: IMPORTANCE_LABELS[level] })),
+];
+
 const GROUP_LABEL = "px-3 pb-1 pt-2 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint";
 const OPTION = "flex h-8 w-full items-center gap-2.5 px-3 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 
-/** The Filter button of the Automations tab, a small popover with the status and type filters. */
+/** The Filter button of the Automations tab, a small popover with the status, type and importance filters. */
 export default function AutomationFilterMenu({ filters, onChange }: { filters: AutomationFilters; onChange: (filters: AutomationFilters) => void }) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLDivElement>(is_open, () => setIsOpen(false));
@@ -46,11 +56,19 @@ export default function AutomationFilterMenu({ filters, onChange }: { filters: A
       </button>
 
       {is_open && (
-        <div role="dialog" aria-label="Filter automations" className={`${MENU_PANEL} left-0 w-[210px]`}>
+        <div role="dialog" aria-label="Filter automations" className={`${MENU_PANEL} left-0 w-[220px]`}>
           <div className={GROUP_LABEL}>Status</div>
           {STATUS_OPTIONS.map((option) => (
             <button key={option.id} type="button" onClick={() => onChange({ ...filters, status: option.id })} className={OPTION}>
               <Radio checked={filters.status === option.id} />
+              {option.label}
+            </button>
+          ))}
+          <div className={GROUP_LABEL}>Importance</div>
+          {IMPORTANCE_OPTIONS.map((option) => (
+            <button key={option.id} type="button" onClick={() => onChange({ ...filters, importance: option.id })} className={OPTION}>
+              <Radio checked={filters.importance === option.id} />
+              {option.id !== "all" && <ImportanceIcon importance={option.id} />}
               {option.label}
             </button>
           ))}

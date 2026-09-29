@@ -3,6 +3,7 @@ import type {
   BoardAutomationDto,
   BoardAutomationRunFilters,
   BoardAutomationRunsPage,
+  BoardAutomationTemplateDto,
   BoardAutomationUsageDto,
   CreateBoardAutomationPayload,
   UpdateBoardAutomationPayload,
@@ -61,6 +62,23 @@ export const boardAutomationService = {
   async getUsage(board_id: number, view_id: number | null): Promise<BoardAutomationUsageDto> {
     const response = await apiClient.get<{ data: BoardAutomationUsageDto }>(`/api/boards/${board_id}/automations/usage${buildQuery({ view_id })}`);
     return response.data;
+  },
+
+  /** GET /api/boards/{board_id}/automations/templates, the board's saved templates, newest first. */
+  async getTemplates(board_id: number): Promise<BoardAutomationTemplateDto[]> {
+    const response = await apiClient.get<{ data: BoardAutomationTemplateDto[] }>(`/api/boards/${board_id}/automations/templates`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/{automation_id}/template, "Save as template" on an automation card. */
+  async saveAsTemplate(board_id: number, automation_id: number, payload: { name?: string | null; description?: string | null }): Promise<BoardAutomationTemplateDto> {
+    const response = await apiClient.post<{ template: BoardAutomationTemplateDto }>(`/api/boards/${board_id}/automations/${automation_id}/template`, payload);
+    return response.template;
+  },
+
+  /** DELETE /api/boards/{board_id}/automations/templates/{template_id} */
+  async deleteTemplate(board_id: number, template_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/automations/templates/${template_id}`);
   },
 
   /** DELETE /api/boards/{board_id}/automations/{automation_id} */

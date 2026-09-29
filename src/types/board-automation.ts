@@ -11,31 +11,103 @@ export type BoardAutomationTriggerType =
   | "subitem_created"
   | "person_assigned"
   | "column_changed"
-  | "update_posted";
+  | "update_posted"
+  | "item_moved_to_group"
+  | "item_archived"
+  | "item_deleted"
+  | "recurring";
+
 export type BoardAutomationActionType =
   | "move_to_group"
+  | "move_to_board"
   | "notify_person"
-  | "archive_item"
-  | "set_column_value"
-  | "create_item"
   | "send_email"
   | "slack_notify_channel"
-  | "slack_notify_person";
+  | "slack_notify_person"
+  | "archive_item"
+  | "delete_item"
+  | "duplicate_item"
+  | "set_column_value"
+  | "clear_column"
+  | "assign_person"
+  | "unassign_people"
+  | "set_date"
+  | "adjust_number"
+  | "create_item"
+  | "create_subitem"
+  | "post_update";
+
+export type BoardAutomationImportance = "minor" | "major" | "critical";
+
+/** How often a `recurring` automation runs. */
+export type BoardAutomationScheduleFrequency = "daily" | "weekly" | "monthly";
+
+export type BoardAutomationSchedule = {
+  frequency: BoardAutomationScheduleFrequency;
+  /** ISO weekdays, 1 Monday to 7 Sunday, for a weekly schedule. */
+  weekdays?: number[];
+  /** 1 to 31 for a monthly schedule, shorter months run on their last day. */
+  day_of_month?: number | null;
+  /** `HH:MM` in `timezone`. */
+  time?: string | null;
+  timezone?: string | null;
+};
+
+/** What a trigger needs beyond its column and value. */
+export type BoardAutomationTriggerConfig = {
+  /** `status_changed` only: the option it must change from. */
+  from_value?: string | null;
+  /** `date_arrived` only: days relative to the date, negative before it, positive after it. */
+  offset_days?: number | null;
+  /** `date_arrived` only: `HH:MM`, when the date trigger fires on its day. */
+  time?: string | null;
+  timezone?: string | null;
+  /** `item_moved_to_group` only: the one group it watches, null for any group. */
+  group_id?: number | null;
+  /** `recurring` only. */
+  schedule?: BoardAutomationSchedule | null;
+};
+
+/** One "and only if" rule, the same shape as the toolbar's Advanced filter rules. */
+export type BoardAutomationCondition = {
+  column_id: string;
+  condition: string;
+  value: string;
+  values: string[];
+};
 
 export type BoardAutomationActionParams = {
-  /** `move_to_group`/`create_item` only. */
+  /** `move_to_group`/`move_to_board`/`create_item`. */
   target_group_id?: number;
-  /** `notify_person` only, a fixed recipient. */
+  /** `move_to_board`, and `create_item` on another board. */
+  target_board_id?: number | null;
+  /** Notify and communication actions: a fixed recipient. */
   notify_user_id?: number;
-  /** `notify_person` only, resolved to whoever a people column currently holds on the triggering item. */
+  /** Notify and communication actions: whoever a people column currently holds on the item. */
   notify_from_people_column_id?: number;
-  /** `set_column_value` only: which column to write. */
+  /** Column actions: which column to write. */
   target_column_id?: number;
   /** `set_column_value` only: the value to write into `target_column_id`. */
   value?: unknown;
-  /** `create_item` only: the new item's name, defaulting to "New item". */
+  /** `create_item` only: the new item's name, tokens such as `{item_name}` are filled in. */
   item_name?: string;
-  /** Communication actions: the message template, with tokens such as `{item_name}`. Blank uses the default sentence for the trigger. */
+  /** `create_item` only: copy the item's values onto matching columns. */
+  copy_values?: boolean;
+  /** `create_subitem` only: one subitem per name. */
+  subitem_names?: string[];
+  /** `duplicate_item` only. */
+  with_subitems?: boolean;
+  /** `assign_person` only: a specific person, the item creator, or whoever triggered it. */
+  assign_mode?: "user" | "creator" | "actor";
+  /** `assign_person`/`unassign_people`: the person, null on unassign to remove everyone. */
+  user_id?: number | null;
+  /** `assign_person` only: replace the assignees instead of adding. */
+  replace?: boolean;
+  /** `set_date` only: today plus this many days. */
+  offset_days?: number;
+  /** `adjust_number` only: added to the number, negative to subtract. */
+  amount?: number;
+  /** Notify, communication and `post_update`: the message template, with tokens such as `{item_name}`. */
   message?: string | null;
   /** `send_email` only: the email subject, `{item_name}` and `{board_name}` are filled in. */
   subject?: string | null;
@@ -45,39 +117,85 @@ export type BoardAutomationActionParams = {
   slack_channel_name?: string | null;
 };
 
+export type BoardAutomationAction = {
+  type: BoardAutomationActionType;
+  params: BoardAutomationActionParams;
+};
+
+export type BoardAutomationPersonRef = { id: number; name: string };
+
 export type BoardAutomationDto = {
   id: number;
   board_id: number;
   board_view_id: number;
   name: string | null;
+  description: string | null;
   is_enabled: boolean;
+  importance: BoardAutomationImportance;
   trigger_type: BoardAutomationTriggerType;
-  /** Null for `item_created`/`subitem_created`/`update_posted`, which watch no column. */
+  /** Null for triggers that watch no column. */
   trigger_column_id: number | null;
-  /** The matched status/label option id (`status_changed`) or a specific person id to watch for (`person_assigned`, null meaning "anyone"). Null for every other trigger. */
-  trigger_value: string | null;
+  /** The matched option id (`status_changed`, null for any), a person id (`person_assigned`, null for anyone) or a value (`column_changed`, null for any change). */
+  trigger_value: unknown;
+  trigger_config: BoardAutomationTriggerConfig;
+  conditions: BoardAutomationCondition[];
+  /** Mirrors `actions[0]`, kept for the run history and older code paths. */
   action_type: BoardAutomationActionType;
   action_params: BoardAutomationActionParams;
+  actions: BoardAutomationAction[];
   created_at: string | null;
+  updated_at: string | null;
   /** How many times this automation has run, all outcomes counted. */
   run_count: number;
   /** ISO timestamp of the latest run, null until it has run once. */
   last_run_at: string | null;
-  created_by: { id: number; name: string } | null;
+  created_by: BoardAutomationPersonRef | null;
+  /** Who answers for the automation, the creator until ownership is transferred. */
+  owner?: BoardAutomationPersonRef | null;
+};
+
+/** Everything the sentence builder saves: the trigger, the conditions and the actions. */
+export type BoardAutomationDefinition = {
+  trigger_type: BoardAutomationTriggerType;
+  trigger_column_id: number | null;
+  trigger_value: unknown;
+  trigger_config: BoardAutomationTriggerConfig | null;
+  conditions: BoardAutomationCondition[];
+  actions: BoardAutomationAction[];
 };
 
 export type CreateBoardAutomationPayload = {
   view_id: number;
   name?: string | null;
+  description?: string | null;
   is_enabled?: boolean;
+  importance?: BoardAutomationImportance;
   trigger_type: BoardAutomationTriggerType;
   trigger_column_id?: number | null;
-  trigger_value?: string | null;
-  action_type: BoardAutomationActionType;
-  action_params: BoardAutomationActionParams;
+  trigger_value?: unknown;
+  trigger_config?: BoardAutomationTriggerConfig | null;
+  conditions?: BoardAutomationCondition[];
+  /** The ordered actions. Older callers may send a single `action_type` + `action_params` instead. */
+  actions?: BoardAutomationAction[];
+  action_type?: BoardAutomationActionType;
+  action_params?: BoardAutomationActionParams;
 };
 
-export type UpdateBoardAutomationPayload = Partial<Omit<CreateBoardAutomationPayload, "view_id" | "trigger_type" | "trigger_column_id">>;
+export type UpdateBoardAutomationPayload = Partial<Omit<CreateBoardAutomationPayload, "view_id">> & {
+  /** "Transfer ownership". */
+  owner_id?: number;
+};
+
+/** An automation saved with "Save as template", listed in the Create tab. */
+export type BoardAutomationTemplateDto = {
+  id: number;
+  board_id: number;
+  name: string;
+  description: string | null;
+  definition: BoardAutomationDefinition;
+  created_at: string | null;
+  created_by?: BoardAutomationPersonRef | null;
+};
 
 /** How one run of an automation ended: it did its job, had nothing to do, or could not be delivered. */
 export type BoardAutomationRunStatus = "success" | "skipped" | "failed";

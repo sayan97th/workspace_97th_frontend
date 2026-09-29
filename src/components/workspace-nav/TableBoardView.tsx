@@ -115,7 +115,8 @@ import { useBoardFilterUrlState } from "@/hooks/useBoardFilterUrlState";
 import { buildPageTitle } from "@/lib/page-title";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
-import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import type { AutomationColumn } from "../board/automations/builder/automationCatalog";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
@@ -800,6 +801,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
   const [automations, setAutomations] = useState<BoardAutomationDto[]>([]);
   const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
+  // Set when another dialog asks the Automations center to open one automation in the builder.
+  const [automation_edit_id, setAutomationEditId] = useState<number | null>(null);
   // ── Integrations ("Integrate" header button) — connects Email and Slack. Slack's OAuth round
   // trip leaves the app, so the API sends the browser back to `integrations_return_path`, and the
   // `integrate` param reopens the dialog on arrival (see the effect below). ──
@@ -1245,9 +1248,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
   };
 
-  const handleRenameAutomation = async (automation_id: number, name: string | null) => {
-    const updated = await boardAutomationService.updateAutomation(board_id, automation_id, { name });
+  const handleUpdateAutomation = async (automation_id: number, payload: UpdateBoardAutomationPayload) => {
+    const updated = await boardAutomationService.updateAutomation(board_id, automation_id, payload);
     setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
+  };
+
+  const handleSaveAutomationTemplate = async (automation_id: number, name: string) => {
+    await boardAutomationService.saveAsTemplate(board_id, automation_id, { name });
+  };
+
+  const openAutomationCenter = (edit_automation_id?: number) => {
+    setAutomationEditId(edit_automation_id ?? null);
+    setIsAutomationsModalOpen(true);
+    // Runs happen in the background (other people's changes, scheduled triggers), so the run counts are read again.
+    boardAutomationService
+      .getAutomations(board_id, view_tabs.active_view_id)
+      .then(setAutomations)
+      .catch(() => {});
   };
 
   const handleDuplicateAutomation = async (automation_id: number) => {
@@ -2443,6 +2460,30 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   );
   // Bulk edit and automations only ever assign people, so they never see the deactivated ones.
   const assignable_table_people = useMemo(() => table_people.filter((person) => !person.is_deactivated), [table_people]);
+
+  // Automations read every column of the tab, hidden ones and subitem ones included, since hiding a
+  // column never turns off the automations that use it. Tags columns take the board wide tag list.
+  const automation_columns = useMemo<AutomationColumn[]>(() => {
+    const tag_options = tags.map((tag) => ({ id: String(tag.id), label: tag.label, color: tag.color }));
+    return columns.flatMap((column): AutomationColumn[] => {
+      const def = toTableColumnDef(column);
+      if (!def) return [];
+      return [{ ...def, options: column.type === "tags" ? tag_options : def.options, scope: column.scope === "subitem" ? "subitem" : "item" }];
+    });
+  }, [columns, tags]);
+
+  const automation_context = useMemo(
+    () => ({
+      board_id,
+      columns: automation_columns,
+      groups: selection_move_targets,
+      people: assignable_table_people,
+      board_targets: [],
+      slack_channels: [],
+      is_slack_connected: false,
+    }),
+    [board_id, automation_columns, selection_move_targets, assignable_table_people]
+  );
 
   // Hide/Pin columns come from the board toolbar (`toolbar.hidden_column_ids`/
   // `pinned_column_ids`) — hidden columns are dropped and pinned ones moved
@@ -3653,7 +3694,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         board_updates_count: discussion_drawer.comment_count,
         board_updates_unseen: discussion_drawer.has_unseen_comments,
         onIntegrateClick: () => setIsIntegrationsModalOpen(true),
-        onAutomateClick: active_view_type === "table" ? () => setIsAutomationsModalOpen(true) : undefined,
+        onAutomateClick: active_view_type === "table" ? () => openAutomationCenter() : undefined,
         automation_count: automations.filter((a) => a.is_enabled).length,
         options_menu: {
           board_id,
@@ -4049,16 +4090,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                 view_id: view_tabs.active_view_id,
                 automations,
                 columns: table_base_columns,
-                groups: selection_move_targets,
                 people: assignable_table_people,
+                context: automation_context,
                 onCreate: handleCreateAutomation,
                 onToggle: handleToggleAutomation,
-                onRename: handleRenameAutomation,
+                onUpdate: handleUpdateAutomation,
                 onDuplicate: handleDuplicateAutomation,
                 onDelete: handleDeleteAutomation,
-                onOpenBoardAutomations: () => {
+                onSaveAsTemplate: handleSaveAutomationTemplate,
+                onOpenBoardAutomations: (edit_automation_id?: number) => {
                   handleCloseIntegrations();
-                  setIsAutomationsModalOpen(true);
+                  openAutomationCenter(edit_automation_id);
                 },
               }
             : undefined
@@ -4067,14 +4109,29 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
       <AutomationsModal
         is_open={is_automations_modal_open}
-        onClose={() => setIsAutomationsModalOpen(false)}
+        onClose={() => {
+          setIsAutomationsModalOpen(false);
+          setAutomationEditId(null);
+        }}
+        board_id={board_id}
+        view_id={view_tabs.active_view_id}
+        board_label={board_label}
+        return_path={integrations_return_path}
         automations={automations}
-        columns={table_base_columns}
+        columns={automation_columns}
         groups={selection_move_targets}
         people={assignable_table_people}
+        edit_automation_id={automation_edit_id}
         onCreate={handleCreateAutomation}
+        onUpdate={handleUpdateAutomation}
         onToggle={handleToggleAutomation}
+        onDuplicate={handleDuplicateAutomation}
         onDelete={handleDeleteAutomation}
+        onOpenCommunicationTemplates={() => {
+          setIsAutomationsModalOpen(false);
+          setAutomationEditId(null);
+          setIsIntegrationsModalOpen(true);
+        }}
       />
       <ColumnPermissionsModal
         is_open={permissions_column_id !== null}

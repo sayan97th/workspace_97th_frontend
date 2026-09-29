@@ -2,11 +2,11 @@
 import React, { useState } from "react";
 import SlackLogo from "@/components/slack/SlackLogo";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
-import type { BoardAutomationDto, CreateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutomationPayload } from "@/types/board-automation";
 import { AutomateIcon } from "@/icons/board-icons";
 import { ChatBubbleIcon, LinkIcon } from "@/icons/workspace-icons";
 import type { ColumnDef, PersonDef } from "../table/types";
-import type { NamedOption } from "../automations/automationDescriptions";
+import type { AutomationBuilderContext } from "../automations/builder/automationCatalog";
 import CommunicationView, { type ChannelFilter } from "./CommunicationView";
 import ConnectionsView from "./ConnectionsView";
 import { EnvelopeIcon } from "./integrationUi";
@@ -18,18 +18,22 @@ export type IntegrationsAutomationTools = {
   /** The active tab, null while it is still loading. Automations and their history are scoped to it. */
   view_id: number | null;
   automations: BoardAutomationDto[];
-  /** This tab's item-scope columns, for the trigger and recipient pickers. */
+  /** This tab's item-scope columns, for the email and Slack template pickers. */
   columns: ColumnDef[];
-  /** This tab's tables, so board actions in the Manage list can name where they move items. */
-  groups: NamedOption[];
   people: PersonDef[];
+  /** What the Manage list needs to describe every automation: all columns, groups, people and boards. */
+  context: AutomationBuilderContext;
   onCreate: (payload: Omit<CreateBoardAutomationPayload, "view_id">) => Promise<void>;
   onToggle: (automation_id: number, is_enabled: boolean) => Promise<void>;
-  onRename: (automation_id: number, name: string | null) => Promise<void>;
+  onUpdate: (automation_id: number, payload: UpdateBoardAutomationPayload) => Promise<void>;
   onDuplicate: (automation_id: number) => Promise<void>;
   onDelete: (automation_id: number) => Promise<void>;
-  /** Closes this dialog and opens the Automate dialog, where the board actions are built. */
-  onOpenBoardAutomations?: () => void;
+  onSaveAsTemplate: (automation_id: number, name: string) => Promise<void>;
+  /**
+   * Closes this dialog and opens the Automations center, where board automations are built.
+   * With an automation id it opens that automation in the sentence builder.
+   */
+  onOpenBoardAutomations: (edit_automation_id?: number) => void;
 };
 
 export type IntegrationsModalProps = {
@@ -190,19 +194,20 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
               slack={slack}
               return_path={return_path}
               automations={automation_tools.automations}
-              columns={automation_tools.columns}
-              groups={automation_tools.groups}
-              people={automation_tools.people}
+              context={automation_tools.context}
               onToggle={automation_tools.onToggle}
-              onRename={automation_tools.onRename}
+              onUpdate={automation_tools.onUpdate}
               onDuplicate={automation_tools.onDuplicate}
               onDelete={automation_tools.onDelete}
-              onExploreTemplates={() => browseTemplates("all")}
+              onEdit={(automation) => automation_tools.onOpenBoardAutomations(automation.id)}
+              onSaveAsTemplate={automation_tools.onSaveAsTemplate}
+              onExploreTemplates={() => automation_tools.onOpenBoardAutomations()}
+              onCreateCustom={() => automation_tools.onOpenBoardAutomations()}
+              onExploreCommunication={() => browseTemplates("all")}
               onOpenConnections={() => {
                 setView("connections");
                 setMode("create");
               }}
-              onOpenBoardAutomations={automation_tools.onOpenBoardAutomations}
             />
           )}
         </div>

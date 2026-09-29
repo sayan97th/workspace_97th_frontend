@@ -1,20 +1,36 @@
 "use client";
 import React, { useState } from "react";
-import type { BoardAutomationDto } from "@/types/board-automation";
-import { DeleteIcon, DuplicateIcon, MoreDotsIcon, RenameIcon } from "@/icons/workspace-icons";
+import { BookmarkPlus, ChartLine, Code2, Copy, PenLine, Trash2, UserRoundCog } from "lucide-react";
+import type { BoardAutomationDto, BoardAutomationImportance } from "@/types/board-automation";
+import { MoreDotsIcon, RenameIcon } from "@/icons/workspace-icons";
 import { useOutsideClick } from "../../table/useOutsideClick";
 import { ToggleSwitch, TEXT_FIELD } from "../../automations/automationFormParts";
 import { ChannelBadge } from "../../automations/CommunicationTemplateCard";
-import { AUTOMATION_KIND_LABELS, ACTION_LABELS, automationKind, formatDateTime, formatRelativeTime } from "./manageFormat";
+import { IMPORTANCE_LABELS, type AutomationBuilderContext } from "../../automations/builder/automationCatalog";
+import type { SentencePart } from "../../automations/builder/automationSentence";
+import { ImportanceIcon } from "../../automations/builder/ImportanceIcon";
+import { MiniAvatar } from "../../automations/builder/builderUi";
+import { ACTION_LABELS, automationKind, formatDateTime, formatRelativeTime } from "./manageFormat";
 import { ICON_BUTTON, MENU_ITEM, MENU_PANEL } from "./manageUi";
 
 /** Everything a card or a row can do to one automation, wired up once by the tab. */
 export type AutomationItemActions = {
   onToggle: (automation: BoardAutomationDto) => void;
+  onEdit: (automation: BoardAutomationDto) => void;
   onStartRename: (automation_id: number) => void;
   onSubmitRename: (automation: BoardAutomationDto, name: string) => void;
   onCancelRename: () => void;
   onDuplicate: (automation: BoardAutomationDto) => void;
+  onSaveAsTemplate: (automation: BoardAutomationDto) => void;
+  onShowRuns: (automation: BoardAutomationDto) => void;
+  onCopyId: (automation: BoardAutomationDto) => void;
+  onChangeImportance: (automation: BoardAutomationDto, importance: BoardAutomationImportance) => void;
+  onStartDescription: (automation_id: number) => void;
+  onSubmitDescription: (automation: BoardAutomationDto, description: string) => void;
+  onCancelDescription: () => void;
+  onStartTransfer: (automation_id: number) => void;
+  onTransfer: (automation: BoardAutomationDto, user_id: number) => void;
+  onCancelTransfer: () => void;
   onRequestDelete: (automation_id: number) => void;
   onConfirmDelete: (automation: BoardAutomationDto) => void;
   onCancelDelete: () => void;
@@ -22,17 +38,21 @@ export type AutomationItemActions = {
 
 export type AutomationItemProps = {
   automation: BoardAutomationDto;
-  /** The plain English sentence describing the trigger and the action. */
-  sentence: string;
+  /** The sentence describing the trigger, conditions and actions, tokens marked for bold. */
+  sentence: SentencePart[];
+  context: AutomationBuilderContext;
   actions: AutomationItemActions;
   is_busy: boolean;
   is_editing: boolean;
+  is_editing_description: boolean;
+  is_transferring: boolean;
   is_confirming_delete: boolean;
 };
 
 const NAME_MAX_LENGTH = 255;
+const DESCRIPTION_MAX_LENGTH = 1000;
 
-/** The three dots menu of one automation: rename, duplicate, delete. */
+/** The three dots menu of one automation, the same entries as monday's. */
 function AutomationMenu({ automation, actions, is_busy }: { automation: BoardAutomationDto; actions: AutomationItemActions; is_busy: boolean }) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLDivElement>(is_open, () => setIsOpen(false));
@@ -42,61 +62,178 @@ function AutomationMenu({ automation, actions, is_busy }: { automation: BoardAut
     action();
   };
 
+  const entries: { label: string; icon: React.ReactNode; onPick: () => void; is_danger?: boolean; has_divider?: boolean }[] = [
+    { label: "Edit", icon: <PenLine size={14} />, onPick: () => actions.onEdit(automation) },
+    { label: "Rename", icon: <RenameIcon size={14} />, onPick: () => actions.onStartRename(automation.id) },
+    { label: "Duplicate", icon: <Copy size={14} />, onPick: () => actions.onDuplicate(automation) },
+    { label: "Save as template", icon: <BookmarkPlus size={14} />, onPick: () => actions.onSaveAsTemplate(automation) },
+    { label: "Run history", icon: <ChartLine size={14} />, onPick: () => actions.onShowRuns(automation) },
+    { label: "Delete", icon: <Trash2 size={14} />, onPick: () => actions.onRequestDelete(automation.id), is_danger: true },
+    { label: "Transfer ownership", icon: <UserRoundCog size={14} />, onPick: () => actions.onStartTransfer(automation.id) },
+    { label: "Copy automation ID", icon: <Code2 size={14} />, onPick: () => actions.onCopyId(automation), has_divider: true },
+  ];
+
   return (
     <div ref={ref} className="relative flex-none">
       <button type="button" disabled={is_busy} onClick={() => setIsOpen((open) => !open)} aria-label="Automation actions" aria-haspopup="menu" aria-expanded={is_open} className={`${ICON_BUTTON} !h-8 !w-8`}>
         <MoreDotsIcon size={15} />
       </button>
       {is_open && (
-        <div role="menu" className={`${MENU_PANEL} right-0 w-[170px]`}>
-          <button type="button" role="menuitem" onClick={() => pick(() => actions.onStartRename(automation.id))} className={MENU_ITEM}>
-            <RenameIcon size={14} />
-            Rename
-          </button>
-          <button type="button" role="menuitem" onClick={() => pick(() => actions.onDuplicate(automation))} className={MENU_ITEM}>
-            <DuplicateIcon size={14} />
-            Duplicate
-          </button>
-          <button type="button" role="menuitem" onClick={() => pick(() => actions.onRequestDelete(automation.id))} className={`${MENU_ITEM} text-boardtree-danger`}>
-            <DeleteIcon size={14} />
-            Delete
-          </button>
+        <div role="menu" className={`${MENU_PANEL} right-0 w-[200px]`}>
+          {entries.map((entry) => (
+            <React.Fragment key={entry.label}>
+              {entry.has_divider && <div className="my-1 border-t border-boardtree-border-soft" />}
+              <button type="button" role="menuitem" onClick={() => pick(entry.onPick)} className={`${MENU_ITEM} ${entry.is_danger ? "text-boardtree-danger" : ""}`}>
+                {entry.icon}
+                {entry.label}
+              </button>
+            </React.Fragment>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-/** The rename field, mounted only while editing so its draft always starts from the current name. */
-function RenameField({ automation, actions }: { automation: BoardAutomationDto; actions: AutomationItemActions }) {
-  const [draft, setDraft] = useState(automation.name ?? "");
+/** Minor, Major or Critical, changed straight from the card like monday's importance dropdown. */
+function ImportanceMenu({ automation, actions, is_busy }: { automation: BoardAutomationDto; actions: AutomationItemActions; is_busy: boolean }) {
+  const [is_open, setIsOpen] = useState(false);
+  const ref = useOutsideClick<HTMLDivElement>(is_open, () => setIsOpen(false));
+  const importance = automation.importance ?? "minor";
 
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        disabled={is_busy}
+        onClick={() => setIsOpen((open) => !open)}
+        aria-haspopup="listbox"
+        aria-expanded={is_open}
+        aria-label={`Importance: ${IMPORTANCE_LABELS[importance]}`}
+        className={`flex h-7 items-center gap-1.5 rounded-[4px] px-2 text-[12.5px] text-boardtree-text-secondary hover:bg-boardtree-hover ${is_open ? "bg-boardtree-accent-surface" : ""}`}
+      >
+        <ImportanceIcon importance={importance} />
+        {IMPORTANCE_LABELS[importance]}
+      </button>
+      {is_open && (
+        <div role="listbox" aria-label="Importance" className={`${MENU_PANEL} left-0 w-[170px] p-1`}>
+          {(Object.keys(IMPORTANCE_LABELS) as BoardAutomationImportance[]).map((level) => (
+            <button
+              key={level}
+              type="button"
+              role="option"
+              aria-selected={importance === level}
+              onClick={() => {
+                setIsOpen(false);
+                if (level !== importance) actions.onChangeImportance(automation, level);
+              }}
+              className={`flex h-8 w-full items-center gap-2.5 rounded-[5px] px-2.5 text-left text-[13px] ${importance === level ? "bg-boardtree-accent-surface text-boardtree-text" : "text-boardtree-text hover:bg-boardtree-hover"}`}
+            >
+              <ImportanceIcon importance={level} />
+              {IMPORTANCE_LABELS[level]}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A single line field mounted only while editing, so its draft always starts from the saved text. */
+function InlineField({ initial, placeholder, label, max_length, onSubmit, onCancel }: { initial: string; placeholder: string; label: string; max_length: number; onSubmit: (value: string) => void; onCancel: () => void }) {
+  const [draft, setDraft] = useState(initial);
   return (
     <input
       autoFocus
       value={draft}
-      maxLength={NAME_MAX_LENGTH}
-      placeholder="Name this automation"
-      aria-label="Automation name"
+      maxLength={max_length}
+      placeholder={placeholder}
+      aria-label={label}
       onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => actions.onSubmitRename(automation, draft)}
+      onBlur={() => onSubmit(draft)}
       onKeyDown={(event) => {
-        if (event.key === "Enter") actions.onSubmitRename(automation, draft);
-        if (event.key === "Escape") actions.onCancelRename();
+        if (event.key === "Enter") onSubmit(draft);
+        if (event.key === "Escape") onCancel();
       }}
       className={`${TEXT_FIELD} h-8`}
     />
   );
 }
 
-/** The automation's own name when it has one, always followed by the sentence. Turns into a text field while renaming. */
-function AutomationTitle({ automation, sentence, actions, is_editing }: Pick<AutomationItemProps, "automation" | "sentence" | "actions" | "is_editing">) {
-  if (is_editing) return <RenameField automation={automation} actions={actions} />;
+/** The sentence with its tokens in bold, like "When **Status** changes to **Done** move item to **Completed**". */
+function Sentence({ parts, is_enabled }: { parts: SentencePart[]; is_enabled: boolean }) {
+  return (
+    <p className={`text-[16px] leading-snug ${is_enabled ? "text-boardtree-text" : "text-boardtree-text-faint"}`}>
+      {parts.map((part, index) => (part.is_token ? <strong key={index} className="font-semibold">{part.text}</strong> : <span key={index}>{part.text}</span>))}
+    </p>
+  );
+}
 
+function AutomationTitle({ automation, sentence, actions, is_editing }: Pick<AutomationItemProps, "automation" | "sentence" | "actions" | "is_editing">) {
+  if (is_editing) {
+    return <InlineField initial={automation.name ?? ""} placeholder="Name this automation" label="Automation name" max_length={NAME_MAX_LENGTH} onSubmit={(name) => actions.onSubmitRename(automation, name)} onCancel={actions.onCancelRename} />;
+  }
   return (
     <div className="min-w-0">
-      {automation.name && <div className="truncate text-[13.5px] font-semibold text-boardtree-text">{automation.name}</div>}
-      <div className={`text-[13px] leading-snug ${automation.name ? "text-boardtree-text-muted" : "text-boardtree-text"}`}>{sentence}</div>
+      {automation.name && <div className="mb-0.5 truncate text-[12.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">{automation.name}</div>}
+      <Sentence parts={sentence} is_enabled={automation.is_enabled} />
+    </div>
+  );
+}
+
+function OwnerMark({ automation, context }: { automation: BoardAutomationDto; context: AutomationBuilderContext }) {
+  const owner = automation.owner ?? automation.created_by;
+  if (!owner) return <span className="text-boardtree-text-faint">Unknown</span>;
+  const person = context.people.find((entry) => entry.id === String(owner.id));
+  return (
+    <span className="flex min-w-0 items-center gap-1.5" title={owner.name}>
+      {person ? <MiniAvatar initials={person.initials} color={person.color} /> : null}
+      <span className="truncate text-boardtree-text-secondary">{owner.name}</span>
+    </span>
+  );
+}
+
+function DescriptionField({ automation, actions, is_editing }: { automation: BoardAutomationDto; actions: AutomationItemActions; is_editing: boolean }) {
+  if (is_editing) {
+    return (
+      <span className="min-w-[220px] flex-1">
+        <InlineField
+          initial={automation.description ?? ""}
+          placeholder="What this automation is for"
+          label="Automation description"
+          max_length={DESCRIPTION_MAX_LENGTH}
+          onSubmit={(description) => actions.onSubmitDescription(automation, description)}
+          onCancel={actions.onCancelDescription}
+        />
+      </span>
+    );
+  }
+  return (
+    <button type="button" onClick={() => actions.onStartDescription(automation.id)} className="min-w-0 max-w-[340px] truncate rounded-[4px] px-1 text-left hover:bg-boardtree-hover" title={automation.description ?? "Add description"}>
+      {automation.description ? <span className="text-boardtree-text-secondary">{automation.description}</span> : <span className="text-boardtree-text-faint">Add description</span>}
+    </button>
+  );
+}
+
+function TransferPanel({ automation, context, actions, is_busy }: { automation: BoardAutomationDto; context: AutomationBuilderContext; actions: AutomationItemActions; is_busy: boolean }) {
+  const current_owner_id = String((automation.owner ?? automation.created_by)?.id ?? "");
+  const candidates = context.people.filter((person) => person.id !== current_owner_id);
+  const [user_id, setUserId] = useState(candidates[0]?.id ?? "");
+
+  return (
+    <div role="dialog" aria-label="Transfer ownership" className="flex flex-wrap items-center gap-2 rounded-[8px] border border-boardtree-border-soft bg-boardtree-panel-alt px-3 py-2">
+      <span className="text-[12.5px] text-boardtree-text-secondary">Transfer ownership to</span>
+      <select value={user_id} onChange={(event) => setUserId(event.target.value)} aria-label="New owner" className="h-8 min-w-[180px] rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 text-[12.5px] text-boardtree-text">
+        {candidates.map((person) => <option key={person.id} value={person.id}>{person.name}</option>)}
+      </select>
+      <div className="ml-auto flex gap-2">
+        <button type="button" disabled={is_busy || !user_id} onClick={() => actions.onTransfer(automation, Number(user_id))} className="h-7 rounded-[6px] bg-boardtree-accent px-3 text-[12px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40">
+          Transfer
+        </button>
+        <button type="button" onClick={actions.onCancelTransfer} className="h-7 rounded-[6px] border border-boardtree-border px-3 text-[12px] text-boardtree-text hover:bg-boardtree-hover">
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
@@ -117,62 +254,87 @@ function DeleteConfirm({ automation, actions, is_busy }: { automation: BoardAuto
   );
 }
 
-/** The email, Slack or board action mark, reusing the strip on the template cards. */
+/** The email or Slack mark of automations that reach people outside the app, nothing for board actions. */
 function KindMark({ automation }: { automation: BoardAutomationDto }) {
-  const kind = automationKind(automation.action_type);
-  if (kind === "board") return <span className="text-[12px] font-medium text-boardtree-text-faint">{AUTOMATION_KIND_LABELS.board}</span>;
-  return <ChannelBadge channel={kind === "email" ? "email" : automation.action_type === "slack_notify_channel" ? "slack_channel" : "slack_person"} />;
+  const kind = automationKind(automation);
+  if (kind === "board") return null;
+  const type = (automation.actions?.length ? automation.actions : [{ type: automation.action_type }]).find((action) => action.type === "send_email" || action.type.startsWith("slack_"))?.type;
+  return <ChannelBadge channel={type === "send_email" ? "email" : type === "slack_notify_channel" ? "slack_channel" : "slack_person"} />;
 }
 
-/** One automation as a card, the grid layout of the Manage tab. */
-export function AutomationCard({ automation, sentence, actions, is_busy, is_editing, is_confirming_delete }: AutomationItemProps) {
+const META_LABEL = "text-boardtree-text-faint";
+
+/** One automation as a wide card, monday's "Manage your board automations" layout. */
+export function AutomationCard(props: AutomationItemProps) {
+  const { automation, sentence, context, actions, is_busy, is_editing, is_editing_description, is_transferring, is_confirming_delete } = props;
   return (
-    <div className={`flex flex-col gap-3 rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface p-3.5 transition-shadow hover:shadow-[0_4px_14px_rgba(30,34,55,0.08)] ${automation.is_enabled ? "" : "opacity-80"}`}>
-      <div className="flex items-center justify-between gap-2">
-        <KindMark automation={automation} />
-        <AutomationMenu automation={automation} actions={actions} is_busy={is_busy} />
+    <div className="rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface px-5 py-4 transition-shadow hover:shadow-[0_4px_14px_rgba(30,34,55,0.08)]">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px]">
+            <ImportanceMenu automation={automation} actions={actions} is_busy={is_busy} />
+            <span className="flex items-center gap-1.5" title={formatDateTime(automation.updated_at)}>
+              <span className={META_LABEL}>Updated</span>
+              <span className="text-boardtree-text-secondary">{formatRelativeTime(automation.updated_at ?? automation.created_at)}</span>
+            </span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className={META_LABEL}>Owner</span>
+              <OwnerMark automation={automation} context={context} />
+            </span>
+            <span className="flex items-center gap-1.5" title={formatDateTime(automation.last_run_at)}>
+              <span className={META_LABEL}>Runs</span>
+              <span className="text-boardtree-text-secondary">{automation.run_count}</span>
+            </span>
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
+              <span className={META_LABEL}>Description</span>
+              <DescriptionField automation={automation} actions={actions} is_editing={is_editing_description} />
+            </span>
+            <KindMark automation={automation} />
+          </div>
+        </div>
+        <div className="flex flex-none items-center gap-2 pt-1">
+          <ToggleSwitch checked={automation.is_enabled} disabled={is_busy} onToggle={() => actions.onToggle(automation)} />
+          <AutomationMenu automation={automation} actions={actions} is_busy={is_busy} />
+        </div>
       </div>
-
-      <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
-
-      <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-[12px]">
-        <dt className="text-boardtree-text-faint">Created by</dt>
-        <dd className="truncate text-right text-boardtree-text-secondary">{automation.created_by?.name ?? "Unknown"}</dd>
-        <dt className="text-boardtree-text-faint">Runs</dt>
-        <dd className="text-right text-boardtree-text-secondary">{automation.run_count}</dd>
-        <dt className="text-boardtree-text-faint">Last run</dt>
-        <dd className="text-right text-boardtree-text-secondary" title={formatDateTime(automation.last_run_at)}>{formatRelativeTime(automation.last_run_at)}</dd>
-      </dl>
-
-      {is_confirming_delete && <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />}
-
-      <div className="mt-auto flex items-center gap-2 border-t border-boardtree-border-soft pt-3">
-        <ToggleSwitch checked={automation.is_enabled} disabled={is_busy} onToggle={() => actions.onToggle(automation)} />
-        <span className="text-[12px] text-boardtree-text-muted">{automation.is_enabled ? "Enabled" : "Disabled"}</span>
-      </div>
+      {(is_transferring || is_confirming_delete) && (
+        <div className="mt-3 flex flex-col gap-2">
+          {is_transferring && <TransferPanel automation={automation} context={context} actions={actions} is_busy={is_busy} />}
+          {is_confirming_delete && <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />}
+        </div>
+      )}
     </div>
   );
 }
 
 /** The columns of the list layout, shared by the header row and every automation row. */
-export const ROW_GRID = "grid grid-cols-[44px_minmax(0,1fr)_120px_140px_70px_120px_36px] items-center gap-3";
+export const ROW_GRID = "grid grid-cols-[44px_minmax(0,1fr)_110px_120px_140px_70px_120px_36px] items-center gap-3";
 
-/** One automation as a table row, the list layout of the Manage tab. */
-export function AutomationRow({ automation, sentence, actions, is_busy, is_editing, is_confirming_delete }: AutomationItemProps) {
+/** One automation as a table row, the compact list layout of the Manage tab. */
+export function AutomationRow(props: AutomationItemProps) {
+  const { automation, sentence, context, actions, is_busy, is_editing, is_transferring, is_confirming_delete } = props;
+  const first_action = automation.actions?.[0]?.type ?? automation.action_type;
+  const extra_actions = Math.max(0, (automation.actions?.length ?? 1) - 1);
   return (
-    <div className={`border-b border-boardtree-border-soft px-4 py-3 last:border-b-0 ${automation.is_enabled ? "" : "opacity-80"}`}>
+    <div className="border-b border-boardtree-border-soft px-4 py-3 last:border-b-0">
       <div className={ROW_GRID}>
         <ToggleSwitch checked={automation.is_enabled} disabled={is_busy} onToggle={() => actions.onToggle(automation)} />
         <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
-        <span className="truncate text-[12.5px] text-boardtree-text-secondary">{ACTION_LABELS[automation.action_type]}</span>
-        <span className="truncate text-[12.5px] text-boardtree-text-secondary">{automation.created_by?.name ?? "Unknown"}</span>
+        <ImportanceMenu automation={automation} actions={actions} is_busy={is_busy} />
+        <span className="truncate text-[12.5px] text-boardtree-text-secondary">
+          {ACTION_LABELS[first_action]}
+          {extra_actions > 0 && <span className="text-boardtree-text-faint"> +{extra_actions}</span>}
+        </span>
+        <span className="min-w-0 text-[12.5px]"><OwnerMark automation={automation} context={context} /></span>
         <span className="text-[12.5px] text-boardtree-text-secondary">{automation.run_count}</span>
         <span className="truncate text-[12.5px] text-boardtree-text-secondary" title={formatDateTime(automation.last_run_at)}>{formatRelativeTime(automation.last_run_at)}</span>
         <AutomationMenu automation={automation} actions={actions} is_busy={is_busy} />
       </div>
-      {is_confirming_delete && (
-        <div className="mt-2">
-          <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />
+      {(is_transferring || is_confirming_delete) && (
+        <div className="mt-2 flex flex-col gap-2">
+          {is_transferring && <TransferPanel automation={automation} context={context} actions={actions} is_busy={is_busy} />}
+          {is_confirming_delete && <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />}
         </div>
       )}
     </div>
