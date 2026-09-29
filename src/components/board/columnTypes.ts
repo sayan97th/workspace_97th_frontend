@@ -31,7 +31,8 @@ export type BoardColumnKind =
   | "formula"
   | "connect_board"
   | "mirror"
-  | "checklist";
+  | "checklist"
+  | "button";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -60,6 +61,7 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   connect_board: { accent_color: "#7f5347", glyph: "⛓" },
   mirror: { accent_color: "#0086c0", glyph: "⧉" },
   checklist: { accent_color: "#00c875", glyph: "☑" },
+  button: { accent_color: "#579bfc", glyph: "▶" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */

@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { Zap } from "lucide-react";
 import { CloseIcon } from "@/icons/board-icons";
 import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
 import BoardItemOptionsMenu from "./BoardItemOptionsMenu";
@@ -48,6 +49,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
     { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length + content.activity_log.length },
     { id: "files", label: "Files", icon: <FilesTabIcon size={15} />, count: content.all_attachments.length },
     { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={15} /> },
+    ...(content.renderAutomationsTab ? [{ id: "automations" as const, label: "Automations", icon: <Zap size={15} /> }] : []),
   ];
 
   return (
@@ -142,6 +144,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} />}
       {content.active_tab === "files" && <FilesPanel drawer={content} />}
       {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
+      {content.active_tab === "automations" && content.open_row_id && content.renderAutomationsTab?.(content.open_row_id)}
     </SlideOverPanel>
   );
 }

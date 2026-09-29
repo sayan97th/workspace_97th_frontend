@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import type { BoardAutomationDto, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationBulkAction, BoardAutomationCopyResult, BoardAutomationDto, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import { boardAutomationService } from "@/services/board-automation.service";
 import { DownloadIcon, GridViewToggleIcon, ListViewToggleIcon } from "@/icons/board-icons";
 import { SearchIcon } from "@/icons/workspace-icons";
 import { downloadCsv } from "@/lib/csv-export";
@@ -12,8 +13,11 @@ import AutomationFilterMenu, { NO_FILTERS, countActiveFilters, type AutomationFi
 import { AutomationCard, AutomationRow, ROW_GRID, type AutomationItemActions } from "./ManageAutomationItem";
 import { ACTION_LABELS, AUTOMATION_KIND_LABELS, automationActionTypes, automationKind, automationSearchText, formatDateTime } from "./manageFormat";
 import { ICON_BUTTON, InlineAlert, ManageEmptyState } from "./manageUi";
+import BulkActionBar from "./BulkActionBar";
+import VersionHistoryPanel from "./VersionHistoryPanel";
 
 export type ManageAutomationsTabProps = {
+  board_id: number;
   board_label: string;
   automations: BoardAutomationDto[];
   context: AutomationBuilderContext;
@@ -28,6 +32,12 @@ export type ManageAutomationsTabProps = {
   /** Opens the Run history tab narrowed to one automation. */
   onShowRuns: (automation_id: number) => void;
   onExploreTemplates: () => void;
+  /** Administrators only: publishes an automation as a template for every board. */
+  onPublishAccountTemplate?: (automation_id: number, name: string) => Promise<void>;
+  /** Replaces one automation after a restored version. */
+  onReplaceAutomation?: (automation: BoardAutomationDto) => void;
+  /** Reloads the list after bulk changes. */
+  onReloadAutomations?: () => Promise<void>;
 };
 
 type Layout = "cards" | "list";
@@ -52,7 +62,10 @@ const fileSlug = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]
  * transfer or delete each one, like monday's "Manage your board automations".
  */
 export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
-  const { board_label, automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates } = props;
+  const { board_id, board_label, automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates, onPublishAccountTemplate, onReplaceAutomation, onReloadAutomations } = props;
+  const [selected_ids, setSelectedIds] = useState<number[]>([]);
+  const [versions_id, setVersionsId] = useState<number | null>(null);
+  const [is_bulk_busy, setIsBulkBusy] = useState(false);
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<AutomationFilters>(NO_FILTERS);
   const [layout, setLayout] = useState<Layout>(readStoredLayout);
@@ -197,6 +210,51 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
         "The automation could not be deleted."
       ),
     onCancelDelete: () => setConfirmingDeleteId(null),
+    onShowVersions: (automation_id) => {
+      closeInlineEditors();
+      setVersionsId((current) => (current === automation_id ? null : automation_id));
+    },
+    onPublish: onPublishAccountTemplate
+      ? (automation) => {
+          const sentence = rows.find((row) => row.automation.id === automation.id)?.sentence ?? "Automation";
+          const name = automation.name || (sentence.length > 80 ? `${sentence.slice(0, 79)}...` : sentence);
+          void perform(automation.id, () => onPublishAccountTemplate(automation.id, name), "The template could not be published.", "Published for every board. Find it in Create > Created in your account.");
+        }
+      : undefined,
+    onToggleSelect: (automation_id) => setSelectedIds((current) => (current.includes(automation_id) ? current.filter((id) => id !== automation_id) : [...current, automation_id])),
+  };
+
+  // Automations deleted elsewhere drop out of the selection.
+  const live_selected_ids = selected_ids.filter((id) => automations.some((automation) => automation.id === id));
+  const visible_ids = visible_rows.map(({ automation }) => automation.id);
+  const is_all_visible_selected = visible_ids.length > 0 && visible_ids.every((id) => live_selected_ids.includes(id));
+
+  const runBulk = async (action: BoardAutomationBulkAction) => {
+    setIsBulkBusy(true);
+    setActionError(null);
+    try {
+      const result = await boardAutomationService.bulkUpdate(board_id, live_selected_ids, action);
+      await onReloadAutomations?.();
+      setNotice(result.skipped.length ? `${result.message} ${result.skipped.length} stayed off: ${result.skipped[0].message}` : result.message);
+      if (action === "delete") setSelectedIds([]);
+    } catch (failure) {
+      setActionError(apiErrorMessage(failure, "The automations could not be updated."));
+    } finally {
+      setIsBulkBusy(false);
+    }
+  };
+
+  const copyToBoard = async (target_board_id: number): Promise<BoardAutomationCopyResult | null> => {
+    setIsBulkBusy(true);
+    setActionError(null);
+    try {
+      return await boardAutomationService.copyToBoard(board_id, live_selected_ids, target_board_id);
+    } catch (failure) {
+      setActionError(apiErrorMessage(failure, "The automations could not be copied."));
+      return null;
+    } finally {
+      setIsBulkBusy(false);
+    }
   };
 
   const exportCsv = () => {
@@ -240,6 +298,20 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
     is_editing_description: describing_id === automation.id,
     is_transferring: transferring_id === automation.id,
     is_confirming_delete: confirming_delete_id === automation.id,
+    is_selected: live_selected_ids.includes(automation.id),
+    versions_panel:
+      versions_id === automation.id ? (
+        <VersionHistoryPanel
+          board_id={board_id}
+          automation={automation}
+          context={context}
+          onRestored={(restored) => {
+            onReplaceAutomation?.(restored);
+            setNotice("Version restored.");
+          }}
+          onClose={() => setVersionsId(null)}
+        />
+      ) : undefined,
   });
 
   return (
@@ -256,6 +328,16 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
           />
         </label>
         <AutomationFilterMenu filters={filters} onChange={setFilters} />
+        <label className="flex h-9 items-center gap-2 px-2 text-[12.5px] text-boardtree-text-secondary">
+          <input
+            type="checkbox"
+            checked={is_all_visible_selected}
+            onChange={() => setSelectedIds(is_all_visible_selected ? live_selected_ids.filter((id) => !visible_ids.includes(id)) : Array.from(new Set([...live_selected_ids, ...visible_ids])))}
+            disabled={visible_ids.length === 0}
+            className="h-4 w-4 accent-boardtree-accent"
+          />
+          Select all
+        </label>
 
         <div className="ml-auto flex items-center gap-1">
           <button type="button" onClick={exportCsv} disabled={visible_rows.length === 0} aria-label="Export automations as CSV" title="Export as CSV" className={ICON_BUTTON}>
@@ -272,6 +354,9 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
         </div>
       </div>
 
+      {live_selected_ids.length > 0 && (
+        <BulkActionBar board_id={board_id} selected_count={live_selected_ids.length} is_busy={is_bulk_busy} onBulk={(action) => void runBulk(action)} onCopy={copyToBoard} onClear={() => setSelectedIds([])} />
+      )}
       {action_error && <InlineAlert message={action_error} onDismiss={() => setActionError(null)} />}
       {notice && (
         <div role="status" className="mb-3 rounded-[8px] border border-[#00c875]/30 bg-[#00c875]/[0.08] px-3 py-2 text-[12.5px] text-boardtree-text-secondary">
@@ -292,10 +377,11 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
         </div>
       ) : (
         <div className="overflow-x-auto rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface">
-          <div className="min-w-[900px]">
+          <div className="min-w-[930px]">
             <div className={`${ROW_GRID} border-b border-boardtree-border-soft px-4 py-2 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint`}>
+              <span className="sr-only">Selected</span>
               <span className="sr-only">Enabled</span>
-              <span className="col-start-2">Automation</span>
+              <span>Automation</span>
               <span>Importance</span>
               <span>Action</span>
               <span>Owner</span>

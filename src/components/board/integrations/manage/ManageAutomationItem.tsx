@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { BookmarkPlus, ChartLine, Code2, Copy, PenLine, Trash2, UserRoundCog } from "lucide-react";
+import { BookmarkPlus, Building2, ChartLine, Code2, Copy, History, PenLine, Trash2, UserRoundCog } from "lucide-react";
 import type { BoardAutomationDto, BoardAutomationImportance } from "@/types/board-automation";
 import { MoreDotsIcon, RenameIcon } from "@/icons/workspace-icons";
 import { useOutsideClick } from "../../table/useOutsideClick";
@@ -34,6 +34,10 @@ export type AutomationItemActions = {
   onRequestDelete: (automation_id: number) => void;
   onConfirmDelete: (automation: BoardAutomationDto) => void;
   onCancelDelete: () => void;
+  onShowVersions: (automation_id: number) => void;
+  /** Administrators only: publishes the automation as a template for every board. */
+  onPublish?: (automation: BoardAutomationDto) => void;
+  onToggleSelect: (automation_id: number) => void;
 };
 
 export type AutomationItemProps = {
@@ -47,6 +51,9 @@ export type AutomationItemProps = {
   is_editing_description: boolean;
   is_transferring: boolean;
   is_confirming_delete: boolean;
+  is_selected: boolean;
+  /** The version history, shown under the automation while open. */
+  versions_panel?: React.ReactNode;
 };
 
 const NAME_MAX_LENGTH = 255;
@@ -68,6 +75,8 @@ function AutomationMenu({ automation, actions, is_busy }: { automation: BoardAut
     { label: "Duplicate", icon: <Copy size={14} />, onPick: () => actions.onDuplicate(automation) },
     { label: "Save as template", icon: <BookmarkPlus size={14} />, onPick: () => actions.onSaveAsTemplate(automation) },
     { label: "Run history", icon: <ChartLine size={14} />, onPick: () => actions.onShowRuns(automation) },
+    { label: "Version history", icon: <History size={14} />, onPick: () => actions.onShowVersions(automation.id) },
+    ...(actions.onPublish ? [{ label: "Publish for every board", icon: <Building2 size={14} />, onPick: () => actions.onPublish?.(automation) }] : []),
     { label: "Delete", icon: <Trash2 size={14} />, onPick: () => actions.onRequestDelete(automation.id), is_danger: true },
     { label: "Transfer ownership", icon: <UserRoundCog size={14} />, onPick: () => actions.onStartTransfer(automation.id) },
     { label: "Copy automation ID", icon: <Code2 size={14} />, onPick: () => actions.onCopyId(automation), has_divider: true },
@@ -79,7 +88,7 @@ function AutomationMenu({ automation, actions, is_busy }: { automation: BoardAut
         <MoreDotsIcon size={15} />
       </button>
       {is_open && (
-        <div role="menu" className={`${MENU_PANEL} right-0 w-[200px]`}>
+        <div role="menu" className={`${MENU_PANEL} right-0 w-[220px]`}>
           {entries.map((entry) => (
             <React.Fragment key={entry.label}>
               {entry.has_divider && <div className="my-1 border-t border-boardtree-border-soft" />}
@@ -264,12 +273,42 @@ function KindMark({ automation }: { automation: BoardAutomationDto }) {
 
 const META_LABEL = "text-boardtree-text-faint";
 
+/** Selects the automation for the bulk actions. */
+function SelectBox({ automation, actions, is_selected }: { automation: BoardAutomationDto; actions: AutomationItemActions; is_selected: boolean }) {
+  return (
+    <input
+      type="checkbox"
+      checked={is_selected}
+      onChange={() => actions.onToggleSelect(automation.id)}
+      aria-label={`Select ${automation.name || "automation"} ${automation.id}`}
+      className="h-4 w-4 flex-none cursor-pointer accent-boardtree-accent"
+    />
+  );
+}
+
+/** What else the card says about how the automation behaves: an else branch, a wait. */
+function BehaviorBadges({ automation }: { automation: BoardAutomationDto }) {
+  const has_wait = [...(automation.actions ?? []), ...(automation.else_actions ?? [])].some((action) => action.type === "wait");
+  const badges = [automation.else_actions?.length ? "Otherwise branch" : null, has_wait ? "Waits" : null, automation.condition_groups?.length ? "Condition groups" : null].filter(Boolean) as string[];
+  if (badges.length === 0) return null;
+  return (
+    <>
+      {badges.map((badge) => (
+        <span key={badge} className="rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] text-boardtree-text-secondary">{badge}</span>
+      ))}
+    </>
+  );
+}
+
 /** One automation as a wide card, monday's "Manage your board automations" layout. */
 export function AutomationCard(props: AutomationItemProps) {
-  const { automation, sentence, context, actions, is_busy, is_editing, is_editing_description, is_transferring, is_confirming_delete } = props;
+  const { automation, sentence, context, actions, is_busy, is_editing, is_editing_description, is_transferring, is_confirming_delete, is_selected, versions_panel } = props;
   return (
-    <div className="rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface px-5 py-4 transition-shadow hover:shadow-[0_4px_14px_rgba(30,34,55,0.08)]">
+    <div className={`rounded-[10px] border bg-boardtree-surface px-5 py-4 transition-shadow hover:shadow-[0_4px_14px_rgba(30,34,55,0.08)] ${is_selected ? "border-boardtree-accent/60" : "border-boardtree-border-soft"}`}>
       <div className="flex items-start justify-between gap-4">
+        <div className="pt-1">
+          <SelectBox automation={automation} actions={actions} is_selected={is_selected} />
+        </div>
         <div className="min-w-0 flex-1">
           <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
           <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px]">
@@ -291,6 +330,7 @@ export function AutomationCard(props: AutomationItemProps) {
               <DescriptionField automation={automation} actions={actions} is_editing={is_editing_description} />
             </span>
             <KindMark automation={automation} />
+            <BehaviorBadges automation={automation} />
           </div>
         </div>
         <div className="flex flex-none items-center gap-2 pt-1">
@@ -298,10 +338,11 @@ export function AutomationCard(props: AutomationItemProps) {
           <AutomationMenu automation={automation} actions={actions} is_busy={is_busy} />
         </div>
       </div>
-      {(is_transferring || is_confirming_delete) && (
+      {(is_transferring || is_confirming_delete || versions_panel) && (
         <div className="mt-3 flex flex-col gap-2">
           {is_transferring && <TransferPanel automation={automation} context={context} actions={actions} is_busy={is_busy} />}
           {is_confirming_delete && <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />}
+          {versions_panel}
         </div>
       )}
     </div>
@@ -309,16 +350,17 @@ export function AutomationCard(props: AutomationItemProps) {
 }
 
 /** The columns of the list layout, shared by the header row and every automation row. */
-export const ROW_GRID = "grid grid-cols-[44px_minmax(0,1fr)_110px_120px_140px_70px_120px_36px] items-center gap-3";
+export const ROW_GRID = "grid grid-cols-[20px_44px_minmax(0,1fr)_110px_120px_140px_70px_120px_36px] items-center gap-3";
 
 /** One automation as a table row, the compact list layout of the Manage tab. */
 export function AutomationRow(props: AutomationItemProps) {
-  const { automation, sentence, context, actions, is_busy, is_editing, is_transferring, is_confirming_delete } = props;
+  const { automation, sentence, context, actions, is_busy, is_editing, is_transferring, is_confirming_delete, is_selected, versions_panel } = props;
   const first_action = automation.actions?.[0]?.type ?? automation.action_type;
   const extra_actions = Math.max(0, (automation.actions?.length ?? 1) - 1);
   return (
     <div className="border-b border-boardtree-border-soft px-4 py-3 last:border-b-0">
       <div className={ROW_GRID}>
+        <SelectBox automation={automation} actions={actions} is_selected={is_selected} />
         <ToggleSwitch checked={automation.is_enabled} disabled={is_busy} onToggle={() => actions.onToggle(automation)} />
         <AutomationTitle automation={automation} sentence={sentence} actions={actions} is_editing={is_editing} />
         <ImportanceMenu automation={automation} actions={actions} is_busy={is_busy} />
@@ -331,10 +373,11 @@ export function AutomationRow(props: AutomationItemProps) {
         <span className="truncate text-[12.5px] text-boardtree-text-secondary" title={formatDateTime(automation.last_run_at)}>{formatRelativeTime(automation.last_run_at)}</span>
         <AutomationMenu automation={automation} actions={actions} is_busy={is_busy} />
       </div>
-      {(is_transferring || is_confirming_delete) && (
+      {(is_transferring || is_confirming_delete || versions_panel) && (
         <div className="mt-2 flex flex-col gap-2">
           {is_transferring && <TransferPanel automation={automation} context={context} actions={actions} is_busy={is_busy} />}
           {is_confirming_delete && <DeleteConfirm automation={automation} actions={actions} is_busy={is_busy} />}
+          {versions_panel}
         </div>
       )}
     </div>

@@ -2,12 +2,15 @@
 import React, { useEffect, useMemo, useState } from "react";
 import type { PersonDef } from "../table/types";
 import type {
+  AccountAutomationTemplateDto,
   BoardAutomationDefinition,
   BoardAutomationDto,
+  BoardAutomationTeamDto,
   BoardAutomationTemplateDto,
   CreateBoardAutomationPayload,
   UpdateBoardAutomationPayload,
 } from "@/types/board-automation";
+import { useAuth } from "@/context/AuthContext";
 import { useSlackAutomationOptions } from "@/hooks/useSlackAutomationOptions";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
 import { boardAutomationService } from "@/services/board-automation.service";
@@ -18,6 +21,8 @@ import AutomationBuilder, { type AutomationBuilderSaveMeta } from "./builder/Aut
 import TemplateGallery from "./builder/TemplateGallery";
 import type { AutomationBoardTarget, AutomationBuilderContext, AutomationColumn, NamedOption } from "./builder/automationCatalog";
 import { draftFromAutomation, draftFromDefinition, emptyDraft, type AutomationDraft } from "./builder/builderDraft";
+import { definitionFromAccountTemplate, describeColumnNeed } from "./builder/accountTemplates";
+import { draftForColumn } from "./builder/automationColumns";
 
 export type AutomationsModalProps = {
   is_open: boolean;
@@ -40,12 +45,22 @@ export type AutomationsModalProps = {
   onDelete: (automation_id: number) => Promise<void>;
   /** Opens straight into the builder for this automation, e.g. from the Integrations dialog's Manage list. */
   edit_automation_id?: number | null;
+  /** Opens straight into a new automation watching this column, the column header's "Automate". */
+  create_for_column_id?: string | null;
+  /** This board's form views, for the "form is submitted" trigger. */
+  forms?: NamedOption[];
+  /** Items of this table a test run can use. */
+  test_items?: NamedOption[];
+  /** Replaces one automation after a change made inside the dialog, such as a restored version. */
+  onReplaceAutomation?: (automation: BoardAutomationDto) => void;
+  /** Reloads the automations after bulk changes or a copy. */
+  onReloadAutomations?: () => Promise<void>;
   /** Opens the Integrations dialog's email and Slack templates, the menu entry is hidden when omitted. */
   onOpenCommunicationTemplates?: () => void;
 };
 
 type Mode = "create" | "manage";
-type Screen = { kind: "gallery" } | { kind: "builder"; draft: AutomationDraft; editing_id: number | null; key: number };
+type Screen = { kind: "gallery" } | { kind: "builder"; draft: AutomationDraft; editing_id: number | null; key: number; notice?: string | null };
 
 /**
  * The board header's "Automate" button, modelled on monday's automation center: a Create tab with
@@ -72,13 +87,18 @@ export default function AutomationsModal(props: AutomationsModalProps) {
 
 /** Split from the shell so boards, templates and Slack are only fetched once the dialog is open. */
 function AutomationCenter(props: AutomationsModalProps) {
-  const { board_id, view_id, board_label, return_path, automations, columns, groups, people, onClose, edit_automation_id } = props;
+  const { board_id, view_id, board_label, return_path, automations, columns, groups, people, onClose, edit_automation_id, create_for_column_id, forms = [], test_items = [] } = props;
+  const { hasAnyRole } = useAuth();
+  const is_account_admin = hasAnyRole("super_admin", "admin");
   const slack = useSlackIntegration();
   const slack_options = useSlackAutomationOptions(true);
   const [board_targets, setBoardTargets] = useState<AutomationBoardTarget[]>([]);
   const [is_loading_boards, setIsLoadingBoards] = useState(true);
   const [saved_templates, setSavedTemplates] = useState<BoardAutomationTemplateDto[]>([]);
   const [is_loading_templates, setIsLoadingTemplates] = useState(true);
+  const [account_templates, setAccountTemplates] = useState<AccountAutomationTemplateDto[]>([]);
+  const [is_loading_account, setIsLoadingAccount] = useState(true);
+  const [teams, setTeams] = useState<BoardAutomationTeamDto[]>([]);
   const [mode, setMode] = useState<Mode>(edit_automation_id || automations.length > 0 ? "manage" : "create");
   const [screen, setScreen] = useState<Screen>({ kind: "gallery" });
   const [is_saving, setIsSaving] = useState(false);
@@ -104,6 +124,21 @@ function AutomationCenter(props: AutomationsModalProps) {
       .finally(() => {
         if (!cancelled) setIsLoadingTemplates(false);
       });
+    boardAutomationService
+      .getAccountTemplates()
+      .then((templates) => {
+        if (!cancelled) setAccountTemplates(templates);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoadingAccount(false);
+      });
+    boardAutomationService
+      .getTeams(board_id)
+      .then((data) => {
+        if (!cancelled) setTeams(data);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -118,15 +153,28 @@ function AutomationCenter(props: AutomationsModalProps) {
       board_targets,
       slack_channels: slack_options.channels.map((channel) => ({ id: channel.id, name: channel.name })),
       is_slack_connected: slack_options.status?.is_connected === true,
+      teams,
+      forms,
     }),
-    [board_id, columns, groups, people, board_targets, slack_options.channels, slack_options.status]
+    [board_id, columns, groups, people, board_targets, slack_options.channels, slack_options.status, teams, forms]
   );
 
-  const openBuilder = (draft: AutomationDraft, editing_id: number | null = null) => {
+  const openBuilder = (draft: AutomationDraft, editing_id: number | null = null, notice: string | null = null) => {
     setSaveError(null);
     setMode("create");
-    setScreen({ kind: "builder", draft, editing_id, key: Date.now() });
+    setScreen({ kind: "builder", draft, editing_id, key: Date.now(), notice });
   };
+
+  // Opened from a column header's "Automate", straight into a builder watching that column.
+  const [handled_column_id, setHandledColumnId] = useState<string | null>(null);
+  if (create_for_column_id && create_for_column_id !== handled_column_id) {
+    setHandledColumnId(create_for_column_id);
+    const column = columns.find((entry) => entry.id === create_for_column_id);
+    if (column) {
+      setMode("create");
+      setScreen({ kind: "builder", draft: draftForColumn(column.id, context), editing_id: null, key: Date.now(), notice: `Starting from the ${column.title} column. Pick what should happen, or change the trigger.` });
+    }
+  }
 
   // Opened from another dialog to edit one automation, straight into the builder.
   const [handled_edit_id, setHandledEditId] = useState<number | null>(null);
@@ -167,6 +215,24 @@ function AutomationCenter(props: AutomationsModalProps) {
     setSavedTemplates((current) => current.filter((template) => template.id !== template_id));
   };
 
+  const applyAccountTemplate = (template: AccountAutomationTemplateDto) => {
+    const { definition, missing } = definitionFromAccountTemplate(template, context);
+    const notice = missing.length ? `This template needs ${missing.map(describeColumnNeed).join(", ")}. Add it to the table, or choose another column in red.` : null;
+    openBuilder({ ...draftFromDefinition(definition, context), name: template.name, description: template.description ?? "" }, null, notice);
+  };
+
+  const deleteAccountTemplate = async (template_id: number) => {
+    await boardAutomationService.deleteAccountTemplate(template_id);
+    setAccountTemplates((current) => current.filter((template) => template.id !== template_id));
+  };
+
+  const publishAccountTemplate = async (automation_id: number, name: string) => {
+    const template = await boardAutomationService.publishAccountTemplate({ automation_id, name });
+    setAccountTemplates((current) => [template, ...current]);
+  };
+
+  const editing_automation = screen.kind === "builder" && screen.editing_id ? automations.find((automation) => automation.id === screen.editing_id) ?? null : null;
+
   const is_in_builder = mode === "create" && screen.kind === "builder";
 
   return (
@@ -206,9 +272,14 @@ function AutomationCenter(props: AutomationsModalProps) {
             context={context}
             saved_templates={saved_templates}
             is_loading_saved={is_loading_templates}
+            account_templates={account_templates}
+            is_loading_account={is_loading_account}
+            can_manage_account_templates={is_account_admin}
             onUseRecipe={(recipe) => openBuilder(draftFromDefinition(recipe.build(context), context))}
             onUseSaved={(template) => openBuilder({ ...draftFromDefinition(template.definition, context), name: template.name, description: template.description ?? "" })}
+            onUseAccount={applyAccountTemplate}
             onDeleteSaved={deleteTemplate}
+            onDeleteAccount={deleteAccountTemplate}
             onCustom={() => openBuilder(emptyDraft())}
           />
         )}
@@ -229,6 +300,28 @@ function AutomationCenter(props: AutomationsModalProps) {
                 setScreen({ kind: "gallery" });
               }}
               onSave={(definition, meta) => void save(definition, meta, screen.editing_id)}
+              automation={editing_automation}
+              test_items={test_items}
+              onTestRun={
+                view_id == null
+                  ? undefined
+                  : (definition, item_id, payload) => boardAutomationService.testRun(board_id, { ...definition, view_id, item_id, payload, name: editing_automation?.name ?? null })
+              }
+              onRegenerateWebhook={
+                editing_automation
+                  ? async () => {
+                      const updated = await boardAutomationService.regenerateWebhookUrl(board_id, editing_automation.id);
+                      props.onReplaceAutomation?.(updated);
+                    }
+                  : undefined
+              }
+              notice={
+                screen.notice ? (
+                  <div role="status" className="mb-6 max-w-[720px] rounded-[10px] border border-boardtree-accent/30 bg-boardtree-accent-surface px-4 py-3 text-[13px] text-boardtree-text">
+                    {screen.notice}
+                  </div>
+                ) : undefined
+              }
             />
           </div>
         )}
@@ -249,6 +342,9 @@ function AutomationCenter(props: AutomationsModalProps) {
               onDelete={props.onDelete}
               onEdit={editAutomation}
               onSaveAsTemplate={saveAsTemplate}
+              onPublishAccountTemplate={is_account_admin ? publishAccountTemplate : undefined}
+              onReplaceAutomation={props.onReplaceAutomation}
+              onReloadAutomations={props.onReloadAutomations}
               onExploreTemplates={() => {
                 setMode("create");
                 setScreen({ kind: "gallery" });

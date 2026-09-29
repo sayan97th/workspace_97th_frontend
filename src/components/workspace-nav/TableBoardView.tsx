@@ -115,10 +115,13 @@ import { useBoardFilterUrlState } from "@/hooks/useBoardFilterUrlState";
 import { buildPageTitle } from "@/lib/page-title";
 import { boardContentService } from "@/services/board-content.service";
 import { boardAutomationService } from "@/services/board-automation.service";
+import { apiErrorMessage } from "@/services/profile-preferences.service";
 import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutomationPayload } from "@/types/board-automation";
 import type { AutomationColumn } from "../board/automations/builder/automationCatalog";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
+import ItemAutomationsPanel from "../board/automations/ItemAutomationsPanel";
+import { countAutomationsByColumn } from "../board/automations/builder/automationColumns";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
@@ -207,6 +210,7 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   connect_board: "connect_board",
   mirror: "mirror",
   checklist: "checklist",
+  button: "button",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
@@ -237,6 +241,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         ? { source_column_id: String(column.config.source_column_id), mirrored_column_id: String(column.config.mirrored_column_id) }
         : undefined,
     linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
+    button: column.type === "button" ? { label: column.config?.button_label ?? column.label, color: column.config?.button_color ?? "#579bfc" } : undefined,
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
     reminder: column.config?.reminder,
@@ -803,6 +808,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
   // Set when another dialog asks the Automations center to open one automation in the builder.
   const [automation_edit_id, setAutomationEditId] = useState<number | null>(null);
+  // Set by a column header's "Automate", the builder opens with a trigger for that column.
+  const [automation_column_id, setAutomationColumnId] = useState<string | null>(null);
   // ── Integrations ("Integrate" header button) — connects Email and Slack. Slack's OAuth round
   // trip leaves the app, so the API sends the browser back to `integrations_return_path`, and the
   // `integrate` param reopens the dialog on arrival (see the effect below). ──
@@ -1257,8 +1264,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     await boardAutomationService.saveAsTemplate(board_id, automation_id, { name });
   };
 
-  const openAutomationCenter = (edit_automation_id?: number) => {
+  const openAutomationCenter = (edit_automation_id?: number, column_id?: string) => {
     setAutomationEditId(edit_automation_id ?? null);
+    setAutomationColumnId(column_id ?? null);
     setIsAutomationsModalOpen(true);
     // Runs happen in the background (other people's changes, scheduled triggers), so the run counts are read again.
     boardAutomationService
@@ -2045,6 +2053,27 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return items.map((item) => ({ id: String(item.id), name: item.name }));
   }, []);
 
+  // A Button cell's press runs the automations watching it on the server, then the item (and its
+  // parent, which "set the parent's column" writes) is read again so their cells show the result.
+  const handlePressButton = useCallback(
+    async (node_id: string, column_id: string): Promise<string> => {
+      try {
+        const result = await boardAutomationService.pressButton(board_id, Number(node_id), Number(column_id));
+        const pressed = await boardContentService.getItem(board_id, Number(node_id));
+        const parent = pressed.parent_id ? await boardContentService.getItem(board_id, pressed.parent_id) : null;
+        setItems((current) => {
+          let next = mapItemInTree(current, pressed.id, (item) => ({ ...item, name: pressed.name, values: pressed.values }));
+          if (parent) next = mapItemInTree(next, parent.id, (item) => ({ ...item, name: parent.name, values: parent.values }));
+          return next;
+        });
+        return result.is_board_paused ? "Automations on this board are paused." : result.message;
+      } catch (failure) {
+        return apiErrorMessage(failure, "The button could not run its automations.");
+      }
+    },
+    [board_id]
+  );
+
   const makeOptionActions = (column_id: string): BoardOptionActions => ({
     onRename: (option_id, label) =>
       void patchColumnOptions(column_id, (options) =>
@@ -2286,6 +2315,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setItems((current) => removeItemFromTree(current, Number(item_id)));
   };
 
+  // The drawer's Automations tab reads the latest automations through this ref, since they (and the
+  // builder context) are set up further down than the drawer config.
+  const item_automations_render_ref = useRef<(row_id: string) => React.ReactNode>(() => null);
+
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
       getRowId: (row) => String(row.id),
@@ -2309,6 +2342,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onArchiveItem: handleDrawerArchiveItem,
       onDeleteItem: handleDrawerDeleteItem,
       can_edit: node.can_edit,
+      renderAutomationsTab: (row_id) => item_automations_render_ref.current(row_id),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [node.label, node.can_edit, current_user.id, persons, board_id, getInfoBoxes, getActivityLog, items, selection_move_targets]
@@ -2471,6 +2505,44 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       return [{ ...def, options: column.type === "tags" ? tag_options : def.options, scope: column.scope === "subitem" ? "subitem" : "item" }];
     });
   }, [columns, tags]);
+
+  item_automations_render_ref.current = (row_id: string) =>
+    active_view_type === "table" ? (
+      <ItemAutomationsPanel
+        key={row_id}
+        board_id={board_id}
+        item_id={Number(row_id)}
+        automations={automations}
+        context={automation_context}
+        can_edit={node.can_edit}
+        onOpenAutomation={(automation_id) => openAutomationCenter(automation_id)}
+      />
+    ) : (
+      <div className="px-6 py-5 text-[13px] text-shell-text-muted">Automations belong to the table views of this board. Open the item from a table to see them.</div>
+    );
+
+  // The board's form views, for the "form is submitted" trigger, and the loaded items of this
+  // table a test run can use.
+  const automation_forms = useMemo(
+    () => view_tabs.views.filter((view) => view.view_type === "form").map((view) => ({ id: String(view.id), label: view.label })),
+    [view_tabs.views]
+  );
+  const automation_test_items = useMemo(
+    () => listReferenceItems(items).slice(0, 500).map((item) => ({ id: item.id, label: item.name })),
+    [items]
+  );
+  const reloadAutomations = async () => {
+    const data = await boardAutomationService.getAutomations(board_id, view_tabs.active_view_id);
+    setAutomations(data);
+  };
+
+  // "Automate" in a column header: how many automations already use each column, and a builder
+  // prefilled with a trigger for the column.
+  const column_automation = useMemo(
+    () => ({ counts: countAutomationsByColumn(automations), onOpen: (column_id: string) => openAutomationCenter(undefined, column_id) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [automations]
+  );
 
   const automation_context = useMemo(
     () => ({
@@ -2808,6 +2880,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onRecolorTagDef: handleRecolorTagDef,
       onDeleteTagDef: handleDeleteTagDef,
       onFetchLinkedBoardItems: handleFetchLinkedBoardItems,
+      onPressButton: handlePressButton,
       initial_item_column_width: item_column_width,
       // Like `item_column_label`, the item-title column isn't a real `board_columns`
       // row, so its resized width persists on the board itself (`item_column_width`)
@@ -2932,12 +3005,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (validation !== undefined) config_patch.validation = validation;
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
         if (reminder !== undefined) config_patch.reminder = reminder;
+        if (button !== undefined) {
+          config_patch.button_label = button.label;
+          config_patch.button_color = button.color;
+        }
         const body = Object.keys(config_patch).length > 0 ? { ...rest, config: { ...(column?.config ?? {}), ...config_patch } } : rest;
         void boardContentService
           .updateColumn(board_id, Number(column_id), body)
@@ -3823,6 +3900,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRequestColumnFilter={handleRequestColumnFilter}
           onFilterByCellValue={handleFilterByCellValue}
           onRequestColumnPermissions={node.is_owner ? (column_id) => setPermissionsColumnId(Number(column_id)) : undefined}
+          column_automation={node.can_edit ? column_automation : undefined}
           onRequestGroupByColumn={handleRequestGroupByColumn}
           onRequestColumnSort={handleRequestColumnSort}
           active_sort_column_id={active_sort_column_id}
@@ -4112,6 +4190,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onClose={() => {
           setIsAutomationsModalOpen(false);
           setAutomationEditId(null);
+          setAutomationColumnId(null);
         }}
         board_id={board_id}
         view_id={view_tabs.active_view_id}
@@ -4122,6 +4201,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         groups={selection_move_targets}
         people={assignable_table_people}
         edit_automation_id={automation_edit_id}
+        create_for_column_id={automation_column_id}
+        forms={automation_forms}
+        test_items={automation_test_items}
+        onReplaceAutomation={(updated) => setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)))}
+        onReloadAutomations={reloadAutomations}
         onCreate={handleCreateAutomation}
         onUpdate={handleUpdateAutomation}
         onToggle={handleToggleAutomation}

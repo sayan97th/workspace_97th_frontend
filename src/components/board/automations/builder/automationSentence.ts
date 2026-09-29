@@ -1,4 +1,11 @@
-import type { BoardAutomationAction, BoardAutomationActionParams, BoardAutomationCondition, BoardAutomationDefinition, BoardAutomationSchedule } from "@/types/board-automation";
+import type {
+  BoardAutomationAction,
+  BoardAutomationActionParams,
+  BoardAutomationCondition,
+  BoardAutomationDefinition,
+  BoardAutomationSchedule,
+  BoardAutomationTriggerConfig,
+} from "@/types/board-automation";
 import { BOARD_FILTER_DATE_PRESETS, getOperatorLabel } from "../../toolbar/filterEngine";
 import type { BoardFilterOperator } from "../../toolbar/types";
 import { CONDITION_KIND_BY_COLUMN, VIRTUAL_CONDITION_FIELDS, WEEKDAY_LABELS, type AutomationBuilderContext, type AutomationColumn } from "./automationCatalog";
@@ -48,16 +55,31 @@ export function valueLabel(context: AutomationBuilderContext, column: Automation
       return (Array.isArray(value) ? value : [value]).map((id) => personLabel(context, id)).join(", ");
     case "checkbox":
       return value === true || value === "true" || value === 1 || value === "1" || value === "checked" ? "checked" : "unchecked";
+    case "timeline": {
+      const range = value as { start?: string; end?: string };
+      return range.start && range.end ? `${range.start} to ${range.end}` : fallback;
+    }
+    case "link": {
+      const link = value as { url?: string; text?: string };
+      return typeof value === "string" ? value : link.text || link.url || fallback;
+    }
+    case "checklist":
+      return Array.isArray(value) ? `${value.length} ${value.length === 1 ? "task" : "tasks"}` : fallback;
+    case "rating":
+      return `${value} ${Number(value) === 1 ? "star" : "stars"}`;
+    case "progress":
+      return `${value}%`;
     default:
       return Array.isArray(value) ? value.join(", ") : String(value);
   }
 }
 
-/** `on the day`, `3 days before`, `1 day after`. */
-export function offsetLabel(offset_days: number | null | undefined): string {
+/** `arrives`, `is 3 days away`, `passed 1 working day ago`. */
+export function offsetLabel(offset_days: number | null | undefined, working_days = false): string {
   const days = offset_days ?? 0;
-  if (days === 0) return "arrives";
-  const amount = `${Math.abs(days)} ${Math.abs(days) === 1 ? "day" : "days"}`;
+  if (days === 0) return working_days ? "arrives (working days)" : "arrives";
+  const noun = working_days ? "working day" : "day";
+  const amount = `${Math.abs(days)} ${Math.abs(days) === 1 ? noun : `${noun}s`}`;
   return days < 0 ? `is ${amount} away` : `passed ${amount} ago`;
 }
 
@@ -78,11 +100,55 @@ export function scheduleLabel(schedule: BoardAutomationSchedule | null | undefin
   return `${days.length ? days.join(", ") : "week"}${time}`;
 }
 
-/** Who a notify or communication action reaches. */
+/** Who a notify or communication action reaches, email addresses included for "send an email". */
 export function recipientLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
-  if (params.notify_user_id) return personLabel(context, params.notify_user_id);
-  if (params.notify_from_people_column_id) return `people in ${columnLabel(context, params.notify_from_people_column_id)}`;
-  return "someone";
+  const parts: string[] = [];
+  if (params.notify_user_id) parts.push(personLabel(context, params.notify_user_id));
+  else if (params.notify_from_people_column_id) parts.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  if (params.email_column_id) parts.push(`the address in ${columnLabel(context, params.email_column_id)}`);
+  const addresses = params.email_addresses ?? [];
+  if (addresses.length === 1) parts.push(addresses[0]);
+  else if (addresses.length > 1) parts.push(`${addresses.length} addresses`);
+  return parts.length ? parts.join(" and ") : "someone";
+}
+
+/** `above 100`, `below 2.5 hours`, `equal to 3`. */
+export function thresholdLabel(config: BoardAutomationTriggerConfig, column: AutomationColumn | undefined): string {
+  if (typeof config.threshold !== "number") return "a number";
+  const unit = column?.kind === "time_tracking" ? ` ${config.threshold === 1 ? "hour" : "hours"}` : column?.kind === "progress" ? "%" : "";
+  const operator = config.operator === "below" ? "below" : config.operator === "equals" ? "equal to" : "above";
+  return `${operator} ${config.threshold}${unit}`;
+}
+
+/** `2 hours`, `1 day`, `30 minutes`. */
+export function waitLabel(params: BoardAutomationActionParams): string {
+  const amount = params.amount ?? 1;
+  const unit = params.unit === "minutes" || params.unit === "hours" ? params.unit : "days";
+  return `${amount} ${amount === 1 ? unit.slice(0, -1) : unit}`;
+}
+
+/** `Ada and Grace in turn`, `3 people in turn`. */
+export function rotationLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  const ids = params.user_ids ?? [];
+  if (ids.length === 0) return "people";
+  const names = ids.map((id) => personLabel(context, id));
+  return names.length <= 2 ? names.join(" and ") : `${names.length} people`;
+}
+
+/** A message template as the editor shows it: `{column:12}` becomes `{#Status}`. */
+export function columnTokensToDisplay(template: string, context: AutomationBuilderContext): string {
+  return template.replace(/\{column:(\d+)\}/g, (match, id: string) => {
+    const column = findColumn(context, id);
+    return column ? `{#${column.title}}` : match;
+  });
+}
+
+/** Back from what the editor shows to what is saved: `{#Status}` becomes `{column:12}`, matched by title without case. */
+export function columnTokensFromDisplay(template: string, context: AutomationBuilderContext): string {
+  return template.replace(/\{#([^{}]+)\}/g, (match, title: string) => {
+    const column = context.columns.find((entry) => entry.title.trim().toLowerCase() === title.trim().toLowerCase());
+    return column ? `{column:${column.id}}` : match;
+  });
 }
 
 export function boardLabel(context: AutomationBuilderContext, board_id: unknown, fallback = "board"): string {
@@ -142,7 +208,7 @@ function triggerParts(definition: BoardAutomationDefinition, context: Automation
     case "person_assigned":
       return [plain("When "), token(definition.trigger_value == null ? "someone" : personLabel(context, definition.trigger_value)), plain(" is assigned in "), token(columnLabel(context, definition.trigger_column_id, "people"))];
     case "date_arrived": {
-      const parts = [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" "), token(offsetLabel(config.offset_days))];
+      const parts = [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" "), token(offsetLabel(config.offset_days, config.working_days_only))];
       if (config.time) parts.push(plain(" at "), token(config.time));
       return parts;
     }
@@ -160,8 +226,69 @@ function triggerParts(definition: BoardAutomationDefinition, context: Automation
       return [plain("When an item is "), token("deleted")];
     case "recurring":
       return [plain("Every "), token(scheduleLabel(config.schedule))];
+    case "item_scan":
+      return [plain("Every "), token(scheduleLabel(config.schedule)), plain(", for each "), token("matching item")];
+    case "all_subitems_status":
+      return [plain("When all subitems have "), token(columnLabel(context, definition.trigger_column_id, "status")), plain(" "), token(definition.trigger_value == null ? "something" : optionLabel(column, definition.trigger_value))];
+    case "all_group_items_status":
+      return [
+        plain("When all items in "),
+        token(config.group_id ? groupLabel(context, config.group_id) : "a group"),
+        plain(" have "),
+        token(columnLabel(context, definition.trigger_column_id, "status")),
+        plain(" "),
+        token(definition.trigger_value == null ? "something" : optionLabel(column, definition.trigger_value)),
+      ];
+    case "form_submitted":
+      return [plain("When "), token(config.form_view_id ? formLabel(context, config.form_view_id) : "a form"), plain(" is submitted")];
+    case "name_changed":
+      return [plain("When an "), token("item name changes")];
+    case "date_changed":
+      return [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" changes")];
+    case "webhook_received":
+      return [plain("When a "), token("webhook"), plain(" is received")];
+    case "button_clicked":
+      return [plain("When "), token(columnLabel(context, definition.trigger_column_id, "button")), plain(" is clicked")];
+    case "number_threshold":
+      return [plain("When "), token(columnLabel(context, definition.trigger_column_id, "number")), plain(" goes "), token(thresholdLabel(config, column))];
+    case "checklist_completed":
+      return [plain("When every task of "), token(columnLabel(context, definition.trigger_column_id, "checklist")), plain(" is done")];
+    case "checklist_item_checked":
+      return [plain("When "), token(typeof definition.trigger_value === "string" && definition.trigger_value ? `"${definition.trigger_value}"` : "a task"), plain(" is checked in "), token(columnLabel(context, definition.trigger_column_id, "checklist"))];
+    case "item_moved_to_board":
+      return [plain("When an item is moved here from "), token(config.from_board_id ? boardLabel(context, config.from_board_id) : "any board")];
+    case "item_restored":
+      return [plain("When an item is "), token("restored")];
     default:
       return [plain("When something happens")];
+  }
+}
+
+/** A form view of this board by id. */
+export function formLabel(context: AutomationBuilderContext, form_view_id: unknown, fallback = "a form"): string {
+  if (form_view_id == null || form_view_id === "") return fallback;
+  return context.forms?.find((form) => form.id === String(form_view_id))?.label ?? "a form";
+}
+
+export function teamLabel(context: AutomationBuilderContext, team_id: unknown, fallback = "team"): string {
+  if (team_id == null || team_id === "") return fallback;
+  return context.teams?.find((team) => team.id === Number(team_id))?.name ?? "a team";
+}
+
+/** `3 days`, `1 week`, `-2 months`. */
+export function amountLabel(amount: number | null | undefined, unit: "minutes" | "hours" | "days" | "weeks" | "months" = "days"): string {
+  const value = Math.abs(amount ?? 0);
+  const singular = unit.slice(0, -1);
+  return `${value} ${value === 1 ? singular : unit}`;
+}
+
+/** The host a webhook action sends to, the whole URL stays in the editor. */
+export function urlHost(url: string | null | undefined, fallback = "URL"): string {
+  if (!url) return fallback;
+  try {
+    return new URL(url).host || fallback;
+  } catch {
+    return url.length > 28 ? `${url.slice(0, 27)}...` : url;
   }
 }
 
@@ -215,6 +342,46 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
       return [plain("send a "), token("Slack message"), plain(" to "), token(recipientLabel(context, params))];
     case "slack_notify_channel":
       return [plain("post to Slack channel "), token(`#${params.slack_channel_name || params.slack_channel_id || "channel"}`)];
+    case "shift_date":
+      return [token((params.amount ?? 0) < 0 ? "pull" : "push"), plain(" "), token(columnLabel(context, params.target_column_id, "date")), plain(" by "), token(amountLabel(params.amount, params.unit ?? "days"))];
+    case "set_date_from_column": {
+      const parts = [plain("set "), token(columnLabel(context, params.target_column_id, "date")), plain(" to "), token(columnLabel(context, params.source_column_id, "another date"))];
+      if (params.offset_days) parts.push(plain(` ${params.offset_days > 0 ? "+" : "-"} `), token(amountLabel(params.offset_days)));
+      if (params.number_column_id) parts.push(plain(params.number_sign === -1 ? " minus the days in " : " plus the days in "), token(columnLabel(context, params.number_column_id, "number")));
+      return parts;
+    }
+    case "ensure_date_after":
+      return [plain("keep "), token(columnLabel(context, params.target_column_id, "this date")), plain(" after "), token(columnLabel(context, params.source_column_id, "that date"))];
+    case "set_timeline":
+      return [plain("set "), token(columnLabel(context, params.target_column_id, "timeline")), plain(" to "), token(`${relativeDayLabel(params.start_offset_days)} for ${amountLabel(params.duration_days ?? 7)}`)];
+    case "create_group":
+      return [token("create a group"), plain(" named "), token(params.group_name || "group")];
+    case "duplicate_group":
+      return [token("duplicate"), plain(" "), token(params.from_item_group ? "the item's group" : groupLabel(context, params.source_group_id)), plain(params.with_items ? " with its items" : "")];
+    case "archive_group":
+      return [token("archive"), plain(" "), token(params.from_item_group ? "the item's group" : groupLabel(context, params.target_group_id))];
+    case "copy_column_value":
+      return [token("copy"), plain(" "), token(columnLabel(context, params.source_column_id)), plain(" to "), token(columnLabel(context, params.target_column_id))];
+    case "time_tracking":
+      return [token(params.mode === "stop" ? "stop" : "start"), plain(" "), token(columnLabel(context, params.target_column_id, "time tracking"))];
+    case "connect_items":
+      return [token("connect"), plain(" the item in "), token(columnLabel(context, params.target_column_id, "connect boards")), plain(" by matching "), token(params.match_column_id && params.match_column_id !== "name" ? columnLabel(context, params.match_column_id) : "name")];
+    case "notify_team":
+      return [token("notify"), plain(" the team "), token(teamLabel(context, params.team_id))];
+    case "send_webhook":
+      return [plain("send a "), token("webhook"), plain(" to "), token(urlHost(params.url))];
+    case "wait":
+      return [token("wait"), plain(" "), token(waitLabel(params))];
+    case "shift_dependents":
+      return [token("shift"), plain(" "), token(columnLabel(context, params.target_column_id, "dates")), plain(" of the items that depend on it")];
+    case "assign_round_robin":
+      return [token("assign"), plain(" "), token(rotationLabel(context, params)), plain(params.strategy === "least_busy" ? " by workload in " : " in turn in "), token(columnLabel(context, params.target_column_id, "people"))];
+    case "set_subitems_value":
+      return [plain("set "), token(columnLabel(context, params.target_column_id, "column")), plain(" of every subitem to "), token(valueLabel(context, column, params.value))];
+    case "set_parent_value":
+      return [plain("set the parent's "), token(columnLabel(context, params.target_column_id, "column")), plain(" to "), token(valueLabel(context, column, params.value))];
+    case "add_checklist_items":
+      return [token("add"), plain(" "), token(`${(params.tasks ?? []).length || "some"} ${(params.tasks ?? []).length === 1 ? "task" : "tasks"}`), plain(" to "), token(columnLabel(context, params.target_column_id, "checklist"))];
     default:
       return [plain("do something")];
   }
@@ -227,22 +394,35 @@ function joinActions(actions: SentencePart[][]): SentencePart[] {
   });
 }
 
+const VALUELESS_OPERATORS = ["is_empty", "is_not_empty", "is_checked", "is_unchecked"];
+
+function conditionParts(condition: BoardAutomationCondition, context: AutomationBuilderContext): SentencePart[] {
+  return [
+    token(conditionFieldLabel(context, condition.column_id)),
+    plain(` ${conditionOperatorLabel(context, condition)}`),
+    ...(VALUELESS_OPERATORS.includes(condition.condition) ? [] : [plain(" "), token(conditionValueLabel(context, condition))]),
+  ];
+}
+
 /** The whole automation as one sentence, tokens marked so the list can bold them. */
 export function describeDefinition(definition: BoardAutomationDefinition, context: AutomationBuilderContext): SentencePart[] {
   const parts = [...triggerParts(definition, context)];
+  const joiner = definition.condition_operator === "or" ? " or " : " and ";
 
-  definition.conditions.forEach((condition, index) => {
-    parts.push(
-      plain(index === 0 ? " and only if " : " and "),
-      token(conditionFieldLabel(context, condition.column_id)),
-      plain(` ${conditionOperatorLabel(context, condition)} `),
-      ...(condition.condition === "is_empty" || condition.condition === "is_not_empty" || condition.condition === "is_checked" || condition.condition === "is_unchecked"
-        ? []
-        : [token(conditionValueLabel(context, condition))])
-    );
-  });
+  const clauses: SentencePart[][] = [
+    ...definition.conditions.map((condition) => conditionParts(condition, context)),
+    ...(definition.condition_groups ?? []).filter((group) => group.rules.length > 0).map((group) => [
+      plain("("),
+      ...group.rules.flatMap((rule, index) => [...(index > 0 ? [plain(group.join_operator === "or" ? " or " : " and ")] : []), ...conditionParts(rule, context)]),
+      plain(")"),
+    ]),
+  ];
+  clauses.forEach((clause, index) => parts.push(plain(index === 0 ? " and only if " : joiner), ...clause));
 
   parts.push(plain(", "), ...joinActions(definition.actions.map((action) => actionParts(action, context))));
+  if (definition.else_actions?.length) {
+    parts.push(plain(", otherwise "), ...joinActions(definition.else_actions.map((action) => actionParts(action, context))));
+  }
   return parts;
 }
 

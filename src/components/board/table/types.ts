@@ -28,7 +28,8 @@ export type ColumnKind =
   | "formula"
   | "connect_board"
   | "mirror"
-  | "checklist";
+  | "checklist"
+  | "button";
 
 /**
  * A `formula`-kind column's own config: an expression written with the
@@ -111,9 +112,14 @@ export interface ColumnDef {
   validation?: ColumnValidation;
   /** Number kind only: which aggregation the group summary row's footer shows for this column. Undefined behaves as `"sum"` (existing behavior). See `summaryUtils.ts`'s `summaryForColumn`. */
   aggregation?: "sum" | "avg" | "min" | "max" | "count";
+  /** Button kind only: the text on the button and its color. */
+  button?: { label: string; color: string };
   /** Date kind only: notifies everyone assigned in a People column on the same item once the date is `days_before` days away — sent daily by the backend's `board:send-due-date-reminders` scheduled command. */
   reminder?: { enabled: boolean; days_before: number };
 }
+
+/** "Automate" in the column header menu: opens the automation builder for a column, and how many automations already use each column. */
+export type ColumnAutomationShortcut = { counts: Record<string, number>; onOpen: (column_id: string) => void };
 
 export interface StatusDef {
   id: string;

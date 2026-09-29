@@ -22,10 +22,12 @@ export type TokenProps = {
   /** Accessible name of the popover, defaults to the label. */
   aria_label?: string;
   disabled?: boolean;
+  /** Points at something that was deleted, drawn in red until it is chosen again. */
+  is_invalid?: boolean;
 };
 
 /** One underlined, clickable word of the sentence. Opens its editor in a popover right under it. */
-export function Token({ label, is_placeholder = false, children, popover_width = 300, aria_label, disabled = false }: TokenProps) {
+export function Token({ label, is_placeholder = false, children, popover_width = 300, aria_label, disabled = false, is_invalid = false }: TokenProps) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLSpanElement>(is_open, () => setIsOpen(false));
   const close = () => setIsOpen(false);
@@ -38,10 +40,13 @@ export function Token({ label, is_placeholder = false, children, popover_width =
         aria-haspopup="dialog"
         aria-expanded={is_open}
         onClick={() => setIsOpen((open) => !open)}
+        title={is_invalid ? "This was deleted, choose it again" : undefined}
         className={`border-b-2 leading-[1.15] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
           is_open
             ? "border-boardtree-accent text-boardtree-accent"
-            : is_placeholder
+            : is_invalid
+              ? "border-dashed border-boardtree-danger text-boardtree-danger hover:border-boardtree-accent hover:text-boardtree-accent"
+              : is_placeholder
               ? "border-boardtree-text-faint/70 text-boardtree-text-faint hover:border-boardtree-accent hover:text-boardtree-accent"
               : "border-boardtree-text/60 text-boardtree-text hover:border-boardtree-accent hover:text-boardtree-accent"
         }`}
@@ -188,5 +193,18 @@ export function Segmented<T extends string>({ options, value, onChange, label }:
         </button>
       ))}
     </div>
+  );
+}
+
+/** "Count working days only", for date editors. The working days themselves are set in Manage > Settings. */
+export function WorkingDaysToggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="mt-2.5 flex items-start gap-2 text-[12.5px] text-boardtree-text-secondary">
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 accent-boardtree-accent" />
+      <span>
+        Count working days only
+        <span className="block text-[11.5px] text-boardtree-text-faint">Weekends and holidays are skipped, set them in Manage, Settings.</span>
+      </span>
+    </label>
   );
 }

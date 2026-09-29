@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import type { MentionOption } from "./mentionOptions";
 
@@ -139,7 +140,7 @@ export type DrawerInfoBox = {
 };
 
 /** `"activity"` folded into `"updates"` (see `UpdatesPanel`'s merged feed) — no longer a separate tab. */
-export type DrawerTabId = "updates" | "files" | "info_boxes";
+export type DrawerTabId = "updates" | "files" | "info_boxes" | "automations";
 
 /** Payload of the `item_comment_posted` broadcast, ids only (see `App\Events\ItemCommentPosted`). */
 export type RemoteCommentEvent = {
@@ -212,6 +213,8 @@ export type BoardItemDrawerConfig<TRow> = {
   onArchiveItem?: (row_id: string) => Promise<void>;
   /** Deletes the item. Omit to hide "Delete". */
   onDeleteItem?: (row_id: string) => Promise<void>;
+  /** The Automations tab: what runs on the item. Omit to hide the tab. */
+  renderAutomationsTab?: (row_id: string) => ReactNode;
 };
 
 /**

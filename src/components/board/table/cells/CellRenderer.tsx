@@ -70,6 +70,15 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   // Text cell: whether it was clicked out of its search highlighted display into the input.
   const [is_text_editing, setIsTextEditing] = useState(false);
 
+  // Button cell: in flight while its press runs, then the result flashes on it for a moment.
+  const [is_pressing, setIsPressing] = useState(false);
+  const [press_feedback, setPressFeedback] = useState<string | null>(null);
+  useEffect(() => {
+    if (!press_feedback) return;
+    const timer = setTimeout(() => setPressFeedback(null), 2600);
+    return () => clearTimeout(timer);
+  }, [press_feedback]);
+
   // Connect-board cell's linked item names — declared unconditionally (Rules
   // of Hooks, same as `running_since` above) even though only the
   // "connect_board" branch below reads `state.connect_board_items`.
@@ -120,12 +129,14 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "number") {
+    // Automations and imports store a JSON number, the cell editor stores text, both read the same.
+    const number_text = typeof value === "number" ? String(value) : asString(value);
     return (
       <input
         inputMode="numeric"
-        value={asString(value)}
+        value={number_text}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value.replace(/[^0-9.-]/g, ""))}
-        title={asString(value)}
+        title={number_text}
         className="h-full w-full truncate bg-transparent px-2.5 text-center font-mono text-[12px] text-boardtree-text outline-none"
       />
     );
@@ -727,6 +738,42 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           ))
         ) : (
           <span className="text-[12.5px] text-boardtree-text-faint">–</span>
+        )}
+      </div>
+    );
+  }
+
+  if (column.kind === "button") {
+    const label = column.button?.label?.trim() || column.title;
+    const color = column.button?.color ?? "#579bfc";
+    const press = async () => {
+      if (is_pressing) return;
+      setIsPressing(true);
+      try {
+        const result = actions.pressButton(node_id, column.id) as Promise<string> | undefined;
+        setPressFeedback(result ? await result : "You cannot press this button.");
+      } catch {
+        setPressFeedback("The button could not run its automations.");
+      } finally {
+        setIsPressing(false);
+      }
+    };
+    return (
+      <div className="relative flex h-full w-full min-w-0 items-center justify-center px-2">
+        <button
+          type="button"
+          onClick={() => void press()}
+          disabled={is_pressing}
+          title={press_feedback ?? `Press to run the automations of "${label}"`}
+          className="h-[26px] max-w-full truncate rounded-[4px] px-3 text-[12.5px] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
+          style={{ background: color, color: contrastFg(color) }}
+        >
+          {is_pressing ? "Running..." : press_feedback ? "Done" : label}
+        </button>
+        {press_feedback && (
+          <div role="status" className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 w-max max-w-[240px] -translate-x-1/2 rounded-[6px] bg-boardtree-text px-2 py-1 text-[11.5px] text-boardtree-surface shadow-lg">
+            {press_feedback}
+          </div>
         )}
       </div>
     );

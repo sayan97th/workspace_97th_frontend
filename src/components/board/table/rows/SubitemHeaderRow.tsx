@@ -1,7 +1,7 @@
 "use client";
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import type { BoardTableGroup, BoardTableItem } from "../types";
+import type { BoardTableGroup, BoardTableItem, ColumnAutomationShortcut } from "../types";
 import { subGridTemplate, subStickyOffsets } from "../layoutUtils";
 import ColumnHeaderCell from "../group/ColumnHeaderCell";
 import ColumnPicker from "../menus/ColumnPicker";
@@ -17,10 +17,12 @@ interface SubitemHeaderRowProps {
   onRequestColumnFilter?: (column_id: string) => void;
   /** Opens the column permissions dialog for a column, only passed for board owners. */
   onRequestColumnPermissions?: (column_id: string) => void;
+  /** "Automate" in each column's header menu. */
+  column_automation?: ColumnAutomationShortcut;
   onRequestGroupByColumn?: (column_id: string) => void;
 }
 
-export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn, onRequestColumnPermissions }: SubitemHeaderRowProps) {
+export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn, onRequestColumnPermissions, column_automation }: SubitemHeaderRowProps) {
   const scope_key_of = (column_id: string) => `sub|${item.id}|${column_id}`;
   const sub_title_key = `sub-title:${item.id}`;
   const sort_scope = `sub:${item.id}`;
@@ -73,7 +75,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button }}
             can_delete={true}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
@@ -112,6 +114,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
             onRequestPermissions={onRequestColumnPermissions ? () => onRequestColumnPermissions(col.id) : undefined}
+            automation={column_automation ? { count: column_automation.counts[col.id] ?? 0, onOpen: () => column_automation.onOpen(col.id) } : undefined}
             is_restricted={col.is_restricted}
             onCollapseAll={actions.collapseAllGroups}
             onDuplicate={() => actions.duplicateColumn(group.key, "sub", col.id)}

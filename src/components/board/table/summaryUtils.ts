@@ -31,8 +31,10 @@ export interface ColumnSummary {
   range_label: string;
 }
 
+/** A Number cell's value, stored as text by the cell editor or as a JSON number by automations and imports. */
 function numberValueOf(item: BoardTableItem, column_id: string): number {
   const raw = item.values[column_id];
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : 0;
   if (typeof raw !== "string") return 0;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : 0;

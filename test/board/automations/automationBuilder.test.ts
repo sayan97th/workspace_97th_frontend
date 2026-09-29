@@ -72,7 +72,7 @@ describe("draftProblems", () => {
   test("a recurring automation needs create item before actions that need an item", () => {
     const draft = { ...emptyDraft(), trigger_type: "recurring" as const, trigger_config: { schedule: { frequency: "daily" as const, time: "09:00" } } };
     draft.actions = [{ ...actionFromPicker("archive_item", context) }];
-    expect(draftProblems(draft, context)).toContain('A recurring automation has no item, add "create item" before action 1.');
+    expect(draftProblems(draft, context)).toContain('This trigger has no item, add "create item" before action 1.');
 
     draft.actions = [{ ...actionFromPicker("create_item", context), params: { target_group_id: 100 } }, actionFromPicker("archive_item", context)];
     expect(draftProblems(draft, context)).toEqual([]);
@@ -168,7 +168,7 @@ describe("templates", () => {
   test("recipes pick the first column of the right kind", () => {
     const status_move = AUTOMATION_RECIPES.find((recipe) => recipe.id === "status_move")!.build(context);
     expect(status_move.trigger_column_id).toBe(10);
-    const subitem_parent = AUTOMATION_RECIPES.find((recipe) => recipe.id === "subitem_status_parent")!.build(context);
+    const subitem_parent = AUTOMATION_RECIPES.find((recipe) => recipe.id === "all_subitems_done")!.build(context);
     expect(subitem_parent.trigger_column_id).toBe(20);
   });
 });

@@ -1,12 +1,26 @@
 import { apiClient } from "@/lib/api-client";
 import type {
+  AccountAutomationTemplateDto,
+  BoardAutomationBulkAction,
+  BoardAutomationBulkResult,
+  BoardAutomationCopyResult,
   BoardAutomationDto,
+  BoardAutomationRunDetail,
+  BoardAutomationRunDto,
+  BoardAutomationSettingsDto,
+  BoardAutomationVersionDto,
+  BoardButtonPressResult,
+  BoardItemAutomationsDto,
+  BoardAutomationTeamDto,
+  BoardAutomationTestResult,
   BoardAutomationRunFilters,
   BoardAutomationRunsPage,
   BoardAutomationTemplateDto,
   BoardAutomationUsageDto,
   CreateBoardAutomationPayload,
+  TestBoardAutomationPayload,
   UpdateBoardAutomationPayload,
+  UpdateBoardAutomationSettingsPayload,
 } from "@/types/board-automation";
 
 /** Builds `?a=1&b=2`, leaving out every empty value. */
@@ -79,6 +93,102 @@ export const boardAutomationService = {
   /** DELETE /api/boards/{board_id}/automations/templates/{template_id} */
   async deleteTemplate(board_id: number, template_id: number): Promise<void> {
     await apiClient.delete(`/api/boards/${board_id}/automations/templates/${template_id}`);
+  },
+
+  /** POST /api/boards/{board_id}/automations/test, runs a definition on one item and rolls everything back. */
+  async testRun(board_id: number, payload: TestBoardAutomationPayload): Promise<BoardAutomationTestResult> {
+    const response = await apiClient.post<{ data: BoardAutomationTestResult }>(`/api/boards/${board_id}/automations/test`, payload);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/{automation_id}/webhook-token, the old URL stops working. */
+  async regenerateWebhookUrl(board_id: number, automation_id: number): Promise<BoardAutomationDto> {
+    const response = await apiClient.post<{ automation: BoardAutomationDto }>(`/api/boards/${board_id}/automations/${automation_id}/webhook-token`, {});
+    return response.automation;
+  },
+
+  /** GET /api/boards/{board_id}/automations/teams, the teams a "notify team" action can reach. */
+  async getTeams(board_id: number): Promise<BoardAutomationTeamDto[]> {
+    const response = await apiClient.get<{ data: BoardAutomationTeamDto[] }>(`/api/boards/${board_id}/automations/teams`);
+    return response.data;
+  },
+
+  /** GET /api/automation-templates, the templates published for every board. */
+  async getAccountTemplates(): Promise<AccountAutomationTemplateDto[]> {
+    const response = await apiClient.get<{ data: AccountAutomationTemplateDto[] }>("/api/automation-templates");
+    return response.data;
+  },
+
+  /** POST /api/automation-templates, administrators only. */
+  async publishAccountTemplate(payload: { automation_id: number; name: string; description?: string | null }): Promise<AccountAutomationTemplateDto> {
+    const response = await apiClient.post<{ template: AccountAutomationTemplateDto }>("/api/automation-templates", payload);
+    return response.template;
+  },
+
+  /** DELETE /api/automation-templates/{template_id}, administrators only. */
+  async deleteAccountTemplate(template_id: number): Promise<void> {
+    await apiClient.delete(`/api/automation-templates/${template_id}`);
+  },
+
+  /** GET /api/boards/{board_id}/automations/settings */
+  async getSettings(board_id: number): Promise<BoardAutomationSettingsDto> {
+    const response = await apiClient.get<{ data: BoardAutomationSettingsDto }>(`/api/boards/${board_id}/automations/settings`);
+    return response.data;
+  },
+
+  /** PUT /api/boards/{board_id}/automations/settings, "Pause all automations" and the working calendar. */
+  async updateSettings(board_id: number, payload: UpdateBoardAutomationSettingsPayload): Promise<BoardAutomationSettingsDto> {
+    const response = await apiClient.put<{ data: BoardAutomationSettingsDto }>(`/api/boards/${board_id}/automations/settings`, payload);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/bulk */
+  async bulkUpdate(board_id: number, automation_ids: number[], action: BoardAutomationBulkAction): Promise<BoardAutomationBulkResult> {
+    return apiClient.post<BoardAutomationBulkResult>(`/api/boards/${board_id}/automations/bulk`, { automation_ids, action });
+  },
+
+  /** POST /api/boards/{board_id}/automations/copy, the copies start turned off. */
+  async copyToBoard(board_id: number, automation_ids: number[], target_board_id: number): Promise<BoardAutomationCopyResult> {
+    return apiClient.post<BoardAutomationCopyResult>(`/api/boards/${board_id}/automations/copy`, { automation_ids, target_board_id });
+  },
+
+  /** GET /api/boards/{board_id}/automations/{automation_id}/versions, newest first. */
+  async getVersions(board_id: number, automation_id: number): Promise<BoardAutomationVersionDto[]> {
+    const response = await apiClient.get<{ data: BoardAutomationVersionDto[] }>(`/api/boards/${board_id}/automations/${automation_id}/versions`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/{automation_id}/versions/{version_id}/restore */
+  async restoreVersion(board_id: number, automation_id: number, version_id: number): Promise<BoardAutomationDto> {
+    const response = await apiClient.post<{ automation: BoardAutomationDto }>(`/api/boards/${board_id}/automations/${automation_id}/versions/${version_id}/restore`, {});
+    return response.automation;
+  },
+
+  /** GET /api/boards/{board_id}/automations/runs/{run_id}, every step of that execution. */
+  async getRun(board_id: number, run_id: number): Promise<BoardAutomationRunDetail> {
+    const response = await apiClient.get<{ data: BoardAutomationRunDetail }>(`/api/boards/${board_id}/automations/runs/${run_id}`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/automations/runs/{run_id}/retry, runs a failed step and the ones after it again. */
+  async retryRun(board_id: number, run_id: number): Promise<{ message: string; data: BoardAutomationRunDto[] }> {
+    return apiClient.post<{ message: string; data: BoardAutomationRunDto[] }>(`/api/boards/${board_id}/automations/runs/${run_id}/retry`, {});
+  },
+
+  /** DELETE /api/boards/{board_id}/automations/delayed/{delayed_id}, cancels a run waiting behind a "wait" step. */
+  async cancelWaitingRun(board_id: number, delayed_id: number): Promise<void> {
+    await apiClient.delete(`/api/boards/${board_id}/automations/delayed/${delayed_id}`);
+  },
+
+  /** GET /api/boards/{board_id}/automations/items/{item_id}, the item drawer's Automations tab. */
+  async getItemAutomations(board_id: number, item_id: number): Promise<BoardItemAutomationsDto> {
+    const response = await apiClient.get<{ data: BoardItemAutomationsDto }>(`/api/boards/${board_id}/automations/items/${item_id}`);
+    return response.data;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/buttons/{column_id}, a Button column's press. */
+  async pressButton(board_id: number, item_id: number, column_id: number): Promise<BoardButtonPressResult> {
+    return apiClient.post<BoardButtonPressResult>(`/api/boards/${board_id}/items/${item_id}/buttons/${column_id}`, {});
   },
 
   /** DELETE /api/boards/{board_id}/automations/{automation_id} */

@@ -1,21 +1,38 @@
 "use client";
-import React, { useState } from "react";
-import type { BoardAutomationActionParams } from "@/types/board-automation";
+import React, { useEffect, useState } from "react";
+import type { BoardAutomationActionParams, BoardAutomationFieldMapping } from "@/types/board-automation";
+import { boardContentService } from "@/services/board-content.service";
 import type { ColumnKind } from "../../table/types";
-import { NUMERIC_KINDS, SETTABLE_KINDS, actionSections, type ActionPickerId, type AutomationBuilderContext } from "./automationCatalog";
 import {
+  CLEARABLE_KINDS,
+  COPYABLE_SOURCE_KINDS,
+  DATE_KINDS,
+  NUMERIC_KINDS,
+  READ_ONLY_KINDS,
+  SETTABLE_KINDS,
+  actionSections,
+  type ActionPickerId,
+  type AutomationBuilderContext,
+} from "./automationCatalog";
+import {
+  amountLabel,
   boardGroupLabel,
   boardLabel,
   columnLabel,
   findColumn,
+  groupLabel,
   personLabel,
   recipientLabel,
+  columnTokensToDisplay,
   relativeDayLabel,
+  teamLabel,
+  urlHost,
   valueLabel,
 } from "./automationSentence";
 import { ActionIcon } from "./actionIcons";
+import ActionRowExtras, { EXTRA_ACTION_IDS, EmailRecipientEditor } from "./ActionRowExtras";
 import { actionFromPicker, type ActionDraft } from "./builderDraft";
-import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, type PickerEntry } from "./builderUi";
+import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, MessageEditor, PersonPicker } from "./valueEditors";
 
 export type ActionRowProps = {
@@ -28,8 +45,10 @@ export type ActionRowProps = {
   /** Whether the "copy values" choice makes sense, it needs a triggering item. */
   has_trigger_item: boolean;
   is_loading_boards: boolean;
-  /** "Then" for the first action, "and" for the ones after it. */
-  lead: "Then" | "and";
+  /** "Then" for the first action, "Otherwise" for the first one of the else branch, "and" for the ones after. */
+  lead: "Then" | "and" | "Otherwise";
+  /** The trigger is a webhook, so messages and new item columns can read `{payload.*}`. */
+  is_webhook?: boolean;
   onChange: (next: ActionDraft) => void;
 };
 
@@ -168,41 +187,229 @@ function NumberParamEditor({ value, label, onApply, allow_zero = false, presets 
   );
 }
 
+/** Days, weeks or months forward or back, for "push date". Days can count working days only. */
+function ShiftEditor({ amount, unit, use_working_days, onApply }: { amount: number; unit: "days" | "weeks" | "months"; use_working_days: boolean; onApply: (amount: number, unit: "days" | "weeks" | "months", use_working_days: boolean) => void }) {
+  const [direction, setDirection] = useState<"later" | "earlier">(amount < 0 ? "earlier" : "later");
+  const [value, setValue] = useState(String(Math.abs(amount) || 1));
+  const [next_unit, setNextUnit] = useState(unit);
+  const [working_days, setWorkingDays] = useState(use_working_days);
+  const number = Math.round(Number(value));
+  const is_valid = Number.isFinite(number) && number > 0 && number <= 3650;
+  return (
+    <>
+      <Segmented label="Direction" options={[{ id: "later", label: "Later" }, { id: "earlier", label: "Earlier" }]} value={direction} onChange={setDirection} />
+      <div className="mt-2 flex items-center gap-2">
+        <input type="number" min={1} max={3650} value={value} onChange={(event) => setValue(event.target.value)} aria-label="How much" className={`${POPOVER_INPUT} w-20`} />
+        <select value={next_unit} onChange={(event) => setNextUnit(event.target.value as "days" | "weeks" | "months")} aria-label="Unit" className={`${POPOVER_INPUT} flex-1`}>
+          <option value="days">days</option>
+          <option value="weeks">weeks</option>
+          <option value="months">months</option>
+        </select>
+      </div>
+      {next_unit === "days" && <WorkingDaysToggle checked={working_days} onChange={setWorkingDays} />}
+      <PopoverFooter onDone={() => onApply(direction === "earlier" ? -number : number, next_unit, working_days)} is_disabled={!is_valid} />
+    </>
+  );
+}
+
+/** Where a new timeline starts and how long it lasts. */
+function TimelineEditor({ start_offset_days, duration_days, onApply }: { start_offset_days: number; duration_days: number; onApply: (start_offset_days: number, duration_days: number) => void }) {
+  const [start, setStart] = useState(String(start_offset_days));
+  const [duration, setDuration] = useState(String(duration_days));
+  const is_valid = Number.isFinite(Number(start)) && Number(duration) >= 1 && Number(duration) <= 3650;
+  return (
+    <>
+      <div className={POPOVER_LABEL}>Starts, days from today</div>
+      <input type="number" value={start} onChange={(event) => setStart(event.target.value)} aria-label="Starts, days from today" className={`${POPOVER_INPUT} mb-2`} />
+      <div className={POPOVER_LABEL}>Lasts, in days</div>
+      <input type="number" min={1} value={duration} onChange={(event) => setDuration(event.target.value)} aria-label="Lasts, in days" className={POPOVER_INPUT} />
+      <PopoverFooter onDone={() => onApply(Math.round(Number(start)), Math.round(Number(duration)))} is_disabled={!is_valid} />
+    </>
+  );
+}
+
+/** A URL and an optional signing secret, for "send a webhook". */
+function WebhookEditor({ url, secret, onApply }: { url: string; secret: string; onApply: (url: string, secret: string) => void }) {
+  const [url_draft, setUrlDraft] = useState(url);
+  const [secret_draft, setSecretDraft] = useState(secret);
+  const is_valid = /^https?:\/\/\S+$/i.test(url_draft.trim());
+  return (
+    <>
+      <div className={POPOVER_LABEL}>URL</div>
+      <input autoFocus type="url" value={url_draft} onChange={(event) => setUrlDraft(event.target.value)} placeholder="https://hooks.example.com/..." aria-label="Webhook URL" className={`${POPOVER_INPUT} mb-2`} />
+      <div className={POPOVER_LABEL}>Signing secret (optional)</div>
+      <input value={secret_draft} onChange={(event) => setSecretDraft(event.target.value)} placeholder="Used to sign every request" aria-label="Signing secret" className={POPOVER_INPUT} />
+      <div className="mt-1.5 text-[11.5px] leading-snug text-boardtree-text-faint">
+        The item, its columns and what set the automation off are sent as JSON. With a secret, the header X-Automation-Signature carries sha256 and the HMAC of the body.
+      </div>
+      <PopoverFooter onDone={() => onApply(url_draft.trim(), secret_draft.trim())} is_disabled={!is_valid} />
+    </>
+  );
+}
+
+/** Columns of a new item filled from text templates, such as `{payload.email}`. */
+function FieldMappingEditor({ context, mappings, onApply }: { context: AutomationBuilderContext; mappings: BoardAutomationFieldMapping[]; onApply: (mappings: BoardAutomationFieldMapping[]) => void }) {
+  const writable = context.columns.filter((column) => column.scope === "item" && !READ_ONLY_KINDS.includes(column.kind) && column.kind !== "connect_board" && column.kind !== "dependency");
+  const [rows, setRows] = useState<BoardAutomationFieldMapping[]>(mappings.length ? mappings : [{ column_id: null, source: "" }]);
+  const update = (index: number, next: Partial<BoardAutomationFieldMapping>) => setRows((current) => current.map((row, row_index) => (row_index === index ? { ...row, ...next } : row)));
+  return (
+    <>
+      <div className={POPOVER_LABEL}>Fill these columns</div>
+      <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto">
+        {rows.map((row, index) => (
+          <div key={index} className="flex items-center gap-1.5">
+            <select value={row.column_id ?? ""} onChange={(event) => update(index, { column_id: event.target.value ? Number(event.target.value) : null })} aria-label={`Column ${index + 1}`} className={`${POPOVER_INPUT} w-[140px] flex-none`}>
+              <option value="">Column</option>
+              {writable.map((column) => <option key={column.id} value={column.id}>{column.title}</option>)}
+            </select>
+            <input value={row.source} onChange={(event) => update(index, { source: event.target.value })} placeholder="{payload.email}" aria-label={`Value ${index + 1}`} className={`${POPOVER_INPUT} min-w-0 flex-1`} />
+            <button type="button" onClick={() => setRows((current) => current.filter((_, row_index) => row_index !== index))} aria-label={`Remove row ${index + 1}`} className="h-8 w-8 flex-none rounded-[6px] text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-danger">
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+      {rows.length < 30 && (
+        <button type="button" onClick={() => setRows((current) => [...current, { column_id: null, source: "" }])} className="mt-1.5 rounded-[6px] px-2 py-1 text-[12.5px] text-boardtree-accent hover:bg-boardtree-hover">
+          + Add a column
+        </button>
+      )}
+      <div className="mt-1 text-[11.5px] leading-snug text-boardtree-text-faint">Values are read like an imported spreadsheet: a status by its label, a person by name or email, a date as 2026-10-05.</div>
+      <PopoverFooter onDone={() => onApply(rows.filter((row) => row.column_id && row.source.trim()))} />
+    </>
+  );
+}
+
+/** Loads the columns of the board a connect boards column points at, for matching items. */
+function useLinkedBoardColumns(linked_board_id: string | undefined, is_open: boolean): { columns: { id: string; label: string }[]; is_loading: boolean } {
+  const [state, setState] = useState<{ board_id: string | null; columns: { id: string; label: string }[] }>({ board_id: null, columns: [] });
+  const [is_loading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!is_open || !linked_board_id || state.board_id === linked_board_id) return;
+    let cancelled = false;
+    setIsLoading(true);
+    boardContentService
+      .getColumns(Number(linked_board_id))
+      .then((columns) => {
+        if (!cancelled) setState({ board_id: linked_board_id, columns: columns.filter((column) => column.scope !== "subitem").map((column) => ({ id: String(column.id), label: column.label })) });
+      })
+      .catch(() => {
+        if (!cancelled) setState({ board_id: linked_board_id, columns: [] });
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [is_open, linked_board_id, state.board_id]);
+
+  return { columns: state.board_id === linked_board_id ? state.columns : [], is_loading };
+}
+
+function LinkedColumnPicker({ linked_board_id, selected, onPick }: { linked_board_id: string | undefined; selected: string | null; onPick: (id: string) => void }) {
+  const { columns, is_loading } = useLinkedBoardColumns(linked_board_id, true);
+  if (!linked_board_id) return <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">Connect the column to a board first.</div>;
+  if (is_loading) return <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">Loading columns...</div>;
+  return <PickerList sections={[{ entries: [{ id: "name", label: "Item name" }] }, { title: "Columns", entries: columns }]} selected={selected} onPick={onPick} placeholder="Search columns" />;
+}
+
 /** One "Then ..." sentence. Each action type lays out its own tokens. */
-export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, onChange }: ActionRowProps) {
+export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, onChange }: ActionRowProps) {
   const params = action.params;
   const patch = (next: BoardAutomationActionParams) => onChange({ ...action, params: { ...params, ...next } });
   const switchProps = { action, context, only_itemless, onChange };
   const target_column = findColumn(context, params.target_column_id);
 
   if (!action.type || !action.picker_id) {
-    return lead === "Then" ? <ActionSwitch {...switchProps} label="Then do this" is_placeholder /> : <><Words>and </Words><ActionSwitch {...switchProps} label="do this" is_placeholder /></>;
+    if (lead === "and") return <><Words>and </Words><ActionSwitch {...switchProps} label="do this" is_placeholder /></>;
+    return <ActionSwitch {...switchProps} label={`${lead} do this`} is_placeholder />;
   }
 
-  const columnToken = (kinds: ColumnKind[], fallback: string, on_pick?: (column_id: string) => BoardAutomationActionParams) => (
-    <Token label={columnLabel(context, params.target_column_id, fallback)} is_placeholder={!target_column} aria_label="Choose a column">
+  if (EXTRA_ACTION_IDS.includes(action.picker_id)) {
+    return <ActionRowExtras action={action} context={context} lead={lead} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
+  }
+
+  /** "counting every day" or "counting working days", for the date actions that can skip weekends and holidays. */
+  const workingDaysToken = (
+    <Token label={params.use_working_days ? "counting working days" : "counting every day"} aria_label="Working days" popover_width={260}>
       {(close) => (
-        <ColumnPicker
-          context={context}
-          kinds={kinds}
-          scopes={scopes}
-          selected={params.target_column_id ? String(params.target_column_id) : null}
-          onPick={(column_id) => {
-            patch(on_pick ? on_pick(column_id) : { target_column_id: Number(column_id) });
-            close();
-          }}
-        />
+        <PickerList is_searchable={false} sections={[{ entries: [{ id: "all", label: "Count every day" }, { id: "working", label: "Count working days only" }] }]} selected={params.use_working_days ? "working" : "all"} onPick={(id) => { patch({ use_working_days: id === "working" }); close(); }} />
       )}
     </Token>
   );
+
+  /** A column token for `param`, drawn in red once the column it names was deleted. */
+  const columnParamToken = (param: "target_column_id" | "source_column_id" | "number_column_id", kinds: ColumnKind[], fallback: string, on_pick?: (column_id: string) => BoardAutomationActionParams, extra_entries?: PickerEntry<string>[]) => {
+    const column_id = params[param];
+    const column = findColumn(context, column_id);
+    const is_invalid = column_id != null && !column;
+    return (
+      <Token label={is_invalid ? "deleted column" : columnLabel(context, column_id, fallback)} is_placeholder={!column} is_invalid={is_invalid} aria_label="Choose a column">
+        {(close) =>
+          extra_entries?.length ? (
+            <PickerList
+              sections={[
+                { entries: extra_entries },
+                { title: "Columns", entries: context.columns.filter((entry) => scopes.includes(entry.scope) && kinds.includes(entry.kind)).map((entry) => ({ id: entry.id, label: entry.title })) },
+              ]}
+              selected={column_id ? String(column_id) : "__none__"}
+              onPick={(id) => {
+                patch(on_pick ? on_pick(id) : { [param]: id === "__none__" ? null : Number(id) });
+                close();
+              }}
+              placeholder="Search columns"
+            />
+          ) : (
+            <ColumnPicker
+              context={context}
+              kinds={kinds}
+              scopes={scopes}
+              selected={column_id ? String(column_id) : null}
+              onPick={(picked) => {
+                patch(on_pick ? on_pick(picked) : { [param]: Number(picked) });
+                close();
+              }}
+            />
+          )
+        }
+      </Token>
+    );
+  };
+
+  const columnToken = (kinds: ColumnKind[], fallback: string, on_pick?: (column_id: string) => BoardAutomationActionParams) => columnParamToken("target_column_id", kinds, fallback, on_pick);
+
+  /** A group of this tab, or the item's own group when the trigger has an item. */
+  const ownGroupToken = (param: "target_group_id" | "source_group_id") => {
+    const group_id = params[param];
+    const is_invalid = !params.from_item_group && group_id != null && !context.groups.some((group) => group.id === String(group_id));
+    const label = params.from_item_group ? "the item's group" : is_invalid ? "deleted group" : groupLabel(context, group_id);
+    return (
+      <Token label={label} is_placeholder={!params.from_item_group && !group_id} is_invalid={is_invalid} aria_label="Choose a group">
+        {(close) => (
+          <GroupPicker
+            groups={context.groups}
+            selected={params.from_item_group ? "__item__" : group_id ? String(group_id) : null}
+            extra_entries={has_trigger_item ? [{ id: "__item__", label: "The item's group" }] : []}
+            onPick={(id) => {
+              patch(id === "__item__" ? { from_item_group: true, [param]: null } : { from_item_group: false, [param]: Number(id) });
+              close();
+            }}
+          />
+        )}
+      </Token>
+    );
+  };
 
   const groupToken = (board_id: number | null | undefined) => {
     const is_other_board = board_id != null && board_id !== context.board_id;
     const groups = is_other_board
       ? (context.board_targets.find((board) => board.id === board_id)?.groups ?? []).map((group) => ({ id: String(group.id), label: group.name }))
       : context.groups;
+    const is_invalid = !is_other_board && params.target_group_id != null && !context.groups.some((group) => group.id === String(params.target_group_id));
     return (
-      <Token label={boardGroupLabel(context, board_id, params.target_group_id)} is_placeholder={!params.target_group_id} disabled={is_other_board ? !board_id : false} aria_label="Choose a group">
+      <Token label={is_invalid ? "deleted group" : boardGroupLabel(context, board_id, params.target_group_id)} is_placeholder={!params.target_group_id} is_invalid={is_invalid} disabled={is_other_board ? !board_id : false} aria_label="Choose a group">
         {(close) => <GroupPicker groups={groups} selected={params.target_group_id ? String(params.target_group_id) : null} onPick={(id) => { patch({ target_group_id: Number(id) }); close(); }} />}
       </Token>
     );
@@ -236,13 +443,15 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   const messageToken = (options: { is_required?: boolean; with_subject?: boolean } = {}) => {
     const message = (params.message ?? "").trim();
     return (
-      <Token label={message ? `"${truncate(message)}"` : options.is_required ? "message" : "default message"} is_placeholder={!message} aria_label="Message" popover_width={360}>
+      <Token label={message ? `"${truncate(columnTokensToDisplay(message, context))}"` : options.is_required ? "message" : "default message"} is_placeholder={!message} aria_label="Message" popover_width={360}>
         {(close) => (
           <MessageEditor
+            context={context}
             message={params.message ?? ""}
             subject={params.subject ?? ""}
             with_subject={options.with_subject}
             is_required={options.is_required}
+            with_payload={is_webhook}
             onApply={(next_message, next_subject) => {
               patch({ message: next_message.trim() || null, ...(options.with_subject ? { subject: next_subject.trim() || null } : {}) });
               close();
@@ -273,6 +482,19 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
             {(close) => <TextParamEditor value={params.item_name ?? ""} label="Item name" placeholder="New item" hint="Tokens such as {item_name} and {date} are filled in." onApply={(item_name) => { patch({ item_name }); close(); }} />}
           </Token>{" "}
           <Words>in </Words>{groupToken(params.target_board_id)} <Words>on </Words>{boardToken(true)}
+          {!params.target_board_id && (
+            <>
+              {" "}
+              <Token
+                label={params.field_mappings?.length ? `filling ${params.field_mappings.length} ${params.field_mappings.length === 1 ? "column" : "columns"}` : "filling no columns"}
+                is_placeholder={!params.field_mappings?.length}
+                aria_label="Fill columns"
+                popover_width={420}
+              >
+                {(close) => <FieldMappingEditor context={context} mappings={params.field_mappings ?? []} onApply={(field_mappings) => { patch({ field_mappings }); close(); }} />}
+              </Token>
+            </>
+          )}
           {has_trigger_item && (
             <>
               {" "}
@@ -333,7 +555,7 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
       );
     }
     case "clear_column":
-      return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="clear" /> {columnToken(SETTABLE_KINDS, "column")}</>;
+      return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="clear" /> {columnToken(CLEARABLE_KINDS, "column")}</>;
     case "adjust_number": {
       const amount = params.amount ?? 1;
       return (
@@ -406,12 +628,23 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
               />
             )}
           </Token>
+          {params.offset_days ? <><Words>, </Words>{workingDaysToken}</> : null}
         </>
       );
     case "notify_person":
       return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="notify" /> {recipientToken} <Words>with </Words>{messageToken()}</>;
-    case "send_email":
-      return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="send an email" /> <Words>to </Words>{recipientToken} <Words>with </Words>{messageToken({ with_subject: true })}</>;
+    case "send_email": {
+      const has_recipient = Boolean(params.notify_user_id || params.notify_from_people_column_id || params.email_column_id || params.email_addresses?.length);
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="send an email" /> <Words>to </Words>
+          <Token label={recipientLabel(context, params)} is_placeholder={!has_recipient} aria_label="Who to email" popover_width={340}>
+            {(close) => <EmailRecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} onApply={(next) => { patch(next); close(); }} />}
+          </Token>{" "}
+          <Words>with </Words>{messageToken({ with_subject: true })}
+        </>
+      );
+    }
     case "slack_notify_person":
       return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="send a Slack message" /> <Words>to </Words>{recipientToken} <Words>with </Words>{messageToken()}</>;
     case "slack_notify_channel":
@@ -433,6 +666,169 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
             }
           </Token>{" "}
           <Words>with </Words>{messageToken()}
+        </>
+      );
+    case "shift_date": {
+      const amount = params.amount ?? 1;
+      const shift_unit = params.unit === "weeks" || params.unit === "months" ? params.unit : "days";
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label={amount < 0 ? "pull" : "push"} /> {columnToken(DATE_KINDS, "date")} <Words>{amount < 0 ? "earlier by " : "by "}</Words>
+          <Token label={`${amountLabel(amount, shift_unit)}${params.use_working_days && shift_unit === "days" ? " (working days)" : ""}`} aria_label="How far" popover_width={260}>
+            {(close) => (
+              <ShiftEditor
+                amount={amount}
+                unit={shift_unit}
+                use_working_days={Boolean(params.use_working_days)}
+                onApply={(next_amount, unit, use_working_days) => { patch({ amount: next_amount, unit, use_working_days: unit === "days" && use_working_days }); close(); }}
+              />
+            )}
+          </Token>
+        </>
+      );
+    }
+    case "set_date_from_column": {
+      const offset = params.offset_days ?? 0;
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="set" /> {columnToken(["date"], "date")} <Words>to </Words>
+          {columnParamToken("source_column_id", DATE_KINDS, "another date")}{" "}
+          <Token label={offset === 0 ? "on the day" : `${offset > 0 ? "+" : "-"} ${amountLabel(offset)}`} aria_label="Days to add" popover_width={260}>
+            {(close) => <NumberParamEditor value={offset} label="Days to add, negative to subtract" allow_zero onApply={(offset_days) => { patch({ offset_days: Math.round(offset_days) }); close(); }} />}
+          </Token>{" "}
+          <Token label={params.number_sign === -1 ? "minus" : "plus"} aria_label="Add or subtract the number" popover_width={200}>
+            {(close) => (
+              <PickerList is_searchable={false} sections={[{ entries: [{ id: "1", label: "Plus the days in" }, { id: "-1", label: "Minus the days in" }] }]} selected={params.number_sign === -1 ? "-1" : "1"} onPick={(id) => { patch({ number_sign: id === "-1" ? -1 : 1 }); close(); }} />
+            )}
+          </Token>{" "}
+          {columnParamToken("number_column_id", NUMERIC_KINDS, "no number column", undefined, [{ id: "__none__", label: "No number column" }])}
+        </>
+      );
+    }
+    case "ensure_date_after":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="keep" /> {columnToken(DATE_KINDS, "this date")} <Words>at least </Words>
+          <Token label={amountLabel(params.gap_days ?? 1)} aria_label="Days between the dates" popover_width={240}>
+            {(close) => <NumberParamEditor value={params.gap_days ?? 1} label="Days between the dates" allow_zero onApply={(gap_days) => { patch({ gap_days: Math.max(0, Math.min(365, Math.round(gap_days))) }); close(); }} />}
+          </Token>{" "}
+          <Words>after </Words>{columnParamToken("source_column_id", DATE_KINDS, "that date")}
+        </>
+      );
+    case "set_timeline":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="set" /> {columnToken(["timeline"], "timeline")} <Words>to start </Words>
+          <Token label={`${relativeDayLabel(params.start_offset_days)} for ${amountLabel(params.duration_days ?? 7)}`} aria_label="Timeline" popover_width={260}>
+            {(close) => <TimelineEditor start_offset_days={params.start_offset_days ?? 0} duration_days={params.duration_days ?? 7} onApply={(start_offset_days, duration_days) => { patch({ start_offset_days, duration_days }); close(); }} />}
+          </Token>
+          <Words>, </Words>{workingDaysToken}
+        </>
+      );
+    case "create_group": {
+      const name = (params.group_name ?? "").trim();
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="create a group" /> <Words>named </Words>
+          <Token label={name ? `"${truncate(name)}"` : "group name"} is_placeholder={!name} aria_label="Group name" popover_width={320}>
+            {(close) => <TextParamEditor value={params.group_name ?? ""} label="Group name" placeholder="Week {week}" hint="Tokens such as {week}, {month} and {date} are filled in." onApply={(group_name) => { patch({ group_name }); close(); }} />}
+          </Token>{" "}
+          <Words>at the </Words>
+          <Token label={params.position === "bottom" ? "bottom" : "top"} aria_label="Where" popover_width={200}>
+            {(close) => (
+              <PickerList is_searchable={false} sections={[{ entries: [{ id: "top", label: "Top of the board" }, { id: "bottom", label: "Bottom of the board" }] }]} selected={params.position ?? "top"} onPick={(id) => { patch({ position: id === "bottom" ? "bottom" : "top" }); close(); }} />
+            )}
+          </Token>
+        </>
+      );
+    }
+    case "duplicate_group": {
+      const name = (params.group_name ?? "").trim();
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="duplicate" /> {ownGroupToken("source_group_id")} <Words>as </Words>
+          <Token label={name ? `"${truncate(name)}"` : "a copy"} is_placeholder={!name} aria_label="New group name" popover_width={320}>
+            {(close) => <TextParamEditor value={params.group_name ?? ""} label="New group name" placeholder="Leave empty for the group name plus copy" hint="Tokens such as {week}, {month} and {date} are filled in." onApply={(group_name) => { patch({ group_name }); close(); }} />}
+          </Token>{" "}
+          <Token label={params.with_items ? "with its items" : "without items"} aria_label="Items" popover_width={220}>
+            {(close) => (
+              <PickerList is_searchable={false} sections={[{ entries: [{ id: "no", label: "Without items" }, { id: "yes", label: "With its items" }] }]} selected={params.with_items ? "yes" : "no"} onPick={(id) => { patch({ with_items: id === "yes" }); close(); }} />
+            )}
+          </Token>
+        </>
+      );
+    }
+    case "archive_group":
+      return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="archive" /> {ownGroupToken("target_group_id")}</>;
+    case "copy_column_value":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="copy" /> {columnParamToken("source_column_id", COPYABLE_SOURCE_KINDS, "a column")} <Words>to </Words>
+          {columnToken(SETTABLE_KINDS, "another column")}
+        </>
+      );
+    case "time_tracking":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="time tracking" /><Words>, </Words>
+          <Token label={params.mode === "stop" ? "stop" : "start"} aria_label="Start or stop" popover_width={200}>
+            {(close) => (
+              <PickerList is_searchable={false} sections={[{ entries: [{ id: "start", label: "Start the timer" }, { id: "stop", label: "Stop the timer" }] }]} selected={params.mode ?? "start"} onPick={(id) => { patch({ mode: id === "stop" ? "stop" : "start" }); close(); }} />
+            )}
+          </Token>{" "}
+          <Words>the timer in </Words>{columnToken(["time_tracking"], "time tracking")}
+        </>
+      );
+    case "connect_items": {
+      const linked_board_id = target_column?.linked_board_id;
+      const match_label = params.match_column_id && params.match_column_id !== "name" ? columnLabel(context, params.match_column_id) : "name";
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="connect" /> <Words>the item in </Words>{columnToken(["connect_board"], "connect boards")}{" "}
+          <Words>to items whose </Words>
+          <Token label={params.linked_match_column_id && params.linked_match_column_id !== "name" ? "matching column" : "name"} disabled={!linked_board_id} aria_label="Column on the connected board" popover_width={280}>
+            {(close) => <LinkedColumnPicker linked_board_id={linked_board_id} selected={params.linked_match_column_id ?? "name"} onPick={(id) => { patch({ linked_match_column_id: id }); close(); }} />}
+          </Token>{" "}
+          <Words>matches its </Words>
+          <Token label={match_label} aria_label="Column of this item" popover_width={280}>
+            {(close) => (
+              <PickerList
+                sections={[{ entries: [{ id: "name", label: "Item name" }] }, { title: "Columns", entries: context.columns.filter((column) => column.scope === "item").map((column) => ({ id: column.id, label: column.title })) }]}
+                selected={params.match_column_id ?? "name"}
+                onPick={(id) => { patch({ match_column_id: id }); close(); }}
+                placeholder="Search columns"
+              />
+            )}
+          </Token>
+        </>
+      );
+    }
+    case "notify_team": {
+      const teams = context.teams ?? [];
+      const is_invalid = params.team_id != null && teams.length > 0 && !teams.some((team) => team.id === params.team_id);
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="notify" /> <Words>the team </Words>
+          <Token label={is_invalid ? "deleted team" : teamLabel(context, params.team_id)} is_placeholder={!params.team_id} is_invalid={is_invalid} aria_label="Choose a team">
+            {(close) =>
+              teams.length === 0 ? (
+                <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">There are no teams yet. An administrator creates them on the Teams page.</div>
+              ) : (
+                <PickerList sections={[{ entries: teams.map((team) => ({ id: String(team.id), label: team.name, hint: `${team.member_count} ${team.member_count === 1 ? "person" : "people"}` })) }]} selected={params.team_id ? String(params.team_id) : null} onPick={(id) => { patch({ team_id: Number(id) }); close(); }} placeholder="Search teams" />
+              )
+            }
+          </Token>{" "}
+          <Words>with </Words>{messageToken()}
+        </>
+      );
+    }
+    case "send_webhook":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="send a webhook" /> <Words>to </Words>
+          <Token label={urlHost(params.url)} is_placeholder={!params.url} aria_label="Webhook URL" popover_width={380}>
+            {(close) => <WebhookEditor url={params.url ?? ""} secret={params.secret ?? ""} onApply={(url, secret) => { patch({ url, secret: secret || null }); close(); }} />}
+          </Token>
         </>
       );
     default:

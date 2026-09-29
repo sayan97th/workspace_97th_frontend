@@ -9,6 +9,8 @@ import { ConditionFieldPicker, ConditionOperatorPicker, ConditionValueEditor, co
 export type ConditionRowProps = {
   condition: ConditionDraft;
   is_first: boolean;
+  /** Replaces the leading "and", e.g. with an and/or switch. */
+  lead?: React.ReactNode;
   /** Subitem triggers check the subitem's own columns. */
   scope: "item" | "subitem";
   context: AutomationBuilderContext;
@@ -16,14 +18,21 @@ export type ConditionRowProps = {
 };
 
 /** One "and only if" rule: "and only if Priority is High", "and Due date is before today". */
-export default function ConditionRow({ condition, is_first, scope, context, onChange }: ConditionRowProps) {
+export default function ConditionRow({ condition, is_first, lead, scope, context, onChange }: ConditionRowProps) {
   const kind = condition.column_id ? conditionKind(context, condition.column_id) : null;
   const has_value = condition.values.length > 0 || condition.value !== "";
+  // A column id that no longer matches a column or an item detail was deleted.
+  const is_invalid = condition.column_id !== "" && kind === null;
 
   return (
     <>
-      <span className="text-boardtree-text">{is_first ? "And only if " : "and "}</span>
-      <Token label={condition.column_id ? conditionFieldLabel(context, condition.column_id) : "column"} is_placeholder={!condition.column_id} aria_label="Condition column">
+      {lead ?? <span className="text-boardtree-text">{is_first ? "And only if " : "and "}</span>}
+      <Token
+        label={is_invalid ? "deleted column" : condition.column_id ? conditionFieldLabel(context, condition.column_id) : "column"}
+        is_placeholder={!condition.column_id}
+        is_invalid={is_invalid}
+        aria_label="Condition column"
+      >
         {(close) => (
           <ConditionFieldPicker
             context={context}

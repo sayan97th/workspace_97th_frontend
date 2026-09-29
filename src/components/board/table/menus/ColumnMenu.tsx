@@ -12,13 +12,13 @@ import type { NumberAggregation } from "../summaryUtils";
 interface ColumnMenuProps {
   title: string;
   /** Undefined for the item-title/sub-title virtual columns — renders the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible: boolean;
   onRename: (title: string) => void;
   onSort: (direction: "asc" | "desc" | null) => void;
-  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } }) => void;
+  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } }) => void;
   onEditLabels?: () => void;
   /** Formula columns only: opens the operation/source-columns settings modal. */
   onEditFormula?: () => void;
@@ -38,12 +38,37 @@ interface ColumnMenuProps {
   onClose: () => void;
   /** Opens the column permissions dialog. Only passed for board owners on a real column. */
   onRequestPermissions?: () => void;
+  /** "Automate": opens the automation builder with a trigger for this column. `count` automations already use it. */
+  automation?: { count: number; onOpen: () => void };
 }
 
 const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 const ROW_DISABLED = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text-faint cursor-default";
 
-type Sub = "settings" | "add" | "type" | "duplicate_to_board" | null;
+type Sub = "settings" | "add" | "type" | "duplicate_to_board" | "button" | null;
+
+const BUTTON_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#323338", "#ff7575", "#037f4c"];
+
+/** A Button column's label and color, edited from its header menu. */
+function ButtonSettingsPanel({ button, fallback_label, onSave }: { button?: { label: string; color: string }; fallback_label: string; onSave: (button: { label: string; color: string }) => void }) {
+  const [label, setLabel] = useState(button?.label ?? fallback_label);
+  const [color, setColor] = useState(button?.color ?? BUTTON_COLORS[0]);
+  return (
+    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[8px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_8px_24px_rgba(30,34,55,0.18)]">
+      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Button text</div>
+      <input value={label} maxLength={40} onChange={(event) => setLabel(event.target.value)} aria-label="Button text" className="mb-2 h-8 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
+      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Color</div>
+      <div role="radiogroup" aria-label="Button color" className="mb-2.5 flex flex-wrap gap-1.5">
+        {BUTTON_COLORS.map((swatch) => (
+          <button key={swatch} type="button" role="radio" aria-checked={color === swatch} aria-label={swatch} onClick={() => setColor(swatch)} className={`h-6 w-6 rounded-full border-2 ${color === swatch ? "border-boardtree-text" : "border-transparent"}`} style={{ background: swatch }} />
+        ))}
+      </div>
+      <button type="button" disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), color })} className="h-8 w-full rounded-[6px] bg-boardtree-accent text-[12.5px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40">
+        Save button
+      </button>
+    </div>
+  );
+}
 
 /**
  * Rows sit directly on top of each other while their flyouts render off to the side,
@@ -56,7 +81,7 @@ const HOVER_INTENT_DELAY_MS = 250;
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
   onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
 }: ColumnMenuProps) {
   const [draft, setDraft] = useState(title);
   const [sub, setSub] = useState<Sub>(null);
@@ -148,6 +173,26 @@ export default function ColumnMenu({
               />
             )}
           </div>
+        )}
+
+        {column?.kind === "button" && (
+          <div className="relative" onMouseEnter={() => requestSub("button")}>
+            <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "button" ? "var(--color-boardtree-hover)" : "transparent" }}>
+              <span className="w-4 text-boardtree-text-muted">▶</span>
+              <span className="flex-1">Button settings</span>
+              <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
+            </div>
+            {sub === "button" && <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
+          </div>
+        )}
+        {column && automation && (
+          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { automation.onOpen(); onClose(); }} className={ROW_ITEM}>
+            <span className="w-4 text-boardtree-text-muted">
+              <svg viewBox="0 0 16 16" width="14" height="14"><path d="M9.2 1.8 L3.6 9 H7.6 L6.8 14.2 L12.4 7 H8.4 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
+            </span>
+            <span className="flex-1">Automate</span>
+            {automation.count > 0 && <span className="rounded-full bg-boardtree-hover px-1.5 text-[11px] text-boardtree-text-secondary" title={`${automation.count} automation(s) use this column`}>{automation.count}</span>}
+          </button>
         )}
 
         {column?.kind === "formula" && onEditFormula && (

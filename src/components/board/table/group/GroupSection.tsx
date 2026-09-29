@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import type { BoardTableGroup } from "../types";
+import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
 import { computeSubNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
 import { applySort } from "../sortUtils";
 import ItemRow from "../rows/ItemRow";
@@ -36,6 +36,8 @@ interface GroupSectionProps {
   onRequestColumnFilter?: (column_id: string) => void;
   /** Opens the column permissions dialog for a column, only passed for board owners. */
   onRequestColumnPermissions?: (column_id: string) => void;
+  /** "Automate" in each column's header menu. */
+  column_automation?: ColumnAutomationShortcut;
   onRequestGroupByColumn?: (column_id: string) => void;
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
   active_sort_column_id?: string | null;
@@ -50,6 +52,7 @@ export default function GroupSection({
   actions,
   onRequestColumnFilter,
   onRequestColumnPermissions,
+  column_automation,
   onRequestGroupByColumn,
   onRequestColumnSort,
   active_sort_column_id = null,
@@ -143,6 +146,7 @@ export default function GroupSection({
             actions={actions}
             onRequestColumnFilter={onRequestColumnFilter}
             onRequestColumnPermissions={onRequestColumnPermissions}
+            column_automation={column_automation}
             onRequestGroupByColumn={onRequestGroupByColumn}
             onRequestColumnSort={onRequestColumnSort}
             active_sort_column_id={active_sort_column_id}
@@ -188,6 +192,7 @@ export default function GroupSection({
                           actions={actions}
                           onRequestColumnFilter={onRequestColumnFilter}
                           onRequestColumnPermissions={onRequestColumnPermissions}
+            column_automation={column_automation}
                           onRequestGroupByColumn={onRequestGroupByColumn}
                         />
                         {sorted_subs.map((sub) => (

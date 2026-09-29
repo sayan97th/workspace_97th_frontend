@@ -1,18 +1,21 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { PauseCircle } from "lucide-react";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
-import type { BoardAutomationDto, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationDto, BoardAutomationSettingsDto, UpdateBoardAutomationPayload, UpdateBoardAutomationSettingsPayload } from "@/types/board-automation";
+import { boardAutomationService } from "@/services/board-automation.service";
 import { AutomateIcon } from "@/icons/board-icons";
 import { ChevronDownIcon, PlusIcon } from "@/icons/workspace-icons";
 import type { AutomationBuilderContext } from "../../automations/builder/automationCatalog";
 import { useOutsideClick } from "../../table/useOutsideClick";
+import AutomationSettingsTab from "./AutomationSettingsTab";
 import ManageAutomationsTab from "./ManageAutomationsTab";
 import MyConnectionsTab from "./MyConnectionsTab";
 import RunHistoryTab from "./RunHistoryTab";
 import UsageTab from "./UsageTab";
 import { MENU_ITEM, MENU_PANEL } from "./manageUi";
 
-export type ManageTab = "automations" | "runs" | "connections" | "usage";
+export type ManageTab = "automations" | "runs" | "connections" | "usage" | "settings";
 
 export type ManageViewProps = {
   board_id: number;
@@ -36,6 +39,12 @@ export type ManageViewProps = {
   onExploreCommunication?: () => void;
   /** Jumps to the connections setup. */
   onOpenConnections: () => void;
+  /** Administrators only: publishes an automation as a template for every board. */
+  onPublishAccountTemplate?: (automation_id: number, name: string) => Promise<void>;
+  /** Replaces one automation after a change made here, such as a restored version. */
+  onReplaceAutomation?: (automation: BoardAutomationDto) => void;
+  /** Reloads the list after bulk changes. */
+  onReloadAutomations?: () => Promise<void>;
 };
 
 const TABS: { id: ManageTab; label: string }[] = [
@@ -43,6 +52,7 @@ const TABS: { id: ManageTab; label: string }[] = [
   { id: "runs", label: "Run history" },
   { id: "connections", label: "My connections" },
   { id: "usage", label: "Usage" },
+  { id: "settings", label: "Settings" },
 ];
 
 /**
@@ -55,6 +65,28 @@ export default function ManageView(props: ManageViewProps) {
   const [tab, setTab] = useState<ManageTab>("automations");
   const [runs_automation_id, setRunsAutomationId] = useState<number | null>(null);
   const [is_create_menu_open, setIsCreateMenuOpen] = useState(false);
+  const [settings, setSettings] = useState<BoardAutomationSettingsDto | null>(null);
+  const [is_loading_settings, setIsLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    boardAutomationService
+      .getSettings(board_id)
+      .then((data) => {
+        if (!cancelled) setSettings(data);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsLoadingSettings(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [board_id]);
+
+  const saveSettings = async (payload: UpdateBoardAutomationSettingsPayload) => {
+    setSettings(await boardAutomationService.updateSettings(board_id, payload));
+  };
   const create_menu_ref = useOutsideClick<HTMLDivElement>(is_create_menu_open, () => setIsCreateMenuOpen(false));
 
   const openTab = (next: ManageTab) => {
@@ -114,6 +146,18 @@ export default function ManageView(props: ManageViewProps) {
         </div>
       </div>
 
+      {settings?.is_paused && (
+        <div role="status" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[#fdab3d]/50 bg-[#fdab3d]/[0.12] px-4 py-2.5 text-[13px] text-boardtree-text">
+          <span className="flex items-center gap-2">
+            <PauseCircle size={16} className="text-[#d58b12]" />
+            Every automation of this board is paused, nothing runs until they are resumed.
+          </span>
+          <button type="button" onClick={() => void saveSettings({ is_paused: false })} className="h-8 rounded-[6px] bg-boardtree-accent px-3 text-[12.5px] font-medium text-white hover:bg-boardtree-accent-hover">
+            Resume automations
+          </button>
+        </div>
+      )}
+
       <div role="tablist" aria-label="Manage sections" className="mb-5 flex gap-1 border-b border-boardtree-border-soft">
         {TABS.map((item) => (
           <button
@@ -133,7 +177,11 @@ export default function ManageView(props: ManageViewProps) {
       <div role="tabpanel">
         {tab === "automations" && (
           <ManageAutomationsTab
+            board_id={board_id}
             board_label={board_label}
+            onPublishAccountTemplate={props.onPublishAccountTemplate}
+            onReplaceAutomation={props.onReplaceAutomation}
+            onReloadAutomations={props.onReloadAutomations}
             automations={automations}
             context={props.context}
             onToggle={props.onToggle}
@@ -161,6 +209,7 @@ export default function ManageView(props: ManageViewProps) {
         )}
         {tab === "connections" && <MyConnectionsTab slack={slack} return_path={return_path} automations={automations} onOpenSetup={onOpenConnections} />}
         {tab === "usage" && <UsageTab board_id={board_id} view_id={view_id} />}
+        {tab === "settings" && <AutomationSettingsTab settings={settings} is_loading={is_loading_settings} onSave={saveSettings} />}
       </div>
     </div>
   );

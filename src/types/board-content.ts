@@ -40,6 +40,9 @@ export type BoardColumnOption = {
 
 export type BoardColumnConfig = {
   options?: BoardColumnOption[];
+  /** Button columns only: the text on the button and its color. */
+  button_label?: string;
+  button_color?: string;
   /** People columns only: whether assigning someone here notifies them (in-app + email). Defaults to `true` server-side when unset. Edited from the People cell picker's bottom toggle. */
   notify_on_assignment?: boolean;
   /** Formula columns only: the expression the formula dialog saves, with columns referenced by id (`{#12}`), see `FormulaConfig` in `@/components/board/table/types`. */

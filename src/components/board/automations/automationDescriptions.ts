@@ -12,7 +12,10 @@ export function automationDefinition(automation: BoardAutomationDto): BoardAutom
     trigger_value: automation.trigger_value,
     trigger_config: automation.trigger_config ?? {},
     conditions: automation.conditions ?? [],
+    condition_operator: automation.condition_operator ?? "and",
+    condition_groups: automation.condition_groups ?? [],
     actions: automation.actions?.length ? automation.actions : [{ type: automation.action_type, params: automation.action_params ?? {} }],
+    else_actions: automation.else_actions ?? [],
   };
 }
 

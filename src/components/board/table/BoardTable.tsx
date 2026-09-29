@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
-import type { ColumnDef, ColumnKind } from "./types";
+import type { ColumnAutomationShortcut, ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
 import { computeNameColWidth } from "./layoutUtils";
 import { boardTreeFontClassName } from "../board-tree-font";
@@ -135,6 +135,8 @@ export interface BoardTableProps {
   onRequestColumnFilter?: (column_id: string) => void;
   /** Opens the column permissions dialog for a column, only passed for board owners. */
   onRequestColumnPermissions?: (column_id: string) => void;
+  /** "Automate" in each column's header menu, omitted where automations are not offered. */
+  column_automation?: ColumnAutomationShortcut;
   onRequestGroupByColumn?: (column_id: string) => void;
   /**
    * Right-click a root item's cell > "Filter by this value"/"Exclude this value",
@@ -197,6 +199,7 @@ export default function BoardTable({
   onAddColumnRight,
   onRequestColumnFilter,
   onRequestColumnPermissions,
+  column_automation,
   onRequestGroupByColumn,
   onFilterByCellValue,
   onRequestColumnSort,
@@ -486,6 +489,7 @@ export default function BoardTable({
           actions={actions}
           onRequestColumnFilter={onRequestColumnFilter}
           onRequestColumnPermissions={onRequestColumnPermissions}
+          column_automation={column_automation}
           onRequestGroupByColumn={onRequestGroupByColumn}
           onRequestColumnSort={onRequestColumnSort}
           active_sort_column_id={active_sort_column_id}

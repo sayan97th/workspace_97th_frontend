@@ -5,6 +5,7 @@ import { FilterIcon, RefreshIcon } from "@/icons/workspace-icons";
 import { RUNS_PER_PAGE, useAutomationRuns } from "@/hooks/useAutomationRuns";
 import { ACTION_LABELS, RUN_STATUS_LABELS, TRIGGER_LABELS, formatDateTime } from "./manageFormat";
 import { FIELD, ICON_BUTTON, InlineAlert, ManageEmptyState, RunStatusBadge, TOOLBAR_BUTTON } from "./manageUi";
+import RunDetailPanel from "./RunDetailPanel";
 
 export type RunHistoryTabProps = {
   board_id: number;
@@ -29,6 +30,7 @@ export default function RunHistoryTab({ board_id, view_id, automations, initial_
   const [is_filter_bar_open, setIsFilterBarOpen] = useState(initial_automation_id !== null);
   const [page, setPage] = useState(1);
   const { runs, meta, is_loading, error, refresh } = useAutomationRuns(board_id, view_id, filters, page);
+  const [open_run_id, setOpenRunId] = useState<number | null>(null);
 
   const active_count = Object.values(filters).filter((value) => value !== null && value !== "").length;
 
@@ -124,7 +126,13 @@ export default function RunHistoryTab({ board_id, view_id, automations, initial_
             </thead>
             <tbody>
               {runs.map((run) => (
-                <tr key={run.id} className="border-b border-boardtree-border-soft last:border-b-0">
+                <React.Fragment key={run.id}>
+                <tr
+                  onClick={() => setOpenRunId((current) => (current === run.id ? null : run.id))}
+                  aria-expanded={open_run_id === run.id}
+                  title="Show every step of this run"
+                  className={`cursor-pointer border-b border-boardtree-border-soft last:border-b-0 hover:bg-boardtree-hover/40 ${open_run_id === run.id ? "bg-boardtree-hover/40" : ""}`}
+                >
                   <td className={`${CELL} whitespace-nowrap`}>{formatDateTime(run.ran_at)}</td>
                   <td className={CELL}>
                     <div className="font-medium text-boardtree-text">{run.automation_name || TRIGGER_LABELS[run.trigger_type]}</div>
@@ -134,10 +142,22 @@ export default function RunHistoryTab({ board_id, view_id, automations, initial_
                     </div>
                   </td>
                   <td className={`${CELL} max-w-[180px] truncate`}>{run.item_name || "-"}</td>
-                  <td className={CELL}><RunStatusBadge status={run.status} /></td>
+                  <td className={CELL}>
+                    <RunStatusBadge status={run.status} />
+                    {run.branch === "else" && <span className="ml-1.5 text-[11px] text-boardtree-text-faint">otherwise</span>}
+                    {run.retry_of_id && <span className="ml-1.5 text-[11px] text-boardtree-text-faint">retry</span>}
+                  </td>
                   <td className={`${CELL} max-w-[300px]`}>{run.message}</td>
                   <td className={`${CELL} whitespace-nowrap`}>{run.actor_name ?? "System"}</td>
                 </tr>
+                {open_run_id === run.id && (
+                  <tr className="border-b border-boardtree-border-soft">
+                    <td colSpan={6} className="px-4 py-3">
+                      <RunDetailPanel board_id={board_id} run={run} onChanged={refresh} />
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               ))}
               {runs.length === 0 && (
                 <tr>

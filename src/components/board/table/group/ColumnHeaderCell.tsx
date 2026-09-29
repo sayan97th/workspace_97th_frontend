@@ -12,7 +12,7 @@ interface ColumnHeaderCellProps {
   title: string;
   height: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible?: boolean;
@@ -33,7 +33,7 @@ interface ColumnHeaderCellProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
-  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number } }) => void;
+  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } }) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
   /**
@@ -55,6 +55,8 @@ interface ColumnHeaderCellProps {
   onRequestGroupBy?: () => void;
   /** See `ColumnMenu`'s `onRequestPermissions`. */
   onRequestPermissions?: () => void;
+  /** See `ColumnMenu`'s `automation`. */
+  automation?: { count: number; onOpen: () => void };
   /** Shows a lock next to the title, see `ColumnDef.is_restricted`. */
   is_restricted?: boolean;
   onCollapseAll: () => void;
@@ -80,7 +82,7 @@ export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
-  onRequestFilter, onRequestGroupBy, onRequestPermissions, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
+  onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -166,6 +168,9 @@ export default function ColumnHeaderCell({
       <button
         type="button"
         onClick={onOpenMenu}
+        aria-label={`${title} column options`}
+        aria-haspopup="menu"
+        aria-expanded={is_menu_open}
         className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
         style={{ opacity: is_hovered || is_menu_open ? 1 : 0 }}
       >
@@ -195,6 +200,7 @@ export default function ColumnHeaderCell({
           onDelete={onDelete}
           onClose={onCloseMenu}
           onRequestPermissions={onRequestPermissions}
+          automation={automation}
         />
       )}
       {((column && onUpdateSettings) || (resizable_width !== undefined && onResizeEnd)) && (

@@ -162,6 +162,12 @@ export interface UseBoardTableConfig {
    * cell just shows its raw linked count with no names.
    */
   onFetchLinkedBoardItems?: (linked_board_id: string) => Promise<{ id: string; name: string }[]>;
+  /**
+   * A `button`-type cell's press: stores nothing, it only runs the automations watching that
+   * button. Resolves with a short message for the cell to flash. Omitted (the standalone demo),
+   * the button does nothing.
+   */
+  onPressButton?: (node_id: string, column_id: string) => Promise<string>;
   /** The signed-in viewer's own id — a `vote`-type cell toggles this id in/out of its value array, and highlights itself when the viewer has already voted. Undefined for the standalone demo, which has no signed-in viewer. */
   current_user_id?: string;
   onRenameNode?: (node_id: string, name: string) => void;
@@ -319,6 +325,8 @@ export interface UseBoardTableConfig {
       aggregation?: ColumnDef["aggregation"];
       /** Date columns only, see `ColumnDef.reminder`. */
       reminder?: ColumnDef["reminder"];
+      /** Button columns only, see `ColumnDef.button`. */
+      button?: ColumnDef["button"];
     }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
@@ -1700,7 +1708,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       group_key: string,
       scope: ColumnScope,
       column_id: string,
-      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"] }
+      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"]; button?: ColumnDef["button"] }
     ) => {
       const local_patch: Partial<ColumnDef> = {};
       if (patch.width != null) local_patch.width = patch.width;
@@ -1710,6 +1718,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.validation) local_patch.validation = patch.validation;
       if (patch.aggregation) local_patch.aggregation = patch.aggregation;
       if (patch.reminder) local_patch.reminder = patch.reminder;
+      if (patch.button) local_patch.button = patch.button;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
@@ -2083,6 +2092,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * `connect_board_items`'s own doc comment), fetching at most once per
    * `linked_board_id` regardless of how many cells/columns point at it.
    */
+  /** A Button cell's press, see `UseBoardTableConfig.onPressButton`. Resolves with what to flash on the button. */
+  const pressButton = useCallback(async (node_id: string, column_id: string): Promise<string> => {
+    const on_press = config_ref.current.onPressButton;
+    if (!on_press) return "Buttons work once the board is saved.";
+    return on_press(node_id, column_id);
+  }, []);
+
   const requested_linked_boards_ref = useRef<Set<string>>(new Set());
   const ensureLinkedBoardItems = useCallback((linked_board_id: string) => {
     const on_fetch = config_ref.current.onFetchLinkedBoardItems;
@@ -2259,6 +2275,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       deleteTagDef,
       setTagQuery,
       ensureLinkedBoardItems,
+      pressButton,
       closeAllOverlays,
       copyRowLink,
       openComments,
@@ -2279,7 +2296,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureLinkedBoardItems, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureLinkedBoardItems, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2362,6 +2379,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("uploadCellFiles", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("addCellFileLink", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
+    // Pressing a button changes no value, the API only asks that the viewer may work on the item.
+    wrap("pressButton", (node_id) => canEditNode?.(node_id) ?? true);
     wrap("startFillDrag", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("pasteIntoActiveCell", () => {
       const active_cell = state_ref.current.active_cell;

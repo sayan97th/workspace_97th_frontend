@@ -1,7 +1,7 @@
 "use client";
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import type { BoardTableGroup } from "../types";
+import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
@@ -15,6 +15,8 @@ interface GroupColumnHeaderRowProps {
   onRequestColumnFilter?: (column_id: string) => void;
   /** Opens the column permissions dialog for a column, only passed for board owners. */
   onRequestColumnPermissions?: (column_id: string) => void;
+  /** "Automate" in each column's header menu. */
+  column_automation?: ColumnAutomationShortcut;
   onRequestGroupByColumn?: (column_id: string) => void;
   /** See `BoardTable`'s own doc comment — when provided, the header sort arrow reads/writes through this instead of `state.sort`/`actions.setSort`. */
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
@@ -31,6 +33,7 @@ export default function GroupColumnHeaderRow({
   onRequestColumnFilter,
   onRequestGroupByColumn,
   onRequestColumnPermissions,
+  column_automation,
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
@@ -118,7 +121,7 @@ export default function GroupColumnHeaderRow({
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={38}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
@@ -158,6 +161,7 @@ export default function GroupColumnHeaderRow({
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
             onRequestPermissions={onRequestColumnPermissions ? () => onRequestColumnPermissions(col.id) : undefined}
+            automation={column_automation ? { count: column_automation.counts[col.id] ?? 0, onOpen: () => column_automation.onOpen(col.id) } : undefined}
             is_restricted={col.is_restricted}
             onCollapseAll={actions.collapseAllGroups}
             onDuplicate={() => actions.duplicateColumn(group.key, "main", col.id)}
