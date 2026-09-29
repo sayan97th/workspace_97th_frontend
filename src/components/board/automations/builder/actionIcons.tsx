@@ -4,6 +4,8 @@ import {
   ArchiveX,
   ArrowRight,
   ArrowRightLeft,
+  ArrowUpDown,
+  ArrowUpToLine,
   Bell,
   BellOff,
   BellPlus,
@@ -100,6 +102,8 @@ const ACTION_ICONS: Record<ActionPickerId, { icon: LucideIcon; color: string }> 
   clear_subitems: { icon: ListX, color: "#fdab3d" },
   convert_subitem: { icon: SquareArrowOutUpRight, color: "#fdab3d" },
   send_digest: { icon: Newspaper, color: "#bb3354" },
+  move_item_position: { icon: ArrowUpToLine, color: "#579bfc" },
+  sort_group: { icon: ArrowUpDown, color: "#784bd1" },
 };
 
 export function ActionIcon({ id, size = 20 }: { id: ActionPickerId; size?: number }) {

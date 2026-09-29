@@ -40,6 +40,7 @@ import { ActionIcon } from "./actionIcons";
 import ActionRowBulk, { BULK_ACTION_IDS } from "./ActionRowBulk";
 import ActionRowCollaboration, { COLLABORATION_ACTION_IDS } from "./ActionRowCollaboration";
 import ActionRowExtras, { EXTRA_ACTION_IDS, EmailRecipientEditor } from "./ActionRowExtras";
+import ActionRowPosition, { POSITION_ACTION_IDS } from "./ActionRowPosition";
 import { actionFromPicker, type ActionDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
 import { DynamicValueEditor, FixedOrDynamic } from "./dynamicValues";
@@ -388,6 +389,9 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   }
   if (BULK_ACTION_IDS.includes(action.picker_id)) {
     return <ActionRowBulk action={action} context={context} lead={lead} has_trigger_item={has_trigger_item} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
+  }
+  if (POSITION_ACTION_IDS.includes(action.picker_id)) {
+    return <ActionRowPosition action={action} context={context} lead={lead} has_trigger_item={has_trigger_item} renderSwitch={(label) => <ActionSwitch {...switchProps} label={label} />} onPatch={patch} />;
   }
   if (COLLABORATION_ACTION_IDS.includes(action.picker_id)) {
     return (

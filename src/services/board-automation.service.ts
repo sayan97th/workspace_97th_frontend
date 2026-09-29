@@ -1,6 +1,7 @@
 import { apiClient } from "@/lib/api-client";
 import type {
   AccountAutomationsResponse,
+  AutomationUsageSummaryDto,
   AccountAutomationTemplateDto,
   BoardAutomationBulkAction,
   BoardAutomationBulkResult,
@@ -160,6 +161,18 @@ export const boardAutomationService = {
   /** POST /api/automations/bulk, turns automations of any boards on or off. */
   async bulkUpdateAccount(automation_ids: number[], action: "enable" | "disable"): Promise<BoardAutomationBulkResult> {
     return apiClient.post<BoardAutomationBulkResult>("/api/automations/bulk", { automation_ids, action });
+  },
+
+  /** GET /api/automations/usage, this month's automation actions against the account's monthly limit. */
+  async getAccountUsage(): Promise<AutomationUsageSummaryDto> {
+    const response = await apiClient.get<{ data: AutomationUsageSummaryDto }>("/api/automations/usage");
+    return response.data;
+  },
+
+  /** PUT /api/automations/usage, admins only. `null` removes the limit. */
+  async updateMonthlyLimit(monthly_action_limit: number | null): Promise<AutomationUsageSummaryDto> {
+    const response = await apiClient.put<{ data: AutomationUsageSummaryDto }>("/api/automations/usage", { monthly_action_limit });
+    return response.data;
   },
 
   /** POST /api/boards/{board_id}/automations/copy, the copies start turned off. */

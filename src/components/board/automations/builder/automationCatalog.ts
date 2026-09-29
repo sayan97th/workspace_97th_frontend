@@ -83,6 +83,8 @@ export const TRIGGERS: TriggerDef[] = [
   { type: "person_unassigned", label: "person is unassigned", section: "Status and columns", column_kinds: ["people"] },
   { type: "file_uploaded", label: "file is uploaded", section: "Status and columns", column_kinds: ["files"] },
   { type: "item_overdue", label: "item becomes overdue", section: "Dates and time", column_kinds: ["date", "timeline"] },
+  { type: "status_stuck", label: "status stays the same for a while", section: "Status and columns", column_kinds: ["status", "label"] },
+  { type: "item_stale", label: "item is not updated for a while", section: "Dates and time" },
 ];
 
 export const TRIGGER_BY_TYPE = Object.fromEntries(TRIGGERS.map((trigger) => [trigger.type, trigger])) as Record<BoardAutomationTriggerType, TriggerDef>;
@@ -102,7 +104,14 @@ export const TRIGGER_COLUMN_SCOPE: Partial<Record<BoardAutomationTriggerType, "i
   all_subitems_status: "subitem",
   all_group_items_status: "item",
   subitem_column_changed: "subitem",
+  status_stuck: "item",
 };
+
+/** Triggers the scheduler checks for how long nothing changed, they wait `amount` `unit`s. */
+export const QUIET_TRIGGERS: BoardAutomationTriggerType[] = ["status_stuck", "item_stale"];
+
+/** The longest a quiet trigger may wait, in days, the API's `BoardAutomation::MAX_QUIET_DAYS`. */
+export const MAX_QUIET_DAYS = 365;
 
 /** Triggers with no item of their own, they start with an itemless action like recurring ones. */
 export const ITEMLESS_TRIGGERS: BoardAutomationTriggerType[] = ["recurring", "webhook_received"];
@@ -175,12 +184,14 @@ export const ACTIONS: ActionDef[] = [
   { id: "clear_subitems", type: "clear_subitems", label: "archive or delete every subitem", section: "Subitems" },
   { id: "convert_subitem", type: "convert_subitem", label: "turn the subitem into an item", section: "Subitems" },
   { id: "send_digest", type: "send_digest", label: "email a digest of items", section: "Email and Slack", is_itemless: true },
+  { id: "move_item_position", type: "move_item_position", label: "move item to the top or bottom", section: "Items" },
+  { id: "sort_group", type: "sort_group", label: "sort a group", section: "Groups", is_itemless: true },
 ];
 
 export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemless).map((action) => action.type);
 
 /** Actions that name no item of their own but can take the item's group (`from_item_group`), which needs an item. */
-export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group", "group_items"];
+export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group", "group_items", "sort_group"];
 
 export function actionSections(options: { only_itemless: boolean; is_slack_connected: boolean }): PickerSection<ActionPickerId>[] {
   const order: ActionDef["section"][] = ["Most used", "Flow", "Items", "Subitems", "Columns", "Dates", "Groups", "People", "Notifications", "Email and Slack", "Other boards", "Webhooks"];
@@ -243,6 +254,8 @@ export const ACTION_LABELS: Record<BoardAutomationActionType, string> = {
   clear_subitems: "Clear subitems",
   convert_subitem: "Subitem to item",
   send_digest: "Send digest",
+  move_item_position: "Move to top or bottom",
+  sort_group: "Sort group",
 };
 
 export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
@@ -277,6 +290,8 @@ export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
   user_mentioned: "Someone mentioned",
   update_replied: "Update replied to",
   update_keyword: "Update keyword",
+  status_stuck: "Status stuck",
+  item_stale: "Not updated",
 };
 
 /** How long a "wait" step may wait, all waits of one branch together, in days. */
@@ -315,8 +330,28 @@ export const READ_ONLY_KINDS: ColumnKind[] = ["formula", "mirror", "auto_number"
  * have. `formula` compares a computed result, `files` its file names, `linked` a connect boards
  * column's items, `dependency` whether the items it waits on are done, `timer` a time tracking
  * column and `subitems` checks a rule on every subitem.
+ *
+ * The column shaped families read one column type with operators of its own, see the Laravel
+ * `AutomationConditionEvaluator`: `timeline` (start, end, length, today), `checklist` (tasks done),
+ * `vote` (voters and vote count), `rating` (stars), `progress` (percent), `email` (domain),
+ * `phone` (country code) and `link` (address, text and domain).
  */
-export type AutomationConditionKind = BoardFilterFieldKind | "formula" | "files" | "linked" | "dependency" | "timer" | "subitems";
+export type AutomationConditionKind =
+  | BoardFilterFieldKind
+  | "formula"
+  | "files"
+  | "linked"
+  | "dependency"
+  | "timer"
+  | "subitems"
+  | "timeline"
+  | "checklist"
+  | "vote"
+  | "rating"
+  | "progress"
+  | "email"
+  | "phone"
+  | "link";
 
 type OperatorOption = { id: string; label: string };
 
@@ -365,6 +400,104 @@ export const AUTOMATION_CONDITION_OPERATORS: Record<Exclude<AutomationConditionK
     { id: "any_match", label: "At least one matches" },
     { id: "none_match", label: "None match" },
   ],
+  // Rules saved before timelines had their own family kept the date operators, they read the whole range.
+  timeline: [
+    { id: "start_is", label: "Starts on" },
+    { id: "start_before", label: "Starts before" },
+    { id: "start_after", label: "Starts after" },
+    { id: "end_is", label: "Ends on" },
+    { id: "end_before", label: "Ends before" },
+    { id: "end_after", label: "Ends after" },
+    { id: "includes_today", label: "Includes today" },
+    { id: "not_includes_today", label: "Does not include today" },
+    { id: "duration_greater_than", label: "Lasts more than" },
+    { id: "duration_less_than", label: "Lasts less than" },
+    { id: "duration_equals", label: "Lasts exactly" },
+    { id: "is", label: "Overlaps" },
+    { id: "is_not", label: "Does not overlap" },
+    { id: "between", label: "Overlaps the range" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
+  checklist: [
+    { id: "is_complete", label: "Has every task done" },
+    { id: "is_not_complete", label: "Has open tasks" },
+    { id: "progress_at_least", label: "Is done at least" },
+    { id: "progress_below", label: "Is done less than" },
+    { id: "open_tasks_greater_than", label: "Has more open tasks than" },
+    { id: "open_tasks_less_than", label: "Has fewer open tasks than" },
+    { id: "contains", label: "Has a task named" },
+    { id: "not_contains", label: "Has no task named" },
+    { id: "is_empty", label: "Has no tasks" },
+    { id: "is_not_empty", label: "Has tasks" },
+  ],
+  vote: [
+    { id: "votes_at_least", label: "Has at least" },
+    { id: "votes_less_than", label: "Has fewer than" },
+    { id: "votes_equals", label: "Has exactly" },
+    { id: "is", label: "Was voted by" },
+    { id: "is_not", label: "Was not voted by" },
+    { id: "is_empty", label: "Has no votes" },
+    { id: "is_not_empty", label: "Has votes" },
+  ],
+  rating: [
+    { id: "greater_or_equal", label: "Is at least" },
+    { id: "less_or_equal", label: "Is at most" },
+    { id: "equals", label: "Is exactly" },
+    { id: "not_equals", label: "Is not" },
+    { id: "greater_than", label: "Is more than" },
+    { id: "less_than", label: "Is less than" },
+    { id: "between", label: "Is between" },
+    { id: "is_empty", label: "Is not rated" },
+    { id: "is_not_empty", label: "Is rated" },
+  ],
+  progress: [
+    { id: "greater_or_equal", label: "Is at least" },
+    { id: "less_than", label: "Is below" },
+    { id: "equals", label: "Is exactly" },
+    { id: "not_equals", label: "Is not" },
+    { id: "greater_than", label: "Is above" },
+    { id: "less_or_equal", label: "Is at most" },
+    { id: "between", label: "Is between" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
+  email: [
+    { id: "domain_is", label: "Domain is" },
+    { id: "domain_is_not", label: "Domain is not" },
+    { id: "is_valid", label: "Is a valid address" },
+    { id: "is_not_valid", label: "Is not a valid address" },
+    { id: "is", label: "Is" },
+    { id: "is_not", label: "Is not" },
+    { id: "contains", label: "Contains" },
+    { id: "not_contains", label: "Does not contain" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
+  phone: [
+    { id: "country_code_is", label: "Country code is" },
+    { id: "country_code_is_not", label: "Country code is not" },
+    { id: "is_valid", label: "Is a valid number" },
+    { id: "is_not_valid", label: "Is not a valid number" },
+    { id: "is", label: "Is" },
+    { id: "contains", label: "Contains" },
+    { id: "not_contains", label: "Does not contain" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
+  link: [
+    { id: "domain_is", label: "Domain is" },
+    { id: "domain_is_not", label: "Domain is not" },
+    { id: "url_contains", label: "Address contains" },
+    { id: "url_not_contains", label: "Address does not contain" },
+    { id: "label_contains", label: "Text contains" },
+    { id: "label_not_contains", label: "Text does not contain" },
+    { id: "is_valid", label: "Is a valid address" },
+    { id: "is_not_valid", label: "Is not a valid address" },
+    { id: "contains", label: "Contains" },
+    { id: "is_empty", label: "Is empty" },
+    { id: "is_not_empty", label: "Is not empty" },
+  ],
 };
 
 const isAutomationOnlyKind = (kind: AutomationConditionKind): kind is Exclude<AutomationConditionKind, BoardFilterFieldKind> => kind in AUTOMATION_CONDITION_OPERATORS;
@@ -384,7 +517,16 @@ export function conditionOperatorText(kind: AutomationConditionKind, operator: s
 export const defaultOperatorFor = (kind: AutomationConditionKind): string => conditionOperatorOptions(kind)[0].id;
 
 /** Operators that need no value, beyond the board filter ones. */
-export const AUTOMATION_VALUELESS_OPERATORS = ["is_empty", "is_not_empty", "is_checked", "is_unchecked", "is_running", "is_not_running"];
+export const AUTOMATION_VALUELESS_OPERATORS = [
+  "is_empty", "is_not_empty", "is_checked", "is_unchecked", "is_running", "is_not_running",
+  "includes_today", "not_includes_today", "is_complete", "is_not_complete", "is_valid", "is_not_valid",
+];
+
+/** Column family operators that compare with a number, whatever the column holds: days, percent, votes or tasks. */
+export const COUNT_OPERATORS = [
+  "duration_greater_than", "duration_less_than", "duration_equals", "progress_at_least", "progress_below",
+  "open_tasks_greater_than", "open_tasks_less_than", "votes_at_least", "votes_less_than", "votes_equals",
+];
 
 /** How a condition reads each column kind. Kinds missing here cannot be used in a condition. */
 export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, AutomationConditionKind>> = {
@@ -393,21 +535,21 @@ export const CONDITION_KIND_BY_COLUMN: Partial<Record<ColumnKind, AutomationCond
   dropdown: "option",
   tags: "option",
   people: "people",
-  vote: "people",
+  vote: "vote",
   date: "date",
-  timeline: "date",
+  timeline: "timeline",
   number: "number",
-  rating: "number",
-  progress: "number",
+  rating: "rating",
+  progress: "progress",
   auto_number: "number",
   time_tracking: "timer",
   checkbox: "checkbox",
   text: "text",
   longtext: "text",
-  email: "text",
-  phone: "text",
-  link: "text",
-  checklist: "text",
+  email: "email",
+  phone: "phone",
+  link: "link",
+  checklist: "checklist",
   files: "files",
   formula: "formula",
   mirror: "text",
@@ -488,7 +630,11 @@ export const DYNAMIC_KINDS_BY_FAMILY: Record<DynamicFamily, ColumnKind[]> = {
 export const DYNAMIC_TARGET_KINDS: ColumnKind[] = ["people", "vote", "date", "number", "rating", "progress", "text", "longtext", "email", "phone"];
 
 /** Operators a dynamic value cannot stand in for: no value, two values, or an automation only family. */
-export const DYNAMIC_EXCLUDED_OPERATORS = ["between", "is_empty", "is_not_empty", "is_checked", "is_unchecked", "all_match", "any_match", "none_match", "all_done", "has_unfinished", "is_running", "is_not_running"];
+export const DYNAMIC_EXCLUDED_OPERATORS = [
+  "between", "is_empty", "is_not_empty", "is_checked", "is_unchecked", "all_match", "any_match", "none_match", "all_done", "has_unfinished", "is_running", "is_not_running",
+  "includes_today", "not_includes_today", "is_complete", "is_not_complete", "is_valid", "is_not_valid", ...COUNT_OPERATORS,
+  "domain_is", "domain_is_not", "country_code_is", "country_code_is_not", "url_contains", "url_not_contains", "label_contains", "label_not_contains",
+];
 
 /** The family a column kind reads as, undefined for kinds a dynamic value cannot fill. */
 export function dynamicFamilyOfKind(kind: ColumnKind): DynamicFamily | undefined {

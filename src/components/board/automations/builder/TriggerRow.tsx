@@ -1,11 +1,11 @@
 "use client";
 import React, { useState } from "react";
 import type { BoardAutomationSchedule, BoardAutomationThresholdOperator, BoardAutomationTriggerType } from "@/types/board-automation";
-import { SCHEDULED_TRIGGERS, SUBITEM_AWARE_TRIGGERS, TRIGGER_BY_TYPE, TRIGGER_COLUMN_SCOPE, WEEKDAY_LABELS, triggerSections, type AutomationBuilderContext } from "./automationCatalog";
-import { boardLabel, changeMatchLabel, columnLabel, doneLabel, extensionsLabel, findColumn, formLabel, groupLabel, keywordsLabel, offsetLabel, optionLabel, personLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
+import { QUIET_TRIGGERS, SCHEDULED_TRIGGERS, SUBITEM_AWARE_TRIGGERS, TRIGGER_BY_TYPE, TRIGGER_COLUMN_SCOPE, WEEKDAY_LABELS, triggerSections, type AutomationBuilderContext } from "./automationCatalog";
+import { boardLabel, changeMatchLabel, columnLabel, doneLabel, extensionsLabel, findColumn, formLabel, groupLabel, keywordsLabel, offsetLabel, optionLabel, personLabel, quietPeriodLabel, scheduleLabel, thresholdLabel, valueLabel } from "./automationSentence";
 import type { AutomationDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, Segmented, Token, WorkingDaysToggle } from "./builderUi";
-import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, KeywordsEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
+import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, KeywordsEditor, QuietPeriodEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, PersonPicker } from "./valueEditors";
 
 export type TriggerRowProps = {
@@ -37,7 +37,9 @@ function pickTrigger(type: BoardAutomationTriggerType, context: AutomationBuilde
           ? { run_on: "parent" as const }
           : type === "update_keyword"
             ? { keywords: [], include_replies: false }
-            : {};
+            : QUIET_TRIGGERS.includes(type)
+              ? { amount: 3, unit: "days" as const }
+              : {};
   return { trigger_type: type, trigger_column_id: first_column?.id ?? null, trigger_value: null, trigger_config: config };
 }
 
@@ -533,8 +535,67 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
           {columnToken("status")} {labelToken}
         </>
       );
-    case "date_changed":
-      return <>{switcher} {columnToken("date")} <Words>changes</Words></>;
+    case "date_changed": {
+      if (column?.kind !== "timeline") return <>{switcher} {columnToken("date")} <Words>changes</Words></>;
+      const part = config.timeline_part ?? "any";
+      const part_labels = { any: "the start or end", start: "the start", end: "the end" } as const;
+      return (
+        <>
+          {switcher}{" "}
+          <Token label={part_labels[part]} aria_label="Which end of the timeline">
+            {(close) => (
+              <PickerList
+                is_searchable={false}
+                sections={[{ entries: [{ id: "any", label: "The start or end" }, { id: "start", label: "The start" }, { id: "end", label: "The end" }] }]}
+                selected={part}
+                onPick={(id) => { onChange({ trigger_config: { ...config, timeline_part: id === "any" ? null : id } }); close(); }}
+              />
+            )}
+          </Token>{" "}
+          <Words>of </Words>{columnToken("timeline")} <Words>changes</Words>
+        </>
+      );
+    }
+    case "status_stuck":
+      return (
+        <>
+          {switcher} {columnToken("status")} <Words>stays </Words>
+          <Token
+            label={draft.trigger_value == null || draft.trigger_value === "" ? "on any label" : optionLabel(column, draft.trigger_value)}
+            is_placeholder={draft.trigger_value == null}
+            disabled={!column}
+            aria_label="Which label"
+          >
+            {(close) => <LabelPicker column={column} with_any selected={draft.trigger_value == null ? null : String(draft.trigger_value)} onPick={(id) => { onChange({ trigger_value: id }); close(); }} />}
+          </Token>{" "}
+          <Words>for </Words>
+          <Token label={quietPeriodLabel(config)} aria_label="How long" popover_width={290}>
+            {(close) => <QuietPeriodEditor amount={config.amount} unit={config.unit} onApply={(amount, unit) => { onChange({ trigger_config: { ...config, amount, unit } }); close(); }} />}
+          </Token>
+        </>
+      );
+    case "item_stale":
+      return (
+        <>
+          <Words>When an </Words>
+          <TriggerSwitch label="item" draft={draft} context={context} onChange={onChange} />{" "}
+          <Words>in </Words>
+          <Token label={config.group_id ? groupLabel(context, config.group_id) : "any group"} is_placeholder={!config.group_id} is_invalid={Boolean(config.group_id) && !context.groups.some((group) => group.id === String(config.group_id))}>
+            {(close) => (
+              <GroupPicker
+                groups={context.groups}
+                selected={config.group_id ? String(config.group_id) : "__any__"}
+                extra_entries={[{ id: "__any__", label: "Any group" }]}
+                onPick={(id) => { onChange({ trigger_config: { ...config, group_id: id === "__any__" ? null : Number(id) } }); close(); }}
+              />
+            )}
+          </Token>{" "}
+          <Words>has no change or update for </Words>
+          <Token label={quietPeriodLabel(config)} aria_label="How long" popover_width={290}>
+            {(close) => <QuietPeriodEditor amount={config.amount} unit={config.unit} onApply={(amount, unit) => { onChange({ trigger_config: { ...config, amount, unit } }); close(); }} />}
+          </Token>
+        </>
+      );
     case "form_submitted":
       return (
         <>

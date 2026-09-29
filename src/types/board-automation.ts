@@ -35,7 +35,9 @@ export type BoardAutomationTriggerType =
   | "subitem_column_changed"
   | "user_mentioned"
   | "update_replied"
-  | "update_keyword";
+  | "update_keyword"
+  | "status_stuck"
+  | "item_stale";
 
 export type BoardAutomationActionType =
   | "move_to_group"
@@ -83,7 +85,9 @@ export type BoardAutomationActionType =
   | "notify_subscribers"
   | "clear_subitems"
   | "convert_subitem"
-  | "send_digest";
+  | "send_digest"
+  | "move_item_position"
+  | "sort_group";
 
 /**
  * Where a dynamic value comes from, see the Laravel `AutomationDynamicValueResolver`: whoever set
@@ -176,6 +180,11 @@ export type BoardAutomationTriggerConfig = {
   keywords?: string[] | null;
   /** `update_keyword` only: replies count too. */
   include_replies?: boolean;
+  /** `status_stuck` and `item_stale`: how long nothing may change, `amount` `unit`s. */
+  amount?: number | null;
+  unit?: "hours" | "days" | null;
+  /** `date_changed` on a timeline only: watch its start, its end, or either (`any`, the default). */
+  timeline_part?: "any" | "start" | "end" | null;
 };
 
 /**
@@ -263,7 +272,7 @@ export type BoardAutomationActionParams = {
   duration_days?: number;
   /** Group actions: the new group's name, tokens such as `{week}` are filled in. */
   group_name?: string | null;
-  /** `create_group` only. */
+  /** `create_group`: where the new group goes. `move_item_position`: where the item goes in its group. */
   position?: "top" | "bottom";
   accent_color?: string | null;
   /** `duplicate_group`/`archive_group`: act on the item's own group instead of a chosen one. */
@@ -329,6 +338,10 @@ export type BoardAutomationActionParams = {
   max_items?: number;
   /** `send_digest` only: send it even when no item matches. */
   send_when_empty?: boolean;
+  /** `sort_group` only: what the items sort by, a column (`sort_column_id`), the item name or the creation date. */
+  sort_by?: "column" | "name" | "created_at";
+  sort_column_id?: number | null;
+  direction?: "asc" | "desc";
 };
 
 export type BoardAutomationFieldMapping = { column_id: number | null; source: string };
@@ -553,6 +566,32 @@ export type BoardAutomationUsageDto = {
     runs: number;
   }[];
   by_action: { action_type: BoardAutomationActionType; runs: number }[];
+  /** The account's monthly action quota, shared by every board. */
+  monthly_quota?: AutomationMonthlyQuotaDto;
+};
+
+/**
+ * The account's monthly automation action quota, see the Laravel `AutomationUsageMeter`. Every
+ * action an automation performs counts once, `limit` null means no limit.
+ */
+export type AutomationMonthlyQuotaDto = {
+  /** `YYYY-MM`. */
+  month: string;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  /** 0 to 100, null without a limit. */
+  percent: number | null;
+  is_exhausted: boolean;
+  /** `YYYY-MM-DD`, the first day of next month. */
+  resets_on: string;
+};
+
+/** `GET /api/automations/usage`: the quota, the boards that used the most and whether the viewer may change the limit. */
+export type AutomationUsageSummaryDto = AutomationMonthlyQuotaDto & {
+  warning_percents: number[];
+  top_boards: { board_id: number; board_name: string; action_count: number }[];
+  can_manage: boolean;
 };
 
 /** One action of a test run, of this automation or of one it set off (`is_chained`). */

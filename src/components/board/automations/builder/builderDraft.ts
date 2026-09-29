@@ -17,8 +17,10 @@ import {
   GROUP_ACTION_TYPES,
   ITEMLESS_ACTION_TYPES,
   ITEMLESS_TRIGGERS,
+  MAX_QUIET_DAYS,
   MAX_WAIT_DAYS,
   NUMERIC_KINDS,
+  QUIET_TRIGGERS,
   SCHEDULED_TRIGGERS,
   TRIGGER_BY_TYPE,
   browserTimezone,
@@ -252,6 +254,12 @@ export function defaultActionParams(picker_id: ActionPickerId, context: Automati
       return { user_ids: [] };
     case "clear_subitems":
       return { operation: "archive" };
+    case "move_item_position":
+      return { position: "top" };
+    case "sort_group": {
+      const status = first(["status", "label"]);
+      return status ? { from_item_group: true, sort_by: "column", sort_column_id: Number(status.id), direction: "asc" } : { from_item_group: true, sort_by: "name", direction: "asc" };
+    }
     case "send_digest": {
       const shown = context.columns.filter((column) => column.scope === "item" && ["status", "people", "date", "timeline"].includes(column.kind)).slice(0, 3);
       return { user_ids: [], column_ids: shown.map((column) => Number(column.id)), digest_rules: [], digest_operator: "and", max_items: 50, send_when_empty: false };
@@ -375,6 +383,9 @@ function actionProblem(action: ActionDraft, index: number, context: AutomationBu
       if (!context.columns.find((column) => column.id === String(params.connect_column_id))?.linked_board_id) return `Connect the column of ${where} to a board first.`;
       if (!params.linked_column_id) return `Choose the column ${where} changes on the connected items.`;
       return isBlank(params.value) && typeof params.value !== "boolean" ? `Choose the value for ${where}.` : null;
+    case "sort_group":
+      if (!params.from_item_group && !params.target_group_id) return `Choose the group ${where} sorts.`;
+      return params.sort_by === "column" && !params.sort_column_id ? `Choose the column ${where} sorts by.` : null;
     case "group_items":
       if (!params.from_item_group && !params.target_group_id) return `Choose the group of ${where}.`;
       if ((params.operation === "set_column_value" || params.operation === "clear_column") && !params.target_column_id) return `Choose the column ${where} changes.`;
@@ -420,6 +431,12 @@ export function draftProblems(draft: AutomationDraft, context: AutomationBuilder
       problems.push("Enter both ends of the range the column must reach.");
     }
     if (trigger.type === "update_keyword" && !(draft.trigger_config.keywords ?? []).some((keyword) => keyword.trim() !== "")) problems.push("Type at least one word the update must contain.");
+    if (QUIET_TRIGGERS.includes(trigger.type)) {
+      const amount = draft.trigger_config.amount ?? 0;
+      const max = draft.trigger_config.unit === "hours" ? MAX_QUIET_DAYS * 24 : MAX_QUIET_DAYS;
+      if (!Number.isInteger(amount) || amount < 1) problems.push("Enter how long nothing may change before it runs.");
+      else if (amount > max) problems.push(`The wait may be ${MAX_QUIET_DAYS} days at most.`);
+    }
   }
 
   allConditions(draft).forEach((condition, index) => {

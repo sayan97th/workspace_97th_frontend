@@ -12,6 +12,7 @@ import { BOARD_FILTER_DATE_PRESETS } from "../../toolbar/filterEngine";
 import {
   AUTOMATION_VALUELESS_OPERATORS,
   CONDITION_KIND_BY_COLUMN,
+  COUNT_OPERATORS,
   DYNAMIC_SOURCE_LABELS,
   RECIPIENT_SOURCE_LABELS,
   VIRTUAL_CONDITION_FIELDS,
@@ -197,11 +198,25 @@ function kindOf(context: AutomationBuilderContext, field_id: string): Automation
   return VIRTUAL_CONDITION_FIELDS.find((field) => field.id === field_id)?.kind ?? (column ? CONDITION_KIND_BY_COLUMN[column.kind] : undefined);
 }
 
+/** `5 days`, `60%`, `3 votes`: the number a counting operator compares with, with its unit. */
+function countLabel(operator: string, value: string): string {
+  if (value === "") return "a number";
+  const is_one = value === "1";
+  if (operator.startsWith("duration_")) return `${value} ${is_one ? "day" : "days"}`;
+  if (operator.startsWith("progress_")) return `${value}%`;
+  if (operator.startsWith("votes_")) return `${value} ${is_one ? "vote" : "votes"}`;
+  return `${value} ${is_one ? "task" : "tasks"}`;
+}
+
 export function conditionValueLabel(context: AutomationBuilderContext, condition: BoardAutomationCondition): string {
   const column = findColumn(context, condition.column_id);
   const kind = kindOf(context, condition.column_id);
 
   if (condition.dynamic?.source) return dynamicLabel(context, condition.dynamic);
+  if (COUNT_OPERATORS.includes(condition.condition)) return countLabel(condition.condition, condition.value);
+  if (kind === "vote" && condition.values.length) return condition.values.map((id) => personLabel(context, id)).join(", ");
+  if (kind === "rating" && condition.condition !== "between") return condition.value ? `${condition.value} ${condition.value === "1" ? "star" : "stars"}` : "stars";
+  if (kind === "progress" && condition.condition !== "between") return condition.value ? `${condition.value}%` : "a percent";
   if (kind === "dependency") {
     const status = findColumn(context, condition.value);
     const labels = condition.values.map((id) => optionLabel(status, id)).join(", ");
@@ -214,7 +229,7 @@ export function conditionValueLabel(context: AutomationBuilderContext, condition
     if (kind === "people") return condition.values.map((id) => personLabel(context, id)).join(", ");
     return condition.values.map((id) => optionLabel(column, id)).join(", ");
   }
-  if (kind === "date") return BOARD_FILTER_DATE_PRESETS.find((preset) => preset.id === condition.value)?.label.toLowerCase() ?? (condition.value || "a date");
+  if (kind === "date" || kind === "timeline") return BOARD_FILTER_DATE_PRESETS.find((preset) => preset.id === condition.value)?.label.toLowerCase() ?? (condition.value || "a date");
   return condition.value || "value";
 }
 
@@ -290,8 +305,28 @@ export function triggerParts(definition: BoardAutomationDefinition, context: Aut
       return [plain("When "), token(config.form_view_id ? formLabel(context, config.form_view_id) : "a form"), plain(" is submitted")];
     case "name_changed":
       return [plain("When an "), token("item name changes")];
-    case "date_changed":
-      return [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" changes")];
+    case "date_changed": {
+      const part = column?.kind === "timeline" ? config.timeline_part ?? "any" : "any";
+      return part === "any"
+        ? [plain("When "), token(columnLabel(context, definition.trigger_column_id, "date")), plain(" changes")]
+        : [plain("When the "), token(part === "start" ? "start" : "end"), plain(" of "), token(columnLabel(context, definition.trigger_column_id, "timeline")), plain(" changes")];
+    }
+    case "status_stuck":
+      return [
+        plain("When "),
+        token(columnLabel(context, definition.trigger_column_id, "status")),
+        plain(" stays "),
+        token(definition.trigger_value == null || definition.trigger_value === "" ? "on any label" : optionLabel(column, definition.trigger_value)),
+        plain(" for "),
+        token(quietPeriodLabel(config)),
+      ];
+    case "item_stale":
+      return [
+        plain("When an item"),
+        ...(config.group_id ? [plain(" in "), token(groupLabel(context, config.group_id))] : []),
+        plain(" has no change or update for "),
+        token(quietPeriodLabel(config)),
+      ];
     case "webhook_received":
       return [plain("When a "), token("webhook"), plain(" is received")];
     case "button_clicked":
@@ -333,6 +368,55 @@ export function triggerParts(definition: BoardAutomationDefinition, context: Aut
     default:
       return [plain("When something happens")];
   }
+}
+
+/** `3 days`, `12 hours`: how long a stuck or not updated trigger waits. */
+export function quietPeriodLabel(config: BoardAutomationTriggerConfig): string {
+  const amount = config.amount ?? 0;
+  if (amount < 1) return "a while";
+  const unit = config.unit === "hours" ? "hour" : "day";
+  return `${amount} ${amount === 1 ? unit : `${unit}s`}`;
+}
+
+/** What a "sort a group" action sorts by: a column's title, the item name or the creation date. */
+export function sortByLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  if (params.sort_by === "created_at") return "creation date";
+  if (params.sort_by === "column") return columnLabel(context, params.sort_column_id);
+  return "item name";
+}
+
+/** The kind of order a sort gives, worded for what it sorts: `A to Z`, `highest first`, `newest first`. */
+export function sortDirectionOptions(context: AutomationBuilderContext, params: BoardAutomationActionParams): { asc: string; desc: string } {
+  const kind = params.sort_by === "column" ? findColumn(context, params.sort_column_id)?.kind : params.sort_by === "created_at" ? "date" : "text";
+  switch (kind) {
+    case "status":
+    case "label":
+      return { asc: "in label order", desc: "in reverse label order" };
+    case "number":
+    case "rating":
+    case "progress":
+    case "auto_number":
+    case "vote":
+    case "files":
+    case "checklist":
+    case "time_tracking":
+    case "formula":
+    case "connect_board":
+    case "dependency":
+      return { asc: "lowest first", desc: "highest first" };
+    case "date":
+    case "timeline":
+      return { asc: "earliest first", desc: "latest first" };
+    case "checkbox":
+      return { asc: "unchecked first", desc: "checked first" };
+    default:
+      return { asc: "A to Z", desc: "Z to A" };
+  }
+}
+
+export function sortDirectionLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
+  const options = sortDirectionOptions(context, params);
+  return params.direction === "desc" ? options.desc : options.asc;
 }
 
 /** A form view of this board by id. */
@@ -480,6 +564,18 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
       return [token("turn the subitem into an item"), plain(" of "), token(params.target_group_id ? groupLabel(context, params.target_group_id) : "its parent's group")];
     case "send_digest":
       return [plain("email a "), token("digest"), plain(" of "), token(digestFilterLabel(context, params)), plain(" to "), token(peopleSelectionLabel(context, params))];
+    case "move_item_position":
+      return [token("move item"), plain(" to the "), token(params.position === "bottom" ? "bottom" : "top"), plain(" of its group")];
+    case "sort_group":
+      return [
+        token("sort"),
+        plain(" "),
+        token(params.from_item_group ? "the item's group" : groupLabel(context, params.target_group_id)),
+        plain(" by "),
+        token(sortByLabel(context, params)),
+        plain(", "),
+        token(sortDirectionLabel(context, params)),
+      ];
     default:
       return [plain("do something")];
   }

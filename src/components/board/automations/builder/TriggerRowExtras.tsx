@@ -2,13 +2,14 @@
 import React, { useState } from "react";
 import type { BoardAutomationChangeMatch } from "@/types/board-automation";
 import type { ColumnKind } from "../../table/types";
-import { COMMON_FILE_EXTENSIONS, type AutomationBuilderContext, type AutomationColumn } from "./automationCatalog";
-import { MiniAvatar, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, type PickerEntry } from "./builderUi";
+import { COMMON_FILE_EXTENSIONS, MAX_QUIET_DAYS, type AutomationBuilderContext, type AutomationColumn } from "./automationCatalog";
+import { MiniAvatar, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, Segmented, type PickerEntry } from "./builderUi";
 import { MultiPick } from "./valueEditors";
 
 /**
  * The editors of the triggers that read a column by its type: what a "column changes" trigger
- * waits for, which files "file is uploaded" watches, and what "done" means for "item becomes overdue".
+ * waits for, which files "file is uploaded" watches, what "done" means for "item becomes overdue",
+ * and how long "status stays the same" and "item is not updated" wait.
  */
 
 type MatchOperator = { id: string; label: string; needs: "none" | "text" | "number" | "range" | "date" | "picks" };
@@ -292,4 +293,42 @@ export function defaultDoneStatus(context: AutomationBuilderContext): { status_c
   const status = context.columns.find((column) => column.scope === "item" && column.kind === "status");
   const done = status?.options?.find((option) => /done|complete|finished/i.test(option.label));
   return status && done ? { status_column_id: Number(status.id), done_values: [done.id] } : null;
+}
+
+/**
+ * How long nothing may change before "status stays the same" or "item is not updated" runs, in
+ * hours or days. The scheduler checks every few minutes, so it runs shortly after that time.
+ */
+export function QuietPeriodEditor({ amount, unit, onApply }: { amount: number | null | undefined; unit: "hours" | "days" | null | undefined; onApply: (amount: number, unit: "hours" | "days") => void }) {
+  const [draft_unit, setDraftUnit] = useState<"hours" | "days">(unit ?? "days");
+  const [draft_amount, setDraftAmount] = useState(String(amount ?? 3));
+  const max = draft_unit === "hours" ? MAX_QUIET_DAYS * 24 : MAX_QUIET_DAYS;
+  const value = Number(draft_amount);
+  const is_valid = Number.isInteger(value) && value >= 1 && value <= max;
+  return (
+    <>
+      <div className={POPOVER_LABEL}>For at least</div>
+      <div className="flex items-center gap-2">
+        <input
+          autoFocus
+          type="number"
+          min={1}
+          max={max}
+          value={draft_amount}
+          onChange={(event) => setDraftAmount(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && is_valid) onApply(value, draft_unit);
+          }}
+          aria-label="How long"
+          className={`${POPOVER_INPUT} w-20`}
+        />
+        <div className="flex-1">
+          <Segmented label="Unit" options={[{ id: "hours", label: "Hours" }, { id: "days", label: "Days" }]} value={draft_unit} onChange={setDraftUnit} />
+        </div>
+      </div>
+      {draft_amount !== "" && !is_valid && <div className="mt-1.5 text-[11.5px] text-boardtree-danger">Enter a whole number from 1 to {max}.</div>}
+      <div className="mt-1.5 text-[11.5px] text-boardtree-text-faint">Checked every few minutes. It runs once per item until something changes again.</div>
+      <PopoverFooter onDone={() => onApply(value, draft_unit)} is_disabled={!is_valid} />
+    </>
+  );
 }
