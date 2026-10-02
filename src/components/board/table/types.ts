@@ -114,8 +114,44 @@ export interface ColumnDef {
   aggregation?: "sum" | "avg" | "min" | "max" | "count";
   /** Button kind only: the text on the button and its color. */
   button?: { label: string; color: string };
+  /** Dependency kind only, see `DependencyConfig`. */
+  dependency?: DependencyConfig;
+  /** Dependency kind only: the Date and Timeline columns of the same table it can schedule, for its settings. */
+  dependency_date_columns?: { id: string; title: string; kind: ColumnKind }[];
   /** Date kind only: notifies everyone assigned in a People column on the same item once the date is `days_before` days away — sent daily by the backend's `board:send-due-date-reminders` scheduled command. */
   reminder?: { enabled: boolean; days_before: number };
+}
+
+/**
+ * How a Dependency column moves the dates it schedules, mirroring monday.com: `strict` keeps each
+ * item exactly at its lag, `flexible` only pushes items later when a predecessor would break the
+ * lag, `none` only shows the links.
+ */
+export type DependencyMode = "strict" | "flexible" | "none";
+
+/** A link's type: finish to start, start to start, finish to finish, start to finish. Only a Timeline column tells them apart. */
+export type DependencyLinkType = "fs" | "ss" | "ff" | "sf";
+
+/** How an item is scheduled from one predecessor: `lag_days` after it (before it when negative). */
+export interface DependencyLink {
+  type: DependencyLinkType;
+  lag_days: number;
+}
+
+/** One link sent when a Dependency cell is saved. A link without `lag_days` keeps the lag it had, or starts from the distance the two items already have. */
+export interface DependencyLinkInput {
+  predecessor_id: string;
+  type?: DependencyLinkType;
+  lag_days?: number | null;
+}
+
+/** A Dependency column's own settings, edited from its header menu. */
+export interface DependencyConfig {
+  /** The Date or Timeline column it schedules, null when none is picked. */
+  date_column_id: string | null;
+  mode: DependencyMode;
+  /** Lags count working days of the board's calendar, skipping weekends and holidays. */
+  use_working_days: boolean;
 }
 
 /** "Automate" in the column header menu: opens the automation builder for a column, and how many automations already use each column. */
@@ -182,6 +218,8 @@ export interface BoardTableNode {
   comment_count?: number;
   /** Flags this individual row (item or subitem) as a priority row — the per-row counterpart of `BoardTableGroup.is_priority`, independent of any per-item Status/Priority column. Renders a star next to the row's name in `ItemRow`/`SubitemRow`. */
   is_priority?: boolean;
+  /** Each Dependency cell's link settings, keyed by column id then predecessor id. A predecessor missing here has no settings saved yet (lag 0). */
+  dependency_links?: Record<string, Record<string, DependencyLink>>;
   /** Root items only: the Row menu's "Set recurring..." schedule, when one is set — renders a small repeat-icon badge next to the row's name in `ItemRow`. Undefined for the standalone mock demo and for subitems, which can't recur on their own. */
   recurrence?: { frequency: "daily" | "weekly" | "monthly"; interval_count: number } | null;
 }

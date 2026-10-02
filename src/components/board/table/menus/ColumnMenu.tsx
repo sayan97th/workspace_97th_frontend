@@ -5,20 +5,21 @@ import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnSettingsPanel from "./ColumnSettingsPanel";
 import BoardPickerMenu from "./BoardPickerMenu";
+import DependencySettingsPanel from "./DependencySettingsPanel";
 import type { ColumnTypeDef } from "../constants";
-import type { ColumnKind, ColumnValidation, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { ColumnDef, ColumnKind, ColumnValidation, DependencyConfig, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 import type { NumberAggregation } from "../summaryUtils";
 
 interface ColumnMenuProps {
   title: string;
   /** Undefined for the item-title/sub-title virtual columns — renders the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"] };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible: boolean;
   onRename: (title: string) => void;
   onSort: (direction: "asc" | "desc" | null) => void;
-  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } }) => void;
+  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig }) => void;
   onEditLabels?: () => void;
   /** Formula columns only: opens the operation/source-columns settings modal. */
   onEditFormula?: () => void;
@@ -45,7 +46,7 @@ interface ColumnMenuProps {
 const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 const ROW_DISABLED = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text-faint cursor-default";
 
-type Sub = "settings" | "add" | "type" | "duplicate_to_board" | "button" | null;
+type Sub = "settings" | "add" | "type" | "duplicate_to_board" | "button" | "dependency" | null;
 
 const BUTTON_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#323338", "#ff7575", "#037f4c"];
 
@@ -183,6 +184,24 @@ export default function ColumnMenu({
               <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
             </div>
             {sub === "button" && <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
+          </div>
+        )}
+        {column?.kind === "dependency" && (
+          <div className="relative" onMouseEnter={() => requestSub("dependency")}>
+            <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "dependency" ? "var(--color-boardtree-hover)" : "transparent" }}>
+              <span className="w-4 text-boardtree-text-muted">
+                <svg viewBox="0 0 16 16" width="14" height="14"><rect x="1.8" y="3" width="5" height="3.4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" /><rect x="9.2" y="9.6" width="5" height="3.4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" /><path d="M4.3 6.4 V11.3 H9.2 M7.8 9.9 L9.2 11.3 L7.8 12.7" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </span>
+              <span className="flex-1">Dependency settings</span>
+              <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
+            </div>
+            {sub === "dependency" && (
+              <DependencySettingsPanel
+                dependency={column.dependency}
+                date_columns={column.dependency_date_columns ?? []}
+                onChange={(dependency) => onUpdateSettings({ dependency })}
+              />
+            )}
           </div>
         )}
         {column && automation && (

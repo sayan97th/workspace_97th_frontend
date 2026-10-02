@@ -5,6 +5,11 @@ export type { BoardTableState, BoardTableActions, UseBoardTableConfig, ColumnSco
 export type {
   ColumnKind,
   ColumnDef,
+  DependencyConfig,
+  DependencyLink,
+  DependencyLinkInput,
+  DependencyLinkType,
+  DependencyMode,
   StatusDef,
   TagDef,
   CellValue,

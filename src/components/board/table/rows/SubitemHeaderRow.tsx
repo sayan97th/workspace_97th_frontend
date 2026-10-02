@@ -75,7 +75,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns }}
             can_delete={true}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}

@@ -8,6 +8,9 @@ import type {
   ColumnDef,
   ColumnKind,
   ColumnValidation,
+  DependencyConfig,
+  DependencyLink,
+  DependencyLinkInput,
   DragState,
   FillDragState,
   FormulaConfig,
@@ -173,6 +176,13 @@ export interface UseBoardTableConfig {
   onRenameNode?: (node_id: string, name: string) => void;
   onCellValueChange?: (node_id: string, column_id: string, value: CellValue) => void;
   /**
+   * A Dependency cell's links (which items it depends on, and each link's type and lag), saved
+   * together so the server can reschedule the item and everything after it. The hook updates the
+   * cell right away, the caller brings the server's dates back through `initial_groups`. Omitted
+   * (the standalone demo), only the predecessor ids are kept, through `onCellValueChange`.
+   */
+  onSetDependencyLinks?: (node_id: string, column_id: string, links: DependencyLinkInput[]) => void;
+  /**
    * A `files`-type cell's "Upload" button — persists the given files and
    * resolves with that cell's *entire* updated file list (existing files
    * plus the newly uploaded ones), which the hook then writes into local
@@ -327,6 +337,8 @@ export interface UseBoardTableConfig {
       reminder?: ColumnDef["reminder"];
       /** Button columns only, see `ColumnDef.button`. */
       button?: ColumnDef["button"];
+      /** Dependency columns only, see `ColumnDef.dependency`. */
+      dependency?: DependencyConfig;
     }
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
@@ -921,6 +933,36 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => ({ ...n, values: { ...n.values, [column_id]: value } })),
     }));
   }, []);
+
+  /**
+   * Dependency cell's popover: replaces the cell's links. The predecessor ids land in the cell
+   * value right away and each link's type and lag in `dependency_links`; without
+   * `onSetDependencyLinks` (the standalone demo) the ids go through the ordinary cell write.
+   */
+  const setDependencyLinks = useCallback(
+    (node_id: string, column_id: string, links: DependencyLinkInput[]) => {
+      const ids = links.map((link) => link.predecessor_id);
+      const next_value: CellValue = ids.length ? ids : null;
+      if (!config_ref.current.onSetDependencyLinks) {
+        applyCellValue(node_id, column_id, next_value);
+        return;
+      }
+      setState((s) => ({
+        ...s,
+        groups: updateNodeById<BoardTableNode>(s.groups, node_id, (n) => {
+          const previous = n.dependency_links?.[column_id] ?? {};
+          const next_links: Record<string, DependencyLink> = {};
+          for (const link of links) {
+            const kept = previous[link.predecessor_id];
+            next_links[link.predecessor_id] = { type: link.type ?? kept?.type ?? "fs", lag_days: link.lag_days ?? kept?.lag_days ?? 0 };
+          }
+          return { ...n, values: { ...n.values, [column_id]: next_value }, dependency_links: { ...n.dependency_links, [column_id]: next_links } };
+        }),
+      }));
+      config_ref.current.onSetDependencyLinks(node_id, column_id, links);
+    },
+    [applyCellValue]
+  );
 
   /** Files cell's "Upload" button. */
   const uploadCellFiles = useCallback(
@@ -1708,7 +1750,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       group_key: string,
       scope: ColumnScope,
       column_id: string,
-      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"]; button?: ColumnDef["button"] }
+      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"]; button?: ColumnDef["button"]; dependency?: DependencyConfig }
     ) => {
       const local_patch: Partial<ColumnDef> = {};
       if (patch.width != null) local_patch.width = patch.width;
@@ -1719,6 +1761,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.aggregation) local_patch.aggregation = patch.aggregation;
       if (patch.reminder) local_patch.reminder = patch.reminder;
       if (patch.button) local_patch.button = patch.button;
+      if (patch.dependency) local_patch.dependency = patch.dependency;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
@@ -2171,6 +2214,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       toggleArrayValue,
       clearCellValue,
       uploadCellFiles,
+      setDependencyLinks,
       addCellFileLink,
       deleteCellFile,
       setActiveCell,

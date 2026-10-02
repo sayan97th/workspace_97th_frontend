@@ -4,7 +4,7 @@ import { useRef } from "react";
 import ColumnMenu from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import EmojiInsertButton from "../../EmojiInsertButton";
-import type { ColumnKind, ColumnValidation, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { ColumnDef, ColumnKind, ColumnValidation, DependencyConfig, FormulaConfig, MirrorConfig, StatusDef } from "../types";
 import type { NumberAggregation } from "../summaryUtils";
 
 interface ColumnHeaderCellProps {
@@ -12,7 +12,7 @@ interface ColumnHeaderCellProps {
   title: string;
   height: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"] };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible?: boolean;
@@ -33,7 +33,7 @@ interface ColumnHeaderCellProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
-  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string } }) => void;
+  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig }) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
   /**

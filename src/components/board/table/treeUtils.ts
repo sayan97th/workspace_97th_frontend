@@ -186,17 +186,20 @@ export function visibleRowSequence(
  * dependency edges forward, since picking one of those would close a cycle
  * (`node_id` would end up depending, directly or transitively, on something
  * that already depends on it). Mirrors the Gantt view's own
- * `getDependencyCandidates` (`TableBoardView.tsx`), generalized to items and
- * subitems alike since the Table view's own column isn't root-item-only.
+ * `getDependencyCandidates` (`TableBoardView.tsx`), generalized to subitems:
+ * a subitem column offers the other subitems, an item column the other items.
  */
 export function dependencyCandidates(groups: BoardTableGroup[], node_id: string, column_id: string): { id: string; name: string }[] {
-  const all_nodes: BoardTableNode[] = [];
+  const root_nodes: BoardTableNode[] = [];
+  const sub_nodes: BoardTableNode[] = [];
   for (const group of groups) {
     for (const item of group.items) {
-      all_nodes.push(item);
-      all_nodes.push(...item.subs);
+      root_nodes.push(item);
+      sub_nodes.push(...item.subs);
     }
   }
+  // A column belongs to either items or subitems, so a row can only depend on rows of its own level.
+  const all_nodes = root_nodes.some((node) => node.id === node_id) ? root_nodes : sub_nodes;
 
   const successors = new Map<string, string[]>();
   for (const node of all_nodes) {

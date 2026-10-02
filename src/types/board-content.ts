@@ -19,6 +19,7 @@ import type {
   BoardToolbarFilterState,
   BoardViewKind,
 } from "@/components/board";
+import type { DependencyLink, DependencyMode } from "@/components/board/table/types";
 
 /**
  * The engine's column data-type. Aliases {@link BoardColumnKind} from the board
@@ -64,6 +65,12 @@ export type BoardColumnConfig = {
   };
   /** Number columns only: which aggregation the Table view's group summary footer shows for this column. Defaults to `"sum"` when unset — see `ColumnDef.aggregation` in `@/components/board/table/types`. */
   aggregation?: "sum" | "avg" | "min" | "max" | "count";
+  /** Dependency columns only: the Date or Timeline column of the same table they schedule. */
+  date_column_id?: number | null;
+  /** Dependency columns only: how dependent dates move, see `DependencyMode`. Unset (columns saved before modes existed) behaves as `"none"`. */
+  dependency_mode?: DependencyMode;
+  /** Dependency columns only: lags count working days of the board's calendar. */
+  use_working_days?: boolean;
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };
@@ -160,6 +167,8 @@ export type BoardItemDto = {
   /** Flags this individual item (or subitem) as a priority row — the per-row counterpart of `BoardGroupDto.is_priority`, independent of any per-item Status/Priority column. */
   is_priority: boolean;
   values: Record<string, BoardItemValue>;
+  /** Each Dependency cell's link settings, `{column_id: {predecessor_id: link}}`. Empty when the call did not load them. */
+  dependency_links?: Record<string, Record<string, DependencyLink>>;
   /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
   comment_count: number;
   /** Total attachments across this item's comments — powers the Kanban card's attachment count. Only `getItems` returns a real count; other calls return 0. */

@@ -64,6 +64,7 @@ import {
   type BoardViewKind,
   type DrawerActivityEntry,
   type ColumnDef as TableColumnDef,
+  type DependencyLinkInput,
   type ColumnKind as TableColumnKind,
   type ColumnScope as TableColumnScope,
   type PersonDef as TablePersonDef,
@@ -245,7 +246,22 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
     reminder: column.config?.reminder,
+    dependency:
+      column.type === "dependency"
+        ? {
+            date_column_id: column.config?.date_column_id != null ? String(column.config.date_column_id) : null,
+            mode: column.config?.dependency_mode ?? "none",
+            use_working_days: !!column.config?.use_working_days,
+          }
+        : undefined,
   };
+};
+
+/** Gives every Dependency column the Date and Timeline columns of its table it can schedule, hidden ones included. */
+const attachDependencyDateColumns = (defs: TableColumnDef[]): TableColumnDef[] => {
+  if (!defs.some((def) => def.kind === "dependency")) return defs;
+  const date_columns = defs.filter((def) => def.kind === "date" || def.kind === "timeline").map(({ id, title, kind }) => ({ id, title, kind }));
+  return defs.map((def) => (def.kind === "dependency" ? { ...def, dependency_date_columns: date_columns } : def));
 };
 
 /**
@@ -1933,17 +1949,55 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setColumns((current) => current.filter((c) => String(c.id) !== column_id));
   };
 
-  // ── Inline cell edit — optimistically writes the new value, then persists it,
-  // reverting the whole item list if the request fails. ──
+  // ── Applies rows the server just saved: their values and dependency links.
+  // Used for the items a date change moved through the Dependency column, see
+  // the API's BoardDependencyScheduler. Rows not loaded here are skipped. ──
+  const applyServerItems = useCallback((saved_items: BoardItemDto[]) => {
+    if (saved_items.length === 0) return;
+    setItems((current) =>
+      saved_items.reduce(
+        (acc, saved) => mapItemInTree(acc, saved.id, (item) => ({ ...item, values: saved.values, dependency_links: saved.dependency_links ?? item.dependency_links })),
+        current
+      )
+    );
+  }, []);
+
+  // ── Inline cell edit: optimistically writes the new value, then persists it,
+  // reverting the whole item list if the request fails. Items whose dates
+  // moved because they depend on this one come back with the response. ──
   const handleUpdateCellValue = async (item_id: number, column_id: string, value: BoardItemValue) => {
     const previous = items;
     setItems((current) =>
       mapItemInTree(current, item_id, (item) => ({ ...item, values: { ...item.values, [column_id]: value } }))
     );
     try {
-      await boardContentService.updateItemValues(board_id, item_id, { [column_id]: value });
+      const { item, moved_items } = await boardContentService.updateItemValuesWithMoves(board_id, item_id, { [column_id]: value });
+      // Only the links of the edited row: its values stay as typed, a later keystroke may already be in flight.
+      setItems((current) => mapItemInTree(current, item_id, (row) => ({ ...row, dependency_links: item.dependency_links ?? row.dependency_links })));
+      applyServerItems(moved_items);
     } catch {
       setItems(previous);
+    }
+  };
+
+  // ── Dependency cell's popover: saves the cell's links (predecessors, and
+  // each one's type and lag). The server moves this item's date and every
+  // item after it, and sends all of them back. ──
+  const handleSetDependencyLinks = async (item_id: number, column_id: string, links: DependencyLinkInput[]) => {
+    const previous = items;
+    const ids = links.map((link) => link.predecessor_id);
+    setItems((current) => mapItemInTree(current, item_id, (item) => ({ ...item, values: { ...item.values, [column_id]: ids.length ? ids : null } })));
+    try {
+      const { item, moved_items } = await boardContentService.updateItemDependencies(
+        board_id,
+        item_id,
+        Number(column_id),
+        links.map((link) => ({ predecessor_id: Number(link.predecessor_id), type: link.type, lag_days: link.lag_days }))
+      );
+      applyServerItems([item, ...moved_items]);
+    } catch (error) {
+      setItems(previous);
+      toast.error(getApiErrorMessage(error, "Couldn't save the dependency. Please try again."));
     }
   };
 
@@ -2586,7 +2640,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // renders columns by iterating this array in order with no pin-specific
   // logic of its own, so reordering here is all pinning needs.
   const { table_base_columns, table_pinned_count } = useMemo(() => {
-    const all = attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label);
+    const all = attachDependencyDateColumns(attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label));
     const visible = all.filter((c) => !toolbar.hidden_column_ids.includes(c.id));
     const pinned = visible.filter((c) => toolbar.pinned_column_ids.includes(c.id));
     const rest = visible.filter((c) => !toolbar.pinned_column_ids.includes(c.id));
@@ -2599,7 +2653,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return { table_base_columns: [...pinned, ...rest], table_pinned_count: pinned.length };
   }, [item_columns, item_column_label, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
   const table_sub_base_columns = useMemo(
-    () => attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem"),
+    () => attachDependencyDateColumns(attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem")),
     [subitem_columns]
   );
 
@@ -2607,6 +2661,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     id: String(item.id),
     name: item.name,
     values: item.values,
+    dependency_links: item.dependency_links,
     comment_count: item.comment_count,
     is_priority: item.is_priority,
     recurrence: item.recurrence,
@@ -2962,6 +3017,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
       onCellValueChange: (node_id, column_id, value) =>
         void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
+      onSetDependencyLinks: (node_id, column_id, links) => void handleSetDependencyLinks(Number(node_id), column_id, links),
       onAddColumnOption: (column_id, option) => handleAddColumnOption(column_id, option),
       // Dropdown cell's inline "Edit labels" mode (`DropdownMenu.tsx`) —
       // rename/recolor/delete all funnel through the same `patchColumnOptions`
@@ -3026,12 +3082,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (validation !== undefined) config_patch.validation = validation;
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
         if (reminder !== undefined) config_patch.reminder = reminder;
+        if (dependency !== undefined) {
+          config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;
+          config_patch.dependency_mode = dependency.mode;
+          config_patch.use_working_days = dependency.use_working_days;
+        }
         if (button !== undefined) {
           config_patch.button_label = button.label;
           config_patch.button_color = button.color;
@@ -3739,6 +3800,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleUpdateCellValue(Number(row_id), String(board_timeline_column.id), { start: new_start, end: new_end });
   };
 
+  // A Dependency column scheduling this same Timeline moves the successors on
+  // the server (and returns them), so the chart must not push them a second time.
+  const is_gantt_scheduled_by_server =
+    !!board_dependency_column &&
+    !!board_timeline_column &&
+    board_dependency_column.config?.date_column_id === board_timeline_column.id &&
+    (board_dependency_column.config?.dependency_mode ?? "none") !== "none";
+
   /** Batch-writes the successor rows a drag/resize pushed forward to keep every Finish-to-Start dependency satisfied — see `GanttChart`'s `onCascadeReschedule`. */
   const handleGanttCascadeReschedule = (updates: { row_id: string; start: string; end: string }[]) => {
     if (!board_timeline_column) return;
@@ -4025,7 +4094,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               onDateChange={handleMoveGanttRange}
               resizable
               getDependencyIds={board_dependency_column ? getGanttDependencyIds : undefined}
-              onCascadeReschedule={board_dependency_column ? handleGanttCascadeReschedule : undefined}
+              onCascadeReschedule={board_dependency_column && !is_gantt_scheduled_by_server ? handleGanttCascadeReschedule : undefined}
             />
           </>
         ) : (

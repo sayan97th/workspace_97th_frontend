@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api-client";
+import type { DependencyLinkType } from "@/components/board/table/types";
 import type {
   BoardColumnDto,
   BoardGroupDto,
@@ -291,6 +292,36 @@ export const boardContentService = {
       { values }
     );
     return response.item;
+  },
+
+  /**
+   * PATCH /api/boards/{board_id}/items/{item_id}/values, also returning the
+   * other items whose dates moved because they depend on this one.
+   */
+  async updateItemValuesWithMoves(
+    board_id: number,
+    item_id: number,
+    values: Record<string, BoardItemValue>
+  ): Promise<{ item: BoardItemDto; moved_items: BoardItemDto[] }> {
+    const response = await apiClient.patch<{ item: BoardItemDto; moved_items?: BoardItemDto[] }>(
+      `/api/boards/${board_id}/items/${item_id}/values`,
+      { values }
+    );
+    return { item: response.item, moved_items: response.moved_items ?? [] };
+  },
+
+  /** PUT /api/boards/{board_id}/items/{item_id}/dependencies/{column_id}: replaces a Dependency cell's links and returns every item whose date moved. */
+  async updateItemDependencies(
+    board_id: number,
+    item_id: number,
+    column_id: number,
+    links: { predecessor_id: number; type?: DependencyLinkType; lag_days?: number | null }[]
+  ): Promise<{ item: BoardItemDto; moved_items: BoardItemDto[] }> {
+    const response = await apiClient.put<{ item: BoardItemDto; moved_items?: BoardItemDto[] }>(
+      `/api/boards/${board_id}/items/${item_id}/dependencies/${column_id}`,
+      { links }
+    );
+    return { item: response.item, moved_items: response.moved_items ?? [] };
   },
 
   /** DELETE /api/boards/{board_id}/items/{item_id} */

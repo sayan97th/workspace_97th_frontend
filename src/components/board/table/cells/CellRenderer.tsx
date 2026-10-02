@@ -21,7 +21,7 @@ import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import FileLinkModal from "../menus/FileLinkModal";
-import DependencyMenu from "../menus/DependencyMenu";
+import DependencyMenu, { describeLag, type DependencyMenuLink } from "../menus/DependencyMenu";
 import ChecklistMenu from "../menus/ChecklistMenu";
 import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
 
@@ -584,20 +584,45 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "dependency") {
     const dependency_ids = asArray(value);
-    const selected = dependency_ids
-      .map((id) => ({ id, name: findNode(state.groups, id)?.name }))
-      .filter((entry): entry is { id: string; name: string } => Boolean(entry.name));
-    const visible = selected.slice(0, 2);
-    const overflow = selected.length - visible.length;
+    const link_settings = findNode(state.groups, node_id)?.dependency_links?.[column.id] ?? {};
+    const date_column = column.dependency?.date_column_id ? column.dependency_date_columns?.find((c) => c.id === column.dependency?.date_column_id) : undefined;
+    const is_timeline = date_column?.kind === "timeline";
+    const dateLabelOf = (predecessor_values: Record<string, CellValue> | undefined): string | null => {
+      if (!date_column || !predecessor_values) return null;
+      const date_value = predecessor_values[date_column.id];
+      if (is_timeline) {
+        const { start_iso, end_iso } = parseRangeValue(date_value);
+        return start_iso ? fmtRange(start_iso, end_iso || start_iso) : null;
+      }
+      return typeof date_value === "string" && date_value ? fmtDate(date_value) : null;
+    };
+    const links: DependencyMenuLink[] = dependency_ids.flatMap((id) => {
+      const predecessor = findNode(state.groups, id);
+      if (!predecessor) return [];
+      const settings = link_settings[id];
+      return [{ id, name: predecessor.name, type: settings?.type ?? "fs", lag_days: settings?.lag_days ?? 0, date_label: dateLabelOf(predecessor.values) }];
+    });
+    const schedule_notice = !date_column
+      ? "Dates are not scheduled yet. Pick a date column in this column's Dependency settings."
+      : column.dependency?.mode === "none"
+        ? "This column is set to No action, so dates will not move by themselves."
+        : null;
+    const visible = links.slice(0, 2);
+    const overflow = links.length - visible.length;
     return (
       <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
         <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden">
           {visible.length > 0 ? (
             <>
-              {visible.map((entry) => (
-                <span key={entry.id} title={entry.name} className="flex max-w-[110px] items-center gap-1 truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
+              {visible.map((link) => (
+                <span key={link.id} title={`${link.name}, ${describeLag(link.lag_days).toLowerCase()}`} className="flex max-w-[140px] items-center gap-1 truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
                   <svg viewBox="0 0 14 14" width="10" height="10" className="flex-none"><path d="M5.5 8.5 L11 3 M7 3 H11 V7 M9.5 3 H3.5 V11 H10.5 V7.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                  <span className="truncate">{entry.name}</span>
+                  <span className="truncate">{link.name}</span>
+                  {link.lag_days !== 0 && (
+                    <span className="flex-none rounded-full bg-boardtree-accent-surface px-1 text-[10px] font-semibold text-boardtree-accent-hover">
+                      {link.lag_days > 0 ? "+" : "-"}{Math.abs(link.lag_days)}d
+                    </span>
+                  )}
                 </span>
               ))}
               {overflow > 0 && (
@@ -611,8 +636,10 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         {is_menu_open && (
           <DependencyMenu
             candidates={dependencyCandidates(state.groups, node_id, column.id)}
-            selected={dependency_ids}
-            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
+            links={links}
+            is_timeline={is_timeline}
+            schedule_notice={schedule_notice}
+            onChange={(next_links) => actions.setDependencyLinks(node_id, column.id, next_links)}
             onClose={actions.closeCellMenu}
           />
         )}
