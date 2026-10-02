@@ -6,6 +6,8 @@ import PersonAvatar from "../PersonAvatar";
 import PersonAvatarStack, { type PersonAvatarStackPerson } from "../PersonAvatarStack";
 import DeactivatedBadge from "../DeactivatedBadge";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
+import PeopleSelectionFooter from "../PeopleSelectionFooter";
+import { usePeopleSelectionDraft } from "../usePeopleSelectionDraft";
 
 const getInitials = (full_name: string): string =>
   full_name
@@ -17,11 +19,12 @@ const getInitials = (full_name: string): string =>
     .toUpperCase();
 
 export type KanbanCardMembersProps = {
-  /** Everyone assignable (board owners) — the picker's full list. Deactivated people are only listed while assigned, so they can be removed. */
+  /** Everyone assignable (board owners), the picker's full list. Deactivated people are only listed while assigned, so they can be removed. */
   people: PersonAvatarStackPerson[];
   /** The subset currently assigned to this card. */
   selected: PersonAvatarStackPerson[];
-  onToggle: (person_id: string) => void;
+  /** Commits the confirmed selection (an empty list unassigns everyone). Only called from the picker's "Save" button. */
+  onSave: (person_ids: string[]) => void;
   /**
    * When true, always renders just the small "+" trigger, never the avatar
    * stack, regardless of `selected`. Used by the drawer's Assignee row, which
@@ -38,14 +41,25 @@ export type KanbanCardMembersProps = {
  * popover on click, mirroring the People cell's picker without pulling in the
  * generic `BoardValueCell` chip treatment.
  */
-const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected, onToggle, hide_stack = false }) => {
+const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected, onSave, hide_stack = false }) => {
   const [anchor_el, setAnchorEl] = useState<HTMLElement | null>(null);
-  const selected_ids = new Set(selected.map((person) => String(person.id)));
+  const saved_ids = selected.map((person) => String(person.id));
+  // Ticks only edit this draft, "Save" commits it in one call (see `usePeopleSelectionDraft`).
+  const { draft_ids, has_changes, togglePerson, resetDraft } = usePeopleSelectionDraft(saved_ids);
+
+  const closePicker = () => setAnchorEl(null);
+
+  const saveDraft = () => {
+    if (has_changes) onSave(draft_ids);
+    closePicker();
+  };
 
   return (
     <div
       onClick={(event) => {
         event.stopPropagation();
+        if (anchor_el) return;
+        resetDraft(saved_ids);
         setAnchorEl(event.currentTarget);
       }}
       className="cursor-pointer"
@@ -63,19 +77,21 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
           <PlusIcon size={10} />
         </button>
       )}
-      <BoardPopover anchor_el={anchor_el} is_open={anchor_el !== null} onClose={() => setAnchorEl(null)} align="end" width={240}>
+      <BoardPopover anchor_el={anchor_el} is_open={anchor_el !== null} onClose={closePicker} align="end" width={240}>
         <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto p-2">
           {people.length === 0 && (
             <p className="px-1 py-3 text-center text-[12.5px] text-shell-text-faint">No members to assign.</p>
           )}
           {people.map((person, index) => {
-            const is_selected = selected_ids.has(String(person.id));
-            if (person.is_deactivated && !is_selected) return null;
+            const is_selected = draft_ids.includes(String(person.id));
+            // A deactivated person can't be newly assigned, but stays listed while assigned so they can be removed.
+            if (person.is_deactivated && !saved_ids.includes(String(person.id))) return null;
             return (
               <button
                 key={person.id}
                 type="button"
-                onClick={() => onToggle(String(person.id))}
+                onClick={() => togglePerson(String(person.id))}
+                aria-pressed={is_selected}
                 className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-shell-hover"
               >
                 <PersonAvatar
@@ -100,6 +116,11 @@ const KanbanCardMembers: React.FC<KanbanCardMembersProps> = ({ people, selected,
             );
           })}
         </div>
+        {people.length > 0 && (
+          <div className="border-t border-shell-border px-2 py-2">
+            <PeopleSelectionFooter has_changes={has_changes} onCancel={closePicker} onSave={saveDraft} />
+          </div>
+        )}
       </BoardPopover>
     </div>
   );

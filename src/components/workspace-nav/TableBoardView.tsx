@@ -3541,11 +3541,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   <KanbanCardMembers
                     people={roster_members}
                     selected={members}
-                    onToggle={(person_id) => {
-                      const next = member_ids.includes(person_id)
-                        ? member_ids.filter((id) => id !== person_id)
-                        : [...member_ids, person_id];
-                      void handleUpdateCellValue(row.id, String(board_member_column.id), next.length ? next : null);
+                    onSave={(person_ids) => {
+                      void handleUpdateCellValue(row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
                     }}
                   />
                 </span>
@@ -4204,12 +4201,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               ? {
                   roster: roster_members,
                   selected: roster_members.filter((member) => kanban_open_row_member_ids.includes(String(member.id))),
-                  onToggle: (person_id) => {
+                  onSave: (person_ids) => {
                     if (!kanban_open_row) return;
-                    const next = kanban_open_row_member_ids.includes(person_id)
-                      ? kanban_open_row_member_ids.filter((id) => id !== person_id)
-                      : [...kanban_open_row_member_ids, person_id];
-                    void handleUpdateCellValue(kanban_open_row.id, String(board_member_column.id), next.length ? next : null);
+                    void handleUpdateCellValue(kanban_open_row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
                   },
                 }
               : undefined

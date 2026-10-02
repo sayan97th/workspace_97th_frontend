@@ -9,6 +9,8 @@ import PersonAvatar from "../PersonAvatar";
 import DeactivatedBadge from "../DeactivatedBadge";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
 import BoardPopover from "../toolbar/BoardPopover";
+import PeopleSelectionFooter from "../PeopleSelectionFooter";
+import { usePeopleSelectionDraft } from "../usePeopleSelectionDraft";
 import DateCalendarPanel from "./DateCalendarPanel";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
 import StatusOptionGrid from "./StatusOptionGrid";
@@ -657,16 +659,22 @@ const PeopleCell: React.FC<{
     .map((id) => people.find((p) => String(p.id) === id))
     .filter((p): p is BoardCellPerson => Boolean(p));
 
-  const toggle = (person_id: string) => {
-    const next = selected_ids.includes(person_id)
-      ? selected_ids.filter((id) => id !== person_id)
-      : [...selected_ids, person_id];
-    onCommit(next.length ? next : null);
+  // Ticks only edit this draft, "Save" commits it in one call (see `usePeopleSelectionDraft`).
+  const { draft_ids, has_changes, togglePerson, resetDraft } = usePeopleSelectionDraft(selected_ids);
+
+  const openPicker = (event: React.MouseEvent) => {
+    resetDraft(selected_ids);
+    popover.open(event);
+  };
+
+  const saveDraft = () => {
+    if (has_changes) onCommit(draft_ids.length ? draft_ids : null);
+    popover.close();
   };
 
   return (
     <>
-      <EditableSurface onClick={popover.open}>
+      <EditableSurface onClick={openPicker}>
         {selected.length > 0 ? (
           <PersonAvatarStack
             people={selected}
@@ -680,45 +688,53 @@ const PeopleCell: React.FC<{
         )}
       </EditableSurface>
       <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={240}>
-        <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto p-2" onClick={(event) => event.stopPropagation()}>
-          {people.length === 0 ? (
-            <p className="px-1 py-3 text-center text-[12.5px] text-boardtree-text-faint">No members to assign.</p>
-          ) : (
-            <p className="px-1.5 pb-1 text-[11px] font-medium text-boardtree-text-faint">Suggested people</p>
+        <div onClick={(event) => event.stopPropagation()}>
+          <div className="flex max-h-[280px] flex-col gap-0.5 overflow-y-auto p-2">
+            {people.length === 0 ? (
+              <p className="px-1 py-3 text-center text-[12.5px] text-boardtree-text-faint">No members to assign.</p>
+            ) : (
+              <p className="px-1.5 pb-1 text-[11px] font-medium text-boardtree-text-faint">Suggested people</p>
+            )}
+            {people.map((person, index) => {
+              const is_selected = draft_ids.includes(String(person.id));
+              // A deactivated person can't be newly assigned, but stays listed (faded) while assigned so they can be removed.
+              if (person.is_deactivated && !selected_ids.includes(String(person.id))) return null;
+              return (
+                <button
+                  key={person.id}
+                  type="button"
+                  onClick={() => togglePerson(String(person.id))}
+                  aria-pressed={is_selected}
+                  className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-boardtree-hover"
+                >
+                  <PersonAvatar
+                    person={{
+                      id: String(person.id),
+                      name: person.full_name,
+                      initials: getInitials(person.full_name),
+                      avatar_seed: index,
+                      avatar_url: person.profile_photo_url ?? undefined,
+                      is_deactivated: person.is_deactivated,
+                    }}
+                    size={24}
+                    variant="flat"
+                  />
+                  <span className={`min-w-0 flex-1 truncate text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.full_name}</span>
+                  <DeactivatedBadge is_deactivated={person.is_deactivated} />
+                  {is_selected && (
+                    <span className="flex-none text-boardtree-accent">
+                      <CheckIcon size={14} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {people.length > 0 && (
+            <div className="border-t border-boardtree-border-soft px-2 py-2">
+              <PeopleSelectionFooter has_changes={has_changes} onCancel={popover.close} onSave={saveDraft} />
+            </div>
           )}
-          {people.map((person, index) => {
-            const is_selected = selected_ids.includes(String(person.id));
-            // A deactivated person can't be newly assigned, but stays listed (faded) while assigned so they can be removed.
-            if (person.is_deactivated && !is_selected) return null;
-            return (
-              <button
-                key={person.id}
-                type="button"
-                onClick={() => toggle(String(person.id))}
-                className="flex items-center gap-2.5 rounded-md px-1.5 py-1.5 text-left transition-colors hover:bg-boardtree-hover"
-              >
-                <PersonAvatar
-                  person={{
-                    id: String(person.id),
-                    name: person.full_name,
-                    initials: getInitials(person.full_name),
-                    avatar_seed: index,
-                    avatar_url: person.profile_photo_url ?? undefined,
-                    is_deactivated: person.is_deactivated,
-                  }}
-                  size={24}
-                  variant="flat"
-                />
-                <span className={`min-w-0 flex-1 truncate text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.full_name}</span>
-                <DeactivatedBadge is_deactivated={person.is_deactivated} />
-                {is_selected && (
-                  <span className="flex-none text-boardtree-accent">
-                    <CheckIcon size={14} />
-                  </span>
-                )}
-              </button>
-            );
-          })}
         </div>
       </BoardPopover>
     </>

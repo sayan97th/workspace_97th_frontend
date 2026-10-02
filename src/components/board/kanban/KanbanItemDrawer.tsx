@@ -42,7 +42,8 @@ export type KanbanItemDrawerProps<TRow> = {
   people?: {
     roster: PersonAvatarStackPerson[];
     selected: PersonAvatarStackPerson[];
-    onToggle: (person_id: string) => void;
+    /** Commits the picker's confirmed selection, see `KanbanCardMembers`. */
+    onSave: (person_ids: string[]) => void;
   };
 
   /** Omit to hide the Due date row — the board has no date column. */
@@ -333,7 +334,7 @@ function KanbanItemDrawer<TRow>(props: KanbanItemDrawerProps<TRow>) {
                     Unassigned
                   </span>
                 )}
-                <KanbanCardMembers people={people.roster} selected={people.selected} onToggle={people.onToggle} hide_stack />
+                <KanbanCardMembers people={people.roster} selected={people.selected} onSave={people.onSave} hide_stack />
               </div>
             </div>
           )}
