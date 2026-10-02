@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StatusDef } from "../types";
 import { STATUS_PALETTE } from "../constants";
+import OptionLabelInput from "./OptionLabelInput";
 
 interface LabelEditorModalProps {
   title: string;
@@ -16,6 +17,27 @@ interface LabelEditorModalProps {
 
 export default function LabelEditorModal({ title, defs, onRename, onColor, onDelete, onAdd, onClose }: LabelEditorModalProps) {
   const [color_picker_id, setColorPickerId] = useState<string | null>(null);
+  const editable_defs = defs.filter((d) => !d.fixed);
+  const input_refs = useRef(new Map<string, HTMLInputElement>());
+  // Ids present when "+ Add new" was clicked. A real column only gets the new
+  // option once the API answers, so the focus waits for an id outside this set.
+  const ids_before_add_ref = useRef<Set<string> | null>(null);
+
+  useEffect(() => {
+    const ids_before_add = ids_before_add_ref.current;
+    if (!ids_before_add) return;
+    const added_def = editable_defs.find((d) => !ids_before_add.has(d.id));
+    if (!added_def) return;
+    ids_before_add_ref.current = null;
+    const input = input_refs.current.get(added_def.id);
+    input?.focus();
+    input?.select();
+  }, [editable_defs]);
+
+  const handleAdd = () => {
+    ids_before_add_ref.current = new Set(editable_defs.map((d) => d.id));
+    onAdd();
+  };
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[rgba(30,34,55,0.35)]" onClick={onClose}>
@@ -27,7 +49,7 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-3">
-          {defs.filter((d) => !d.fixed).map((def) => (
+          {editable_defs.map((def) => (
             <div key={def.id} className="relative flex items-center gap-2.5 py-1.5">
               <button
                 type="button"
@@ -48,9 +70,14 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
                   ))}
                 </div>
               )}
-              <input
+              <OptionLabelInput
+                ref={(el) => {
+                  if (el) input_refs.current.set(def.id, el);
+                  else input_refs.current.delete(def.id);
+                }}
                 value={def.label}
-                onChange={(e) => onRename(def.id, e.target.value)}
+                onCommit={(label) => onRename(def.id, label)}
+                aria_label="Label name"
                 className="h-8 flex-1 rounded-[6px] border border-transparent px-2 text-[13px] text-boardtree-text outline-none hover:border-boardtree-border focus:border-boardtree-accent"
               />
               <button type="button" onClick={() => onDelete(def.id)} className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger">
@@ -58,7 +85,7 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
               </button>
             </div>
           ))}
-          <button type="button" onClick={onAdd} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-[7px] border border-dashed border-boardtree-border text-[13px] text-boardtree-text-muted hover:border-boardtree-accent hover:text-boardtree-accent">
+          <button type="button" onClick={handleAdd} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-[7px] border border-dashed border-boardtree-border text-[13px] text-boardtree-text-muted hover:border-boardtree-accent hover:text-boardtree-accent">
             + Add new
           </button>
         </div>

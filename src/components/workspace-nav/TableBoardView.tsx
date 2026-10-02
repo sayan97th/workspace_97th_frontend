@@ -2010,31 +2010,51 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     column_id: string,
     option: { label: string; color: string }
   ): Promise<BoardCellOption | null> => {
-    const column = columns_by_id[column_id];
-    if (!column) return null;
     const new_option: BoardCellOption = { id: `opt_${Date.now()}`, label: option.label, color: option.color };
-    const next_options = [...(column.config?.options ?? []), new_option];
-    const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
-      config: { ...(column.config ?? {}), options: next_options },
-    });
-    setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
-    return new_option;
+    const updated = await patchColumnOptions(column_id, (options) => [...options, new_option]);
+    return updated ? new_option : null;
   };
 
-  // ── Edit Labels (rename/recolor/delete/deactivate/describe) — every action
+  // ── Edit Labels (rename/recolor/delete/deactivate/describe). Every action
   // is a read-modify-write over the column's `config.options` array, so they
-  // all funnel through this one persistence helper. ──
+  // all funnel through this one persistence helper.
+  //
+  // Writes to the same column run one at a time, and each reads the options
+  // left by the previous write (`latest_columns_ref`), not this render's
+  // `columns_by_id`. Otherwise a rename committed on blur followed right away
+  // by a recolor/delete click on another label would send two PATCHes built
+  // from the same stale array, and whichever landed last would undo the other. ──
+  const latest_columns_ref = useRef(columns);
+  latest_columns_ref.current = columns;
+  const column_options_queue_ref = useRef(new Map<string, Promise<unknown>>());
+
   const patchColumnOptions = useCallback(
-    async (column_id: string, updater: (options: BoardCellOption[]) => BoardCellOption[]) => {
-      const column = columns_by_id[column_id];
-      if (!column) return;
-      const next_options = updater(column.config?.options ?? []);
-      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
-        config: { ...(column.config ?? {}), options: next_options },
+    (column_id: string, updater: (options: BoardCellOption[]) => BoardCellOption[]) => {
+      const previous_write = column_options_queue_ref.current.get(column_id) ?? Promise.resolve();
+      const write = previous_write.then(async () => {
+        const column = latest_columns_ref.current.find((c) => String(c.id) === column_id);
+        if (!column) return null;
+        const next_config = { ...(column.config ?? {}), options: updater(column.config?.options ?? []) };
+        const replaceColumn = (next_column: typeof column) => {
+          latest_columns_ref.current = latest_columns_ref.current.map((c) => (c.id === next_column.id ? next_column : c));
+          setColumns((current) => current.map((c) => (c.id === next_column.id ? next_column : c)));
+        };
+        // Optimistic, so a grid re-sync before the API answers keeps the new labels.
+        replaceColumn({ ...column, config: next_config });
+        try {
+          const updated = await boardContentService.updateColumn(board_id, Number(column_id), { config: next_config });
+          replaceColumn(updated);
+          return updated;
+        } catch (error) {
+          replaceColumn(column);
+          toast.error(getApiErrorMessage(error, "Couldn't save the labels. Please try again."));
+          return null;
+        }
       });
-      setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+      column_options_queue_ref.current.set(column_id, write);
+      return write;
     },
-    [board_id, columns_by_id]
+    [board_id]
   );
 
   // ── People cell picker's bottom toggle — flips whether assigning someone

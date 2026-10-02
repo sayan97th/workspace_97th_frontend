@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { StatusDef } from "../types";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import PopoverPanel from "./PopoverPanel";
+import OptionLabelInput from "./OptionLabelInput";
 
 interface DropdownMenuProps {
   options: StatusDef[];
@@ -90,9 +91,10 @@ export default function DropdownMenu({
                   ))}
                 </div>
               )}
-              <input
+              <OptionLabelInput
                 value={def.label}
-                onChange={(e) => onRenameOption(def.id, e.target.value)}
+                onCommit={(label) => onRenameOption(def.id, label)}
+                aria_label="Label name"
                 className="h-7 flex-1 rounded-[6px] border border-transparent px-1.5 text-[12.5px] text-boardtree-text outline-none hover:border-boardtree-border focus:border-boardtree-accent"
               />
               <button
