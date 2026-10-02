@@ -140,7 +140,7 @@ export type DrawerInfoBox = {
 };
 
 /** `"activity"` folded into `"updates"` (see `UpdatesPanel`'s merged feed) — no longer a separate tab. */
-export type DrawerTabId = "updates" | "files" | "info_boxes" | "automations";
+export type DrawerTabId = "updates" | "files" | "info_boxes" | "dependencies" | "automations";
 
 /** Payload of the `item_comment_posted` broadcast, ids only (see `App\Events\ItemCommentPosted`). */
 export type RemoteCommentEvent = {
@@ -213,6 +213,8 @@ export type BoardItemDrawerConfig<TRow> = {
   onArchiveItem?: (row_id: string) => Promise<void>;
   /** Deletes the item. Omit to hide "Delete". */
   onDeleteItem?: (row_id: string) => Promise<void>;
+  /** The Dependencies tab: what the item depends on and what depends on it. Omit to hide the tab. */
+  renderDependenciesTab?: (row_id: string) => ReactNode;
   /** The Automations tab: what runs on the item. Omit to hide the tab. */
   renderAutomationsTab?: (row_id: string) => ReactNode;
 };

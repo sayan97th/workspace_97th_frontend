@@ -199,16 +199,27 @@ export function dependencyCandidates(groups: BoardTableGroup[], node_id: string,
     }
   }
   // A column belongs to either items or subitems, so a row can only depend on rows of its own level.
-  const all_nodes = root_nodes.some((node) => node.id === node_id) ? root_nodes : sub_nodes;
+  return dependencyCandidatesAmong(root_nodes.some((node) => node.id === node_id) ? root_nodes : sub_nodes, node_id, column_id);
+}
 
+/**
+ * `dependencyCandidates` over a flat list of same level rows, for callers that do not hold
+ * table groups (the item drawer's Dependencies tab).
+ */
+export function dependencyCandidatesAmong(
+  nodes: { id: string; name: string; values: Record<string, unknown> }[],
+  node_id: string,
+  column_id: string
+): { id: string; name: string }[] {
   const successors = new Map<string, string[]>();
-  for (const node of all_nodes) {
+  for (const node of nodes) {
     const raw = node.values[column_id];
     if (!Array.isArray(raw)) continue;
-    for (const predecessor_id of raw as string[]) {
-      const list = successors.get(predecessor_id) ?? [];
+    for (const predecessor_id of raw as unknown[]) {
+      const key = String(predecessor_id);
+      const list = successors.get(key) ?? [];
       list.push(node.id);
-      successors.set(predecessor_id, list);
+      successors.set(key, list);
     }
   }
 
@@ -224,7 +235,7 @@ export function dependencyCandidates(groups: BoardTableGroup[], node_id: string,
     }
   }
 
-  return all_nodes.filter((node) => !unreachable.has(node.id)).map((node) => ({ id: node.id, name: node.name }));
+  return nodes.filter((node) => !unreachable.has(node.id)).map((node) => ({ id: node.id, name: node.name }));
 }
 
 export function reorderWithinList<T extends { id: string }>(list: T[], dragged_id: string, target_id: string): T[] {

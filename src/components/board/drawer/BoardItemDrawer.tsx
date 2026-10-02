@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Zap } from "lucide-react";
+import { GitBranch, Zap } from "lucide-react";
 import { CloseIcon } from "@/icons/board-icons";
 import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
 import BoardItemOptionsMenu from "./BoardItemOptionsMenu";
@@ -25,7 +25,7 @@ type TabDefinition = {
 
 /**
  * Slide-in item detail drawer: header (close button, title, "…" options menu) +
- * tab bar (Updates/Files/Activity Log/Info Boxes) driven entirely by
+ * tab bar (Updates/Files/Info Boxes, plus Dependencies and Automations when given) driven entirely by
  * {@link useBoardItemDrawer}. Generic over the row type
  * so any board view — Client Hub today, others later — can reuse it as-is.
  */
@@ -49,6 +49,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
     { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length + content.activity_log.length },
     { id: "files", label: "Files", icon: <FilesTabIcon size={15} />, count: content.all_attachments.length },
     { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={15} /> },
+    ...(content.renderDependenciesTab ? [{ id: "dependencies" as const, label: "Dependencies", icon: <GitBranch size={15} /> }] : []),
     ...(content.renderAutomationsTab ? [{ id: "automations" as const, label: "Automations", icon: <Zap size={15} /> }] : []),
   ];
 
@@ -110,7 +111,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       )}
 
       {/* Tabs */}
-      <div className="flex flex-none items-center gap-0.5 border-b border-shell-border px-5">
+      <div className="flex flex-none items-center gap-0.5 overflow-x-auto border-b border-shell-border px-5">
         {tabs.map((tab) => {
           const is_active = content.active_tab === tab.id;
           return (
@@ -118,7 +119,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
               key={tab.id}
               type="button"
               onClick={() => drawer.setActiveTab(tab.id)}
-              className={`relative flex items-center gap-[7px] px-[13px] py-3 text-[14px] font-medium ${
+              className={`relative flex flex-none items-center gap-[7px] whitespace-nowrap px-[13px] py-3 text-[14px] font-medium ${
                 is_active ? "text-shell-text" : "text-shell-text-muted"
               }`}
             >
@@ -144,6 +145,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} />}
       {content.active_tab === "files" && <FilesPanel drawer={content} />}
       {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
+      {content.active_tab === "dependencies" && content.open_row_id && content.renderDependenciesTab?.(content.open_row_id)}
       {content.active_tab === "automations" && content.open_row_id && content.renderAutomationsTab?.(content.open_row_id)}
     </SlideOverPanel>
   );

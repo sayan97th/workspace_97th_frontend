@@ -934,12 +934,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     }));
   }, []);
 
-  /**
-   * Dependency cell's popover: replaces the cell's links. The predecessor ids land in the cell
-   * value right away and each link's type and lag in `dependency_links`; without
-   * `onSetDependencyLinks` (the standalone demo) the ids go through the ordinary cell write.
-   */
-  const setDependencyLinks = useCallback(
+  /** Writes a Dependency cell's links locally and hands them to the caller, see `setDependencyLinks`. */
+  const applyDependencyLinks = useCallback(
     (node_id: string, column_id: string, links: DependencyLinkInput[]) => {
       const ids = links.map((link) => link.predecessor_id);
       const next_value: CellValue = ids.length ? ids : null;
@@ -962,6 +958,29 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       config_ref.current.onSetDependencyLinks(node_id, column_id, links);
     },
     [applyCellValue]
+  );
+
+  /**
+   * Dependency cell's popover: replaces the cell's links. The predecessor ids land in the cell
+   * value right away and each link's type and lag in `dependency_links`; without
+   * `onSetDependencyLinks` (the standalone demo) the ids go through the ordinary cell write.
+   * Undo puts back every previous link with its exact type and lag, so the server moves the
+   * dates back too.
+   */
+  const setDependencyLinks = useCallback(
+    (node_id: string, column_id: string, links: DependencyLinkInput[]) => {
+      const node = findNode(state_ref.current.groups, node_id);
+      const previous_value = node?.values[column_id];
+      const previous_settings = node?.dependency_links?.[column_id] ?? {};
+      const previous_links: DependencyLinkInput[] = (Array.isArray(previous_value) ? (previous_value as string[]) : []).map((id) => ({
+        predecessor_id: id,
+        type: previous_settings[id]?.type ?? "fs",
+        lag_days: previous_settings[id]?.lag_days ?? 0,
+      }));
+      pushHistory({ undo: () => applyDependencyLinks(node_id, column_id, previous_links), redo: () => applyDependencyLinks(node_id, column_id, links) });
+      applyDependencyLinks(node_id, column_id, links);
+    },
+    [applyDependencyLinks, pushHistory]
   );
 
   /** Files cell's "Upload" button. */

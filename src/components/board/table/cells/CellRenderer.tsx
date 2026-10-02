@@ -21,7 +21,8 @@ import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import FileLinkModal from "../menus/FileLinkModal";
-import DependencyMenu, { describeLag, type DependencyMenuLink } from "../menus/DependencyMenu";
+import DependencyMenu from "../menus/DependencyMenu";
+import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
 import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
 

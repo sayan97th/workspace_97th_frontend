@@ -2,17 +2,8 @@
 
 import { useState } from "react";
 import type { DependencyLinkInput, DependencyLinkType } from "../types";
+import DependencyLinkRow, { type DependencyMenuLink } from "./DependencyLinkRow";
 import PopoverPanel from "./PopoverPanel";
-
-/** One predecessor already linked, as the popover shows it. */
-export interface DependencyMenuLink {
-  id: string;
-  name: string;
-  type: DependencyLinkType;
-  lag_days: number;
-  /** The predecessor's own date on the scheduled column, already formatted, or null when it has none. */
-  date_label: string | null;
-}
 
 interface DependencyMenuProps {
   candidates: { id: string; name: string }[];
@@ -24,98 +15,6 @@ interface DependencyMenuProps {
   /** The whole new list of links. Only a link the user just changed carries its `type`/`lag_days`, the others keep what the server has. */
   onChange: (links: DependencyLinkInput[]) => void;
   onClose: () => void;
-}
-
-/** Timeline link types, worded from the dependent item's point of view. */
-const TIMELINE_TYPE_OPTIONS: { type: DependencyLinkType; label: string }[] = [
-  { type: "fs", label: "Starts after it ends" },
-  { type: "ss", label: "Starts when it starts" },
-  { type: "ff", label: "Ends when it ends" },
-  { type: "sf", label: "Ends when it starts" },
-];
-
-const MAX_LAG_DAYS = 730;
-
-/** "Same day", "7 days after", "1 day before": the offset as the cell and the popover say it. */
-export function describeLag(lag_days: number): string {
-  if (lag_days === 0) return "Same day";
-  const days = Math.abs(lag_days);
-  return `${days} ${days === 1 ? "day" : "days"} ${lag_days > 0 ? "after" : "before"}`;
-}
-
-/** One linked predecessor: its name and date, then how many days before or after it this item is scheduled. */
-function LinkRow({ link, is_timeline, onPatch, onRemove }: { link: DependencyMenuLink; is_timeline: boolean; onPatch: (patch: { type?: DependencyLinkType; lag_days?: number }) => void; onRemove: () => void }) {
-  const [draft, setDraft] = useState(String(Math.abs(link.lag_days)));
-  const direction = link.lag_days < 0 ? "before" : "after";
-
-  // Picks up a lag the server changed (another edit, a manual date move) while this row stayed open.
-  const [synced_lag, setSyncedLag] = useState(link.lag_days);
-  if (synced_lag !== link.lag_days) {
-    setSyncedLag(link.lag_days);
-    setDraft(String(Math.abs(link.lag_days)));
-  }
-
-  const commit = (next_direction: "after" | "before" = direction) => {
-    const parsed = Math.min(MAX_LAG_DAYS, Math.max(0, Math.round(Number(draft) || 0)));
-    setDraft(String(parsed));
-    const next_lag = next_direction === "before" ? -parsed : parsed;
-    if (next_lag !== link.lag_days) onPatch({ lag_days: next_lag });
-  };
-
-  return (
-    <div className="rounded-[8px] border border-boardtree-border-soft px-2.5 py-2">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium text-boardtree-text" title={link.name}>{link.name}</div>
-          <div className="text-[11.5px] text-boardtree-text-faint">{link.date_label ?? "No date yet"}</div>
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label={`Remove dependency on ${link.name}`}
-          className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-text"
-        >
-          <svg viewBox="0 0 12 12" width="10" height="10"><path d="M3 3 L9 9 M9 3 L3 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
-        </button>
-      </div>
-      {is_timeline && (
-        <select
-          value={link.type}
-          onChange={(e) => onPatch({ type: e.target.value as DependencyLinkType })}
-          aria-label={`How this item follows ${link.name}`}
-          className="mt-1.5 h-7 w-full rounded-[6px] border border-boardtree-border bg-boardtree-surface px-1.5 text-[12px] text-boardtree-text outline-none focus:border-boardtree-accent"
-        >
-          {TIMELINE_TYPE_OPTIONS.map((option) => (
-            <option key={option.type} value={option.type}>{option.label}</option>
-          ))}
-        </select>
-      )}
-      <div className="mt-1.5 flex items-center gap-1.5">
-        <input
-          type="number"
-          min={0}
-          max={MAX_LAG_DAYS}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => commit()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          }}
-          aria-label={`Days from ${link.name}`}
-          className="h-7 w-16 rounded-[6px] border border-boardtree-border px-1.5 text-[12.5px] text-boardtree-text outline-none focus:border-boardtree-accent"
-        />
-        <select
-          value={direction}
-          onChange={(e) => commit(e.target.value as "after" | "before")}
-          aria-label={`Before or after ${link.name}`}
-          className="h-7 flex-1 rounded-[6px] border border-boardtree-border bg-boardtree-surface px-1.5 text-[12px] text-boardtree-text outline-none focus:border-boardtree-accent"
-        >
-          <option value="after">{Number(draft) === 1 ? "day after" : "days after"}</option>
-          <option value="before">{Number(draft) === 1 ? "day before" : "days before"}</option>
-        </select>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -148,7 +47,7 @@ export default function DependencyMenu({ candidates, links, is_timeline, schedul
           <div className="mb-1.5 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Depends on</div>
           <div className="mb-3 flex max-h-[260px] flex-col gap-1.5 overflow-y-auto">
             {links.map((link) => (
-              <LinkRow key={link.id} link={link} is_timeline={is_timeline} onPatch={(patch) => patchLink(link.id, patch)} onRemove={() => removeLink(link.id)} />
+              <DependencyLinkRow key={link.id} link={link} is_timeline={is_timeline} onPatch={(patch) => patchLink(link.id, patch)} onRemove={() => removeLink(link.id)} />
             ))}
           </div>
         </>

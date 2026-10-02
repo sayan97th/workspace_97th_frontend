@@ -122,6 +122,8 @@ import type { AutomationColumn } from "../board/automations/builder/automationCa
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
 import ItemAutomationsPanel from "../board/automations/ItemAutomationsPanel";
+import ItemDependenciesPanel from "../board/dependencies/ItemDependenciesPanel";
+import { buildItemDependencySections } from "../board/dependencies/buildItemDependencySections";
 import { countAutomationsByColumn } from "../board/automations/builder/automationColumns";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
@@ -2393,6 +2395,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // The drawer's Automations tab reads the latest automations through this ref, since they (and the
   // builder context) are set up further down than the drawer config.
   const item_automations_render_ref = useRef<(row_id: string) => React.ReactNode>(() => null);
+  // Same for the Dependencies tab, which edits links through handlers declared further down.
+  const item_dependencies_render_ref = useRef<(row_id: string) => React.ReactNode>(() => null);
 
   const drawer_config: BoardItemDrawerConfig<BoardItemDto> = useMemo(
     () => ({
@@ -2417,6 +2421,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onArchiveItem: handleDrawerArchiveItem,
       onDeleteItem: handleDrawerDeleteItem,
       can_edit: node.can_edit,
+      renderDependenciesTab: (row_id) => item_dependencies_render_ref.current(row_id),
       renderAutomationsTab: (row_id) => item_automations_render_ref.current(row_id),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2943,6 +2948,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     (column_id: string) => permission_columns_ref.current[column_id]?.can_edit_values ?? true,
     []
   );
+
+  item_dependencies_render_ref.current = (row_id: string) => {
+    const row = findItemInTree(items, Number(row_id));
+    if (!row) return null;
+    const can_edit_row = node.can_edit && (!is_assigned_only || canEditTableNode(row_id));
+    return (
+      <ItemDependenciesPanel
+        sections={buildItemDependencySections(row, items, columns, canEditTableColumn)}
+        can_edit={can_edit_row}
+        onChangeLinks={(column_id, links) => void handleSetDependencyLinks(row.id, column_id, links)}
+        onOpenItem={(item_id) => {
+          const target = findItemInTree(items, Number(item_id));
+          if (target) handleRowClick(target);
+        }}
+      />
+    );
+  };
 
   const table_config: UseBoardTableConfig = useMemo(
     () => ({
