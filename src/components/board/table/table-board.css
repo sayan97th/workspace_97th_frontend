@@ -28,3 +28,106 @@
 .table-board-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-boardtree-text-faint);
 }
+/*
+ * Reordering tables by dragging a group header (see `SortableGroupList`).
+ * `--group-color` is set per group on the sortable wrapper and the drag preview.
+ */
+
+body.is-dragging-group,
+body.is-dragging-group * {
+  cursor: grabbing !important;
+}
+
+/* Every table folds into its compact card on pickup, the cards settle in instead of snapping. */
+.group-sortable-list[data-reordering] [data-group-sort-key]:not([data-group-ghost]) [data-group-anchor] {
+  animation: group-compact-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The slot the dragged group will land in: its card fades back behind a dashed outline in the group color. */
+[data-group-ghost] [data-group-anchor] {
+  opacity: 0.18;
+  filter: saturate(0.4);
+  transition: opacity 160ms ease-out;
+}
+
+.group-drop-slot {
+  background: color-mix(in srgb, var(--group-color) 7%, transparent);
+  animation: group-slot-in 180ms ease-out;
+}
+
+/* The card under the pointer: lifted with a soft shadow and a slight tilt, it settles flat on drop. */
+.group-drag-preview {
+  border-radius: 8px;
+  transform: scale(1.015) rotate(-0.5deg);
+  box-shadow:
+    0 18px 38px -12px rgb(15 23 42 / 0.32),
+    0 6px 14px -6px rgb(15 23 42 / 0.18),
+    0 0 0 1px color-mix(in srgb, var(--group-color) 35%, transparent);
+  animation: group-drag-lift 180ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    transform 200ms cubic-bezier(0.2, 0, 0, 1),
+    box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.is-dropping .group-drag-preview {
+  transform: none;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* The tables open again after the drop. Opacity only, a transform here would unstick the sticky headers. */
+.group-sortable-list [data-group-expanding] > * {
+  animation: group-expand-in 260ms ease-out;
+}
+
+/* The moved group glows briefly so the eye finds where it went. */
+[data-group-landed] [data-group-anchor] {
+  border-radius: 8px;
+  animation: group-landed 1100ms ease-out;
+}
+
+@keyframes group-compact-in {
+  from {
+    opacity: 0.4;
+    transform: scale(0.985);
+  }
+}
+
+@keyframes group-slot-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes group-drag-lift {
+  from {
+    transform: none;
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes group-expand-in {
+  from {
+    opacity: 0.35;
+  }
+}
+
+@keyframes group-landed {
+  0%,
+  35% {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--group-color) 40%, transparent);
+    background-color: color-mix(in srgb, var(--group-color) 9%, var(--color-boardtree-bg));
+  }
+  100% {
+    box-shadow: 0 0 0 3px transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-sortable-list [data-group-anchor],
+  .group-sortable-list [data-group-expanding] > *,
+  .group-drop-slot,
+  .group-drag-preview {
+    animation: none !important;
+    transition: none !important;
+  }
+}

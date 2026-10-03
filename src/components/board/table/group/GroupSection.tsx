@@ -42,6 +42,8 @@ interface GroupSectionProps {
   onRequestColumnSort?: (column_id: string, direction: "asc" | "desc" | null) => void;
   active_sort_column_id?: string | null;
   active_sort_direction?: "asc" | "desc" | null;
+  /** True while a group is being dragged (see `SortableGroupList`), the gap above moves to the sortable wrapper's margin. */
+  is_reordering?: boolean;
 }
 
 export default function GroupSection({
@@ -57,6 +59,7 @@ export default function GroupSection({
   onRequestColumnSort,
   active_sort_column_id = null,
   active_sort_direction = null,
+  is_reordering = false,
 }: GroupSectionProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
   const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
@@ -129,7 +132,7 @@ export default function GroupSection({
     // and the raw page background flashes through for the width of that gap. Padding is part
     // of the box itself, so the same spacing here keeps the handoff between one group's
     // sticky header and the next completely contiguous while looking identical at rest.
-    <div ref={section_ref} style={{ paddingTop: group_index === 0 ? 0 : is_collapsed ? 10 : 30 }}>
+    <div ref={section_ref} style={{ paddingTop: group_index === 0 || is_reordering ? 0 : is_collapsed ? 10 : 30 }}>
       {is_collapsed ? (
         <CollapsedGroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
       ) : (

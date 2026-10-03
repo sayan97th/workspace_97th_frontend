@@ -50,7 +50,7 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
       </button>
 
       {is_editing ? (
-        <span className="relative inline-flex items-center">
+        <span data-no-group-drag className="relative inline-flex items-center">
           <input
             ref={title_input_ref}
             autoFocus

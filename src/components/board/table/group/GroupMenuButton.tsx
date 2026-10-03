@@ -26,7 +26,7 @@ export default function GroupMenuButton({ group, state, actions, is_visible, cla
   const tier_index = tier.findIndex((g) => g.key === group.key);
 
   return (
-    <div className={`relative flex-none ${className}`}>
+    <div data-no-group-drag className={`relative flex-none ${className}`}>
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); actions.openGroupMenu(group.key); }}

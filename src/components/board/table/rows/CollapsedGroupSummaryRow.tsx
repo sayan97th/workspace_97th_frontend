@@ -6,6 +6,7 @@ import { mainGridTemplate } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
+import { groupDragHandleClassName, useGroupDragHandle } from "../group/groupDragHandle";
 
 interface CollapsedGroupSummaryRowProps {
   group: BoardTableGroup;
@@ -26,9 +27,12 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
   const columns = group.base_columns.concat(group.custom_columns);
   const is_hovered = state.hover_group_key === group.key;
   const is_menu_open = state.open_group_menu_key === group.key;
+  // The card's title cell is the grab area for reordering tables, see `SortableGroupList`.
+  const drag_handle = useGroupDragHandle();
 
   return (
     <div
+      data-group-anchor
       className="relative"
       style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : "auto" }}
       onMouseEnter={() => actions.setHoverGroup(group.key)}
@@ -56,7 +60,8 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
 
         <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
           <div
-            className="flex items-center pl-8"
+            {...drag_handle.listeners}
+            className={`flex items-center pl-8 ${groupDragHandleClassName(drag_handle)}`}
             style={{ gridColumn: "span 3", height: ROW_HEIGHT, position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}
           >
             <GroupHeaderLeft group={group} state={state} actions={actions} show_menu_button={false} />

@@ -3037,6 +3037,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       read_only: !node.can_edit,
       can_edit_structure: node.can_edit_structure ?? true,
       can_create_items: !is_assigned_only,
+      // "Group by" a column shows value buckets, not the board's own groups, so there is no saved order to drag.
+      can_reorder_groups: toolbar.group_by_option_id === BOARD_DEFAULT_GROUP_BY_ID,
       canEditNode: is_assigned_only ? canEditTableNode : undefined,
       canEditColumn: canEditTableColumn,
       current_user_id: user ? String(user.id) : undefined,
@@ -3188,6 +3190,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       toolbar.search_query,
       node.can_edit,
       node.can_edit_structure,
+      toolbar.group_by_option_id,
       is_assigned_only,
       canEditTableNode,
       canEditTableColumn,

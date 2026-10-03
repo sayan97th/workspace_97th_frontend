@@ -4,11 +4,13 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
 import type { ColumnAutomationShortcut, ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
-import { computeNameColWidth } from "./layoutUtils";
+import { computeNameColWidth, mainMinWidth } from "./layoutUtils";
 import { boardTreeFontClassName } from "../board-tree-font";
 import TableHeader from "./toolbar/TableHeader";
 import TableToolbar from "./toolbar/TableToolbar";
 import GroupSection from "./group/GroupSection";
+import SortableGroupList from "./group/SortableGroupList";
+import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
@@ -479,23 +481,36 @@ export default function BoardTable({
   const grid = (
     <>
       {!embedded && <div className="h-[26px]" />}
-      {state.groups.map((group, index) => (
-        <GroupSection
-          key={group.key}
-          group={group}
-          group_index={index}
-          name_col_width={name_col_width}
-          state={state}
-          actions={actions}
-          onRequestColumnFilter={onRequestColumnFilter}
-          onRequestColumnPermissions={onRequestColumnPermissions}
-          column_automation={column_automation}
-          onRequestGroupByColumn={onRequestGroupByColumn}
-          onRequestColumnSort={onRequestColumnSort}
-          active_sort_column_id={active_sort_column_id}
-          active_sort_direction={active_sort_direction}
-        />
-      ))}
+      <SortableGroupList
+        state={state}
+        actions={actions}
+        renderGroup={(group, index, view_state, is_reordering) => (
+          <GroupSection
+            group={group}
+            group_index={index}
+            name_col_width={name_col_width}
+            state={view_state}
+            actions={actions}
+            onRequestColumnFilter={onRequestColumnFilter}
+            onRequestColumnPermissions={onRequestColumnPermissions}
+            column_automation={column_automation}
+            onRequestGroupByColumn={onRequestGroupByColumn}
+            onRequestColumnSort={onRequestColumnSort}
+            active_sort_column_id={active_sort_column_id}
+            active_sort_direction={active_sort_direction}
+            is_reordering={is_reordering}
+          />
+        )}
+        renderPreview={(group, view_state) => (
+          <CollapsedGroupSummaryRow
+            group={group}
+            name_col_width={name_col_width}
+            min_width={mainMinWidth(name_col_width, group.base_columns, group.custom_columns)}
+            state={view_state}
+            actions={actions}
+          />
+        )}
+      />
       {!state.read_only && state.can_edit_structure && state.can_create_items && (
         <button
           type="button"

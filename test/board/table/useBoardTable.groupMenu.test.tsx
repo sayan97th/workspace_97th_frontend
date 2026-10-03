@@ -100,6 +100,51 @@ describe("Move group", () => {
   });
 });
 
+describe("Drag a group to reorder", () => {
+  test("drops a group at the given slot and reports the new order", () => {
+    const onMoveGroup = vi.fn();
+    const { result } = setup({ onMoveGroup });
+    act(() => result.current.actions.moveGroupToIndex("g4", 1));
+    expect(keysOf(result)).toEqual(["g1", "g4", "g2", "g3"]);
+    expect(onMoveGroup).toHaveBeenCalledExactlyOnceWith("g4", ["g1", "g4", "g2", "g3"]);
+  });
+
+  test("clamps a slot past either end of the list", () => {
+    const { result } = setup();
+    act(() => result.current.actions.moveGroupToIndex("g2", 99));
+    expect(keysOf(result)).toEqual(["g1", "g3", "g4", "g2"]);
+    act(() => result.current.actions.moveGroupToIndex("g4", -5));
+    expect(keysOf(result)).toEqual(["g4", "g1", "g3", "g2"]);
+  });
+
+  test("the slot counts inside the group's own tier, below the priority client groups", () => {
+    const onMoveGroup = vi.fn();
+    const { result } = setup({ onMoveGroup }, ["g1"]);
+    act(() => result.current.actions.moveGroupToIndex("g4", 0));
+    expect(keysOf(result)).toEqual(["g1", "g4", "g2", "g3"]);
+  });
+
+  test("dropping a group back on its own slot is not reported", () => {
+    const onMoveGroup = vi.fn();
+    const { result } = setup({ onMoveGroup });
+    act(() => result.current.actions.moveGroupToIndex("g2", 1));
+    expect(onMoveGroup).not.toHaveBeenCalled();
+  });
+
+  test("does nothing without permission to edit the board structure", () => {
+    const onMoveGroup = vi.fn();
+    const { result } = setup({ onMoveGroup, can_edit_structure: false });
+    act(() => result.current.actions.moveGroupToIndex("g4", 0));
+    expect(keysOf(result)).toEqual(["g1", "g2", "g3", "g4"]);
+    expect(onMoveGroup).not.toHaveBeenCalled();
+  });
+
+  test("exposes whether groups may be dragged, on by default", () => {
+    expect(setup().result.current.state.can_reorder_groups).toBe(true);
+    expect(setup({ can_reorder_groups: false }).result.current.state.can_reorder_groups).toBe(false);
+  });
+});
+
 describe("Archive group", () => {
   test("hides the group and reports it, without going through delete", () => {
     const onArchiveGroup = vi.fn();

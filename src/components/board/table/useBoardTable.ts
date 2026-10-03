@@ -447,6 +447,12 @@ export interface UseBoardTableConfig {
   can_edit_structure?: boolean;
   /** Board permissions: false when the viewer may not add new items ("Assigned items only"). Defaults to true. */
   can_create_items?: boolean;
+  /**
+   * Whether the tables can be reordered by dragging their headers. False while the
+   * toolbar's "Group by" shows column buckets instead of the board's own groups,
+   * those buckets have no saved order to change. Defaults to true.
+   */
+  can_reorder_groups?: boolean;
   /** Board permissions ("Assigned items only"): whether the viewer may edit this row. Every row is editable when omitted. */
   canEditNode?: (node_id: string) => boolean;
   /** Column permissions: whether the viewer may edit this column's cells. Every column is editable when omitted. */
@@ -533,6 +539,8 @@ export interface BoardTableState {
   can_edit_structure: boolean;
   /** See `UseBoardTableConfig.can_create_items`. Hides the "Add item" rows when false. */
   can_create_items: boolean;
+  /** See `UseBoardTableConfig.can_reorder_groups`. Turns dragging group headers off when false. */
+  can_reorder_groups: boolean;
   /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
   /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
@@ -616,6 +624,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     read_only: config.read_only ?? false,
     can_edit_structure: config.can_edit_structure ?? true,
     can_create_items: config.can_create_items ?? true,
+    can_reorder_groups: config.can_reorder_groups ?? true,
     active_cell: null,
     clipboard_cell: null,
     fill_drag: null,
@@ -745,8 +754,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, [config.read_only]);
 
   useEffect(() => {
-    setState((s) => ({ ...s, can_edit_structure: config.can_edit_structure ?? true, can_create_items: config.can_create_items ?? true }));
-  }, [config.can_edit_structure, config.can_create_items]);
+    setState((s) => ({
+      ...s,
+      can_edit_structure: config.can_edit_structure ?? true,
+      can_create_items: config.can_create_items ?? true,
+      can_reorder_groups: config.can_reorder_groups ?? true,
+    }));
+  }, [config.can_edit_structure, config.can_create_items, config.can_reorder_groups]);
 
   // `initial_item_column_width` is legitimately `null` (a real board that's
   // never had this column resized), so the resync guard checks for the key
@@ -1486,12 +1500,14 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   );
 
   /**
-   * Moves a group within its own priority tier: priority client groups always render
-   * above the rest (see `deriveBoardRows`), so a move across that line would snap back
-   * on the next sync. The move is applied locally and the resulting order is reported
-   * through `onMoveGroup`. A move that would not change anything is skipped.
+   * Moves a group to `target_index` inside its own priority tier: priority client groups
+   * always render above the rest (see `deriveBoardRows`), so a move across that line would
+   * snap back on the next sync. The index is clamped to the tier. The move is applied
+   * locally and the resulting order is reported through `onMoveGroup`. A move that would
+   * not change anything is skipped. Used by the group menu's "Move group" and by dragging
+   * a group header (see `SortableGroupList`).
    */
-  const moveGroupByKey = useCallback((key: string, dir: "top" | "up" | "down" | "bottom") => {
+  const moveGroupToIndex = useCallback((key: string, target_index: number) => {
     const groups = state_ref.current.groups;
     const group = findGroup(groups, key);
     if (!group) return;
@@ -1499,11 +1515,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     const is_priority = !!group.is_priority;
     const tier = groups.filter((g) => !!g.is_priority === is_priority);
     const index = tier.findIndex((g) => g.key === key);
-    let target = index;
-    if (dir === "top") target = 0;
-    else if (dir === "up") target = Math.max(0, index - 1);
-    else if (dir === "down") target = Math.min(tier.length - 1, index + 1);
-    else target = tier.length - 1;
+    const target = Math.max(0, Math.min(tier.length - 1, target_index));
 
     if (target === index) {
       setState((s) => ({ ...s, open_group_menu_key: null }));
@@ -1519,6 +1531,21 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, groups: next_groups, open_group_menu_key: null }));
     config_ref.current.onMoveGroup?.(key, next_groups.map((g) => g.key));
   }, []);
+
+  /** Group menu's "Move group": top, up, down or bottom of the group's own priority tier, see `moveGroupToIndex`. */
+  const moveGroupByKey = useCallback(
+    (key: string, dir: "top" | "up" | "down" | "bottom") => {
+      const groups = state_ref.current.groups;
+      const group = findGroup(groups, key);
+      if (!group) return;
+
+      const tier = groups.filter((g) => !!g.is_priority === !!group.is_priority);
+      const index = tier.findIndex((g) => g.key === key);
+      const target = dir === "top" ? 0 : dir === "up" ? index - 1 : dir === "down" ? index + 1 : tier.length - 1;
+      moveGroupToIndex(key, target);
+    },
+    [moveGroupToIndex]
+  );
 
   const setGroupColor = useCallback((key: string, color: string) => {
     setState((s) => ({ ...s, groups: s.groups.map((g) => (g.key === key ? { ...g, color, tint: color } : g)), open_group_menu_key: null }));
@@ -2271,6 +2298,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addGroup,
       duplicateGroup,
       moveGroupByKey,
+      moveGroupToIndex,
       setGroupColor,
       togglePriority,
       removeGroup,
@@ -2354,7 +2382,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
-      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
+      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToIndex, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
@@ -2387,7 +2415,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * settings and labels). No-ops when `config.can_edit_structure` is false.
    */
   const STRUCTURE_ACTIONS: (keyof typeof actions)[] = [
-    "addGroup", "duplicateGroup", "moveGroupByKey", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
+    "addGroup", "duplicateGroup", "moveGroupByKey", "moveGroupToIndex", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
     "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
     "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
