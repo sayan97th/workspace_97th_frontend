@@ -86,7 +86,7 @@ export const slackService = {
     return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
   },
 
-  /** DELETE /api/integrations/slack/app, administrators only. The API environment values apply again. */
+  /** DELETE /api/integrations/slack/app, administrators only. Connected workspaces keep working, new ones cannot be added until an app is saved again. */
   async clearAppCredentials(): Promise<SlackAppCredentialsDto & { message: string }> {
     return apiClient.delete<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app");
   },

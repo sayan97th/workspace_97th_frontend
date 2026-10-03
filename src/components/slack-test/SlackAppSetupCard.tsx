@@ -48,7 +48,7 @@ const SlackAppSetupCard: React.FC<SlackAppSetupCardProps> = ({ app }) => {
       </div>
 
       <div className="divide-y divide-shell-border">
-        <SetupRow label="Client ID" value={app?.client_id ?? null} hint={app?.credentials_source === "database" ? "Saved in Administration > Integrations, must match Basic Information in Slack." : "From SLACK_CLIENT_ID, must match Basic Information in Slack."} />
+        <SetupRow label="Client ID" value={app?.client_id ?? null} hint="Saved in Administration > Integrations, must match Basic Information in Slack." />
         <SetupRow label="Redirect URL" value={app?.redirect_uri ?? null} hint="OAuth & Permissions, Redirect URLs." />
         <SetupRow label="Events request URL" value={app?.events_url ?? null} hint="Event Subscriptions, Request URL. Saving it proves the signing secret." />
       </div>

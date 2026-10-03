@@ -22,11 +22,11 @@ export type SlackUserLinkDto = {
   linked_at: string | null;
 };
 
-/** Where the Slack app credentials come from, saved in Administration or the API environment. */
-export type SlackCredentialsSource = "database" | "environment" | "none";
+/** Whether a Slack app was saved in Administration > Integrations, the only place it is read from. */
+export type SlackCredentialsSource = "database" | "none";
 
 export type SlackStatusDto = {
-  /** Whether the Slack app credentials are set, in Administration or in the API environment. */
+  /** Whether the Slack app credentials were saved in Administration > Integrations. */
   is_configured: boolean;
   is_connected: boolean;
   /** Whether the current user may connect, switch or disconnect workspaces (admin and account owner). */
@@ -98,8 +98,6 @@ export type SlackAppCredentialsDto = {
   client_id: string | null;
   client_secret_hint: string | null;
   signing_secret_hint: string | null;
-  /** Whether the API environment also holds credentials, removing the saved ones falls back to them. */
-  has_environment_credentials: boolean;
   redirect_uri: string;
   redirect_uri_override: string | null;
   default_redirect_uri: string;

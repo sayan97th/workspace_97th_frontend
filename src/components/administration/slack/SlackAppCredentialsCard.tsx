@@ -18,8 +18,7 @@ export type SlackAppCredentialsCardProps = {
 };
 
 const SOURCE_LABELS: Record<SlackAppCredentialsDto["source"], string> = {
-  database: "Saved in Administration",
-  environment: "From the server environment",
+  database: "Connected",
   none: "Not set",
 };
 
@@ -55,7 +54,7 @@ const CopyField: React.FC<{ label: string; value: string }> = ({ label, value })
 
 /**
  * Administration > Integrations > Slack app. Where an administrator points the integration at a
- * Slack app, without editing the API environment. Creating that app takes one paste thanks to
+ * Slack app, nothing is read from the API environment. Creating that app takes one paste thanks to
  * the manifest, and turning on public distribution lets the same app be installed into every
  * workspace the team uses. Secrets are write only, only their last four characters come back.
  */
@@ -219,9 +218,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
             <div className="mt-4 rounded-[9px] border border-[#e2445c]/25 bg-[#e2445c]/[0.06] p-3.5">
               <div className="text-[13px] font-bold text-shell-text">Remove the saved credentials?</div>
               <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
-                {credentials.has_environment_credentials
-                  ? "The Slack app configured in the server environment will be used again."
-                  : "No other Slack app is configured, so new workspaces cannot be connected until credentials are saved again."}
+                Workspaces already connected keep working, but no new workspace can be connected until a Slack app is saved again.
               </p>
               <div className="mt-3 flex gap-2">
                 <button
