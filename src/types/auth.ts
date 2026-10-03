@@ -59,7 +59,12 @@ export interface User {
 export interface AuthResponse {
   access_token: string;
   token_type: string;
+  /** Seconds until this access token expires, it is silently refreshed before then. */
   expires_in: number;
+  /** Whether the user ticked "Keep me logged in" for this session. */
+  remember?: boolean;
+  /** ISO 8601 date when the whole session ends and the user has to sign in again. */
+  session_expires_at?: string;
   user: User;
 }
 
@@ -104,6 +109,8 @@ export interface MeResponse {
 export interface LoginCredentials {
   email: string;
   password: string;
+  /** "Keep me logged in": 30 day session instead of the default 1 day. */
+  remember?: boolean;
 }
 
 export interface RegisterData {

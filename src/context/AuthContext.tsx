@@ -7,7 +7,7 @@ import { impersonationService } from "@/services/admin/impersonation.service";
 import { invitationService } from "@/services/invitation.service";
 import { staffInvitationService } from "@/services/staff-invitation.service";
 import { workspaceInviteLinkService } from "@/services/workspace-invite-link.service";
-import { getToken } from "@/lib/api-client";
+import { getSessionExpiresAt, getToken, removeToken } from "@/lib/api-client";
 import { resetEcho } from "@/lib/echo";
 import type { User, AuthResponse, LoginCredentials, RegisterData, ApiError } from "@/types/auth";
 import type { AcceptBoardInvitationPayload } from "@/types/board-invitation";
@@ -94,6 +94,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const expires_at = localStorage.getItem("token_expires_at");
     if (!expires_at) return;
+
+    // The API never issues a token past the session end (1 day, or 30 days with "Keep me
+    // logged in"). Once the current token already reaches that end there is nothing left to
+    // refresh, so sign out when it arrives instead of refreshing ever shorter tokens.
+    const session_expires_at = getSessionExpiresAt();
+    if (session_expires_at !== null && parseInt(expires_at) >= session_expires_at - 60 * 1000) {
+      refreshTimerRef.current = setTimeout(() => {
+        removeToken();
+        resetEcho();
+        setUser(null);
+        setPermissions([]);
+      }, Math.max(session_expires_at - Date.now(), 0));
+      return;
+    }
 
     const expires_in = parseInt(expires_at) - Date.now();
     const refresh_in = Math.max(expires_in - 5 * 60 * 1000, 0);

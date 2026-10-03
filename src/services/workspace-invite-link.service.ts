@@ -1,4 +1,4 @@
-import { apiClient, setToken } from "@/lib/api-client";
+import { apiClient, persistSession } from "@/lib/api-client";
 import type { AuthResponse } from "@/types/auth";
 import type {
   JoinWorkspaceByLinkPayload,
@@ -6,12 +6,6 @@ import type {
   WorkspaceJoinLinkPreview,
   WorkspaceMembershipRole,
 } from "@/types/invitation";
-
-function persistSession(data: AuthResponse): void {
-  setToken(data.access_token);
-  const expires_at = Date.now() + data.expires_in * 1000;
-  localStorage.setItem("token_expires_at", expires_at.toString());
-}
 
 /**
  * Talks to the Laravel "invite with link" endpoints: managing a workspace's

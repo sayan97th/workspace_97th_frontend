@@ -106,7 +106,7 @@ export default function SignInForm() {
   // ── Credentials step state ───────────────────────────────────────────────
   const [view, setView] = useState<View>("credentials");
   const [showPassword, setShowPassword] = useState(false);
-  const [isChecked, setIsChecked] = useState(false);
+  const [keep_logged_in, setKeepLoggedIn] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(() => {
@@ -135,7 +135,7 @@ export default function SignInForm() {
     setIsSubmitting(true);
 
     try {
-      const result = await login({ email, password });
+      const result = await login({ email, password, remember: keep_logged_in });
 
       if (result.requires_two_factor) {
         setTwoFactorToken(result.two_factor_token);
@@ -193,7 +193,8 @@ export default function SignInForm() {
   const handleGoogleSignIn = () => {
     setIsGoogleLoading(true);
     const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-    window.location.href = `${apiUrl}/api/auth/google/redirect`;
+    const remember_query = keep_logged_in ? "?remember=1" : "";
+    window.location.href = `${apiUrl}/api/auth/google/redirect${remember_query}`;
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -322,10 +323,14 @@ export default function SignInForm() {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Checkbox checked={isChecked} onChange={setIsChecked} />
-                      <span className="block text-sm font-normal text-gray-700 dark:text-gray-400">
+                      <Checkbox id="keep_logged_in" checked={keep_logged_in} onChange={setKeepLoggedIn} />
+                      <label
+                        htmlFor="keep_logged_in"
+                        title="Stay signed in on this device for 30 days instead of 1 day"
+                        className="block cursor-pointer text-sm font-normal text-gray-700 select-none dark:text-gray-400"
+                      >
                         Keep me logged in
-                      </span>
+                      </label>
                     </div>
                     <Link
                       href="/reset-password"

@@ -1,4 +1,4 @@
-import { apiClient, setToken } from "@/lib/api-client";
+import { apiClient, persistSession } from "@/lib/api-client";
 import type { AuthResponse } from "@/types/auth";
 import type {
   AcceptBoardInvitationPayload,
@@ -6,12 +6,6 @@ import type {
   BoardInvitationPreview,
   InviteBoardViewersResult,
 } from "@/types/board-invitation";
-
-function persistSession(data: AuthResponse): void {
-  setToken(data.access_token);
-  const expires_at = Date.now() + data.expires_in * 1000;
-  localStorage.setItem("token_expires_at", expires_at.toString());
-}
 
 /**
  * Talks to the Laravel board-invitation endpoints, granting view access to a

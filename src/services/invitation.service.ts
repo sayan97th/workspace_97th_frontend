@@ -1,4 +1,4 @@
-import { apiClient, setToken } from "@/lib/api-client";
+import { apiClient, persistSession } from "@/lib/api-client";
 import type { InviteRoleId } from "@/data/invite-members-data";
 import type { AuthResponse } from "@/types/auth";
 import type {
@@ -39,12 +39,6 @@ const INVITE_ROLE_TO_MEMBERSHIP_ROLE: Record<InviteRoleId, WorkspaceMembershipRo
   member: "member",
   admin: "owner",
 };
-
-function persistSession(data: AuthResponse): void {
-  setToken(data.access_token);
-  const expires_at = Date.now() + data.expires_in * 1000;
-  localStorage.setItem("token_expires_at", expires_at.toString());
-}
 
 /**
  * Talks to the Laravel workspace-invitation endpoints. The "send" call goes

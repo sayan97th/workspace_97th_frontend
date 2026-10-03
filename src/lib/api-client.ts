@@ -10,15 +10,59 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
+/** Epoch milliseconds when the whole sign in ends (1 day, or 30 days with "Keep me logged in"). */
+const SESSION_EXPIRES_AT_KEY = "session_expires_at";
+
+function getSessionExpiresAt(): number | null {
+  if (typeof window === "undefined") return null;
+  const value = parseInt(localStorage.getItem(SESSION_EXPIRES_AT_KEY) ?? "", 10);
+  return Number.isFinite(value) ? value : null;
+}
+
+/** True once the session can no longer be refreshed and the user has to sign in again. */
+function isSessionOver(): boolean {
+  const session_expires_at = getSessionExpiresAt();
+  return session_expires_at !== null && session_expires_at <= Date.now();
+}
+
+/**
+ * Stores the access token. The cookie lives as long as the session itself
+ * (falling back to one hour when the session end is unknown), so it matches
+ * what the "Keep me logged in" choice promised.
+ */
 function setToken(token: string): void {
   localStorage.setItem("access_token", token);
-  document.cookie = `access_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
+  const session_expires_at = getSessionExpiresAt();
+  const max_age = session_expires_at ? Math.max(Math.floor((session_expires_at - Date.now()) / 1000), 0) : 60 * 60;
+  document.cookie = `access_token=${token}; path=/; max-age=${max_age}; SameSite=Lax`;
 }
 
 function removeToken(): void {
   localStorage.removeItem("access_token");
   localStorage.removeItem("token_expires_at");
+  localStorage.removeItem(SESSION_EXPIRES_AT_KEY);
   document.cookie = "access_token=; path=/; max-age=0; SameSite=Lax";
+}
+
+type SessionTokenData = {
+  access_token: string;
+  /** Seconds until the access token itself expires and needs a refresh. */
+  expires_in: number;
+  /** ISO 8601 date when the whole session ends, see `AuthResponse`. */
+  session_expires_at?: string | null;
+};
+
+/** Saves a fresh login, 2FA, invitation or refresh response as the active session. */
+function persistSession(data: SessionTokenData): void {
+  if (data.session_expires_at) {
+    const session_expires_at = Date.parse(data.session_expires_at);
+    if (Number.isFinite(session_expires_at)) {
+      localStorage.setItem(SESSION_EXPIRES_AT_KEY, session_expires_at.toString());
+    }
+  }
+  setToken(data.access_token);
+  const token_expires_at = Date.now() + data.expires_in * 1000;
+  localStorage.setItem("token_expires_at", token_expires_at.toString());
 }
 
 /**
@@ -43,23 +87,22 @@ async function tryRefreshToken(): Promise<string | null> {
   refreshPromise = (async () => {
     try {
       const token = getToken();
-      if (!token) return null;
+      if (!token || isSessionOver()) return null;
 
       const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) return null;
 
-      const data = await response.json();
-      setToken(data.access_token);
-      const expires_at = Date.now() + data.expires_in * 1000;
-      localStorage.setItem("token_expires_at", expires_at.toString());
-      return data.access_token as string;
+      const data = (await response.json()) as SessionTokenData;
+      persistSession(data);
+      return data.access_token;
     } catch {
       return null;
     } finally {
@@ -202,4 +245,4 @@ export const apiClient = {
     requestFormData<T>(endpoint, form_data, "POST"),
 };
 
-export { setToken, removeToken, getToken };
+export { setToken, removeToken, getToken, getSessionExpiresAt, persistSession };

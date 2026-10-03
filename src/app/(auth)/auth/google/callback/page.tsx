@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { setToken } from "@/lib/api-client";
+import { persistSession } from "@/lib/api-client";
 import { authService } from "@/services/auth.service";
 import { Suspense } from "react";
 
@@ -25,12 +25,11 @@ function GoogleCallbackHandler() {
       return;
     }
 
-    setToken(token);
-
-    if (expiresIn) {
-      const expiresAt = Date.now() + parseInt(expiresIn, 10) * 1000;
-      localStorage.setItem("token_expires_at", expiresAt.toString());
-    }
+    persistSession({
+      access_token: token,
+      expires_in: parseInt(expiresIn ?? "3600", 10),
+      session_expires_at: searchParams.get("session_expires_at"),
+    });
 
     authService
       .getMe()
