@@ -80,7 +80,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                 <div className={STEP_LABEL}>1. Slack workspace</div>
                 {!status?.is_configured && !workspace && (
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-boardtree-text-muted">
-                    Slack is not configured on the server yet. Ask a developer to set <span className="font-semibold text-boardtree-text-secondary">SLACK_CLIENT_ID</span> and <span className="font-semibold text-boardtree-text-secondary">SLACK_CLIENT_SECRET</span>.
+                    Slack is not set up yet. {can_manage ? "Add the Slack app credentials in Administration > Integrations." : "Ask an account administrator to set up Slack in Administration > Integrations."}
                   </p>
                 )}
                 {!workspace && status?.is_configured && (
@@ -88,7 +88,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                     <p className="text-[12.5px] text-boardtree-text-muted">{can_manage ? "Add the app to your Slack workspace." : "Ask an account administrator to add Slack."}</p>
                     {can_manage && (
                       <button type="button" disabled={slack.is_working} onClick={() => void slack.connectWorkspace(return_path)} className={`${PRIMARY_BUTTON} flex-none`}>
-                        {slack.is_working ? "Redirecting..." : "Add to Slack"}
+                        {slack.is_working ? "Opening Slack..." : "Add to Slack"}
                       </button>
                     )}
                   </div>
@@ -100,7 +100,10 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                       {`, ${workspace.linked_members_count} ${workspace.linked_members_count === 1 ? "member" : "members"} connected`}
                     </p>
                     {can_manage && !is_confirming_disconnect && (
-                      <button type="button" onClick={() => setIsConfirmingDisconnect(true)} className={`${SECONDARY_BUTTON} flex-none`}>Disconnect</button>
+                      <div className="flex flex-none gap-2">
+                        <Link href="/administration?section=integrations" className={SECONDARY_BUTTON}>Switch workspace</Link>
+                        <button type="button" onClick={() => setIsConfirmingDisconnect(true)} className={SECONDARY_BUTTON}>Disconnect</button>
+                      </div>
                     )}
                   </div>
                 )}
@@ -133,7 +136,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                   </p>
                   {workspace && !link && (
                     <button type="button" disabled={slack.is_working} onClick={() => void slack.connectMyAccount(return_path)} className={`${PRIMARY_BUTTON} flex-none`}>
-                      {slack.is_working ? "Redirecting..." : "Connect my Slack"}
+                      {slack.is_working ? "Opening Slack..." : "Connect my Slack"}
                     </button>
                   )}
                   {link && (

@@ -153,6 +153,8 @@ function AutomationCenter(props: AutomationsModalProps) {
       board_targets,
       slack_channels: slack_options.channels.map((channel) => ({ id: channel.id, name: channel.name })),
       is_slack_connected: slack_options.status?.is_connected === true,
+      slack_team_id: slack_options.status?.workspace?.team_id ?? null,
+      slack_team_name: slack_options.status?.workspace?.team_name ?? null,
       teams,
       forms,
     }),

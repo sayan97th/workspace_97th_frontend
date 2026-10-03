@@ -7,6 +7,8 @@ import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
 
 export type SlackConnectionCardProps = {
   slack: SlackIntegrationApi;
+  /** False when the screen already shows the shared Slack banner above this card. */
+  show_messages?: boolean;
 };
 
 const PRIMARY_BUTTON =
@@ -16,9 +18,10 @@ const SECONDARY_BUTTON =
 
 /**
  * My Profile > Notifications > Slack, where a member links their own Slack account so
- * mentions, assignments and automation messages reach them as Slack direct messages.
+ * mentions, assignments and automation messages reach them as Slack direct messages. Slack
+ * opens in a new tab, signed in to the active workspace only, so the card names that workspace.
  */
-const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack }) => {
+const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack, show_messages = true }) => {
   if (slack.is_loading) {
     return null;
   }
@@ -26,6 +29,7 @@ const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack }) => {
   const status = slack.status;
   const link = status?.current_user_link ?? null;
   const workspace_name = status?.workspace?.team_name ?? null;
+  const workspace_domain = status?.workspace?.team_url?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? null;
 
   let description: React.ReactNode;
   let action: React.ReactNode = null;
@@ -55,17 +59,19 @@ const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack }) => {
       </div>
     );
   } else {
-    description = `Get a Slack message from the app when someone tags you, assigns you or an automation notifies you. This links you to ${workspace_name}.`;
+    description = slack.awaiting_purpose === "link"
+      ? `Waiting for Slack. Finish in the new tab, signed in with your ${workspace_name} account.`
+      : `Get a Slack message from the app when someone tags you, assigns you or an automation notifies you. Slack opens in a new tab, sign in with your ${workspace_name}${workspace_domain ? ` (${workspace_domain})` : ""} account.`;
     action = (
       <button type="button" onClick={() => void slack.connectMyAccount()} disabled={slack.is_working} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
-        {slack.is_working ? "Redirecting…" : "Connect my Slack"}
+        {slack.is_working ? "Opening Slack…" : "Connect my Slack"}
       </button>
     );
   }
 
   return (
     <div className="mb-6">
-      <SlackMessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} />
+      {show_messages ? <SlackMessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} /> : null}
 
       <div className="flex items-center gap-[14px] rounded-xl border border-shell-border bg-shell-hover px-[18px] py-4">
         <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px] border border-shell-border bg-shell-panel">

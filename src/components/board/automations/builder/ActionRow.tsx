@@ -797,13 +797,18 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
                 <PickerList
                   sections={[{ entries: context.slack_channels.map((channel) => ({ id: channel.id, label: `#${channel.name}` })) }]}
                   selected={params.slack_channel_id ?? null}
-                  onPick={(id) => { patch({ slack_channel_id: id, slack_channel_name: context.slack_channels.find((channel) => channel.id === id)?.name ?? null }); close(); }}
+                  onPick={(id) => { patch({ slack_channel_id: id, slack_channel_name: context.slack_channels.find((channel) => channel.id === id)?.name ?? null, slack_team_id: context.slack_team_id ?? null }); close(); }}
                   placeholder="Search channels"
                 />
               )
             }
           </Token>{" "}
           <Words>with </Words>{messageToken()}
+          {params.slack_team_id && context.slack_team_id && params.slack_team_id !== context.slack_team_id ? (
+            <span className="ml-1 text-[12px] font-semibold text-[#fdab3d]">
+              This channel belongs to another Slack workspace, pick a channel from {context.slack_team_name ?? "the active workspace"}.
+            </span>
+          ) : null}
         </>
       );
     case "shift_date": {

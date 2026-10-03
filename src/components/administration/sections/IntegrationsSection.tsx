@@ -1,42 +1,42 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import SlackLogo from "@/components/slack/SlackLogo";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
+import SlackConnectionCard from "@/components/slack/SlackConnectionCard";
+import SlackWorkspacesCard from "@/components/administration/slack/SlackWorkspacesCard";
+import SlackAppCredentialsCard from "@/components/administration/slack/SlackAppCredentialsCard";
+import { PRIMARY_BUTTON, SECONDARY_BUTTON, SECTION_CARD, SECTION_HINT, SECTION_TITLE } from "@/components/administration/slack/slackAdminStyles";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
-import { format } from "date-fns";
-
-const PRIMARY_BUTTON =
-  "rounded-[9px] bg-brand-500 px-4 py-[10px] text-[13px] font-bold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50";
-const SECONDARY_BUTTON =
-  "rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[10px] text-[13px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
+import { useSlackAdministration } from "@/hooks/useSlackAdministration";
 
 const SLACK_BENEFITS = [
   "Anyone you tag or notify in an update gets a Slack direct message, just like an in-app notification.",
   "Automations can post to a Slack channel or message a person when a status, date or column changes.",
-  "Each member connects their own Slack account and chooses what reaches them from My Profile.",
+  "Members are matched to Slack by email, anyone else connects their own account and chooses what reaches them from My Profile.",
 ];
 
-/** Administration > Integrations, connect the account to a Slack workspace so notifications and automations can reach Slack. */
+/**
+ * Administration > Integrations, modeled on monday.com's Slack integration and Connections page.
+ * Administrators and the account owner set the Slack app, connect one or more Slack workspaces
+ * and switch the active one. Every Slack authorization opens in a new tab, so the workspace
+ * stays where it was.
+ */
 const IntegrationsSection: React.FC = () => {
   const slack = useSlackIntegration();
-  const [is_confirming_disconnect, setIsConfirmingDisconnect] = useState(false);
+  const status = slack.status;
+  const can_manage = status?.can_manage ?? false;
+  const admin = useSlackAdministration(slack, can_manage);
 
   if (slack.is_loading) {
     return <div className="text-[13px] text-shell-text-faint">Loading integrations…</div>;
   }
 
-  const status = slack.status;
   const workspace = status?.workspace ?? null;
-  const can_manage = status?.can_manage ?? false;
-
-  const confirmDisconnect = async () => {
-    await slack.disconnectWorkspace();
-    setIsConfirmingDisconnect(false);
-  };
+  const workspaces_count = status?.workspaces_count ?? 0;
 
   return (
-    <div className="max-w-[720px]">
+    <div className="max-w-[760px]">
       <SlackMessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} />
 
       <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-5">
@@ -54,93 +54,53 @@ const IntegrationsSection: React.FC = () => {
             </div>
             <p className="mt-1 text-[13px] leading-relaxed text-shell-text-muted">
               {workspace
-                ? `Connected to the ${workspace.team_name} workspace.`
+                ? `Active workspace: ${workspace.team_name}.${workspaces_count > 1 ? ` ${workspaces_count} workspaces are connected.` : ""}`
                 : "Send notifications and automation messages straight to Slack."}
             </p>
           </div>
 
-          {!workspace && can_manage ? (
-            <button
-              type="button"
-              onClick={() => void slack.connectWorkspace()}
-              disabled={slack.is_working || !status?.is_configured}
-              className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}
-            >
-              {slack.is_working ? "Redirecting…" : "Add to Slack"}
-            </button>
-          ) : null}
-
-          {workspace && can_manage && !is_confirming_disconnect ? (
-            <button
-              type="button"
-              onClick={() => setIsConfirmingDisconnect(true)}
-              className={`${SECONDARY_BUTTON} flex-none whitespace-nowrap`}
-            >
-              Disconnect
-            </button>
+          {workspace?.team_url ? (
+            <a href={workspace.team_url} target="_blank" rel="noopener noreferrer" className={`${SECONDARY_BUTTON} flex-none`}>
+              Open Slack
+            </a>
           ) : null}
         </div>
 
-        {!status?.is_configured ? (
-          <div className="mt-4 rounded-[9px] border border-shell-border bg-shell-panel px-3.5 py-3 text-[12.5px] leading-relaxed text-shell-text-muted">
-            Slack is not configured on the server yet. Create a Slack app, then set{" "}
-            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_ID</span>,{" "}
-            <span className="font-semibold text-shell-text-secondary">SLACK_CLIENT_SECRET</span> and{" "}
-            <span className="font-semibold text-shell-text-secondary">SLACK_SIGNING_SECRET</span> in the API environment.
-          </div>
-        ) : null}
-
-        {!workspace && status?.is_configured && !can_manage ? (
+        {!workspace && !can_manage ? (
           <div className="mt-4 text-[12.5px] text-shell-text-muted">Ask an account administrator to add Slack to this account.</div>
         ) : null}
-
-        {workspace ? (
-          <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-shell-border pt-4 sm:grid-cols-3">
-            <div>
-              <dt className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-shell-text-faint">Workspace</dt>
-              <dd className="mt-1 text-[13.5px] font-semibold text-shell-text">{workspace.team_name}</dd>
-            </div>
-            <div>
-              <dt className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-shell-text-faint">Connected by</dt>
-              <dd className="mt-1 text-[13.5px] font-semibold text-shell-text">
-                {workspace.connected_by ?? "Unknown"}
-                {workspace.connected_at ? (
-                  <span className="block text-[12px] font-normal text-shell-text-muted">
-                    {format(new Date(workspace.connected_at), "MMM d, yyyy")}
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[11.5px] font-bold uppercase tracking-[0.04em] text-shell-text-faint">Members connected</dt>
-              <dd className="mt-1 text-[13.5px] font-semibold text-shell-text">{workspace.linked_members_count}</dd>
-            </div>
-          </dl>
-        ) : null}
-
-        {workspace && is_confirming_disconnect ? (
-          <div className="mt-5 rounded-[9px] border border-[#e2445c]/25 bg-[#e2445c]/[0.06] p-4">
-            <div className="text-[13.5px] font-bold text-shell-text">Disconnect Slack?</div>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
-              Every member will stop receiving Slack notifications and automations that post to Slack will be switched off.
-              You can connect again at any time.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => void confirmDisconnect()}
-                disabled={slack.is_working}
-                className="rounded-[9px] bg-[#e2445c] px-4 py-[9px] text-[13px] font-bold text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
-              >
-                {slack.is_working ? "Disconnecting…" : "Disconnect Slack"}
-              </button>
-              <button type="button" onClick={() => setIsConfirmingDisconnect(false)} className={SECONDARY_BUTTON}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        ) : null}
       </div>
+
+      {can_manage ? (
+        <>
+          <SlackWorkspacesCard slack={slack} admin={admin} />
+
+          {workspace ? (
+            <section className={SECTION_CARD}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className={SECTION_TITLE}>Members</h3>
+                  <p className={SECTION_HINT}>
+                    {workspace.linked_members_count === 1 ? "1 member receives" : `${workspace.linked_members_count} members receive`} Slack notifications in{" "}
+                    {workspace.team_name}. Match members whose email is the same in Slack, anyone else can use &quot;Connect my Slack&quot; in My Profile.
+                  </p>
+                </div>
+                <button type="button" onClick={() => void admin.matchMembers()} disabled={admin.busy_key !== null} className={`${PRIMARY_BUTTON} flex-none`}>
+                  {admin.busy_key === "match" ? "Matching…" : "Match members by email"}
+                </button>
+              </div>
+            </section>
+          ) : null}
+
+          <SlackAppCredentialsCard admin={admin} />
+        </>
+      ) : null}
+
+      {workspace ? (
+        <div className="mt-5">
+          <SlackConnectionCard slack={slack} show_messages={false} />
+        </div>
+      ) : null}
 
       <div className="mt-6">
         <div className="mb-2.5 text-[13px] font-bold text-shell-text-secondary">What Slack adds</div>
@@ -156,15 +116,6 @@ const IntegrationsSection: React.FC = () => {
         {can_manage ? (
           <Link href="/admin/test/slack" className="mt-5 block text-[13px] font-semibold text-brand-200 hover:underline">
             Test the Slack connection
-          </Link>
-        ) : null}
-
-        {workspace ? (
-          <Link
-            href="/profile?section=notifications"
-            className="mt-3 inline-block text-[13px] font-semibold text-brand-200 hover:underline"
-          >
-            Connect your own Slack account in My Profile
           </Link>
         ) : null}
       </div>

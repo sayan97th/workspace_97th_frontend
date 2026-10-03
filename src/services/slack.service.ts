@@ -1,11 +1,23 @@
 import { apiClient } from "@/lib/api-client";
-import type { SlackChannelDto, SlackDiagnosticsDto, SlackRecipientDto, SlackStatusDto } from "@/types/slack";
+import type {
+  SlackAppCredentialsDto,
+  SlackAppCredentialsPayload,
+  SlackAuthorizationDisplay,
+  SlackChannelDto,
+  SlackConnectedWorkspaceDto,
+  SlackDiagnosticsDto,
+  SlackMemberMatchResult,
+  SlackRecipientDto,
+  SlackStatusDto,
+  SlackWorkspacesResponse,
+} from "@/types/slack";
 
 /**
- * Talks to `App\Http\Controllers\Integration\SlackIntegrationController`. Both OAuth flows
- * work the same way: ask the API for the Slack URL, then navigate the browser to it, since a
- * top level navigation cannot carry the JWT. Slack sends the browser back to the API's
- * public callback, which redirects into the app with `?slack=connected` or `?slack=error`.
+ * Talks to the Slack controllers of the API. Both OAuth flows work the same way: ask the API
+ * for the Slack URL, then open it, since a top level navigation cannot carry the JWT. With
+ * `display: "tab"` Slack opens in a new tab and the API's public callback finishes on
+ * `/integrations/slack/complete`, which reports back to this tab. With `"page"` the callback
+ * redirects into the app with `?slack=connected` or `?slack=error`.
  */
 export const slackService = {
   /** GET /api/integrations/slack */
@@ -27,20 +39,56 @@ export const slackService = {
    * POST /api/integrations/slack/install-url, administrators only. `return_path` is an in-app
    * path (e.g. `/boards/42?integrate=slack`) the callback sends the browser back to.
    */
-  async requestInstallUrl(return_path?: string): Promise<string> {
-    const response = await apiClient.post<{ url: string }>("/api/integrations/slack/install-url", { return_path });
+  async requestInstallUrl(return_path?: string, display: SlackAuthorizationDisplay = "tab"): Promise<string> {
+    const response = await apiClient.post<{ url: string }>("/api/integrations/slack/install-url", { return_path, display });
     return response.url;
   },
 
-  /** DELETE /api/integrations/slack, administrators only. */
-  async disconnectWorkspace(): Promise<SlackStatusDto> {
+  /** DELETE /api/integrations/slack, administrators only. Disconnects the active workspace. */
+  async disconnectWorkspace(): Promise<SlackStatusDto & { message: string }> {
     return apiClient.delete<SlackStatusDto & { message: string }>("/api/integrations/slack");
   },
 
   /** POST /api/integrations/slack/link-url, `return_path` works as in {@link requestInstallUrl}. */
-  async requestLinkUrl(return_path?: string): Promise<string> {
-    const response = await apiClient.post<{ url: string }>("/api/integrations/slack/link-url", { return_path });
+  async requestLinkUrl(return_path?: string, display: SlackAuthorizationDisplay = "tab"): Promise<string> {
+    const response = await apiClient.post<{ url: string }>("/api/integrations/slack/link-url", { return_path, display });
     return response.url;
+  },
+
+  /** GET /api/integrations/slack/workspaces, administrators only. The active workspace first. */
+  async getWorkspaces(): Promise<SlackConnectedWorkspaceDto[]> {
+    const response = await apiClient.get<{ data: SlackConnectedWorkspaceDto[] }>("/api/integrations/slack/workspaces");
+    return response.data;
+  },
+
+  /** POST /api/integrations/slack/workspaces/{id}/activate, administrators only. */
+  async activateWorkspace(workspace_id: number): Promise<SlackWorkspacesResponse> {
+    return apiClient.post<SlackWorkspacesResponse>(`/api/integrations/slack/workspaces/${workspace_id}/activate`);
+  },
+
+  /** DELETE /api/integrations/slack/workspaces/{id}, administrators only. */
+  async disconnectWorkspaceById(workspace_id: number): Promise<SlackWorkspacesResponse> {
+    return apiClient.delete<SlackWorkspacesResponse>(`/api/integrations/slack/workspaces/${workspace_id}`);
+  },
+
+  /** POST /api/integrations/slack/match-members, administrators only. Links members by email in the active workspace. */
+  async matchMembersByEmail(): Promise<SlackWorkspacesResponse & { result: SlackMemberMatchResult }> {
+    return apiClient.post<SlackWorkspacesResponse & { result: SlackMemberMatchResult }>("/api/integrations/slack/match-members");
+  },
+
+  /** GET /api/integrations/slack/app, administrators only. */
+  async getAppCredentials(): Promise<SlackAppCredentialsDto> {
+    return apiClient.get<SlackAppCredentialsDto>("/api/integrations/slack/app");
+  },
+
+  /** PUT /api/integrations/slack/app, administrators only. */
+  async saveAppCredentials(payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
+  },
+
+  /** DELETE /api/integrations/slack/app, administrators only. The API environment values apply again. */
+  async clearAppCredentials(): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.delete<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app");
   },
 
   /** DELETE /api/integrations/slack/link */

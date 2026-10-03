@@ -27,6 +27,9 @@ export type AutomationBuilderContext = {
   board_targets: AutomationBoardTarget[];
   slack_channels: { id: string; name: string }[];
   is_slack_connected: boolean;
+  /** The active Slack workspace, stamped on a picked channel since channel ids only mean something there. */
+  slack_team_id?: string | null;
+  slack_team_name?: string | null;
   /** Account teams a "notify team" action can reach, loaded with the dialog. */
   teams?: { id: number; name: string; member_count: number }[];
   /** This board's form views, for the "form is submitted" trigger. */

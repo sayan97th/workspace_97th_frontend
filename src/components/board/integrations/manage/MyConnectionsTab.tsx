@@ -72,7 +72,7 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
                 {`, ${workspace.linked_members_count} ${workspace.linked_members_count === 1 ? "member" : "members"} connected`}
               </>
             ) : status && !status.is_configured ? (
-              "Slack is not configured on the server yet. Ask a developer to set the Slack app credentials."
+              "Slack is not set up yet. Add the Slack app credentials in Administration > Integrations."
             ) : can_manage ? (
               "Add the app to your Slack workspace so automations can post to channels and message people."
             ) : (
@@ -83,7 +83,7 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
         >
           {!workspace && status?.is_configured && can_manage && (
             <button type="button" disabled={slack.is_working} onClick={() => void slack.connectWorkspace(return_path)} className={PRIMARY_BUTTON}>
-              {slack.is_working ? "Redirecting..." : "Add to Slack"}
+              {slack.is_working ? "Opening Slack..." : "Add to Slack"}
             </button>
           )}
           {workspace && can_manage && !is_confirming_disconnect && (
@@ -125,7 +125,7 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
         >
           {workspace && !link && (
             <button type="button" disabled={slack.is_working} onClick={() => void slack.connectMyAccount(return_path)} className={PRIMARY_BUTTON}>
-              {slack.is_working ? "Redirecting..." : "Connect my Slack"}
+              {slack.is_working ? "Opening Slack..." : "Connect my Slack"}
             </button>
           )}
           {link && (

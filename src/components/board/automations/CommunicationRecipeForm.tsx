@@ -94,6 +94,7 @@ export default function CommunicationRecipeForm({ template, columns, people, sla
     } else {
       action_params.slack_channel_id = slack_channel_id;
       action_params.slack_channel_name = selected_channel?.name ?? null;
+      action_params.slack_team_id = slack.status?.workspace?.team_id ?? null;
     }
 
     if (channel === "email" && subject.trim()) action_params.subject = subject.trim();
