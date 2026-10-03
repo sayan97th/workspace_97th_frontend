@@ -101,7 +101,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                     </p>
                     {can_manage && !is_confirming_disconnect && (
                       <div className="flex flex-none gap-2">
-                        <Link href="/administration?section=integrations" className={SECONDARY_BUTTON}>Switch workspace</Link>
+                        <Link href="/administration?section=integrations" className={`${SECONDARY_BUTTON} inline-flex items-center`}>Switch workspace</Link>
                         <button type="button" onClick={() => setIsConfirmingDisconnect(true)} className={SECONDARY_BUTTON}>Disconnect</button>
                       </div>
                     )}
