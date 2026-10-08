@@ -78,6 +78,7 @@ export const COMMUNICATION_TEMPLATES: CommunicationTemplate[] = TRIGGER_ORDER.fl
 export const MESSAGE_TOKENS: { token: string; label: string; triggers?: CommunicationTrigger[] }[] = [
   { token: "{item_name}", label: "Item name" },
   { token: "{board_name}", label: "Board name" },
+  { token: "{group_name}", label: "Group name" },
   { token: "{actor_name}", label: "Who did it" },
   { token: "{column_name}", label: "Column name", triggers: ["status_changed", "date_arrived", "person_assigned", "column_changed"] },
   { token: "{new_value}", label: "New value", triggers: ["status_changed", "date_arrived", "person_assigned", "column_changed"] },

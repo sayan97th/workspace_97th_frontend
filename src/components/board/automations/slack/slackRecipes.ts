@@ -18,7 +18,7 @@ export type SlackRecipe = {
   title: string;
   /** Lower case text the search box matches against. */
   search_text: string;
-  /** Prefilled message, empty keeps the API's default message for the trigger. */
+  /** The predefined message, in the API's token format, so a recipe works without writing anything. */
   default_message: string;
 };
 
@@ -38,6 +38,20 @@ const TRIGGER_PARTS: Record<CommunicationTrigger, SlackRecipePart[]> = {
 
 /** Triggers without a column, their bold words are only a highlight and open nothing. */
 export const COLUMNLESS_TRIGGERS: CommunicationTrigger[] = ["item_created", "update_posted", "subitem_created"];
+
+/**
+ * The message every recipe starts with, like monday.com's "A new item, {task's Name}, was created in
+ * {board.name} board by {user name}". Tokens are filled in by the API's `BoardAutomationMessageRenderer`.
+ */
+export const SLACK_DEFAULT_MESSAGES: Record<CommunicationTrigger, string> = {
+  date_arrived: "{column_name} has arrived for {item_name} in {board_name} board",
+  item_created: "A new item, {item_name}, was created in {board_name} board by {actor_name}",
+  status_changed: "{column_name} of {item_name} changed to {new_value} in {board_name} board by {actor_name}",
+  column_changed: "{column_name} of {item_name} changed to {new_value} in {board_name} board by {actor_name}",
+  update_posted: "{actor_name} posted an update on {item_name} in {board_name} board: {update_text}",
+  person_assigned: "{new_value} was assigned to {item_name} in {board_name} board by {actor_name}",
+  subitem_created: "A new subitem, {item_name}, was created in {board_name} board by {actor_name}",
+};
 
 const CHANNEL_ORDER: CommunicationTrigger[] = ["date_arrived", "item_created", "status_changed", "column_changed", "update_posted", "person_assigned", "subitem_created"];
 const PERSON_ORDER: CommunicationTrigger[] = ["status_changed", "item_created", "date_arrived", "column_changed", "person_assigned", "update_posted"];
@@ -61,8 +75,7 @@ const buildRecipe = (trigger: CommunicationTrigger, target: SlackRecipeTarget): 
     parts,
     title,
     search_text: `${title.replaceAll("**", "")} slack`.toLowerCase(),
-    // "send it to channel" forwards the update itself.
-    default_message: trigger === "update_posted" && target === "channel" ? "{update_text}" : "",
+    default_message: SLACK_DEFAULT_MESSAGES[trigger],
   };
 };
 

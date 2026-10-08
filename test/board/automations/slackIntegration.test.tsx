@@ -50,7 +50,7 @@ describe("Slack recipes", () => {
 
   it("forwards the update text when an update is sent to a channel", () => {
     expect(recipe("slack:update_posted:channel").title).toBe("When an **update is posted**, **send it** to **channel**");
-    expect(recipe("slack:update_posted:channel").default_message).toBe("{update_text}");
+    expect(recipe("slack:update_posted:channel").default_message).toContain("{update_text}");
   });
 });
 
@@ -85,7 +85,7 @@ describe("SlackRecipeEditor", () => {
       trigger_column_id: null,
       trigger_value: null,
       action_type: "slack_notify_channel",
-      action_params: { slack_channel_id: "C2", slack_channel_name: "palomar", slack_team_id: "T200", slack_connection_id: 9 },
+      action_params: { slack_channel_id: "C2", slack_channel_name: "palomar", slack_team_id: "T200", slack_connection_id: 9, message: recipe("slack:item_created:channel").default_message },
     });
   });
 
@@ -113,6 +113,7 @@ describe("SlackRecipeEditor", () => {
     await user.click(screen.getByRole("button", { name: "Who to notify: someone" }));
     await user.click(screen.getByRole("button", { name: "Owner" }));
     await user.click(screen.getByRole("button", { name: "Message: notify" }));
+    await user.clear(screen.getByRole("textbox", { name: "Slack message" }));
     await user.type(screen.getByRole("textbox", { name: "Slack message" }), "Ready to ship");
     await user.click(screen.getByRole("button", { name: "Done" }));
 

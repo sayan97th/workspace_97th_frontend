@@ -581,6 +581,7 @@ export const COMMON_FILE_EXTENSIONS = ["pdf", "doc", "docx", "xls", "xlsx", "csv
 export const MESSAGE_TOKENS: { token: string; label: string }[] = [
   { token: "{item_name}", label: "Item name" },
   { token: "{board_name}", label: "Board name" },
+  { token: "{group_name}", label: "Group name" },
   { token: "{actor_name}", label: "Who made the change" },
   { token: "{column_name}", label: "Column name" },
   { token: "{new_value}", label: "New value" },

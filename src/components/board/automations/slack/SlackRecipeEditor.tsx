@@ -7,7 +7,8 @@ import { useSlackConnectionChannels } from "@/hooks/useSlackConnectionChannels";
 import { useOutsideClick } from "../../table/useOutsideClick";
 import { spliceTextAtCursor } from "@/utils/insertTextAtCursor";
 import { PickerList, POPOVER_DONE, POPOVER_SECONDARY } from "../builder/builderUi";
-import { CHANNEL_ACTION_TYPES, MESSAGE_TOKENS } from "../communicationTemplates";
+import { CHANNEL_ACTION_TYPES } from "../communicationTemplates";
+import { slackMessageFieldsFor, toDisplayMessage, toStoredMessage, type SlackMessageField } from "./slackMessageTokens";
 import { COLUMNLESS_TRIGGERS, recipeChannel, type SlackRecipe, type SlackRecipeSlot } from "./slackRecipes";
 
 export type SlackRecipeEditorProps = {
@@ -32,8 +33,17 @@ const READ_ONLY_KINDS: ColumnDef["kind"][] = ["formula", "mirror", "auto_number"
 
 type Recipient = { mode: "column" | "person"; id: string } | null;
 
+/** One insert button of the message popover. */
+function FieldChip({ field, onInsert }: { field: SlackMessageField; onInsert: (field: SlackMessageField) => void }) {
+  return (
+    <button type="button" onClick={() => onInsert(field)} title={`Insert ${field.label}`} className="rounded-[4px] border border-boardtree-border px-3 py-1 text-[13px] text-boardtree-text hover:border-boardtree-accent hover:text-boardtree-accent">
+      {field.label}
+    </button>
+  );
+}
+
 /** One clickable word of the purple sentence, its picker opens in a white popover right under it. */
-function SentenceToken({ label, is_set, is_optional = false, aria_label, width = 280, children }: { label: string; is_set: boolean; is_optional?: boolean; aria_label: string; width?: number; children: (close: () => void) => React.ReactNode }) {
+function SentenceToken({ label, is_set, is_optional = false, aria_label, width = 280, onOpen, children }: { label: string; is_set: boolean; is_optional?: boolean; aria_label: string; width?: number; onOpen?: () => void; children: (close: () => void) => React.ReactNode }) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLSpanElement>(is_open, () => setIsOpen(false));
   const close = () => setIsOpen(false);
@@ -48,7 +58,10 @@ function SentenceToken({ label, is_set, is_optional = false, aria_label, width =
 
   return (
     <span ref={ref} className="relative inline-block">
-      <button type="button" aria-haspopup="dialog" aria-expanded={is_open} aria-label={`${aria_label}: ${label}`} onClick={() => setIsOpen((open) => !open)} className={`border-b-2 pb-1 leading-[1.15] transition-colors ${tone}`}>
+      <button type="button" aria-haspopup="dialog" aria-expanded={is_open} aria-label={`${aria_label}: ${label}`} onClick={() => {
+          if (!is_open) onOpen?.();
+          setIsOpen(!is_open);
+        }} className={`border-b-2 pb-1 leading-[1.15] transition-colors ${tone}`}>
         {label}
       </button>
       {is_open && (
@@ -94,21 +107,25 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
   const [option_id, setOptionId] = useState("");
   const [channel_id, setChannelId] = useState("");
   const [recipient, setRecipient] = useState<Recipient>(null);
+  const message_fields = useMemo(() => slackMessageFieldsFor(trigger, columns), [trigger, columns]);
+  // `message` is stored in the API's token format, the draft is what the message box shows.
   const [message, setMessage] = useState(recipe.default_message);
-  const [message_draft, setMessageDraft] = useState(recipe.default_message);
+  const [message_draft, setMessageDraft] = useState(() => toDisplayMessage(recipe.default_message, message_fields));
   const [show_private_hint, setShowPrivateHint] = useState(false);
   const message_ref = useRef<HTMLTextAreaElement>(null);
 
   const trigger_column = trigger_columns.find((column) => column.id === column_id);
   const trigger_option = trigger_column?.options?.find((option) => option.id === option_id);
   const channel = channels.channels.find((entry) => entry.id === channel_id);
-  const available_tokens = MESSAGE_TOKENS.filter((token) => !token.triggers || token.triggers.includes(trigger));
+  const stored_draft = toStoredMessage(message_draft, message_fields);
+  const draft_error = stored_draft.trim() === "" ? "Write a message, or restore the template." : stored_draft.length > MESSAGE_MAX_LENGTH ? `The message is too long, keep it under ${MESSAGE_MAX_LENGTH} characters.` : null;
 
   const missing: string[] = [];
   if (needs_trigger_column && !trigger_column) missing.push(trigger === "date_arrived" ? "a date column" : trigger === "person_assigned" ? "a people column" : trigger === "status_changed" ? "a status column" : "a column");
   if (trigger === "status_changed" && trigger_column && !trigger_option) missing.push("the status value");
   if (target === "channel" && !channel_id) missing.push("a channel");
   if (target === "person" && !recipient) missing.push("who to notify");
+  if (message.trim() === "") missing.push("a message");
 
   const recipientLabel = (): string => {
     if (!recipient) return "someone";
@@ -117,10 +134,10 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
     return column ? `people in ${column.title}` : "someone";
   };
 
-  const insertToken = (token: string) => {
+  const insertField = ({ label }: SlackMessageField) => {
     const field = message_ref.current;
-    const { next_text, next_cursor } = spliceTextAtCursor(message_draft, token, field?.selectionStart ?? message_draft.length);
-    if (next_text.length > MESSAGE_MAX_LENGTH) return;
+    const { next_text, next_cursor } = spliceTextAtCursor(message_draft, `{${label}}`, field?.selectionStart ?? message_draft.length);
+    if (toStoredMessage(next_text, message_fields).length > MESSAGE_MAX_LENGTH) return;
     setMessageDraft(next_text);
     requestAnimationFrame(() => {
       field?.focus();
@@ -142,7 +159,7 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
       action_params.notify_from_people_column_id = Number(recipient.id);
     }
 
-    if (message.trim()) action_params.message = message.trim();
+    action_params.message = message.trim();
 
     return {
       trigger_type: trigger,
@@ -197,33 +214,38 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
         );
       case "message":
         return (
-          <SentenceToken key={index} label={placeholder} is_set={message.trim() !== ""} is_optional aria_label="Message" width={360}>
+          <SentenceToken key={index} label={placeholder} is_set={message.trim() !== ""} aria_label="Message" width={450} onOpen={() => setMessageDraft(toDisplayMessage(message, message_fields))}>
             {(close) => (
-              <div className="p-1">
-                <div className="mb-1.5 text-[12px] text-boardtree-text-muted">Message, leave it empty to use the default message.</div>
+              <div className="-m-2 flex flex-col">
+                <div className="border-b border-boardtree-border-soft px-4 py-3 text-[13px] text-boardtree-text-secondary">Type your message to personalize it with fields from your board</div>
                 <textarea
                   ref={message_ref}
                   autoFocus
                   value={message_draft}
-                  maxLength={MESSAGE_MAX_LENGTH}
                   onChange={(event) => setMessageDraft(event.target.value)}
-                  rows={4}
-                  placeholder="For example: {item_name} was created by {actor_name}"
+                  rows={6}
                   aria-label="Slack message"
-                  className="w-full resize-none rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2.5 py-2 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
+                  aria-invalid={draft_error !== null}
+                  className="w-full resize-none bg-transparent px-4 py-3 text-[13px] leading-relaxed text-boardtree-text outline-none"
                 />
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {available_tokens.map((token) => (
-                    <button key={token.token} type="button" onClick={() => insertToken(token.token)} className="rounded-full border border-boardtree-border-soft px-2.5 py-0.5 text-[11.5px] text-boardtree-text-muted hover:bg-boardtree-hover">
-                      {token.label}
-                    </button>
-                  ))}
+                <div className="max-h-[120px] overflow-y-auto border-t border-boardtree-border-soft px-4 py-3">
+                  <div className="mb-2 text-[13px] text-boardtree-text-muted">Auto populate fields from board items</div>
+                  <div className="flex flex-wrap gap-2">
+                    {[...message_fields.general, ...message_fields.columns].map((field) => <FieldChip key={field.token} field={field} onInsert={insertField} />)}
+                  </div>
                 </div>
-                <div className="mt-2.5 flex justify-end gap-1.5">
+                {draft_error && <p role="alert" className="px-4 pb-2.5 text-[12px] text-boardtree-danger">{draft_error}</p>}
+                <div className="flex items-center gap-1.5 border-t border-boardtree-border-soft px-4 py-3">
+                  {stored_draft.trim() !== recipe.default_message && (
+                    <button type="button" onClick={() => setMessageDraft(toDisplayMessage(recipe.default_message, message_fields))} className="text-[12.5px] text-boardtree-accent hover:underline">
+                      Restore template
+                    </button>
+                  )}
+                  <span className="flex-1" />
                   <button
                     type="button"
                     onClick={() => {
-                      setMessageDraft(message);
+                      setMessageDraft(toDisplayMessage(message, message_fields));
                       close();
                     }}
                     className={POPOVER_SECONDARY}
@@ -232,11 +254,12 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
                   </button>
                   <button
                     type="button"
+                    disabled={draft_error !== null}
                     onClick={() => {
-                      setMessage(message_draft);
+                      setMessage(stored_draft.trim());
                       close();
                     }}
-                    className={POPOVER_DONE}
+                    className={`${POPOVER_DONE} disabled:cursor-not-allowed`}
                   >
                     Done
                   </button>
