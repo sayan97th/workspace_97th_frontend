@@ -31,6 +31,8 @@ export type SlackStatusDto = {
   is_connected: boolean;
   /** Whether the current user may connect, switch or disconnect workspaces (admin and account owner). */
   can_manage: boolean;
+  /** Whether the current user may set up the Slack app itself, a one time developer setting (account owner only). */
+  can_configure_app: boolean;
   credentials_source: SlackCredentialsSource;
   /** How many Slack workspaces are connected, only one of them is active. */
   workspaces_count: number;
@@ -95,6 +97,13 @@ export type SlackMemberMatchResult = {
 export type SlackAppCredentialsDto = {
   source: SlackCredentialsSource;
   is_configured: boolean;
+  /** Set when the site created the app itself, links below go to that app in Slack. */
+  app_id: string | null;
+  app_settings_url: string | null;
+  /** Where public distribution is turned on, needed to add the app to more than one workspace. */
+  distribution_url: string | null;
+  /** Whether Slack can reach the events URL, false for a local API. */
+  can_receive_events: boolean;
   client_id: string | null;
   client_secret_hint: string | null;
   signing_secret_hint: string | null;

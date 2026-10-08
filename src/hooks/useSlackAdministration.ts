@@ -17,6 +17,8 @@ export type SlackAdministrationApi = {
   /** Resolves to true when the workspace was disconnected. */
   disconnectWorkspace: (workspace_id: number) => Promise<boolean>;
   matchMembers: () => Promise<void>;
+  /** Creates the Slack app from a configuration token, resolves to true when it worked. */
+  createApp: (configuration_token: string) => Promise<boolean>;
   /** Resolves to true when the credentials were saved. */
   saveCredentials: (payload: SlackAppCredentialsPayload) => Promise<boolean>;
   clearCredentials: () => Promise<boolean>;
@@ -24,11 +26,11 @@ export type SlackAdministrationApi = {
 
 /**
  * Administration > Integrations, the parts only administrators and the account owner see:
- * the connected Slack workspaces and the Slack app credentials. Messages go through the shared
+ * the connected Slack workspaces and, for the account owner only, the Slack app. Messages go through the shared
  * `slack` hook so the whole section shows one banner, and the list reloads every time a Slack
  * authorization finishes in another tab.
  */
-export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: boolean): SlackAdministrationApi {
+export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: boolean, can_configure_app: boolean): SlackAdministrationApi {
   const [workspaces, setWorkspaces] = useState<SlackConnectedWorkspaceDto[]>([]);
   const [credentials, setCredentials] = useState<SlackAppCredentialsDto | null>(null);
   const [is_loading, setIsLoading] = useState(true);
@@ -43,7 +45,7 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
 
     let cancelled = false;
 
-    Promise.all([slackService.getWorkspaces(), slackService.getAppCredentials()])
+    Promise.all([slackService.getWorkspaces(), can_configure_app ? slackService.getAppCredentials() : Promise.resolve(null)])
       .then(([next_workspaces, next_credentials]) => {
         if (cancelled) return;
         setWorkspaces(next_workspaces);
@@ -59,7 +61,7 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     return () => {
       cancelled = true;
     };
-  }, [can_manage, completed_at, reportError]);
+  }, [can_manage, can_configure_app, completed_at, reportError]);
 
   const runAction = useCallback(
     async <T,>(key: NonNullable<SlackAdministrationBusyKey>, action: () => Promise<T>, fallback_message: string): Promise<T | null> => {
@@ -119,6 +121,12 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     [reloadStatus, reportNotice]
   );
 
+  const createApp = useCallback(
+    async (configuration_token: string) =>
+      applyCredentials(await runAction("credentials", () => slackService.createApp(configuration_token), "Failed to create the Slack app.")),
+    [applyCredentials, runAction]
+  );
+
   const saveCredentials = useCallback(
     async (payload: SlackAppCredentialsPayload) =>
       applyCredentials(await runAction("credentials", () => slackService.saveAppCredentials(payload), "Failed to save the Slack app credentials.")),
@@ -130,5 +138,5 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     [applyCredentials, runAction]
   );
 
-  return { workspaces, credentials, is_loading, busy_key, activateWorkspace, disconnectWorkspace, matchMembers, saveCredentials, clearCredentials };
+  return { workspaces, credentials, is_loading, busy_key, activateWorkspace, disconnectWorkspace, matchMembers, createApp, saveCredentials, clearCredentials };
 }

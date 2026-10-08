@@ -18,15 +18,16 @@ const SLACK_BENEFITS = [
 
 /**
  * Administration > Integrations, modeled on monday.com's Slack integration and Connections page.
- * Administrators and the account owner set the Slack app, connect one or more Slack workspaces
- * and switch the active one. Every Slack authorization opens in a new tab, so the workspace
+ * Administrators connect one or more Slack workspaces by signing in to Slack and switch the
+ * active one. The Slack app behind it is a one time developer setting only the account owner sees. Every Slack authorization opens in a new tab, so the workspace
  * stays where it was.
  */
 const IntegrationsSection: React.FC = () => {
   const slack = useSlackIntegration();
   const status = slack.status;
   const can_manage = status?.can_manage ?? false;
-  const admin = useSlackAdministration(slack, can_manage);
+  const can_configure_app = status?.can_configure_app ?? false;
+  const admin = useSlackAdministration(slack, can_manage, can_configure_app);
 
   if (slack.is_loading) {
     return <div className="text-[13px] text-shell-text-faint">Loading integrations…</div>;
@@ -92,7 +93,7 @@ const IntegrationsSection: React.FC = () => {
             </section>
           ) : null}
 
-          <SlackAppCredentialsCard admin={admin} />
+          {can_configure_app ? <SlackAppCredentialsCard admin={admin} /> : null}
         </>
       ) : null}
 

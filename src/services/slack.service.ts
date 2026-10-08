@@ -76,17 +76,25 @@ export const slackService = {
     return apiClient.post<SlackWorkspacesResponse & { result: SlackMemberMatchResult }>("/api/integrations/slack/match-members");
   },
 
-  /** GET /api/integrations/slack/app, administrators only. */
+  /** GET /api/integrations/slack/app, account owner only. */
   async getAppCredentials(): Promise<SlackAppCredentialsDto> {
     return apiClient.get<SlackAppCredentialsDto>("/api/integrations/slack/app");
   },
 
-  /** PUT /api/integrations/slack/app, administrators only. */
+  /**
+   * POST /api/integrations/slack/app/create, account owner only. Creates the Slack app from the
+   * site's manifest with an app configuration token and saves its credentials, the token is not stored.
+   */
+  async createApp(configuration_token: string): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.post<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/create", { configuration_token });
+  },
+
+  /** PUT /api/integrations/slack/app, account owner only. */
   async saveAppCredentials(payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
     return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
   },
 
-  /** DELETE /api/integrations/slack/app, administrators only. Connected workspaces keep working, new ones cannot be added until an app is saved again. */
+  /** DELETE /api/integrations/slack/app, account owner only. Connected workspaces keep working, new ones cannot be added until an app is saved again. */
   async clearAppCredentials(): Promise<SlackAppCredentialsDto & { message: string }> {
     return apiClient.delete<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app");
   },

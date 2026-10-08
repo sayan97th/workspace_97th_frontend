@@ -168,7 +168,11 @@ const SlackWorkspacesCard: React.FC<SlackWorkspacesCardProps> = ({ slack, admin 
           Slack opens in a new tab. To add a different workspace, pick it in the top right corner of the Slack page before clicking Allow.
         </p>
       ) : (
-        <p className="mt-2 text-[12px] text-shell-text-faint">Add the Slack app credentials below before connecting a workspace.</p>
+        <p className="mt-2 text-[12px] text-shell-text-faint">
+          {slack.status?.can_configure_app
+            ? "Set up the Slack app in Developer settings below, then connect a workspace."
+            : "The account owner needs to set up the Slack app once before a workspace can be connected."}
+        </p>
       )}
 
       <div className="mt-4 border-t border-shell-border pt-4">

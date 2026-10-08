@@ -53,10 +53,13 @@ const CopyField: React.FC<{ label: string; value: string }> = ({ label, value })
 );
 
 /**
- * Administration > Integrations > Slack app. Where an administrator points the integration at a
- * Slack app, nothing is read from the API environment. Creating that app takes one paste thanks to
- * the manifest, and turning on public distribution lets the same app be installed into every
- * workspace the team uses. Secrets are write only, only their last four characters come back.
+ * Administration > Integrations > Developer settings, account owner only. The Slack app is set
+ * up once, like monday.com's own app, after which administrators only ever use "Add workspace".
+ *
+ * Quick setup creates the app from a single app configuration token, the site sends its own
+ * manifest and saves the credentials Slack answers with. The manual path (manifest plus three
+ * credentials) stays as a fallback. Turning on public distribution, which lets the same app be
+ * added to every workspace, is the one step Slack keeps on its own site.
  */
 const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin }) => {
   const credentials = admin.credentials;
@@ -66,6 +69,8 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
   const [signing_secret, setSigningSecret] = useState("");
   const [redirect_uri, setRedirectUri] = useState("");
   const [is_confirming_clear, setIsConfirmingClear] = useState(false);
+  const [configuration_token, setConfigurationToken] = useState("");
+  const [is_manual, setIsManual] = useState(false);
 
   // Opens on its own while nothing is set, there is nothing else to do on the page until then.
   useEffect(() => {
@@ -97,6 +102,14 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
     });
   };
 
+  const createApp = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (await admin.createApp(configuration_token.trim())) {
+      setConfigurationToken("");
+      setIsManual(false);
+    }
+  };
+
   const clear = async () => {
     if (await admin.clearCredentials()) setIsConfirmingClear(false);
   };
@@ -106,7 +119,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className={SECTION_TITLE}>Slack app</h3>
+            <h3 className={SECTION_TITLE}>Developer settings: Slack app</h3>
             <span
               className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                 credentials.is_configured ? "bg-shell-hover text-shell-text-secondary" : "bg-[#e2445c]/[0.12] text-[#ff7a8a]"
@@ -120,7 +133,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
               ? `Client ID ${credentials.client_id}${credentials.updated_by ? `, updated by ${credentials.updated_by}` : ""}${
                   credentials.updated_at ? ` on ${format(new Date(credentials.updated_at), "MMM d, yyyy")}` : ""
                 }.`
-              : "Connect a Slack app to this account before adding a workspace."}
+              : "Set up the Slack app once, then administrators can add workspaces by signing in to Slack."}
           </p>
         </div>
         <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={is_open} className={`${SECONDARY_BUTTON} flex-none`}>
@@ -128,8 +141,70 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
         </button>
       </div>
 
+      {credentials.is_configured && credentials.distribution_url ? (
+        <div className="mt-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.08] px-3.5 py-3 text-[12.5px] leading-relaxed text-shell-text-secondary">
+          <span className="font-bold">Last step in Slack:</span> to add this app to more than one workspace, open{" "}
+          <a href={credentials.distribution_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+            Manage Distribution
+          </a>{" "}
+          and click Activate Public Distribution. Slack requires an HTTPS redirect URL for that.
+          {credentials.app_settings_url ? (
+            <>
+              {" "}
+              <a href={credentials.app_settings_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+                Open the app in Slack
+              </a>
+              .
+            </>
+          ) : null}
+        </div>
+      ) : null}
+
       {is_open ? (
         <div className="mt-4 border-t border-shell-border pt-4">
+          <form onSubmit={(event) => void createApp(event)}>
+            <div className="text-[13px] font-bold text-shell-text">Quick setup</div>
+            <ol className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed text-shell-text-muted">
+              <li>
+                1. Open{" "}
+                <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+                  api.slack.com/apps
+                </a>{" "}
+                and, under &quot;Your App Configuration Tokens&quot;, click Generate Token.
+              </li>
+              <li>2. Choose the workspace the app should belong to, for example 97th Floor, and click Generate.</li>
+              <li>3. Copy the Access Token (it starts with xoxe.xoxp-) and paste it here. It is used once and never stored.</li>
+            </ol>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="password"
+                value={configuration_token}
+                onChange={(event) => setConfigurationToken(event.target.value)}
+                placeholder="xoxe.xoxp-..."
+                autoComplete="off"
+                aria-label="App configuration access token"
+                className={`${TEXT_INPUT} !mt-0 flex-1`}
+              />
+              <button type="submit" disabled={!configuration_token.trim().startsWith("xoxe.xoxp-") || is_saving} className={`${PRIMARY_BUTTON} flex-none`}>
+                {is_saving ? "Creating…" : credentials.is_configured ? "Create a new Slack app" : "Create Slack app"}
+              </button>
+            </div>
+            {credentials.is_configured ? (
+              <p className="mt-2 text-[12px] text-shell-text-faint">Creating a new app replaces the current one. Workspaces already connected keep working until you reconnect them.</p>
+            ) : null}
+            {!credentials.can_receive_events ? (
+              <p className="mt-2 text-[12px] text-shell-text-faint">
+                This API is not reachable from the internet, so the app is created without event subscriptions. Removing the app from a workspace is then only noticed on the next message.
+              </p>
+            ) : null}
+          </form>
+
+          <button type="button" onClick={() => setIsManual((manual) => !manual)} aria-expanded={is_manual} className="mt-5 text-[12.5px] font-semibold text-brand-200 hover:underline">
+            {is_manual ? "Hide manual setup" : "Enter credentials manually instead"}
+          </button>
+
+          {is_manual ? (
+          <div className="mt-4">
           <ol className="flex flex-col gap-3 text-[12.5px] leading-relaxed text-shell-text-muted">
             <li>
               <span className="font-bold text-shell-text-secondary">1. Create the Slack app.</span> Open{" "}
@@ -234,6 +309,8 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
                 </button>
               </div>
             </div>
+          ) : null}
+          </div>
           ) : null}
         </div>
       ) : null}
