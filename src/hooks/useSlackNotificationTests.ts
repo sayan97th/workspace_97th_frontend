@@ -9,7 +9,9 @@ import type {
   SlackNotificationTestDto,
   SlackNotificationTestResultDto,
   SlackRecipientDto,
+  SlackWorkspaceMemberDto,
 } from "@/types/slack";
+import { SLACK_TEST_MESSAGE_MAX_LENGTH } from "@/types/slack";
 
 export type SlackNotificationTestsApi = {
   catalog: SlackNotificationTestCatalogDto | null;
@@ -25,6 +27,14 @@ export type SlackNotificationTestsApi = {
   selected_channel_id: string | null;
   setSelectedUserId: (user_id: number | null) => void;
   setSelectedChannelId: (channel_id: string | null) => void;
+  /** Every person in the Slack workspace, for the "message any Slack member" test. */
+  slack_members: SlackWorkspaceMemberDto[];
+  is_loading_slack_members: boolean;
+  refreshSlackMembers: () => Promise<void>;
+  selected_slack_user_id: string | null;
+  setSelectedSlackUserId: (slack_user_id: string | null) => void;
+  member_message: string;
+  setMemberMessage: (message: string) => void;
   results: Record<string, SlackNotificationTestResultDto>;
   /** The test running right now, one at a time so Slack's rate limits are never hit in a burst. */
   running_key: string | null;
@@ -37,6 +47,8 @@ export type SlackNotificationTestsApi = {
   stopBatch: () => void;
   clearResults: () => void;
 };
+
+const DEFAULT_MEMBER_MESSAGE = "Hi, this is a test message from the workspace. If you can read it, the app can reach you on Slack.";
 
 const EMPTY_SUMMARY: Record<SlackDiagnosticStatus, number> = { passed: 0, warning: 0, failed: 0, skipped: 0 };
 
@@ -54,6 +66,10 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
   const [is_refreshing_channels, setIsRefreshingChannels] = useState(false);
   const [chosen_user_id, setSelectedUserId] = useState<number | null>(null);
   const [chosen_channel_id, setSelectedChannelId] = useState<string | null>(null);
+  const [slack_members, setSlackMembers] = useState<SlackWorkspaceMemberDto[]>([]);
+  const [is_loading_slack_members, setIsLoadingSlackMembers] = useState(false);
+  const [selected_slack_user_id, setSelectedSlackUserId] = useState<string | null>(null);
+  const [member_message, setMemberMessage] = useState(DEFAULT_MEMBER_MESSAGE);
   const [results, setResults] = useState<Record<string, SlackNotificationTestResultDto>>({});
   const [running_key, setRunningKey] = useState<string | null>(null);
   const [is_running_batch, setIsRunningBatch] = useState(false);
@@ -69,14 +85,22 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
       // Without a workspace there is nobody to message and no channel to post to.
       if (next_catalog.workspace) {
         // Loaded independently, a broken bot token stops the channel list but not the member list.
-        const [recipients_result, channels_result] = await Promise.allSettled([slackService.getNotificationRecipients(), slackService.getChannels()]);
+        setIsLoadingSlackMembers(true);
+        const [recipients_result, channels_result, members_result] = await Promise.allSettled([
+          slackService.getNotificationRecipients(),
+          slackService.getChannels(),
+          slackService.getSlackMembers(),
+        ]);
         setRecipients(recipients_result.status === "fulfilled" ? recipients_result.value : []);
         setChannels(channels_result.status === "fulfilled" ? channels_result.value : []);
-        const failure = [recipients_result, channels_result].find((result): result is PromiseRejectedResult => result.status === "rejected");
+        setSlackMembers(members_result.status === "fulfilled" ? members_result.value : []);
+        setIsLoadingSlackMembers(false);
+        const failure = [recipients_result, channels_result, members_result].find((result): result is PromiseRejectedResult => result.status === "rejected");
         if (failure) setLoadError(apiErrorMessage(failure.reason, "Failed to load the Slack members or channels."));
       } else {
         setRecipients([]);
         setChannels([]);
+        setSlackMembers([]);
       }
     } catch (failure) {
       setLoadError(apiErrorMessage(failure, "Failed to load the Slack notification tests."));
@@ -100,6 +124,17 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
     }
   }, []);
 
+  const refreshSlackMembers = useCallback(async () => {
+    setIsLoadingSlackMembers(true);
+    try {
+      setSlackMembers(await slackService.getSlackMembers(true));
+    } catch (failure) {
+      setLoadError(apiErrorMessage(failure, "Failed to load the Slack members."));
+    } finally {
+      setIsLoadingSlackMembers(false);
+    }
+  }, []);
+
   const selected_user_id = recipients.some((recipient) => recipient.user_id === chosen_user_id) ? chosen_user_id : (recipients[0]?.user_id ?? null);
   const selected_channel_id = channels.some((channel) => channel.id === chosen_channel_id) ? chosen_channel_id : (channels[0]?.id ?? null);
 
@@ -111,9 +146,14 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
       const needs_channel = test.target === "channel" || test.target === "user_and_channel";
       if (needs_recipient && selected_user_id === null) return "Choose a recipient who linked their Slack account.";
       if (needs_channel && selected_channel_id === null) return "Choose a channel.";
+      if (test.target === "slack_member") {
+        if (selected_slack_user_id === null) return "Choose a Slack member.";
+        if (member_message.trim() === "") return "Write the message.";
+        if (member_message.length > SLACK_TEST_MESSAGE_MAX_LENGTH) return `Keep the message under ${SLACK_TEST_MESSAGE_MAX_LENGTH} characters.`;
+      }
       return null;
     },
-    [catalog, selected_user_id, selected_channel_id]
+    [catalog, selected_user_id, selected_channel_id, selected_slack_user_id, member_message]
   );
 
   const executeTest = useCallback(
@@ -121,7 +161,12 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
       setRunningKey(test.key);
       let result: SlackNotificationTestResultDto;
       try {
-        result = await slackService.runNotificationTest(test.key, { user_id: selected_user_id, channel_id: selected_channel_id });
+        result = await slackService.runNotificationTest(test.key, {
+          user_id: selected_user_id,
+          channel_id: selected_channel_id,
+          slack_user_id: selected_slack_user_id,
+          message: member_message.trim() || null,
+        });
       } catch (failure) {
         // The request itself failed (validation, rate limit, network), shown as a failed result.
         result = {
@@ -138,7 +183,7 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
       setResults((current) => ({ ...current, [test.key]: result }));
       setRunningKey(null);
     },
-    [selected_user_id, selected_channel_id]
+    [selected_user_id, selected_channel_id, selected_slack_user_id, member_message]
   );
 
   const runTest = useCallback(
@@ -197,6 +242,13 @@ export function useSlackNotificationTests(): SlackNotificationTestsApi {
     selected_channel_id,
     setSelectedUserId,
     setSelectedChannelId,
+    slack_members,
+    is_loading_slack_members,
+    refreshSlackMembers,
+    selected_slack_user_id,
+    setSelectedSlackUserId,
+    member_message,
+    setMemberMessage,
     results,
     running_key,
     is_running_batch,

@@ -170,8 +170,11 @@ export const SLACK_TEST_MESSAGE_MAX_LENGTH = 1000;
 /** Groups of the Slack notification test suite, in the order the page shows them. */
 export type SlackNotificationTestCategory = "connection" | "notifications" | "direct_messages" | "channels" | "events";
 
-/** What a notification test sends to: nothing, a linked member, a channel, or a channel about a member. */
-export type SlackNotificationTestTarget = "none" | "user" | "channel" | "user_and_channel";
+/**
+ * What a notification test sends to: nothing, a linked member, a channel, a channel about a member,
+ * or any person in the Slack workspace with a custom message.
+ */
+export type SlackNotificationTestTarget = "none" | "user" | "channel" | "user_and_channel" | "slack_member";
 
 /** One test of `App\Enums\SlackNotificationTest`, as the catalog endpoint describes it. */
 export type SlackNotificationTestDto = {
@@ -222,4 +225,20 @@ export type SlackNotificationTestResultDto = {
 export type SlackNotificationTestTargets = {
   user_id: number | null;
   channel_id: string | null;
+  /** Any Slack workspace member, for the "message any Slack member" test. */
+  slack_user_id: string | null;
+  message: string | null;
+};
+
+/** A person in the active Slack workspace, linked to the app or not, from the diagnostics slack-members endpoint. */
+export type SlackWorkspaceMemberDto = {
+  id: string;
+  /** Slack handle. */
+  name: string;
+  real_name: string | null;
+  display_name: string | null;
+  /** Only present when the app holds `users:read.email`. */
+  email: string | null;
+  image_url: string | null;
+  is_admin: boolean;
 };

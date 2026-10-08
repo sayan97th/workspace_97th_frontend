@@ -7,6 +7,7 @@ import { RefreshIcon, SendIcon } from "@/components/websocket-test/icons";
 import { TONE_CLASSES } from "@/components/websocket-test/status-meta";
 import { useSlackNotificationTests } from "@/hooks/useSlackNotificationTests";
 import type { SlackDiagnosticStatus, SlackNotificationTestCategory, SlackNotificationTestDto } from "@/types/slack";
+import SlackMemberMessageCard from "./SlackMemberMessageCard";
 import SlackNotificationTestRow, { RESULT_STATUS_META } from "./SlackNotificationTestRow";
 import SlackTestAccessGate from "./SlackTestAccessGate";
 import SlackTestTargetsCard from "./SlackTestTargetsCard";
@@ -102,6 +103,8 @@ const SlackNotificationTestsContent: React.FC = () => {
 
       {catalog ? (
         <>
+          <SlackMemberMessageCard suite={suite} />
+
           <SlackTestTargetsCard suite={suite} />
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-shell-border bg-shell-panel px-5 py-4 shadow-theme-xs">

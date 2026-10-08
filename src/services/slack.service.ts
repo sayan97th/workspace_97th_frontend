@@ -12,6 +12,7 @@ import type {
   SlackNotificationTestTargets,
   SlackRecipientDto,
   SlackStatusDto,
+  SlackWorkspaceMemberDto,
   SlackWorkspacesResponse,
 } from "@/types/slack";
 
@@ -136,6 +137,15 @@ export const slackService = {
   /** GET /api/integrations/slack/diagnostics/notification-tests, administrators only. Every test of the notification test suite. */
   async getNotificationTests(): Promise<SlackNotificationTestCatalogDto> {
     return apiClient.get<SlackNotificationTestCatalogDto>("/api/integrations/slack/diagnostics/notification-tests");
+  },
+
+  /**
+   * GET /api/integrations/slack/diagnostics/slack-members, administrators only. Every person in the
+   * active Slack workspace, linked to the app or not. `refresh` skips the API's short lived cache.
+   */
+  async getSlackMembers(refresh = false): Promise<SlackWorkspaceMemberDto[]> {
+    const response = await apiClient.get<{ data: SlackWorkspaceMemberDto[] }>(`/api/integrations/slack/diagnostics/slack-members${refresh ? "?refresh=1" : ""}`);
+    return response.data;
   },
 
   /**

@@ -25,6 +25,7 @@ const TARGET_LABELS: Record<SlackNotificationTestTarget, string | null> = {
   user: "Recipient",
   channel: "Channel",
   user_and_channel: "Recipient and channel",
+  slack_member: "Slack member",
 };
 
 const ResultIcon: React.FC<{ status: SlackDiagnosticStatus | null; is_running: boolean }> = ({ status, is_running }) => {
