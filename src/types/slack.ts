@@ -166,3 +166,60 @@ export type SlackRecipientDto = {
 
 /** Mirrors `SlackUserTestRequest::MESSAGE_MAX_LENGTH` on the API. */
 export const SLACK_TEST_MESSAGE_MAX_LENGTH = 1000;
+
+/** Groups of the Slack notification test suite, in the order the page shows them. */
+export type SlackNotificationTestCategory = "connection" | "notifications" | "direct_messages" | "channels" | "events";
+
+/** What a notification test sends to: nothing, a linked member, a channel, or a channel about a member. */
+export type SlackNotificationTestTarget = "none" | "user" | "channel" | "user_and_channel";
+
+/** One test of `App\Enums\SlackNotificationTest`, as the catalog endpoint describes it. */
+export type SlackNotificationTestDto = {
+  key: string;
+  label: string;
+  description: string;
+  category: SlackNotificationTestCategory;
+  target: SlackNotificationTestTarget;
+  required_scopes: string[];
+  /** Scopes of `required_scopes` the active workspace was installed without, the test is skipped until it is reconnected. */
+  missing_scopes: string[];
+  /** Whether running the test puts a message or a file in Slack. */
+  sends_message: boolean;
+};
+
+/** `GET /api/integrations/slack/diagnostics/notification-tests`. */
+export type SlackNotificationTestCatalogDto = {
+  workspace: { team_id: string; team_name: string } | null;
+  granted_scopes: string[];
+  /** Laravel queue connection, `sync` delivers queued Slack messages right away. */
+  queue_connection: string;
+  /** Whether Slack can reach the events URL, needed by the app mention test. */
+  can_receive_events: boolean;
+  tests: SlackNotificationTestDto[];
+};
+
+/** One Slack Web API call a test made, or a local check such as the recipient's preferences. */
+export type SlackNotificationTestStepDto = {
+  name: string;
+  status: Exclude<SlackDiagnosticStatus, "skipped">;
+  detail: string | null;
+};
+
+/** `POST /api/integrations/slack/diagnostics/notification-tests/{key}`. */
+export type SlackNotificationTestResultDto = {
+  key: string;
+  label: string;
+  status: SlackDiagnosticStatus;
+  detail: string;
+  steps: SlackNotificationTestStepDto[];
+  /** Links to what the test produced in Slack, such as the message permalink. */
+  links: { label: string; url: string }[];
+  duration_ms: number;
+  ran_at: string;
+};
+
+/** Who and where the notification tests send to. */
+export type SlackNotificationTestTargets = {
+  user_id: number | null;
+  channel_id: string | null;
+};

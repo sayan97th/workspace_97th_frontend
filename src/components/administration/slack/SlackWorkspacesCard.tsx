@@ -100,7 +100,7 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) 
       {workspace.missing_scopes.length > 0 && !is_confirming ? (
         <p className="ml-[52px] mt-2 text-[12px] leading-relaxed text-shell-text-muted">
           This workspace was connected before the app asked for {workspace.missing_scopes.join(", ")}. Use Reconnect and choose {workspace.team_name} on
-          the Slack page so members can be matched by email.
+          the Slack page so members can be matched by email and every Slack notification test can run.
         </p>
       ) : null}
 

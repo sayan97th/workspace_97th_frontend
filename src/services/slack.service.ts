@@ -7,6 +7,9 @@ import type {
   SlackConnectedWorkspaceDto,
   SlackDiagnosticsDto,
   SlackMemberMatchResult,
+  SlackNotificationTestCatalogDto,
+  SlackNotificationTestResultDto,
+  SlackNotificationTestTargets,
   SlackRecipientDto,
   SlackStatusDto,
   SlackWorkspacesResponse,
@@ -128,5 +131,18 @@ export const slackService = {
   /** POST /api/integrations/slack/diagnostics/user-test, administrators only. Sends `message` to `user_id` as a Slack direct message. */
   async sendUserTestNotification(user_id: number, message: string): Promise<{ message: string }> {
     return apiClient.post<{ message: string }>("/api/integrations/slack/diagnostics/user-test", { user_id, message });
+  },
+
+  /** GET /api/integrations/slack/diagnostics/notification-tests, administrators only. Every test of the notification test suite. */
+  async getNotificationTests(): Promise<SlackNotificationTestCatalogDto> {
+    return apiClient.get<SlackNotificationTestCatalogDto>("/api/integrations/slack/diagnostics/notification-tests");
+  },
+
+  /**
+   * POST /api/integrations/slack/diagnostics/notification-tests/{key}, administrators only. Runs one
+   * test against the real Slack workspace, a failed test still answers 200 with its result.
+   */
+  async runNotificationTest(key: string, targets: SlackNotificationTestTargets): Promise<SlackNotificationTestResultDto> {
+    return apiClient.post<SlackNotificationTestResultDto>(`/api/integrations/slack/diagnostics/notification-tests/${encodeURIComponent(key)}`, targets);
   },
 };
