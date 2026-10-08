@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { Building2, FileText, Mail, MessageCircle, Plus, Trash2, Users, Webhook } from "lucide-react";
 import type { AccountAutomationTemplateDto, BoardAutomationTemplateDto } from "@/types/board-automation";
 import { SearchIcon } from "@/icons/workspace-icons";
+import SlackLogo from "@/components/slack/SlackLogo";
+import SlackAppPage from "../slack/SlackAppPage";
+import type { SlackRecipe } from "../slack/slackRecipes";
 import type { AutomationBuilderContext } from "./automationCatalog";
 import { describeDefinition, sentenceText } from "./automationSentence";
 import { AUTOMATION_RECIPES, RECIPE_APP_LABELS, missingColumns, titleParts, type AutomationRecipe, type GalleryCategory, type RecipeApp } from "./automationTemplates";
@@ -22,7 +25,12 @@ export type TemplateGalleryProps = {
   onDeleteSaved: (template_id: number) => Promise<void>;
   onDeleteAccount: (template_id: number) => Promise<void>;
   onCustom: () => void;
+  /** Starts the Slack integration flow for a recipe of the Slack app page, the Slack entry is hidden when omitted. */
+  onUseSlackRecipe?: (recipe: SlackRecipe) => void;
 };
+
+/** Apps listed in the Integrations box at the bottom of the categories. */
+type GalleryApp = "slack";
 
 const CATEGORIES: { id: GalleryCategory; label: string }[] = [
   { id: "explore", label: "Explore all" },
@@ -90,8 +98,9 @@ function TemplateCard({ name, sentence, footer, onUse, onDelete, is_deleting }: 
  * builder with the sentence prefilled.
  */
 export default function TemplateGallery(props: TemplateGalleryProps) {
-  const { context, saved_templates, is_loading_saved, account_templates, is_loading_account, can_manage_account_templates, onUseRecipe, onUseSaved, onUseAccount, onDeleteSaved, onDeleteAccount, onCustom } = props;
+  const { context, saved_templates, is_loading_saved, account_templates, is_loading_account, can_manage_account_templates, onUseRecipe, onUseSaved, onUseAccount, onDeleteSaved, onDeleteAccount, onCustom, onUseSlackRecipe } = props;
   const [category, setCategory] = useState<GalleryCategory>("explore");
+  const [app, setApp] = useState<GalleryApp | null>(null);
   const [search, setSearch] = useState("");
   const [deleting_key, setDeletingKey] = useState<string | null>(null);
 
@@ -117,23 +126,57 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <nav aria-label="Template categories" className="hidden w-[240px] flex-none flex-col gap-1 border-r border-boardtree-border-soft bg-boardtree-panel-alt px-3 py-5 md:flex">
+      <nav aria-label="Template categories" className="hidden w-[240px] flex-none flex-col gap-1 overflow-y-auto border-r border-boardtree-border-soft bg-boardtree-panel-alt px-3 py-5 md:flex">
         <div className="mb-2 px-3 text-[16px] font-semibold text-boardtree-text">Categories</div>
         {CATEGORIES.map((entry) => {
           const count = countFor(entry.id);
+          const is_current = app === null && category === entry.id;
           return (
             <button
               key={entry.id}
               type="button"
-              onClick={() => setCategory(entry.id)}
-              aria-current={category === entry.id ? "page" : undefined}
-              className={`${NAV_ROW} ${category === entry.id ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-secondary hover:bg-boardtree-hover"}`}
+              onClick={() => {
+                setApp(null);
+                setCategory(entry.id);
+              }}
+              aria-current={is_current ? "page" : undefined}
+              className={`${NAV_ROW} ${is_current ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-secondary hover:bg-boardtree-hover"}`}
             >
               <span className="flex-1 truncate">{entry.label}</span>
               {count ? <span className="text-[12px] text-boardtree-text-faint">{count}</span> : null}
             </button>
           );
         })}
+
+        {onUseSlackRecipe && (
+          <div aria-label="Integrations" role="group" className="mt-auto pt-6">
+            <div className="rounded-[4px] border border-boardtree-border bg-boardtree-surface py-2 text-center text-[13.5px] text-boardtree-text">Integrations</div>
+            <div className="mt-3 flex items-center justify-around px-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setApp(null);
+                  setCategory("communication");
+                }}
+                title="Email"
+                aria-label="Email templates"
+                className="flex h-9 w-9 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover"
+              >
+                <Mail size={20} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setApp("slack")}
+                title="Slack"
+                aria-label="Slack"
+                aria-current={app === "slack" ? "page" : undefined}
+                className={`flex h-9 w-9 items-center justify-center rounded-[6px] hover:bg-boardtree-hover ${app === "slack" ? "bg-boardtree-accent-surface ring-1 ring-boardtree-accent" : ""}`}
+              >
+                <SlackLogo size={20} />
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
@@ -157,16 +200,27 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
             />
           </label>
           <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value as GalleryCategory)}
+            value={app ?? category}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (value === "slack") {
+                setApp("slack");
+                return;
+              }
+              setApp(null);
+              setCategory(value as GalleryCategory);
+            }}
             aria-label="Category"
             className="h-9 rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2.5 text-[13px] text-boardtree-text md:hidden"
           >
             {CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
+            {onUseSlackRecipe && <option value="slack">Slack</option>}
           </select>
         </div>
 
-        {show_account && (
+        {app === "slack" && onUseSlackRecipe && <SlackAppPage search={text} onBack={() => setApp(null)} onUse={onUseSlackRecipe} />}
+
+        {app === null && show_account && (
           <section aria-label="Created in your account" className="mb-7">
             <h3 className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-boardtree-text-secondary">
               <Building2 size={15} />
@@ -196,7 +250,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
           </section>
         )}
 
-        {show_saved && (
+        {app === null && show_saved && (
           <section aria-label="Saved templates" className="mb-7">
             <h3 className="mb-3 text-[14px] font-semibold text-boardtree-text-secondary">Saved on this board</h3>
             {is_loading_saved ? (
@@ -223,7 +277,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
           </section>
         )}
 
-        {show_recipes && (
+        {app === null && show_recipes && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {recipes.map((recipe) => {
               const missing = missingColumns(recipe.requires, context);

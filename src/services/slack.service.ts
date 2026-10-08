@@ -5,6 +5,7 @@ import type {
   SlackAuthorizationDisplay,
   SlackChannelDto,
   SlackConnectedWorkspaceDto,
+  SlackConnectionsResponse,
   SlackDiagnosticsDto,
   SlackMemberMatchResult,
   SlackNotificationTestCatalogDto,
@@ -57,6 +58,28 @@ export const slackService = {
   async requestLinkUrl(return_path?: string, display: SlackAuthorizationDisplay = "tab"): Promise<string> {
     const response = await apiClient.post<{ url: string }>("/api/integrations/slack/link-url", { return_path, display });
     return response.url;
+  },
+
+  /** GET /api/integrations/slack/connections. The caller's own Slack accounts for automations, the newest first. */
+  async getConnections(): Promise<SlackConnectionsResponse> {
+    return apiClient.get<SlackConnectionsResponse>("/api/integrations/slack/connections");
+  },
+
+  /** POST /api/integrations/slack/connections/url. The "Connect your Slack account" URL, `return_path` works as in {@link requestInstallUrl}. */
+  async requestConnectionUrl(return_path?: string, display: SlackAuthorizationDisplay = "tab"): Promise<string> {
+    const response = await apiClient.post<{ url: string }>("/api/integrations/slack/connections/url", { return_path, display });
+    return response.url;
+  },
+
+  /** GET /api/integrations/slack/connections/{id}/channels. Channels of that account's workspace, `refresh` skips the API cache. */
+  async getConnectionChannels(connection_id: number, refresh = false): Promise<SlackChannelDto[]> {
+    const response = await apiClient.get<{ data: SlackChannelDto[] }>(`/api/integrations/slack/connections/${connection_id}/channels${refresh ? "?refresh=1" : ""}`);
+    return response.data;
+  },
+
+  /** DELETE /api/integrations/slack/connections/{id}. The workspace stays connected for everyone else. */
+  async deleteConnection(connection_id: number): Promise<{ message: string }> {
+    return apiClient.delete<{ message: string }>(`/api/integrations/slack/connections/${connection_id}`);
   },
 
   /** GET /api/integrations/slack/workspaces, administrators only. The active workspace first. */

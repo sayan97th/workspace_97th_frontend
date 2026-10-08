@@ -23,6 +23,8 @@ import type { AutomationBoardTarget, AutomationBuilderContext, AutomationColumn,
 import { draftFromAutomation, draftFromDefinition, emptyDraft, type AutomationDraft } from "./builder/builderDraft";
 import { definitionFromAccountTemplate, describeColumnNeed } from "./builder/accountTemplates";
 import { draftForColumn } from "./builder/automationColumns";
+import SlackIntegrationFlow from "./slack/SlackIntegrationFlow";
+import type { SlackRecipe } from "./slack/slackRecipes";
 
 export type AutomationsModalProps = {
   is_open: boolean;
@@ -77,7 +79,7 @@ export default function AutomationsModal(props: AutomationsModalProps) {
         aria-modal="true"
         aria-label="Automations"
         onClick={(event) => event.stopPropagation()}
-        className="flex h-[88vh] max-h-[920px] w-[1200px] max-w-[96vw] flex-col overflow-hidden rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+        className="relative flex h-[88vh] max-h-[920px] w-[1200px] max-w-[96vw] flex-col overflow-hidden rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
       >
         <AutomationCenter {...props} />
       </div>
@@ -103,6 +105,8 @@ function AutomationCenter(props: AutomationsModalProps) {
   const [screen, setScreen] = useState<Screen>({ kind: "gallery" });
   const [is_saving, setIsSaving] = useState(false);
   const [save_error, setSaveError] = useState<string | null>(null);
+  const [slack_recipe, setSlackRecipe] = useState<SlackRecipe | null>(null);
+  const item_columns = useMemo(() => columns.filter((column) => column.scope === "item"), [columns]);
 
   useEffect(() => {
     let cancelled = false;
@@ -284,6 +288,7 @@ function AutomationCenter(props: AutomationsModalProps) {
             onDeleteSaved={deleteTemplate}
             onDeleteAccount={deleteAccountTemplate}
             onCustom={() => openBuilder(emptyDraft())}
+            onUseSlackRecipe={setSlackRecipe}
           />
         )}
 
@@ -359,6 +364,25 @@ function AutomationCenter(props: AutomationsModalProps) {
           </div>
         )}
       </div>
+
+      {slack_recipe && (
+        <SlackIntegrationFlow
+          key={slack_recipe.id}
+          recipe={slack_recipe}
+          columns={item_columns}
+          people={people}
+          slack_status={slack.status}
+          return_path={return_path}
+          onBack={() => setSlackRecipe(null)}
+          onCreate={props.onCreate}
+          onCreated={() => {
+            setSlackRecipe(null);
+            setScreen({ kind: "gallery" });
+            setMode("manage");
+            void slack.reloadStatus();
+          }}
+        />
+      )}
     </>
   );
 }

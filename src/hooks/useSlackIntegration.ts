@@ -75,6 +75,7 @@ export const slackCallbackErrorMessage = (reason: string | null, workspace_name?
 
 const successNotice = (message: Pick<SlackAuthorizationMessage, "purpose" | "workspace" | "matched">): string => {
   if (message.purpose === "link") return "Your Slack account is connected.";
+  if (message.purpose === "connect") return message.workspace ? `Your ${message.workspace} Slack account is connected.` : "Your Slack account is connected.";
 
   const workspace = message.workspace ? `${message.workspace} is connected and active.` : "Slack connected successfully.";
   if (message.matched === null || message.matched === undefined) return workspace;

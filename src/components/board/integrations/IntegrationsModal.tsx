@@ -11,6 +11,8 @@ import CommunicationView, { type ChannelFilter } from "./CommunicationView";
 import ConnectionsView from "./ConnectionsView";
 import { EnvelopeIcon } from "./integrationUi";
 import ManageView from "./manage/ManageView";
+import SlackIntegrationFlow from "../automations/slack/SlackIntegrationFlow";
+import { slackRecipeFor, type SlackRecipe } from "../automations/slack/slackRecipes";
 
 /** What the Communication and Active automations categories need. Omitted on boards without an automations engine, which hides both. */
 export type IntegrationsAutomationTools = {
@@ -69,7 +71,7 @@ export default function IntegrationsModal({ is_open, onClose, board_label, retur
         aria-modal="true"
         aria-label="Integrations"
         onClick={(e) => e.stopPropagation()}
-        className="flex h-[82vh] max-h-[860px] w-[1120px] max-w-[96vw] flex-col overflow-hidden rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
+        className="relative flex h-[82vh] max-h-[860px] w-[1120px] max-w-[96vw] flex-col overflow-hidden rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]"
       >
         <IntegrationsModalBody board_label={board_label} onClose={onClose} return_path={return_path} automation_tools={automation_tools} />
       </div>
@@ -83,6 +85,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
   const [mode, setMode] = useState<Mode>("create");
   const [view, setView] = useState<View>("connections");
   const [channel_filter, setChannelFilter] = useState<ChannelFilter>("all");
+  const [slack_recipe, setSlackRecipe] = useState<SlackRecipe | null>(null);
 
   const automation_count = automation_tools?.automations.length ?? 0;
   const is_slack_connected = slack.status?.is_connected === true;
@@ -183,6 +186,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
               onCreate={automation_tools.onCreate}
               onCreated={() => setMode("manage")}
               onGoToConnections={() => setView("connections")}
+              onUseSlackTemplate={(template) => setSlackRecipe(slackRecipeFor(template.trigger, template.channel))}
             />
           )}
 
@@ -212,6 +216,24 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
           )}
         </div>
       </div>
+
+      {slack_recipe && automation_tools && (
+        <SlackIntegrationFlow
+          key={slack_recipe.id}
+          recipe={slack_recipe}
+          columns={automation_tools.columns}
+          people={automation_tools.people}
+          slack_status={slack.status}
+          return_path={return_path}
+          onBack={() => setSlackRecipe(null)}
+          onCreate={automation_tools.onCreate}
+          onCreated={() => {
+            setSlackRecipe(null);
+            setMode("manage");
+            void slack.reloadStatus();
+          }}
+        />
+      )}
     </>
   );
 }

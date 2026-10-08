@@ -23,6 +23,8 @@ export type CommunicationViewProps = {
   /** Called once an automation was saved, so the dialog can show it under "Active automations". */
   onCreated: () => void;
   onGoToConnections: () => void;
+  /** Opens the Slack integration flow for a Slack template instead of the form, like the Automations center does. */
+  onUseSlackTemplate?: (template: CommunicationTemplate) => void;
 };
 
 const channelMatchesFilter = (channel: CommunicationChannel, filter: ChannelFilter) =>
@@ -34,7 +36,7 @@ const TILE = "flex h-[70px] w-[190px] flex-none items-center justify-center gap-
  * Integrate dialog > Communication. The template library for messaging automations: pick a channel
  * tile (Email or Slack) to narrow the list, search, then "Use template" opens the form in place.
  */
-export default function CommunicationView({ slack, columns, people, channel_filter, onChannelFilterChange, onCreate, onCreated, onGoToConnections }: CommunicationViewProps) {
+export default function CommunicationView({ slack, columns, people, channel_filter, onChannelFilterChange, onCreate, onCreated, onGoToConnections, onUseSlackTemplate }: CommunicationViewProps) {
   const slack_options = useSlackAutomationOptions(true);
   const [search, setSearch] = useState("");
   const [template, setTemplate] = useState<CommunicationTemplate | null>(null);
@@ -126,7 +128,7 @@ export default function CommunicationView({ slack, columns, people, channel_filt
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {visible_templates.map((t) => (
-          <CommunicationTemplateCard key={t.id} template={t} onUse={setTemplate} />
+          <CommunicationTemplateCard key={t.id} template={t} onUse={(picked) => (picked.channel !== "email" && onUseSlackTemplate ? onUseSlackTemplate(picked) : setTemplate(picked))} />
         ))}
       </div>
       {visible_templates.length === 0 && <div className="text-[12.5px] text-boardtree-text-faint">No templates match your search.</div>}

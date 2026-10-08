@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import SlackLogo from "@/components/slack/SlackLogo";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
+import { useSlackConnections } from "@/hooks/useSlackConnections";
 import type { BoardAutomationDto } from "@/types/board-automation";
 import { COMMUNICATION_ACTION_TYPES } from "../../automations/communicationTemplates";
 import { DANGER_BUTTON, EnvelopeIcon, MessageBanner, PRIMARY_BUTTON, SECONDARY_BUTTON, StatusPill } from "../integrationUi";
@@ -38,6 +39,8 @@ function ConnectionRow({ icon, name, description, status_pill, used_by, children
  */
 export default function MyConnectionsTab({ slack, return_path, automations, onOpenSetup }: MyConnectionsTabProps) {
   const [is_confirming_disconnect, setIsConfirmingDisconnect] = useState(false);
+  const slack_connections = useSlackConnections(true);
+  const [removing_connection_id, setRemovingConnectionId] = useState<number | null>(null);
 
   const status = slack.status;
   const workspace = status?.workspace ?? null;
@@ -135,6 +138,68 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
             </>
           )}
         </ConnectionRow>
+      </div>
+
+      <div className="mb-2 mt-6 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-[14px] font-semibold text-boardtree-text">My Slack accounts for automations</h3>
+          <p className="text-[12.5px] text-boardtree-text-muted">The accounts you connected from a Slack recipe. Channel automations post through the account they were created with.</p>
+        </div>
+        {slack_connections.can_connect && (
+          <button type="button" disabled={slack_connections.is_awaiting_slack} onClick={() => void slack_connections.connect(return_path)} className={SECONDARY_BUTTON}>
+            {slack_connections.is_awaiting_slack ? "Waiting for Slack..." : "Connect an account"}
+          </button>
+        )}
+      </div>
+
+      <MessageBanner error={slack_connections.error} notice={slack_connections.notice} onDismiss={slack_connections.dismissMessages} />
+
+      <div className="overflow-hidden rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface">
+        {slack_connections.is_loading ? (
+          <div className="px-4 py-4 text-[12.5px] text-boardtree-text-faint">Loading your Slack accounts...</div>
+        ) : slack_connections.connections.length === 0 ? (
+          <div className="px-4 py-4 text-[12.5px] text-boardtree-text-muted">No Slack account connected yet. Use any Slack recipe in Create to connect one.</div>
+        ) : (
+          slack_connections.connections.map((connection) => (
+            <React.Fragment key={connection.id}>
+              <ConnectionRow
+                icon={<SlackLogo size={22} />}
+                name={connection.team_name}
+                status_pill={connection.is_active_workspace ? <StatusPill label="Active workspace" is_positive /> : null}
+                description={`${connection.slack_user_name ? `Connected as ${connection.slack_user_name}. ` : ""}${
+                  connection.automations_count === 1 ? "Used by 1 automation." : `Used by ${connection.automations_count} automations.`
+                }`}
+              >
+                {removing_connection_id !== connection.id && (
+                  <button type="button" onClick={() => setRemovingConnectionId(connection.id)} className={SECONDARY_BUTTON}>Disconnect</button>
+                )}
+              </ConnectionRow>
+              {removing_connection_id === connection.id && (
+                <div className="border-b border-boardtree-border-soft bg-boardtree-danger-hover px-4 py-3 last:border-b-0">
+                  <p className="text-[12.5px] leading-relaxed text-boardtree-text-secondary">
+                    {connection.automations_count > 0
+                      ? "Automations made with this account stop posting to Slack until you edit them and pick another channel."
+                      : "The workspace stays connected for everyone else."}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      disabled={slack_connections.is_working}
+                      onClick={async () => {
+                        await slack_connections.disconnect(connection.id);
+                        setRemovingConnectionId(null);
+                      }}
+                      className={DANGER_BUTTON}
+                    >
+                      {slack_connections.is_working ? "Disconnecting..." : "Disconnect account"}
+                    </button>
+                    <button type="button" onClick={() => setRemovingConnectionId(null)} className={SECONDARY_BUTTON}>Cancel</button>
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
+          ))
+        )}
       </div>
 
       <p className="mt-3 text-[12.5px] text-boardtree-text-muted">

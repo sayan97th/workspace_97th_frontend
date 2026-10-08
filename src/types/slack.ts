@@ -54,8 +54,11 @@ export type SlackChannelDto = {
 /** What the backend redirects the browser back with after a Slack OAuth round trip (`?slack=...&reason=...`). */
 export type SlackCallbackResult = "connected" | "error";
 
-/** Which OAuth flow finished: installing the app into a workspace, or a member linking their own account. */
-export type SlackAuthorizationPurpose = "install" | "link";
+/**
+ * Which OAuth flow finished: installing the app into a workspace, a member linking their own account
+ * for notifications, or a member connecting their Slack account for automations.
+ */
+export type SlackAuthorizationPurpose = "install" | "link" | "connect";
 
 /** How a Slack authorization is opened, `tab` keeps the workspace open in the original tab. */
 export type SlackAuthorizationDisplay = "tab" | "page";
@@ -68,6 +71,35 @@ export type SlackAuthorizationMessage = {
   reason: string | null;
   workspace: string | null;
   matched: number | null;
+  /** The account a "connect" flow just connected, so the Automations center can select it. */
+  connection_id?: number | null;
+};
+
+/**
+ * One of the signed in user's own Slack accounts, connected from the Automations center. Slack
+ * channel automations made with it post through its workspace, from `GET /api/integrations/slack/connections`.
+ */
+export type SlackConnectionDto = {
+  id: number;
+  team_id: string;
+  team_name: string;
+  team_url: string | null;
+  slack_user_id: string | null;
+  /** The Slack member's name, null when the app cannot read profiles. */
+  slack_user_name: string | null;
+  /** Whether this is the account wide active workspace, the one notifications use. */
+  is_active_workspace: boolean;
+  connected_at: string | null;
+  /** How many automations post through this account. */
+  automations_count: number;
+};
+
+export type SlackConnectionsResponse = {
+  data: SlackConnectionDto[];
+  /** Whether the Slack app was set up in Administration, nothing can be connected before. */
+  is_configured: boolean;
+  /** Whether the caller may connect another account (the app is set up and they may use integrations). */
+  can_connect: boolean;
 };
 
 /** One connected Slack workspace, from `GET /api/integrations/slack/workspaces`. */

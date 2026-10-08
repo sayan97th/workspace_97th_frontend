@@ -257,6 +257,8 @@ export type BoardAutomationActionParams = {
   slack_channel_name?: string | null;
   /** `slack_notify_channel` only: the Slack workspace the channel belongs to, the API skips the post while another workspace is active. */
   slack_team_id?: string | null;
+  /** `slack_notify_channel` only: the owner's own Slack account the post goes through, set by the Slack recipes. */
+  slack_connection_id?: number | null;
   /** `create_item` only: columns of the new item filled from text templates, such as `{payload.email}`. */
   field_mappings?: BoardAutomationFieldMapping[];
   /** `shift_date`: how far to push the date, negative to pull it earlier. `wait`: minutes, hours or days. */

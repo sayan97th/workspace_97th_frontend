@@ -11,7 +11,9 @@ import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
 /** Short pause so the person sees the result before the tab closes. */
 const CLOSE_DELAY_MS = 1200;
 
-const readPurpose = (value: string | null): SlackAuthorizationPurpose | null => (value === "install" || value === "link" ? value : null);
+const readPurpose = (value: string | null): SlackAuthorizationPurpose | null => (value === "install" || value === "link" || value === "connect" ? value : null);
+
+const readNumber = (value: string | null): number | null => (value !== null && /^\d+$/.test(value) ? Number(value) : null);
 
 /**
  * The last step of a Slack authorization opened in a new tab: tells the tab that started it how
@@ -32,7 +34,8 @@ const SlackAuthorizationComplete: React.FC = () => {
       purpose: readPurpose(search_params.get("purpose")),
       reason: search_params.get("reason"),
       workspace: search_params.get("workspace"),
-      matched: matched !== null && /^\d+$/.test(matched) ? Number(matched) : null,
+      matched: readNumber(matched),
+      connection_id: readNumber(search_params.get("connection_id")),
     };
   }, [search_params]);
 
@@ -49,7 +52,7 @@ const SlackAuthorizationComplete: React.FC = () => {
   }, [message]);
 
   const is_connected = message.result === "connected";
-  const back_href = message.purpose === "link" ? "/profile?section=notifications" : SLACK_SETUP_PATH;
+  const back_href = message.purpose === "link" ? "/profile?section=notifications" : message.purpose === "connect" ? "/automations" : SLACK_SETUP_PATH;
 
   let title: string;
   let detail: string;
@@ -57,6 +60,9 @@ const SlackAuthorizationComplete: React.FC = () => {
   if (!is_connected) {
     title = "Slack was not connected";
     detail = slackCallbackErrorMessage(message.reason);
+  } else if (message.purpose === "connect") {
+    title = message.workspace ? `Your ${message.workspace} Slack account is connected` : "Your Slack account is connected";
+    detail = "Go back to the workspace tab to finish your Slack automation.";
   } else if (message.purpose === "link") {
     title = "Your Slack account is connected";
     detail = "You will receive your notifications as Slack direct messages.";
