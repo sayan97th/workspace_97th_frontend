@@ -22,6 +22,13 @@ export type SlackUserLinkDto = {
   linked_at: string | null;
 };
 
+/**
+ * Which Slack page "Connect my Slack" opens. `sign_in` is Slack's "Sign in with Slack", `authorize`
+ * is the "Add to Slack" approval page, used when the site has no HTTPS redirect URL. Mirrors
+ * `SlackService::LINK_METHOD_*` on the API.
+ */
+export type SlackLinkMethod = "sign_in" | "authorize";
+
 /** Whether a Slack app was saved in Administration > Integrations > Slack, the only place it is read from. */
 export type SlackCredentialsSource = "database" | "none";
 
@@ -37,6 +44,8 @@ export type SlackStatusDto = {
   can_manage: boolean;
   /** Whether the current user may set up the Slack app itself, a one time setting (admin and account owner). */
   can_configure_app: boolean;
+  /** Which Slack page "Connect my Slack" opens, older API answers omit it. */
+  link_method?: SlackLinkMethod;
   credentials_source: SlackCredentialsSource;
   /** How many Slack workspaces are connected, only one of them is active. */
   workspaces_count: number;
