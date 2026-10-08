@@ -135,7 +135,7 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) 
 };
 
 /**
- * Administration > Integrations > Slack workspaces, like monday.com's Connections page: every
+ * Administration > Integrations > Slack > Slack workspaces, like monday.com's Connections page: every
  * Slack workspace connected to this account, which one is active, and the actions to switch,
  * reconnect, open or disconnect each one.
  */
@@ -170,8 +170,8 @@ const SlackWorkspacesCard: React.FC<SlackWorkspacesCardProps> = ({ slack, admin 
       ) : (
         <p className="mt-2 text-[12px] text-shell-text-faint">
           {slack.status?.can_configure_app
-            ? "Set up the Slack app in Developer settings below, then connect a workspace."
-            : "The account owner needs to set up the Slack app once before a workspace can be connected."}
+            ? "Set up the Slack app above first, then connect a workspace."
+            : "An administrator or the account owner needs to set up the Slack app once before a workspace can be connected."}
         </p>
       )}
 

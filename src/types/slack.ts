@@ -22,16 +22,20 @@ export type SlackUserLinkDto = {
   linked_at: string | null;
 };
 
-/** Whether a Slack app was saved in Administration > Integrations, the only place it is read from. */
+/** Whether a Slack app was saved in Administration > Integrations > Slack, the only place it is read from. */
 export type SlackCredentialsSource = "database" | "none";
 
 export type SlackStatusDto = {
-  /** Whether the Slack app credentials were saved in Administration > Integrations. */
+  /** Whether the Slack app credentials were saved in Administration > Integrations > Slack. */
   is_configured: boolean;
   is_connected: boolean;
+  /** True until the Slack app is set up and a workspace is connected, "Connect my Slack" cannot work before that. */
+  needs_setup?: boolean;
+  /** Frontend path of the Slack setup page, Administration > Integrations > Slack. */
+  setup_path?: string;
   /** Whether the current user may connect, switch or disconnect workspaces (admin and account owner). */
   can_manage: boolean;
-  /** Whether the current user may set up the Slack app itself, a one time developer setting (account owner only). */
+  /** Whether the current user may set up the Slack app itself, a one time setting (admin and account owner). */
   can_configure_app: boolean;
   credentials_source: SlackCredentialsSource;
   /** How many Slack workspaces are connected, only one of them is active. */

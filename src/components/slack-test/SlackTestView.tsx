@@ -13,6 +13,7 @@ import SlackChecklistCard from "./SlackChecklistCard";
 import SlackLiveTestsCard from "./SlackLiveTestsCard";
 import SlackTestAccessGate from "./SlackTestAccessGate";
 import SlackUserNotificationCard from "./SlackUserNotificationCard";
+import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 /**
  * Admin diagnostic screen at /admin/test/slack. Checks every piece the Slack integration depends
@@ -46,8 +47,8 @@ const SlackTestContent: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/administration?section=integrations" className="text-xs font-semibold text-brand-200 hover:underline">
-            Back to Integrations
+          <Link href={SLACK_SETUP_PATH} className="text-xs font-semibold text-brand-200 hover:underline">
+            Back to Slack settings
           </Link>
           <Link
             href="/admin/test/slack/notifications"

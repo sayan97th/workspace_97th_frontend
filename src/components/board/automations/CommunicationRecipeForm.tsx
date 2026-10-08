@@ -7,6 +7,7 @@ import type { SlackAutomationOptions } from "@/hooks/useSlackAutomationOptions";
 import { spliceTextAtCursor } from "@/utils/insertTextAtCursor";
 import { HINT, LABEL, ROW, Radio, SAVE_BUTTON, TEXT_FIELD } from "./automationFormParts";
 import { CHANNEL_ACTION_TYPES, MESSAGE_TOKENS, type CommunicationTemplate } from "./communicationTemplates";
+import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 export type CommunicationRecipeFormProps = {
   template: CommunicationTemplate;
@@ -119,7 +120,7 @@ export default function CommunicationRecipeForm({ template, columns, people, sla
               Connect it in Connections
             </button>
           ) : slack.status?.can_manage ? (
-            <Link href="/administration?section=integrations" className="font-semibold text-boardtree-accent hover:underline">
+            <Link href={SLACK_SETUP_PATH} className="font-semibold text-boardtree-accent hover:underline">
               Connect it from Administration
             </Link>
           ) : (

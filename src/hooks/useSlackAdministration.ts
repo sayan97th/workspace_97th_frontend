@@ -25,8 +25,8 @@ export type SlackAdministrationApi = {
 };
 
 /**
- * Administration > Integrations, the parts only administrators and the account owner see:
- * the connected Slack workspaces and, for the account owner only, the Slack app. Messages go through the shared
+ * Administration > Integrations > Slack, the parts only administrators and the account owner see:
+ * the Slack app and the connected Slack workspaces. Messages go through the shared
  * `slack` hook so the whole section shows one banner, and the list reloads every time a Slack
  * authorization finishes in another tab.
  */

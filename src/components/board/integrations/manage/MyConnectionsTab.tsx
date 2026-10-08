@@ -72,7 +72,7 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
                 {`, ${workspace.linked_members_count} ${workspace.linked_members_count === 1 ? "member" : "members"} connected`}
               </>
             ) : status && !status.is_configured ? (
-              "Slack is not set up yet. Add the Slack app credentials in Administration > Integrations."
+              "Slack is not set up yet. An administrator sets it up in Administration > Integrations > Slack."
             ) : can_manage ? (
               "Add the app to your Slack workspace so automations can post to channels and message people."
             ) : (

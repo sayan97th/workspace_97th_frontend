@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { slackService } from "@/services/slack.service";
 import { listenForSlackAuthorization, openSlackAuthorizationTab } from "@/lib/slackAuthorizationTab";
+import { isSlackSetupError, slackNeedsSetup, slackSetupHref } from "@/lib/slackSetup";
 import type { SlackAuthorizationMessage, SlackAuthorizationPurpose, SlackStatusDto } from "@/types/slack";
 
 export type SlackIntegrationApi = {
@@ -31,7 +32,11 @@ export type SlackIntegrationApi = {
   /** Opens "Add to Slack" in a new tab, to add a workspace or reconnect one. `return_path` is only used when the tab was blocked. */
   connectWorkspace: (return_path?: string) => Promise<void>;
   disconnectWorkspace: () => Promise<void>;
-  /** Opens "Connect my Slack" in a new tab, pinned to the active workspace. */
+  /**
+   * Opens "Connect my Slack" in a new tab, pinned to the active workspace. While Slack still needs
+   * its one time setup, administrators are sent to Administration > Integrations > Slack instead
+   * and everyone else is told to ask one.
+   */
   connectMyAccount: (return_path?: string) => Promise<void>;
   disconnectMyAccount: () => Promise<void>;
   sendTestMessage: () => Promise<void>;
@@ -43,9 +48,9 @@ const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   forbidden: "Only administrators and the account owner can connect a Slack workspace.",
   invalid_state: "The Slack connection request expired. Please try again.",
   not_installed: "Slack is not connected to this account yet.",
-  not_configured: "Slack is not configured yet. Add the Slack app credentials in Administration > Integrations.",
-  bad_client_secret: "Slack rejected the client secret. Check it in Administration > Integrations > Slack app.",
-  invalid_client_id: "Slack does not recognize the client ID. Check it in Administration > Integrations > Slack app.",
+  not_configured: "Slack is not configured yet. Add the Slack app credentials in Administration > Integrations > Slack.",
+  bad_client_secret: "Slack rejected the client secret. Check it in Administration > Integrations > Slack.",
+  invalid_client_id: "Slack does not recognize the client ID. Check it in Administration > Integrations > Slack.",
   bad_redirect_uri: "The redirect URL is not registered in the Slack app under OAuth & Permissions.",
   invalid_team_for_non_distributed_app:
     "This Slack app can only be installed in the workspace it was created in. Turn on public distribution in the Slack app under Manage Distribution, then try again.",
@@ -80,8 +85,8 @@ const successNotice = (message: Pick<SlackAuthorizationMessage, "purpose" | "wor
 };
 
 /**
- * State and actions for the Slack integration, shared by Administration > Integrations
- * (connect and switch workspaces), My Profile > Notifications (link a personal account) and
+ * State and actions for the Slack integration, shared by Administration > Integrations > Slack
+ * (set up the app, connect and switch workspaces), My Profile > Notifications (link a personal account) and
  * the board Integrations dialog.
  *
  * Slack always opens in a new tab, like monday.com, so the workspace is never replaced. The
@@ -250,9 +255,47 @@ export function useSlackIntegration(): SlackIntegrationApi {
     [run]
   );
 
+  /** Sends administrators to the Slack setup page, tells everyone else who can finish it. */
+  const redirectToSetup = useCallback(() => {
+    if (status_ref.current?.can_configure_app) {
+      router.push(slackSetupHref("connect"));
+      return;
+    }
+
+    setNotice(null);
+    setError("Slack is not set up for this account yet. Ask an administrator or the account owner to set it up in Administration > Integrations > Slack.");
+  }, [router]);
+
   const connectMyAccount = useCallback(
-    (return_path?: string) => authorizeInNewTab("link", () => slackService.requestLinkUrl(return_path, "tab")),
-    [authorizeInNewTab]
+    async (return_path?: string) => {
+      if (slackNeedsSetup(status_ref.current)) {
+        redirectToSetup();
+        return;
+      }
+
+      setIsWorking(true);
+      setError(null);
+      setNotice(null);
+      try {
+        stopWatchingTab();
+        const tab = await openSlackAuthorizationTab(() => slackService.requestLinkUrl(return_path, "tab"));
+        if (!tab) return;
+
+        setAwaitingPurpose("link");
+        await_timer_ref.current = window.setTimeout(stopWatchingTab, AWAIT_SLACK_TIMEOUT_MS);
+      } catch (failure) {
+        // The setup was removed since the status loaded, refresh it so every card shows the right state.
+        if (isSlackSetupError(failure)) {
+          void reloadStatus();
+          redirectToSetup();
+        } else {
+          setError(apiErrorMessage(failure, "Failed to start the Slack connection."));
+        }
+      } finally {
+        setIsWorking(false);
+      }
+    },
+    [redirectToSetup, reloadStatus, stopWatchingTab]
   );
 
   const disconnectMyAccount = useCallback(

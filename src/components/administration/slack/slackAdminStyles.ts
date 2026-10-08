@@ -1,4 +1,4 @@
-/** Shared classes of the Slack cards in Administration > Integrations, same look as the rest of Administration. */
+/** Shared classes of the Slack cards in Administration > Integrations > Slack, same look as the rest of Administration. */
 
 export const PRIMARY_BUTTON =
   "inline-flex items-center justify-center whitespace-nowrap rounded-[9px] bg-brand-500 px-4 py-[9px] text-[13px] font-bold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50";

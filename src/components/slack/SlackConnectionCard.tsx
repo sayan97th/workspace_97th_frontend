@@ -4,6 +4,7 @@ import Link from "next/link";
 import SlackLogo from "@/components/slack/SlackLogo";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
+import { slackNeedsSetup, slackSetupHref } from "@/lib/slackSetup";
 
 export type SlackConnectionCardProps = {
   slack: SlackIntegrationApi;
@@ -34,18 +35,18 @@ const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack, show_m
   let description: React.ReactNode;
   let action: React.ReactNode = null;
 
-  if (!status?.is_connected) {
-    description = status?.can_manage ? (
-      <>
-        Slack is not connected to this account yet.{" "}
-        <Link href="/administration?section=integrations" className="font-semibold text-brand-200 hover:underline">
-          Add it from Administration
+  if (slackNeedsSetup(status)) {
+    // Slack is set up once by an administrator before anyone can connect, so send them to that page first.
+    if (status?.can_configure_app) {
+      description = "Slack has to be set up for the account before you can connect your own Slack. It only takes a few minutes and is done once.";
+      action = (
+        <Link href={slackSetupHref("connect")} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
+          Set up Slack
         </Link>
-        .
-      </>
-    ) : (
-      "Slack is not connected to this account yet. Ask an administrator to add it."
-    );
+      );
+    } else {
+      description = "Slack is not set up for this account yet. Ask an administrator or the account owner to set it up, then connect your Slack here.";
+    }
   } else if (link) {
     description = `Connected as ${link.slack_display_name ?? "your Slack account"} in ${workspace_name}. Choose what reaches you in the Slack column below.`;
     action = (

@@ -6,6 +6,7 @@ import SlackLogo from "@/components/slack/SlackLogo";
 import { slackCallbackErrorMessage } from "@/hooks/useSlackIntegration";
 import { announceSlackAuthorization } from "@/lib/slackAuthorizationTab";
 import type { SlackAuthorizationMessage, SlackAuthorizationPurpose } from "@/types/slack";
+import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 /** Short pause so the person sees the result before the tab closes. */
 const CLOSE_DELAY_MS = 1200;
@@ -48,7 +49,7 @@ const SlackAuthorizationComplete: React.FC = () => {
   }, [message]);
 
   const is_connected = message.result === "connected";
-  const back_href = message.purpose === "link" ? "/profile?section=notifications" : "/administration?section=integrations";
+  const back_href = message.purpose === "link" ? "/profile?section=notifications" : SLACK_SETUP_PATH;
 
   let title: string;
   let detail: string;

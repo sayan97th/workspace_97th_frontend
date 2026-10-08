@@ -53,8 +53,9 @@ const CopyField: React.FC<{ label: string; value: string }> = ({ label, value })
 );
 
 /**
- * Administration > Integrations > Developer settings, account owner only. The Slack app is set
- * up once, like monday.com's own app, after which administrators only ever use "Add workspace".
+ * Administration > Integrations > Slack > Slack app, administrators and the account owner. The
+ * Slack app is set up once, like monday.com's own app, after which administrators only ever use
+ * "Add workspace" and members only use "Connect my Slack".
  *
  * Quick setup creates the app from a single app configuration token, the site sends its own
  * manifest and saves the credentials Slack answers with. The manual path (manifest plus three
@@ -119,7 +120,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className={SECTION_TITLE}>Developer settings: Slack app</h3>
+            <h3 className={SECTION_TITLE}>Slack app</h3>
             <span
               className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
                 credentials.is_configured ? "bg-shell-hover text-shell-text-secondary" : "bg-[#e2445c]/[0.12] text-[#ff7a8a]"

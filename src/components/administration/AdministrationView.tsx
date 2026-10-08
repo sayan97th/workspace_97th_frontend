@@ -77,8 +77,8 @@ const AdministrationView: React.FC = () => {
   const search_params = useSearchParams();
   const [active_section, setActiveSection] = useState<AdminSectionId>("profile");
 
-  // Deep-link support for `/administration?section=integrations`, which is where the
-  // backend's Slack OAuth callback sends the administrator back to.
+  // Deep-link support for `/administration?section=integrations`, which is where the Back link
+  // of the Slack settings page (`/administration/integrations/slack`) returns to.
   useEffect(() => {
     const section = search_params.get("section");
     if (section && Object.prototype.hasOwnProperty.call(SECTION_TITLES, section)) {

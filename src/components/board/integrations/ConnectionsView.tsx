@@ -5,6 +5,7 @@ import SlackLogo from "@/components/slack/SlackLogo";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
 import type { ChannelFilter } from "./CommunicationView";
 import { DANGER_BUTTON, EnvelopeIcon, MessageBanner, PRIMARY_BUTTON, SECONDARY_BUTTON, StatusPill } from "./integrationUi";
+import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 export type ConnectionsViewProps = {
   slack: SlackIntegrationApi;
@@ -80,7 +81,12 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                 <div className={STEP_LABEL}>1. Slack workspace</div>
                 {!status?.is_configured && !workspace && (
                   <p className="mt-1.5 text-[12.5px] leading-relaxed text-boardtree-text-muted">
-                    Slack is not set up yet. {can_manage ? "Add the Slack app credentials in Administration > Integrations." : "Ask an account administrator to set up Slack in Administration > Integrations."}
+                    Slack is not set up yet.{" "}
+                    {can_manage ? (
+                      <Link href={SLACK_SETUP_PATH} className="font-semibold text-boardtree-accent hover:underline">Set it up in Administration</Link>
+                    ) : (
+                      "Ask an account administrator to set up Slack in Administration > Integrations > Slack."
+                    )}
                   </p>
                 )}
                 {!workspace && status?.is_configured && (
@@ -101,7 +107,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
                     </p>
                     {can_manage && !is_confirming_disconnect && (
                       <div className="flex flex-none gap-2">
-                        <Link href="/administration?section=integrations" className={`${SECONDARY_BUTTON} inline-flex items-center`}>Switch workspace</Link>
+                        <Link href={SLACK_SETUP_PATH} className={`${SECONDARY_BUTTON} inline-flex items-center`}>Switch workspace</Link>
                         <button type="button" onClick={() => setIsConfirmingDisconnect(true)} className={SECONDARY_BUTTON}>Disconnect</button>
                       </div>
                     )}
