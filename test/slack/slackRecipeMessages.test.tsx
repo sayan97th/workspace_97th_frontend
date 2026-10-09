@@ -52,7 +52,7 @@ describe("Slack recipe messages", () => {
     expect(screen.getByRole("textbox", { name: "Slack message" })).toHaveValue("A new item, {Item Name}, was created in {Board Name} board by {User Name}");
     await user.click(screen.getByRole("button", { name: "Done" }));
 
-    await user.click(screen.getByRole("button", { name: "Who to notify: someone" }));
+    await user.click(screen.getByRole("button", { name: "Who to notify: user" }));
     await user.click(screen.getByText("Amanda Ruiz"));
     await user.click(screen.getByRole("button", { name: "Create automation" }));
 

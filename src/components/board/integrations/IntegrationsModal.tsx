@@ -6,7 +6,7 @@ import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutom
 import { AutomateIcon } from "@/icons/board-icons";
 import { ChatBubbleIcon, LinkIcon } from "@/icons/workspace-icons";
 import type { ColumnDef, PersonDef } from "../table/types";
-import type { AutomationBuilderContext } from "../automations/builder/automationCatalog";
+import type { AutomationBuilderContext, NamedOption } from "../automations/builder/automationCatalog";
 import CommunicationView, { type ChannelFilter } from "./CommunicationView";
 import ConnectionsView from "./ConnectionsView";
 import { EnvelopeIcon } from "./integrationUi";
@@ -23,6 +23,8 @@ export type IntegrationsAutomationTools = {
   /** This tab's item-scope columns, for the email and Slack template pickers. */
   columns: ColumnDef[];
   people: PersonDef[];
+  /** This tab's items, for the Slack recipes that watch one item. */
+  items?: NamedOption[];
   /** What the Manage list needs to describe every automation: all columns, groups, people and boards. */
   context: AutomationBuilderContext;
   onCreate: (payload: Omit<CreateBoardAutomationPayload, "view_id">) => Promise<void>;
@@ -187,6 +189,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
               onCreated={() => setMode("manage")}
               onGoToConnections={() => setView("connections")}
               onUseSlackTemplate={(template) => setSlackRecipe(slackRecipeFor(template.trigger, template.channel))}
+              onUseSlackRecipe={setSlackRecipe}
             />
           )}
 
@@ -223,6 +226,7 @@ function IntegrationsModalBody({ board_label, onClose, return_path, automation_t
           recipe={slack_recipe}
           columns={automation_tools.columns}
           people={automation_tools.people}
+          items={automation_tools.items}
           slack_status={slack.status}
           return_path={return_path}
           onBack={() => setSlackRecipe(null)}

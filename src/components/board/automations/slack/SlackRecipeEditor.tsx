@@ -1,8 +1,9 @@
 "use client";
 import React, { useMemo, useRef, useState } from "react";
 import type { ColumnDef, PersonDef } from "../../table/types";
-import type { BoardAutomationActionParams, CreateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationActionParams, BoardAutomationRecipientSource, CreateBoardAutomationPayload } from "@/types/board-automation";
 import type { SlackConnectionDto } from "@/types/slack";
+import type { NamedOption } from "../builder/automationCatalog";
 import { useSlackConnectionChannels } from "@/hooks/useSlackConnectionChannels";
 import { useOutsideClick } from "../../table/useOutsideClick";
 import { spliceTextAtCursor } from "@/utils/insertTextAtCursor";
@@ -15,6 +16,8 @@ export type SlackRecipeEditorProps = {
   recipe: SlackRecipe;
   columns: ColumnDef[];
   people: PersonDef[];
+  /** This tab's items, for the "this item" word of the item scoped update recipes. */
+  items?: NamedOption[];
   /** The account a channel recipe posts through, null for direct message recipes. */
   connection: SlackConnectionDto | null;
   /** The active workspace direct messages go through, for the direct message recipes' note. */
@@ -31,7 +34,13 @@ const MESSAGE_MAX_LENGTH = 1000;
 /** Computed columns never receive a written value, so they can never "change". */
 const READ_ONLY_KINDS: ColumnDef["kind"][] = ["formula", "mirror", "auto_number"];
 
-type Recipient = { mode: "column" | "person"; id: string } | null;
+type Recipient = { mode: "column" | "person" | "source"; id: string } | null;
+
+/** The people a "notify someone" recipe can reach on every run besides people columns, see the API's `RECIPIENT_SOURCES`. */
+const RECIPIENT_SOURCES: { id: BoardAutomationRecipientSource; label: string }[] = [
+  { id: "actor", label: "The person who made the change" },
+  { id: "creator", label: "The item creator" },
+];
 
 /** One insert button of the message popover. */
 function FieldChip({ field, onInsert }: { field: SlackMessageField; onInsert: (field: SlackMessageField) => void }) {
@@ -89,8 +98,8 @@ function SentenceToken({ label, is_set, is_optional = false, aria_label, width =
  * it (which column, which status, which channel or person) and "notify" opens the message. Create
  * stays disabled until every required word is chosen.
  */
-export default function SlackRecipeEditor({ recipe, columns, people, connection, active_workspace_name, is_saving, save_error, onChangeAccount, onCreate }: SlackRecipeEditorProps) {
-  const { trigger, target } = recipe;
+export default function SlackRecipeEditor({ recipe, columns, people, items = [], connection, active_workspace_name, is_saving, save_error, onChangeAccount, onCreate }: SlackRecipeEditorProps) {
+  const { trigger, target, is_item_scoped, recipient_kind } = recipe;
   const channels = useSlackConnectionChannels(target === "channel" ? connection?.id ?? null : null);
 
   const trigger_columns = useMemo(() => {
@@ -105,6 +114,7 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
 
   const [column_id, setColumnId] = useState("");
   const [option_id, setOptionId] = useState("");
+  const [item_id, setItemId] = useState("");
   const [channel_id, setChannelId] = useState("");
   const [recipient, setRecipient] = useState<Recipient>(null);
   const message_fields = useMemo(() => slackMessageFieldsFor(trigger, columns), [trigger, columns]);
@@ -116,6 +126,7 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
 
   const trigger_column = trigger_columns.find((column) => column.id === column_id);
   const trigger_option = trigger_column?.options?.find((option) => option.id === option_id);
+  const trigger_item = items.find((item) => item.id === item_id);
   const channel = channels.channels.find((entry) => entry.id === channel_id);
   const stored_draft = toStoredMessage(message_draft, message_fields);
   const draft_error = stored_draft.trim() === "" ? "Write a message, or restore the template." : stored_draft.length > MESSAGE_MAX_LENGTH ? `The message is too long, keep it under ${MESSAGE_MAX_LENGTH} characters.` : null;
@@ -123,16 +134,28 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
   const missing: string[] = [];
   if (needs_trigger_column && !trigger_column) missing.push(trigger === "date_arrived" ? "a date column" : trigger === "person_assigned" ? "a people column" : trigger === "status_changed" ? "a status column" : "a column");
   if (trigger === "status_changed" && trigger_column && !trigger_option) missing.push("the status value");
+  if (is_item_scoped && !trigger_item) missing.push("an item");
   if (target === "channel" && !channel_id) missing.push("a channel");
   if (target === "person" && !recipient) missing.push("who to notify");
   if (message.trim() === "") missing.push("a message");
 
-  const recipientLabel = (): string => {
-    if (!recipient) return "someone";
-    if (recipient.mode === "person") return people.find((person) => person.id === recipient.id)?.name ?? "someone";
+  const recipientLabel = (placeholder: string): string => {
+    if (!recipient) return placeholder;
+    if (recipient.mode === "person") return people.find((person) => person.id === recipient.id)?.name ?? placeholder;
+    if (recipient.mode === "source") return RECIPIENT_SOURCES.find((source) => source.id === recipient.id)?.label.toLowerCase() ?? placeholder;
     const column = people_columns.find((entry) => entry.id === recipient.id);
-    return column ? `people in ${column.title}` : "someone";
+    return column ? `people in ${column.title}` : placeholder;
   };
+
+  // "notify user" picks people, "notify someone" also reaches whoever a people column holds or set the automation off.
+  const recipient_sections =
+    recipient_kind === "user"
+      ? [{ entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) }]
+      : [
+          { title: "Whoever is assigned in", entries: people_columns.map((column) => ({ id: `column:${column.id}`, label: column.title })) },
+          { title: "From the item", entries: RECIPIENT_SOURCES.map((source) => ({ id: `source:${source.id}`, label: source.label })) },
+          { title: "A specific person", entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) },
+        ];
 
   const insertField = ({ label }: SlackMessageField) => {
     const field = message_ref.current;
@@ -155,6 +178,8 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
       action_params.slack_connection_id = connection?.id ?? null;
     } else if (recipient?.mode === "person") {
       action_params.notify_user_id = Number(recipient.id);
+    } else if (recipient?.mode === "source") {
+      action_params.recipient_source = recipient.id as BoardAutomationRecipientSource;
     } else if (recipient) {
       action_params.notify_from_people_column_id = Number(recipient.id);
     }
@@ -167,6 +192,7 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
       trigger_value: trigger === "status_changed" ? option_id : null,
       action_type: CHANNEL_ACTION_TYPES[recipeChannel(recipe)],
       action_params,
+      ...(is_item_scoped ? { trigger_config: { item_id: Number(item_id) } } : {}),
     };
   };
 
@@ -207,6 +233,28 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
                     setOptionId(id);
                     close();
                   }}
+                />
+              )
+            }
+          </SentenceToken>
+        );
+      case "trigger_item":
+        return (
+          <SentenceToken key={index} label={trigger_item?.label ?? placeholder} is_set={!!trigger_item} aria_label="Item" width={300}>
+            {(close) =>
+              items.length === 0 ? (
+                <div className="px-2 py-3 text-[12.5px] text-boardtree-text-faint">This table has no items yet.</div>
+              ) : (
+                <PickerList
+                  sections={[{ entries: items }]}
+                  selected={item_id || null}
+                  placeholder="search"
+                  empty_text="No item matches your search."
+                  onPick={(id) => {
+                    setItemId(id);
+                    close();
+                  }}
+                  max_height={240}
                 />
               )
             }
@@ -309,16 +357,13 @@ export default function SlackRecipeEditor({ recipe, columns, people, connection,
         );
       case "recipient":
         return (
-          <SentenceToken key={index} label={recipientLabel()} is_set={!!recipient} aria_label="Who to notify" width={300}>
+          <SentenceToken key={index} label={recipientLabel(placeholder)} is_set={!!recipient} aria_label="Who to notify" width={300}>
             {(close) => (
               <PickerList
-                sections={[
-                  { title: "Whoever is assigned in", entries: people_columns.map((column) => ({ id: `column:${column.id}`, label: column.title })) },
-                  { title: "A specific person", entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) },
-                ]}
+                sections={recipient_sections}
                 selected={recipient ? `${recipient.mode}:${recipient.id}` : null}
                 onPick={(id) => {
-                  const [mode, value] = id.split(":") as ["column" | "person", string];
+                  const [mode, value] = id.split(":") as [NonNullable<Recipient>["mode"], string];
                   setRecipient({ mode, id: value });
                   close();
                 }}

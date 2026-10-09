@@ -371,6 +371,7 @@ function AutomationCenter(props: AutomationsModalProps) {
           recipe={slack_recipe}
           columns={item_columns}
           people={people}
+          items={test_items}
           slack_status={slack.status}
           return_path={return_path}
           onBack={() => setSlackRecipe(null)}

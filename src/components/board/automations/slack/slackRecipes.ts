@@ -1,10 +1,13 @@
-import type { CommunicationChannel, CommunicationTrigger } from "../communicationTemplates";
+import type { CommunicationChannel, CommunicationTemplate, CommunicationTrigger } from "../communicationTemplates";
 
 /** Where a Slack recipe delivers: a channel of the chosen Slack account, or people as direct messages. */
 export type SlackRecipeTarget = "channel" | "person";
 
+/** Who a direct message recipe can reach: "user" picks people, "someone" also offers people columns and who set it off. */
+export type SlackRecipeRecipientKind = "user" | "someone";
+
 /** The clickable words of a recipe sentence, each opens its own picker. */
-export type SlackRecipeSlot = "trigger_column" | "trigger_value" | "message" | "channel" | "recipient";
+export type SlackRecipeSlot = "trigger_column" | "trigger_value" | "trigger_item" | "message" | "channel" | "recipient";
 
 export type SlackRecipePart = { text: string } | { slot: SlackRecipeSlot; placeholder: string };
 
@@ -12,9 +15,13 @@ export type SlackRecipe = {
   id: string;
   trigger: CommunicationTrigger;
   target: SlackRecipeTarget;
+  /** `update_posted` only: listens to one chosen item ("this item") instead of every item of the board. */
+  is_item_scoped: boolean;
+  /** Direct message recipes only, null for channel recipes. */
+  recipient_kind: SlackRecipeRecipientKind | null;
   /** The sentence, plain words and clickable slots, like monday's "When **date** arrives, **notify** in **channel**". */
   parts: SlackRecipePart[];
-  /** Card title, `**bold**` marks the slots. */
+  /** Card title, `**bold**` marks the highlighted words, worded exactly like monday.com's Slack app page. */
   title: string;
   /** Lower case text the search box matches against. */
   search_text: string;
@@ -25,18 +32,7 @@ export type SlackRecipe = {
 const text = (value: string): SlackRecipePart => ({ text: value });
 const slot = (name: SlackRecipeSlot, placeholder: string): SlackRecipePart => ({ slot: name, placeholder });
 
-/** The trigger half of every sentence. */
-const TRIGGER_PARTS: Record<CommunicationTrigger, SlackRecipePart[]> = {
-  date_arrived: [text("When "), slot("trigger_column", "date"), text(" arrives")],
-  item_created: [text("When an "), slot("trigger_column", "item is created")],
-  status_changed: [text("When "), slot("trigger_column", "status"), text(" changes to "), slot("trigger_value", "something")],
-  column_changed: [text("When "), slot("trigger_column", "a column"), text(" changes")],
-  update_posted: [text("When an "), slot("trigger_column", "update is posted")],
-  person_assigned: [text("When a person is assigned in "), slot("trigger_column", "a people column")],
-  subitem_created: [text("When a "), slot("trigger_column", "subitem is created")],
-};
-
-/** Triggers without a column, their bold words are only a highlight and open nothing. */
+/** Triggers without a column, they never ask for one. */
 export const COLUMNLESS_TRIGGERS: CommunicationTrigger[] = ["item_created", "update_posted", "subitem_created"];
 
 /**
@@ -53,43 +49,91 @@ export const SLACK_DEFAULT_MESSAGES: Record<CommunicationTrigger, string> = {
   subitem_created: "A new subitem, {item_name}, was created in {board_name} board by {actor_name}",
 };
 
-const CHANNEL_ORDER: CommunicationTrigger[] = ["date_arrived", "item_created", "status_changed", "column_changed", "update_posted", "person_assigned", "subitem_created"];
-const PERSON_ORDER: CommunicationTrigger[] = ["status_changed", "item_created", "date_arrived", "column_changed", "person_assigned", "update_posted"];
+/** The trigger half of the sentences of the featured recipes. */
+const TRIGGER_PARTS = {
+  date_arrived: [text("When "), slot("trigger_column", "date"), text(" arrives")],
+  item_created: [text("When an item is created")],
+  status_changed: [text("When "), slot("trigger_column", "a status"), text(" changes to "), slot("trigger_value", "something")],
+  column_changed: [text("When "), slot("trigger_column", "a column"), text(" changes")],
+  update_posted_in_item: [text("When an update is posted in "), slot("trigger_item", "this item")],
+  any_update_posted: [text("When any update is posted")],
+} satisfies Record<string, SlackRecipePart[]>;
 
-const actionParts = (trigger: CommunicationTrigger, target: SlackRecipeTarget): SlackRecipePart[] => {
-  if (target === "person") return [text(", "), slot("message", "notify"), text(" "), slot("recipient", "someone"), text(" on Slack")];
-  if (trigger === "update_posted") return [text(", "), slot("message", "send it"), text(" to "), slot("channel", "channel")];
-  return [text(", "), slot("message", "notify"), text(" in "), slot("channel", "channel")];
+/** The action half of the sentences of the featured recipes. */
+const ACTION_PARTS = {
+  notify_in_channel: [text(", "), slot("message", "notify"), text(" in "), slot("channel", "channel")],
+  send_to_channel: [text(", "), slot("message", "send it"), text(" to "), slot("channel", "channel")],
+  notify_user: [text(", "), slot("message", "notify"), text(" "), slot("recipient", "user")],
+  send_to_user: [text(", "), slot("message", "send it"), text(" to "), slot("recipient", "user")],
+  notify_someone: [text(", "), slot("message", "notify"), text(" "), slot("recipient", "someone")],
+} satisfies Record<string, SlackRecipePart[]>;
+
+type RecipeDefinition = {
+  id: string;
+  trigger: CommunicationTrigger;
+  target: SlackRecipeTarget;
+  is_item_scoped?: boolean;
+  recipient_kind?: SlackRecipeRecipientKind;
+  parts: SlackRecipePart[];
+  title: string;
+};
+
+const defineRecipe = ({ id, trigger, target, is_item_scoped = false, recipient_kind, parts, title }: RecipeDefinition): SlackRecipe => ({
+  id,
+  trigger,
+  target,
+  is_item_scoped,
+  recipient_kind: target === "person" ? recipient_kind ?? "someone" : null,
+  parts,
+  title,
+  search_text: `${title.replaceAll("**", "")} slack`.toLowerCase(),
+  default_message: SLACK_DEFAULT_MESSAGES[trigger],
+});
+
+/**
+ * The Slack app page of the Automations center and the first templates of the Integrate dialog, in
+ * monday.com's exact order and wording: channel recipes first, then direct message ones.
+ */
+export const SLACK_RECIPES: SlackRecipe[] = [
+  defineRecipe({ id: "slack:date_arrived:channel", trigger: "date_arrived", target: "channel", parts: [...TRIGGER_PARTS.date_arrived, ...ACTION_PARTS.notify_in_channel], title: "**When date** arrives, **notify** in **channel**" }),
+  defineRecipe({ id: "slack:item_created:channel", trigger: "item_created", target: "channel", parts: [...TRIGGER_PARTS.item_created, ...ACTION_PARTS.notify_in_channel], title: "When an item is created, **notify** in **channel**" }),
+  defineRecipe({ id: "slack:status_changed:channel", trigger: "status_changed", target: "channel", parts: [...TRIGGER_PARTS.status_changed, ...ACTION_PARTS.notify_in_channel], title: "When **a status** changes to **something**, **notify** in **channel**" }),
+  defineRecipe({ id: "slack:column_changed:channel", trigger: "column_changed", target: "channel", parts: [...TRIGGER_PARTS.column_changed, ...ACTION_PARTS.notify_in_channel], title: "When **a column** changes, **notify** in **channel**" }),
+  defineRecipe({ id: "slack:update_posted_in_item:channel", trigger: "update_posted", target: "channel", is_item_scoped: true, parts: [...TRIGGER_PARTS.update_posted_in_item, ...ACTION_PARTS.send_to_channel], title: "When an update is posted in **this item**, send it to **channel**" }),
+  defineRecipe({ id: "slack:update_posted:channel", trigger: "update_posted", target: "channel", parts: [...TRIGGER_PARTS.any_update_posted, ...ACTION_PARTS.send_to_channel], title: "When any update is posted, send it to **channel**" }),
+  defineRecipe({ id: "slack:status_changed:person", trigger: "status_changed", target: "person", recipient_kind: "user", parts: [...TRIGGER_PARTS.status_changed, ...ACTION_PARTS.notify_user], title: "When **a status** changes to **something**, **notify user**" }),
+  defineRecipe({ id: "slack:item_created:person", trigger: "item_created", target: "person", recipient_kind: "user", parts: [...TRIGGER_PARTS.item_created, ...ACTION_PARTS.notify_user], title: "When an item is created, **notify user**" }),
+  defineRecipe({ id: "slack:date_arrived:person", trigger: "date_arrived", target: "person", recipient_kind: "user", parts: [...TRIGGER_PARTS.date_arrived, ...ACTION_PARTS.notify_user], title: "**When date** arrives, **notify user**" }),
+  defineRecipe({ id: "slack:column_changed:person", trigger: "column_changed", target: "person", recipient_kind: "user", parts: [...TRIGGER_PARTS.column_changed, ...ACTION_PARTS.notify_user], title: "When **a column** changes, **notify user**" }),
+  defineRecipe({ id: "slack:update_posted_in_item:person", trigger: "update_posted", target: "person", recipient_kind: "user", is_item_scoped: true, parts: [...TRIGGER_PARTS.update_posted_in_item, ...ACTION_PARTS.send_to_user], title: "When an update is posted in **this item**, send it to **user**" }),
+  defineRecipe({ id: "slack:update_posted:person", trigger: "update_posted", target: "person", recipient_kind: "user", parts: [...TRIGGER_PARTS.any_update_posted, ...ACTION_PARTS.send_to_user], title: "When any update is posted, send it to **user**" }),
+  defineRecipe({ id: "slack:status_changed:someone", trigger: "status_changed", target: "person", recipient_kind: "someone", parts: [...TRIGGER_PARTS.status_changed, ...ACTION_PARTS.notify_someone], title: "When **a status** changes to **something**, **notify someone**" }),
+];
+
+/** The sentences of the triggers monday.com has no Slack recipe for, still reachable from the Integrate dialog's templates. */
+const EXTRA_TRIGGER_PARTS: Partial<Record<CommunicationTrigger, SlackRecipePart[]>> = {
+  person_assigned: [text("When a person is assigned in "), slot("trigger_column", "a people column")],
+  subitem_created: [text("When a subitem is created")],
 };
 
 const titleOf = (parts: SlackRecipePart[]) => parts.map((part) => ("text" in part ? part.text : `**${part.placeholder}**`)).join("");
 
-const buildRecipe = (trigger: CommunicationTrigger, target: SlackRecipeTarget): SlackRecipe => {
-  const parts = [...TRIGGER_PARTS[trigger], ...actionParts(trigger, target)];
-  const title = titleOf(parts);
-
-  return {
-    id: `slack:${trigger}:${target}`,
-    trigger,
-    target,
-    parts,
-    title,
-    search_text: `${title.replaceAll("**", "")} slack`.toLowerCase(),
-    default_message: SLACK_DEFAULT_MESSAGES[trigger],
-  };
-};
-
-/** The Slack app page of the Automations center: channel recipes first, then direct message ones, like monday.com. */
-export const SLACK_RECIPES: SlackRecipe[] = [
-  ...CHANNEL_ORDER.map((trigger) => buildRecipe(trigger, "channel")),
-  ...PERSON_ORDER.map((trigger) => buildRecipe(trigger, "person")),
-];
+const targetOf = (channel: Exclude<CommunicationChannel, "email">): SlackRecipeTarget => (channel === "slack_channel" ? "channel" : "person");
 
 /** The recipe behind a Slack communication template, so both dialogs open the same flow. */
 export function slackRecipeFor(trigger: CommunicationTrigger, channel: CommunicationChannel): SlackRecipe | null {
   if (channel === "email") return null;
-  return buildRecipe(trigger, channel === "slack_channel" ? "channel" : "person");
+  const target = targetOf(channel);
+  const featured = SLACK_RECIPES.find((recipe) => recipe.trigger === trigger && recipe.target === target && !recipe.is_item_scoped && recipe.recipient_kind !== "user");
+  if (featured) return featured;
+
+  const parts = [...(EXTRA_TRIGGER_PARTS[trigger] ?? TRIGGER_PARTS.item_created), ...(target === "channel" ? ACTION_PARTS.notify_in_channel : ACTION_PARTS.notify_someone)];
+  return defineRecipe({ id: `slack:${trigger}:${target}`, trigger, target, parts, title: titleOf(parts) });
 }
+
+/** True when a featured Slack recipe already covers a communication template, so the Integrate dialog does not list it twice. */
+export const isCoveredBySlackRecipe = (template: CommunicationTemplate): boolean =>
+  template.channel !== "email" && SLACK_RECIPES.some((recipe) => recipe.trigger === template.trigger && recipe.target === targetOf(template.channel as Exclude<CommunicationChannel, "email">));
 
 /** The template card badge of a recipe. */
 export const recipeChannel = (recipe: SlackRecipe): CommunicationChannel => (recipe.target === "channel" ? "slack_channel" : "slack_person");

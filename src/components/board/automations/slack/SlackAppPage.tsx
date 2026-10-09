@@ -1,9 +1,8 @@
 "use client";
 import React from "react";
 import SlackLogo from "@/components/slack/SlackLogo";
-import { ChannelBadge } from "../CommunicationTemplateCard";
-import { splitTitle } from "../communicationTemplates";
-import { SLACK_RECIPES, recipeChannel, type SlackRecipe } from "./slackRecipes";
+import SlackRecipeCard from "./SlackRecipeCard";
+import { SLACK_RECIPES, type SlackRecipe } from "./slackRecipes";
 
 export type SlackAppPageProps = {
   /** Lower case search text from the gallery's search box. */
@@ -50,26 +49,7 @@ export default function SlackAppPage({ search, onBack, onUse }: SlackAppPageProp
           </div>
         </section>
 
-        {recipes.map((recipe) => (
-          <article key={recipe.id} className="flex min-h-[220px] flex-col justify-between gap-4 rounded-[6px] border border-boardtree-border-soft bg-boardtree-surface p-4 transition-shadow hover:shadow-[0_6px_18px_rgba(30,34,55,0.10)]">
-            <div>
-              <ChannelBadge channel={recipeChannel(recipe)} />
-              <p className="mt-6 text-[17px] leading-snug text-boardtree-text-secondary">
-                {splitTitle(recipe.title).map((segment, index) => (
-                  <span key={index} className={segment.is_bold ? "font-semibold text-boardtree-text" : undefined}>{segment.text}</span>
-                ))}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onUse(recipe)}
-              aria-label={`Use template: ${recipe.title.replaceAll("**", "")}`}
-              className="h-8 w-full rounded-[4px] border border-boardtree-border text-[13px] text-boardtree-text hover:bg-boardtree-hover"
-            >
-              Use template
-            </button>
-          </article>
-        ))}
+        {recipes.map((recipe) => <SlackRecipeCard key={recipe.id} recipe={recipe} onUse={onUse} />)}
       </div>
 
       {recipes.length === 0 && <div className="py-10 text-center text-[13.5px] text-boardtree-text-muted">No Slack recipes match your search.</div>}

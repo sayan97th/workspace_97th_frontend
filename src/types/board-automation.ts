@@ -156,6 +156,8 @@ export type BoardAutomationTriggerConfig = {
   timezone?: string | null;
   /** `item_moved_to_group` and `all_group_items_status`: the one group it watches, null for any group. */
   group_id?: number | null;
+  /** `update_posted` only: the one item it watches, null for updates on any item. */
+  item_id?: number | null;
   /** `form_submitted` only: the one form it watches, null for any form of the board. */
   form_view_id?: number | null;
   /** `recurring` and `item_scan`. */

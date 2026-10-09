@@ -4298,6 +4298,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                 automations,
                 columns: table_base_columns,
                 people: assignable_table_people,
+                items: automation_test_items,
                 context: automation_context,
                 onCreate: handleCreateAutomation,
                 onToggle: handleToggleAutomation,

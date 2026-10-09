@@ -6,6 +6,7 @@ import { apiErrorMessage } from "@/services/profile-preferences.service";
 import type { CreateBoardAutomationPayload } from "@/types/board-automation";
 import type { SlackStatusDto } from "@/types/slack";
 import type { ColumnDef, PersonDef } from "../../table/types";
+import type { NamedOption } from "../builder/automationCatalog";
 import SlackAccountStep from "./SlackAccountStep";
 import { SLACK_PURPLE } from "./SlackAppPage";
 import SlackRecipeEditor from "./SlackRecipeEditor";
@@ -15,6 +16,8 @@ export type SlackIntegrationFlowProps = {
   recipe: SlackRecipe;
   columns: ColumnDef[];
   people: PersonDef[];
+  /** This tab's items, for the item scoped update recipes. */
+  items?: NamedOption[];
   /** The account wide Slack status, direct message recipes go through the active workspace. */
   slack_status: SlackStatusDto | null;
   /** Where Slack sends the browser back to when the new tab was blocked. */
@@ -33,7 +36,7 @@ type Step = "account" | "editor";
  * through the chosen account. Direct message recipes use the active workspace, so they only ask for
  * an account while no workspace is connected at all.
  */
-export default function SlackIntegrationFlow({ recipe, columns, people, slack_status, return_path, onBack, onCreate, onCreated }: SlackIntegrationFlowProps) {
+export default function SlackIntegrationFlow({ recipe, columns, people, items, slack_status, return_path, onBack, onCreate, onCreated }: SlackIntegrationFlowProps) {
   const slack_connections = useSlackConnections(true);
   const needs_account = recipe.target === "channel" || slack_status?.is_connected !== true;
   const [step, setStep] = useState<Step>(needs_account ? "account" : "editor");
@@ -89,6 +92,7 @@ export default function SlackIntegrationFlow({ recipe, columns, people, slack_st
           recipe={recipe}
           columns={columns}
           people={people}
+          items={items}
           connection={recipe.target === "channel" ? connection : null}
           active_workspace_name={active_workspace_name}
           is_saving={is_saving}

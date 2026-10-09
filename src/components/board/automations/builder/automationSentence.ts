@@ -279,7 +279,7 @@ export function triggerParts(definition: BoardAutomationDefinition, context: Aut
     case "subitem_created":
       return [plain("When a "), token("subitem is created")];
     case "update_posted":
-      return [plain("When an "), token("update is posted")];
+      return config.item_id ? [plain("When an update is posted in "), token("one item")] : [plain("When an "), token("update is posted")];
     case "item_moved_to_group":
       return [plain("When an item is moved to "), token(config.group_id ? groupLabel(context, config.group_id) : "any group")];
     case "item_archived":

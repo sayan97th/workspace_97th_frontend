@@ -8,6 +8,8 @@ import type { ColumnDef, PersonDef } from "../table/types";
 import CommunicationRecipeForm from "../automations/CommunicationRecipeForm";
 import CommunicationTemplateCard from "../automations/CommunicationTemplateCard";
 import { COMMUNICATION_TEMPLATES, type CommunicationChannel, type CommunicationTemplate } from "../automations/communicationTemplates";
+import SlackRecipeCard from "../automations/slack/SlackRecipeCard";
+import { SLACK_RECIPES, isCoveredBySlackRecipe, type SlackRecipe } from "../automations/slack/slackRecipes";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { EnvelopeIcon, SECONDARY_BUTTON } from "./integrationUi";
 
@@ -25,6 +27,8 @@ export type CommunicationViewProps = {
   onGoToConnections: () => void;
   /** Opens the Slack integration flow for a Slack template instead of the form, like the Automations center does. */
   onUseSlackTemplate?: (template: CommunicationTemplate) => void;
+  /** Opens the Slack integration flow for one of the featured Slack recipes listed first. */
+  onUseSlackRecipe?: (recipe: SlackRecipe) => void;
 };
 
 const channelMatchesFilter = (channel: CommunicationChannel, filter: ChannelFilter) =>
@@ -35,8 +39,10 @@ const TILE = "flex h-[70px] w-[190px] flex-none items-center justify-center gap-
 /**
  * Integrate dialog > Communication. The template library for messaging automations: pick a channel
  * tile (Email or Slack) to narrow the list, search, then "Use template" opens the form in place.
+ * monday.com's Slack recipes come first, in the Slack app page's order, then every other template
+ * they do not already cover.
  */
-export default function CommunicationView({ slack, columns, people, channel_filter, onChannelFilterChange, onCreate, onCreated, onGoToConnections, onUseSlackTemplate }: CommunicationViewProps) {
+export default function CommunicationView({ slack, columns, people, channel_filter, onChannelFilterChange, onCreate, onCreated, onGoToConnections, onUseSlackTemplate, onUseSlackRecipe }: CommunicationViewProps) {
   const slack_options = useSlackAutomationOptions(true);
   const [search, setSearch] = useState("");
   const [template, setTemplate] = useState<CommunicationTemplate | null>(null);
@@ -44,7 +50,11 @@ export default function CommunicationView({ slack, columns, people, channel_filt
   const [save_error, setSaveError] = useState<string | null>(null);
 
   const search_text = search.trim().toLowerCase();
-  const visible_templates = COMMUNICATION_TEMPLATES.filter((t) => channelMatchesFilter(t.channel, channel_filter) && t.search_text.includes(search_text));
+  const shows_slack_recipes = onUseSlackRecipe !== undefined && channel_filter !== "email";
+  const visible_recipes = shows_slack_recipes ? SLACK_RECIPES.filter((recipe) => recipe.search_text.includes(search_text)) : [];
+  const visible_templates = COMMUNICATION_TEMPLATES.filter(
+    (t) => channelMatchesFilter(t.channel, channel_filter) && t.search_text.includes(search_text) && !(onUseSlackRecipe && isCoveredBySlackRecipe(t))
+  );
   const is_slack_connected = slack.status?.is_connected === true;
 
   const toggleFilter = (filter: Exclude<ChannelFilter, "all">) => onChannelFilterChange(channel_filter === filter ? "all" : filter);
@@ -127,11 +137,14 @@ export default function CommunicationView({ slack, columns, people, channel_filt
       )}
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {visible_recipes.map((recipe) => (
+          <SlackRecipeCard key={recipe.id} recipe={recipe} size="regular" onUse={(picked) => onUseSlackRecipe?.(picked)} />
+        ))}
         {visible_templates.map((t) => (
           <CommunicationTemplateCard key={t.id} template={t} onUse={(picked) => (picked.channel !== "email" && onUseSlackTemplate ? onUseSlackTemplate(picked) : setTemplate(picked))} />
         ))}
       </div>
-      {visible_templates.length === 0 && <div className="text-[12.5px] text-boardtree-text-faint">No templates match your search.</div>}
+      {visible_recipes.length === 0 && visible_templates.length === 0 && <div className="text-[12.5px] text-boardtree-text-faint">No templates match your search.</div>}
     </div>
   );
 }
