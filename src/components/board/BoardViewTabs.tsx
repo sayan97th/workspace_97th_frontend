@@ -2,21 +2,18 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
-  DragOverlay,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
-  defaultDropAnimationSideEffects,
   useSensor,
   useSensors,
   type Announcements,
   type DragEndEvent,
   type DragStartEvent,
-  type DropAnimation,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { restrictToHorizontalAxis, restrictToWindowEdges } from "@dnd-kit/modifiers";
+import { restrictToHorizontalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
 import AnchoredMenu from "@/components/ui/dropdown/AnchoredMenu";
 import type { MenuListItem } from "@/components/ui/dropdown/MenuItemList";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -195,14 +192,8 @@ const TAB_GAP = 2;
 const ADD_BUTTON_SPACE = 30 + TAB_GAP;
 /** How long the pointer has to rest on a tab before its info card opens. */
 const INFO_CARD_DELAY_MS = 550;
-/** A click that lands right after a drop is the tail of the drag, not a tab switch. */
-const CLICK_AFTER_DROP_GRACE_MS = 250;
-
-const drop_animation: DropAnimation = {
-  duration: VIEW_TAB_TRANSITION.duration,
-  easing: VIEW_TAB_TRANSITION.easing,
-  sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }),
-};
+/** A press held at least this long is a grab, so releasing it doesn't open the tab even when it barely moved. */
+const LONG_PRESS_MS = 500;
 
 const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   tabs,
@@ -243,7 +234,52 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   const add_view_button_ref = useRef<HTMLButtonElement | null>(null);
   const more_button_ref = useRef<HTMLButtonElement | null>(null);
   const info_card_timer_ref = useRef<number | null>(null);
-  const last_drop_at_ref = useRef(0);
+  // When the pointer press in progress started, and whether the click it ends with must be
+  // ignored: a drag or a long press only moves the tab, a later plain click opens it.
+  //
+  // The click is blocked on the window rather than in `selectTab`, because the dragged tab
+  // now sits under the pointer when it is dropped. dnd-kit stops that click's propagation
+  // (so React's onClick never runs) but not its default action, so the tab's link would
+  // otherwise make the browser load the moved view.
+  const press_started_at_ref = useRef<number | null>(null);
+  const ignore_tab_click_ref = useRef(false);
+
+  // Window level and in the capture phase, so every press is seen even when it is released
+  // outside the bar, and both flags are settled before the tab's own click handler runs.
+  // A flag left over from a press that never produced a click is cleared by the next press
+  // or key press, so it can never swallow a later genuine click (or a keyboard Enter).
+  useEffect(() => {
+    const handlePointerDown = () => {
+      press_started_at_ref.current = Date.now();
+      ignore_tab_click_ref.current = false;
+    };
+    const handlePointerUp = () => {
+      const started_at = press_started_at_ref.current;
+      press_started_at_ref.current = null;
+      if (started_at !== null && Date.now() - started_at >= LONG_PRESS_MS) ignore_tab_click_ref.current = true;
+    };
+    const handleKeyDown = () => {
+      ignore_tab_click_ref.current = false;
+    };
+    const handleClick = (event: MouseEvent) => {
+      if (!ignore_tab_click_ref.current) return;
+      ignore_tab_click_ref.current = false;
+      if (!(event.target instanceof Node) || !bar_ref.current?.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("pointerup", handlePointerUp, true);
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("click", handleClick, true);
+    return () => {
+      window.removeEventListener("click", handleClick, true);
+      window.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("pointerup", handlePointerUp, true);
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, []);
 
   // ── Which tabs are on screen ──
   // Hidden tabs stay out of the bar unless they're the tab being viewed.
@@ -369,12 +405,14 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   };
 
   const handleDragStart = ({ active }: DragStartEvent) => {
+    // The click that follows the drop only ends the drag. A flag rather than a time window, since
+    // saving the new order can re-render a heavy board before that click arrives.
+    ignore_tab_click_ref.current = true;
     setDraggingId(active.id);
   };
 
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     setDraggingId(null);
-    last_drop_at_ref.current = Date.now();
     if (!onReorderPersonalTabs || !over || active.id === over.id) return;
     const from_index = visible_ids.indexOf(active.id as number | string);
     const to_index = visible_ids.indexOf(over.id as number | string);
@@ -382,10 +420,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
     onReorderPersonalTabs(mergeReorderedIds(all_ids, arrayMove(visible_ids, from_index, to_index)));
   };
 
-  const dragging_tab = dragging_id !== null ? tabs.find((tab) => tab.id === dragging_id) ?? null : null;
-
   const selectTab = (id: number | string) => {
-    if (Date.now() - last_drop_at_ref.current < CLICK_AFTER_DROP_GRACE_MS) return;
     handleHoverEnd();
     onSelectView(id);
   };
@@ -527,7 +562,9 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         id={dnd_id}
         sensors={sensors}
         collisionDetection={closestCenter}
-        modifiers={[restrictToHorizontalAxis]}
+        // The tab itself is carried (no floating copy), the same lift and slide as the Status
+        // labels in Edit Labels, kept on the bar's row and inside the tab list.
+        modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
         accessibility={{
           announcements,
           screenReaderInstructions: {
@@ -537,10 +574,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         }}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
-        onDragCancel={() => {
-          setDraggingId(null);
-          last_drop_at_ref.current = Date.now();
-        }}
+        onDragCancel={() => setDraggingId(null)}
       >
         <SortableContext items={visible_ids} strategy={horizontalListSortingStrategy}>
           <div role="tablist" aria-label="Board views" className="flex min-w-0 items-center gap-0.5">
@@ -583,16 +617,6 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
             })}
           </div>
         </SortableContext>
-
-        <DragOverlay dropAnimation={drop_animation} modifiers={[restrictToHorizontalAxis, restrictToWindowEdges]}>
-          {dragging_tab ? (
-            <ViewTabFace
-              tab={{ ...dragging_tab, is_primary: isPrimary(dragging_tab) }}
-              has_menu
-              className="cursor-grabbing rounded-[4px] border border-boardtree-accent/60 bg-shell-panel motion-safe:animate-[view-tab-lift_160ms_ease-out_forwards]"
-            />
-          ) : null}
-        </DragOverlay>
       </DndContext>
 
       {show_more_button && (

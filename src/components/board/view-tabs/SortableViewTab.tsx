@@ -98,8 +98,10 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
     onSelect();
   };
 
+  // While carried, the tab lifts above its neighbors as a white card with an accent
+  // outline and a soft shadow, the look of a dragged label in Edit Labels.
   const state_class = isDragging
-    ? "rounded-md border-transparent bg-brand-500/[0.08] outline-dashed outline-1 -outline-offset-1 outline-brand-500/60 [&>*]:opacity-40"
+    ? "z-10 rounded-[4px] border-transparent bg-shell-panel shadow-[0_6px_20px_rgba(0,0,0,0.2)] outline outline-1 -outline-offset-1 outline-boardtree-accent"
     : is_active
       ? "border-boardtree-accent"
       : "rounded-t-[4px] border-transparent transition-colors hover:bg-shell-hover";
