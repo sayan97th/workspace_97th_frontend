@@ -273,7 +273,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
       {/* Sticky header: title, actions, tabs, search + toggle */}
       <div className="flex-none px-5 pt-5">
         <div className="flex items-center justify-between">
-          <h2 className="text-[22px] font-bold tracking-[-0.01em]">Notifications</h2>
+          <h2 className="font-heading text-dialog-title">Notifications</h2>
           <div className="flex items-center gap-0.5">
             <button
               type="button"

@@ -63,7 +63,7 @@ export default function SlackConnectAccountDialog({ slack, onClose, return_path 
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#00c875]/[0.14] text-[#0a9a5c] dark:text-[#3ddc97]">
           <CheckIcon size={22} />
         </div>
-        <h2 id={title_id} className="mt-4 text-center text-[18px] font-semibold text-boardtree-text">Your Slack account is connected</h2>
+        <h2 id={title_id} className="mt-4 text-center text-boardtree-text font-heading text-dialog-title">Your Slack account is connected</h2>
         <p className="mt-1.5 text-center text-[13px] leading-relaxed text-boardtree-text-muted">
           Connected as <span className="font-semibold text-boardtree-text">{link.slack_display_name ?? "your Slack account"}</span> in {workspace_name}. Mentions,
           assignments and automation messages now reach you as Slack direct messages.
@@ -85,7 +85,7 @@ export default function SlackConnectAccountDialog({ slack, onClose, return_path 
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[12px] border border-boardtree-border-soft bg-boardtree-panel-alt">
           <SlackLogo size={26} />
         </div>
-        <h2 id={title_id} className="mt-4 text-center text-[18px] font-semibold text-boardtree-text">Connect your Slack account</h2>
+        <h2 id={title_id} className="mt-4 text-center text-boardtree-text font-heading text-dialog-title">Connect your Slack account</h2>
         <p className="mt-1.5 text-center text-[13px] leading-relaxed text-boardtree-text-muted">
           Link your own account in {workspace_name} to get a Slack direct message when someone tags you, assigns you or an automation notifies you.
         </p>

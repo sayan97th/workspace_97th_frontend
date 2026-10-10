@@ -85,7 +85,7 @@ const InvitationsView: React.FC = () => {
 
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-shell-text">Sent invitations</h1>
+            <h1 className="text-shell-text font-heading text-page-title">Sent invitations</h1>
             <p className="mt-1 text-sm text-shell-text-muted">
               Invite new teammates to {workspace_name ?? "this workspace"}. See every invitation that's active,
               expired, or accepted.

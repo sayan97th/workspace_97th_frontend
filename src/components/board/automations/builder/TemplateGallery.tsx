@@ -172,7 +172,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
 
       <div className="min-w-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8">
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-[24px] font-semibold text-boardtree-text">Automation templates</h2>
+          <h2 className="text-boardtree-text font-heading text-page-title">Automation templates</h2>
           <button type="button" onClick={onCustom} className="flex h-9 items-center gap-1.5 rounded-[4px] bg-boardtree-accent px-3.5 text-[13px] font-medium text-white hover:bg-boardtree-accent-hover">
             <Plus size={15} />
             Create custom automation
@@ -214,7 +214,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
 
         {app === null && show_account && (
           <section aria-label="Created in your account" className="mb-7">
-            <h3 className="mb-3 flex items-center gap-1.5 text-[14px] font-semibold text-boardtree-text-secondary">
+            <h3 className="mb-3 flex items-center gap-1.5 font-outfit text-section-title text-boardtree-text-secondary">
               <Building2 size={15} />
               Created in your account
             </h3>
@@ -244,7 +244,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
 
         {app === null && show_saved && (
           <section aria-label="Saved templates" className="mb-7">
-            <h3 className="mb-3 text-[14px] font-semibold text-boardtree-text-secondary">Saved on this board</h3>
+            <h3 className="mb-3 font-outfit text-section-title text-boardtree-text-secondary">Saved on this board</h3>
             {is_loading_saved ? (
               <div className="text-[13px] text-boardtree-text-faint">Loading saved templates...</div>
             ) : saved.length === 0 ? (

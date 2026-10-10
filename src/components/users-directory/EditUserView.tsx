@@ -94,7 +94,7 @@ const EditUserView: React.FC<EditUserViewProps> = ({ user_id }) => {
       <div className="mb-7 flex items-center gap-4 rounded-2xl border border-shell-border bg-shell-panel-alt p-6">
         <PersonAvatar person={person} size={56} />
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[20px] font-extrabold tracking-[-0.01em] text-shell-text">{user.full_name}</h1>
+          <h1 className="truncate text-shell-text font-heading text-page-title">{user.full_name}</h1>
           <p className="mt-0.5 truncate text-[13.5px] text-shell-text-muted">{user.email}</p>
           <div className="mt-2 flex items-center gap-2">
             <UserRoleBadge role={role} />

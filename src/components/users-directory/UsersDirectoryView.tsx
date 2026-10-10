@@ -58,7 +58,7 @@ const UsersDirectoryView: React.FC = () => {
 
   return (
     <div className="mx-auto max-w-[1440px] px-6 py-7">
-      <h1 className="mb-1.5 text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">Users</h1>
+      <h1 className="mb-1.5 text-shell-text font-heading text-page-title">Users</h1>
       <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
         Every account registered on this site, with their email, site-wide role, department, status and join date.
       </p>

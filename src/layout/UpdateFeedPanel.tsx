@@ -180,7 +180,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
       <aside className="hidden w-[262px] flex-none flex-col gap-[26px] border-r border-shell-border px-[22px] py-[26px] sm:flex">
         <div>
           <div className="flex items-center gap-[9px]">
-            <h2 className="text-[23px] font-extrabold tracking-[-0.01em]">
+            <h2 className="font-heading text-dialog-title">
               Update feed
             </h2>
             <ChatBubbleIcon size={18} className="text-[#7fb2ff]" />

@@ -113,7 +113,7 @@ const BoardPermissionsModal: React.FC<BoardPermissionsModalProps> = ({
 
       <div className="relative z-[401] flex max-h-[86vh] w-[480px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <div className="flex items-center justify-between border-b border-shell-border px-7 py-5">
-          <h2 className="text-xl font-extrabold tracking-[-0.01em]">Permissions</h2>
+          <h2 className="font-heading text-dialog-title">Permissions</h2>
           <button
             type="button"
             onClick={onClose}

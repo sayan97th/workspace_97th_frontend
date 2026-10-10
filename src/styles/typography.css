@@ -107,6 +107,40 @@
   --text-board-caption: 12px;
   --text-board-caption--line-height: 16px;
   --text-board-caption--font-weight: 400;
+
+  /*
+   * App wide scale, the same voice as the sidebar, the board chrome and the
+   * table, so every other screen (Home, Users, Profile, modals, drawers)
+   * reads the same. Titles pair with `font-heading` (Poppins at a medium
+   * weight, never bold), section titles and body copy stay in Figtree.
+   *
+   * - `page-title`: the main title of a page, same as the board title.
+   * - `dialog-title`: the title of a modal, drawer or side panel.
+   * - `section-title`: a block heading inside a page or dialog.
+   * - `app-body`: regular copy, same as sidebar rows and table cells.
+   * - `app-caption`: helper text, hints and counts.
+   */
+  --text-page-title: 24px;
+  --text-page-title--line-height: 32px;
+  --text-page-title--font-weight: 500;
+  --text-page-title--letter-spacing: -0.1px;
+
+  --text-dialog-title: 20px;
+  --text-dialog-title--line-height: 28px;
+  --text-dialog-title--font-weight: 500;
+  --text-dialog-title--letter-spacing: -0.1px;
+
+  --text-section-title: 16px;
+  --text-section-title--line-height: 22px;
+  --text-section-title--font-weight: 600;
+
+  --text-app-body: 14px;
+  --text-app-body--line-height: 20px;
+  --text-app-body--font-weight: 400;
+
+  --text-app-caption: 12px;
+  --text-app-caption--line-height: 16px;
+  --text-app-caption--font-weight: 400;
 }
 
 /*
@@ -134,41 +168,31 @@
 }
 
 /*
-  Same trap for `--font-heading`: `--font-poppins`/`--font-figtree` come from
-  the `next/font` classes on `<body>` (see `src/app/layout.tsx`), so at
-  `:root` the token resolves to the invalid value and the `font-heading`
-  utility silently falls back to the inherited Figtree. Re-resolving it on
-  the utility's own selector, which always sits below `<body>`, lets any
-  element opt into Poppins with `font-heading` (e.g. the board title).
+  `--font-heading` and `--font-outfit` need no such fix: the `next/font`
+  variable classes sit on <html> (see `src/app/layout.tsx`), the same element
+  as Tailwind's `:root` theme rule, so both resolve there for the whole app.
 */
-.font-heading {
-  --font-heading: var(--font-poppins), var(--font-figtree), ui-sans-serif, sans-serif;
-}
 
 /*
- * Headings default to the Poppins-led `--font-heading` stack, bold-leaning
- * weights and slightly tightened tracking — the same "rounder display face,
- * tighter at large sizes" voice monday.com's own h1-h3 use. Declared in the
- * `base` layer (same as Tailwind's own preflight) so any `font-*`/
- * `tracking-*` utility already on a heading wins automatically via
- * Tailwind's layer order — every existing `<h1>` in this app already sets
- * its own weight utility, and none of them need to change for this to take
- * effect; only the font family (and any heading that didn't already set a
- * weight/tracking) picks up the new default.
+ * Headings keep the Figtree body face by default, so small headings (the
+ * sidebar panel title, card and section labels) read exactly like the rest
+ * of the UI. Page, dialog and board titles opt into Poppins explicitly with
+ * `font-heading` plus a title token (`text-page-title`, `text-dialog-title`,
+ * `text-board-title`), the same voice monday.com uses for its titles.
+ * Declared in the `base` layer so any utility on a heading still wins.
  */
 @layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   h1,
   h2,
-  h3 {
-    font-family: var(--font-heading);
-    font-weight: 700;
-    letter-spacing: -0.02em;
-  }
+  h3,
   h4,
   h5,
   h6 {
-    font-family: var(--font-heading);
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: normal;
   }
 }

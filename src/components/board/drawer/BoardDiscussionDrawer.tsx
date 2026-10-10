@@ -87,7 +87,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
       {/* Header */}
       <div className="flex flex-none items-start justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
         <div className="min-w-0 flex-1">
-          <h2 className="m-0 text-[22px] font-extrabold leading-[1.2] tracking-[-0.01em]">Board Discussion</h2>
+          <h2 className="m-0 font-heading text-dialog-title">Board Discussion</h2>
           <div className="mt-[7px] flex items-center gap-[7px] text-[11.5px] font-semibold text-shell-text-faint">
             <FolderPathIcon size={12} className="flex-none" />
             <span className="truncate">{drawer.breadcrumb_label}</span>
@@ -202,7 +202,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
               <UpdatesTabIcon size={26} />
             </span>
-            <h3 className="text-[15px] font-bold text-shell-text">No discussion on this board yet</h3>
+            <h3 className="font-outfit text-section-title text-shell-text">No discussion on this board yet</h3>
             <p className="text-[13px] leading-relaxed text-shell-text-muted">
               Be the first one to start a discussion with all board members. If you mention someone, or a specific
               team, they will be notified.

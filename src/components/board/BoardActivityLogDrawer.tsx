@@ -57,7 +57,7 @@ const BoardActivityLogDrawer: React.FC<BoardActivityLogDrawerProps> = ({ board_i
       panel_class_name="w-[440px] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
     >
       <div className="flex flex-none items-center justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
-        <h2 className="m-0 flex items-center gap-2.5 text-[20px] font-extrabold leading-[1.2] tracking-[-0.01em]">
+        <h2 className="m-0 flex items-center gap-2.5 font-heading text-dialog-title">
           <ActivityLogIcon size={17} className="text-shell-text-muted" />
           Activity log
         </h2>

@@ -30,7 +30,7 @@ function FailureStreakSection({ value, is_saving, onSave }: { value: number; is_
     <section aria-label="Pause after failures" className={SECTION}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h3 className="flex items-center gap-2 text-[15px] font-semibold text-boardtree-text">
+          <h3 className="flex items-center gap-2 font-outfit text-section-title text-boardtree-text">
             <ShieldAlert size={17} className="text-boardtree-text-muted" />
             Pause automations that keep failing
           </h3>
@@ -117,7 +117,7 @@ export default function AutomationSettingsTab({ settings, is_loading, onSave }: 
       <section aria-label="Pause all automations" className={SECTION}>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h3 className="flex items-center gap-2 text-[15px] font-semibold text-boardtree-text">
+            <h3 className="flex items-center gap-2 font-outfit text-section-title text-boardtree-text">
               <PauseCircle size={17} className="text-boardtree-text-muted" />
               Pause all automations
             </h3>
@@ -137,7 +137,7 @@ export default function AutomationSettingsTab({ settings, is_loading, onSave }: 
       <FailureStreakSection key={settings.auto_pause_after_failures} value={settings.auto_pause_after_failures} is_saving={is_saving} onSave={(auto_pause_after_failures) => void save({ auto_pause_after_failures })} />
 
       <section aria-label="Working days" className={SECTION}>
-        <h3 className="text-[15px] font-semibold text-boardtree-text">Working days</h3>
+        <h3 className="font-outfit text-section-title text-boardtree-text">Working days</h3>
         <p className="mt-1 text-[13px] leading-snug text-boardtree-text-secondary">
           Used by &quot;date arrives&quot; triggers, &quot;push date&quot;, &quot;set date&quot;, &quot;set timeline&quot; and &quot;shift dependent items&quot; whenever they count working days only.
         </p>
@@ -162,7 +162,7 @@ export default function AutomationSettingsTab({ settings, is_loading, onSave }: 
       </section>
 
       <section aria-label="Holidays" className={SECTION}>
-        <h3 className="flex items-center gap-2 text-[15px] font-semibold text-boardtree-text">
+        <h3 className="flex items-center gap-2 font-outfit text-section-title text-boardtree-text">
           <CalendarOff size={16} className="text-boardtree-text-muted" />
           Holidays
         </h3>

@@ -43,8 +43,8 @@ const AnchoredMenu: React.FC<AnchoredMenuProps> = ({
   const open_submenu_item = items.find((item) => item.key === open_submenu_key);
 
   return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={width} align={align}>
-      <div className="p-1.5">
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={width} align={align} unstyled>
+      <div className="action-menu" role="menu" aria-label={title}>
         <MenuItemList
           title={title}
           items={items}
@@ -69,8 +69,9 @@ const AnchoredMenu: React.FC<AnchoredMenuProps> = ({
           onClose={() => setOpenSubmenuKey(null)}
           side="left"
           width={200}
+          unstyled
         >
-          <div className="p-1.5">
+          <div className="action-menu" role="menu">
             <MenuItemList
               items={open_submenu_item.submenu}
               onSelect={(item) => {

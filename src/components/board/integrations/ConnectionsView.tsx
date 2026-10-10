@@ -26,7 +26,7 @@ function IntegrationCard({ icon, title, status_pill, description, children }: { 
         <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px] border border-boardtree-border-soft bg-boardtree-panel-alt text-boardtree-text-muted">{icon}</div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-[14px] font-semibold text-boardtree-text">{title}</h3>
+            <h3 className="font-outfit text-section-title text-boardtree-text">{title}</h3>
             {status_pill}
           </div>
           <p className="mt-0.5 text-[12.5px] leading-relaxed text-boardtree-text-muted">{description}</p>
@@ -148,7 +148,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
 
   return (
     <div className="max-w-[720px]">
-      <h2 className="text-[20px] font-semibold text-boardtree-text">Connections</h2>
+      <h2 className="text-boardtree-text font-heading text-dialog-title">Connections</h2>
       <p className="mb-4 mt-1 text-[13px] text-boardtree-text-muted">Connect the channels your team uses to get notified.</p>
 
       {/* The dialog shows Slack errors itself while it is open. */}

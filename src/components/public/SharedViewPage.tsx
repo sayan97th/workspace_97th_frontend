@@ -178,7 +178,7 @@ const SharedViewPage: React.FC<{ token: string }> = ({ token }) => {
   if (page_state === "unavailable") {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 px-6 text-center">
-        <h1 className="text-xl font-bold">Link unavailable</h1>
+        <h1 className="font-heading text-page-title">Link unavailable</h1>
         <p className="text-[14px] text-shell-text-muted">{unavailable_message}</p>
       </main>
     );
@@ -224,7 +224,7 @@ const SharedViewPage: React.FC<{ token: string }> = ({ token }) => {
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[12.5px] font-semibold uppercase tracking-[0.05em] text-shell-text-muted">Shared view, read only</p>
-          <h1 className="truncate text-2xl font-bold tracking-[-0.01em]">{view.board.label}</h1>
+          <h1 className="truncate font-heading text-page-title">{view.board.label}</h1>
           <p className="text-[13.5px] text-shell-text-muted">{view.view.label}</p>
         </div>
         <input

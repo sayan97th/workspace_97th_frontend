@@ -27,7 +27,7 @@ export const PROFILE_NOTIFICATION_SEED: ProfileNotificationSeed[] = [
   { key: "due_date_reminder", label: "Due date reminders", sub: "for items assigned to me that are due today", category: "Collaboration" },
   { key: "invitations", label: "Invitations", sub: "to workspace, board, doc, item, or team", category: "Collaboration" },
   { key: "template_changes", label: "Template changes", sub: "by the template owner", category: "Collaboration" },
-  { key: "agent_failures", label: "Agent failures", sub: "when an agent doesn't run as expected", category: "Agents" },
+  // "Agent failures" (Agents category) is hidden for now, by client request.
   { key: "automations_notify", label: 'Automations with a "notify" step', sub: 'this does not include "send an email" automations', category: "Automations" },
   { key: "automation_failures", label: "Automation failures", sub: "when automations don't run as expected", category: "Automations" },
   { key: "platform_api", label: "Platform API", sub: "custom notifications using the GraphQL API", category: "Automations" },

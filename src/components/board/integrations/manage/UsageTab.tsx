@@ -93,14 +93,14 @@ export default function UsageTab({ board_id, view_id }: UsageTabProps) {
       </div>
 
       <section className={CARD}>
-        <h3 className="mb-3 text-[14px] font-semibold text-boardtree-text">Runs per day</h3>
+        <h3 className="mb-3 font-outfit text-section-title text-boardtree-text">Runs per day</h3>
         {usage.runs === 0 ? <p className="py-6 text-center text-[13px] text-boardtree-text-muted">No runs in this period.</p> : <DailyRunsChart daily={usage.daily} />}
       </section>
 
       {usage.runs > 0 && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <section className={CARD}>
-            <h3 className="mb-3 text-[14px] font-semibold text-boardtree-text">Most active automations</h3>
+            <h3 className="mb-3 font-outfit text-section-title text-boardtree-text">Most active automations</h3>
             <RankedBars
               rows={usage.top_automations.map((row) => ({
                 key: String(row.automation_id ?? `${row.trigger_type}:${row.action_type}`),
@@ -111,7 +111,7 @@ export default function UsageTab({ board_id, view_id }: UsageTabProps) {
             />
           </section>
           <section className={CARD}>
-            <h3 className="mb-3 text-[14px] font-semibold text-boardtree-text">Runs by action</h3>
+            <h3 className="mb-3 font-outfit text-section-title text-boardtree-text">Runs by action</h3>
             <RankedBars rows={usage.by_action.map((row) => ({ key: row.action_type, label: ACTION_LABELS[row.action_type], runs: row.runs }))} />
           </section>
         </div>

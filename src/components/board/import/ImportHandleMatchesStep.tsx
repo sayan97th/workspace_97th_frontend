@@ -66,7 +66,7 @@ const ImportHandleMatchesStep: React.FC<ImportHandleMatchesStepProps> = ({
   return (
     <div className="flex flex-1 flex-col items-center px-8 py-10">
       <div className="w-full max-w-[640px] text-center">
-        <h2 className="text-[19px] font-semibold text-shell-text">Set duplicate behavior</h2>
+        <h2 className="text-shell-text font-heading text-dialog-title">Set duplicate behavior</h2>
         <p className="mt-1.5 text-[13.5px] text-shell-text-secondary">Set what happens when imported rows match existing items</p>
       </div>
 

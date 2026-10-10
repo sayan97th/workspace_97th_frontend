@@ -183,7 +183,7 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
       panel_class_name="w-[480px] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
     >
       <div className="flex flex-none items-center justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
-        <h2 className="m-0 text-[18px] font-extrabold tracking-[-0.01em]">User details</h2>
+        <h2 className="m-0 font-heading text-dialog-title">User details</h2>
         <button
           type="button"
           onClick={onClose}

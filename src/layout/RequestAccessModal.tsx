@@ -104,7 +104,7 @@ const RequestAccessModal: React.FC<RequestAccessModalProps> = ({
       <div className="relative z-[401] flex max-h-[92vh] w-[840px] max-w-full overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         {/* Form side */}
         <div className="flex flex-1 flex-col p-[34px_34px_28px] text-shell-text">
-          <h2 className="text-2xl font-extrabold tracking-[-0.01em]">
+          <h2 className="font-heading text-dialog-title">
             Request to become a member
           </h2>
           <p className="mt-2.5 text-[13.5px] leading-[1.55] text-shell-text-muted">

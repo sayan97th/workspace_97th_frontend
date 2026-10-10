@@ -13,6 +13,8 @@ interface DropdownItemProps {
   buttonRef?: React.Ref<HTMLButtonElement>;
   /** Renders the row greyed-out and non-interactive (e.g. "Move ahead" when already last) instead of hiding it outright. */
   disabled?: boolean;
+  /** Paints the row in the destructive style (`data-danger`, read by `action-menu.css`). */
+  danger?: boolean;
 }
 
 export const DropdownItem: React.FC<DropdownItemProps> = ({
@@ -20,11 +22,12 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
   href,
   onClick,
   onItemClick,
-  baseClassName = "block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900",
+  baseClassName = "block w-full rounded px-2 py-1.5 text-left text-board-nav text-shell-text hover:bg-shell-hover-strong",
   className = "",
   children,
   buttonRef,
   disabled = false,
+  danger = false,
 }) => {
   const combinedClasses = `${baseClassName} ${className}`.trim();
 
@@ -46,7 +49,15 @@ export const DropdownItem: React.FC<DropdownItemProps> = ({
   }
 
   return (
-    <button ref={buttonRef} onClick={handleClick} disabled={disabled} className={combinedClasses}>
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={handleClick}
+      disabled={disabled}
+      aria-disabled={disabled || undefined}
+      data-danger={danger || undefined}
+      className={combinedClasses}
+    >
       {children}
     </button>
   );

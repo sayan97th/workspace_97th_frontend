@@ -199,7 +199,7 @@ const BoardInviteModal: React.FC<BoardInviteModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between px-8 pt-7">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-[-0.01em]">Invite to this board</h2>
+            <h2 className="font-heading text-dialog-title">Invite to this board</h2>
             <p className="mt-1.5 text-[13px] leading-[1.55] text-gray-400">
               Give someone a view of &ldquo;{board_label}&rdquo; without adding them to the whole workspace.
             </p>

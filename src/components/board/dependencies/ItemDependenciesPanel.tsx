@@ -111,7 +111,7 @@ export default function ItemDependenciesPanel({ sections, can_edit, onChangeLink
         return (
           <section key={section.column_id} className="mb-7 last:mb-0">
             <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <h3 className="m-0 text-[15px] font-semibold text-shell-text">{section.column_title}</h3>
+              <h3 className="m-0 font-outfit text-section-title text-shell-text">{section.column_title}</h3>
               <span className="text-[12px] text-shell-text-faint">
                 {section.date_column ? `Schedules ${section.date_column.title}, ${mode_label}` : "No date column picked yet"}
               </span>

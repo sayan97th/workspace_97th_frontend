@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { DropdownItem } from "@/components/ui/dropdown/DropdownItem";
+import "./action-menu.css";
 
 export type MenuListItem = {
   key: string;
@@ -33,46 +34,38 @@ export type MenuItemListProps = {
 /**
  * Shared row-list renderer for kebab/options menus: a title, a stack of icon +
  * label rows, and an auto-inserted divider before the first `danger` row.
- * Positioning is intentionally left to the caller — {@link AnchoredMenu} wraps
- * this for anchor-el popovers.
+ * Rows use the same monday.com look as {@link ActionMenu} (`action-menu.css`),
+ * so the caller must render it inside an `.action-menu` card. Positioning is
+ * intentionally left to the caller, {@link AnchoredMenu} wraps this for
+ * anchor-el popovers.
  */
 export const MenuItemList: React.FC<MenuItemListProps> = ({ title, items, onSelect, getItemRef }) => {
-  const base_item_class =
-    "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-shell-text hover:bg-shell-hover-strong w-full";
-  const danger_item_class =
-    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-semibold text-brand-200 hover:bg-brand-500/[0.14]";
-  const disabled_item_class =
-    "flex w-full cursor-not-allowed items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13.5px] font-medium text-shell-text-faint";
-
   return (
     <>
       {title && (
-        <div className="mb-1 truncate border-b border-shell-border px-2.5 pb-2 pt-1.5 font-mono-accent text-[11px] tracking-[0.05em] text-shell-text-muted">
+        <div className="action-menu__title truncate" aria-hidden="true">
           {title}
         </div>
       )}
       {items.map((item, index) => {
         const previous = items[index - 1];
         const needs_divider = Boolean(previous) && (item.divider_before ?? (item.danger && !previous?.danger));
-        const item_class = item.disabled ? disabled_item_class : item.danger ? danger_item_class : base_item_class;
         return (
           <React.Fragment key={item.key}>
-            {needs_divider && <div className="my-1 h-px bg-shell-border" />}
+            {needs_divider && <div className="action-menu__divider" role="separator" />}
             <DropdownItem
               tag="button"
-              baseClassName=""
+              baseClassName="action-menu__item"
               buttonRef={getItemRef?.(item.key)}
               onItemClick={() => onSelect(item)}
               disabled={item.disabled}
-              className={item_class}
+              danger={item.danger}
             >
-              <span
-                className={`flex w-4 flex-none ${item.disabled ? "text-shell-text-faint" : item.danger ? "text-brand-200" : "text-shell-text-muted"}`}
-              >
+              <span className="action-menu__icon" aria-hidden="true">
                 {item.icon}
               </span>
-              <span className="flex-1 text-left">{item.label}</span>
-              {item.trailing}
+              <span className="action-menu__label">{item.label}</span>
+              {item.trailing && <span className="action-menu__chevron">{item.trailing}</span>}
             </DropdownItem>
           </React.Fragment>
         );

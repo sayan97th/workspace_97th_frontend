@@ -70,7 +70,7 @@ const ImportProgressStep: React.FC<ImportProgressStepProps> = ({ job, is_stoppin
           )}
         </span>
 
-        <h2 className="text-[19px] font-semibold text-shell-text">{copy.title}</h2>
+        <h2 className="text-shell-text font-heading text-dialog-title">{copy.title}</h2>
         <p className="mt-1.5 text-[13.5px] text-shell-text-secondary">{copy.description}</p>
 
         <div className="mt-7">

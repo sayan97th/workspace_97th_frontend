@@ -194,7 +194,7 @@ const InviteMembersModal: React.FC<InviteMembersModalProps> = ({
         {/* Header */}
         <div className="flex items-start justify-between px-8 pt-7">
           <div>
-            <h2 className="text-2xl font-extrabold tracking-[-0.01em]">
+            <h2 className="font-heading text-dialog-title">
               Invite members
             </h2>
             <p className="mt-1.5 text-[13px] leading-[1.55] text-gray-400">

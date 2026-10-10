@@ -17,9 +17,10 @@ export const metadata: Metadata = {
   },
 };
 
-// Body/UI typeface — see `src/styles/typography.css` for how these map to
-// the `--font-outfit`/`--font-heading` theme tokens (monday.com-style pairing:
-// Figtree for copy, Poppins for headings).
+// Body/UI typeface, see `src/styles/typography.css` for how these map to
+// the `--font-outfit`/`--font-heading` theme tokens (monday.com style pairing:
+// Figtree for copy, Poppins for headings). The variable classes sit on <html>
+// so they exist on `:root`, where Tailwind resolves its theme tokens.
 const figtree_font = Figtree({
   subsets: ["latin"],
   variable: "--font-figtree",
@@ -51,8 +52,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable} ${figtree_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
+    <html lang="en" className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable}`} suppressHydrationWarning>
+      <body className={`${figtree_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: theme_bootstrap_script }} />
         <ThemeProvider>
           <AuthProvider>

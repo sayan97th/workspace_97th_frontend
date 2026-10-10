@@ -133,7 +133,7 @@ const AccountAutomationsView: React.FC = () => {
     <div className="mx-auto w-full max-w-[1240px] px-5 py-7 sm:px-8">
       <header className="mb-5 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-2 text-[26px] font-extrabold tracking-[-0.015em] text-shell-text">
+          <h1 className="flex items-center gap-2 text-shell-text font-heading text-page-title">
             <Zap size={22} className="text-brand-500" />
             Automations
           </h1>

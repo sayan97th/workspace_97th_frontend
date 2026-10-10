@@ -102,7 +102,7 @@ export default function ManageView(props: ManageViewProps) {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-[26px] font-semibold text-boardtree-text">Manage your board automations</h2>
+        <h2 className="text-boardtree-text font-heading text-page-title">Manage your board automations</h2>
 
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => openTab("usage")} className="flex h-9 items-center gap-2 rounded-[6px] px-2 text-[13px] text-boardtree-text-secondary hover:bg-boardtree-hover">

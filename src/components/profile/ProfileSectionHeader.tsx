@@ -35,7 +35,7 @@ const ProfileSectionHeader: React.FC<ProfileSectionHeaderProps> = ({
       <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg ${TONE_CHIP_CLASSES[tone]}`}>
         {icon}
       </div>
-      <h2 className="text-[15px] font-bold text-shell-text">{title}</h2>
+      <h2 className="font-outfit text-section-title text-shell-text">{title}</h2>
       {badge}
     </div>
     {description ? <p className="mt-1 text-[13px] text-shell-text-muted">{description}</p> : null}

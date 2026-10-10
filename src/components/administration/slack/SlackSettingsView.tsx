@@ -91,7 +91,7 @@ const SlackSettingsView: React.FC = () => {
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-[24px] font-extrabold tracking-[-0.01em]">Slack</h1>
+                <h1 className="font-heading text-page-title">Slack</h1>
                 {!slack.is_loading ? (
                   needs_setup ? (
                     <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#fdab3d]">Setup required</span>

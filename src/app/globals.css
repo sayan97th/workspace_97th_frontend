@@ -105,10 +105,11 @@
   --color-shell-border-strong: rgba(10, 23, 23, 0.12);
   --color-shell-hover: rgba(10, 23, 23, 0.045);
   --color-shell-hover-strong: rgba(10, 23, 23, 0.08);
-  --color-shell-text: var(--color-gray-700);
-  --color-shell-text-secondary: var(--color-gray-500);
-  --color-shell-text-muted: var(--color-gray-400);
-  --color-shell-text-faint: var(--color-gray-300);
+  /* Text grays follow monday.com (the sidebar, board chrome and table look), so copy reads the same on every page. */
+  --color-shell-text: #323338;
+  --color-shell-text-secondary: #676879;
+  --color-shell-text-muted: #676879;
+  --color-shell-text-faint: #9699a6;
   --color-shell-scrollbar-thumb: rgba(10, 23, 23, 0.16);
 
   /* Two level sidebar (monday.com look): the app rail and top bar share
@@ -189,7 +190,7 @@
     cursor: pointer;
   }
   body {
-    @apply relative font-normal font-outfit z-1 bg-gray-50;
+    @apply relative font-normal font-outfit text-shell-text z-1 bg-gray-50;
   }
 }
 

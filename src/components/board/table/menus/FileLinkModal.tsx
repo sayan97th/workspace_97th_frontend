@@ -113,7 +113,7 @@ export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
           </svg>
         </button>
 
-        <h2 id={title_id} className="text-center text-[24px] font-semibold tracking-[-0.01em] text-boardtree-text">
+        <h2 id={title_id} className="text-center text-boardtree-text font-heading text-dialog-title">
           Upload file from link
         </h2>
 

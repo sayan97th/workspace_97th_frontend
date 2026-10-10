@@ -105,7 +105,7 @@ export default function CommunicationView({ slack, columns, people, channel_filt
         className="mb-6 h-10 w-full rounded-[6px] border border-boardtree-border bg-boardtree-surface px-3.5 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
       />
 
-      <h2 className="text-[22px] font-semibold text-boardtree-text">Communication</h2>
+      <h2 className="text-boardtree-text font-heading text-dialog-title">Communication</h2>
       <p className="mb-4 mt-1 text-[13px] text-boardtree-text-muted">Keep your team in the loop with notification and messaging templates.</p>
 
       <div className="mb-5 flex flex-wrap gap-3">

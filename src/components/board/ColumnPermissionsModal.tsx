@@ -173,7 +173,7 @@ const ColumnPermissionsModal: React.FC<ColumnPermissionsModalProps> = ({ is_open
       <div className="relative z-[421] flex max-h-[88vh] w-[520px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <div className="flex items-center justify-between border-b border-shell-border px-7 py-5">
           <div className="min-w-0">
-            <h2 className="text-xl font-extrabold tracking-[-0.01em]">Column permissions</h2>
+            <h2 className="font-heading text-dialog-title">Column permissions</h2>
             <p className="truncate text-[12.5px] text-shell-text-muted">&ldquo;{column.label}&rdquo;, board owners always have access</p>
           </div>
           <button

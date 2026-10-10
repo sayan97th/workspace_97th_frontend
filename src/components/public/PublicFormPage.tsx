@@ -102,7 +102,7 @@ const PublicFormPage: React.FC<{ token: string }> = ({ token }) => {
   if (page_state === "unavailable" || !form) {
     return (
       <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-2 px-6 text-center">
-        <h1 className="text-xl font-bold">Form unavailable</h1>
+        <h1 className="font-heading text-page-title">Form unavailable</h1>
         <p className="text-[14px] text-shell-text-muted">{unavailable_message}</p>
       </main>
     );
@@ -120,7 +120,7 @@ const PublicFormPage: React.FC<{ token: string }> = ({ token }) => {
             <span className="flex h-14 w-14 items-center justify-center rounded-full text-[26px] text-white" style={{ background: accent_color }} aria-hidden="true">
               ✓
             </span>
-            <h1 className="text-xl font-bold">{form.title}</h1>
+            <h1 className="font-heading text-page-title">{form.title}</h1>
             <p className="max-w-md whitespace-pre-line text-[14.5px] text-shell-text-secondary">{success_message}</p>
             <button type="button" onClick={handleSubmitAnother} className="mt-2 text-[13.5px] font-semibold hover:underline" style={{ color: accent_color }}>
               Submit another response
@@ -129,7 +129,7 @@ const PublicFormPage: React.FC<{ token: string }> = ({ token }) => {
         ) : (
           <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6 px-6 pb-8 pt-7 sm:px-8">
             <header>
-              <h1 className="text-[26px] font-bold tracking-[-0.01em]">{form.title}</h1>
+              <h1 className="font-heading text-page-title">{form.title}</h1>
               {form.description && <p className="mt-2 whitespace-pre-line text-[14px] text-shell-text-secondary">{form.description}</p>}
             </header>
 

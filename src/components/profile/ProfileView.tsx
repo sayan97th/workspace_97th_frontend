@@ -78,7 +78,7 @@ const ProfileView: React.FC = () => {
             <UserAvatar user={user} size={64} font_size={22} className="ring-4 ring-shell-panel" />
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-[22px] font-extrabold tracking-[-0.01em] text-shell-text">
+                <h1 className="truncate text-shell-text font-heading text-page-title">
                   {getUserDisplayName(user)}
                 </h1>
                 {role_names.map((role_name) => (

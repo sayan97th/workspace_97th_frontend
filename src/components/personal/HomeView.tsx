@@ -91,7 +91,7 @@ const HomeView: React.FC = () => {
         <p className="text-[13px] text-shell-text-muted">
           {today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}
         </p>
-        <h1 className="text-[26px] font-extrabold tracking-[-0.015em] text-shell-text">
+        <h1 className="text-shell-text font-heading text-page-title">
           {greetingFor(today)}
           {user?.first_name ? `, ${user.first_name}` : ""}
         </h1>
@@ -100,7 +100,7 @@ const HomeView: React.FC = () => {
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="flex min-w-0 flex-col gap-5">
           <section className={SECTION_CLASS} aria-labelledby="home-recent-title">
-            <h2 id="home-recent-title" className="mb-3 text-[15px] font-semibold text-shell-text">Recently visited</h2>
+            <h2 id="home-recent-title" className="mb-3 font-outfit text-section-title text-shell-text">Recently visited</h2>
             {recent_boards === null ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {[0, 1, 2].map((index) => (
@@ -144,7 +144,7 @@ const HomeView: React.FC = () => {
 
           <section className={SECTION_CLASS} aria-labelledby="home-work-title">
             <div className="mb-3 flex items-center justify-between">
-              <h2 id="home-work-title" className="text-[15px] font-semibold text-shell-text">My work</h2>
+              <h2 id="home-work-title" className="font-outfit text-section-title text-shell-text">My work</h2>
               <Link href="/my-work" className="text-[12.5px] font-semibold text-brand-500 hover:underline">Open My work</Link>
             </div>
             <div className="mb-4 grid grid-cols-3 gap-3">
@@ -191,7 +191,7 @@ const HomeView: React.FC = () => {
 
         <div className="flex min-w-0 flex-col gap-5">
           <section className={SECTION_CLASS} aria-labelledby="home-inbox-title">
-            <h2 id="home-inbox-title" className="mb-3 text-[15px] font-semibold text-shell-text">Unread notifications</h2>
+            <h2 id="home-inbox-title" className="mb-3 font-outfit text-section-title text-shell-text">Unread notifications</h2>
             {notifications === null ? (
               <div className="space-y-2">
                 {[0, 1, 2].map((index) => (
@@ -230,7 +230,7 @@ const HomeView: React.FC = () => {
           </section>
 
           <section className={SECTION_CLASS} aria-labelledby="home-workspaces-title">
-            <h2 id="home-workspaces-title" className="mb-3 text-[15px] font-semibold text-shell-text">My workspaces</h2>
+            <h2 id="home-workspaces-title" className="mb-3 font-outfit text-section-title text-shell-text">My workspaces</h2>
             {my_workspaces.length === 0 ? (
               <p className="text-[13px] text-shell-text-muted">You haven&apos;t joined a workspace yet.</p>
             ) : (

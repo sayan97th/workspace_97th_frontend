@@ -79,7 +79,7 @@ const BoardFormView: React.FC<BoardFormViewProps> = ({ board_id, view_id, can_ed
       <aside className="flex w-full flex-none flex-col gap-4 lg:sticky lg:top-0 lg:w-[340px]">
         <section className="rounded-xl border border-shell-border bg-shell-panel p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-[14px] font-semibold text-shell-text">Share form</h2>
+            <h2 className="font-outfit text-section-title text-shell-text">Share form</h2>
             {form.is_saving ? (
               <span className="text-[12px] text-shell-text-faint">Saving...</span>
             ) : (
@@ -116,7 +116,7 @@ const BoardFormView: React.FC<BoardFormViewProps> = ({ board_id, view_id, can_ed
         </section>
 
         <section className="flex flex-col gap-3.5 rounded-xl border border-shell-border bg-shell-panel p-4">
-          <h2 className="text-[14px] font-semibold text-shell-text">Settings</h2>
+          <h2 className="font-outfit text-section-title text-shell-text">Settings</h2>
 
           <div>
             <label htmlFor="form-source-view" className={FIELD_LABEL}>Questions come from</label>

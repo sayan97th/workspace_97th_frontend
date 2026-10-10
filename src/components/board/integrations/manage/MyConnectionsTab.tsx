@@ -22,7 +22,7 @@ function ConnectionRow({ icon, name, description, status_pill, used_by, children
       <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[9px] border border-boardtree-border-soft bg-boardtree-panel-alt text-boardtree-text-muted">{icon}</div>
       <div className="min-w-[220px] flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="text-[14px] font-semibold text-boardtree-text">{name}</h3>
+          <h3 className="font-outfit text-section-title text-boardtree-text">{name}</h3>
           {status_pill}
         </div>
         <p className="mt-0.5 text-[12.5px] leading-relaxed text-boardtree-text-muted">{description}</p>
@@ -142,7 +142,7 @@ export default function MyConnectionsTab({ slack, return_path, automations, onOp
 
       <div className="mb-2 mt-6 flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="text-[14px] font-semibold text-boardtree-text">My Slack accounts for automations</h3>
+          <h3 className="font-outfit text-section-title text-boardtree-text">My Slack accounts for automations</h3>
           <p className="text-[12.5px] text-boardtree-text-muted">The accounts you connected from a Slack recipe. Channel automations post through the account they were created with.</p>
         </div>
         {slack_connections.can_connect && (

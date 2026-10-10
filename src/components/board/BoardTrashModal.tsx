@@ -152,7 +152,7 @@ const BoardTrashModal: React.FC<BoardTrashModalProps> = ({ board_id, is_open, on
         </div>
 
         <div className="flex-none px-[26px] pt-5">
-          <h2 className="text-[20px] font-extrabold tracking-[-0.01em]">{copy.label}</h2>
+          <h2 className="font-heading text-dialog-title">{copy.label}</h2>
           <p className="mt-[6px] max-w-[600px] text-[13px] leading-relaxed text-shell-text-muted">{copy.description}</p>
         </div>
 

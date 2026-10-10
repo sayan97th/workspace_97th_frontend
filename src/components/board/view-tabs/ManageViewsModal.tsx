@@ -93,7 +93,7 @@ const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
       <div className="relative z-[421] flex max-h-[86vh] w-[640px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <div className="flex items-center justify-between border-b border-shell-border px-7 py-5">
           <div className="min-w-0">
-            <h2 className="text-xl font-extrabold tracking-[-0.01em]">Manage views</h2>
+            <h2 className="font-heading text-dialog-title">Manage views</h2>
             <p className="text-[12.5px] text-shell-text-muted">
               {tabs.length} {tabs.length === 1 ? "view" : "views"}. Hiding a view or picking your default only changes what you see.
             </p>

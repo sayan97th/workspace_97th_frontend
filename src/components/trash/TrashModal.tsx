@@ -112,7 +112,7 @@ const TrashModal: React.FC<TrashModalProps> = ({
         </div>
 
         <div className="flex-none px-[26px] pt-5">
-          <h2 className="text-[22px] font-extrabold tracking-[-0.01em]">{copy.title}</h2>
+          <h2 className="font-heading text-dialog-title">{copy.title}</h2>
           <p className="mt-[6px] max-w-[760px] text-[13px] leading-relaxed text-shell-text-muted">{copy.description}</p>
         </div>
 
