@@ -52,7 +52,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable} ${figtree_font.className} antialiased dark:bg-gray-900`}>
+      <body className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable} ${figtree_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: theme_bootstrap_script }} />
         <ThemeProvider>
           <AuthProvider>
