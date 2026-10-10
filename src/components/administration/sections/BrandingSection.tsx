@@ -1,5 +1,7 @@
 "use client";
 import React, { useRef, useState } from "react";
+import Link from "next/link";
+import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import { useBrandingManager } from "../useBrandingManager";
 
 const UploadGlyph = () => (
@@ -115,10 +117,9 @@ const Dropzone: React.FC<DropzoneProps> = ({
 };
 
 /**
- * Administration > Customization > Branding — the account's main-menu logo and
- * notification email header, uploaded to the Laravel API via {@link useBrandingManager}.
- * `AppTopBar`'s logo badge reads the lighter-weight `useAccountBranding()` instead, since it
- * needs to work for any authenticated user, not just the staff roles that can reach this page.
+ * Administration > Customization > Branding, the notification email header uploaded to the
+ * Laravel API via {@link useBrandingManager}. The logo moved to the Organization page
+ * (`/admin/organization`), linked from here.
  */
 const BrandingSection: React.FC = () => {
   const branding = useBrandingManager();
@@ -131,39 +132,20 @@ const BrandingSection: React.FC = () => {
         </div>
       ) : null}
 
-      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Main menu logo</div>
-      <p className="mb-[18px] text-[13px] leading-relaxed text-shell-text-muted">
-        This appears in the top-left of the main menu across the account. Recommended: 40×40px PNG with a
-        transparent background.
-      </p>
-
-      <div className="mb-9 flex items-stretch gap-5 rounded-2xl border border-shell-border bg-shell-panel-alt p-[22px]">
-        <div className="flex flex-none flex-col items-center gap-2">
-          <div className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel-alt">
-            {branding.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={branding.logo_url} alt="Current logo" className="h-full w-full object-contain" />
-            ) : (
-              <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-brand-500 text-[13px] font-bold text-white">
-                97
-              </span>
-            )}
-          </div>
-          <span className="text-[11px] text-shell-text-faint">Current</span>
+      <div className="mb-9 flex items-center justify-between gap-4 rounded-2xl border border-shell-border bg-shell-panel-alt p-[22px]">
+        <div className="min-w-0">
+          <div className="mb-1 text-[15px] font-bold text-shell-text">Logo, favicon and brand color</div>
+          <p className="text-[13px] leading-relaxed text-shell-text-muted">
+            The logo in the top left corner, the dark mode logo, the favicon and the brand color now live on the
+            Organization page, together with the company profile and the sign in page.
+          </p>
         </div>
-
-        <div className="w-px bg-shell-hover-strong" />
-
-        <div className="min-w-0 flex-1">
-          <Dropzone
-            label="Logo"
-            hint="Drag and drop a PNG here, or click the tile to browse. 40×40px, transparent background."
-            preview_url={branding.logo_url}
-            is_busy={branding.is_uploading_logo}
-            onFile={(file) => void branding.uploadLogo(file)}
-            onRemove={() => void branding.removeLogo()}
-          />
-        </div>
+        <Link
+          href={ORGANIZATION_SETTINGS_PATH}
+          className="flex-none rounded-[9px] bg-brand-500 px-4 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-brand-600"
+        >
+          Open Organization
+        </Link>
       </div>
 
       <div className="mb-1.5 text-[15px] font-bold text-shell-text">Email header</div>

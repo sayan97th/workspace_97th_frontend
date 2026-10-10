@@ -1,0 +1,37 @@
+/*
+ * Styles scoped to the Organization page's root wrapper (`organization-settings-theme` in
+ * OrganizationSettingsView.tsx). Same approach as `workspace-manage.css`: the monday.com
+ * palette is redeclared on the wrapper instead of changing the `shell-*` tokens app wide.
+ * Dark mode keeps the hand tuned set from `globals.css`.
+ */
+html:not(.dark) .organization-settings-theme {
+  --color-shell-bg: #ffffff;
+  --color-shell-surface: #ffffff;
+  --color-shell-panel: #ffffff;
+  --color-shell-panel-alt: #f6f7fb;
+  --color-shell-border: #d0d4e4;
+  --color-shell-border-strong: #c3c6d4;
+  --color-shell-hover: #f5f6f8;
+  --color-shell-hover-strong: #dcdfec;
+  --color-shell-text: #323338;
+  --color-shell-text-secondary: #676879;
+  --color-shell-text-muted: #676879;
+  --color-shell-text-faint: #9699a6;
+}
+
+/* Cards land below the sticky page header when jumped to from the side navigation. */
+.organization-settings-theme [data-organization-section] {
+  scroll-margin-top: 24px;
+}
+
+/* Checkerboard behind uploaded logos, so transparent edges stay visible. */
+.organization-asset-checker {
+  background-color: #ffffff;
+  background-image:
+    linear-gradient(45deg, #eef0f5 25%, transparent 25%),
+    linear-gradient(-45deg, #eef0f5 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #eef0f5 75%),
+    linear-gradient(-45deg, transparent 75%, #eef0f5 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+}

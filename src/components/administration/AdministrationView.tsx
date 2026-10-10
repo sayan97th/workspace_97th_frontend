@@ -41,6 +41,7 @@ const SECTION_TITLES: Record<AdminSectionId, string> = {
   account: "Account",
   integrations: "Integrations",
   customization: "Customization",
+  organization: "Organization",
   branding: "Branding",
   users: "User management",
   departments: "Departments",

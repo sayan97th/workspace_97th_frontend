@@ -3,10 +3,12 @@
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
+import { BrandingProvider } from "@/context/BrandingContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
 import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
+import OrganizationAnnouncementBanner from "@/components/organization/OrganizationAnnouncementBanner";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
 import { useIsEmbedded } from "@/hooks/useIsEmbedded";
 import { usePathname, useRouter } from "next/navigation";
@@ -40,20 +42,24 @@ export default function AdminLayout({
   // Inside a frame ("Open in overlay" on a sidebar board) only the page renders, the overlay has its own header.
   if (is_embedded) {
     return (
-      <WorkspaceProvider>
-        <ToastProvider>
-          <main className="shell-scrollbar h-screen w-full overflow-y-auto bg-shell-bg">{children}</main>
-        </ToastProvider>
-      </WorkspaceProvider>
+      <BrandingProvider>
+        <WorkspaceProvider>
+          <ToastProvider>
+            <main className="shell-scrollbar h-screen w-full overflow-y-auto bg-shell-bg">{children}</main>
+          </ToastProvider>
+        </WorkspaceProvider>
+      </BrandingProvider>
     );
   }
 
   return (
+    <BrandingProvider>
     <WorkspaceProvider>
       <ToastProvider>
         <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
           <AppTopBar />
           <ImpersonationBanner />
+          <OrganizationAnnouncementBanner />
           <div className="relative flex min-h-0 w-full flex-1 overflow-hidden bg-sidebar-rail">
             <AppSidebar />
             <Backdrop />
@@ -70,5 +76,6 @@ export default function AdminLayout({
         </div>
       </ToastProvider>
     </WorkspaceProvider>
+    </BrandingProvider>
   );
 }

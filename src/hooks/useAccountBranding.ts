@@ -1,6 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
-import { brandingService } from "@/services/branding.service";
+import { useBranding } from "@/context/BrandingContext";
 
 export type AccountBranding = {
   logo_url: string | null;
@@ -8,30 +7,11 @@ export type AccountBranding = {
 };
 
 /**
- * Read-only account branding (logo, email header) for any authenticated user, backing
- * {@link AppTopBar}'s logo badge. The full read/write surface (upload, remove) lives in
- * `src/components/administration/useBrandingManager.ts`, gated to the Administration page.
+ * Read only account logo and email header for any authenticated user, kept for the automation
+ * cards that show the account logo. Reads the shared {@link useBranding} copy, so it no longer
+ * fires its own request per card. The full Organization surface lives at `/admin/organization`.
  */
 export function useAccountBranding(): AccountBranding {
-  const [logo_url, setLogoUrl] = useState<string | null>(null);
-  const [email_header_url, setEmailHeaderUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    brandingService
-      .getBranding()
-      .then((dto) => {
-        if (cancelled) return;
-        setLogoUrl(dto.logo_url);
-        setEmailHeaderUrl(dto.email_header_url);
-      })
-      .catch(() => {
-        // Branding is purely cosmetic — fall back to the default "97" mark on failure.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return { logo_url, email_header_url };
+  const { branding } = useBranding();
+  return { logo_url: branding.logo_url, email_header_url: branding.email_header_url };
 }

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { ChevronRightIcon } from "@/icons/workspace-icons";
 import {
@@ -66,7 +67,16 @@ const NavGroupToggle: React.FC<{
  * whichever group contains the active section, including when navigation arrives from a
  * section's own internal link (see `CustomizationSection`/`DepartmentsSection`).
  */
-const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section, onSelectSection }) => {
+const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section, onSelectSection: selectSection }) => {
+  const router = useRouter();
+  /** Items with their own page (Organization) navigate, the rest switch the section in place. */
+  const onSelectSection = (id: AdminSectionId) => {
+    const href = [...ADMINISTRATION_GENERAL_ITEMS, ...ADMINISTRATION_NAV_GROUPS.flatMap((group) => administrationItemsForGroup(group.id))].find(
+      (item) => item.id === id
+    )?.href;
+    if (href) router.push(href);
+    else selectSection(id);
+  };
   const { hasAnyRole } = useAuth();
   const [expanded_groups, setExpandedGroups] = useState<Record<AdminNavGroupId, boolean>>({
     customization: true,

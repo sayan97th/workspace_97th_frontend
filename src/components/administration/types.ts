@@ -4,6 +4,7 @@ export type AdminSectionId =
   | "account"
   | "integrations"
   | "customization"
+  | "organization"
   | "branding"
   | "users"
   | "departments"

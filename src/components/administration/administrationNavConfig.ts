@@ -17,6 +17,7 @@ import {
   TeamsIcon,
   type IconComponent,
 } from "@/icons/workspace-icons";
+import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import type { AdminNavGroupId, AdminSectionId } from "./types";
 
 export type AdministrationNavGroup = {
@@ -32,6 +33,8 @@ export type AdministrationNavItem = {
   icon: IconComponent;
   /** Which collapsible group this item renders under, or null for the always-visible "General" rows. */
   group: AdminNavGroupId | null;
+  /** Opens a page of its own instead of a section of the Administration view. */
+  href?: string;
   /** Restricts the item to these platform roles, mirroring the API route's role gate. Visible to every Administration role when absent. */
   roles?: string[];
 };
@@ -56,6 +59,7 @@ export const ADMINISTRATION_NAV_ITEMS: AdministrationNavItem[] = [
   { id: "account", label: "Account", icon: BuildingIcon, group: null },
   { id: "usage", label: "Usage stats", icon: DashboardIcon, group: null },
   { id: "integrations", label: "Integrations", icon: LinkIcon, group: null },
+  { id: "organization", label: "Organization", icon: BuildingIcon, group: "customization", href: ORGANIZATION_SETTINGS_PATH },
   { id: "branding", label: "Branding", icon: CameraIcon, group: "customization" },
   { id: "profile_fields", label: "Profile fields", icon: FileIcon, group: "customization" },
   { id: "users", label: "Users", icon: TeamsIcon, group: "directory" },

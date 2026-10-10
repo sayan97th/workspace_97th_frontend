@@ -6,6 +6,7 @@ import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { APP_NAME } from '@/lib/page-title';
+import { brand_palette_bootstrap_script } from '@/lib/brand-theme';
 
 // Every static route exports a plain `metadata.title` ("Users") and this
 // template appends the product name. Client-resolved routes (boards, views,
@@ -55,6 +56,8 @@ export default function RootLayout({
     <html lang="en" className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable}`} suppressHydrationWarning>
       <body className={`${figtree_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: theme_bootstrap_script }} />
+        {/* Repaints the organization's brand color before hydration, see `@/lib/brand-theme`. */}
+        <script dangerouslySetInnerHTML={{ __html: brand_palette_bootstrap_script }} />
         <ThemeProvider>
           <AuthProvider>
             <SidebarProvider>{children}</SidebarProvider>

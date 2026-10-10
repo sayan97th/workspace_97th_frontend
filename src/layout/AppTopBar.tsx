@@ -1,12 +1,14 @@
 "use client";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
-import { useAccountBranding } from "@/hooks/useAccountBranding";
+import { useBranding } from "@/context/BrandingContext";
 import UserAvatar from "@/components/common/UserAvatar";
-import BrandLogo from "@/components/common/BrandLogo";
+import OrganizationLogo from "@/components/common/OrganizationLogo";
+import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import AccountMenu from "./AccountMenu";
+import HelpMenu from "./HelpMenu";
 import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
   type RequestAccessSubmission,
@@ -34,15 +36,16 @@ import {
 
 /**
  * Full-width application bar that sits above the sidebar and main content.
- * Shares the app rail's background (monday.com look) and keeps the 97th logo
- * centered over the rail column. Colors come from theme tokens, so it repaints
+ * Shares the app rail's background (monday.com look) and keeps the organization
+ * logo (Administration > Organization, the 97th mark by default) centered over
+ * the rail column. Colors come from theme tokens, so it repaints
  * with AccountMenu's Light/Dark/System default switcher.
  */
 const AppTopBar: React.FC = () => {
   const router = useRouter();
   const { toggleMobileSidebar } = useSidebar();
   const { user } = useAuth();
-  const { logo_url } = useAccountBranding();
+  const { branding } = useBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
   const is_active_workspace_viewer = active_workspace?.role === "Viewer";
   const {
@@ -73,6 +76,8 @@ const AppTopBar: React.FC = () => {
   } = useNotifications();
   const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all", load_updates: false });
   const [is_account_open, setIsAccountOpen] = useState(false);
+  const [is_help_open, setIsHelpOpen] = useState(false);
+  const help_button_ref = useRef<HTMLButtonElement>(null);
   const [is_request_access_open, setIsRequestAccessOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
   const [is_notifications_open, setIsNotificationsOpen] = useState(false);
@@ -100,6 +105,9 @@ const AppTopBar: React.FC = () => {
 
   /** "Administration" is now a routed page (`/administration`) rather than a modal. */
   const openAdministration = () => router.push("/administration");
+
+  /** "Organization" opens the company profile and branding page. */
+  const openOrganization = () => router.push(ORGANIZATION_SETTINGS_PATH);
 
   /** "Users" opens the site-wide user directory, gated to super_admin/admin/staff. */
   const openUsers = () => router.push("/users");
@@ -167,14 +175,17 @@ const AppTopBar: React.FC = () => {
 
         {/* Same width as the app rail below, so the logo sits centered over it. */}
         <span className="flex flex-none items-center lg:w-[72px] lg:justify-center">
-          <BrandLogo size={32} />
+          <OrganizationLogo
+            logo_url={branding.logo_url}
+            logo_dark_url={branding.logo_dark_url}
+            company_name={branding.company_name}
+            size={32}
+          />
         </span>
 
-        {/* An uploaded account logo sits where monday.com shows the plan badge, the 97th logo always stays. */}
-        {logo_url && (
-          <span className="hidden h-7 max-w-[132px] flex-none items-center overflow-hidden rounded-md sm:flex">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={logo_url} alt="Account logo" className="h-full w-auto object-contain" />
+        {branding.show_name_in_top_bar && (
+          <span className="hidden max-w-[220px] truncate text-[15px] font-semibold text-shell-text sm:block">
+            {branding.company_name}
           </span>
         )}
 
@@ -244,7 +255,15 @@ const AppTopBar: React.FC = () => {
           <InviteIcon size={17} />
         </button>
 
-        <button type="button" className={`${icon_button_class} hidden sm:flex`} aria-label="Help">
+        <button
+          ref={help_button_ref}
+          type="button"
+          onClick={() => setIsHelpOpen((previous) => !previous)}
+          className={`${icon_button_class} hidden sm:flex ${is_help_open ? "bg-shell-hover-strong" : ""}`}
+          aria-label="Help"
+          aria-haspopup="menu"
+          aria-expanded={is_help_open}
+        >
           <HelpIcon size={17} />
         </button>
 
@@ -318,8 +337,12 @@ const AppTopBar: React.FC = () => {
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 
+      <HelpMenu anchor_el={help_button_ref.current} is_open={is_help_open} onClose={() => setIsHelpOpen(false)} />
+
       <AccountMenu
         is_open={is_account_open}
+        organization_name={branding.company_name}
+        onOpenOrganization={openOrganization}
         onClose={closeAccount}
         onOpenProfile={openProfile}
         onInviteMembers={openInvite}

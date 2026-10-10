@@ -57,6 +57,12 @@ const AdministrationGlyph = () => (
     />
   </svg>
 );
+const OrganizationGlyph = () => (
+  <svg {...iconBaseProps}>
+    <rect x="2.6" y="2.2" width="7.4" height="11.6" rx="1" />
+    <path d="M10 6.2 H12.6 A0.8 0.8 0 0 1 13.4 7 V13.8 M1.8 13.8 H14.2 M5 5 H7.6 M5 7.6 H7.6 M5 10.2 H7.6" strokeLinecap="round" />
+  </svg>
+);
 const TeamsGlyph = () => (
   <svg {...iconBaseProps}>
     <circle cx="5.5" cy="6" r="2" />
@@ -191,6 +197,8 @@ export type AccountMenuProps = {
   onOpenTrash?: () => void;
   /** Opens the account Trash dialog owned by the top bar, defaulted to the Archive tab. */
   onOpenArchive?: () => void;
+  /** Opens Administration > Organization (company profile and branding). */
+  onOpenOrganization?: () => void;
   /** Opens the account Administration dialog owned by the top bar. */
   onOpenAdministration?: () => void;
   /** Navigates to the site-wide Users directory page, provided by the top bar. */
@@ -214,6 +222,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onOpenTrash,
   onOpenArchive,
   onOpenAdministration,
+  onOpenOrganization,
   onOpenUsers,
   organization_name = "97th Floor",
 }) => {
@@ -277,6 +286,11 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     onOpenAdministration?.();
   };
 
+  const handleOpenOrganization = () => {
+    onClose();
+    onOpenOrganization?.();
+  };
+
   const handleOpenUsers = () => {
     onClose();
     onOpenUsers?.();
@@ -291,6 +305,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
     { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
     { label: "Administration", icon: <AdministrationGlyph />, onSelect: handleOpenAdministration },
+    ...(can_view_users ? [{ label: "Organization", icon: <OrganizationGlyph />, onSelect: handleOpenOrganization }] : []),
     ...(can_view_users ? [{ label: "Users", icon: <UsersGlyph />, onSelect: handleOpenUsers }] : []),
     { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
     { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },
