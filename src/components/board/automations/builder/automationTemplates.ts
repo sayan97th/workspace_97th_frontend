@@ -1,4 +1,5 @@
 import type { BoardAutomationAction, BoardAutomationCondition, BoardAutomationDefinition, BoardAutomationTriggerType } from "@/types/board-automation";
+import type { ExternalService } from "@/types/external-account";
 import type { ColumnKind } from "../../table/types";
 import { browserTimezone, type AutomationBuilderContext } from "./automationCatalog";
 
@@ -16,7 +17,7 @@ export type TemplateCategory = "recommended" | "productivity" | "dates" | "commu
 export type GalleryCategory = "explore" | TemplateCategory | "account" | "saved";
 
 /** Something outside the board a recipe talks to, shown as the icon chain on its card. */
-export type RecipeApp = "email" | "slack" | "webhook" | "form" | "team";
+export type RecipeApp = "email" | "slack" | "webhook" | "form" | "team" | ExternalService;
 
 /** A column a recipe needs. Two entries of the same kind ask for two such columns. */
 export type RecipeColumnNeed = { kind: ColumnKind; scope: "item" | "subitem"; label: string };
@@ -29,6 +30,14 @@ export type AutomationRecipe = {
   /** Outside apps, empty for recipes that stay inside the board. */
   apps: RecipeApp[];
   requires: RecipeColumnNeed[];
+  /**
+   * Set for the recipes that read or send through the member's own Gmail, Outlook or Google
+   * Calendar account. "Use template" then opens that app's connect and fill flow instead of the
+   * builder, like monday.com's integration recipes.
+   */
+  connected_app?: ExternalService;
+  /** The outside app sets the automation off (an email arrives), so its card reads app to board. */
+  flows_in?: boolean;
   build: (context: AutomationBuilderContext) => BoardAutomationDefinition;
 };
 
@@ -38,6 +47,9 @@ export const RECIPE_APP_LABELS: Record<RecipeApp, string> = {
   webhook: "Webhooks",
   form: "Forms",
   team: "Teams",
+  gmail: "Gmail",
+  outlook: "Outlook",
+  google_calendar: "Google Calendar",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -82,6 +94,13 @@ const emailAssignees = (context: AutomationBuilderContext): BoardAutomationActio
 const changeStatus = (context: AutomationBuilderContext): BoardAutomationAction => ({ type: "set_column_value", params: withColumn("target_column_id", pick(context, ["status"]), {}) });
 const moveToGroup = (): BoardAutomationAction => ({ type: "move_to_group", params: {} });
 
+/** monday.com's "email is received" recipes: the subject names the item, the email itself is its first update. */
+export const EMAIL_UPDATE_TEMPLATE = "Email from {payload.from_name} ({payload.from_email}):\n\n{payload.body}";
+const emailToItemActions = (): BoardAutomationAction[] => [
+  { type: "create_item", params: { item_name: "{payload.subject}" } },
+  { type: "post_update", params: { message: EMAIL_UPDATE_TEMPLATE } },
+];
+
 const NEEDS = {
   status: { kind: "status", scope: "item", label: "Status" },
   date: { kind: "date", scope: "item", label: "Date" },
@@ -98,7 +117,7 @@ const NEEDS = {
 // ── Recipes ───────────────────────────────────────────────────────────────────
 
 export const AUTOMATION_RECIPES: AutomationRecipe[] = [
-  // Recommended
+  // Recommended, in monday.com's order.
   {
     id: "status_move",
     categories: ["recommended", "productivity"],
@@ -106,6 +125,15 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     apps: [],
     requires: [NEEDS.status],
     build: (context) => define("status_changed", status(context), [moveToGroup()]),
+  },
+  {
+    id: "google_calendar_item_sync",
+    categories: ["recommended", "dates", "sync"],
+    title: "When an item is created or updated, create an **event** in Google Calendar, and sync future changes from this board",
+    apps: ["google_calendar"],
+    requires: [NEEDS.date],
+    connected_app: "google_calendar",
+    build: (context) => define("item_created_or_updated", null, [{ type: "google_calendar_sync", params: withColumn("date_column_id", pick(context, ["date", "timeline"]), {}) }]),
   },
   {
     id: "status_notify",
@@ -126,15 +154,25 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
   {
     id: "date_notify",
     categories: ["recommended", "dates", "communication"],
-    title: "When **date** arrives **notify someone**",
+    title: "**When date** arrives **notify someone**",
     apps: [],
     requires: [NEEDS.date],
     build: (context) => define("date_arrived", date(context), [notifyAssignees(context)], { trigger_config: dayConfig() }),
   },
   {
+    id: "gmail_email_create_item",
+    categories: ["recommended", "sync", "communication"],
+    title: "When an **email** is received, create an item in **group**",
+    apps: ["gmail"],
+    requires: [],
+    connected_app: "gmail",
+    flows_in: true,
+    build: () => define("email_received", null, emailToItemActions()),
+  },
+  {
     id: "date_status_notify",
     categories: ["recommended", "dates", "communication"],
-    title: "When **date** arrives and only if **status is something** notify **someone**",
+    title: "**When date** arrives and only if **status is something** notify **someone**",
     apps: [],
     requires: [NEEDS.date, NEEDS.status],
     build: (context) => define("date_arrived", date(context), [notifyAssignees(context)], { trigger_config: dayConfig(), conditions: condition(status(context), "is") }),
@@ -148,6 +186,25 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     build: () => define("recurring", null, [{ type: "create_item", params: { item_name: "Weekly task {date}" } }], { trigger_config: weekly() }),
   },
   {
+    id: "outlook_email_create_item",
+    categories: ["recommended", "sync", "communication"],
+    title: "When an **email** is received, create an item in **group**",
+    apps: ["outlook"],
+    requires: [],
+    connected_app: "outlook",
+    flows_in: true,
+    build: () => define("email_received", null, emailToItemActions()),
+  },
+  {
+    id: "gmail_status_send_email",
+    categories: ["recommended", "communication"],
+    title: "When **status** changes to **something**, send an **email** to **someone**",
+    apps: ["gmail"],
+    requires: [NEEDS.status],
+    connected_app: "gmail",
+    build: (context) => define("status_changed", status(context), [emailAssignees(context)]),
+  },
+  {
     id: "recurring_duplicate_group",
     categories: ["recommended", "dates", "productivity"],
     title: "**Every time period** duplicate **group**",
@@ -155,9 +212,11 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     requires: [],
     build: () => define("recurring", null, [{ type: "duplicate_group", params: { group_name: "Week {week}", with_items: true } }], { trigger_config: weekly() }),
   },
+
+  // Communication and sync recipes that used to be recommended.
   {
     id: "status_email",
-    categories: ["recommended", "communication"],
+    categories: ["communication"],
     title: "When **status** changes to **something**, send an **email** to **someone**",
     apps: ["email"],
     requires: [NEEDS.status],
@@ -165,15 +224,16 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
   },
   {
     id: "webhook_create_item",
-    categories: ["recommended", "sync"],
+    categories: ["sync"],
     title: "When a **webhook** is received, create an item in **group**",
     apps: ["webhook"],
     requires: [],
+    flows_in: true,
     build: () => define("webhook_received", null, [{ type: "create_item", params: { item_name: "{payload.name}" } }]),
   },
   {
     id: "form_notify",
-    categories: ["recommended", "productivity", "communication"],
+    categories: ["productivity", "communication"],
     title: "When a **form** is submitted, notify **someone**",
     apps: ["form"],
     requires: [],
@@ -673,6 +733,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "When a **webhook** is received, **notify someone**",
     apps: ["webhook"],
     requires: [],
+    flows_in: true,
     build: () => define("webhook_received", null, [{ type: "notify_person", params: { message: "New webhook: {payload.name}" } }]),
   },
   {

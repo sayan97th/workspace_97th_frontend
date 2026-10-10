@@ -23,6 +23,9 @@ import type { AutomationBoardTarget, AutomationBuilderContext, AutomationColumn,
 import { draftFromAutomation, draftFromDefinition, emptyDraft, type AutomationDraft } from "./builder/builderDraft";
 import { definitionFromAccountTemplate, describeColumnNeed } from "./builder/accountTemplates";
 import { draftForColumn } from "./builder/automationColumns";
+import type { AutomationRecipe } from "./builder/automationTemplates";
+import ConnectedAppFlow from "./connected/ConnectedAppFlow";
+import { connectedRecipeFor, type ConnectedRecipe } from "./connected/connectedRecipes";
 import SlackIntegrationFlow from "./slack/SlackIntegrationFlow";
 import type { SlackRecipe } from "./slack/slackRecipes";
 
@@ -106,6 +109,7 @@ function AutomationCenter(props: AutomationsModalProps) {
   const [is_saving, setIsSaving] = useState(false);
   const [save_error, setSaveError] = useState<string | null>(null);
   const [slack_recipe, setSlackRecipe] = useState<SlackRecipe | null>(null);
+  const [connected_recipe, setConnectedRecipe] = useState<ConnectedRecipe | null>(null);
   const item_columns = useMemo(() => columns.filter((column) => column.scope === "item"), [columns]);
 
   useEffect(() => {
@@ -228,6 +232,13 @@ function AutomationCenter(props: AutomationsModalProps) {
     openBuilder({ ...draftFromDefinition(definition, context), name: template.name, description: template.description ?? "" }, null, notice);
   };
 
+  // Gmail, Outlook and Google Calendar recipes open their connect and fill flow, the builder when none fits.
+  const startConnectedRecipe = (recipe: AutomationRecipe) => {
+    const connected = connectedRecipeFor(recipe);
+    if (connected) setConnectedRecipe(connected);
+    else openBuilder(draftFromDefinition(recipe.build(context), context));
+  };
+
   const deleteAccountTemplate = async (template_id: number) => {
     await boardAutomationService.deleteAccountTemplate(template_id);
     setAccountTemplates((current) => current.filter((template) => template.id !== template_id));
@@ -289,6 +300,7 @@ function AutomationCenter(props: AutomationsModalProps) {
             onDeleteAccount={deleteAccountTemplate}
             onCustom={() => openBuilder(emptyDraft())}
             onUseSlackRecipe={setSlackRecipe}
+            onUseConnectedRecipe={startConnectedRecipe}
           />
         )}
 
@@ -364,6 +376,25 @@ function AutomationCenter(props: AutomationsModalProps) {
           </div>
         )}
       </div>
+
+      {connected_recipe && (
+        <ConnectedAppFlow
+          key={connected_recipe.recipe.id}
+          connected={connected_recipe}
+          columns={item_columns}
+          groups={groups}
+          people={people}
+          can_manage={is_account_admin}
+          return_path={return_path}
+          onBack={() => setConnectedRecipe(null)}
+          onCreate={props.onCreate}
+          onCreated={() => {
+            setConnectedRecipe(null);
+            setScreen({ kind: "gallery" });
+            setMode("manage");
+          }}
+        />
+      )}
 
       {slack_recipe && (
         <SlackIntegrationFlow

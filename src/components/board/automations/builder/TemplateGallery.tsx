@@ -1,14 +1,19 @@
 "use client";
 import React, { useState } from "react";
-import { Building2, FileText, Mail, MessageCircle, Plus, Trash2, Users, Webhook } from "lucide-react";
+import { Bookmark, Building2, CalendarDays, Heart, Link2, MessageCircle, Plus, RefreshCw, Rocket, Telescope, Trash2 } from "lucide-react";
 import type { AccountAutomationTemplateDto, BoardAutomationTemplateDto } from "@/types/board-automation";
 import { SearchIcon } from "@/icons/workspace-icons";
+import ExternalAppLogo from "@/components/integrations/ExternalAppLogo";
 import SlackLogo from "@/components/slack/SlackLogo";
+import { EXTERNAL_APPS } from "@/lib/externalApps";
+import type { ExternalService } from "@/types/external-account";
+import ConnectedAppPage from "../connected/ConnectedAppPage";
 import SlackAppPage from "../slack/SlackAppPage";
-import type { SlackRecipe } from "../slack/slackRecipes";
+import { SLACK_RECIPES, type SlackRecipe } from "../slack/slackRecipes";
 import type { AutomationBuilderContext } from "./automationCatalog";
 import { describeDefinition, sentenceText } from "./automationSentence";
-import { AUTOMATION_RECIPES, RECIPE_APP_LABELS, missingColumns, titleParts, type AutomationRecipe, type GalleryCategory, type RecipeApp } from "./automationTemplates";
+import { AUTOMATION_RECIPES, missingColumns, type AutomationRecipe, type GalleryCategory } from "./automationTemplates";
+import RecipeCard, { CustomRecipeCard } from "./RecipeCard";
 
 export type TemplateGalleryProps = {
   context: AutomationBuilderContext;
@@ -27,43 +32,35 @@ export type TemplateGalleryProps = {
   onCustom: () => void;
   /** Starts the Slack integration flow for a recipe of the Slack app page, the Slack entry is hidden when omitted. */
   onUseSlackRecipe?: (recipe: SlackRecipe) => void;
+  /** Starts the Gmail, Outlook or Google Calendar flow of a recipe that uses one, those recipes open the builder when omitted. */
+  onUseConnectedRecipe?: (recipe: AutomationRecipe) => void;
 };
 
-/** Apps listed in the Integrations box at the bottom of the categories. */
-type GalleryApp = "slack";
+/** Apps listed in the Integrations box at the bottom of the categories, in monday.com's order. */
+type GalleryApp = "slack" | ExternalService;
 
-const CATEGORIES: { id: GalleryCategory; label: string }[] = [
-  { id: "explore", label: "Explore all" },
-  { id: "recommended", label: "Recommended" },
-  { id: "productivity", label: "Productivity" },
-  { id: "dates", label: "Due dates and time" },
-  { id: "communication", label: "Notifications and email" },
-  { id: "sync", label: "Forms and webhooks" },
-  { id: "connected", label: "Connected boards" },
-  { id: "account", label: "Created in your account" },
-  { id: "saved", label: "Saved on this board" },
+const INTEGRATION_APPS: GalleryApp[] = ["outlook", "gmail", "slack", "google_calendar"];
+
+const CATEGORIES: { id: GalleryCategory; label: string; icon: React.ReactNode }[] = [
+  { id: "explore", label: "Explore all", icon: <Telescope size={15} /> },
+  { id: "recommended", label: "Recommended", icon: <Heart size={15} /> },
+  { id: "productivity", label: "Productivity", icon: <Rocket size={15} /> },
+  { id: "dates", label: "Due dates and time", icon: <CalendarDays size={15} /> },
+  { id: "communication", label: "Notifications and email", icon: <MessageCircle size={15} /> },
+  { id: "sync", label: "Forms and webhooks", icon: <RefreshCw size={15} /> },
+  { id: "connected", label: "Connected boards", icon: <Link2 size={15} /> },
+  { id: "account", label: "Created in your account", icon: <Building2 size={15} /> },
+  { id: "saved", label: "Saved on this board", icon: <Bookmark size={15} /> },
 ];
 
-const APP_ICONS: Record<RecipeApp, React.ReactNode> = {
-  email: <Mail size={13} />,
-  slack: <MessageCircle size={13} />,
-  webhook: <Webhook size={13} />,
-  form: <FileText size={13} />,
-  team: <Users size={13} />,
-};
+const appLabel = (app: GalleryApp): string => (app === "slack" ? "Slack" : EXTERNAL_APPS[app].label);
 
-const NAV_ROW = "flex h-9 w-full items-center rounded-[6px] px-3 text-left text-[13.5px] transition-colors";
+const NAV_ROW = "flex h-9 w-full items-center gap-2.5 rounded-[6px] px-3 text-left text-[13.5px] transition-colors";
 const CARD =
   "group relative flex min-h-[132px] flex-col justify-between rounded-[10px] border border-boardtree-border-soft bg-boardtree-surface p-4 text-left transition-shadow hover:border-boardtree-accent/50 hover:shadow-[0_6px_18px_rgba(30,34,55,0.10)]";
 
-/** A recipe card's sentence, its highlighted words in bold like monday's template cards. */
-function RecipeTitle({ title }: { title: string }) {
-  return (
-    <p className="text-[15px] leading-snug text-boardtree-text">
-      {titleParts(title).map((part, index) => (part.is_bold ? <strong key={index} className="font-semibold">{part.text}</strong> : <span key={index}>{part.text}</span>))}
-    </p>
-  );
-}
+/** How many templates the Integrations box leads to, every Slack recipe plus every Gmail, Outlook and Google Calendar one. */
+const INTEGRATION_RECIPE_COUNT = SLACK_RECIPES.length + AUTOMATION_RECIPES.filter((recipe) => recipe.connected_app).length;
 
 /** A template card that is not a built-in recipe, with an optional delete button. */
 function TemplateCard({ name, sentence, footer, onUse, onDelete, is_deleting }: { name: string; sentence: string; footer: string; onUse: () => void; onDelete?: () => void; is_deleting: boolean }) {
@@ -98,7 +95,7 @@ function TemplateCard({ name, sentence, footer, onUse, onDelete, is_deleting }: 
  * builder with the sentence prefilled.
  */
 export default function TemplateGallery(props: TemplateGalleryProps) {
-  const { context, saved_templates, is_loading_saved, account_templates, is_loading_account, can_manage_account_templates, onUseRecipe, onUseSaved, onUseAccount, onDeleteSaved, onDeleteAccount, onCustom, onUseSlackRecipe } = props;
+  const { context, saved_templates, is_loading_saved, account_templates, is_loading_account, can_manage_account_templates, onUseRecipe, onUseSaved, onUseAccount, onDeleteSaved, onDeleteAccount, onCustom, onUseSlackRecipe, onUseConnectedRecipe } = props;
   const [category, setCategory] = useState<GalleryCategory>("explore");
   const [app, setApp] = useState<GalleryApp | null>(null);
   const [search, setSearch] = useState("");
@@ -112,6 +109,8 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
   const show_saved = category === "saved" || (category === "explore" && saved.length > 0);
   const show_account = category === "account" || (category === "explore" && account.length > 0);
   const show_recipes = category !== "saved" && category !== "account";
+
+  const pickRecipe = (recipe: AutomationRecipe) => (recipe.connected_app && onUseConnectedRecipe ? onUseConnectedRecipe(recipe) : onUseRecipe(recipe));
 
   const remove = async (key: string, action: () => Promise<void>) => {
     setDeletingKey(key);
@@ -142,6 +141,7 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
               aria-current={is_current ? "page" : undefined}
               className={`${NAV_ROW} ${is_current ? "bg-boardtree-accent-surface font-medium text-boardtree-accent" : "text-boardtree-text-secondary hover:bg-boardtree-hover"}`}
             >
+              <span className="flex-none opacity-80" aria-hidden="true">{entry.icon}</span>
               <span className="flex-1 truncate">{entry.label}</span>
               {count ? <span className="text-[12px] text-boardtree-text-faint">{count}</span> : null}
             </button>
@@ -150,30 +150,21 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
 
         {onUseSlackRecipe && (
           <div aria-label="Integrations" role="group" className="mt-auto pt-6">
-            <div className="rounded-[4px] border border-boardtree-border bg-boardtree-surface py-2 text-center text-[13.5px] text-boardtree-text">Integrations</div>
+            <div className="rounded-[4px] border border-boardtree-border bg-boardtree-surface py-2 text-center text-[13.5px] text-boardtree-text">Integrations / {INTEGRATION_RECIPE_COUNT}</div>
             <div className="mt-3 flex items-center justify-around px-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setApp(null);
-                  setCategory("communication");
-                }}
-                title="Email"
-                aria-label="Email templates"
-                className="flex h-9 w-9 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover"
-              >
-                <Mail size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setApp("slack")}
-                title="Slack"
-                aria-label="Slack"
-                aria-current={app === "slack" ? "page" : undefined}
-                className={`flex h-9 w-9 items-center justify-center rounded-[6px] hover:bg-boardtree-hover ${app === "slack" ? "bg-boardtree-accent-surface ring-1 ring-boardtree-accent" : ""}`}
-              >
-                <SlackLogo size={20} />
-              </button>
+              {INTEGRATION_APPS.filter((entry) => entry === "slack" || onUseConnectedRecipe).map((entry) => (
+                <button
+                  key={entry}
+                  type="button"
+                  onClick={() => setApp(entry)}
+                  title={appLabel(entry)}
+                  aria-label={appLabel(entry)}
+                  aria-current={app === entry ? "page" : undefined}
+                  className={`flex h-9 w-9 items-center justify-center rounded-[6px] hover:bg-boardtree-hover ${app === entry ? "bg-boardtree-accent-surface ring-1 ring-boardtree-accent" : ""}`}
+                >
+                  {entry === "slack" ? <SlackLogo size={20} /> : <ExternalAppLogo app={entry} size={21} />}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -203,8 +194,8 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
             value={app ?? category}
             onChange={(event) => {
               const value = event.target.value;
-              if (value === "slack") {
-                setApp("slack");
+              if (INTEGRATION_APPS.includes(value as GalleryApp)) {
+                setApp(value as GalleryApp);
                 return;
               }
               setApp(null);
@@ -214,11 +205,12 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
             className="h-9 rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2.5 text-[13px] text-boardtree-text md:hidden"
           >
             {CATEGORIES.map((entry) => <option key={entry.id} value={entry.id}>{entry.label}</option>)}
-            {onUseSlackRecipe && <option value="slack">Slack</option>}
+            {onUseSlackRecipe && INTEGRATION_APPS.filter((entry) => entry === "slack" || onUseConnectedRecipe).map((entry) => <option key={entry} value={entry}>{appLabel(entry)}</option>)}
           </select>
         </div>
 
         {app === "slack" && onUseSlackRecipe && <SlackAppPage search={text} onBack={() => setApp(null)} onUse={onUseSlackRecipe} />}
+        {app !== null && app !== "slack" && onUseConnectedRecipe && <ConnectedAppPage app={app} search={text} onBack={() => setApp(null)} onUse={onUseConnectedRecipe} />}
 
         {app === null && show_account && (
           <section aria-label="Created in your account" className="mb-7">
@@ -278,27 +270,10 @@ export default function TemplateGallery(props: TemplateGalleryProps) {
         )}
 
         {app === null && show_recipes && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {recipes.map((recipe) => {
-              const missing = missingColumns(recipe.requires, context);
-              return (
-                <button key={recipe.id} type="button" onClick={() => onUseRecipe(recipe)} className={CARD}>
-                  <RecipeTitle title={recipe.title} />
-                  <span className="mt-3 flex flex-wrap items-center gap-2">
-                    {recipe.apps.map((app) => (
-                      <span key={app} title={RECIPE_APP_LABELS[app]} className="flex h-6 items-center gap-1 rounded-full bg-boardtree-hover px-2 text-[11.5px] text-boardtree-text-secondary">
-                        {APP_ICONS[app]}
-                        {RECIPE_APP_LABELS[app]}
-                      </span>
-                    ))}
-                    {missing.length > 0 && (
-                      <span className="text-[11.5px] text-boardtree-text-faint">Needs {missing.map((need) => `a ${need.label} column`).join(", ")}</span>
-                    )}
-                  </span>
-                </button>
-              );
-            })}
-            {recipes.length === 0 && <div className="col-span-full py-10 text-center text-[13.5px] text-boardtree-text-muted">No templates match your search.</div>}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {recipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} missing={missingColumns(recipe.requires, context)} onUse={pickRecipe} />)}
+            {recipes.length === 0 && text !== "" && <div className="col-span-full py-10 text-center text-[13.5px] text-boardtree-text-muted">No templates match your search.</div>}
+            {text === "" && <CustomRecipeCard onCustom={onCustom} />}
           </div>
         )}
       </div>

@@ -7,6 +7,7 @@ import type { AutomationDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, POPOVER_SECONDARY, Segmented, Token, WorkingDaysToggle } from "./builderUi";
 import { ChangeMatchEditor, DoneStatusEditor, ExtensionsEditor, KeywordsEditor, QuietPeriodEditor, defaultDoneStatus, matchOperatorsFor } from "./TriggerRowExtras";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, PersonPicker } from "./valueEditors";
+import { EmailFilterEditor, MailAccountPicker, emailFilterLabel } from "./integrationEditors";
 
 export type TriggerRowProps = {
   draft: AutomationDraft;
@@ -628,6 +629,35 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
           <Words> is received</Words>
         </>
       );
+    case "email_received":
+      return (
+        <>
+          <Words>When an </Words>
+          <TriggerSwitch label="email" draft={draft} context={context} onChange={onChange} />{" "}
+          <Token label={emailFilterLabel(config.from_filter, config.subject_filter)} is_placeholder={!config.from_filter && !config.subject_filter} aria_label="Which emails" popover_width={300}>
+            {(close) => (
+              <EmailFilterEditor
+                from_filter={config.from_filter ?? ""}
+                subject_filter={config.subject_filter ?? ""}
+                onApply={(from_filter, subject_filter) => { onChange({ trigger_config: { ...config, from_filter, subject_filter } }); close(); }}
+              />
+            )}
+          </Token>{" "}
+          <Words>is received in </Words>
+          <Token label={config.external_account_email ?? (config.external_account_id ? "your inbox" : "inbox")} is_placeholder={!config.external_account_id} aria_label="Inbox" popover_width={300}>
+            {(close) => (
+              <MailAccountPicker
+                selected_id={config.external_account_id ?? null}
+                onPick={(account) => {
+                  if (!account) return;
+                  onChange({ trigger_config: { ...config, external_account_id: account.id, external_account_email: account.email } });
+                  close();
+                }}
+              />
+            )}
+          </Token>
+        </>
+      );
     case "button_clicked":
       return (
         <>
@@ -698,6 +728,7 @@ export default function TriggerRow({ draft, context, onChange, is_loading_boards
         item_deleted: ["an item is ", "deleted"],
         name_changed: ["an ", "item name changes"],
         item_restored: ["an item is ", "restored"],
+        item_created_or_updated: ["an item is ", "created or updated"],
       };
       const [lead, phrase] = phrases[type] ?? ["", def.label];
       return (

@@ -256,6 +256,10 @@ export function defaultActionParams(picker_id: ActionPickerId, context: Automati
       return { operation: "archive" };
     case "move_item_position":
       return { position: "top" };
+    case "google_calendar_sync": {
+      const date = first(["date", "timeline"]);
+      return date ? { date_column_id: Number(date.id) } : {};
+    }
     case "sort_group": {
       const status = first(["status", "label"]);
       return status ? { from_item_group: true, sort_by: "column", sort_column_id: Number(status.id), direction: "asc" } : { from_item_group: true, sort_by: "name", direction: "asc" };
@@ -374,6 +378,10 @@ function actionProblem(action: ActionDraft, index: number, context: AutomationBu
       return params.team_id ? null : `Choose the team ${where} notifies.`;
     case "send_webhook":
       return /^https?:\/\/\S+$/i.test((params.url ?? "").trim()) ? null : `Enter the URL ${where} sends to.`;
+    case "google_calendar_sync":
+      if (!params.external_account_id) return `Choose the Google account of ${where}.`;
+      if (!params.calendar_id) return `Choose the calendar ${where} adds events to.`;
+      return params.date_column_id ? null : `Choose the date column that sets the day of ${where}.`;
     case "rename_item":
       return (params.name_template ?? "").trim() ? null : `Write the new name for ${where}.`;
     case "change_values":
@@ -430,6 +438,7 @@ export function draftProblems(draft: AutomationDraft, context: AutomationBuilder
     if ((trigger.type === "column_changed" || trigger.type === "subitem_column_changed") && match?.operator === "between" && (match.values ?? []).filter((value) => value !== "").length !== 2) {
       problems.push("Enter both ends of the range the column must reach.");
     }
+    if (trigger.type === "email_received" && !draft.trigger_config.external_account_id) problems.push("Choose the Gmail or Outlook account whose inbox the automation reads.");
     if (trigger.type === "update_keyword" && !(draft.trigger_config.keywords ?? []).some((keyword) => keyword.trim() !== "")) problems.push("Type at least one word the update must contain.");
     if (QUIET_TRIGGERS.includes(trigger.type)) {
       const amount = draft.trigger_config.amount ?? 0;

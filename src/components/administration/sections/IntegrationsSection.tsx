@@ -4,6 +4,7 @@ import Link from "next/link";
 import SlackLogo from "@/components/slack/SlackLogo";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
 import SlackConnectionCard from "@/components/slack/SlackConnectionCard";
+import IntegrationAppsCard from "@/components/administration/integrations/IntegrationAppsCard";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/administration/slack/slackAdminStyles";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
 import { slackNeedsSetup, SLACK_SETUP_PATH } from "@/lib/slackSetup";
@@ -86,7 +87,9 @@ const IntegrationsSection: React.FC = () => {
         </div>
       ) : null}
 
-  <div className="mt-6">
+      {can_manage ? <IntegrationAppsCard /> : null}
+
+      <div className="mt-6">
         <div className="mb-2.5 text-[13px] font-bold text-shell-text-secondary">What Slack adds</div>
         <ul className="flex flex-col gap-2">
           {SLACK_BENEFITS.map((benefit) => (

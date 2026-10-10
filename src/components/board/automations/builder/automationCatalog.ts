@@ -44,7 +44,7 @@ export type TriggerDef = {
   type: BoardAutomationTriggerType;
   /** Picker label, lower case like monday's. */
   label: string;
-  section: "Most used" | "Status and columns" | "Dates and time" | "Items and updates" | "Subitems and groups" | "Forms and webhooks";
+  section: "Most used" | "Status and columns" | "Dates and time" | "Items and updates" | "Subitems and groups" | "Forms and webhooks" | "Integrations";
   /** Column kinds the trigger can watch, undefined when it watches no column. */
   column_kinds?: ColumnKind[];
 };
@@ -88,12 +88,14 @@ export const TRIGGERS: TriggerDef[] = [
   { type: "item_overdue", label: "item becomes overdue", section: "Dates and time", column_kinds: ["date", "timeline"] },
   { type: "status_stuck", label: "status stays the same for a while", section: "Status and columns", column_kinds: ["status", "label"] },
   { type: "item_stale", label: "item is not updated for a while", section: "Dates and time" },
+  { type: "item_created_or_updated", label: "item is created or updated", section: "Items and updates" },
+  { type: "email_received", label: "email is received (Gmail or Outlook)", section: "Integrations" },
 ];
 
 export const TRIGGER_BY_TYPE = Object.fromEntries(TRIGGERS.map((trigger) => [trigger.type, trigger])) as Record<BoardAutomationTriggerType, TriggerDef>;
 
 export function triggerSections(): PickerSection<BoardAutomationTriggerType>[] {
-  const order: TriggerDef["section"][] = ["Most used", "Status and columns", "Dates and time", "Items and updates", "Subitems and groups", "Forms and webhooks"];
+  const order: TriggerDef["section"][] = ["Most used", "Status and columns", "Dates and time", "Items and updates", "Subitems and groups", "Forms and webhooks", "Integrations"];
   return order
     .map((title) => ({ title, entries: TRIGGERS.filter((trigger) => trigger.section === title).map((trigger) => ({ id: trigger.type, label: trigger.label })) }))
     .filter((section) => section.entries.length > 0);
@@ -117,7 +119,7 @@ export const QUIET_TRIGGERS: BoardAutomationTriggerType[] = ["status_stuck", "it
 export const MAX_QUIET_DAYS = 365;
 
 /** Triggers with no item of their own, they start with an itemless action like recurring ones. */
-export const ITEMLESS_TRIGGERS: BoardAutomationTriggerType[] = ["recurring", "webhook_received"];
+export const ITEMLESS_TRIGGERS: BoardAutomationTriggerType[] = ["recurring", "webhook_received", "email_received"];
 
 /** Triggers that run on a schedule. */
 export const SCHEDULED_TRIGGERS: BoardAutomationTriggerType[] = ["recurring", "item_scan"];
@@ -134,7 +136,7 @@ export type ActionDef = {
   id: ActionPickerId;
   type: BoardAutomationActionType;
   label: string;
-  section: "Most used" | "Flow" | "Items" | "Subitems" | "Columns" | "Dates" | "Groups" | "People" | "Notifications" | "Email and Slack" | "Other boards" | "Webhooks";
+  section: "Most used" | "Flow" | "Items" | "Subitems" | "Columns" | "Dates" | "Groups" | "People" | "Notifications" | "Email and Slack" | "Other boards" | "Webhooks" | "Integrations";
   /** The action works without a triggering item, so a recurring automation may start with it. */
   is_itemless?: boolean;
 };
@@ -189,6 +191,7 @@ export const ACTIONS: ActionDef[] = [
   { id: "send_digest", type: "send_digest", label: "email a digest of items", section: "Email and Slack", is_itemless: true },
   { id: "move_item_position", type: "move_item_position", label: "move item to the top or bottom", section: "Items" },
   { id: "sort_group", type: "sort_group", label: "sort a group", section: "Groups", is_itemless: true },
+  { id: "google_calendar_sync", type: "google_calendar_sync", label: "create an event in Google Calendar", section: "Integrations" },
 ];
 
 export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemless).map((action) => action.type);
@@ -197,7 +200,7 @@ export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemle
 export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group", "group_items", "sort_group"];
 
 export function actionSections(options: { only_itemless: boolean; is_slack_connected: boolean }): PickerSection<ActionPickerId>[] {
-  const order: ActionDef["section"][] = ["Most used", "Flow", "Items", "Subitems", "Columns", "Dates", "Groups", "People", "Notifications", "Email and Slack", "Other boards", "Webhooks"];
+  const order: ActionDef["section"][] = ["Most used", "Flow", "Items", "Subitems", "Columns", "Dates", "Groups", "People", "Notifications", "Email and Slack", "Other boards", "Webhooks", "Integrations"];
   return order
     .map((title) => ({
       title,
@@ -259,6 +262,7 @@ export const ACTION_LABELS: Record<BoardAutomationActionType, string> = {
   send_digest: "Send digest",
   move_item_position: "Move to top or bottom",
   sort_group: "Sort group",
+  google_calendar_sync: "Google Calendar event",
 };
 
 export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
@@ -295,6 +299,8 @@ export const TRIGGER_LABELS: Record<BoardAutomationTriggerType, string> = {
   update_keyword: "Update keyword",
   status_stuck: "Status stuck",
   item_stale: "Not updated",
+  email_received: "Email received",
+  item_created_or_updated: "Item created or updated",
 };
 
 /** How long a "wait" step may wait, all waits of one branch together, in days. */

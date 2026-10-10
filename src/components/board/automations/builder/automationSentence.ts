@@ -329,6 +329,14 @@ export function triggerParts(definition: BoardAutomationDefinition, context: Aut
       ];
     case "webhook_received":
       return [plain("When a "), token("webhook"), plain(" is received")];
+    case "email_received": {
+      const parts = [plain("When an "), token("email"), plain(" is received")];
+      if (config.from_filter) parts.push(plain(" from "), token(`"${config.from_filter}"`));
+      if (config.subject_filter) parts.push(plain(" with "), token(`"${config.subject_filter}"`), plain(" in the subject"));
+      return parts;
+    }
+    case "item_created_or_updated":
+      return [plain("When an item is "), token("created or updated")];
     case "button_clicked":
       return [plain("When "), token(columnLabel(context, definition.trigger_column_id, "button")), plain(" is clicked")];
     case "number_threshold":
@@ -496,7 +504,17 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
     case "post_update":
       return [token("create an update")];
     case "send_email":
-      return [plain("send an "), token("email"), plain(" to "), token(recipientLabel(context, params))];
+      return [plain("send an "), token("email"), plain(" to "), token(recipientLabel(context, params)), ...(params.external_account_id ? [plain(" from your connected account")] : [])];
+    case "google_calendar_sync":
+      return [
+        plain("create an "),
+        token("event"),
+        plain(" on "),
+        token(columnLabel(context, params.date_column_id, "date")),
+        plain(" in "),
+        token(params.calendar_name || "Google Calendar"),
+        plain(", and sync future changes"),
+      ];
     case "slack_notify_person":
       return [plain("send a "), token("Slack message"), plain(" to "), token(recipientLabel(context, params))];
     case "slack_notify_channel":

@@ -5,12 +5,12 @@ import type { BoardAutomationActionParams, BoardAutomationRecipientSource, Creat
 import type { SlackConnectionDto } from "@/types/slack";
 import type { NamedOption } from "../builder/automationCatalog";
 import { useSlackConnectionChannels } from "@/hooks/useSlackConnectionChannels";
-import { useOutsideClick } from "../../table/useOutsideClick";
 import { spliceTextAtCursor } from "@/utils/insertTextAtCursor";
 import { PickerList, POPOVER_DONE, POPOVER_SECONDARY } from "../builder/builderUi";
 import { CHANNEL_ACTION_TYPES } from "../communicationTemplates";
 import { slackMessageFieldsFor, toDisplayMessage, toStoredMessage, type SlackMessageField } from "./slackMessageTokens";
 import { COLUMNLESS_TRIGGERS, recipeChannel, type SlackRecipe, type SlackRecipeSlot } from "./slackRecipes";
+import { FieldChip, SentenceToken } from "../RecipeSentenceToken";
 
 export type SlackRecipeEditorProps = {
   recipe: SlackRecipe;
@@ -41,57 +41,6 @@ const RECIPIENT_SOURCES: { id: BoardAutomationRecipientSource; label: string }[]
   { id: "actor", label: "The person who made the change" },
   { id: "creator", label: "The item creator" },
 ];
-
-/** One insert button of the message popover. */
-function FieldChip({ field, onInsert }: { field: SlackMessageField; onInsert: (field: SlackMessageField) => void }) {
-  return (
-    <button type="button" onClick={() => onInsert(field)} title={`Insert ${field.label}`} className="rounded-[4px] border border-boardtree-border px-3 py-1 text-[13px] text-boardtree-text hover:border-boardtree-accent hover:text-boardtree-accent">
-      {field.label}
-    </button>
-  );
-}
-
-/** One clickable word of the purple sentence, its picker opens in a white popover right under it. */
-function SentenceToken({ label, is_set, is_optional = false, aria_label, width = 280, onOpen, children }: { label: string; is_set: boolean; is_optional?: boolean; aria_label: string; width?: number; onOpen?: () => void; children: (close: () => void) => React.ReactNode }) {
-  const [is_open, setIsOpen] = useState(false);
-  const ref = useOutsideClick<HTMLSpanElement>(is_open, () => setIsOpen(false));
-  const close = () => setIsOpen(false);
-
-  const tone = is_open
-    ? "border-[#4ba7ff] text-[#4ba7ff]"
-    : is_set
-      ? "border-white text-white hover:border-[#4ba7ff] hover:text-[#4ba7ff]"
-      : is_optional
-        ? "border-white/45 text-white/55 hover:border-[#4ba7ff] hover:text-[#4ba7ff]"
-        : "border-white/80 text-white/80 hover:border-[#4ba7ff] hover:text-[#4ba7ff]";
-
-  return (
-    <span ref={ref} className="relative inline-block">
-      <button type="button" aria-haspopup="dialog" aria-expanded={is_open} aria-label={`${aria_label}: ${label}`} onClick={() => {
-          if (!is_open) onOpen?.();
-          setIsOpen(!is_open);
-        }} className={`border-b-2 pb-1 leading-[1.15] transition-colors ${tone}`}>
-        {label}
-      </button>
-      {is_open && (
-        <div
-          role="dialog"
-          aria-label={aria_label}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              event.stopPropagation();
-              close();
-            }
-          }}
-          style={{ width }}
-          className="absolute left-0 top-full z-40 mt-3 max-w-[86vw] rounded-[6px] bg-boardtree-surface p-2 text-left text-[13px] font-normal leading-normal text-boardtree-text shadow-[0_12px_32px_rgba(0,0,0,0.35)]"
-        >
-          {children(close)}
-        </div>
-      )}
-    </span>
-  );
-}
 
 /**
  * Fills one Slack recipe, monday.com's purple sentence screen: every bold word is clicked to choose

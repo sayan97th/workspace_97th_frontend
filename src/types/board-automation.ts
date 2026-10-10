@@ -37,7 +37,9 @@ export type BoardAutomationTriggerType =
   | "update_replied"
   | "update_keyword"
   | "status_stuck"
-  | "item_stale";
+  | "item_stale"
+  | "email_received"
+  | "item_created_or_updated";
 
 export type BoardAutomationActionType =
   | "move_to_group"
@@ -87,7 +89,8 @@ export type BoardAutomationActionType =
   | "convert_subitem"
   | "send_digest"
   | "move_item_position"
-  | "sort_group";
+  | "sort_group"
+  | "google_calendar_sync";
 
 /**
  * Where a dynamic value comes from, see the Laravel `AutomationDynamicValueResolver`: whoever set
@@ -182,6 +185,14 @@ export type BoardAutomationTriggerConfig = {
   keywords?: string[] | null;
   /** `update_keyword` only: replies count too. */
   include_replies?: boolean;
+  /** `email_received` only: the member's own Gmail or Outlook account whose inbox is read. */
+  external_account_id?: number | null;
+  /** `email_received` only: the inbox address, kept so the sentence can name it. */
+  external_account_email?: string | null;
+  /** `email_received` only: only emails whose sender name or address holds this text. */
+  from_filter?: string | null;
+  /** `email_received` only: only emails whose subject holds this text. */
+  subject_filter?: string | null;
   /** `status_stuck` and `item_stale`: how long nothing may change, `amount` `unit`s. */
   amount?: number | null;
   unit?: "hours" | "days" | null;
@@ -261,6 +272,17 @@ export type BoardAutomationActionParams = {
   slack_team_id?: string | null;
   /** `slack_notify_channel` only: the owner's own Slack account the post goes through, set by the Slack recipes. */
   slack_connection_id?: number | null;
+  /** `send_email`: sends from this connected Gmail or Outlook account instead of the app. `google_calendar_sync`: the Google account. */
+  external_account_id?: number | null;
+  /** The address of `external_account_id`, kept so the sentence can name it. */
+  external_account_email?: string | null;
+  /** `google_calendar_sync` only: the calendar events are added to, and its name for the sentence. */
+  calendar_id?: string | null;
+  calendar_name?: string | null;
+  /** `google_calendar_sync` only: the date or timeline column that sets the event's day. */
+  date_column_id?: number | null;
+  /** `google_calendar_sync` only: the event title, tokens such as `{item_name}` filled in, the item name when empty. */
+  title_template?: string | null;
   /** `create_item` only: columns of the new item filled from text templates, such as `{payload.email}`. */
   field_mappings?: BoardAutomationFieldMapping[];
   /** `shift_date`: how far to push the date, negative to pull it earlier. `wait`: minutes, hours or days. */

@@ -45,6 +45,7 @@ import { actionFromPicker, type ActionDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
 import { DynamicValueEditor, FixedOrDynamic } from "./dynamicValues";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, MessageEditor, PersonPicker } from "./valueEditors";
+import { CalendarAccountPicker, CalendarPicker, MailAccountPicker } from "./integrationEditors";
 
 export type ActionRowProps = {
   action: ActionDraft;
@@ -418,7 +419,7 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   );
 
   /** A column token for `param`, drawn in red once the column it names was deleted. */
-  const columnParamToken = (param: "target_column_id" | "source_column_id" | "number_column_id", kinds: ColumnKind[], fallback: string, on_pick?: (column_id: string) => BoardAutomationActionParams, extra_entries?: PickerEntry<string>[]) => {
+  const columnParamToken = (param: "target_column_id" | "source_column_id" | "number_column_id" | "date_column_id", kinds: ColumnKind[], fallback: string, on_pick?: (column_id: string) => BoardAutomationActionParams, extra_entries?: PickerEntry<string>[]) => {
     const column_id = params[param];
     const column = findColumn(context, column_id);
     const is_invalid = column_id != null && !column;
@@ -779,7 +780,17 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
           <Token label={recipientLabel(context, params)} is_placeholder={!has_recipient} aria_label="Who to email" popover_width={340}>
             {(close) => <EmailRecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} trigger_type={trigger_type} onApply={(next) => { patch(next); close(); }} />}
           </Token>{" "}
-          <Words>with </Words>{messageToken({ with_subject: true })}
+          <Words>with </Words>{messageToken({ with_subject: true })}{" "}
+          <Words>from </Words>
+          <Token label={params.external_account_id ? params.external_account_email ?? "your connected account" : "the app's email"} aria_label="Send from" popover_width={300}>
+            {(close) => (
+              <MailAccountPicker
+                with_app_mailer
+                selected_id={params.external_account_id ?? null}
+                onPick={(account) => { patch({ external_account_id: account?.id ?? null, external_account_email: account?.email ?? null }); close(); }}
+              />
+            )}
+          </Token>
         </>
       );
     }
@@ -968,6 +979,30 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
         </>
       );
     }
+    case "google_calendar_sync":
+      return (
+        <>
+          <Words>{lead} </Words><ActionSwitch {...switchProps} label="create an event" /> <Words>on </Words>
+          {columnParamToken("date_column_id", ["date", "timeline"], "date")} <Words>in </Words>
+          <Token label={params.calendar_name || "Google Calendar"} is_placeholder={!params.calendar_id} aria_label="Calendar" popover_width={300}>
+            {(close) => <CalendarPicker account_id={params.external_account_id ?? null} selected={params.calendar_id ?? null} onPick={(calendar) => { patch({ calendar_id: calendar.id, calendar_name: calendar.name }); close(); }} />}
+          </Token>{" "}
+          <Words>of </Words>
+          <Token label={params.external_account_email ?? (params.external_account_id ? "your Google account" : "Google account")} is_placeholder={!params.external_account_id} aria_label="Google account" popover_width={300}>
+            {(close) => (
+              <CalendarAccountPicker
+                selected_id={params.external_account_id ?? null}
+                onPick={(account) => {
+                  // Calendars belong to one account, a new account needs its calendar chosen again.
+                  patch(account.id === params.external_account_id ? {} : { external_account_id: account.id, external_account_email: account.email, calendar_id: null, calendar_name: null });
+                  close();
+                }}
+              />
+            )}
+          </Token>
+          <Words>, and sync future changes</Words>
+        </>
+      );
     case "send_webhook":
       return (
         <>
