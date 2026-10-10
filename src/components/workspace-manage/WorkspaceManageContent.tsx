@@ -53,6 +53,7 @@ const toAssetsAndCreators = (
       created_date: formatShortDate(item.created_at),
       modified_date: formatShortDate(item.updated_at),
       folder: item.folder_path.map((crumb) => crumb.label).join(" / "),
+      folder_path: item.folder_path.map((crumb) => crumb.label),
       is_favorite: item.is_favorite,
     };
   });
@@ -167,12 +168,12 @@ const WorkspaceManageContent: React.FC = () => {
   const selected_count = selected_ids.size;
 
   return (
-    <div className="mt-4 pb-[60px]">
+    <div className="mt-6 pb-10">
       <ContentToolbar
         filters_button_ref={filters_button_ref}
         search_value={search_value}
         onSearchChange={setSearchValue}
-        search_placeholder="Search this page"
+        search_placeholder="Search by asset name"
         filter_count={countActiveFilters(filters)}
         onToggleFilters={() => setIsFiltersOpen((open) => !open)}
       />
@@ -197,11 +198,11 @@ const WorkspaceManageContent: React.FC = () => {
         />
       </div>
 
-      <div className="mt-3 flex items-center justify-between">
-        <div className="font-mono-accent text-[12.5px] tracking-[0.02em] text-shell-text-muted">
-          {selected_count > 0 ? `${selected_count} selected` : `${filtered_assets.length} on this page`}
+      {selected_count > 0 && (
+        <div className="mt-3 text-[14px] text-shell-text-secondary">
+          {selected_count} {selected_count === 1 ? "asset" : "assets"} selected
         </div>
-      </div>
+      )}
 
       {meta && (
         <Pagination

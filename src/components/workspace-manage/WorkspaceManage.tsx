@@ -2,16 +2,15 @@
 import React, { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ChatBubbleIcon,
   ChevronDownIcon,
   ClockIcon,
   CollaboratorsIcon,
   ContentTabIcon,
   BoardGridIcon,
+  HomeFilledIcon,
   MemberIcon,
   MoreDotsIcon,
   PermissionsIcon,
-  PersonIcon,
 } from "@/icons/workspace-icons";
 import {
   ChangeWorkspaceTypeModal,
@@ -34,6 +33,8 @@ import WorkspaceManageContent from "./WorkspaceManageContent";
 import WorkspaceManagePermissions from "./WorkspaceManagePermissions";
 import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
 import TransferOwnershipModal from "./TransferOwnershipModal";
+import WorkspaceCover from "./WorkspaceCover";
+import "./workspace-manage.css";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import type { TransferOwnershipPayload } from "@/types/workspace";
 import { DEFAULT_WORKSPACE_MANAGE_TAB, WORKSPACE_MANAGE_TAB_LABELS, type WorkspaceManageTabId } from "./tab-routing";
@@ -92,6 +93,9 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
     updateWorkspace,
     uploadWorkspaceAvatar,
     removeWorkspaceAvatar,
+    uploadWorkspaceCover,
+    repositionWorkspaceCover,
+    removeWorkspaceCover,
     leaveWorkspace,
     deleteWorkspace,
     transferOwnership,
@@ -126,7 +130,11 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
   const workspace_name = workspace.name;
   const workspace_mono = workspace.mono;
   const workspace_color = workspace.color;
+  const workspace_avatar_url = workspace.avatar_url ?? workspace.avatar_thumbnail_url;
   const can_manage_workspace = workspace.role?.toLowerCase() === "owner";
+  // Changing the cover follows the same gate as the avatar on the API
+  // (`AuthorizesWorkspaceManagement`): the owner or a privileged global role.
+  const can_manage_cover = can_manage_workspace || hasAnyRole(...INVITATION_MANAGER_ROLES);
   // Inviting/removing collaborators is broader than owner-only rename/delete: it also
   // opens up to a privileged global role, mirroring the "Sent invitations" view's own gate
   // (see `AuthorizesWorkspaceManagement` on the backend and `canManageWorkspaceInvitations`).
@@ -185,112 +193,115 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
   };
 
   return (
-    <div className="min-h-full bg-shell-bg">
-      {/* Cover banner — placeholder gradient, matches the approved workspace design. */}
-      <div className="relative h-[170px] w-full overflow-hidden bg-[linear-gradient(115deg,#0A1717_0%,#1C2B2E_38%,#3A4A4D_60%,#D8DCDB_100%)]">
-        <div className="absolute inset-0 bg-[repeating-linear-gradient(108deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_22px)]" />
-      </div>
+    <div className="workspace-manage-theme min-h-full bg-shell-bg">
+      <WorkspaceCover
+        cover_url={workspace.cover_url}
+        cover_position_y={workspace.cover_position_y}
+        can_manage={can_manage_cover}
+        onUpload={(file) => uploadWorkspaceCover(file)}
+        onReposition={repositionWorkspaceCover}
+        onRemove={removeWorkspaceCover}
+      />
 
-      <div className="px-10">
-        {/* Workspace header block */}
-        <div className="relative flex items-start gap-[18px]">
-          <div
-            className="-mt-11 flex h-[88px] w-[88px] flex-none items-center justify-center rounded-[18px] border-[3px] border-shell-bg bg-brand-500 shadow-[0_10px_30px_rgba(10,23,23,0.28)]"
-            style={workspace_color ? { backgroundColor: workspace_color } : undefined}
-          >
-            <span className="font-outfit text-[38px] font-bold tracking-[-0.03em] text-white">
-              {workspace_mono}
-            </span>
+      <div className="px-4 sm:px-8 xl:px-16">
+        {/* Workspace header: logo overlapping the cover, title, actions. */}
+        <div className="relative flex items-start gap-4 sm:gap-6">
+          <div className="relative -mt-9 flex-none">
+            <div
+              className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-[14px] border-4 border-shell-bg bg-brand-500 shadow-[0_4px_12px_rgba(0,0,0,0.16)] sm:h-[108px] sm:w-[108px] sm:rounded-[16px]"
+              style={!workspace_avatar_url && workspace_color ? { backgroundColor: workspace_color } : undefined}
+            >
+              {workspace_avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- avatars come from arbitrary user uploaded URLs, not static app assets.
+                <img src={workspace_avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="font-heading text-[34px] font-semibold tracking-[-0.03em] text-white sm:text-[48px]">
+                  {workspace_mono}
+                </span>
+              )}
+            </div>
+            {workspace.is_home && (
+              <span
+                title="Home workspace"
+                className="absolute -bottom-1.5 -right-1.5 flex h-7 w-7 items-center justify-center rounded-[8px] bg-shell-bg text-shell-text shadow-[0_1px_4px_rgba(0,0,0,0.12)] sm:h-8 sm:w-8"
+              >
+                <HomeFilledIcon size={20} />
+              </span>
+            )}
           </div>
 
-          <div className="flex flex-1 flex-wrap items-start justify-between gap-5 pt-3.5">
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="m-0 text-[34px] font-light tracking-[-0.01em] text-shell-text">
-                  {workspace_name}
-                </h1>
-                <button
-                  ref={info_button_ref}
-                  type="button"
-                  onClick={() => setIsInfoOpen((open) => !open)}
-                  aria-label="Workspace info"
-                  aria-expanded={is_info_open}
-                  className={`flex h-[26px] w-[26px] items-center justify-center rounded-[7px] text-shell-text-secondary hover:bg-shell-hover ${
-                    is_info_open ? "bg-shell-hover" : ""
-                  }`}
-                >
-                  <ChevronDownIcon size={18} className={is_info_open ? "rotate-180" : ""} />
-                </button>
-                <InfoDropdown
-                  anchor_el={info_button_ref.current}
-                  is_open={is_info_open}
-                  onClose={() => setIsInfoOpen(false)}
-                  title={workspace_name}
-                  section_label="Workspace info"
-                  rows={[
-                    {
-                      key: "type",
-                      label: "Workspace type",
-                      value: (
-                        <>
-                          <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
-                          <span className="flex-1">
-                            {workspace.privacy === "closed" ? "Closed workspace" : "Open workspace"}
-                          </span>
-                          {can_manage_workspace && (
-                            <ChevronDownIcon size={13} className="flex-none -rotate-90 text-shell-text-faint" />
-                          )}
-                        </>
-                      ),
-                      onClick: can_manage_workspace
-                        ? () => {
-                            setIsInfoOpen(false);
-                            setOpenDialog("change-type");
-                          }
-                        : undefined,
-                    },
-                    {
-                      key: "members",
-                      label: "Members",
-                      value: (
-                        <>
+          <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-5 gap-y-3 pt-3 sm:pt-5">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="m-0 truncate font-heading text-[24px] font-medium leading-[40px] tracking-[-0.2px] text-shell-text sm:text-[32px]">
+                {workspace_name}
+              </h1>
+              <button
+                ref={info_button_ref}
+                type="button"
+                onClick={() => setIsInfoOpen((open) => !open)}
+                aria-label="Workspace info"
+                aria-expanded={is_info_open}
+                className={`flex h-8 w-8 flex-none items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover-strong ${
+                  is_info_open ? "bg-shell-hover-strong" : ""
+                }`}
+              >
+                <ChevronDownIcon size={20} className={`transition-transform ${is_info_open ? "rotate-180" : ""}`} />
+              </button>
+              <InfoDropdown
+                anchor_el={info_button_ref.current}
+                is_open={is_info_open}
+                onClose={() => setIsInfoOpen(false)}
+                title={workspace_name}
+                section_label="Workspace info"
+                width={400}
+                rows={[
+                  {
+                    key: "type",
+                    label: "Workspace type",
+                    value: (
+                      <>
+                        <BoardGridIcon size={15} className="flex-none text-shell-text-muted" />
+                        <span className="flex-1">
+                          {workspace.privacy === "closed" ? "Closed workspace" : "Open workspace"}
+                        </span>
+                        {can_manage_workspace && (
+                          <ChevronDownIcon size={13} className="flex-none text-shell-text-faint" />
+                        )}
+                      </>
+                    ),
+                    onClick: can_manage_workspace
+                      ? () => {
+                          setIsInfoOpen(false);
+                          setOpenDialog("change-type");
+                        }
+                      : undefined,
+                  },
+                  {
+                    key: "members",
+                    label: "Members",
+                    value: (
+                      <>
+                        {workspace.privacy === "closed" && (
                           <MemberIcon size={15} className="flex-none text-shell-text-muted" />
-                          <span className="flex-1">
-                            {workspace.privacy === "closed"
-                              ? "Invite-only — managed from Permissions"
-                              : "All members in monday"}
-                          </span>
-                        </>
-                      ),
-                    },
-                  ]}
-                />
-              </div>
-              <div className="mt-1 font-mono-accent text-xs tracking-[0.02em] text-shell-text-muted">
-                {workspace_name}&nbsp;&nbsp;/&nbsp;&nbsp;
-                <span className="font-medium text-brand-500">{node.label}</span>
-              </div>
+                        )}
+                        <span className="flex-1">
+                          {workspace.privacy === "closed"
+                            ? "Invite only, managed from Collaborators"
+                            : "All members in monday"}
+                        </span>
+                      </>
+                    ),
+                  },
+                ]}
+              />
             </div>
 
-            <div className="flex items-center gap-2 pt-1">
-              <button
-                type="button"
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-shell-text-secondary hover:bg-shell-hover"
-              >
-                <ChatBubbleIcon />
-                Feedback
-              </button>
-              <button
-                type="button"
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-[13px] font-medium text-shell-text-secondary hover:bg-shell-hover"
-              >
-                <PersonIcon />
-                Agents
-              </button>
+            {/* "Feedback" and "Agents" are intentionally hidden for now, by client request. */}
+            <div className="flex flex-none items-center gap-2">
               <button
                 type="button"
                 onClick={() => setActiveTab("collaborators")}
-                className="rounded-lg bg-shell-text px-[18px] py-2.5 text-[13px] font-semibold text-shell-bg hover:opacity-90"
+                className="h-8 rounded-[4px] border border-shell-border-strong px-2.5 text-[14px] text-shell-text transition-colors hover:bg-shell-hover"
               >
                 Members
               </button>
@@ -298,16 +309,20 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
                 ref={options_button_ref}
                 type="button"
                 onClick={() => setIsOptionsOpen((open) => !open)}
-                className="flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-shell-border text-shell-text-secondary hover:bg-shell-hover"
+                className={`flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover-strong ${
+                  is_options_open ? "bg-[var(--color-workspace-manage-selected)]" : ""
+                }`}
                 aria-label="More workspace actions"
+                aria-expanded={is_options_open}
               >
-                <MoreDotsIcon size={16} />
+                <MoreDotsIcon size={18} />
               </button>
               <WorkspaceOptionsMenu
                 anchor_el={options_button_ref.current}
                 is_open={is_options_open}
                 onClose={() => setIsOptionsOpen(false)}
                 can_manage={can_manage_workspace}
+                show_disabled_actions
                 onEdit={() => setOpenDialog("edit")}
                 onRename={() => setOpenDialog("rename")}
                 onChangeType={() => setOpenDialog("change-type")}
@@ -332,29 +347,37 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
         </div>
 
         {/* Tabs */}
-        <div className="mt-[26px] flex gap-1.5 border-b border-shell-border">
+        <div role="tablist" className="mt-6 flex gap-1 overflow-x-auto border-b border-shell-border">
           {WORKSPACE_TABS.map(({ id, label, Icon }) => {
             const is_active = active_tab === id;
             // The Permissions tab stays visible for every member, but is
             // rendered disabled (greyed out, unclickable) for anyone without
-            // WORKSPACE_PERMISSIONS_MANAGER_ROLES — see `can_manage_permissions`.
+            // WORKSPACE_PERMISSIONS_MANAGER_ROLES, see `can_manage_permissions`.
             const is_disabled = id === "permissions" && !can_manage_permissions;
             const tab_button = (
               <button
                 type="button"
+                role="tab"
+                aria-selected={is_active}
                 onClick={() => !is_disabled && setActiveTab(id)}
                 disabled={is_disabled}
                 aria-disabled={is_disabled}
-                className={`-mb-px flex items-center gap-[7px] border-b-2 px-3.5 py-3 text-sm ${
+                className={`group -mb-px flex h-10 flex-none items-center border-b-2 pb-1 pt-1 text-[16px] ${
                   is_disabled
-                    ? "cursor-not-allowed border-transparent font-medium text-shell-text-faint"
+                    ? "cursor-not-allowed border-transparent text-shell-text-faint"
                     : is_active
-                      ? "border-brand-500 font-semibold text-brand-500"
-                      : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
-                  }`}
+                      ? "border-[var(--color-workspace-manage-accent)] text-shell-text"
+                      : "border-transparent text-shell-text"
+                }`}
               >
-                <Icon />
-                {label}
+                <span
+                  className={`flex items-center gap-2 rounded-[4px] px-3 py-1 transition-colors ${
+                    is_disabled || is_active ? "" : "group-hover:bg-shell-hover-strong"
+                  }`}
+                >
+                  <Icon size={16} />
+                  {label}
+                </span>
               </button>
             );
 
@@ -421,7 +444,7 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
           "Boards or items assigned to you will stay assigned, but you won't be able to view or update them.",
           "You can only get back in if an owner invites you again.",
           ...(can_manage_workspace
-            ? ["You're an owner here — if you're the only one, assign another owner first."]
+            ? ["You're an owner here. If you're the only one, assign another owner first."]
             : []),
         ]}
         onConfirm={handleLeave}
@@ -437,7 +460,7 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
         risk_items={[
           "Every board, file, and conversation in this workspace will be moved to trash for all members.",
           "Members lose access immediately, including anyone currently viewing it.",
-          "You can restore it from Trash within 30 days — after that, it's gone for good.",
+          "You can restore it from Trash within 30 days. After that, it's gone for good.",
         ]}
         onConfirm={handleDelete}
         onClose={closeDialog}

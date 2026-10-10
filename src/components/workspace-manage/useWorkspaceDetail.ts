@@ -17,6 +17,12 @@ export type WorkspaceDetailApi = {
   uploadWorkspaceAvatar: (file: File) => Promise<void>;
   /** Removes this workspace's custom avatar, reverting it to its generated mono/color badge. Owner/admin only. */
   removeWorkspaceAvatar: () => Promise<void>;
+  /** Uploads (or replaces) the Manage Workspace banner image. Owner/admin only. */
+  uploadWorkspaceCover: (file: File, cover_position_y?: number) => Promise<void>;
+  /** Saves the banner image's vertical focal point (0 to 100). Owner/admin only. */
+  repositionWorkspaceCover: (cover_position_y: number) => Promise<void>;
+  /** Removes the custom banner image, reverting to the default cover. Owner/admin only. */
+  removeWorkspaceCover: () => Promise<void>;
   leaveWorkspace: () => Promise<void>;
   deleteWorkspace: () => Promise<void>;
   transferOwnership: (payload: TransferOwnershipPayload) => Promise<TransferOwnershipResult>;
@@ -80,6 +86,18 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     setWorkspace(await workspaceService.removeWorkspaceAvatar(current_slug_ref.current));
   }, []);
 
+  const uploadWorkspaceCover = useCallback(async (file: File, cover_position_y?: number) => {
+    setWorkspace(await workspaceService.uploadWorkspaceCover(current_slug_ref.current, file, cover_position_y));
+  }, []);
+
+  const repositionWorkspaceCover = useCallback(async (cover_position_y: number) => {
+    setWorkspace(await workspaceService.updateWorkspaceCoverPosition(current_slug_ref.current, cover_position_y));
+  }, []);
+
+  const removeWorkspaceCover = useCallback(async () => {
+    setWorkspace(await workspaceService.removeWorkspaceCover(current_slug_ref.current));
+  }, []);
+
   const leaveWorkspace = useCallback(async () => {
     await workspaceService.leaveWorkspace(current_slug_ref.current);
   }, []);
@@ -107,6 +125,9 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     updateWorkspace,
     uploadWorkspaceAvatar,
     removeWorkspaceAvatar,
+    uploadWorkspaceCover,
+    repositionWorkspaceCover,
+    removeWorkspaceCover,
     leaveWorkspace,
     deleteWorkspace,
     transferOwnership,

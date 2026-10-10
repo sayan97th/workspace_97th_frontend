@@ -15,6 +15,11 @@ export type MenuListItem = {
   submenu?: MenuListItem[];
   /** Greys the row out and blocks `onClick` instead of hiding it — e.g. "Move ahead" when the row is already last. */
   disabled?: boolean;
+  /**
+   * Forces (true) or suppresses (false) a divider above this row. When left
+   * out, a divider is only added before the first `danger` row.
+   */
+  divider_before?: boolean;
 };
 
 export type MenuItemListProps = {
@@ -48,7 +53,7 @@ export const MenuItemList: React.FC<MenuItemListProps> = ({ title, items, onSele
       )}
       {items.map((item, index) => {
         const previous = items[index - 1];
-        const needs_divider = item.danger && previous && !previous.danger;
+        const needs_divider = Boolean(previous) && (item.divider_before ?? (item.danger && !previous?.danger));
         const item_class = item.disabled ? disabled_item_class : item.danger ? danger_item_class : base_item_class;
         return (
           <React.Fragment key={item.key}>

@@ -50,14 +50,14 @@ const WorkspaceManageRecents: React.FC<WorkspaceManageRecentsProps> = ({ workspa
 
   if (items.length === 0) {
     return (
-      <div className="flex items-center justify-center py-24 font-mono-accent text-[13px] tracking-[0.04em] text-shell-text-muted">
-        [ no recent activity yet ]
+      <div className="flex items-center justify-center py-24 text-[14px] text-shell-text-secondary">
+        No recent activity yet
       </div>
     );
   }
 
   return (
-    <div className="mt-2.5 pb-[60px]">
+    <div className="mt-4 pb-10">
       {items.map((item, index) => {
         const folder = item.folder_path.map((crumb) => crumb.label).join(" / ");
         return (
@@ -73,16 +73,16 @@ const WorkspaceManageRecents: React.FC<WorkspaceManageRecentsProps> = ({ workspa
               <FileIcon />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-medium text-shell-text">{item.label}</span>
+              <span className="block truncate text-[15px] text-shell-text">{item.label}</span>
               {(folder || item.creator) && (
-                <span className="block truncate text-[12.5px] text-shell-text-faint">
+                <span className="block truncate text-[13px] text-shell-text-secondary">
                   {folder}
                   {folder && item.creator ? " · " : ""}
                   {item.creator ? `Created by ${item.creator.full_name}` : ""}
                 </span>
               )}
             </span>
-            <span className="flex-none text-[12.5px] text-shell-text-muted">{formatShortDate(item.created_at)}</span>
+            <span className="flex-none text-[14px] text-shell-text-secondary">{formatShortDate(item.created_at)}</span>
           </button>
         );
       })}

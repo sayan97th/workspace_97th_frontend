@@ -896,3 +896,37 @@ export const BuildingIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
     <path d="M6.5 14.2 V11.7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
   </svg>
 );
+
+/** Solid house glyph, the "home workspace" badge pinned to the Manage Workspace logo. */
+export const HomeFilledIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M7.3 1.9 a1 1 0 0 1 1.4 0 l5.2 4.7 a1 1 0 0 1 .3 .75 V13.5 a1 1 0 0 1-1 1 H10 V10.5 a.5 .5 0 0 0-.5-.5 h-3 a.5 .5 0 0 0-.5 .5 V14.5 H2.8 a1 1 0 0 1-1-1 V7.35 a1 1 0 0 1 .3-.75 z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/** Picture glyph (mountain and sun), the Manage Workspace "Change cover" action. */
+export const ImageIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="2.8" width="12" height="10.4" rx="1.6" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="5.6" cy="6.2" r="1.1" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M2.4 11.6 L6 8.4 L8.6 10.6 L10.6 8.8 L13.6 11.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Vertical double arrow, the cover "Reposition" action. */
+export const MoveVerticalIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 2 V14 M5.2 4.6 L8 2 L10.8 4.6 M5.2 11.4 L8 14 L10.8 11.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Workspace folder glyph (rounded square with a chevron), used by the Content table's "Folder" column. */
+export const WorkspaceFolderIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M5.4 6.8 L8 9.4 L10.6 6.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);

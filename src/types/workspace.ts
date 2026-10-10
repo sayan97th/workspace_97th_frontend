@@ -126,6 +126,10 @@ export type Workspace = {
   avatar_url: string | null;
   /** Small square-cropped version of avatar_url, used by the compact badges (sidebar switcher, browse modal). */
   avatar_thumbnail_url: string | null;
+  /** Custom banner image shown at the top of Manage Workspace, or null to use the default cover. */
+  cover_url: string | null;
+  /** Vertical focal point of the cover inside the banner, 0 (top) to 100 (bottom). */
+  cover_position_y: number;
   /** Product/source label shown under the name in the browse modal. */
   product: string;
   /** "open" — any account member can join; "closed" — invite-only. */

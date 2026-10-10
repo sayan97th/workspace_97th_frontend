@@ -1,0 +1,68 @@
+/*
+ * Styles scoped to Manage Workspace's root wrapper (`workspace-manage-theme`
+ * in WorkspaceManage.tsx). Mirrors the board table restyle
+ * (`board/table/table-board.css`): instead of changing the `shell-*` tokens
+ * app wide, the page redeclares them with the monday.com palette on its own
+ * wrapper, so every tab (Recents, Content, Collaborators, Permissions) picks
+ * it up. Dark mode keeps the hand tuned set from `globals.css`.
+ */
+html:not(.dark) .workspace-manage-theme {
+  --color-shell-bg: #ffffff;
+  --color-shell-surface: #ffffff;
+  --color-shell-panel: #ffffff;
+  --color-shell-panel-alt: #f6f7fb;
+  --color-shell-border: #d0d4e4;
+  --color-shell-border-strong: #c3c6d4;
+  --color-shell-hover: #f5f6f8;
+  --color-shell-hover-strong: #dcdfec;
+  --color-shell-text: #323338;
+  --color-shell-text-secondary: #676879;
+  --color-shell-text-muted: #676879;
+  --color-shell-text-faint: #9699a6;
+
+  --color-workspace-manage-grid: #e7e9ef;
+  --color-workspace-manage-accent: #0073ea;
+  --color-workspace-manage-selected: #cce5ff;
+  --color-workspace-manage-control: #c3c6d4;
+}
+
+html.dark .workspace-manage-theme {
+  --color-workspace-manage-grid: rgba(255, 255, 255, 0.06);
+  --color-workspace-manage-accent: #579bfc;
+  --color-workspace-manage-selected: rgba(87, 155, 252, 0.18);
+  --color-workspace-manage-control: rgba(255, 255, 255, 0.24);
+}
+
+/* Content table: one grid shared by the sticky header and every row, so columns always line up. */
+.workspace-manage-content-grid {
+  display: grid;
+  grid-template-columns:
+    48px minmax(200px, 1.4fr) 124px 96px 132px 132px minmax(200px, 1.3fr);
+  min-width: 940px;
+  align-items: center;
+}
+
+.workspace-manage-content-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-shell-scrollbar-thumb) transparent;
+}
+
+.workspace-manage-content-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.workspace-manage-content-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-shell-scrollbar-thumb);
+  border-radius: 4px;
+}
+
+/* Cover reposition mode: the image follows the pointer vertically. */
+.workspace-cover.is-repositioning {
+  cursor: grab;
+  touch-action: none;
+}
+
+.workspace-cover.is-repositioning:active {
+  cursor: grabbing;
+}

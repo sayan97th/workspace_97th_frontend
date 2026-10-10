@@ -83,6 +83,44 @@ export const workspaceService = {
   },
 
   /**
+   * POST /api/workspaces/{slug}/cover, uploads (or replaces) the banner image
+   * shown at the top of Manage Workspace. Owner/admin only.
+   */
+  async uploadWorkspaceCover(workspace_slug: string, file: File, cover_position_y = 50): Promise<Workspace> {
+    const form_data = new FormData();
+    form_data.append("file", file);
+    form_data.append("cover_position_y", String(Math.round(cover_position_y)));
+    const response = await apiClient.postFormData<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/cover`,
+      form_data
+    );
+    return response.workspace;
+  },
+
+  /**
+   * PATCH /api/workspaces/{slug}/cover, saves the cover's vertical focal point
+   * after it was dragged into place. Owner/admin only.
+   */
+  async updateWorkspaceCoverPosition(workspace_slug: string, cover_position_y: number): Promise<Workspace> {
+    const response = await apiClient.patch<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/cover`,
+      { cover_position_y: Math.round(cover_position_y) }
+    );
+    return response.workspace;
+  },
+
+  /**
+   * DELETE /api/workspaces/{slug}/cover, removes the custom cover so the
+   * banner falls back to the default image. Owner/admin only.
+   */
+  async removeWorkspaceCover(workspace_slug: string): Promise<Workspace> {
+    const response = await apiClient.delete<{ workspace: Workspace }>(
+      `/api/workspaces/${workspace_slug}/cover`
+    );
+    return response.workspace;
+  },
+
+  /**
    * PATCH /api/workspaces/{slug}/priority — flags/unflags this workspace as a
    * priority client (the sidebar's priority star), open to any member.
    */

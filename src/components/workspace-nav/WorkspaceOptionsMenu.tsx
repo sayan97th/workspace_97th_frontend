@@ -17,6 +17,11 @@ export type WorkspaceOptionsMenuProps = {
   onClose: () => void;
   /** Owner-only actions (edit / rename / change type / transfer ownership / delete) are hidden for non-owners. */
   can_manage: boolean;
+  /**
+   * Shows Rename / Change type / Delete greyed out for non-owners instead of
+   * hiding them, the way the Manage Workspace header menu does.
+   */
+  show_disabled_actions?: boolean;
   /** Opens the full "Edit workspace" dialog (name, color, photo, privacy in one place). */
   onEdit: () => void;
   onRename: () => void;
@@ -46,6 +51,7 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
   is_open,
   onClose,
   can_manage,
+  show_disabled_actions = false,
   onEdit,
   onRename,
   onChangeType,
@@ -79,7 +85,18 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
               ] satisfies AnchoredMenuItem[])
             : []),
         ] satisfies AnchoredMenuItem[])
-      : []),
+      : show_disabled_actions
+        ? ([
+            { key: "rename", label: "Rename workspace", icon: <RenameIcon />, onClick: onRename, disabled: true },
+            {
+              key: "change-type",
+              label: "Change type",
+              icon: <WorkspaceTypeIcon />,
+              onClick: onChangeType,
+              disabled: true,
+            },
+          ] satisfies AnchoredMenuItem[])
+        : []),
     ...(onTogglePriority
       ? ([
           {
@@ -100,15 +117,24 @@ const WorkspaceOptionsMenu: React.FC<WorkspaceOptionsMenuProps> = ({
           },
         ] satisfies AnchoredMenuItem[])
       : []),
-    { key: "leave", label: "Leave workspace", icon: <LeaveWorkspaceIcon />, onClick: onLeave },
-    ...(can_manage
+    {
+      key: "leave",
+      label: "Leave workspace",
+      icon: <LeaveWorkspaceIcon />,
+      onClick: onLeave,
+      divider_before: show_disabled_actions ? true : undefined,
+    },
+    ...(can_manage || show_disabled_actions
       ? ([
           {
             key: "delete",
             label: "Delete workspace",
             icon: <DeleteIcon />,
             onClick: onDelete,
-            danger: true,
+            danger: can_manage,
+            disabled: !can_manage,
+            // Leave and Delete share one group under the divider above Leave.
+            divider_before: show_disabled_actions ? false : undefined,
           },
         ] satisfies AnchoredMenuItem[])
       : []),

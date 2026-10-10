@@ -25,6 +25,6 @@ export const gradientForId = (id: number): readonly [string, string] =>
 
 /** "Nov 18, 2019"-style date, matching the rest of the app's board-content formatting. */
 export const formatShortDate = (iso: string | null): string => {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 };

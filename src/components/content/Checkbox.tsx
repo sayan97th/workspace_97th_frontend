@@ -7,6 +7,8 @@ export type CheckboxProps = {
   indeterminate?: boolean;
   onChange: (checked: boolean) => void;
   aria_label: string;
+  /** "monday" is the smaller, blue accented box used by the Manage Workspace content table. */
+  variant?: "default" | "monday";
 };
 
 /**
@@ -18,8 +20,19 @@ const Checkbox: React.FC<CheckboxProps> = ({
   indeterminate = false,
   onChange,
   aria_label,
+  variant = "default",
 }) => {
   const is_marked = checked || indeterminate;
+  const variant_class =
+    variant === "monday"
+      ? `h-4 w-4 rounded-[4px] border ${
+          is_marked
+            ? "border-[var(--color-workspace-manage-accent)] bg-[var(--color-workspace-manage-accent)] text-white"
+            : "border-[var(--color-workspace-manage-control)] bg-shell-panel hover:border-shell-text-secondary"
+        }`
+      : `h-[18px] w-[18px] rounded-[5px] border-[1.5px] ${
+          is_marked ? "border-brand-500 bg-brand-500 text-white" : "border-[#c6c9c3] bg-white hover:border-gray-400"
+        }`;
 
   return (
     <button
@@ -31,11 +44,7 @@ const Checkbox: React.FC<CheckboxProps> = ({
         event.stopPropagation();
         onChange(!checked);
       }}
-      className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] border-[1.5px] transition-colors ${
-        is_marked
-          ? "border-brand-500 bg-brand-500 text-white"
-          : "border-[#c6c9c3] bg-white hover:border-gray-400"
-      }`}
+      className={`flex flex-none items-center justify-center transition-colors ${variant_class}`}
     >
       {indeterminate ? (
         <MinusIcon />

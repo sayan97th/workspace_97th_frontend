@@ -28,6 +28,8 @@ export type ContentAsset = {
   modified_date: string;
   folder: string;
   sub_folder?: string | null;
+  /** Every ancestor folder, outermost first. When set, the table renders it as a breadcrumb instead of `folder`/`sub_folder`. */
+  folder_path?: string[];
   is_favorite?: boolean;
   is_locked?: boolean;
 };
