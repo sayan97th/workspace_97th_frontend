@@ -111,6 +111,19 @@
   --color-shell-text-faint: var(--color-gray-300);
   --color-shell-scrollbar-thumb: rgba(10, 23, 23, 0.16);
 
+  /* Two level sidebar (monday.com look): the app rail and top bar share
+     `sidebar-rail`, the workspace panel is a white card on top of it. */
+  --color-sidebar-rail: #f6f7fb;
+  --color-sidebar-panel: #ffffff;
+  --color-sidebar-border: #e7e8ef;
+  --color-sidebar-divider: #cfd3e3;
+  --color-sidebar-control-border: #c1c5d3;
+  --color-sidebar-hover: rgba(103, 104, 121, 0.1);
+  --color-sidebar-active: #cce5ff;
+  --color-sidebar-text: #323338;
+  --color-sidebar-text-secondary: #676879;
+  --color-sidebar-focus: #0073ea;
+
   /* Board table ("boardtree") visual identity — the Table board view's own
      look, matching the client-approved Claude Design mockup
      (`design/desing_3/Table_board_tree_subitems.dc.html`) pixel-for-pixel in
@@ -219,6 +232,17 @@
   --color-shell-text-muted: #9aa4a5;
   --color-shell-text-faint: #7e8889;
   --color-shell-scrollbar-thumb: rgba(255, 255, 255, 0.12);
+
+  --color-sidebar-rail: #061010;
+  --color-sidebar-panel: #0a1717;
+  --color-sidebar-border: rgba(255, 255, 255, 0.07);
+  --color-sidebar-divider: rgba(255, 255, 255, 0.12);
+  --color-sidebar-control-border: rgba(255, 255, 255, 0.16);
+  --color-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --color-sidebar-active: rgba(0, 115, 234, 0.3);
+  --color-sidebar-text: #e9eded;
+  --color-sidebar-text-secondary: #aab4b5;
+  --color-sidebar-focus: #4d9cff;
 
   /* Dark counterpart for the boardtree tokens declared in @theme above —
      keeps the mockup's blue accent + hue relationships rather than the
@@ -418,7 +442,7 @@
 }
 
 @utility shell-nav-item-active {
-  @apply bg-brand-500;
+  @apply bg-sidebar-active;
 }
 
 /*

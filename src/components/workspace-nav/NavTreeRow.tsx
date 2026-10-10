@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { WorkspaceNavNode } from "@/types/workspace";
-import { GroupToggleIcon, MoreDotsIcon, StarIcon } from "@/icons/workspace-icons";
+import { MoreDotsIcon, StarIcon, TreeCaretIcon } from "@/icons/workspace-icons";
 import NavItemIcon, { NavPrivacyBadge } from "./NavItemIcon";
 import { getLeafHref } from "./helpers";
 import { splitByMatch, type NavDropPosition, type VisibleNavRow } from "./navTreeUtils";
@@ -38,7 +38,8 @@ export type NavTreeRowProps = {
 const PRIORITY_COLOR = "#fdab3d";
 
 /** Left indent grows with depth so arbitrarily nested folders stay readable. */
-const indentFor = (depth: number): number => 10 + depth * 20;
+/** monday.com nesting: each level moves 22px, so a child icon lines up under its folder label. */
+const indentFor = (depth: number): number => 8 + depth * 22;
 
 type PriorityStarProps = { node: WorkspaceNavNode; onTogglePriority: (node: WorkspaceNavNode) => void };
 
@@ -58,8 +59,8 @@ const PriorityStar: React.FC<PriorityStarProps> = ({ node, onTogglePriority }) =
     }}
     title={node.is_priority ? "Unmark as priority" : "Mark as priority"}
     aria-label={node.is_priority ? "Unmark as priority" : "Mark as priority"}
-    className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md hover:bg-shell-hover-strong"
-    style={{ color: node.is_priority ? PRIORITY_COLOR : "var(--color-shell-text-faint)" }}
+    className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md hover:bg-sidebar-hover"
+    style={{ color: node.is_priority ? PRIORITY_COLOR : "var(--color-sidebar-text-secondary)" }}
   >
     <span className={node.is_priority ? "" : "opacity-0 group-hover:opacity-100"}>
       <StarIcon filled={node.is_priority} size={13} />
@@ -183,9 +184,11 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
     ? "bg-[#2B76E5]/[0.16] ring-1 ring-inset ring-[#2B76E5]/45"
     : drop_position === "inside"
       ? "bg-[#2B76E5]/[0.12] ring-2 ring-inset ring-[#2B76E5]"
-      : "hover:bg-shell-hover";
+      : is_active
+        ? ""
+        : "hover:bg-sidebar-hover";
 
-  const row_class = `group relative flex ${is_group ? "h-[34px]" : "h-9"} items-center gap-[9px] rounded-[9px] pr-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#2B76E5]/70 ${
+  const row_class = `group relative flex h-9 items-center gap-[11px] rounded-md pr-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-focus ${
     is_drag_disabled ? "" : "cursor-grab active:cursor-grabbing"
   } ${state_class}`;
 
@@ -194,11 +197,10 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
     opacity: draggable.isDragging ? 0.4 : 1,
   };
 
-  const text_class = is_active && !is_selected ? "text-white" : "text-shell-text";
 
   const content = (
     <>
-      {is_active && !is_selected && <div className="shell-nav-item-active absolute inset-0 rounded-[9px]" />}
+      {is_active && !is_selected && <div className="shell-nav-item-active absolute inset-0 rounded-md" />}
       {drop_position === "before" || drop_position === "after" ? (
         <span
           aria-hidden="true"
@@ -209,25 +211,24 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
         </span>
       ) : null}
 
-      {is_group && (
+      {is_group ? (
+        // Folders show only a caret like monday.com, tinted with the folder color when one was picked.
         <span
-          className="relative z-1 flex flex-none text-shell-text-muted transition-transform duration-150"
-          style={{ transform: is_expanded ? "rotate(90deg)" : "rotate(0deg)" }}
+          className="relative z-1 flex h-4 w-4 flex-none items-center justify-center text-sidebar-text-secondary transition-transform duration-150"
+          style={{ transform: is_expanded ? "rotate(90deg)" : "rotate(0deg)", color: node.color ?? undefined }}
+          title="Folder"
         >
-          <GroupToggleIcon />
+          <TreeCaretIcon />
         </span>
+      ) : (
+        <NavItemIcon source={node} size={16} className="relative z-1 text-sidebar-text-secondary" />
       )}
-      <NavItemIcon
-        source={node}
-        size={is_group ? 15 : node.icon === "home" ? 16 : 15}
-        className={`relative z-1 ${is_active && !is_selected ? "text-white" : "text-shell-text-secondary"}`}
-      />
 
       {is_renaming ? (
         <RenameInput node={node} onSubmit={(label) => onSubmitRename(node, label)} onCancel={onCancelRename} />
       ) : (
         <span
-          className={`relative z-1 min-w-0 flex-1 truncate text-sm ${is_group || node.display_style === "group" ? "font-semibold" : "font-normal"} ${text_class}`}
+          className={`relative z-1 min-w-0 flex-1 truncate text-sm ${node.display_style === "group" ? "font-medium" : "font-normal"} text-sidebar-text`}
           onDoubleClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
@@ -239,7 +240,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
       )}
 
       {!is_group && !is_renaming && (
-        <NavPrivacyBadge board_type={node.board_type} className={`relative z-1 ${is_active && !is_selected ? "text-white/80" : "text-shell-text-muted"}`} />
+        <NavPrivacyBadge board_type={node.board_type} className="relative z-1 text-sidebar-text-secondary" />
       )}
 
       {!is_renaming && (
@@ -250,7 +251,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
             tabIndex={-1}
             onClick={handleKebabClick}
             onPointerDown={(event) => event.stopPropagation()}
-            className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md text-shell-text-secondary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-shell-hover-strong hover:text-shell-text"
+            className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md text-sidebar-text-secondary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-sidebar-hover hover:text-sidebar-text"
             aria-label={`${node.label} options`}
           >
             <MoreDotsIcon />

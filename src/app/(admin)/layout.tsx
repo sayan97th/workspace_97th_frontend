@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
+import { useSidebar } from "@/context/SidebarContext";
 import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
@@ -16,6 +17,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const { isExpanded } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -42,7 +44,12 @@ export default function AdminLayout({
           <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
             <AppSidebar />
             <Backdrop />
-            <main className="shell-scrollbar h-full flex-1 overflow-y-auto bg-shell-bg">
+            {/* The page continues the sidebar panel's card: a top border, and the rounded corner once the panel is collapsed. */}
+            <main
+              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto border-t border-sidebar-border bg-shell-bg ${
+                isExpanded ? "" : "lg:rounded-tl-2xl lg:border-l"
+              }`}
+            >
               {children}
             </main>
           </div>

@@ -54,8 +54,9 @@ const SectionRow: React.FC<{ section: SidebarSectionPreference; onToggle: () => 
 };
 
 /**
- * "Customize sidebar": drag the personal sections (Home, My work, Favorites,
- * Recent) into any order and switch each one on or off. Every change is
+ * "Customize sidebar", opened from the rail's "More" menu: drag the app rail's
+ * sections (Home, My work, Favorites, Automations, Recent) into any order and
+ * switch each one on or off, a hidden one moves into "More". Every change is
  * saved on the account right away (see `SidebarContext`).
  */
 const SidebarCustomizePanel: React.FC<SidebarCustomizePanelProps> = ({ anchor_el, is_open, onClose, sections, onChange }) => {
@@ -77,7 +78,7 @@ const SidebarCustomizePanel: React.FC<SidebarCustomizePanelProps> = ({ anchor_el
     <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={250} align="start">
       <div className="p-2">
         <div className="px-1.5 pb-1 pt-1 font-mono-accent text-[11px] tracking-[0.05em] text-shell-text-muted">CUSTOMIZE SIDEBAR</div>
-        <p className="px-1.5 pb-2 text-[12px] leading-snug text-shell-text-faint">Drag to reorder, switch off what you don&apos;t use.</p>
+        <p className="px-1.5 pb-2 text-[12px] leading-snug text-shell-text-faint">Drag to reorder. Switched off items move to More.</p>
         <DndContext sensors={sensors} collisionDetection={closestCenter} modifiers={[restrictToVerticalAxis, restrictToParentElement]} onDragEnd={handleDragEnd}>
           <SortableContext items={sections.map((section) => section.key)} strategy={verticalListSortingStrategy}>
             <ul className="relative flex flex-col gap-0.5">

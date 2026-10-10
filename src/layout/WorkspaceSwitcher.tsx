@@ -48,7 +48,7 @@ type WorkspaceSwitcherProps = Partial<WorkspaceMutationProps> & {
  * keeps matching its background across the Light/Dark/System default themes.
  */
 const DROPDOWN_SURFACE = "var(--color-shell-panel)";
-const TRIGGER_SURFACE = "var(--color-shell-panel-alt)";
+const TRIGGER_SURFACE = "var(--color-sidebar-panel)";
 
 const filterWorkspaces = (list: WorkspaceSummary[], query: string) => {
   const normalized = query.trim().toLowerCase();
@@ -232,12 +232,12 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           onClick={() => setIsOpen((prev) => !prev)}
           aria-haspopup="listbox"
           aria-expanded={is_open}
-          className={`flex flex-1 items-center gap-2.5 rounded-[10px] border bg-shell-panel-alt px-3 py-2.5 text-left transition-colors hover:border-brand-500/60 ${
-            is_open ? "border-brand-500/60" : "border-shell-border-strong"
+          className={`flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border bg-sidebar-panel pl-2 pr-2.5 text-left transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-focus ${
+            is_open ? "border-sidebar-focus" : "border-sidebar-control-border"
           }`}
         >
           <WorkspaceBadge workspace={active_workspace} size={24} notchColor={TRIGGER_SURFACE} />
-          <span className="flex-1 truncate text-sm font-semibold text-shell-text">
+          <span className="flex-1 truncate text-sm font-medium text-sidebar-text">
             {active_workspace.name}
           </span>
           {active_workspace.is_priority && (
@@ -246,8 +246,8 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
             </span>
           )}
           <ChevronDownIcon
-            size={12}
-            className={`flex-none text-shell-text-muted transition-transform duration-150 ${
+            size={16}
+            className={`flex-none text-sidebar-text-secondary transition-transform duration-150 ${
               is_open ? "rotate-180" : ""
             }`}
           />
@@ -256,12 +256,14 @@ const WorkspaceSwitcher: React.FC<WorkspaceSwitcherProps> = ({
           ref={add_new_button_ref}
           type="button"
           onClick={() => setIsAddNewOpen((prev) => !prev)}
-          className="flex w-[42px] flex-none items-center justify-center rounded-[10px] border border-shell-border-strong bg-shell-panel-alt text-shell-text transition-colors hover:border-brand-500/60"
+          className={`flex h-10 w-10 flex-none items-center justify-center rounded-lg border bg-sidebar-panel text-sidebar-text transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-focus ${
+            is_add_new_open ? "border-sidebar-focus" : "border-sidebar-control-border"
+          }`}
           aria-label="Add new"
           aria-haspopup="menu"
           aria-expanded={is_add_new_open}
         >
-          <PlusIcon />
+          <PlusIcon size={20} />
         </button>
       </div>
 

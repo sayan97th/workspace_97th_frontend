@@ -98,8 +98,8 @@ const CREATE_OPTIONS: CreateOption[] = [
 
 /** A static copy of a row's icon and label, floated under the pointer while it is dragged. */
 const NavRowPreview: React.FC<{ node: WorkspaceNavNode }> = ({ node }) => (
-  <div className="flex h-9 w-[260px] items-center gap-[9px] rounded-[9px] bg-shell-panel px-2.5 text-shell-text shadow-2xl ring-1 ring-[#2B76E5]/60">
-    <NavItemIcon source={node} className="text-shell-text-secondary" />
+  <div className="flex h-9 w-[260px] items-center gap-[11px] rounded-md bg-sidebar-panel px-2.5 text-sidebar-text shadow-2xl ring-1 ring-sidebar-focus/60">
+    <NavItemIcon source={node} size={16} className="text-sidebar-text-secondary" />
     <span className="flex-1 truncate text-sm">{node.label}</span>
   </div>
 );
@@ -521,13 +521,13 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
 
   return (
     <>
-      <div className="flex items-center justify-between px-2.5 pb-1.5 pt-2 text-xs font-semibold tracking-[0.04em] text-shell-text-muted">
+      <div className="flex items-center justify-between px-2 pb-1 pt-1.5 text-xs font-medium text-sidebar-text-secondary">
         <span>{is_searching ? "Search results" : "Content"}</span>
         <div className="flex items-center gap-0.5">
           <button
             type="button"
             onClick={(event) => setMenu({ is_open: true, anchor_el: event.currentTarget, target: "header" })}
-            className="flex h-5 w-5 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover-strong hover:text-shell-text"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-text-secondary transition-colors hover:bg-sidebar-hover hover:text-sidebar-text"
             aria-label="Content options"
             title="Content options"
           >
@@ -536,7 +536,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
           <button
             type="button"
             onClick={(event) => setMenu({ is_open: true, anchor_el: event.currentTarget, target: "root" })}
-            className="flex h-5 w-5 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover-strong hover:text-shell-text"
+            className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-text-secondary transition-colors hover:bg-sidebar-hover hover:text-sidebar-text"
             aria-label="Add navigation item"
             title="Add"
           >
@@ -548,7 +548,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
       {nav.is_loading && nav.tree.length === 0 ? (
         <div className="space-y-1.5 px-2.5 py-2">
           {[0, 1, 2, 3, 4].map((row) => (
-            <div key={row} className="h-8 animate-pulse rounded-[9px] bg-shell-hover" />
+            <div key={row} className="h-8 animate-pulse rounded-md bg-sidebar-hover" />
           ))}
         </div>
       ) : nav.error ? (

@@ -26,7 +26,7 @@ type SidebarContextType = {
   previewSidebarWidth: (width: number) => void;
   /** Fired once on the resize drag's end, persists the final width for the current user (see doc comment below). */
   commitSidebarWidth: (width: number) => void;
-  /** Order, visibility and collapse state of the personal sections (Home, My work, Favorites, Recent). */
+  /** Order and visibility of the app rail's sections, plus the collapsed Favorites workspace groups. */
   sidebar_preferences: SidebarPreferences;
   /** Saves a new order and visibility of the personal sections ("Customize sidebar"). */
   updateSidebarSections: (sections: SidebarSectionPreference[]) => void;

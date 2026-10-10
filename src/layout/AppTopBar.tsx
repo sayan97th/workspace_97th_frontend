@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useAccountBranding } from "@/hooks/useAccountBranding";
 import UserAvatar from "@/components/common/UserAvatar";
+import BrandLogo from "@/components/common/BrandLogo";
 import AccountMenu from "./AccountMenu";
 import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
@@ -33,9 +34,9 @@ import {
 
 /**
  * Full-width application bar that sits above the sidebar and main content.
- * Mirrors the "top application bar" from the approved 97 Workspace design.
- * Colors come from the shell-* theme tokens, so it repaints with AccountMenu's
- * Light/Dark/System default switcher.
+ * Shares the app rail's background (monday.com look) and keeps the 97th logo
+ * centered over the rail column. Colors come from theme tokens, so it repaints
+ * with AccountMenu's Light/Dark/System default switcher.
  */
 const AppTopBar: React.FC = () => {
   const router = useRouter();
@@ -152,9 +153,9 @@ const AppTopBar: React.FC = () => {
 
   return (
     <>
-    <header className="relative z-[60] flex h-[52px] flex-none items-center gap-3.5 border-b border-shell-border bg-shell-surface px-3.5 text-shell-text">
+    <header className="relative z-[60] flex h-[52px] flex-none items-center gap-3.5 bg-sidebar-rail px-3.5 text-shell-text lg:pl-0">
       {/* Left cluster */}
-      <div className="flex flex-none items-center gap-2.5">
+      <div className="flex flex-none items-center gap-2.5 lg:gap-0.5">
         <button
           type="button"
           onClick={toggleMobileSidebar}
@@ -164,14 +165,18 @@ const AppTopBar: React.FC = () => {
           <HamburgerIcon size={18} />
         </button>
 
-        <span className="flex h-[30px] w-[30px] flex-none items-center justify-center overflow-hidden rounded-lg bg-brand-500 text-[13px] font-bold tracking-[-0.02em] text-white">
-          {logo_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={logo_url} alt="Workspace logo" className="h-full w-full object-contain" />
-          ) : (
-            "97"
-          )}
+        {/* Same width as the app rail below, so the logo sits centered over it. */}
+        <span className="flex flex-none items-center lg:w-[72px] lg:justify-center">
+          <BrandLogo size={32} />
         </span>
+
+        {/* An uploaded account logo sits where monday.com shows the plan badge, the 97th logo always stays. */}
+        {logo_url && (
+          <span className="hidden h-7 max-w-[132px] flex-none items-center overflow-hidden rounded-md sm:flex">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logo_url} alt="Account logo" className="h-full w-auto object-contain" />
+          </span>
+        )}
 
         {is_active_workspace_viewer && (
           <>

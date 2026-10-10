@@ -79,6 +79,23 @@ export const GroupToggleIcon: React.FC<IconProps> = ({ className, size = 11 }) =
   </svg>
 );
 
+/** Filled caret of a folder row in the sidebar tree, points right and is rotated a quarter turn while expanded. */
+export const TreeCaretIcon: React.FC<IconProps> = ({ className, size = 10 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 10 10" fill="none">
+    <path d="M3.4 1.9 L7.3 4.6 a0.5 0.5 0 0 1 0 0.8 L3.4 8.1 A0.5 0.5 0 0 1 2.6 7.7 V2.3 A0.5 0.5 0 0 1 3.4 1.9 Z" fill="currentColor" />
+  </svg>
+);
+
+/** "Workspace" entry of the app rail, four rounded tiles like monday.com. */
+export const WorkspaceRailIcon: React.FC<IconProps> = ({ className, size = 20 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 20 20" fill="none">
+    <rect x="3" y="3" width="5.6" height="5.6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="11.4" y="3" width="5.6" height="5.6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="3" y="11.4" width="5.6" height="5.6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+    <rect x="11.4" y="11.4" width="5.6" height="5.6" rx="1.4" stroke="currentColor" strokeWidth="1.4" />
+  </svg>
+);
+
 export const HomeIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path d="M2.5 7.5 L8 2.6 L13.5 7.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />

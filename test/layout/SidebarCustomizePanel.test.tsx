@@ -13,21 +13,22 @@ const renderPanel = (sections = DEFAULT_SIDEBAR_PREFERENCES.sections) => {
 };
 
 describe("SidebarCustomizePanel", () => {
-  it("lists every personal section with a visibility switch", () => {
+  it("lists every rail section with a visibility switch, Recent starts in More", () => {
     renderPanel();
-    for (const label of ["Home", "My work", "Automations", "Favorites", "Recent"]) {
+    for (const label of ["Home", "My work", "Favorites", "Automations"]) {
       expect(screen.getByRole("switch", { name: `Show ${label}` })).toHaveAttribute("aria-checked", "true");
     }
+    expect(screen.getByRole("switch", { name: "Show Recent" })).toHaveAttribute("aria-checked", "false");
   });
 
   it("hides a section when its switch is turned off", async () => {
     const { onChange } = renderPanel();
-    await userEvent.click(screen.getByRole("switch", { name: "Show Recent" }));
+    await userEvent.click(screen.getByRole("switch", { name: "Show Automations" }));
     expect(onChange).toHaveBeenCalledWith([
       { key: "home", is_visible: true },
       { key: "my_work", is_visible: true },
-      { key: "automations", is_visible: true },
       { key: "favorites", is_visible: true },
+      { key: "automations", is_visible: false },
       { key: "recent", is_visible: false },
     ]);
   });
