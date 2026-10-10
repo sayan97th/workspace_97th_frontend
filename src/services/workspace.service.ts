@@ -5,13 +5,16 @@ import type {
   CreateNavItemPayload,
   CreateWorkspacePayload,
   MoveNavItemPayload,
+  MoveNavItemToWorkspaceResult,
   ReorderNavItemsPayload,
+  SaveNavTemplateMode,
   SortNavItemsPayload,
   UpdateNavCollapseStatePayload,
   UpdateNavItemPayload,
   UpdateWorkspaceMemberRolePayload,
   UpdateWorkspacePayload,
   UpdateWorkspacePriorityPayload,
+  UseNavTemplatePayload,
   Workspace,
   WorkspaceContentCreator,
   WorkspaceContentFilters,
@@ -383,6 +386,47 @@ export const workspaceService = {
       `/api/workspaces/${workspace_slug}/navigation/${item_id}/duplicate`
     );
     return response.item;
+  },
+
+  /** PATCH /api/workspaces/{slug}/navigation/{id}/move-workspace, moves a board or folder to another workspace's root. */
+  async moveNavItemToWorkspace(
+    workspace_slug: string,
+    item_id: number,
+    target_workspace_id: number
+  ): Promise<MoveNavItemToWorkspaceResult> {
+    return apiClient.patch<MoveNavItemToWorkspaceResult>(
+      `/api/workspaces/${workspace_slug}/navigation/${item_id}/move-workspace`,
+      { workspace_id: target_workspace_id }
+    );
+  },
+
+  /** POST /api/workspaces/{slug}/navigation/{id}/template, "Save as a template" (copy) or "Move to template" (move). */
+  async saveNavItemAsTemplate(workspace_slug: string, item_id: number, mode: SaveNavTemplateMode): Promise<WorkspaceNavNode> {
+    const response = await apiClient.post<{ item: WorkspaceNavNode }>(
+      `/api/workspaces/${workspace_slug}/navigation/${item_id}/template`,
+      { mode }
+    );
+    return response.item;
+  },
+
+  /** GET /api/workspaces/{slug}/navigation/templates, the workspace's saved board templates, newest first. */
+  async getNavTemplates(workspace_slug: string): Promise<WorkspaceNavNode[]> {
+    const response = await apiClient.get<{ data: WorkspaceNavNode[] }>(`/api/workspaces/${workspace_slug}/navigation/templates`);
+    return response.data;
+  },
+
+  /** POST /api/workspaces/{slug}/navigation/templates/{id}/use, creates a new board from a template. */
+  async useNavTemplate(workspace_slug: string, template_id: number, payload: UseNavTemplatePayload): Promise<WorkspaceNavNode> {
+    const response = await apiClient.post<{ item: WorkspaceNavNode }>(
+      `/api/workspaces/${workspace_slug}/navigation/templates/${template_id}/use`,
+      payload
+    );
+    return response.item;
+  },
+
+  /** DELETE /api/workspaces/{slug}/navigation/templates/{id} */
+  async deleteNavTemplate(workspace_slug: string, template_id: number): Promise<void> {
+    await apiClient.delete(`/api/workspaces/${workspace_slug}/navigation/templates/${template_id}`);
   },
 
   /** DELETE /api/workspaces/{slug}/navigation/{id} — archive (soft-delete). */

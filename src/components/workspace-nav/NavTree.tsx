@@ -12,37 +12,32 @@ import {
   type DragMoveEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import type { CreateNavItemPayload, WorkspaceNavNode } from "@/types/workspace";
+import type { CreateNavItemPayload, Workspace, WorkspaceNavNode } from "@/types/workspace";
 import {
   ArchiveIcon,
   CloseIcon,
   DashboardIcon,
   DeleteIcon,
-  DuplicateIcon,
   FileIcon,
   FolderIcon,
-  LinkIcon,
   MoreDotsIcon,
-  MoveDownIcon,
   MoveToIcon,
-  MoveUpIcon,
-  OpenInNewTabIcon,
   PlusIcon,
-  RenameIcon,
   SidebarFolderIcon,
   SortArrowsIcon,
-  StarIcon,
   CollapseFoldersIcon,
   ExpandFoldersIcon,
 } from "@/icons/workspace-icons";
 import NavTreeRow from "./NavTreeRow";
 import NavItemIcon from "./NavItemIcon";
 import FolderColorPopover from "./FolderColorPopover";
-import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import AddNewContentMenu from "./AddNewContentMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
+import MoveToWorkspaceModal from "./MoveToWorkspaceModal";
+import NavItemMenu, { type NavItemCreateKind, type NavItemMenuActions } from "./NavItemMenu";
+import BoardOverlay from "./BoardOverlay";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
@@ -98,6 +93,9 @@ const CREATE_OPTIONS: CreateOption[] = [
   { key: "folder", label: "New folder", icon: <SidebarFolderIcon size={15} />, placeholder: "Folder name", payload: { type: "group" } },
 ];
 
+/** The folder menu's "Add to folder" rows, by kind. */
+const CREATE_OPTION_BY_KIND = Object.fromEntries(CREATE_OPTIONS.map((option) => [option.key, option])) as Record<NavItemCreateKind, CreateOption>;
+
 /** A static copy of a row's icon and label, floated under the pointer while it is dragged. */
 const NavRowPreview: React.FC<{ node: WorkspaceNavNode }> = ({ node }) => (
   <div className="flex h-9 w-[260px] items-center gap-[11px] rounded-md bg-sidebar-panel px-2.5 text-sidebar-text shadow-2xl ring-1 ring-sidebar-focus/60">
@@ -118,6 +116,9 @@ const isLeafActive = (pathname: string, href: string): boolean => pathname === h
  *   select, Escape to clear) with a roving tabindex.
  * - Multi-select (Ctrl/Cmd+click, Shift+click) with a bulk bar to move,
  *   archive or delete the selection.
+ * - A monday.com style "..." row menu (see `NavItemMenu`): open in overlay or
+ *   a new tab, move to a folder, workspace or the templates, change the board
+ *   type, favorite, duplicate, save as a template, delete and archive.
  * - Inline rename (double click or F2), folder colors, and a monday.com
  *   style Content header: "..." collapses (or expands) every folder and
  *   sorts A to Z, "+" opens the "Add to workspace" menu.
@@ -132,6 +133,9 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   const [moving_nodes, setMovingNodes] = useState<WorkspaceNavNode[]>([]);
   const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode[]>([]);
   const [pending_archive, setPendingArchive] = useState<WorkspaceNavNode[]>([]);
+  const [pending_template_move, setPendingTemplateMove] = useState<WorkspaceNavNode | null>(null);
+  const [workspace_move_node, setWorkspaceMoveNode] = useState<WorkspaceNavNode | null>(null);
+  const [overlay_node, setOverlayNode] = useState<WorkspaceNavNode | null>(null);
   const [color_target, setColorTarget] = useState<ColorState>({ anchor_el: null, node: null });
   const [active_drag_id, setActiveDragId] = useState<number | null>(null);
   const [drop_target, setDropTarget] = useState<NavDropTarget | null>(null);
@@ -398,18 +402,10 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   // ── Menus ───────────────────────────────────────────────────────────────
 
   const closeMenu = () => setMenu(CLOSED_MENU);
+  const closeOverlay = useCallback(() => setOverlayNode(null), []);
 
   const openCreateForm = (option: CreateOption, parent_id: number | null) =>
     setForm({ is_open: true, title: option.label, placeholder: option.placeholder, parent_id, payload: option.payload });
-
-  const copyLink = async (node: WorkspaceNavNode) => {
-    try {
-      await navigator.clipboard.writeText(`${window.location.origin}${getLeafHref(node)}`);
-      toast.success("Link copied to clipboard");
-    } catch {
-      toast.error("We couldn't copy the link.");
-    }
-  };
 
   const buildHeaderSections = (): ActionMenuSection[] => {
     const group_ids = collectGroupIds(nav.tree).map(Number);
@@ -447,53 +443,39 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
     ];
   };
 
-  const buildNodeItems = (node: WorkspaceNavNode): AnchoredMenuItem[] => {
-    const location = locateNavNode(nav.tree, node.id);
-    const can_move_up = Boolean(location && location.index > 0);
-    const can_move_down = Boolean(location && location.index < location.siblings.length - 1);
-    const items: AnchoredMenuItem[] = [];
+  const runWithToast = (promise: Promise<unknown>, success_message: string | null, error_message: string) =>
+    promise
+      .then(() => {
+        if (success_message) toast.success(success_message);
+      })
+      .catch((error) => toast.error(apiErrorMessage(error, error_message)));
 
-    if (node.type === "group") {
-      // Flat rather than a flyout: the sidebar hugs the left edge, a side submenu would open off screen.
-      items.push(
-        ...CREATE_OPTIONS.map((option) => ({ key: `add-${option.key}`, label: option.label, icon: option.icon, onClick: () => openCreateForm(option, node.id) })),
-        {
-          key: "color",
-          label: "Change color",
-          icon: <span className="flex h-[15px] w-[15px] rounded-full" style={{ background: node.color ?? "var(--color-shell-text-muted)" }} />,
-          onClick: () => setColorTarget({ anchor_el: row_refs.current.get(node.id) ?? null, node }),
-        }
-      );
-    } else {
-      items.push(
-        { key: "open-new-tab", label: "Open in new tab", icon: <OpenInNewTabIcon />, onClick: () => window.open(getLeafHref(node), "_blank", "noopener") },
-        { key: "copy-link", label: "Copy link", icon: <LinkIcon />, onClick: () => void copyLink(node) }
-      );
-    }
-
-    items.push(
-      { key: "rename", label: "Rename", icon: <RenameIcon />, onClick: () => setRenamingId(node.id) },
-      { key: "move", label: "Move to", icon: <MoveToIcon />, onClick: () => setMovingNodes([node]) },
-      { key: "move-up", label: "Move up", icon: <MoveUpIcon />, disabled: !can_move_up, onClick: () => void nav.moveItemUp(node.id) },
-      { key: "move-down", label: "Move down", icon: <MoveDownIcon />, disabled: !can_move_down, onClick: () => void nav.moveItemDown(node.id) },
-      {
-        key: "favorite",
-        label: node.is_favorite ? "Remove from favorites" : "Add to favorites",
-        icon: <StarIcon filled={node.is_favorite} />,
-        onClick: () => void nav.toggleFavorite(node.id, !node.is_favorite),
-      },
-      {
-        key: "priority",
-        label: node.is_priority ? "Unmark as priority" : "Mark as priority",
-        icon: <StarIcon filled={node.is_priority} />,
-        onClick: () => void nav.togglePriority(node.id, !node.is_priority),
-      },
-      { key: "duplicate", label: "Duplicate", icon: <DuplicateIcon />, onClick: () => void nav.duplicateItem(node.id) },
-      { key: "archive", label: "Archive", icon: <ArchiveIcon />, onClick: () => setPendingArchive([node]) },
-      { key: "delete", label: "Delete", icon: <DeleteIcon />, danger: true, onClick: () => setPendingDelete([node]) }
-    );
-
-    return items;
+  const row_menu_actions: NavItemMenuActions = {
+    onOpenInOverlay: (node) => setOverlayNode(node),
+    onOpenInNewTab: (node) => window.open(getLeafHref(node), "_blank", "noopener"),
+    onRename: (node) => setRenamingId(node.id),
+    onMoveToFolder: (node) => setMovingNodes([node]),
+    onMoveToWorkspace: (node) => setWorkspaceMoveNode(node),
+    onMoveToTemplate: (node) => setPendingTemplateMove(node),
+    onChangeType: (node, board_type) =>
+      void runWithToast(
+        nav.changeBoardType(node.id, board_type),
+        `"${node.label}" is now a ${board_type} board`,
+        "We couldn't change the board type."
+      ),
+    onToggleFavorite: (node) =>
+      void runWithToast(
+        nav.toggleFavorite(node.id, !node.is_favorite),
+        node.is_favorite ? `Removed "${node.label}" from favorites` : `Added "${node.label}" to favorites`,
+        "We couldn't update your favorites."
+      ),
+    onDuplicate: (node) => void runWithToast(nav.duplicateItem(node.id), `Duplicated "${node.label}"`, "We couldn't duplicate this item."),
+    onSaveAsTemplate: (node) =>
+      void runWithToast(nav.saveAsTemplate(node.id, "copy"), `Saved "${node.label}" as a template`, "We couldn't save this board as a template."),
+    onDelete: (node) => setPendingDelete([node]),
+    onArchive: (node) => setPendingArchive([node]),
+    onCreateInside: (node, kind) => openCreateForm(CREATE_OPTION_BY_KIND[kind], node.id),
+    onChangeColor: (node) => setColorTarget({ anchor_el: row_refs.current.get(node.id) ?? null, node }),
   };
 
   const row_menu_node = menu.target && typeof menu.target === "object" ? menu.target : null;
@@ -529,6 +511,28 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
       if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
     } catch (error) {
       toast.error(apiErrorMessage(error, "We couldn't move the selection."));
+    }
+  };
+
+  const submitWorkspaceMove = async (target: Workspace) => {
+    const node = workspace_move_node;
+    if (!node) return;
+    try {
+      await nav.moveItemToWorkspace(node.id, target.id);
+      toast.success(`Moved "${node.label}" to ${target.name}`);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "We couldn't move this item to that workspace."));
+      throw error;
+    }
+  };
+
+  const confirmTemplateMove = async (node: WorkspaceNavNode) => {
+    try {
+      await nav.saveAsTemplate(node.id, "move");
+      toast.success(`Moved "${node.label}" to templates`);
+      if (isLeafActive(pathname, getLeafHref(node))) router.push("/workspace-home");
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "We couldn't move this board to templates."));
     }
   };
 
@@ -607,6 +611,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
                 is_selected={selected_ids.has(row.node.id)}
                 is_focus_target={row.node.id === focus_target_id}
                 is_renaming={row.node.id === renaming_id}
+                is_menu_open={menu.is_open && row_menu_node?.id === row.node.id}
                 drop_position={drop_target?.node_id === row.node.id ? drop_target.position : null}
                 is_drag_disabled={is_searching}
                 search_query={search_query}
@@ -660,15 +665,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
         </div>
       )}
 
-      <AnchoredMenu
-        anchor_el={menu.anchor_el}
-        is_open={menu.is_open && row_menu_node !== null}
-        title={row_menu_node?.label}
-        items={row_menu_node ? buildNodeItems(row_menu_node) : []}
-        width={214}
-        align="end"
-        onClose={closeMenu}
-      />
+      <NavItemMenu anchor_el={menu.anchor_el} node={menu.is_open ? row_menu_node : null} onClose={closeMenu} {...row_menu_actions} />
 
       <ActionMenu
         anchor_el={menu.anchor_el}
@@ -708,6 +705,30 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
         moving_nodes={moving_nodes}
         onSubmit={submitMove}
         onClose={() => setMovingNodes([])}
+      />
+
+      <MoveToWorkspaceModal
+        node={workspace_move_node}
+        current_workspace_slug={workspace_slug}
+        onSubmit={submitWorkspaceMove}
+        onClose={() => setWorkspaceMoveNode(null)}
+      />
+
+      <BoardOverlay node={overlay_node} onClose={closeOverlay} />
+
+      <ConfirmActionModal
+        is_open={pending_template_move !== null}
+        title="Move to template"
+        description={
+          <>
+            &ldquo;{pending_template_move?.label}&rdquo; will leave the sidebar and become a template of this workspace, with its columns, groups and items. Its
+            automations are paused. Use &ldquo;Start with template&rdquo; in the &ldquo;+&rdquo; menu to create boards from it.
+          </>
+        }
+        confirm_label="Move to template"
+        variant="neutral"
+        onConfirm={() => (pending_template_move ? confirmTemplateMove(pending_template_move) : undefined)}
+        onClose={() => setPendingTemplateMove(null)}
       />
 
       <ConfirmActionModal

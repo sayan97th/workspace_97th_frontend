@@ -8,6 +8,7 @@ import AppTopBar from "@/layout/AppTopBar";
 import Backdrop from "@/layout/Backdrop";
 import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
+import { useIsEmbedded } from "@/hooks/useIsEmbedded";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
 
@@ -20,6 +21,7 @@ export default function AdminLayout({
   const { isExpanded } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
+  const is_embedded = useIsEmbedded();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -32,6 +34,17 @@ export default function AdminLayout({
       <div className="flex min-h-screen items-center justify-center bg-shell-bg">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-500 border-t-transparent" />
       </div>
+    );
+  }
+
+  // Inside a frame ("Open in overlay" on a sidebar board) only the page renders, the overlay has its own header.
+  if (is_embedded) {
+    return (
+      <WorkspaceProvider>
+        <ToastProvider>
+          <main className="shell-scrollbar h-screen w-full overflow-y-auto bg-shell-bg">{children}</main>
+        </ToastProvider>
+      </WorkspaceProvider>
     );
   }
 

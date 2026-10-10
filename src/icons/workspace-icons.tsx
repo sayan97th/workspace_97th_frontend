@@ -1024,3 +1024,47 @@ export const SortArrowsIcon: React.FC<IconProps> = ({ className, size = 16 }) =>
     <path d="M11 2.5 V13.5 M8.6 11.1 L11 13.5 L13.4 11.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+/** monday.com's "Open in overlay" glyph: a window with a smaller panel floating over it. */
+export const OpenInOverlayIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="1.8" y="2.6" width="12.4" height="10.8" rx="1.8" stroke="currentColor" strokeWidth="1.2" />
+    <rect x="4.6" y="5.4" width="6.8" height="5.2" rx="0.9" stroke="currentColor" strokeWidth="1.2" />
+  </svg>
+);
+
+/** "Change type": two arrows chasing each other around, like monday.com's row menu. */
+export const ChangeTypeIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2.8 6.4 A5.2 5.2 0 0 1 12.4 4.6 M12.6 2.4 V4.8 H10.2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M13.2 9.6 A5.2 5.2 0 0 1 3.6 11.4 M3.4 13.6 V11.2 H5.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** "Move to folder": a tray with a chevron dropping into it. */
+export const MoveToFolderIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.2" y="2.2" width="11.6" height="11.6" rx="1.6" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M5.4 6.8 L8 9.4 L10.6 6.8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** "Move to workspace": four tiles, the same idea as the rail's workspace entry. */
+export const MoveToWorkspaceIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2.2" y="2.2" width="4.6" height="4.6" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+    <rect x="9.2" y="2.2" width="4.6" height="4.6" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+    <rect x="2.2" y="9.2" width="4.6" height="4.6" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+    <rect x="9.2" y="9.2" width="4.6" height="4.6" rx="0.8" stroke="currentColor" strokeWidth="1.2" />
+  </svg>
+);
+
+/** "Save as a template": a board with a sparkle on its corner. */
+export const SaveAsTemplateIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M9 2.6 H3.4 A1.6 1.6 0 0 0 1.8 4.2 V11.8 A1.6 1.6 0 0 0 3.4 13.4 H12.6 A1.6 1.6 0 0 0 14.2 11.8 V8.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M6 2.6 V13.4" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M9.4 11.2 L12.2 8.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M12.6 1.6 V4.4 M11.2 3 H14" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+  </svg>
+);

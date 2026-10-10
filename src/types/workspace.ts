@@ -60,6 +60,8 @@ export type WorkspaceNavNode = {
   is_priority: boolean;
   /** Hidden from the sidebar/nav tree and the workspace's Content tab without being deleted — see the board options menu's "Archive board" / "View archive / trash". */
   is_archived: boolean;
+  /** A board saved to the workspace's templates, kept out of the tree (see "Save as a template" / "Move to template"). */
+  is_template?: boolean;
   /** Total updates (top-level + replies) on the board's discussion feed; only populated on {@link BoardDetail} (0 elsewhere). */
   comments_count: number;
   position: number;
@@ -162,6 +164,23 @@ export type CreateNavItemPayload = {
   href?: string | null;
   display_style?: string | null;
   board_type?: BoardType;
+};
+
+/** "Save as a template" stores a copy, "Move to template" turns the board itself into the template. */
+export type SaveNavTemplateMode = "copy" | "move";
+
+/** Payload for creating a board from a saved template. */
+export type UseNavTemplatePayload = {
+  /** The new board's name, the template's name when omitted. */
+  label?: string | null;
+  /** Folder the new board lands in, the workspace root when null. */
+  parent_id?: number | null;
+};
+
+/** `PATCH .../navigation/{id}/move-workspace` response: the moved item and where it went. */
+export type MoveNavItemToWorkspaceResult = {
+  item: WorkspaceNavNode;
+  workspace: { id: number; slug: string; name: string };
 };
 
 /** Payload for updating a navigation item (rename / favorite / edit / change board type). */

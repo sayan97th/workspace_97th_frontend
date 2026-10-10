@@ -6,8 +6,9 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useAuth } from "@/context/AuthContext";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import NavItemFormModal from "./NavItemFormModal";
+import BoardTemplatePickerModal, { type TemplateKind } from "./BoardTemplatePickerModal";
 import { getLeafHref } from "./helpers";
-import type { CreateNavItemPayload } from "@/types/workspace";
+import type { CreateNavItemPayload, WorkspaceNavNode } from "@/types/workspace";
 import type { WorkspaceNavApi } from "./useWorkspaceNav";
 import { ImportIcon } from "@/icons/board-options-icons";
 import {
@@ -64,7 +65,8 @@ const FORM: CreateOption = { dialog_title: "New Form", placeholder: "Form name",
  * types first (Board and Doc are split rows, a click creates, the chevron
  * shows their variants), then Folder and More. Every create
  * row asks for a name in {@link NavItemFormModal}, creates the item through
- * {@link WorkspaceNavApi.createItem} and opens it. Opened from the "+" next
+ * {@link WorkspaceNavApi.createItem} and opens it. "Start with template"
+ * rows open {@link BoardTemplatePickerModal} with the saved templates. Opened from the "+" next
  * to the workspace switcher and from the "+" in the Content header.
  */
 const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_open, onClose, nav, parent_id = null, align = "start" }) => {
@@ -72,6 +74,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
   const toast = useToast();
   const { hasAnyRole } = useAuth();
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
+  const [template_kind, setTemplateKind] = useState<TemplateKind | null>(null);
 
   const can_manage_apps = hasAnyRole(...APP_ADMIN_ROLES);
 
@@ -87,6 +90,14 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     payload: { ...option.payload, display_style },
   });
 
+  /** "Start with template" rows open the saved templates picker for their kind. */
+  const templateRow = (key: string, kind: TemplateKind): ActionMenuItem => ({
+    key,
+    label: "Start with template",
+    icon: <TemplateIcon size={ICON_SIZE} />,
+    onClick: () => setTemplateKind(kind),
+  });
+
   const sections: ActionMenuSection[] = [
     {
       key: "content",
@@ -100,7 +111,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
               ...withStyle(BOARD, "multi_level"),
               dialog_title: "New multi-level board",
             }),
-            createRow("board-template", "Start with template", <TemplateIcon size={ICON_SIZE} />, withStyle(BOARD, "template")),
+            templateRow("board-template", "board"),
           ],
         },
         {
@@ -108,7 +119,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
           split: true,
           submenu: [
             createRow("new-doc", "New Doc", <FileIcon size={ICON_SIZE} />, DOC),
-            createRow("doc-template", "Start with template", <TemplateIcon size={ICON_SIZE} />, withStyle(DOC, "template")),
+            templateRow("doc-template", "doc"),
           ],
         },
         createRow("dashboard", "Dashboard", <DashboardIcon size={ICON_SIZE} />, {
@@ -156,7 +167,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
                   split: true,
                   submenu: [
                     createRow("new-form", "New Form", <PencilIcon size={ICON_SIZE} />, FORM),
-                    createRow("form-template", "Start with template", <TemplateIcon size={ICON_SIZE} />, withStyle(FORM, "template")),
+                    templateRow("form-template", "form"),
                   ],
                 },
                 createRow("canvas", "Canvas", <ImageIcon size={ICON_SIZE} />, {
@@ -215,6 +226,13 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     router.push(option.opens_import ? `${href}?import=1` : href);
   };
 
+  const openCreatedFromTemplate = (board: WorkspaceNavNode) => {
+    void nav.reload();
+    if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
+    toast.success(`Created "${board.label}" from a template`);
+    router.push(getLeafHref(board));
+  };
+
   return (
     <>
       <ActionMenu
@@ -240,6 +258,15 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
           })
         }
         onClose={() => setForm(CLOSED_FORM)}
+      />
+
+      <BoardTemplatePickerModal
+        is_open={template_kind !== null}
+        kind={template_kind ?? "board"}
+        workspace_slug={nav.workspace_slug}
+        parent_id={parent_id}
+        onCreated={openCreatedFromTemplate}
+        onClose={() => setTemplateKind(null)}
       />
     </>
   );

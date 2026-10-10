@@ -1,19 +1,24 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
-import { NAV_ITEM_CHANGED_EVENT, workspaceService } from "@/services/workspace.service";
+import { NAV_ITEM_CHANGED_EVENT, notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
 import { FAVORITES_CHANGED_EVENT, personalService } from "@/services/personal.service";
 import type {
+  BoardType,
   BulkNavItemsPayload,
   CreateNavItemPayload,
   MoveNavItemPayload,
+  MoveNavItemToWorkspaceResult,
   ReorderNavItemsPayload,
+  SaveNavTemplateMode,
   WorkspaceNavNode,
 } from "@/types/workspace";
 import { collectGroupIds, locateNavNode } from "./helpers";
 import { applyReorderToTree } from "./navTreeUtils";
 
 export type WorkspaceNavApi = {
+  /** The workspace this tree belongs to, undefined until one is active. */
+  workspace_slug: string | undefined;
   tree: WorkspaceNavNode[];
   is_loading: boolean;
   error: string | null;
@@ -45,6 +50,12 @@ export type WorkspaceNavApi = {
   bulkAction: (payload: BulkNavItemsPayload) => Promise<void>;
   /** "Sort A to Z": folders first, then boards, at every level, saved as the new manual order. */
   sortAlphabetically: () => Promise<void>;
+  /** "Change type": main, private or shareable. Also tells the open board header, Favorites and Recent. */
+  changeBoardType: (item_id: number, board_type: BoardType) => Promise<void>;
+  /** "Move to workspace": the item (and everything inside it) leaves this tree for another workspace's root. */
+  moveItemToWorkspace: (item_id: number, target_workspace_id: number) => Promise<MoveNavItemToWorkspaceResult | null>;
+  /** "Save as a template" (copy) or "Move to template" (move, the board leaves the tree). */
+  saveAsTemplate: (item_id: number, mode: SaveNavTemplateMode) => Promise<void>;
 };
 
 /**
@@ -258,7 +269,36 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     [runMutation]
   );
 
+  const changeBoardType = useCallback(
+    async (item_id: number, board_type: BoardType) => {
+      await runMutation((slug) => workspaceService.updateNavItem(slug, item_id, { board_type }));
+      notifyNavItemChanged();
+    },
+    [runMutation]
+  );
+
+  const moveItemToWorkspace = useCallback(
+    async (item_id: number, target_workspace_id: number) => {
+      let result: MoveNavItemToWorkspaceResult | null = null;
+      await runMutation(async (slug) => {
+        result = await workspaceService.moveNavItemToWorkspace(slug, item_id, target_workspace_id);
+      });
+      notifyNavItemChanged();
+      return result;
+    },
+    [runMutation]
+  );
+
+  const saveAsTemplate = useCallback(
+    async (item_id: number, mode: SaveNavTemplateMode) => {
+      await runMutation((slug) => workspaceService.saveNavItemAsTemplate(slug, item_id, mode));
+      if (mode === "move") notifyNavItemChanged();
+    },
+    [runMutation]
+  );
+
   return {
+    workspace_slug,
     tree,
     is_loading,
     error,
@@ -280,6 +320,9 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
     setItemColor,
     bulkAction,
     sortAlphabetically,
+    changeBoardType,
+    moveItemToWorkspace,
+    saveAsTemplate,
   };
 }
 

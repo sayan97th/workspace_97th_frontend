@@ -16,6 +16,8 @@ export type NavTreeRowProps = {
   /** The one row that takes Tab focus (roving tabindex), see `NavTree`'s keyboard navigation. */
   is_focus_target: boolean;
   is_renaming: boolean;
+  /** This row's "..." menu is open: the row stays highlighted and the button stays visible, like monday.com. */
+  is_menu_open: boolean;
   /** Where a row being dragged over this one would land, null when nothing is dragged over it. */
   drop_position: NavDropPosition | null;
   is_drag_disabled: boolean;
@@ -135,6 +137,7 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
   is_selected,
   is_focus_target,
   is_renaming,
+  is_menu_open,
   drop_position,
   is_drag_disabled,
   search_query,
@@ -186,7 +189,9 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
       ? "bg-[#2B76E5]/[0.12] ring-2 ring-inset ring-[#2B76E5]"
       : is_active
         ? ""
-        : "hover:bg-sidebar-hover";
+        : is_menu_open
+          ? "bg-sidebar-hover"
+          : "hover:bg-sidebar-hover";
 
   const row_class = `group relative flex h-9 items-center gap-[11px] rounded-md pr-2 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-focus ${
     is_drag_disabled ? "" : "cursor-grab active:cursor-grabbing"
@@ -247,8 +252,14 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
             tabIndex={-1}
             onClick={handleKebabClick}
             onPointerDown={(event) => event.stopPropagation()}
-            className="relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md text-sidebar-text-secondary opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-sidebar-hover hover:text-sidebar-text"
+            className={`relative z-2 flex h-6 w-6 flex-none items-center justify-center rounded-md transition-opacity ${
+              is_menu_open
+                ? "bg-sidebar-active text-sidebar-focus opacity-100"
+                : "text-sidebar-text-secondary opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-sidebar-hover hover:text-sidebar-text"
+            }`}
             aria-label={`${node.label} options`}
+            aria-haspopup="menu"
+            aria-expanded={is_menu_open}
           >
             <MoreDotsIcon />
           </button>
