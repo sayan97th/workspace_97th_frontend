@@ -15,11 +15,14 @@ export type MenuFlyoutProps = {
    * side of the screen. Flips automatically if there isn't enough room on the requested side.
    */
   side?: "left" | "right";
+  /** Skips the flyout's own border/background/shadow chrome, for content that renders its own (e.g. {@link ActionMenu}). */
+  unstyled?: boolean;
   children: React.ReactNode;
 };
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
+const FLYOUT_CHROME_CLASS = "rounded-xl border border-shell-border bg-shell-panel text-shell-text shadow-2xl shadow-black/40";
 
 /**
  * Side-opening nested submenu anchored to a single row inside an already-open menu (as
@@ -35,6 +38,7 @@ const MenuFlyout: React.FC<MenuFlyoutProps> = ({
   onClose,
   width = 196,
   side = "left",
+  unstyled = false,
   children,
 }) => {
   const flyout_ref = useRef<HTMLDivElement>(null);
@@ -105,7 +109,7 @@ const MenuFlyout: React.FC<MenuFlyoutProps> = ({
       ref={flyout_ref}
       data-board-menu-flyout
       data-floating-layer
-      className="fixed z-[1001] rounded-xl border border-shell-border bg-shell-panel text-shell-text shadow-2xl shadow-black/40"
+      className={`fixed z-[1001] ${unstyled ? "" : FLYOUT_CHROME_CLASS}`}
       style={{
         width,
         top: position?.top ?? -9999,

@@ -12,6 +12,8 @@ export { default as TableBoardView } from "./TableBoardView";
 export type { WorkspaceViewProps } from "./TableBoardView";
 export { default as WorkspaceOptionsMenu } from "./WorkspaceOptionsMenu";
 export type { WorkspaceOptionsMenuProps } from "./WorkspaceOptionsMenu";
+export { default as WorkspacePanelMenu } from "./WorkspacePanelMenu";
+export type { WorkspacePanelMenuProps, WorkspacePanelActions } from "./WorkspacePanelMenu";
 export { default as WorkspaceOptionsButton } from "./WorkspaceOptionsButton";
 export type {
   WorkspaceOptionsButtonProps,

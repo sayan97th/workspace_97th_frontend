@@ -930,3 +930,52 @@ export const WorkspaceFolderIcon: React.FC<IconProps> = ({ className, size = 14 
     <path d="M5.4 6.8 L8 9.4 L10.6 6.8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+/** 2x2 grid with a small gear in the corner, the sidebar menu's "Manage workspace" action. */
+export const ManageWorkspaceIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="2" y="2" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="9.4" y="2" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="2" y="9.4" width="4.6" height="4.6" rx="1" stroke="currentColor" strokeWidth="1.3" />
+    <circle cx="11.7" cy="11.7" r="1.2" stroke="currentColor" strokeWidth="1.2" />
+    <path
+      d="M11.7 8.9 V9.7 M11.7 13.7 V14.5 M8.9 11.7 H9.7 M13.7 11.7 H14.5 M9.7 9.7 L10.25 10.25 M13.15 13.15 L13.7 13.7 M9.7 13.7 L10.25 13.15 M13.15 10.25 L13.7 9.7"
+      stroke="currentColor"
+      strokeWidth="1.1"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+/** Outline pencil, the sidebar menu's "Edit workspace" submenu. */
+export const PencilIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M10.9 2.6 a1.4 1.4 0 0 1 2 0 l0.5 0.5 a1.4 1.4 0 0 1 0 2 L5.6 12.9 L2.4 13.6 L3.1 10.4 Z M9.6 3.9 L12.1 6.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+/** Right arrow, the sidebar menu's "Move workspace" action. */
+export const ArrowRightIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2.5 8 H13.5 M9.5 4 L13.5 8 L9.5 12" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Magic wand with sparkles, the sidebar menu's "Save as template" action. */
+export const MagicWandIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2.5 13.5 L9.5 6.5 M8.4 5.4 L10.6 7.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+    <path
+      d="M11.5 1.8 V4.2 M10.3 3 H12.7 M13.6 6.3 V7.9 M12.8 7.1 H14.4 M5.6 2.2 V3.8 M4.8 3 H6.4"
+      stroke="currentColor"
+      strokeWidth="1.1"
+      strokeLinecap="round"
+    />
+  </svg>
+);

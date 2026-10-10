@@ -24,6 +24,27 @@ export const getLeafHref = (node: WorkspaceNavNode): string => {
   return buildBoardPath(node.id);
 };
 
+/**
+ * The Manage Workspace URL for the workspace a navigation tree belongs to: the
+ * "Manage Workspace" leaf's own href when the tree has one, otherwise built
+ * from any node's workspace id. Null for an empty tree (still loading).
+ */
+export const findWorkspaceManagePath = (tree: WorkspaceNavNode[]): string | null => {
+  const findManageNode = (nodes: WorkspaceNavNode[]): WorkspaceNavNode | null => {
+    for (const node of nodes) {
+      if (node.view_key === "workspace_manage") return node;
+      if (node.type === "group") {
+        const found = findManageNode(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  const manage_node = findManageNode(tree);
+  if (manage_node) return getLeafHref(manage_node);
+  return tree[0] ? buildWorkspaceManagePath(tree[0].workspace_id) : null;
+};
+
 /** Where a node sits in the tree: its parent id, its sibling list, and its index within it. */
 export type NavNodeLocation = {
   node: WorkspaceNavNode;

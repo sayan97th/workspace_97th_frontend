@@ -1,10 +1,13 @@
 "use client";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useSidebar } from "../context/SidebarContext";
 import { useWorkspaces } from "@/context/WorkspaceContext";
 import useWorkspaceNav from "@/components/workspace-nav/useWorkspaceNav";
 import NavTree from "@/components/workspace-nav/NavTree";
 import WorkspaceOptionsButton from "@/components/workspace-nav/WorkspaceOptionsButton";
+import { findWorkspaceManagePath } from "@/components/workspace-nav/helpers";
+import { TrashModal, type TrashTabId } from "@/components/trash";
 import { boardTreeFontClassName } from "@/components/board/board-tree-font";
 import WorkspaceSwitcher from "./WorkspaceSwitcher";
 import WorkspaceSwitcherSkeleton from "./WorkspaceSwitcherSkeleton";
@@ -106,9 +109,13 @@ const AppSidebar: React.FC = () => {
   } = workspaces_api;
 
   const nav = useWorkspaceNav(active_workspace_slug);
+  const router = useRouter();
+  const manage_workspace_path = findWorkspaceManagePath(nav.tree);
 
   const [panel_view, setPanelView] = useState<SidebarPanelView>("workspace");
   const [is_browse_open, setIsBrowseOpen] = useState(false);
+  // Tab of the Trash dialog opened from the workspace menu's "View archive/trash", or null while closed.
+  const [trash_tab, setTrashTab] = useState<TrashTabId | null>(null);
   const [is_create_open, setIsCreateOpen] = useState(false);
   const [is_search_open, setIsSearchOpen] = useState(false);
   const [search_query, setSearchQuery] = useState("");
@@ -314,8 +321,16 @@ const AppSidebar: React.FC = () => {
           leaveWorkspace={leaveWorkspace}
           deleteWorkspace={deleteWorkspace}
           trigger_class_name={SIDEBAR_ICON_BUTTON_CLASS}
+          trigger_open_class_name="bg-sidebar-active text-sidebar-text hover:bg-sidebar-active"
           icon_size={18}
           aria_label="Workspace options"
+          panel_actions={{
+            onManage: manage_workspace_path ? () => router.push(manage_workspace_path) : undefined,
+            onAddWorkspace: () => setIsCreateOpen(true),
+            onBrowseAll: () => setIsBrowseOpen(true),
+            onOpenArchive: () => setTrashTab("archive"),
+            onOpenTrash: () => setTrashTab("trash"),
+          }}
         />
       ) : (
         <button type="button" className={SIDEBAR_ICON_BUTTON_CLASS} aria-label="Workspace options" disabled>
@@ -508,6 +523,8 @@ const AppSidebar: React.FC = () => {
         onClose={() => setIsCreateOpen(false)}
         onCreate={handleCreateWorkspace}
       />
+
+      <TrashModal is_open={trash_tab !== null} onClose={() => setTrashTab(null)} initial_tab={trash_tab ?? "trash"} />
     </>
   );
 };

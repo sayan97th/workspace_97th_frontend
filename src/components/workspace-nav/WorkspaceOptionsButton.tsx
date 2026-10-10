@@ -1,6 +1,7 @@
 "use client";
 import React, { useMemo, useRef, useState } from "react";
 import WorkspaceOptionsMenu from "./WorkspaceOptionsMenu";
+import WorkspacePanelMenu, { type WorkspacePanelActions } from "./WorkspacePanelMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import ChangeWorkspaceTypeModal from "./ChangeWorkspaceTypeModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -50,9 +51,18 @@ export type WorkspaceOptionsButtonProps = {
   deleteWorkspace: (workspace_slug: string) => Promise<void>;
   /** Overrides the default hover-revealed row-dots trigger styling (e.g. an always-visible header button). */
   trigger_class_name?: string;
+  /** Extra trigger classes applied while the menu is open (e.g. the sidebar's active highlight). */
+  trigger_open_class_name?: string;
   icon_size?: number;
   /** Defaults to `"${workspace.name} options"`; pass a fixed label for a header button whose position already implies which workspace (avoids restating the name). */
   aria_label?: string;
+  /**
+   * Switches to the sidebar panel's monday.com style menu ({@link WorkspacePanelMenu}),
+   * which adds Manage workspace, Add new workspace, Browse all and archive/trash. The
+   * button then also renders for workspaces the viewer isn't a member of, with the owner
+   * only rows disabled.
+   */
+  panel_actions?: WorkspacePanelActions;
 };
 
 const DEFAULT_TRIGGER_CLASS =
@@ -79,8 +89,10 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   leaveWorkspace,
   deleteWorkspace,
   trigger_class_name,
+  trigger_open_class_name,
   icon_size = 15,
   aria_label,
+  panel_actions,
 }) => {
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const [open_dialog, setOpenDialog] = useState<OptionsDialog>(null);
@@ -88,9 +100,7 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
   const { isWorkspaceFavorite, toggleWorkspaceFavorite } = useFavorites();
   const is_favorite = isWorkspaceFavorite(workspace.id);
 
-  if (!workspace.role) return null;
-
-  const can_manage = workspace.role.toLowerCase() === "owner";
+  const can_manage = workspace.role?.toLowerCase() === "owner";
   const closeDialog = () => setOpenDialog(null);
 
   // Stable object identity across re-renders (only changes when the actual
@@ -106,6 +116,8 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
     }),
     [workspace.id, workspace.name, workspace.color, workspace.avatar_url, workspace.privacy]
   );
+
+  if (!workspace.role && !panel_actions) return null;
 
   const openDialog = (dialog: Exclude<OptionsDialog, null>) => {
     setIsMenuOpen(false);
@@ -161,7 +173,7 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
         aria-label={aria_label ?? `${workspace.name} options`}
         aria-haspopup="menu"
         aria-expanded={is_menu_open}
-        className={trigger_class_name ?? DEFAULT_TRIGGER_CLASS}
+        className={`${trigger_class_name ?? DEFAULT_TRIGGER_CLASS} ${is_menu_open ? trigger_open_class_name ?? "" : ""}`}
       >
         <MoreDotsIcon size={icon_size} />
       </button>
@@ -176,21 +188,35 @@ const WorkspaceOptionsButton: React.FC<WorkspaceOptionsButtonProps> = ({
         onClick={(event) => event.stopPropagation()}
         onKeyDown={(event) => event.stopPropagation()}
       >
-        <WorkspaceOptionsMenu
-          anchor_el={button_ref.current}
-          is_open={is_menu_open}
-          onClose={() => setIsMenuOpen(false)}
-          can_manage={can_manage}
-          onEdit={() => openDialog("edit")}
-          onRename={() => openDialog("rename")}
-          onChangeType={() => openDialog("change-type")}
-          is_priority={!!workspace.is_priority}
-          onTogglePriority={togglePriority ? handleTogglePriority : undefined}
-          is_favorite={is_favorite}
-          onToggleFavorite={() => void toggleWorkspaceFavorite(workspace.id, !is_favorite)}
-          onLeave={() => openDialog("leave")}
-          onDelete={() => openDialog("delete")}
-        />
+        {panel_actions ? (
+          <WorkspacePanelMenu
+            {...panel_actions}
+            anchor_el={button_ref.current}
+            is_open={is_menu_open}
+            onClose={() => setIsMenuOpen(false)}
+            can_manage={can_manage}
+            onEdit={() => openDialog("edit")}
+            onRename={() => openDialog("rename")}
+            onChangeType={() => openDialog("change-type")}
+            onDelete={() => openDialog("delete")}
+          />
+        ) : (
+          <WorkspaceOptionsMenu
+            anchor_el={button_ref.current}
+            is_open={is_menu_open}
+            onClose={() => setIsMenuOpen(false)}
+            can_manage={can_manage}
+            onEdit={() => openDialog("edit")}
+            onRename={() => openDialog("rename")}
+            onChangeType={() => openDialog("change-type")}
+            is_priority={!!workspace.is_priority}
+            onTogglePriority={togglePriority ? handleTogglePriority : undefined}
+            is_favorite={is_favorite}
+            onToggleFavorite={() => void toggleWorkspaceFavorite(workspace.id, !is_favorite)}
+            onLeave={() => openDialog("leave")}
+            onDelete={() => openDialog("delete")}
+          />
+        )}
 
         <EditWorkspaceModal
           is_open={open_dialog === "edit"}

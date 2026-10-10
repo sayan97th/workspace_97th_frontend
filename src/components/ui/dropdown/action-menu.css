@@ -1,0 +1,139 @@
+/*
+ * ActionMenu, styled after monday.com's own option menus: a white card with
+ * an 8px radius and a soft shadow, 32px rows in 14px Figtree, dark outline
+ * icons, faded disabled rows and thin dividers between groups. Every color is
+ * an `--action-menu-*` token declared on the root, so dark mode only swaps the
+ * tokens, never the rules below.
+ */
+
+.action-menu {
+  --action-menu-surface: #ffffff;
+  --action-menu-text: #323338;
+  --action-menu-icon: #323338;
+  --action-menu-chevron: #676879;
+  --action-menu-text-disabled: rgba(50, 51, 56, 0.38);
+  --action-menu-hover: #dcdfec;
+  --action-menu-divider: #d0d4e4;
+  --action-menu-danger: #d83a52;
+  --action-menu-focus: #0073ea;
+  --action-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--action-menu-surface);
+  color: var(--action-menu-text);
+  box-shadow: var(--action-menu-shadow);
+  font-size: 14px;
+  line-height: 20px;
+  outline: none;
+}
+
+html.dark .action-menu {
+  --action-menu-surface: #0f1c1c;
+  --action-menu-text: #e9eded;
+  --action-menu-icon: #c2cacb;
+  --action-menu-chevron: #9aa4a5;
+  --action-menu-text-disabled: rgba(233, 237, 237, 0.35);
+  --action-menu-hover: rgba(255, 255, 255, 0.08);
+  --action-menu-divider: rgba(255, 255, 255, 0.12);
+  --action-menu-danger: #f0647a;
+  --action-menu-focus: #4d9cff;
+  --action-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .action-menu {
+    animation: action-menu-enter 120ms ease-out;
+  }
+}
+
+@keyframes action-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.action-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--action-menu-text);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 70ms ease-in;
+}
+
+.action-menu__item:hover,
+.action-menu__item:focus-visible,
+.action-menu__item[data-submenu-open="true"] {
+  background: var(--action-menu-hover);
+}
+
+.action-menu__item:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--action-menu-focus);
+}
+
+.action-menu__item[aria-disabled="true"] {
+  color: var(--action-menu-text-disabled);
+  background: transparent;
+  cursor: not-allowed;
+}
+
+.action-menu__item[data-danger="true"]:not([aria-disabled="true"]) {
+  color: var(--action-menu-danger);
+}
+
+.action-menu__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--action-menu-icon);
+}
+
+.action-menu__item[aria-disabled="true"] .action-menu__icon,
+.action-menu__item[aria-disabled="true"] .action-menu__chevron {
+  color: var(--action-menu-text-disabled);
+}
+
+.action-menu__item[data-danger="true"]:not([aria-disabled="true"]) .action-menu__icon {
+  color: var(--action-menu-danger);
+}
+
+.action-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-menu__chevron {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--action-menu-chevron);
+}
+
+.action-menu__divider {
+  flex: none;
+  height: 1px;
+  margin: 8px 0;
+  background: var(--action-menu-divider);
+}
