@@ -1,5 +1,3 @@
-import TreeBar from "./TreeBar";
-
 interface AddItemRowProps {
   min_width: number;
   color: string;
@@ -11,15 +9,16 @@ interface AddItemRowProps {
 export default function AddItemRow({ min_width, color, onAdd }: AddItemRowProps) {
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
-      <TreeBar variant="thick" color={color} />
-      <div className="grid flex-1 grid-cols-[36px_1fr] border-b border-boardtree-border-soft bg-boardtree-surface">
-        <div className="flex h-[42px] items-center justify-center border-r border-boardtree-border-soft" style={{ position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}>
-          <span className="h-[15px] w-[15px] rounded-[3px] border-[1.5px] border-boardtree-border bg-boardtree-surface" />
+      {/* The group color fades on this last row and rounds off, closing the table like monday.com does. */}
+      <div className="w-[5px] flex-none rounded-bl-[4px]" style={{ background: color, opacity: 0.5 }} />
+      <div className="grid flex-1 grid-cols-[36px_1fr] border-b border-boardtree-grid bg-boardtree-surface">
+        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}>
+          <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface opacity-50" />
         </div>
         <button
           type="button"
           onClick={onAdd}
-          className="flex h-[42px] items-center pr-3 pl-5 text-[13px] text-boardtree-text-muted hover:text-boardtree-accent"
+          className="flex h-9 items-center pr-3 pl-10 text-board-cell text-boardtree-text-secondary hover:text-boardtree-accent"
           style={{ position: "sticky", left: 36, zIndex: 15 }}
         >
           + Add item

@@ -31,7 +31,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const is_dragging = state.drag?.node_id === item.id;
   const row_h = ROW_HEIGHT_PX[state.row_height];
   const row_color = state.row_colors[item.id];
-  const row_bg = is_selected ? "var(--color-boardtree-selected)" : (row_color ?? "var(--color-boardtree-surface)");
+  const row_bg = is_selected
+    ? "var(--color-boardtree-selected)"
+    : (row_color ?? (is_hovered ? "var(--color-boardtree-hover)" : "var(--color-boardtree-surface)"));
+  const has_subs = item.subs.length > 0;
   const is_active_match = state.active_search_match?.node_id === item.id;
   const is_active_name_match = is_active_match && state.active_search_match?.column_id === "__name";
   // The Item column (checkbox + name + comment icon) always freezes; any
@@ -143,24 +146,32 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
 
       <TreeBar variant="thick" color={group.color} />
 
-      <div className="flex-1 border-b border-boardtree-border-soft" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
+      <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
           <button type="button" onClick={() => actions.toggleSelected(item.id)} className="flex items-center justify-center">
             {is_selected ? (
-              <span className="flex h-[15px] w-[15px] items-center justify-center rounded-[3px] bg-boardtree-accent">
+              <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-boardtree-accent">
                 <svg viewBox="0 0 14 14" width="10" height="10"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
               </span>
             ) : (
-              <span className="h-[15px] w-[15px] rounded-[3px] border-[1.5px] border-boardtree-border bg-boardtree-surface hover:border-boardtree-accent" />
+              <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface hover:border-boardtree-accent" />
             )}
           </button>
         </div>
 
-        <div className="flex items-center gap-2 border-r border-boardtree-border-soft pl-1 pr-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
-          <div className="flex w-3 flex-none cursor-grab items-center justify-center text-boardtree-text-faint">
+        <div className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-2" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
+          {/* Overlaid on the cell edge instead of taking a slot, so item names sit close to the checkbox like monday.com. */}
+          <div className="absolute inset-y-0 left-0 flex w-2.5 cursor-grab items-center justify-center text-boardtree-text-faint" style={{ opacity: is_hovered ? 1 : 0 }}>
             <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
           </div>
-          <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text">
+          {/* The expand arrow only shows for items with subitems (or on hover, to add the first one), like monday.com. */}
+          <button
+            type="button"
+            onClick={() => actions.toggleItemOpen(item.id)}
+            aria-label={is_open ? "Hide subitems" : "Show subitems"}
+            className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text hover:bg-boardtree-hover-strong"
+            style={{ opacity: has_subs || is_hovered ? 1 : 0 }}
+          >
             {is_open ? (
               <svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 4.5 L6 8 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
             ) : (
@@ -181,7 +192,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                     if (e.key === "Escape") actions.cancelEditName();
                   }}
-                  className="h-[34px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-7 text-[13.5px] font-medium text-boardtree-text outline-none"
+                  className="h-[30px] w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-7 text-board-cell text-boardtree-text outline-none"
                 />
                 <EmojiInsertButton
                   input_ref={name_input_ref}
@@ -195,7 +206,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             ) : (
               <span
                 onClick={() => actions.startEditName(item.id, item.name)}
-                className={`max-w-full cursor-text rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text ${
+                className={`max-w-full cursor-text rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text ${
                   state.row_height === "quad"
                     ? "line-clamp-4 whitespace-normal"
                     : state.row_height === "triple"
@@ -212,7 +223,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
-            title={item.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
+            title={item.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
             className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
             style={{
               color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
@@ -238,8 +249,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3 8 a5 5 0 0 1 8.5 -3.5 M13 4.6 V7.4 H10.2 M13 8 a5 5 0 0 1 -8.5 3.5 M3 11.4 V8.6 H5.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </span>
           )}
-          {item.subs.length > 0 && (
-            <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[9px] bg-boardtree-hover px-[7px] py-0.5 font-mono text-[10.5px] text-boardtree-text-secondary">
+          {has_subs && (
+            <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[4px] bg-boardtree-border-soft px-1.5 text-board-caption text-boardtree-text">
               {item.subs.length}
             </button>
           )}
@@ -255,19 +266,22 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.addSubitem(item.id); }}
-            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-accent"
+            title="Add subitem"
+            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+            style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
           >
             <svg viewBox="0 0 14 14" width="13" height="13"><circle cx="7" cy="7" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M7 4.6 V9.4 M4.6 7 H9.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
           </button>
         </div>
 
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openComments(item.id); }}
-            className="relative flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-accent"
+            aria-label="Start conversation"
+            className="relative flex h-[26px] w-[26px] items-center justify-center rounded-[4px] text-boardtree-text-secondary hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
           >
-            <svg viewBox="0 0 18 18" width="16" height="16"><path d="M2.2 8.1 a6.4 5.4 0 1 1 3.4 4.8 L2.4 13.9 l1 -3 a5.2 5.2 0 0 1 -1.2 -2.8 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9 5.9 V10.1 M6.9 8 H11.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            <svg viewBox="0 0 18 18" width="20" height="20"><path d="M2.2 8.1 a6.4 5.4 0 1 1 3.4 4.8 L2.4 13.9 l1 -3 a5.2 5.2 0 0 1 -1.2 -2.8 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9 5.9 V10.1 M6.9 8 H11.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
             {!!item.comment_count && (
               <span className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-boardtree-accent px-[3px] text-[9px] font-bold leading-none text-white">
                 {item.comment_count > 99 ? "99+" : item.comment_count}
@@ -292,7 +306,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               data-filter-cell="true"
               data-item-id={item.id}
               data-column-id={col.id}
-              className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              className="relative flex min-w-0 items-stretch border-r border-boardtree-grid"
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{
                 height: row_h,
@@ -321,7 +335,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(item.id);
               }}
             >
-              <CellRenderer node_id={item.id} column={col} values={item.values} node_name={item.name} state={state} actions={actions} />
+              <CellRenderer node_id={item.id} column={col} values={item.values} node_name={item.name} state={state} actions={actions} group_color={group.color} />
               {is_active && (
                 <div
                   data-fill-handle="true"

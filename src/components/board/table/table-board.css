@@ -1,10 +1,44 @@
 /*
  * Styles scoped to `BoardTable`'s root wrapper (see `table-board-root` in
  * BoardTable.tsx). Typography comes from `boardTreeFontClassName`
- * (../board-tree-font) instead of a class here, so this file only owns the
- * scrollbar treatment, themed via the `--color-boardtree-scrollbar-thumb`
- * token declared in `globals.css` (light/dark variants already defined there).
+ * (../board-tree-font) instead of a class here, so this file owns the
+ * monday.com palette below, the scrollbar treatment and group reordering.
  */
+
+/*
+ * monday.com table palette, light mode only. The boardtree tokens are shared
+ * with Kanban, Calendar and the item drawer, so instead of changing them app
+ * wide the table redeclares them on its own wrapper (`board-table-theme`).
+ * Every `bg-boardtree-*`/`text-boardtree-*` utility inside the table reads
+ * these values, while dark mode keeps the hand tuned set from `globals.css`.
+ */
+html:not(.dark) .board-table-theme {
+  /* The page behind the tables and their sticky group headers, kept equal to the app shell so no band shows. */
+  --color-boardtree-bg: var(--color-shell-bg);
+  --color-boardtree-surface: #ffffff;
+  --color-boardtree-panel-alt: #f6f7fb;
+  --color-boardtree-border: #d0d4e4;
+  --color-boardtree-border-soft: #e7e9ef;
+  --color-boardtree-hover: #f5f6f8;
+  --color-boardtree-hover-strong: #dcdfec;
+  --color-boardtree-selected: #cce5ff;
+  --color-boardtree-text: #323338;
+  --color-boardtree-text-secondary: #676879;
+  --color-boardtree-text-muted: #676879;
+  --color-boardtree-text-faint: #9699a6;
+  --color-boardtree-accent: #0073ea;
+  --color-boardtree-accent-hover: #0060b9;
+  --color-boardtree-accent-soft: #aed4fc;
+  --color-boardtree-accent-surface: #cce5ff;
+  --color-boardtree-danger: #d83a52;
+  --color-boardtree-danger-hover: #fbe9ec;
+  --color-boardtree-track: #e6e9ef;
+  --color-boardtree-ring: rgba(50, 51, 56, 0.55);
+  --color-boardtree-scrollbar-thumb: rgba(50, 51, 56, 0.2);
+  --color-boardtree-grid: #d0d4e4;
+  --color-boardtree-control-border: #c3c6d4;
+  --color-boardtree-empty: #c4c4c4;
+}
 
 .table-board-scroll {
   scrollbar-width: thin;

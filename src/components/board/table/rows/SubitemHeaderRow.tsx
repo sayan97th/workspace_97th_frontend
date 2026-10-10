@@ -37,7 +37,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
       <div className="w-[30px] flex-none" />
       <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
       <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-boardtree-border bg-boardtree-panel-alt" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
-        <div className="h-9 border-r border-boardtree-border-soft" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
+        <div className="h-9 border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
 
         <ColumnHeaderCell
           scoped_key={sub_title_key}

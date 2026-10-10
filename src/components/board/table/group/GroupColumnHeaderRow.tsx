@@ -46,6 +46,7 @@ export default function GroupColumnHeaderRow({
   const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   const HEADER_BG = "var(--color-boardtree-surface)";
+  const is_all_selected = group.items.length > 0 && group.items.every((item) => state.selected_map[item.id]);
   // When the caller supplies `onRequestColumnSort`, the toolbar's own
   // `sort_rules` is the single source of sort truth for the main table (see
   // `BoardTable`'s own doc comment); omitted, this falls back to
@@ -80,15 +81,31 @@ export default function GroupColumnHeaderRow({
 
   return (
     <div className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width, zIndex: has_open_overlay ? 200 : 70 }}>
-      <div className="w-[5px] flex-none rounded-tl-[3px]" style={{ background: group.color }} />
+      <div className="w-[5px] flex-none rounded-tl-[4px]" style={{ background: group.color }} />
 
-      <div className="flex-1 border-b border-boardtree-border" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="h-[38px] border-r border-boardtree-border-soft" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
+      <div className="flex-1 border-y border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
+        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
+          <button
+            type="button"
+            onClick={() => actions.toggleGroupSelection(group.key)}
+            aria-label={is_all_selected ? "Clear selection" : "Select all items"}
+            aria-pressed={is_all_selected}
+            className="flex items-center justify-center"
+          >
+            {is_all_selected ? (
+              <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-boardtree-accent">
+                <svg viewBox="0 0 14 14" width="10" height="10"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+              </span>
+            ) : (
+              <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface hover:border-boardtree-accent" />
+            )}
+          </button>
+        </div>
 
         <ColumnHeaderCell
           scoped_key={item_title_key}
           title={group.item_title}
-          height={38}
+          height={36}
           can_delete={false}
           sticky={{ left: sticky_offsets[1], background: HEADER_BG }}
           sort_dir={sortDirFor("__name")}
@@ -120,7 +137,7 @@ export default function GroupColumnHeaderRow({
             key={col.id}
             scoped_key={scope_key_of(col.id)}
             title={col.title}
-            height={38}
+            height={36}
             column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
@@ -176,7 +193,7 @@ export default function GroupColumnHeaderRow({
           />
         ))}
 
-        <div className="relative flex h-[38px] items-center justify-center">
+        <div className="relative flex h-9 items-center justify-center">
           <button type="button" onClick={() => actions.openPicker(picker_key)} hidden={!state.can_edit_structure || state.read_only} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
             <svg viewBox="0 0 14 14" width="14" height="14"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
           </button>
@@ -189,7 +206,7 @@ export default function GroupColumnHeaderRow({
             />
           )}
         </div>
-        <div className="h-[38px]" />
+        <div className="h-9" />
       </div>
     </div>
   );

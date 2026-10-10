@@ -1586,6 +1586,21 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     });
   }, []);
 
+  /** The column header's checkbox: selects every item of the group, or clears them when all are already selected. */
+  const toggleGroupSelection = useCallback((key: string) => {
+    setState((s) => {
+      const group = findGroup(s.groups, key);
+      if (!group || !group.items.length) return s;
+      const is_all_selected = group.items.every((it) => s.selected_map[it.id]);
+      const next_selected = { ...s.selected_map };
+      group.items.forEach((it) => {
+        if (is_all_selected) delete next_selected[it.id];
+        else next_selected[it.id] = true;
+      });
+      return { ...s, selected_map: next_selected };
+    });
+  }, []);
+
   const expandAllGroups = useCallback(() => {
     setState((s) => ({ ...s, collapsed_groups: {}, open_group_menu_key: null }));
     config_ref.current.onCollapsedGroupsChange?.([]);
@@ -2304,6 +2319,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       removeGroup,
       archiveGroup,
       selectAllInGroup,
+      toggleGroupSelection,
       expandAllGroups,
       setAllSubsOpen,
       openColumnMenu,
@@ -2382,7 +2398,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
-      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToIndex, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup,
+      openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToIndex, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup, toggleGroupSelection,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
@@ -2399,7 +2415,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * instead of silently slipping through a guest's read-only view.
    */
   const READ_ONLY_SAFE_ACTIONS = new Set<keyof typeof actions>([
-    "toggleItemOpen", "toggleSelected", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup",
+    "toggleItemOpen", "toggleSelected", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup", "toggleGroupSelection",
     "setActiveCell", "clearActiveCell", "moveActiveCell", "copyActiveCell",
     "openRowMenu", "closeRowMenu", "setHoverRow", "setHoverGroup", "setHoverHead",
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",

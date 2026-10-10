@@ -394,7 +394,7 @@ export default function SortableGroupList({ state, actions, renderGroup, renderP
         createPortal(
           <DragOverlay dropAnimation={is_motion_reduced ? null : DROP_ANIMATION} modifiers={overlay_modifiers} style={{ height: "auto" }}>
             {active_group ? (
-              <div className={`group-drag-preview ${boardTreeFontClassName}`} style={{ "--group-color": active_group.color } as React.CSSProperties}>
+              <div className={`group-drag-preview board-table-theme ${boardTreeFontClassName}`} style={{ "--group-color": active_group.color } as React.CSSProperties}>
                 {renderPreview(active_group, view_state)}
               </div>
             ) : null}

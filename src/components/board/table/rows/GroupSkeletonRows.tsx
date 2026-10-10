@@ -38,18 +38,18 @@ export default function GroupSkeletonRows({ name_col_width, min_width, base_colu
       {Array.from({ length: row_count }).map((_, row_index) => (
         <div key={row_index} className="relative flex items-stretch" style={{ minWidth: min_width }}>
           <TreeBar variant="thick" color={color} />
-          <div className="flex-1 border-b border-boardtree-border-soft" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-            <div className="border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: ROW_BG }} />
-            <div className="flex items-center border-r border-boardtree-border-soft px-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: ROW_BG }}>
+          <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
+            <div className="border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: ROW_BG }} />
+            <div className="flex items-center border-r border-boardtree-grid px-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: ROW_BG }}>
               <div className="h-3.5 w-2/3 animate-pulse rounded bg-boardtree-hover" />
             </div>
-            <div className="border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
+            <div className="border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
             {columns.map((col, col_index) => {
               const is_pinned = col_index < pinned_columns.length;
               return (
                 <div
                   key={col.id}
-                  className="flex items-center justify-center border-r border-boardtree-border-soft px-2"
+                  className="flex items-center justify-center border-r border-boardtree-grid px-2"
                   style={{
                     height: row_h,
                     position: is_pinned ? "sticky" : undefined,

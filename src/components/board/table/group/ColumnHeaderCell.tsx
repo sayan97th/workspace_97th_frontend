@@ -99,7 +99,7 @@ export default function ColumnHeaderCell({
       onDragStart={is_draggable ? onColumnDragStart : undefined}
       onDragOver={is_draggable ? (e) => { e.preventDefault(); onColumnDragOver?.(); } : undefined}
       onDragEnd={is_draggable ? onColumnDragEnd : undefined}
-      className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-border-soft ${className || ""}`}
+      className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-grid ${className || ""}`}
       style={{
         height,
         opacity: is_dragging ? 0.45 : 1,
@@ -139,7 +139,7 @@ export default function ColumnHeaderCell({
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "Escape") onCancelRename();
             }}
-            className="min-w-0 flex-1 rounded-[5px] border border-boardtree-accent bg-boardtree-surface py-1 pl-1.5 pr-6 text-[12.5px] font-medium text-boardtree-text outline-none"
+            className="min-w-0 flex-1 rounded-[5px] border border-boardtree-accent bg-boardtree-surface py-0.5 pl-1.5 pr-6 text-board-cell text-boardtree-text outline-none"
           />
           <EmojiInsertButton
             input_ref={title_input_ref}
@@ -155,7 +155,7 @@ export default function ColumnHeaderCell({
           type="button"
           onClick={onStartRename}
           title="Click to rename"
-          className="max-w-full truncate rounded-[5px] px-1.5 py-1 text-[12.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-text"
+          className="max-w-full truncate rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text hover:bg-boardtree-hover"
         >
           {title}
         </button>

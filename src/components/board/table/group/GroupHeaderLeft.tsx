@@ -46,7 +46,7 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
       )}
 
       <button type="button" onClick={() => actions.toggleGroupCollapsed(group.key)} className="flex items-center" style={{ color: group.color, transform: is_collapsed ? "rotate(-90deg)" : "none" }}>
-        <svg viewBox="0 0 12 12" width="12" height="12"><path d="M3 4.5 L6 8 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        <svg viewBox="0 0 12 12" width="14" height="14"><path d="M2.8 4.4 L6 7.8 L9.2 4.4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </button>
 
       {is_editing ? (
@@ -61,7 +61,7 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
               if (e.key === "Enter") (e.target as HTMLInputElement).blur();
               if (e.key === "Escape") actions.cancelGroupRename();
             }}
-            className="min-w-[180px] rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-px pl-1.5 pr-7 text-[16px] font-semibold outline-none"
+            className="min-w-[180px] rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-px pl-1.5 pr-7 text-board-group-title outline-none"
             style={{ color: group.color }}
           />
           <EmojiInsertButton
@@ -78,13 +78,17 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
           type="button"
           onClick={() => actions.startGroupRename(group.key, group.title)}
           title="Click to rename"
-          className="-mx-1.5 cursor-text rounded-[4px] border border-transparent px-1.5 py-px text-[16px] font-semibold hover:border-boardtree-border hover:bg-boardtree-surface"
+          className="-mx-1.5 cursor-text rounded-[4px] border border-transparent px-1.5 py-px text-board-group-title hover:border-boardtree-grid hover:bg-boardtree-surface"
           style={{ color: group.color }}
         >
           {group.title}
         </button>
       )}
-      <div className="font-mono text-[11px] text-boardtree-text-faint">
+      {/* Like monday.com, an open table shows its count only while hovered, a collapsed one always does. */}
+      <div
+        className="text-board-caption text-boardtree-text-secondary transition-opacity duration-150"
+        style={{ opacity: is_collapsed || is_hovered ? 1 : 0 }}
+      >
         {/* While this table's rows haven't loaded yet (see `GroupSection`'s lazy
          *  loading), `group.items` is a placeholder empty array — `item_count`
          *  (known independently, from the backend's own count) keeps this
@@ -96,7 +100,7 @@ export default function GroupHeaderLeft({ group, state, actions, show_menu_butto
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); actions.togglePriority(group.key); }}
-        title={group.is_priority ? "Unmark as priority client" : "Mark as priority client — their tasks sort above everyone else's"}
+        title={group.is_priority ? "Unmark as priority client" : "Mark as priority client, their tasks sort above everyone else's"}
         className="flex h-6 w-6 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
         style={{ color: group.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)", opacity: group.is_priority || is_hovered ? 1 : 0, pointerEvents: group.is_priority || is_hovered ? "auto" : "none" }}
       >

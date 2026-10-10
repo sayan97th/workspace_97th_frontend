@@ -1,15 +1,14 @@
-import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
+import { Figtree, IBM_Plex_Mono } from "next/font/google";
 
 /**
- * The board table's own typeface — IBM Plex Sans/Mono, matching the
- * client-approved design (`design/desing_3/Table_board_tree_subitems.dc.html`).
- * Scoped to `BoardTable`'s root wrapper via `boardTreeFontClassName` rather
- * than the app-wide layout, so the rest of the app keeps its current
- * Figtree/Poppins/Roboto Mono typeface (see `src/app/layout.tsx`).
+ * The board table's own typeface. Figtree carries every cell, header and
+ * group title, the same face monday.com uses for its tables, and IBM Plex
+ * Mono stays for the few code like readouts. Scoped to `BoardTable`'s root
+ * wrapper via `boardTreeFontClassName` rather than the app-wide layout.
  */
-const ibm_plex_sans = IBM_Plex_Sans({
+const figtree_sans = Figtree({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700"],
   variable: "--font-boardtree-sans-family",
   display: "swap",
 });
@@ -21,4 +20,4 @@ const ibm_plex_mono = IBM_Plex_Mono({
   display: "swap",
 });
 
-export const boardTreeFontClassName = `${ibm_plex_sans.variable} ${ibm_plex_mono.variable} font-boardtree-sans`;
+export const boardTreeFontClassName = `${figtree_sans.variable} ${ibm_plex_mono.variable} font-boardtree-sans`;

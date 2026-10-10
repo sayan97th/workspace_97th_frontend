@@ -34,6 +34,8 @@ interface CellRendererProps {
   node_name?: string;
   state: BoardTableState;
   actions: BoardTableActions;
+  /** The row's group color, which fills a set Timeline pill like monday.com does. Falls back to the accent color. */
+  group_color?: string;
 }
 
 function asString(v: CellValue): string {
@@ -44,7 +46,7 @@ function asArray(v: CellValue): string[] {
   return Array.isArray(v) ? (v as string[]) : [];
 }
 
-export default function CellRenderer({ node_id, column, values, node_name, state, actions }: CellRendererProps) {
+export default function CellRenderer({ node_id, column, values, node_name, state, actions, group_color }: CellRendererProps) {
   const scope_key = `${node_id}:${column.id}`;
   const is_menu_open = state.open_cell_menu_key === scope_key;
   const value = values[column.id];
@@ -99,7 +101,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           type="button"
           onClick={() => setIsTextEditing(true)}
           title={asString(value)}
-          className="h-full w-full min-w-0 truncate px-3 text-left font-[inherit] text-[12.5px] text-boardtree-text"
+          className="h-full w-full min-w-0 truncate px-3 text-left font-[inherit] text-board-cell text-boardtree-text"
         >
           {highlightSearchMatches(asString(value), state.search_query)}
         </button>
@@ -112,7 +114,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
         onBlur={() => setIsTextEditing(false)}
         title={asString(value)}
-        className="h-full w-full min-w-0 truncate bg-transparent px-3 font-[inherit] text-[12.5px] text-boardtree-text outline-none"
+        className="h-full w-full min-w-0 truncate bg-transparent px-3 font-[inherit] text-board-cell text-boardtree-text outline-none"
       />
     );
   }
@@ -124,7 +126,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
         placeholder="Add text"
         title={asString(value)}
-        className="box-border h-full w-full min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-3 py-1.5 font-[inherit] text-[12.5px] leading-[15px] text-boardtree-text-secondary outline-none"
+        className="box-border h-full w-full min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-3 py-1.5 font-[inherit] text-board-cell leading-[15px] text-boardtree-text-secondary outline-none"
       />
     );
   }
@@ -138,7 +140,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         value={number_text}
         onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value.replace(/[^0-9.-]/g, ""))}
         title={number_text}
-        className="h-full w-full truncate bg-transparent px-2.5 text-center font-mono text-[12px] text-boardtree-text outline-none"
+        className="h-full w-full truncate bg-transparent px-2.5 text-center text-board-cell text-boardtree-text tabular-nums outline-none"
       />
     );
   }
@@ -164,7 +166,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const bg = def?.color || "#c9ccd4";
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} title={def?.label ?? asString(value)} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-[12.5px] font-medium" style={{ background: bg, color: contrastFg(bg) }}>
+        <button type="button" onClick={openMenu} title={def?.label ?? asString(value)} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-board-cell" style={{ background: bg, color: contrastFg(bg) }}>
           <span className="truncate">{def?.label ?? asString(value)}</span>
         </button>
         {is_menu_open && (
@@ -209,8 +211,8 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const iso = asString(value);
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} title={iso ? fmtDate(iso) : undefined} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-[12.5px] text-boardtree-text-secondary">
-          <span className="truncate">{iso ? fmtDate(iso) : "—"}</span>
+        <button type="button" onClick={openMenu} title={iso ? fmtDate(iso) : undefined} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-board-cell text-boardtree-text">
+          <span className="truncate">{iso ? fmtDate(iso) : ""}</span>
         </button>
         {is_menu_open && (
           <DateMenu
@@ -232,10 +234,10 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           type="button"
           onClick={openMenu}
           title={start_iso ? fmtRange(start_iso, end_iso || start_iso) : undefined}
-          className="flex h-6 w-full min-w-0 items-center justify-center rounded-full border px-2 text-[11.5px] font-medium"
-          style={{ background: start_iso ? "var(--color-boardtree-accent-surface)" : "var(--color-boardtree-bg)", borderColor: start_iso ? "var(--color-boardtree-accent-soft)" : "var(--color-boardtree-border-soft)", color: "var(--color-boardtree-accent-hover)" }}
+          className="flex h-6 w-full min-w-0 items-center justify-center rounded-full px-2 text-board-cell text-white"
+          style={{ background: start_iso ? (group_color ?? "var(--color-boardtree-accent)") : "var(--color-boardtree-empty)" }}
         >
-          <span className="truncate">{start_iso ? fmtRange(start_iso, end_iso || start_iso) : "—"}</span>
+          <span className="truncate">{start_iso ? fmtRange(start_iso, end_iso || start_iso) : "-"}</span>
         </button>
         {is_menu_open && (
           <TimelineMenu
@@ -274,7 +276,14 @@ export default function CellRenderer({ node_id, column, values, node_name, state
               </div>
             )}
             {owner_ids.length === 0 && (
-              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-[1.5px] border-dashed border-boardtree-border text-[12px] text-boardtree-text-faint">+</div>
+              // Empty person placeholder, an outlined avatar like monday.com's.
+              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center text-boardtree-control-border" aria-label="No one assigned">
+                <svg viewBox="0 0 26 26" width="26" height="26" aria-hidden="true">
+                  <circle cx="13" cy="13" r="12.25" fill="var(--color-boardtree-surface)" stroke="currentColor" strokeWidth="1.5" />
+                  <circle cx="13" cy="10.4" r="3.9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M5.6 21.4 a8.2 6.6 0 0 1 14.8 0" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
+              </div>
             )}
           </div>
         </button>
@@ -470,9 +479,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
       <div className="relative flex flex-1 items-center gap-1.5 px-2.5">
         <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
           {link?.url ? (
-            <span className="min-w-0 truncate text-[12.5px] font-medium text-boardtree-accent underline">{link.text || link.url}</span>
+            <span className="min-w-0 truncate text-board-cell font-medium text-boardtree-accent underline">{link.text || link.url}</span>
           ) : (
-            <span className="text-[12.5px] text-boardtree-text-faint">Add link</span>
+            <span className="text-board-cell text-boardtree-text-faint">Add link</span>
           )}
         </button>
         {link?.url && (
@@ -634,7 +643,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
               )}
             </>
           ) : (
-            <span className="text-[12.5px] text-boardtree-text-faint">Add dependency</span>
+            <span className="text-board-cell text-boardtree-text-faint">Add dependency</span>
           )}
         </button>
         {is_menu_open && (
@@ -653,7 +662,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "auto_number") {
     return (
-      <div className="flex h-full w-full items-center justify-center font-mono text-[12.5px] text-boardtree-text-faint">
+      <div className="flex h-full w-full items-center justify-center font-mono text-board-cell text-boardtree-text-faint">
         {typeof value === "number" ? value : "–"}
       </div>
     );
@@ -671,7 +680,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         <button
           type="button"
           onClick={() => actions.openConfigEditor("formula", column.id)}
-          className="flex h-full w-full items-center px-2.5 text-[12.5px] text-boardtree-text-faint underline decoration-dotted"
+          className="flex h-full w-full items-center px-2.5 text-board-cell text-boardtree-text-faint underline decoration-dotted"
         >
           Set up formula
         </button>
@@ -692,7 +701,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const is_numeric = formulaResultType(column) === "number";
     return (
       <div
-        className={`flex h-full w-full items-center px-2.5 font-mono text-[12.5px] text-boardtree-text-secondary ${is_numeric ? "justify-end" : "justify-start truncate"}`}
+        className={`flex h-full w-full items-center px-2.5 font-mono text-board-cell text-boardtree-text-secondary ${is_numeric ? "justify-end" : "justify-start truncate"}`}
         title={outcome.text}
       >
         {outcome.text || "–"}
@@ -723,9 +732,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden"
         >
           {!linked_board_id ? (
-            <span className="text-[12.5px] text-boardtree-text-faint underline decoration-dotted">Connect this column to a board</span>
+            <span className="text-board-cell text-boardtree-text-faint underline decoration-dotted">Connect this column to a board</span>
           ) : linked_ids.length === 0 ? (
-            <span className="text-[12.5px] text-boardtree-text-faint">Connect items</span>
+            <span className="text-board-cell text-boardtree-text-faint">Connect items</span>
           ) : !linked_items ? (
             <span className="flex-none rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
               {linked_ids.length} linked
@@ -768,7 +777,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             </span>
           ))
         ) : (
-          <span className="text-[12.5px] text-boardtree-text-faint">–</span>
+          <span className="text-board-cell text-boardtree-text-faint">–</span>
         )}
       </div>
     );
@@ -796,7 +805,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           onClick={() => void press()}
           disabled={is_pressing}
           title={press_feedback ?? `Press to run the automations of "${label}"`}
-          className="h-[26px] max-w-full truncate rounded-[4px] px-3 text-[12.5px] font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
+          className="h-[26px] max-w-full truncate rounded-[4px] px-3 text-board-cell font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
           style={{ background: color, color: contrastFg(color) }}
         >
           {is_pressing ? "Running..." : press_feedback ? "Done" : label}
@@ -825,7 +834,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
               <div className="flex-none font-mono text-[10.5px] text-boardtree-text-muted">{done_count}/{items.length}</div>
             </>
           ) : (
-            <span className="text-[12.5px] text-boardtree-text-faint">Add sub-tasks</span>
+            <span className="text-board-cell text-boardtree-text-faint">Add sub-tasks</span>
           )}
         </button>
         {is_menu_open && <ChecklistMenu items={items} onChange={(next) => actions.setCellValue(node_id, column.id, next)} onClose={actions.closeCellMenu} />}

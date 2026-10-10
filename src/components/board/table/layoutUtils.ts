@@ -1,9 +1,9 @@
 import type { ColumnDef } from "./types";
 
 /** Row height (px) per "Item height" preset — item rows. */
-export const ROW_HEIGHT_PX = { single: 42, double: 60, triple: 84, quad: 108 } as const;
-/** Row height (px) per "Item height" preset — subitem rows, which start a touch shorter than item rows at every tier (mirrors the existing single-height 42px/40px split). */
-export const SUB_ROW_HEIGHT_PX = { single: 40, double: 56, triple: 78, quad: 100 } as const;
+export const ROW_HEIGHT_PX = { single: 36, double: 60, triple: 84, quad: 108 } as const;
+/** Row height (px) per "Item height" preset — subitem rows, which start a touch shorter than item rows at every tier (mirrors the single-height 36px/34px split). */
+export const SUB_ROW_HEIGHT_PX = { single: 34, double: 56, triple: 78, quad: 100 } as const;
 
 /** Pixel widths of the main grid's leading (non-column) cells, see `mainGridTemplate`'s own `36px`/`56px` literals. */
 export const MAIN_LEADING_WIDTHS = { checkbox: 36, comment: 56 } as const;

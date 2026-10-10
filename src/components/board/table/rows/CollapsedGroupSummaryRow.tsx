@@ -72,13 +72,13 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
             return (
               <div
                 key={col.id}
-                className="flex min-w-0 flex-col items-center justify-center gap-1 border-l border-boardtree-border-soft px-2.5"
+                className="flex min-w-0 flex-col items-center justify-center gap-1 border-l border-boardtree-grid px-2.5"
                 style={{ height: ROW_HEIGHT }}
               >
-                <div className="max-w-full truncate text-[10.5px] font-medium uppercase tracking-wide text-boardtree-text-faint">{col.title}</div>
+                <div className="max-w-full truncate text-board-caption text-boardtree-text-secondary">{col.title}</div>
 
                 {summary.is_status && (
-                  <div className="flex h-[15px] w-full overflow-hidden rounded-[2px] bg-boardtree-track">
+                  <div className="flex h-[18px] w-full overflow-hidden bg-boardtree-track">
                     {summary.segments.map((seg) => (
                       <div key={seg.key} style={{ width: `${seg.width_pct}%`, background: seg.background }} />
                     ))}
@@ -87,7 +87,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
 
                 {summary.is_number && (
                   <>
-                    <div className="w-full truncate text-center font-mono text-[13px] text-boardtree-text-secondary" title={summary.sum_value}>
+                    <div className="w-full truncate text-center text-board-cell leading-[16px] text-boardtree-text" title={summary.sum_value}>
                       {summary.sum_value}
                     </div>
                     <div className="text-[10.5px] text-boardtree-text-faint">sum</div>
@@ -96,14 +96,14 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
 
                 {summary.is_timeline && (
                   <span
-                    className="flex h-6 w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-[11.5px] font-medium"
+                    className="flex h-[18px] w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-caption text-white"
                     style={
                       summary.range_label
-                        ? { background: "var(--color-boardtree-text)", color: "var(--color-boardtree-surface)" }
-                        : { background: "var(--color-boardtree-track)", color: "var(--color-boardtree-text-faint)" }
+                        ? { background: group.color }
+                        : { background: "var(--color-boardtree-empty)" }
                     }
                   >
-                    {summary.range_label || "–"}
+                    {summary.range_label || "-"}
                   </span>
                 )}
 

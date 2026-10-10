@@ -100,7 +100,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
       <TreeBar variant="thick" color={group.color} />
 
       <div
-        className="flex-1 border-r border-b border-boardtree-border-soft"
+        className="flex-1 border-r border-b border-boardtree-grid"
         style={{ display: "grid", gridTemplateColumns: sub_tpl, background: is_selected ? "var(--color-boardtree-selected)" : "var(--color-boardtree-surface)", opacity: is_dragging ? 0.45 : 1 }}
         draggable={!state.read_only}
         onDragStart={(e) => {
@@ -113,19 +113,19 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id); }}
         onDragEnd={actions.onDragEnd}
       >
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
           <button type="button" onClick={() => actions.toggleSelected(sub.id)} className="flex items-center justify-center">
             {is_selected ? (
-              <span className="flex h-[14px] w-[14px] items-center justify-center rounded-[3px] bg-boardtree-accent">
+              <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-boardtree-accent">
                 <svg viewBox="0 0 14 14" width="9" height="9"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg>
               </span>
             ) : (
-              <span className="h-[14px] w-[14px] rounded-[3px] border-[1.5px] border-boardtree-border bg-boardtree-surface hover:border-boardtree-accent" />
+              <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface hover:border-boardtree-accent" />
             )}
           </button>
         </div>
 
-        <div className="flex items-center gap-1.5 border-r border-boardtree-border-soft pl-2 pr-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
           <div className="flex w-[11px] flex-none cursor-grab items-center text-boardtree-text-faint">
             <svg viewBox="0 0 6 14" width="6" height="11"><circle cx="1.5" cy="3" r="1" fill="currentColor" /><circle cx="4.5" cy="3" r="1" fill="currentColor" /><circle cx="1.5" cy="7" r="1" fill="currentColor" /><circle cx="4.5" cy="7" r="1" fill="currentColor" /><circle cx="1.5" cy="11" r="1" fill="currentColor" /><circle cx="4.5" cy="11" r="1" fill="currentColor" /></svg>
           </div>
@@ -142,7 +142,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                     if (e.key === "Escape") actions.cancelEditName();
                   }}
-                  className="h-[32px] w-full min-w-0 rounded-[4px] border-2 border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-6 text-[13px] text-boardtree-text outline-none"
+                  className="h-[28px] w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-6 text-board-cell text-boardtree-text outline-none"
                 />
                 <EmojiInsertButton
                   input_ref={name_input_ref}
@@ -154,7 +154,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 />
               </span>
             ) : (
-              <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-1 text-[13px] text-boardtree-text">
+              <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text">
                 {highlightSearchMatches(sub.name, state.search_query)}
               </span>
             )}
@@ -162,7 +162,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(sub.id); }}
-            title={sub.is_priority ? "Unmark as priority" : "Mark as priority — this task sorts above the rest"}
+            title={sub.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
             className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
             style={{
               color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
@@ -191,7 +191,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           </button>
         </div>
 
-        <div className="flex items-center justify-center border-r border-boardtree-border-soft" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openComments(sub.id); }}
@@ -217,7 +217,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           return (
             <div
               key={col.id}
-              className="relative flex min-w-0 items-stretch border-r border-boardtree-border-soft"
+              className="relative flex min-w-0 items-stretch border-r border-boardtree-grid"
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{
                 height: row_h,
@@ -238,7 +238,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 if (state.fill_drag?.column_id === col.id) actions.updateFillDragHover(sub.id);
               }}
             >
-              <CellRenderer node_id={sub.id} column={col} values={sub.values} node_name={sub.name} state={state} actions={actions} />
+              <CellRenderer node_id={sub.id} column={col} values={sub.values} node_name={sub.name} state={state} actions={actions} group_color={group.color} />
               {is_active && (
                 <div
                   data-fill-handle="true"

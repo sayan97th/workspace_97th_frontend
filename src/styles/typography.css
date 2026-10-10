@@ -88,6 +88,25 @@
   --text-board-nav: 14px;
   --text-board-nav--line-height: 20px;
   --text-board-nav--font-weight: 400;
+
+  /*
+   * Board table body scale, matching monday.com's table: group titles are a
+   * medium 18px in the group color, while column headers, item names and
+   * every cell value share one regular 14px style. `board-caption` is the
+   * small print under it (summary labels, counts).
+   */
+  --text-board-group-title: 18px;
+  --text-board-group-title--line-height: 24px;
+  --text-board-group-title--font-weight: 500;
+  --text-board-group-title--letter-spacing: -0.1px;
+
+  --text-board-cell: 14px;
+  --text-board-cell--line-height: 20px;
+  --text-board-cell--font-weight: 400;
+
+  --text-board-caption: 12px;
+  --text-board-caption--line-height: 16px;
+  --text-board-caption--font-weight: 400;
 }
 
 /*

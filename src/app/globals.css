@@ -140,6 +140,11 @@
   --color-boardtree-track: #e9ecf4;
   --color-boardtree-ring: rgba(30, 34, 55, 0.55);
   --color-boardtree-scrollbar-thumb: rgba(30, 34, 55, 0.16);
+  /* Table grid lines (row and cell separators) and the outline of empty checkboxes. */
+  --color-boardtree-grid: #d0d4e4;
+  --color-boardtree-control-border: #c3c6d4;
+  /* Fill of an empty Timeline pill, monday's neutral gray. */
+  --color-boardtree-empty: #c4c4c4;
 
   --z-index-1: 1;
   --z-index-2: 2;
@@ -239,6 +244,9 @@
   --color-boardtree-track: rgba(255, 255, 255, 0.08);
   --color-boardtree-ring: rgba(255, 255, 255, 0.75);
   --color-boardtree-scrollbar-thumb: rgba(255, 255, 255, 0.14);
+  --color-boardtree-grid: rgba(255, 255, 255, 0.1);
+  --color-boardtree-control-border: rgba(255, 255, 255, 0.24);
+  --color-boardtree-empty: rgba(255, 255, 255, 0.18);
 }
 
 /* Entrance animation for `ConfirmActionModal` — panel rises + scales in
