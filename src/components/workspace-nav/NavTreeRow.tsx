@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import type { WorkspaceNavNode } from "@/types/workspace";
 import { MoreDotsIcon, StarIcon, TreeCaretIcon } from "@/icons/workspace-icons";
-import NavItemIcon, { NavPrivacyBadge } from "./NavItemIcon";
+import NavItemIcon from "./NavItemIcon";
 import { getLeafHref } from "./helpers";
 import { splitByMatch, type NavDropPosition, type VisibleNavRow } from "./navTreeUtils";
 
@@ -237,10 +237,6 @@ const NavTreeRow: React.FC<NavTreeRowProps> = ({
         >
           <HighlightedLabel label={node.label} query={search_query} />
         </span>
-      )}
-
-      {!is_group && !is_renaming && (
-        <NavPrivacyBadge board_type={node.board_type} className="relative z-1 text-sidebar-text-secondary" />
       )}
 
       {!is_renaming && (

@@ -463,6 +463,27 @@ export const LockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   </svg>
 );
 
+/**
+ * Solid padlock drawn for an 8px to 10px corner badge, monday.com's private board mark
+ * pinned to the bottom right of a sidebar item's type icon.
+ */
+export const PrivateBadgeIcon: React.FC<IconProps> = ({ className, size = 9 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 10 10" fill="none">
+    <path d="M3.1 4.6 V3.3 a1.9 1.9 0 0 1 3.8 0 V4.6" stroke="currentColor" strokeWidth="1.3" />
+    <rect x="1.6" y="4.3" width="6.8" height="5.2" rx="1.1" fill="currentColor" />
+  </svg>
+);
+
+/** Solid three node share mark, the shareable board badge paired with {@link PrivateBadgeIcon}. */
+export const ShareableBadgeIcon: React.FC<IconProps> = ({ className, size = 9 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 10 10" fill="none">
+    <path d="M7.6 2.2 L2.6 5 L7.6 7.8" stroke="currentColor" strokeWidth="1.1" />
+    <circle cx="7.6" cy="2.2" r="1.7" fill="currentColor" />
+    <circle cx="2.4" cy="5" r="1.7" fill="currentColor" />
+    <circle cx="7.6" cy="7.8" r="1.7" fill="currentColor" />
+  </svg>
+);
+
 /** Open-shackle padlock — used by "Unlock view" menu rows. */
 export const UnlockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">

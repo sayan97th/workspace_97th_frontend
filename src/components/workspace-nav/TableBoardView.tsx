@@ -131,7 +131,7 @@ import { boardItemCellFilesService } from "@/services/board-item-cell-files.serv
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
 import { peopleService } from "@/services/people.service";
-import { workspaceService } from "@/services/workspace.service";
+import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
 import type {
   BoardCellFile,
   BoardColumnConfig,
@@ -551,6 +551,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       workspaceService.updateNavItem(workspace_slug, node.id, { board_type: next_board_type })
     );
     setBoardType(next_board_type);
+    // The sidebar shows the type as a lock or share badge on the board icon.
+    notifyNavItemChanged();
   };
 
   const info = buildBoardInfo(node, board_type, () => setIsChangeTypeOpen(true));

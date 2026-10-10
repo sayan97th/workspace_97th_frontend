@@ -3,7 +3,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ClockIcon, StarIcon } from "@/icons/workspace-icons";
-import NavItemIcon, { NavPrivacyBadge } from "@/components/workspace-nav/NavItemIcon";
+import NavItemIcon from "@/components/workspace-nav/NavItemIcon";
 import useFavorites from "@/hooks/useFavorites";
 import useRecentBoards from "@/hooks/useRecentBoards";
 import { SIDEBAR_ROW_ACTIVE_CLASS, SIDEBAR_ROW_CLASS, isPathActive } from "./sidebarConstants";
@@ -35,7 +35,6 @@ export const RecentBoardRow: React.FC<RecentBoardRowProps> = ({ board, is_active
       >
         <NavItemIcon source={board} size={16} className="text-sidebar-text-secondary" />
         <span className="min-w-0 truncate">{board.label}</span>
-        <NavPrivacyBadge board_type={board.board_type} className="text-sidebar-text-secondary" />
       </Link>
       <button
         type="button"

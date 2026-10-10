@@ -2,11 +2,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { personalService } from "@/services/personal.service";
+import { NAV_ITEM_CHANGED_EVENT } from "@/services/workspace.service";
 import type { RecentBoardDto } from "@/types/personal";
 
 /**
  * The boards the signed in user opened most recently, newest first. Reloads
- * whenever a board page is opened, since that is what records a new visit.
+ * whenever a board page is opened, since that is what records a new visit,
+ * and when a board's sidebar data changes (see `NAV_ITEM_CHANGED_EVENT`).
  * Pass `is_enabled = false` to skip fetching while the section is hidden.
  */
 export default function useRecentBoards(is_enabled = true): { boards: RecentBoardDto[]; is_loading: boolean } {
@@ -29,6 +31,13 @@ export default function useRecentBoards(is_enabled = true): { boards: RecentBoar
   useEffect(() => {
     if (is_enabled) void load();
   }, [is_enabled, load, board_path]);
+
+  useEffect(() => {
+    if (!is_enabled) return;
+    const handleChange = () => void load();
+    window.addEventListener(NAV_ITEM_CHANGED_EVENT, handleChange);
+    return () => window.removeEventListener(NAV_ITEM_CHANGED_EVENT, handleChange);
+  }, [is_enabled, load]);
 
   return { boards, is_loading };
 }

@@ -8,7 +8,7 @@ import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { CSS } from "@dnd-kit/utilities";
 import { StarIcon } from "@/icons/workspace-icons";
 import WorkspaceMonogram from "@/components/personal/WorkspaceMonogram";
-import NavItemIcon, { NavPrivacyBadge } from "@/components/workspace-nav/NavItemIcon";
+import NavItemIcon from "@/components/workspace-nav/NavItemIcon";
 import useFavorites from "@/hooks/useFavorites";
 import useRecentBoards from "@/hooks/useRecentBoards";
 import { RecentBoardRow, useRecentFavoriteToggle } from "./SidebarRecentList";
@@ -57,7 +57,6 @@ const FavoriteRow: React.FC<FavoriteRowProps> = ({ favorite, is_active, is_drag_
       >
         <NavItemIcon source={favorite} size={16} className="text-sidebar-text-secondary" />
         <span className="min-w-0 truncate">{favorite.label}</span>
-        <NavPrivacyBadge board_type={favorite.board_type} className="text-sidebar-text-secondary" />
       </Link>
       <button
         type="button"

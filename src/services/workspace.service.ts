@@ -28,6 +28,17 @@ import type {
  * Talks to the Laravel workspace API. Every call goes through the shared
  * {@link apiClient}, so it inherits the bearer-token auth + 401 refresh handling.
  */
+/**
+ * Window event fired when a board's sidebar facing data changes outside the
+ * sidebar itself (for example the board type picked in the board header), so
+ * the nav tree, Favorites and Recent lists reload and show the new icon.
+ */
+export const NAV_ITEM_CHANGED_EVENT = "workspace-nav:item-changed";
+
+export const notifyNavItemChanged = (): void => {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(NAV_ITEM_CHANGED_EVENT));
+};
+
 export const workspaceService = {
   /** GET /api/workspaces — the full catalog for the switcher / browse modal. */
   async getWorkspaces(): Promise<Workspace[]> {

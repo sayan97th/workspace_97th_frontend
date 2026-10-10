@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 import { FAVORITES_CHANGED_EVENT, personalService } from "@/services/personal.service";
+import { NAV_ITEM_CHANGED_EVENT } from "@/services/workspace.service";
 import type { FavoriteItemDto, PersonalWorkspaceSummary } from "@/types/personal";
 
 /** One workspace block of the sidebar's Favorites section. */
@@ -98,7 +99,11 @@ export default function useFavorites(): UseFavoritesResult {
     void loadFavorites();
     const handleChange = () => void loadFavorites();
     window.addEventListener(FAVORITES_CHANGED_EVENT, handleChange);
-    return () => window.removeEventListener(FAVORITES_CHANGED_EVENT, handleChange);
+    window.addEventListener(NAV_ITEM_CHANGED_EVENT, handleChange);
+    return () => {
+      window.removeEventListener(FAVORITES_CHANGED_EVENT, handleChange);
+      window.removeEventListener(NAV_ITEM_CHANGED_EVENT, handleChange);
+    };
   }, []);
 
   const groups = useMemo(() => groupFavorites(favorites, favorite_workspaces), [favorites, favorite_workspaces]);
