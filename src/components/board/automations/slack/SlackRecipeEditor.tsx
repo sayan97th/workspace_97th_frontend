@@ -101,10 +101,10 @@ export default function SlackRecipeEditor({ recipe, columns, people, items = [],
     recipient_kind === "user"
       ? [{ entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) }]
       : [
-          { title: "Whoever is assigned in", entries: people_columns.map((column) => ({ id: `column:${column.id}`, label: column.title })) },
-          { title: "From the item", entries: RECIPIENT_SOURCES.map((source) => ({ id: `source:${source.id}`, label: source.label })) },
-          { title: "A specific person", entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) },
-        ];
+        { title: "Whoever is assigned in", entries: people_columns.map((column) => ({ id: `column:${column.id}`, label: column.title })) },
+        { title: "From the item", entries: RECIPIENT_SOURCES.map((source) => ({ id: `source:${source.id}`, label: source.label })) },
+        { title: "A specific person", entries: people.map((person) => ({ id: `person:${person.id}`, label: person.name })) },
+      ];
 
   const insertField = ({ label }: SlackMessageField) => {
     const field = message_ref.current;

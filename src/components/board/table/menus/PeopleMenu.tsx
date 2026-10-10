@@ -58,73 +58,79 @@ export default function PeopleMenu({
 
   return (
     <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[300px] -translate-x-1/2 p-3">
-      <div onKeyDown={handleKeyDown}>
-        <div className="mb-2.5 flex h-8 items-center gap-[7px] rounded-[6px] border border-boardtree-border px-[9px] focus-within:border-boardtree-accent">
-          <svg viewBox="0 0 16 16" width="13" height="13" className="flex-none text-boardtree-text-faint">
-            <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
-            <path d="M10.5 10.5 L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-          </svg>
-          <input
-            autoFocus
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search names"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-boardtree-text outline-none"
-          />
+      {/* Only one area scrolls at a time: the people list normally, and the whole top part when the panel is height capped
+          (a short window), where the list drops its own limit. Either way "Save" always stays in view. */}
+      <div onKeyDown={handleKeyDown} className="flex min-h-0 flex-col">
+        <div className="shell-scrollbar min-h-0 overflow-y-auto overscroll-contain">
+          <div className="mb-2.5 flex h-8 items-center gap-[7px] rounded-[6px] border border-boardtree-border px-[9px] focus-within:border-boardtree-accent">
+            <svg viewBox="0 0 16 16" width="13" height="13" className="flex-none text-boardtree-text-faint">
+              <circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" strokeWidth="1.4" />
+              <path d="M10.5 10.5 L14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+            </svg>
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              placeholder="Search names"
+              className="min-w-0 flex-1 bg-transparent text-[13px] text-boardtree-text outline-none"
+            />
+          </div>
+          <div className="px-0.5 pb-[7px] text-[12px] text-boardtree-text-muted">People in this account</div>
+          <div className="shell-scrollbar flex max-h-[236px] flex-col gap-0.5 overflow-y-auto overscroll-contain [[data-capped]_&]:max-h-none [[data-capped]_&]:overflow-visible">
+            {filtered.map((person) => {
+              const is_on = draft_ids.includes(person.id);
+              return (
+                <button
+                  type="button"
+                  key={person.id}
+                  onClick={() => togglePerson(person.id)}
+                  aria-pressed={is_on}
+                  className="flex items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-boardtree-hover"
+                >
+                  <div
+                    className={`flex h-[26px] w-[26px] items-center justify-center rounded-full text-[9.5px] font-semibold text-white ${getDeactivatedClass(person.is_deactivated)}`}
+                    style={{ background: person.color }}
+                  >
+                    {person.initials}
+                  </div>
+                  <div className={`flex-1 text-left text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.name}</div>
+                  <DeactivatedBadge is_deactivated={person.is_deactivated} />
+                  {is_on && (
+                    <div className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-boardtree-accent">
+                      <svg viewBox="0 0 14 14" width="11" height="11"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+            {filtered.length === 0 && <div className="px-2 py-1 text-[12.5px] text-boardtree-text-faint">No people found</div>}
+          </div>
+          <button
+            type="button"
+            onClick={clearDraft}
+            disabled={draft_ids.length === 0}
+            className="pt-2.5 text-[12px] text-boardtree-text-muted hover:text-boardtree-accent disabled:cursor-default disabled:opacity-50 disabled:hover:text-boardtree-text-muted"
+          >
+            Clear value
+          </button>
         </div>
-        <div className="px-0.5 pb-[7px] text-[12px] text-boardtree-text-muted">People in this account</div>
-        <div className="shell-scrollbar flex max-h-[236px] flex-col gap-0.5 overflow-y-auto">
-          {filtered.map((person) => {
-            const is_on = draft_ids.includes(person.id);
-            return (
+        <div className="flex-none">
+          <div className="my-2.5 h-px bg-boardtree-border-soft" />
+          {notify_on_assignment !== undefined && (
+            <>
               <button
                 type="button"
-                key={person.id}
-                onClick={() => togglePerson(person.id)}
-                aria-pressed={is_on}
-                className="flex items-center gap-2.5 rounded-[6px] px-2 py-1.5 hover:bg-boardtree-hover"
+                onClick={onToggleNotifyOnAssignment}
+                className="flex w-full items-center justify-between gap-2.5 rounded-[6px] px-1 py-1 text-left text-[12.5px] text-boardtree-text hover:bg-boardtree-hover"
               >
-                <div
-                  className={`flex h-[26px] w-[26px] items-center justify-center rounded-full text-[9.5px] font-semibold text-white ${getDeactivatedClass(person.is_deactivated)}`}
-                  style={{ background: person.color }}
-                >
-                  {person.initials}
-                </div>
-                <div className={`flex-1 text-left text-[13px] text-boardtree-text ${getDeactivatedClass(person.is_deactivated)}`}>{person.name}</div>
-                <DeactivatedBadge is_deactivated={person.is_deactivated} />
-                {is_on && (
-                  <div className="flex h-[17px] w-[17px] items-center justify-center rounded-[4px] bg-boardtree-accent">
-                    <svg viewBox="0 0 14 14" width="11" height="11"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
-                  </div>
-                )}
+                <span>Notify assigned people</span>
+                <ToggleSwitch is_on={notify_on_assignment} size="sm" />
               </button>
-            );
-          })}
-          {filtered.length === 0 && <div className="px-2 py-1 text-[12.5px] text-boardtree-text-faint">No people found</div>}
+              <div className="h-2" />
+            </>
+          )}
+          <PeopleSelectionFooter has_changes={has_changes} onCancel={onClose} onSave={saveDraft} />
         </div>
-        <button
-          type="button"
-          onClick={clearDraft}
-          disabled={draft_ids.length === 0}
-          className="pt-2.5 text-[12px] text-boardtree-text-muted hover:text-boardtree-accent disabled:cursor-default disabled:opacity-50 disabled:hover:text-boardtree-text-muted"
-        >
-          Clear value
-        </button>
-        <div className="my-2.5 h-px bg-boardtree-border-soft" />
-        {notify_on_assignment !== undefined && (
-          <>
-            <button
-              type="button"
-              onClick={onToggleNotifyOnAssignment}
-              className="flex w-full items-center justify-between gap-2.5 rounded-[6px] px-1 py-1 text-left text-[12.5px] text-boardtree-text hover:bg-boardtree-hover"
-            >
-              <span>Notify assigned people</span>
-              <ToggleSwitch is_on={notify_on_assignment} size="sm" />
-            </button>
-            <div className="h-2" />
-          </>
-        )}
-        <PeopleSelectionFooter has_changes={has_changes} onCancel={onClose} onSave={saveDraft} />
       </div>
     </PopoverPanel>
   );

@@ -57,7 +57,7 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
   children,
 }) => {
   const popover_ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const [position, setPosition] = useState<{ top: number; left: number; max_height: number | null } | null>(null);
 
   useLayoutEffect(() => {
     if (!is_open || !anchor_el) {
@@ -67,18 +67,34 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
 
     const updatePosition = () => {
       const anchor_rect = anchor_el.getBoundingClientRect();
-      const popover_height = popover_ref.current?.offsetHeight ?? 0;
+      const popover_el = popover_ref.current;
+      // While capped (see below) the popover scrolls, so its full height is the scroll height plus its border.
+      const natural_height = !popover_el
+        ? 0
+        : popover_el.style.maxHeight
+          ? popover_el.scrollHeight + (popover_el.offsetHeight - popover_el.clientHeight)
+          : popover_el.offsetHeight;
+      // The popover is `fixed`, so the page can't scroll a cut off part of it into view. When
+      // the window is shorter than the popover, cap its height and let it scroll internally.
+      const available_height = window.innerHeight - VIEWPORT_MARGIN * 2;
+      const max_height = natural_height > available_height ? Math.floor(available_height) : null;
+      const popover_height = Math.min(natural_height, available_height);
 
       let top = anchor_rect.bottom + ANCHOR_GAP;
       if (top + popover_height > window.innerHeight - VIEWPORT_MARGIN) {
         top = Math.max(VIEWPORT_MARGIN, anchor_rect.top - popover_height - ANCHOR_GAP);
       }
 
-      let left = align === "start" ? anchor_rect.left : anchor_rect.right - width;
-      left = Math.min(left, window.innerWidth - width - VIEWPORT_MARGIN);
+      const visible_width = Math.min(width, window.innerWidth - VIEWPORT_MARGIN * 2);
+      let left = align === "start" ? anchor_rect.left : anchor_rect.right - visible_width;
+      left = Math.min(left, window.innerWidth - visible_width - VIEWPORT_MARGIN);
       left = Math.max(left, VIEWPORT_MARGIN);
 
-      setPosition({ top, left });
+      setPosition((current) =>
+        current && current.top === top && current.left === left && current.max_height === max_height
+          ? current
+          : { top, left, max_height }
+      );
     };
 
     updatePosition();
@@ -143,7 +159,11 @@ const BoardPopover: React.FC<BoardPopoverProps> = ({
       className={`fixed z-[1000] ${unstyled ? "" : CHROME_CLASS}`}
       style={{
         width: hug_content ? undefined : width,
-        maxWidth: width,
+        // Never wider than the window, so a narrow browser can still reach the popover's right edge.
+        maxWidth: `min(${width}px, calc(100vw - ${VIEWPORT_MARGIN * 2}px))`,
+        maxHeight: position?.max_height ?? undefined,
+        overflowY: position?.max_height ? "auto" : undefined,
+        overscrollBehavior: position?.max_height ? "contain" : undefined,
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,
         visibility: position ? "visible" : "hidden",

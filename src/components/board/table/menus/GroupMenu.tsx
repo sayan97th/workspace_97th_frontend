@@ -64,7 +64,7 @@ export default function GroupMenu({
   ];
 
   return (
-    <PopoverPanel onClose={onClose} className="w-[266px] p-1.5" style={panel_style}>
+    <PopoverPanel onClose={onClose} fit="shift" className="w-[266px] p-1.5" style={panel_style}>
       <div className="flex flex-col" onMouseLeave={scheduleClose}>
         <button type="button" onMouseEnter={() => openSub(null)} onClick={() => { onExpandThis(); onClose(); }} className={ROW_ITEM}>
           <span className="flex w-4 items-center justify-center text-boardtree-text-muted">

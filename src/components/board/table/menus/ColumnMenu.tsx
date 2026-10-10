@@ -133,7 +133,7 @@ export default function ColumnMenu({
   const handlePickChangeType = (type: ColumnTypeDef) => { onChangeType(type.kind, type.default_width); onClose(); };
 
   return (
-    <PopoverPanel onClose={onClose} className="left-1/2 top-full w-[268px] -translate-x-1/2 p-2.5">
+    <PopoverPanel onClose={onClose} fit="shift" className="left-1/2 top-full w-[268px] -translate-x-1/2 p-2.5">
       <input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
