@@ -13,6 +13,7 @@ import CreateWorkspaceModal, { type CreateWorkspaceSubmission } from "./CreateWo
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import SidebarRail from "./SidebarRail";
 import SidebarFavoritesList from "./SidebarFavoritesList";
+import SidebarFavoritesOptionsButton from "./SidebarFavoritesOptionsButton";
 import SidebarRecentList from "./SidebarRecentList";
 import useSidebarShortcuts from "./useSidebarShortcuts";
 import { SIDEBAR_ICON_BUTTON_CLASS, SIDEBAR_SECTION_LABELS, type SidebarPanelView } from "./sidebarConstants";
@@ -31,6 +32,21 @@ const PEEK_OPEN_DELAY_MS = 150;
 const PEEK_CLOSE_DELAY_MS = 300;
 
 const FLOATING_LAYER_SELECTOR = '[data-floating-layer], [aria-modal="true"]';
+
+/** Per viewer convenience: whether the Favorites panel lists "Recently viewed" under the favorites. */
+const FAVORITES_RECENT_STORAGE_KEY = "sidebar_favorites_show_recent";
+
+const readFavoritesRecentPreference = (): boolean => {
+  try {
+    return window.localStorage.getItem(FAVORITES_RECENT_STORAGE_KEY) !== "0";
+  } catch {
+    return true;
+  }
+};
+
+const SEARCH_PLACEHOLDERS: Partial<Record<SidebarPanelView, string>> = {
+  favorites: "Search favorites",
+};
 
 const PANEL_TITLES: Record<SidebarPanelView, string> = {
   workspace: "Workspace",
@@ -97,6 +113,7 @@ const AppSidebar: React.FC = () => {
   const [is_search_open, setIsSearchOpen] = useState(false);
   const [search_query, setSearchQuery] = useState("");
   const [search_focus_request, setSearchFocusRequest] = useState(0);
+  const [is_favorites_recent_visible, setIsFavoritesRecentVisible] = useState(true);
   // The panel's slide animation is switched off while the resize handle is dragged, so the width follows the pointer.
   const [is_resizing, setIsResizing] = useState(false);
   // Read after mount, the server can't know the platform and a mismatch would break hydration.
@@ -104,7 +121,18 @@ const AppSidebar: React.FC = () => {
 
   useEffect(() => {
     if (isApplePlatform()) setToggleShortcut("Cmd+B");
+    setIsFavoritesRecentVisible(readFavoritesRecentPreference());
   }, []);
+
+  const toggleFavoritesRecent = () => {
+    const next_value = !is_favorites_recent_visible;
+    setIsFavoritesRecentVisible(next_value);
+    try {
+      window.localStorage.setItem(FAVORITES_RECENT_STORAGE_KEY, next_value ? "1" : "0");
+    } catch {
+      // Storage can be blocked, the choice then lasts for this visit only.
+    }
+  };
 
   const panel_ref = useRef<HTMLElement>(null);
   const search_input_ref = useRef<HTMLInputElement>(null);
@@ -144,20 +172,32 @@ const AppSidebar: React.FC = () => {
     }
   }, [toggleSidebar, toggleMobileSidebar]);
 
+  // The Workspace and Favorites panels can be searched; from Recent the search opens the workspace tree.
   const openSearch = useCallback(() => {
     if (isDesktop()) {
       if (!isExpanded) toggleSidebar();
     } else if (!isMobileOpen) {
       toggleMobileSidebar();
     }
-    setPanelView("workspace");
+    if (panel_view === "recent") setPanelView("workspace");
     setIsSearchOpen(true);
     setSearchFocusRequest((request) => request + 1);
-  }, [isExpanded, isMobileOpen, toggleSidebar, toggleMobileSidebar]);
+  }, [isExpanded, isMobileOpen, panel_view, toggleSidebar, toggleMobileSidebar]);
 
   const closeSearch = () => {
     setSearchQuery("");
     setIsSearchOpen(false);
+  };
+
+  /** A search belongs to the list it was typed in, switching lists starts over. */
+  const switchPanelView = (view: SidebarPanelView) => {
+    if (view !== panel_view) closeSearch();
+    setPanelView(view);
+  };
+
+  const openFavoriteWorkspace = (workspace_slug: string) => {
+    selectWorkspace({ id: workspace_slug });
+    switchPanelView("workspace");
   };
 
   useSidebarShortcuts({ onToggleSidebar: handleCollapseClick, onFocusSearch: openSearch });
@@ -170,7 +210,7 @@ const AppSidebar: React.FC = () => {
    */
   const handleSelectPanelView = (view: SidebarPanelView, is_active: boolean) => {
     clearPeekTimers();
-    setPanelView(view);
+    switchPanelView(view);
     if (!isDesktop()) return;
     if (is_panel_collapsed || is_active) toggleSidebar();
   };
@@ -190,7 +230,7 @@ const AppSidebar: React.FC = () => {
     if (!is_panel_collapsed || !isDesktop()) return;
     clearPeekTimers();
     peek_open_timer.current = setTimeout(() => {
-      setPanelView(view);
+      switchPanelView(view);
       setIsPeeking(true);
     }, PEEK_OPEN_DELAY_MS);
   };
@@ -282,16 +322,27 @@ const AppSidebar: React.FC = () => {
           <MoreDotsIcon size={18} />
         </button>
       )}
-      <button
-        type="button"
-        onClick={() => (is_search_open ? closeSearch() : openSearch())}
-        className={`${SIDEBAR_ICON_BUTTON_CLASS} ${is_search_open ? "bg-sidebar-hover text-sidebar-text" : ""}`}
-        aria-label="Search this workspace"
-        aria-pressed={is_search_open}
-        title="Search this workspace (/)"
-      >
-        <SearchIcon size={17} />
-      </button>
+      {renderSearchButton("Search this workspace")}
+    </>
+  );
+
+  const renderSearchButton = (label: string) => (
+    <button
+      type="button"
+      onClick={() => (is_search_open ? closeSearch() : openSearch())}
+      className={`${SIDEBAR_ICON_BUTTON_CLASS} ${is_search_open ? "bg-sidebar-hover text-sidebar-text" : ""}`}
+      aria-label={label}
+      aria-pressed={is_search_open}
+      title={`${label} (/)`}
+    >
+      <SearchIcon size={17} />
+    </button>
+  );
+
+  const renderFavoritesHeaderActions = () => (
+    <>
+      <SidebarFavoritesOptionsButton is_recent_visible={is_favorites_recent_visible} onToggleRecent={toggleFavoritesRecent} />
+      {renderSearchButton("Search favorites")}
     </>
   );
 
@@ -316,8 +367,13 @@ const AppSidebar: React.FC = () => {
       ) : (
         <WorkspaceSwitcherSkeleton />
       )}
+    </>
+  );
 
+  const renderSearchField = () => (
+    <>
       {is_search_open && (
+
         <div className="flex h-9 items-center gap-2 rounded-lg border border-sidebar-control-border bg-sidebar-panel px-2.5 transition-colors focus-within:border-sidebar-focus">
           <span className="flex flex-none text-sidebar-text-secondary">
             <SearchIcon />
@@ -334,11 +390,11 @@ const AppSidebar: React.FC = () => {
               }
               if (event.key === "ArrowDown") {
                 event.preventDefault();
-                panel_ref.current?.querySelector<HTMLElement>("[data-nav-id]")?.focus();
+                panel_ref.current?.querySelector<HTMLElement>("[data-nav-id], [data-panel-body] a, [data-panel-body] button")?.focus();
               }
             }}
-            placeholder={`Search ${active_workspace?.name ?? "workspace"}`}
-            aria-label="Search boards and folders in this workspace"
+            placeholder={SEARCH_PLACEHOLDERS[panel_view] ?? `Search ${active_workspace?.name ?? "workspace"}`}
+            aria-label={panel_view === "favorites" ? "Search favorites and recently viewed boards" : "Search boards and folders in this workspace"}
             className="min-w-0 flex-1 bg-transparent text-sm text-sidebar-text outline-none placeholder:text-sidebar-text-secondary [&::-webkit-search-cancel-button]:hidden"
           />
           <button
@@ -355,7 +411,9 @@ const AppSidebar: React.FC = () => {
   );
 
   const renderPanelBody = () => {
-    if (panel_view === "favorites") return <SidebarFavoritesList />;
+    if (panel_view === "favorites") {
+      return <SidebarFavoritesList search_query={search_query} is_recent_visible={is_favorites_recent_visible} onOpenWorkspace={openFavoriteWorkspace} />;
+    }
     if (panel_view === "recent") return <SidebarRecentList />;
     if (active_workspace_slug) return <NavTree nav={nav} workspace_slug={active_workspace_slug} search_query={search_query} />;
     return (
@@ -410,13 +468,15 @@ const AppSidebar: React.FC = () => {
                 <h2 className="truncate text-sm font-normal text-sidebar-text-secondary">{PANEL_TITLES[panel_view]}</h2>
                 <div className="flex items-center gap-0.5">
                   {panel_view === "workspace" && renderWorkspaceHeaderActions()}
+                  {panel_view === "favorites" && renderFavoritesHeaderActions()}
                   {collapse_button}
                 </div>
               </div>
               {panel_view === "workspace" && renderWorkspaceControls()}
+              {panel_view !== "recent" && renderSearchField()}
             </div>
 
-            <nav className="flex flex-1 flex-col px-2 pb-7 pt-1" aria-label={`${PANEL_TITLES[panel_view]} content`}>
+            <nav data-panel-body className="flex flex-1 flex-col px-2 pb-7 pt-1" aria-label={`${PANEL_TITLES[panel_view]} content`}>
               {renderPanelBody()}
             </nav>
           </div>

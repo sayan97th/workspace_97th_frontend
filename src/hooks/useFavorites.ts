@@ -17,7 +17,11 @@ export type UseFavoritesResult = {
   /** Favorites grouped by workspace: starred workspaces first (in star order), then the rest by their first favorite. */
   groups: FavoriteWorkspaceGroup[];
   is_loading: boolean;
+  /** Stars a board (shown right away, rolled back if the server refuses). */
+  addFavorite: (favorite: FavoriteItemDto) => Promise<void>;
   removeFavorite: (item_id: number) => Promise<void>;
+  /** Saves the starred boards and folders in A to Z order. */
+  sortFavoritesByLabel: () => Promise<void>;
   /** Moves a favorite to a new position and saves the whole order. */
   moveFavorite: (item_id: number, to_index: number) => Promise<void>;
   /** Moves a favorite inside its own workspace group and saves the whole order. */
@@ -108,6 +112,22 @@ export default function useFavorites(): UseFavoritesResult {
     }
   }, []);
 
+  const addFavorite = useCallback(async (favorite: FavoriteItemDto) => {
+    if (snapshot.favorites.some((candidate) => candidate.id === favorite.id)) return;
+    setSnapshot({ favorites: [...snapshot.favorites, favorite] });
+    try {
+      await personalService.setFavorite(favorite.id, true);
+    } catch {
+      void loadFavorites();
+    }
+  }, []);
+
+  const sortFavoritesByLabel = useCallback(async () => {
+    const sorted = [...snapshot.favorites].sort((first, second) => first.label.localeCompare(second.label, undefined, { sensitivity: "base" }));
+    if (sorted.every((favorite, index) => favorite.id === snapshot.favorites[index].id)) return;
+    await saveOrder(sorted);
+  }, [saveOrder]);
+
   const removeFavorite = useCallback(async (item_id: number) => {
     setSnapshot({ favorites: snapshot.favorites.filter((favorite) => favorite.id !== item_id) });
     await personalService.setFavorite(item_id, false);
@@ -159,7 +179,9 @@ export default function useFavorites(): UseFavoritesResult {
     favorite_workspaces,
     groups,
     is_loading,
+    addFavorite,
     removeFavorite,
+    sortFavoritesByLabel,
     moveFavorite,
     moveFavoriteWithinGroup,
     isWorkspaceFavorite,
