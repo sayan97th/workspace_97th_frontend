@@ -97,6 +97,8 @@ const AppSidebar: React.FC = () => {
   const [is_search_open, setIsSearchOpen] = useState(false);
   const [search_query, setSearchQuery] = useState("");
   const [search_focus_request, setSearchFocusRequest] = useState(0);
+  // The panel's slide animation is switched off while the resize handle is dragged, so the width follows the pointer.
+  const [is_resizing, setIsResizing] = useState(false);
   // Read after mount, the server can't know the platform and a mismatch would break hydration.
   const [toggle_shortcut, setToggleShortcut] = useState("Ctrl+B");
 
@@ -229,11 +231,24 @@ const AppSidebar: React.FC = () => {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [is_peek_visible, setIsPeeking]);
 
+  const handleResize = (width: number) => {
+    if (!is_resizing) setIsResizing(true);
+    previewSidebarWidth(width);
+  };
+
+  const handleResizeEnd = (width: number) => {
+    setIsResizing(false);
+    commitSidebarWidth(width);
+  };
+
+  // On desktop the panel floats next to the rail and slides out from behind it. Hidden it is
+  // also `invisible`, which keeps its rows out of the tab order once the slide has finished.
+  const panel_motion_class = is_resizing ? "" : "motion-safe:lg:transition-[translate,opacity,visibility,box-shadow] motion-safe:lg:duration-300 motion-safe:lg:ease-in-out";
   const panel_state_class = !is_panel_collapsed
-    ? "lg:relative lg:flex"
+    ? "lg:translate-x-0 lg:opacity-100"
     : is_peek_visible
-      ? "lg:absolute lg:bottom-0 lg:left-[72px] lg:top-0 lg:flex lg:shadow-2xl lg:shadow-black/20 motion-safe:lg:animate-[sidebar-peek-in_180ms_ease-out]"
-      : "lg:hidden";
+      ? "lg:translate-x-0 lg:opacity-100 lg:shadow-2xl lg:shadow-black/20"
+      : "lg:pointer-events-none lg:invisible lg:-translate-x-full lg:opacity-0";
 
   const collapse_button = (
     <button
@@ -362,16 +377,26 @@ const AppSidebar: React.FC = () => {
         <SidebarRail
           panel_view={panel_view}
           is_panel_open={!is_panel_collapsed || is_peek_visible}
+          is_panel_collapsed={is_panel_collapsed}
+          toggle_shortcut={toggle_shortcut}
+          onTogglePanel={toggleSidebar}
           onSelectPanelView={handleSelectPanelView}
           onHoverPanelView={handleRailHover}
           onMouseLeave={handleRailLeave}
+        />
+
+        {/* Reserves the panel's room in the page layout. Its width animates, so the page slides along with the panel. */}
+        <div
+          aria-hidden="true"
+          className={`hidden flex-none lg:block ${is_resizing ? "" : "motion-safe:transition-[width] motion-safe:duration-300 motion-safe:ease-in-out"}`}
+          style={{ width: is_panel_collapsed ? 0 : sidebar_width }}
         />
 
         <aside
           ref={panel_ref}
           onMouseEnter={handlePeekEnter}
           onMouseLeave={handlePeekLeave}
-          className={`relative flex max-w-[calc(100vw-72px)] flex-none flex-col rounded-tl-2xl border-l border-t border-sidebar-border bg-sidebar-panel text-sidebar-text ${panel_state_class}`}
+          className={`relative flex max-w-[calc(100vw-72px)] flex-none flex-col rounded-tl-2xl border-l border-t border-sidebar-border bg-sidebar-panel text-sidebar-text lg:absolute lg:bottom-0 lg:left-[72px] lg:top-0 lg:z-0 ${panel_motion_class} ${panel_state_class}`}
           style={{ width: sidebar_width }}
           aria-label={`${PANEL_TITLES[panel_view]} sidebar`}
         >
@@ -398,8 +423,8 @@ const AppSidebar: React.FC = () => {
 
           <SidebarResizeHandle
             width={sidebar_width}
-            onResize={previewSidebarWidth}
-            onResizeEnd={commitSidebarWidth}
+            onResize={handleResize}
+            onResizeEnd={handleResizeEnd}
           />
         </aside>
       </div>

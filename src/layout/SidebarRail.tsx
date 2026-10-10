@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ClockIcon, FeedSettingsIcon, HomeIcon, MoreDotsIcon, StarIcon, WorkspaceRailIcon } from "@/icons/workspace-icons";
+import { ClockIcon, ExpandSidebarIcon, FeedSettingsIcon, HomeIcon, MoreDotsIcon, StarIcon, WorkspaceRailIcon } from "@/icons/workspace-icons";
 import { AutomateIcon, CalendarViewIcon } from "@/icons/board-icons";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import { useSidebar } from "@/context/SidebarContext";
@@ -54,6 +54,11 @@ export type SidebarRailProps = {
   /** Fired when the pointer rests on a panel entry, so a collapsed panel can peek in with that view. */
   onHoverPanelView: (view: SidebarPanelView) => void;
   onMouseLeave: () => void;
+  /** True while the panel is folded away, the rail then shows its expand button on top. */
+  is_panel_collapsed: boolean;
+  /** Label of the keyboard shortcut that toggles the panel, shown in the button tooltip. */
+  toggle_shortcut: string;
+  onTogglePanel: () => void;
 };
 
 /**
@@ -63,7 +68,16 @@ export type SidebarRailProps = {
  * the Customize sidebar switches. Always visible on desktop, the panel next to
  * it is what collapses.
  */
-const SidebarRail: React.FC<SidebarRailProps> = ({ panel_view, is_panel_open, onSelectPanelView, onHoverPanelView, onMouseLeave }) => {
+const SidebarRail: React.FC<SidebarRailProps> = ({
+  panel_view,
+  is_panel_open,
+  onSelectPanelView,
+  onHoverPanelView,
+  onMouseLeave,
+  is_panel_collapsed,
+  toggle_shortcut,
+  onTogglePanel,
+}) => {
   const pathname = usePathname() ?? "";
   const { sidebar_preferences, updateSidebarSections } = useSidebar();
   const [more_anchor, setMoreAnchor] = useState<HTMLElement | null>(null);
@@ -147,8 +161,29 @@ const SidebarRail: React.FC<SidebarRailProps> = ({ panel_view, is_panel_open, on
     <nav
       aria-label="App navigation"
       onMouseLeave={onMouseLeave}
-      className="shell-scrollbar flex h-full w-[72px] flex-none flex-col items-center overflow-y-auto overflow-x-hidden bg-sidebar-rail pb-3 pt-2"
+      className="shell-scrollbar relative z-10 flex h-full w-[72px] flex-none flex-col items-center overflow-y-auto overflow-x-hidden bg-sidebar-rail pb-3 pt-2"
     >
+      {/* Expand button, like monday.com it only shows while the panel is collapsed (the panel header has the collapse one).
+          The 0fr to 1fr grid row lets its height animate, so the entries below glide down instead of jumping. */}
+      <div
+        className={`hidden w-full motion-safe:transition-[grid-template-rows,opacity] motion-safe:duration-300 motion-safe:ease-in-out lg:grid ${
+          is_panel_collapsed ? "grid-rows-[1fr] opacity-100" : "pointer-events-none grid-rows-[0fr] opacity-0"
+        }`}
+        inert={!is_panel_collapsed}
+      >
+        <div className="flex justify-center overflow-hidden">
+          <button
+            type="button"
+            onClick={onTogglePanel}
+            className="mb-3 mt-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-sidebar-control-border bg-sidebar-panel text-sidebar-text-secondary transition-colors hover:bg-sidebar-hover hover:text-sidebar-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-focus"
+            aria-label="Expand sidebar"
+            title={`Expand sidebar (${toggle_shortcut})`}
+          >
+            <ExpandSidebarIcon size={16} />
+          </button>
+        </div>
+      </div>
+
       {renderEntry(WORKSPACE_ENTRY)}
       {visible_entries.length > 0 && <RailDivider />}
       <div className="flex flex-col items-center gap-2">{visible_entries.map(renderEntry)}</div>
