@@ -10,9 +10,11 @@ import { CheckIcon, ChevronDownIcon, InfoIcon, SearchIcon } from "@/icons/worksp
 import type { CreateMyWorkItemPayload } from "@/types/personal";
 import "./my-work.css";
 import MyWorkCalendar from "./MyWorkCalendar";
+import { shiftCalendarCursor } from "./myWorkCalendar";
+import MyWorkCalendarToolbar from "./MyWorkCalendarToolbar";
 import { groupMyWork, MY_WORK_GROUP_BY_LABELS, toDateKey, type MyWorkGroupBy, type MyWorkSortKey } from "./myWorkBuckets";
 import { SlidersIcon } from "./myWorkIcons";
-import MyWorkNewItemPopover, { type MyWorkNewItemTarget } from "./MyWorkNewItemPopover";
+import MyWorkNewItemDialog, { type MyWorkNewItemTarget } from "./MyWorkNewItemDialog";
 import {
   DEFAULT_MY_WORK_PREFERENCES,
   minimumRowWidth,
@@ -51,6 +53,8 @@ const MyWorkView: React.FC = () => {
   const [new_item_target, setNewItemTarget] = useState<MyWorkNewItemTarget | null>(null);
   const [is_customize_open, setIsCustomizeOpen] = useState(false);
   const [is_group_by_open, setIsGroupByOpen] = useState(false);
+  // Day the calendar is showing, a new visit always starts on today.
+  const [calendar_cursor, setCalendarCursor] = useState(() => new Date());
   const customize_ref = useRef<HTMLButtonElement>(null);
   const group_by_ref = useRef<HTMLButtonElement>(null);
 
@@ -98,6 +102,13 @@ const MyWorkView: React.FC = () => {
         : [...preferences.hidden_columns, key],
     });
 
+  const toggleCalendarSource = (source_key: string) =>
+    updatePreferences({
+      hidden_calendar_sources: preferences.hidden_calendar_sources.includes(source_key)
+        ? preferences.hidden_calendar_sources.filter((hidden) => hidden !== source_key)
+        : [...preferences.hidden_calendar_sources, source_key],
+    });
+
   const copyLink = async (href: string) => {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${href}`);
@@ -125,9 +136,11 @@ const MyWorkView: React.FC = () => {
 
   const has_any_item = (my_work.data?.items.length ?? 0) > 0;
   const min_row_width = minimumRowWidth(columns);
+  const is_calendar = preferences.tab === "calendar";
 
   return (
-    <div className={`my-work-theme flex min-h-full flex-col ${boardTreeFontClassName}`}>
+    // The calendar fills the window below the header (scrolling itself on a short window), the table grows with its rows and the page scrolls.
+    <div className={`my-work-theme flex flex-col ${is_calendar ? "my-work-scroll h-full overflow-y-auto" : "min-h-full"} ${boardTreeFontClassName}`}>
       <header className="px-6 pt-6 sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
@@ -204,7 +217,7 @@ const MyWorkView: React.FC = () => {
         <div className="flex flex-wrap items-center gap-4 px-6 py-2 sm:px-8">
           <button
             type="button"
-            onClick={(event) => setNewItemTarget({ anchor_el: event.currentTarget, date: null, board_id: null })}
+            onClick={() => setNewItemTarget({ date: null, board_id: null })}
             className="my-work-primary-button text-board-nav"
           >
             New item
@@ -221,7 +234,15 @@ const MyWorkView: React.FC = () => {
             />
           </label>
 
-          {preferences.tab === "table" && (
+          {is_calendar ? (
+            <MyWorkCalendarToolbar
+              cursor={calendar_cursor}
+              mode={preferences.calendar_mode}
+              onToday={() => setCalendarCursor(new Date())}
+              onShift={(direction) => setCalendarCursor((current) => shiftCalendarCursor(current, preferences.calendar_mode, direction))}
+              onModeChange={(calendar_mode) => updatePreferences({ calendar_mode })}
+            />
+          ) : (
             <>
               <button
                 ref={group_by_ref}
@@ -260,10 +281,20 @@ const MyWorkView: React.FC = () => {
           )}
         </div>
 
-        {preferences.tab === "calendar" ? (
-          <div className="px-6 sm:px-8">
-            <MyWorkCalendar items={visible_items} />
-          </div>
+        {is_calendar ? (
+          <MyWorkCalendar
+            items={visible_items}
+            cursor={calendar_cursor}
+            mode={preferences.calendar_mode}
+            today_key={today_key}
+            hidden_sources={preferences.hidden_calendar_sources}
+            onToggleSource={toggleCalendarSource}
+            onAddItem={(date) => setNewItemTarget({ date, board_id: null })}
+            onOpenDay={(date) => {
+              setCalendarCursor(date);
+              updatePreferences({ calendar_mode: "day" });
+            }}
+          />
         ) : (
           <div className="my-work-scroll flex-1 overflow-x-auto pb-6">
             {/* Left padding leaves room for each row's "..." menu, which hangs outside the colored bar. */}
@@ -281,7 +312,7 @@ const MyWorkView: React.FC = () => {
                     today_key={today_key}
                     onToggle={() => toggleSection(section.key, is_collapsed)}
                     onSort={sortBy}
-                    onAddItem={(anchor_el) => setNewItemTarget({ anchor_el, date: section.new_item_date, board_id: section.new_item_board_id })}
+                    onAddItem={() => setNewItemTarget({ date: section.new_item_date, board_id: section.new_item_board_id })}
                     onStatusChange={(item, status) => void my_work.setStatus(item, status)}
                     onPriorityChange={(item, priority) => void my_work.setPriority(item, priority)}
                     onDateChange={(item, date) => void my_work.setDueDate(item, date)}
@@ -301,7 +332,7 @@ const MyWorkView: React.FC = () => {
         )}
       </div>
 
-      <MyWorkNewItemPopover
+      <MyWorkNewItemDialog
         target={new_item_target}
         last_board_id={preferences.last_board_id}
         onClose={() => setNewItemTarget(null)}

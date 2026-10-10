@@ -27,6 +27,8 @@ export const MY_WORK_NAME_MIN_WIDTH = 420;
 
 export type MyWorkTab = "table" | "calendar";
 
+export type MyWorkCalendarMode = "month" | "week" | "day";
+
 export type MyWorkPreferences = {
   tab: MyWorkTab;
   group_by: MyWorkGroupBy;
@@ -35,6 +37,9 @@ export type MyWorkPreferences = {
   hide_done: boolean;
   /** Board the last item was created on, preselected in "New item". */
   last_board_id: number | null;
+  calendar_mode: MyWorkCalendarMode;
+  /** Date sources (legend entries) switched off in the calendar. */
+  hidden_calendar_sources: string[];
 };
 
 export const DEFAULT_MY_WORK_PREFERENCES: MyWorkPreferences = {
@@ -44,6 +49,8 @@ export const DEFAULT_MY_WORK_PREFERENCES: MyWorkPreferences = {
   hidden_columns: [],
   hide_done: false,
   last_board_id: null,
+  calendar_mode: "month",
+  hidden_calendar_sources: [],
 };
 
 const STORAGE_KEY = "my_work_preferences";

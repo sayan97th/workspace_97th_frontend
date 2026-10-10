@@ -15,7 +15,7 @@ export type MyWorkSectionProps = {
   today_key: string;
   onToggle: () => void;
   onSort: (key: MyWorkSortKey) => void;
-  onAddItem: (anchor_el: HTMLElement) => void;
+  onAddItem: () => void;
   onStatusChange: (item: MyWorkItemDto, status: MyWorkStatus | null) => void;
   onPriorityChange: (item: MyWorkItemDto, priority: MyWorkStatus | null) => void;
   onDateChange: (item: MyWorkItemDto, date: string | null) => void;
@@ -121,7 +121,7 @@ const MyWorkSection: React.FC<MyWorkSectionProps> = ({
           <div role="row" className="my-work-add-row flex">
             <button
               type="button"
-              onClick={(event) => onAddItem(event.currentTarget)}
+              onClick={onAddItem}
               className="flex h-full flex-1 items-center pl-7 text-left"
             >
               + Add item

@@ -25,6 +25,11 @@
   --mw-badge: #323338;
   --mw-neutral-section: #323338;
   --mw-scrollbar-thumb: rgba(50, 51, 56, 0.25);
+  --mw-calendar-border: #d0d4e4;
+  --mw-calendar-hover: #f0f0f0;
+  --mw-field: #f5f6f8;
+  --mw-field-hover: #e6e9ef;
+  --mw-overlay: rgba(41, 47, 76, 0.7);
 
   background: var(--mw-bg);
   color: var(--mw-text);
@@ -49,6 +54,11 @@ html.dark .my-work-theme {
   --mw-badge: #e9eded;
   --mw-neutral-section: #c2cacb;
   --mw-scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --mw-calendar-border: rgba(255, 255, 255, 0.12);
+  --mw-calendar-hover: rgba(255, 255, 255, 0.06);
+  --mw-field: rgba(255, 255, 255, 0.06);
+  --mw-field-hover: rgba(255, 255, 255, 0.1);
+  --mw-overlay: rgba(6, 14, 14, 0.62);
 }
 
 /* ── Header and tabs ─────────────────────────────────────────────────────── */
@@ -313,39 +323,502 @@ html.dark .my-work-theme {
 
 /* ── Calendar ────────────────────────────────────────────────────────────── */
 
-.my-work-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(120px, 1fr));
-  border-top: 1px solid var(--mw-border);
-  border-left: 1px solid var(--mw-border);
+.my-work-outline-button {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--mw-control-border);
+  border-radius: 4px;
+  color: var(--mw-text);
+  transition: background-color 120ms ease, border-color 120ms ease;
 }
 
-.my-work-calendar-day {
-  min-height: 120px;
-  padding: 6px;
-  border-right: 1px solid var(--mw-border);
-  border-bottom: 1px solid var(--mw-border);
-}
-
-.my-work-calendar-day[data-outside="true"] {
+.my-work-outline-button:hover {
   background: var(--mw-hover);
 }
 
-.my-work-calendar-chip {
-  display: block;
-  width: 100%;
-  overflow: hidden;
-  padding: 2px 8px;
+.my-work-outline-button[aria-expanded="true"] {
+  border-color: var(--mw-accent);
+}
+
+.my-work-select-button {
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 96px;
+  padding: 0 12px 0 16px;
+}
+
+.my-work-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--mw-text);
+  transition: background-color 120ms ease;
+}
+
+.my-work-icon-button:hover {
+  background: var(--mw-hover);
+}
+
+/*
+ * The calendar runs edge to edge under the toolbar and fills the rest of the
+ * window. No `min-height: 0` on purpose: on a short window the rows keep
+ * their minimum height and the page scrolls instead of squeezing them.
+ */
+.my-work-calendar {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.my-work-calendar-frame {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  border: 1px solid var(--mw-calendar-border);
+  border-right: 0;
+}
+
+.my-work-calendar-head {
+  display: grid;
+  flex: none;
+  border-bottom: 1px solid var(--mw-calendar-border);
+}
+
+.my-work-calendar-head-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  border-right: 1px solid var(--mw-calendar-border);
+  color: var(--mw-text);
+}
+
+/* Week and Day show the weekday over a larger date, like monday.com. */
+.my-work-calendar-head-cell--dated {
+  flex-direction: column;
+  gap: 2px;
+  height: auto;
+  padding: 6px 0 8px;
+  border-right: 0;
+}
+
+.my-work-calendar:not([data-mode="month"]) .my-work-calendar-head {
+  border-bottom: 0;
+}
+
+.my-work-calendar-head-date {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.my-work-calendar-head-cell--dated[data-today="true"] {
+  color: var(--mw-accent);
+}
+
+.my-work-calendar-head-cell--dated[data-today="true"] .my-work-calendar-head-date {
+  background: var(--mw-accent);
+  color: #ffffff;
+}
+
+.my-work-calendar-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.my-work-calendar-row {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 104px;
+}
+
+.my-work-calendar-row + .my-work-calendar-row {
+  border-top: 1px solid var(--mw-calendar-border);
+}
+
+.my-work-calendar-cells {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+
+.my-work-calendar-cell {
+  position: relative;
+  border-right: 1px solid var(--mw-calendar-border);
+}
+
+/* Week and Day columns are only split by a line, the header carries the dates. */
+.my-work-calendar[data-mode="day"] .my-work-calendar-cell {
+  border-right: 0;
+}
+
+.my-work-calendar-day-number {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 3px;
+  border-radius: 4px;
+  color: var(--mw-text);
+  pointer-events: none;
+}
+
+.my-work-calendar-cell[data-outside="true"] .my-work-calendar-day-number {
+  color: var(--mw-text-secondary);
+}
+
+.my-work-calendar-cell[data-today="true"] .my-work-calendar-day-number {
+  background: var(--mw-accent);
+  color: #ffffff;
+}
+
+/* The whole cell is the "+ Add" target, its label only shows on hover or focus. */
+.my-work-calendar-add {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--mw-text);
+  transition: background-color 120ms ease;
+}
+
+.my-work-calendar-add > span {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.my-work-calendar-add:hover,
+.my-work-calendar-add:focus-visible {
+  background: var(--mw-calendar-hover);
+}
+
+.my-work-calendar-add:hover > span,
+.my-work-calendar-add:focus-visible > span {
+  opacity: 1;
+}
+
+.my-work-calendar-add:focus-visible {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: -2px;
+}
+
+/* Items sit on a grid of their own above the cells, so a Timeline can span several days. */
+.my-work-calendar-events {
+  position: absolute;
+  inset: 34px 0 6px;
+  display: grid;
+  grid-auto-rows: 24px;
+  align-content: start;
+  row-gap: 4px;
+  overflow-y: auto;
+  pointer-events: none;
+}
+
+.my-work-calendar[data-mode="week"] .my-work-calendar-events,
+.my-work-calendar[data-mode="day"] .my-work-calendar-events {
+  inset: 8px 0;
+}
+
+.my-work-calendar-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0 6px;
+  padding: 0 8px;
   border-radius: 4px;
   color: #ffffff;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  pointer-events: auto;
   transition: filter 120ms ease;
 }
 
-.my-work-calendar-chip:hover {
+.my-work-calendar[data-mode="day"] .my-work-calendar-pill {
+  margin: 0 24px;
+}
+
+.my-work-calendar-pill[data-continues-before="true"] {
+  margin-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.my-work-calendar-pill[data-continues-after="true"] {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.my-work-calendar-pill:hover {
   filter: brightness(0.92);
+}
+
+.my-work-calendar-pill:focus-visible {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: 1px;
+}
+
+.my-work-calendar-pill[data-done="true"] {
+  opacity: 0.6;
+  text-decoration: line-through;
+}
+
+.my-work-calendar-pill-status {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+}
+
+.my-work-calendar-more {
+  justify-self: start;
+  margin: 0 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--mw-text-secondary);
+  pointer-events: auto;
+}
+
+.my-work-calendar-more:hover {
+  background: var(--mw-hover);
+  color: var(--mw-text);
+}
+
+.my-work-calendar-legend {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 4px 20px;
+  min-height: 48px;
+  padding: 8px 24px;
+}
+
+.my-work-calendar-legend-entry {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--mw-text);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.my-work-calendar-legend-entry:hover {
+  background: var(--mw-hover);
+}
+
+.my-work-calendar-legend-dot {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--mw-legend-color);
+  border-radius: 999px;
+  background: var(--mw-legend-color);
+}
+
+.my-work-calendar-legend-entry[aria-pressed="false"] {
+  color: var(--mw-text-faint);
+}
+
+.my-work-calendar-legend-entry[aria-pressed="false"] .my-work-calendar-legend-dot {
+  background: transparent;
+}
+
+/* ── New Item dialog ─────────────────────────────────────────────────────── */
+
+.my-work-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: transparent;
+}
+
+.my-work-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--mw-overlay);
+}
+
+.my-work-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 600px;
+  max-width: 100%;
+  max-height: min(736px, calc(100dvh - 32px));
+  border-radius: 8px;
+  background: var(--mw-surface);
+  color: var(--mw-text);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+}
+
+.my-work-dialog-title {
+  width: 100%;
+  height: 40px;
+  padding: 0 4px;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--mw-text);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.my-work-dialog-title:hover,
+.my-work-dialog-title:focus {
+  border-color: var(--mw-control-border);
+}
+
+.my-work-dialog-row {
+  display: grid;
+  grid-template-columns: 156px minmax(0, 300px);
+  align-items: center;
+  min-height: 40px;
+}
+
+@media (max-width: 520px) {
+  .my-work-dialog-row {
+    grid-template-columns: 120px minmax(0, 1fr);
+  }
+}
+
+.my-work-dialog-select {
+  width: 100%;
+  height: 40px;
+  padding: 0 40px 0 16px;
+  overflow: hidden;
+  border: 1px solid var(--mw-control-border);
+  border-radius: 4px;
+  background: var(--mw-surface);
+  color: var(--mw-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  outline: none;
+  appearance: none;
+  transition: border-color 120ms ease;
+}
+
+.my-work-dialog-select:hover {
+  border-color: var(--mw-text);
+}
+
+.my-work-dialog-select:focus {
+  border-color: var(--mw-accent);
+}
+
+.my-work-dialog-field {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  border-radius: 0;
+  background: var(--mw-field);
+  color: var(--mw-text);
+  transition: background-color 120ms ease, filter 120ms ease;
+}
+
+.my-work-dialog-field--start {
+  justify-content: flex-start;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+button.my-work-dialog-field:hover {
+  background: var(--mw-field-hover);
+}
+
+.my-work-dialog-status {
+  color: #ffffff;
+}
+
+button.my-work-dialog-status:hover {
+  filter: brightness(0.94);
+}
+
+.my-work-dialog-timeline,
+.my-work-dialog-date {
+  height: 24px;
+  border-radius: 999px;
+}
+
+.my-work-dialog-timeline {
+  width: calc(100% - 32px);
+  background: var(--mw-accent);
+  color: #ffffff;
+}
+
+.my-work-dialog-timeline[data-empty="true"] {
+  background: var(--mw-empty);
+}
+
+.my-work-dialog-date {
+  padding: 0 12px;
+  color: var(--mw-text);
+}
+
+.my-work-dialog-date:hover {
+  background: var(--mw-field-hover);
+}
+
+.my-work-dialog-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 32px;
+  border-radius: 2px;
+  color: #ffffff;
+  transition: filter 120ms ease;
+}
+
+.my-work-dialog-option:hover {
+  filter: brightness(0.94);
+}
+
+.my-work-dialog-option[aria-selected="true"] {
+  outline: 2px solid var(--mw-accent);
+  outline-offset: 1px;
+}
+
+.my-work-dialog-skeleton {
+  height: 40px;
+  border-radius: 4px;
+  background: var(--mw-field);
+  animation: my-work-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes my-work-pulse {
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -353,5 +826,6 @@ html.dark .my-work-theme {
   .my-work-theme *::before,
   .my-work-theme *::after {
     transition: none !important;
+    animation: none !important;
   }
 }

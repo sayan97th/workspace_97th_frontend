@@ -4,6 +4,7 @@ import type {
   CreateMyWorkItemResponseDto,
   FavoritesResponseDto,
   MyWorkBoardDto,
+  MyWorkBoardFormDto,
   MyWorkResponseDto,
   RecentBoardDto,
 } from "@/types/personal";
@@ -61,6 +62,10 @@ export const personalService = {
   async getMyWorkBoards(): Promise<MyWorkBoardDto[]> {
     const response = await apiClient.get<{ boards: MyWorkBoardDto[] }>("/api/my-work/boards");
     return response.boards;
+  },
+
+  async getMyWorkBoardForm(board_id: number): Promise<MyWorkBoardFormDto> {
+    return apiClient.get<MyWorkBoardFormDto>(`/api/my-work/boards/${board_id}/form`);
   },
 
   async createMyWorkItem(payload: CreateMyWorkItemPayload): Promise<CreateMyWorkItemResponseDto> {

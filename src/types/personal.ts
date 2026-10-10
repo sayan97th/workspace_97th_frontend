@@ -61,7 +61,7 @@ export type MyWorkItemDto = {
   /** Updates posted on the item, replies included. */
   updates_count: number;
   /** The column the due date comes from: a Date column, or a Timeline (its end date). */
-  date_column: { id: number; type: "date" | "timeline" } | null;
+  date_column: { id: number; type: "date" | "timeline"; label: string } | null;
   date: { value: string; start: string | null } | null;
   is_done: boolean;
   can_edit: boolean;
@@ -81,11 +81,30 @@ export type MyWorkBoardDto = {
   workspace: Omit<PersonalWorkspaceSummary, "slug"> | null;
 };
 
-/** `POST /api/my-work/items` body. `date` is the section's due date, when it has one. */
+/** One Status or Priority column of a board, with the options the "New Item" dialog offers. */
+export type MyWorkFormStatusColumn = { id: number; label: string; options: MyWorkStatus[] };
+
+/** `GET /api/my-work/boards/{board_id}/form`, what the "New Item" dialog can fill in on a board. */
+export type MyWorkBoardFormDto = {
+  groups: { id: number; name: string; color: string }[];
+  people_column: { id: number; label: string } | null;
+  date_column: { id: number; label: string; type: "date" | "timeline" } | null;
+  status_column: MyWorkFormStatusColumn | null;
+  priority_column: MyWorkFormStatusColumn | null;
+};
+
+/**
+ * `POST /api/my-work/items` body. `date` is the section's (or calendar day's)
+ * due date, when it has one. The rest are optional picks from the dialog,
+ * the board's first group is used when `group_id` is left out.
+ */
 export type CreateMyWorkItemPayload = {
   board_id: number;
   name: string;
   date: string | null;
+  group_id?: number | null;
+  status?: string | null;
+  priority?: string | null;
 };
 
 /** `POST /api/my-work/items`. `is_assigned` is false when the board has no People column to assign the user in. */
