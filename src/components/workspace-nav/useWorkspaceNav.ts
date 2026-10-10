@@ -24,7 +24,8 @@ export type WorkspaceNavApi = {
   /** Opens or closes several folders at once ("Expand all" / "Collapse all", search, drag hover) and saves the result. */
   setGroupsExpanded: (group_ids: number[], is_expanded: boolean) => void;
   reload: () => Promise<void>;
-  createItem: (payload: CreateNavItemPayload) => Promise<void>;
+  /** Creates a folder or board and reloads the tree. Resolves with the new item (null without a workspace). */
+  createItem: (payload: CreateNavItemPayload) => Promise<WorkspaceNavNode | null>;
   renameItem: (item_id: number, label: string) => Promise<void>;
   toggleFavorite: (item_id: number, is_favorite: boolean) => Promise<void>;
   /** Flags/unflags a sidebar item (board/folder) as priority — the nav tree's own priority star. */
@@ -137,8 +138,13 @@ export function useWorkspaceNav(workspace_slug: string | undefined): WorkspaceNa
   );
 
   const createItem = useCallback(
-    (payload: CreateNavItemPayload) =>
-      runMutation((slug) => workspaceService.createNavItem(slug, payload)),
+    async (payload: CreateNavItemPayload) => {
+      let created_item: WorkspaceNavNode | null = null;
+      await runMutation(async (slug) => {
+        created_item = await workspaceService.createNavItem(slug, payload);
+      });
+      return created_item;
+    },
     [runMutation]
   );
 

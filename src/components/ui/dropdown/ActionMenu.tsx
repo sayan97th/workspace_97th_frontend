@@ -10,7 +10,7 @@ export type ActionMenuItem = {
   key: string;
   label: string;
   icon?: React.ReactNode;
-  /** Fired on select. Rows with a `submenu` open it instead. */
+  /** Fired on select. Rows with a submenu open it instead, unless the row is `split`. */
   onClick?: () => void;
   /** Keeps the row visible but faded and inert, the way monday.com shows actions the viewer can't take. */
   disabled?: boolean;
@@ -20,6 +20,14 @@ export type ActionMenuItem = {
   danger?: boolean;
   /** Nested rows opened in a side flyout, on hover, click or ArrowRight. */
   submenu?: ActionMenuItem[];
+  /** Like `submenu`, but split into groups by dividers. Wins over `submenu` when both are set. */
+  submenu_sections?: ActionMenuSection[];
+  /**
+   * A row with both an action and a submenu, like monday.com's "Board" row: a
+   * click on the label runs `onClick`, the chevron (behind a thin divider)
+   * opens the submenu. Hover and ArrowRight open the submenu as usual.
+   */
+  split?: boolean;
 };
 
 /** One group of rows. Groups are split by a thin divider, the way monday.com groups its menus. */
@@ -35,6 +43,8 @@ export type ActionMenuProps = {
   sections: ActionMenuSection[];
   /** Accessible name of the menu, e.g. "Workspace options". */
   aria_label: string;
+  /** Optional muted heading above the first row, e.g. "Add to workspace". */
+  title?: string;
   width?: number;
   submenu_width?: number;
   align?: "start" | "end";
@@ -61,32 +71,43 @@ const moveFocus = (list_el: HTMLElement, key: string): boolean => {
   return true;
 };
 
-type ActionMenuListProps = {
+/** The rows a submenu shows, grouped into sections. */
+const getSubmenuSections = (item: ActionMenuItem): ActionMenuSection[] => {
+  if (item.submenu_sections) return item.submenu_sections;
+  return item.submenu?.length ? [{ key: item.key, items: item.submenu }] : [];
+};
+
+const hasSubmenu = (item: ActionMenuItem): boolean =>
+  getSubmenuSections(item).some((section) => section.items.length > 0);
+
+type ActionMenuLevelProps = {
   sections: ActionMenuSection[];
   aria_label: string;
+  title?: string;
   /** What takes focus on mount: the list itself (so arrow keys work), its first enabled row, or nothing (submenus opened on hover). */
   initial_focus?: "list" | "first_item" | "none";
-  open_submenu_key?: string | null;
-  onOpenSubmenu?: (item: ActionMenuItem, focus_first: boolean) => void;
-  onCloseSubmenu?: () => void;
+  submenu_width: number;
   /** ArrowLeft inside a submenu hands focus back to the row that opened it. */
   onExitLeft?: () => void;
   onSelect: (item: ActionMenuItem) => void;
-  getItemRef?: (key: string) => (el: HTMLButtonElement | null) => void;
 };
 
-const ActionMenuList: React.FC<ActionMenuListProps> = ({
+/**
+ * One menu list plus the flyout of whichever of its rows is open. Each
+ * flyout renders another level, so submenus can nest ("More" > "Form").
+ */
+const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
   sections,
   aria_label,
+  title,
   initial_focus = "list",
-  open_submenu_key = null,
-  onOpenSubmenu,
-  onCloseSubmenu,
+  submenu_width,
   onExitLeft,
   onSelect,
-  getItemRef,
 }) => {
   const list_ref = useRef<HTMLDivElement>(null);
+  const item_refs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [open_submenu, setOpenSubmenu] = useState<{ key: string; focus_first: boolean } | null>(null);
   const visible_sections = sections.filter((section) => section.items.length > 0);
 
   useEffect(() => {
@@ -100,6 +121,15 @@ const ActionMenuList: React.FC<ActionMenuListProps> = ({
     return () => cancelAnimationFrame(frame);
   }, [initial_focus]);
 
+  const open_submenu_item = open_submenu
+    ? visible_sections.flatMap((section) => section.items).find((item) => item.key === open_submenu.key)
+    : undefined;
+
+  const openSubmenu = (item: ActionMenuItem, focus_first: boolean) => {
+    setOpenSubmenu((current) => (current?.key === item.key && !focus_first ? current : { key: item.key, focus_first }));
+  };
+  const closeSubmenu = () => setOpenSubmenu(null);
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
       if (list_ref.current && moveFocus(list_ref.current, event.key)) event.preventDefault();
@@ -107,18 +137,22 @@ const ActionMenuList: React.FC<ActionMenuListProps> = ({
     }
     if (event.key === "ArrowLeft" && onExitLeft) {
       event.preventDefault();
+      event.stopPropagation();
       onExitLeft();
     }
   };
 
   const renderItem = (item: ActionMenuItem) => {
-    const has_submenu = Boolean(item.submenu?.length);
-    const is_submenu_open = has_submenu && open_submenu_key === item.key;
+    const has_submenu = hasSubmenu(item);
+    const is_split = has_submenu && Boolean(item.split && item.onClick);
+    const is_submenu_open = has_submenu && open_submenu?.key === item.key;
 
     return (
       <button
         key={item.key}
-        ref={getItemRef?.(item.key)}
+        ref={(el) => {
+          item_refs.current[item.key] = el;
+        }}
         type="button"
         role="menuitem"
         tabIndex={-1}
@@ -127,23 +161,25 @@ const ActionMenuList: React.FC<ActionMenuListProps> = ({
         aria-expanded={has_submenu ? is_submenu_open : undefined}
         data-danger={item.danger || undefined}
         data-submenu-open={is_submenu_open || undefined}
+        data-split={is_split || undefined}
         title={item.disabled ? item.disabled_reason : undefined}
         className="action-menu__item"
         onMouseEnter={() => {
-          if (has_submenu && !item.disabled) onOpenSubmenu?.(item, false);
-          else onCloseSubmenu?.();
+          if (has_submenu && !item.disabled) openSubmenu(item, false);
+          else closeSubmenu();
         }}
         onKeyDown={(event) => {
           if (event.key === "ArrowRight" && has_submenu && !item.disabled) {
             event.preventDefault();
             event.stopPropagation();
-            onOpenSubmenu?.(item, true);
+            openSubmenu(item, true);
           }
         }}
-        onClick={() => {
+        onClick={(event) => {
           if (item.disabled) return;
-          if (has_submenu) {
-            onOpenSubmenu?.(item, false);
+          const is_chevron_click = (event.target as HTMLElement).closest("[data-split-toggle]") !== null;
+          if (has_submenu && (!is_split || is_chevron_click)) {
+            openSubmenu(item, event.detail === 0);
             return;
           }
           onSelect(item);
@@ -156,7 +192,7 @@ const ActionMenuList: React.FC<ActionMenuListProps> = ({
         )}
         <span className="action-menu__label">{item.label}</span>
         {has_submenu && (
-          <span className="action-menu__chevron" aria-hidden="true">
+          <span className="action-menu__chevron" data-split-toggle={is_split || undefined} aria-hidden="true">
             <ChevronRightIcon size={14} />
           </span>
         )}
@@ -165,75 +201,29 @@ const ActionMenuList: React.FC<ActionMenuListProps> = ({
   };
 
   return (
-    <div
-      ref={list_ref}
-      role="menu"
-      aria-label={aria_label}
-      tabIndex={-1}
-      onKeyDown={handleKeyDown}
-      className={`action-menu ${boardTreeFontClassName}`}
-    >
-      {visible_sections.map((section, index) => (
-        <React.Fragment key={section.key}>
-          {index > 0 && <div className="action-menu__divider" role="separator" />}
-          {section.items.map(renderItem)}
-        </React.Fragment>
-      ))}
-    </div>
-  );
-};
+    <>
+      <div
+        ref={list_ref}
+        role="menu"
+        aria-label={aria_label}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+        className={`action-menu ${boardTreeFontClassName}`}
+      >
+        {title && (
+          <div className="action-menu__title" aria-hidden="true">
+            {title}
+          </div>
+        )}
+        {visible_sections.map((section, index) => (
+          <React.Fragment key={section.key}>
+            {index > 0 && <div className="action-menu__divider" role="separator" />}
+            {section.items.map(renderItem)}
+          </React.Fragment>
+        ))}
+      </div>
 
-/**
- * monday.com style options menu anchored to a trigger button: grouped rows
- * split by dividers, disabled rows kept visible with a reason tooltip, and
- * submenus that open to the side on hover, click or ArrowRight. Positioning,
- * outside click and Escape come from {@link BoardPopover} and
- * {@link MenuFlyout}, the look from `action-menu.css`.
- */
-const ActionMenu: React.FC<ActionMenuProps> = ({
-  anchor_el,
-  is_open,
-  onClose,
-  sections,
-  aria_label,
-  width = 256,
-  submenu_width = 220,
-  align = "start",
-}) => {
-  const [open_submenu, setOpenSubmenu] = useState<{ key: string; focus_first: boolean } | null>(null);
-  const item_refs = useRef<Record<string, HTMLButtonElement | null>>({});
-
-  useEffect(() => {
-    if (!is_open) setOpenSubmenu(null);
-  }, [is_open]);
-
-  const open_submenu_item = open_submenu
-    ? sections.flatMap((section) => section.items).find((item) => item.key === open_submenu.key)
-    : undefined;
-
-  const selectItem = (item: ActionMenuItem) => {
-    setOpenSubmenu(null);
-    onClose();
-    item.onClick?.();
-  };
-
-  const closeSubmenu = () => setOpenSubmenu(null);
-
-  return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={width} align={align} unstyled>
-      <ActionMenuList
-        sections={sections}
-        aria_label={aria_label}
-        open_submenu_key={open_submenu?.key ?? null}
-        onOpenSubmenu={(item, focus_first) => setOpenSubmenu({ key: item.key, focus_first })}
-        onCloseSubmenu={closeSubmenu}
-        onSelect={selectItem}
-        getItemRef={(key) => (el) => {
-          item_refs.current[key] = el;
-        }}
-      />
-
-      {open_submenu_item?.submenu && (
+      {open_submenu_item && hasSubmenu(open_submenu_item) && (
         <MenuFlyout
           anchor_el={item_refs.current[open_submenu_item.key] ?? null}
           is_open
@@ -242,12 +232,13 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
           width={submenu_width}
           unstyled
         >
-          <ActionMenuList
+          <ActionMenuLevel
             key={open_submenu_item.key}
-            sections={[{ key: open_submenu_item.key, items: open_submenu_item.submenu }]}
+            sections={getSubmenuSections(open_submenu_item)}
             aria_label={open_submenu_item.label}
             initial_focus={open_submenu?.focus_first ? "first_item" : "none"}
-            onSelect={selectItem}
+            submenu_width={submenu_width}
+            onSelect={onSelect}
             onExitLeft={() => {
               const parent_row = item_refs.current[open_submenu_item.key];
               closeSubmenu();
@@ -256,6 +247,44 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
           />
         </MenuFlyout>
       )}
+    </>
+  );
+};
+
+/**
+ * monday.com style options menu anchored to a trigger button: an optional
+ * title, grouped rows split by dividers, disabled rows kept visible with a
+ * reason tooltip, split rows, and submenus (nested as deep as needed) that
+ * open to the side on hover, click or ArrowRight. Positioning, outside click
+ * and Escape come from {@link BoardPopover} and {@link MenuFlyout}, the look
+ * from `action-menu.css`.
+ */
+const ActionMenu: React.FC<ActionMenuProps> = ({
+  anchor_el,
+  is_open,
+  onClose,
+  sections,
+  aria_label,
+  title,
+  width = 256,
+  submenu_width = 220,
+  align = "start",
+}) => {
+  const selectItem = (item: ActionMenuItem) => {
+    onClose();
+    item.onClick?.();
+  };
+
+  return (
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={width} align={align} unstyled>
+      {/* Unmounted while closed, so every submenu starts closed the next time the menu opens. */}
+      <ActionMenuLevel
+        sections={sections}
+        aria_label={aria_label}
+        title={title}
+        submenu_width={submenu_width}
+        onSelect={selectItem}
+      />
     </BoardPopover>
   );
 };

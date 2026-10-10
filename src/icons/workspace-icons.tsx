@@ -979,3 +979,27 @@ export const MagicWandIcon: React.FC<IconProps> = ({ className, size = 16 }) => 
     />
   </svg>
 );
+
+/** monday.com's "Collapse all folders" glyph: a circle with two chevrons pointing in. */
+export const CollapseFoldersIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M5.6 4.6 L8 6.6 L10.4 4.6 M5.6 11.4 L8 9.4 L10.4 11.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** The "Expand all folders" counterpart of {@link CollapseFoldersIcon}: the chevrons point out. */
+export const ExpandFoldersIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="6.4" stroke="currentColor" strokeWidth="1.2" />
+    <path d="M5.6 6.4 L8 4.4 L10.4 6.4 M5.6 9.6 L8 11.6 L10.4 9.6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** monday.com's "Sort by alphabetical order" glyph: an up arrow next to a down arrow. */
+export const SortArrowsIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M5 13.5 V2.5 M2.6 4.9 L5 2.5 L7.4 4.9" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M11 2.5 V13.5 M8.6 11.1 L11 13.5 L13.4 11.1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);

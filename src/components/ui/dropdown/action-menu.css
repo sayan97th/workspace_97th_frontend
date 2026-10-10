@@ -17,6 +17,8 @@
   --action-menu-danger: #d83a52;
   --action-menu-focus: #0073ea;
   --action-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --action-menu-title: #676879;
+  --action-menu-split-active: #cce5ff;
 
   display: flex;
   flex-direction: column;
@@ -41,6 +43,8 @@ html.dark .action-menu {
   --action-menu-danger: #f0647a;
   --action-menu-focus: #4d9cff;
   --action-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  --action-menu-title: #9aa4a5;
+  --action-menu-split-active: rgba(77, 156, 255, 0.24);
 
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -136,4 +140,44 @@ html.dark .action-menu {
   height: 1px;
   margin: 8px 0;
   background: var(--action-menu-divider);
+}
+
+.action-menu__title {
+  flex: none;
+  padding: 2px 8px 6px;
+  color: var(--action-menu-title);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+/* Split rows: the chevron is its own target, set apart by a thin divider. */
+.action-menu__item[data-split="true"] {
+  padding-right: 0;
+}
+
+.action-menu__chevron[data-split-toggle="true"] {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 24px;
+  margin-right: 4px;
+  border-radius: 4px;
+  transition: background-color 70ms ease-in;
+}
+
+.action-menu__chevron[data-split-toggle="true"]::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: -5px;
+  width: 1px;
+  background: var(--action-menu-divider);
+}
+
+.action-menu__item[data-submenu-open="true"] .action-menu__chevron[data-split-toggle="true"],
+.action-menu__chevron[data-split-toggle="true"]:hover {
+  background: var(--action-menu-split-active);
+  color: var(--action-menu-text);
 }

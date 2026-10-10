@@ -88,6 +88,8 @@ const MenuFlyout: React.FC<MenuFlyoutProps> = ({
       const target = event.target as Node;
       if (flyout_ref.current?.contains(target)) return;
       if (anchor_el?.contains(target)) return;
+      // A flyout nested inside this one (e.g. "More" > "Form") portals next to it, not inside it.
+      if (target instanceof Element && target.closest("[data-board-menu-flyout]")) return;
       onClose();
     };
     const handleKeyDown = (event: KeyboardEvent) => {

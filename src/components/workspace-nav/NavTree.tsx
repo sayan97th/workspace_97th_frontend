@@ -15,8 +15,6 @@ import {
 import type { CreateNavItemPayload, WorkspaceNavNode } from "@/types/workspace";
 import {
   ArchiveIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   CloseIcon,
   DashboardIcon,
   DeleteIcon,
@@ -32,13 +30,17 @@ import {
   PlusIcon,
   RenameIcon,
   SidebarFolderIcon,
-  SortIcon,
+  SortArrowsIcon,
   StarIcon,
+  CollapseFoldersIcon,
+  ExpandFoldersIcon,
 } from "@/icons/workspace-icons";
 import NavTreeRow from "./NavTreeRow";
 import NavItemIcon from "./NavItemIcon";
 import FolderColorPopover from "./FolderColorPopover";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
+import AddNewContentMenu from "./AddNewContentMenu";
 import NavItemFormModal from "./NavItemFormModal";
 import MoveNavItemModal from "./MoveNavItemModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -66,8 +68,8 @@ type MenuState = {
   is_open: boolean;
   /** The clicked kebab/add button, {@link AnchoredMenu} measures itself against it. */
   anchor_el: HTMLElement | null;
-  /** "root": the header's "+" menu, "header": the header's "..." menu, a node: that row's kebab menu. */
-  target: "root" | "header" | WorkspaceNavNode | null;
+  /** "add": the header's "+" menu, "header": the header's "..." menu, a node: that row's kebab menu. */
+  target: "add" | "header" | WorkspaceNavNode | null;
 };
 
 /** What the name dialog creates: a folder or one kind of board, at the root or inside a folder. */
@@ -116,8 +118,9 @@ const isLeafActive = (pathname: string, href: string): boolean => pathname === h
  *   select, Escape to clear) with a roving tabindex.
  * - Multi-select (Ctrl/Cmd+click, Shift+click) with a bulk bar to move,
  *   archive or delete the selection.
- * - Inline rename (double click or F2), folder colors, and a header menu
- *   with Expand all, Collapse all and Sort A to Z.
+ * - Inline rename (double click or F2), folder colors, and a monday.com
+ *   style Content header: "..." collapses (or expands) every folder and
+ *   sorts A to Z, "+" opens the "Add to workspace" menu.
  */
 const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "" }) => {
   const pathname = usePathname() ?? "";
@@ -408,25 +411,38 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
     }
   };
 
-  const buildRootItems = (): AnchoredMenuItem[] =>
-    CREATE_OPTIONS.map((option) => ({ key: option.key, label: option.label, icon: option.icon, onClick: () => openCreateForm(option, null) }));
-
-  const buildHeaderItems = (): AnchoredMenuItem[] => {
+  const buildHeaderSections = (): ActionMenuSection[] => {
     const group_ids = collectGroupIds(nav.tree).map(Number);
+    // One toggle, like monday.com: collapse while any folder is open, expand once all are closed.
+    const has_open_folder = group_ids.some((group_id) => nav.isGroupExpanded(group_id));
     return [
-      { key: "expand-all", label: "Expand all folders", icon: <ChevronDownIcon size={13} />, disabled: group_ids.length === 0, onClick: () => nav.setGroupsExpanded(group_ids, true) },
-      { key: "collapse-all", label: "Collapse all folders", icon: <ChevronRightIcon size={13} />, disabled: group_ids.length === 0, onClick: () => nav.setGroupsExpanded(group_ids, false) },
       {
-        key: "sort",
-        label: "Sort A to Z",
-        icon: <SortIcon />,
-        disabled: nav.tree.length < 2 && group_ids.length === 0,
-        onClick: () => {
-          nav
-            .sortAlphabetically()
-            .then(() => toast.success("Sorted folders and boards A to Z"))
-            .catch((error) => toast.error(apiErrorMessage(error, "We couldn't sort this workspace.")));
-        },
+        key: "content",
+        items: [
+          has_open_folder || group_ids.length === 0
+            ? {
+                key: "collapse-all",
+                label: "Collapse all folders",
+                icon: <CollapseFoldersIcon />,
+                disabled: group_ids.length === 0,
+                disabled_reason: "This workspace has no folders",
+                onClick: () => nav.setGroupsExpanded(group_ids, false),
+              }
+            : { key: "expand-all", label: "Expand all folders", icon: <ExpandFoldersIcon />, onClick: () => nav.setGroupsExpanded(group_ids, true) },
+          {
+            key: "sort",
+            label: "Sort by alphabetical order",
+            icon: <SortArrowsIcon />,
+            disabled: nav.tree.length < 2 && group_ids.length === 0,
+            disabled_reason: "Nothing to sort yet",
+            onClick: () => {
+              nav
+                .sortAlphabetically()
+                .then(() => toast.success("Sorted folders and boards A to Z"))
+                .catch((error) => toast.error(apiErrorMessage(error, "We couldn't sort this workspace.")));
+            },
+          },
+        ],
       },
     ];
   };
@@ -480,9 +496,9 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
     return items;
   };
 
-  const menu_items =
-    menu.target === "root" ? buildRootItems() : menu.target === "header" ? buildHeaderItems() : menu.target ? buildNodeItems(menu.target) : [];
-  const menu_title = menu.target && typeof menu.target === "object" ? menu.target.label : menu.target === "header" ? "Content" : undefined;
+  const row_menu_node = menu.target && typeof menu.target === "object" ? menu.target : null;
+  const header_button_class =
+    "flex h-6 w-6 items-center justify-center rounded text-sidebar-text transition-colors hover:bg-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-focus";
 
   // ── Mutations with feedback ─────────────────────────────────────────────
 
@@ -521,26 +537,34 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
 
   return (
     <>
-      <div className="flex items-center justify-between px-2 pb-1 pt-1.5 text-xs font-medium text-sidebar-text-secondary">
-        <span>{is_searching ? "Search results" : "Content"}</span>
-        <div className="flex items-center gap-0.5">
+      <div
+        className={`group/content-header mb-0.5 flex h-8 items-center justify-between rounded-md pl-2 pr-1 transition-colors hover:bg-sidebar-hover ${
+          menu.target === "header" || menu.target === "add" ? "bg-sidebar-hover" : ""
+        }`}
+      >
+        <span className="truncate text-[13px] font-semibold text-sidebar-text">{is_searching ? "Search results" : "Content"}</span>
+        <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={(event) => setMenu({ is_open: true, anchor_el: event.currentTarget, target: "header" })}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-text-secondary transition-colors hover:bg-sidebar-hover hover:text-sidebar-text"
+            className={`${header_button_class} ${menu.target === "header" ? "bg-sidebar-active" : ""}`}
             aria-label="Content options"
+            aria-haspopup="menu"
+            aria-expanded={menu.target === "header"}
             title="Content options"
           >
-            <MoreDotsIcon size={13} />
+            <MoreDotsIcon size={16} />
           </button>
           <button
             type="button"
-            onClick={(event) => setMenu({ is_open: true, anchor_el: event.currentTarget, target: "root" })}
-            className="flex h-6 w-6 items-center justify-center rounded-md text-sidebar-text-secondary transition-colors hover:bg-sidebar-hover hover:text-sidebar-text"
-            aria-label="Add navigation item"
-            title="Add"
+            onClick={(event) => setMenu({ is_open: true, anchor_el: event.currentTarget, target: "add" })}
+            className={`${header_button_class} ${menu.target === "add" ? "bg-sidebar-active" : ""}`}
+            aria-label="Add to workspace"
+            aria-haspopup="menu"
+            aria-expanded={menu.target === "add"}
+            title="Add to workspace"
           >
-            <PlusIcon size={14} />
+            <PlusIcon size={16} />
           </button>
         </div>
       </div>
@@ -638,13 +662,24 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
 
       <AnchoredMenu
         anchor_el={menu.anchor_el}
-        is_open={menu.is_open}
-        title={menu_title}
-        items={menu_items}
+        is_open={menu.is_open && row_menu_node !== null}
+        title={row_menu_node?.label}
+        items={row_menu_node ? buildNodeItems(row_menu_node) : []}
         width={214}
         align="end"
         onClose={closeMenu}
       />
+
+      <ActionMenu
+        anchor_el={menu.anchor_el}
+        is_open={menu.is_open && menu.target === "header"}
+        onClose={closeMenu}
+        sections={menu.target === "header" ? buildHeaderSections() : []}
+        aria_label="Content options"
+        width={256}
+      />
+
+      <AddNewContentMenu anchor_el={menu.anchor_el} is_open={menu.is_open && menu.target === "add"} onClose={closeMenu} nav={nav} />
 
       <FolderColorPopover
         anchor_el={color_target.anchor_el}

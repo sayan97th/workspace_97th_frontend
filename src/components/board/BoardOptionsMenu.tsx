@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import {
@@ -94,6 +94,9 @@ type ConfirmKind = "archive" | "delete" | null;
  * {@link BoardHeader} already owns its "Board info" popover — the caller
  * only ever supplies raw board data and a handful of mutation callbacks.
  */
+/** Query flag that opens the import wizard as soon as the board loads. */
+const IMPORT_ON_OPEN_PARAM = "import";
+
 const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   anchor_el,
   is_open,
@@ -132,6 +135,18 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   const [is_duplicating, setIsDuplicating] = useState(false);
   const [is_fullscreen, setIsFullscreen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
+  const search_params = useSearchParams();
+
+  // "Add to workspace" > "More" > "Import data" creates a board and lands here with `?import=1`.
+  useEffect(() => {
+    if (search_params.get(IMPORT_ON_OPEN_PARAM) !== "1") return;
+    setIsImportOpen(true);
+    const next_params = new URLSearchParams(search_params.toString());
+    next_params.delete(IMPORT_ON_OPEN_PARAM);
+    const query = next_params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [search_params, pathname, router]);
 
   useEffect(() => {
     const handleFullscreenChange = () => setIsFullscreen(document.fullscreenElement !== null);
