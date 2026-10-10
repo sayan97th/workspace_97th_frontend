@@ -41,13 +41,14 @@ export default function AdminLayout({
         <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
           <AppTopBar />
           <ImpersonationBanner />
-          <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+          <div className="relative flex min-h-0 w-full flex-1 overflow-hidden bg-sidebar-rail">
             <AppSidebar />
             <Backdrop />
-            {/* The page continues the sidebar panel's card: a top border, and the rounded corner once the panel is collapsed. */}
+            {/* The page continues the sidebar panel's card, its left border is the single divider between them,
+                and the corner rounds once the panel is collapsed. */}
             <main
-              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto border-t border-sidebar-border bg-shell-bg ${
-                isExpanded ? "" : "lg:rounded-tl-2xl lg:border-l"
+              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto border-t border-sidebar-edge bg-shell-bg lg:border-l ${
+                isExpanded ? "" : "lg:rounded-tl-2xl"
               }`}
             >
               {children}

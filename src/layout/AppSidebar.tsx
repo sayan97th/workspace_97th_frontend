@@ -454,7 +454,7 @@ const AppSidebar: React.FC = () => {
           ref={panel_ref}
           onMouseEnter={handlePeekEnter}
           onMouseLeave={handlePeekLeave}
-          className={`relative flex max-w-[calc(100vw-72px)] flex-none flex-col rounded-tl-2xl border-l border-t border-sidebar-border bg-sidebar-panel text-sidebar-text lg:absolute lg:bottom-0 lg:left-[72px] lg:top-0 lg:z-0 ${panel_motion_class} ${panel_state_class}`}
+          className={`relative flex max-w-[calc(100vw-72px)] flex-none flex-col rounded-tl-2xl border-l border-t border-sidebar-edge bg-sidebar-panel text-sidebar-text lg:absolute lg:bottom-0 lg:left-[72px] lg:top-0 lg:z-0 ${panel_motion_class} ${panel_state_class}`}
           style={{ width: sidebar_width }}
           aria-label={`${PANEL_TITLES[panel_view]} sidebar`}
         >
