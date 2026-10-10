@@ -5,13 +5,11 @@ import {
   CheckIcon,
   ChevronDownIcon,
   CrownIcon,
-  InviteIcon,
   MoreDotsIcon,
   StarIcon,
   WorkspaceTypeIcon,
 } from "@/icons/workspace-icons";
 import {
-  AgentsIcon,
   AutomateIcon,
   CommentIcon,
   IntegrateIcon,
@@ -78,16 +76,19 @@ export type BoardHeaderProps = {
 };
 
 // Header actions, view tabs and toolbar controls share the regular Figtree
-// `text-board-nav` style (see `src/styles/typography.css`).
+// `text-board-nav` style (see `src/styles/typography.css`). Colors come from
+// the monday palette BoardShell scopes on the chrome (`monday-palette.css`).
 const action_button_class =
-  "flex items-center gap-[7px] rounded-lg px-[11px] py-[6px] text-board-nav text-shell-text transition-colors hover:bg-shell-hover";
+  "flex h-8 items-center gap-2 rounded-[4px] px-2 text-board-nav text-shell-text transition-colors hover:bg-shell-hover";
 
 const icon_button_class =
-  "flex h-[34px] w-[34px] items-center justify-center rounded-lg text-shell-text-secondary transition-colors hover:bg-shell-hover";
+  "flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover";
 
 /**
- * Board title row: the board name (with favourite star + view switcher) on the
- * left and the Integrate / Automate / Agents / Invite cluster on the right.
+ * Board title row, matching monday.com: the board name and its info chevron
+ * as one button on the left (the favorite star lives inside the info
+ * popover), and the Integrate / Automate / updates / Invite cluster on the
+ * right. AI suggestions and Agents are intentionally not offered yet.
  */
 const BoardHeader: React.FC<BoardHeaderProps> = ({
   title,
@@ -131,40 +132,48 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
     }
   };
 
+  const favorite_label = is_favorite ? "Remove from favorites" : "Add to favorites";
+
+  const favorite_button = onToggleFavorite ? (
+    <button
+      type="button"
+      onClick={onToggleFavorite}
+      aria-pressed={is_favorite}
+      aria-label={favorite_label}
+      title={favorite_label}
+      className={`flex h-8 w-8 flex-none items-center justify-center rounded-[4px] transition-colors hover:bg-shell-hover ${is_favorite ? "text-sunset-200" : "text-shell-text-secondary"}`}
+    >
+      <StarIcon filled={is_favorite} size={18} />
+    </button>
+  ) : (
+    is_favorite && (
+      <span className="flex h-8 w-8 flex-none items-center justify-center text-sunset-200">
+        <StarIcon filled size={18} />
+      </span>
+    )
+  );
+
   return (
-    <div className="flex items-center gap-[9px]">
-      <h1 className="min-w-0 truncate font-heading text-board-title text-shell-text">
-        {title}
-      </h1>
-      {onToggleFavorite ? (
+    <div className="flex min-h-10 items-center gap-2">
+      <h1 className="flex min-w-0 font-heading text-board-title text-shell-text">
         <button
+          ref={info_button_ref}
           type="button"
-          onClick={onToggleFavorite}
-          aria-pressed={is_favorite}
-          aria-label={is_favorite ? "Remove from favorites" : "Add to favorites"}
-          title={is_favorite ? "Remove from favorites" : "Add to favorites"}
-          className={`flex flex-none rounded-md p-0.5 transition-colors hover:bg-shell-hover ${is_favorite ? "text-sunset-200" : "text-shell-text-faint hover:text-shell-text-muted"}`}
+          onClick={() => info && setIsInfoOpen((open) => !open)}
+          className={`flex min-w-0 items-center gap-1 rounded-[4px] px-1.5 transition-colors hover:bg-shell-hover ${is_info_open ? "bg-shell-hover" : ""} ${info ? "" : "cursor-default"}`}
+          aria-label={`${title}, board info`}
+          aria-haspopup={info ? "dialog" : undefined}
+          aria-expanded={info ? is_info_open : undefined}
         >
-          <StarIcon filled={is_favorite} size={19} />
+          <span className="truncate">{title}</span>
+          <ChevronDownIcon
+            size={18}
+            className={`flex-none text-shell-text transition-transform ${is_info_open ? "rotate-180" : ""}`}
+          />
         </button>
-      ) : (
-        is_favorite && (
-          <span className="flex flex-none text-sunset-200">
-            <StarIcon filled size={19} />
-          </span>
-        )
-      )}
-      <button
-        ref={info_button_ref}
-        type="button"
-        onClick={() => info && setIsInfoOpen((open) => !open)}
-        className={`flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover ${is_info_open ? "bg-shell-hover" : ""
-          }`}
-        aria-label="Board info"
-        aria-expanded={is_info_open}
-      >
-        <ChevronDownIcon size={13} className={is_info_open ? "rotate-180" : ""} />
-      </button>
+      </h1>
+      {/* Without the info popover there is nowhere else to star the board, so the star stays inline. */}
+      {!info && favorite_button}
       {title_badge}
       {info && (
         <InfoDropdown
@@ -172,6 +181,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           is_open={is_info_open}
           onClose={() => setIsInfoOpen(false)}
           title={title}
+          title_action={favorite_button}
+          className="board-chrome-theme"
+          width={420}
           section_label="Board info"
           description={info.description}
           rows={[
@@ -180,13 +192,13 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               label: "Board type",
               value: (
                 <>
-                  <WorkspaceTypeIcon size={15} className="flex-none text-shell-text-muted" />
+                  <WorkspaceTypeIcon size={15} className="flex-none text-shell-text-secondary" />
                   <span className="flex-1">
                     {BOARD_TYPE_OPTIONS.find((option) => option.value === info.board_type)?.label ??
                       "Main"}
                   </span>
                   {info.can_change_board_type && (
-                    <ChevronDownIcon size={13} className="flex-none -rotate-90 text-shell-text-faint" />
+                    <ChevronDownIcon size={14} className="flex-none text-shell-text" />
                   )}
                 </>
               ),
@@ -202,7 +214,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               label: "Owners",
               value: (
                 <>
-                  <CrownIcon size={15} className="flex-none text-shell-text-muted" />
+                  <CrownIcon size={15} className="flex-none text-shell-text-secondary" />
                   <span className="flex-1">
                     <PersonAvatarStack people={info.owners} />
                   </span>
@@ -214,7 +226,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               label: "Created by",
               value: info.created_by ? (
                 <>
-                  <span className="flex h-5 w-5 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[9px] font-bold text-white">
+                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#E5623E,#8A2018)] text-[10px] font-bold text-white">
                     {info.created_by
                       .split(" ")
                       .map((part) => part[0])
@@ -222,9 +234,9 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
                       .slice(0, 2)
                       .toUpperCase()}
                   </span>
-                  <span className="flex-1">
+                  <span className="flex-1 truncate">
                     {info.created_by}
-                    {info.created_at ? ` · ${info.created_at}` : ""}
+                    {info.created_at ? ` on ${info.created_at}` : ""}
                   </span>
                 </>
               ) : (
@@ -236,7 +248,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
               label: "Notifications",
               value: (
                 <>
-                  <BellIcon size={14} className="flex-none text-shell-text-muted" />
+                  <BellIcon size={15} className="flex-none text-shell-text-secondary" />
                   <span className="flex-1">{info.notifications}</span>
                 </>
               ),
@@ -247,26 +259,15 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
 
       <div className="flex-1" />
 
-      <div className="flex items-center gap-0.5">
+      <div className="flex flex-none items-center gap-1">
         <button type="button" onClick={onIntegrateClick} className={`${action_button_class} hidden md:flex`}>
-          <span className="text-shell-text-secondary">
-            <IntegrateIcon />
-          </span>
+          <IntegrateIcon size={16} />
           Integrate
         </button>
-        <button type="button" onClick={onAutomateClick} className={`${action_button_class} relative hidden md:flex`}>
-          <span className="text-shell-text-secondary">
-            <AutomateIcon />
-          </span>
-          Automate
-          {automation_count > 0 && (
-            <span className="flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#4c7cf3] px-1 text-[10.5px] font-bold leading-none text-white">
-              {automation_count}
-            </span>
-          )}
+        <button type="button" onClick={onAutomateClick} className={`${action_button_class} hidden md:flex`}>
+          <AutomateIcon size={16} />
+          {automation_count > 0 ? `Automate / ${automation_count}` : "Automate"}
         </button>
-
-        <span className="mx-1.5 hidden h-5 w-px bg-shell-border-strong md:block" />
 
         <button
           type="button"
@@ -276,10 +277,10 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             board_updates_count > 0 ? `Board updates, ${board_updates_count} comments` : "Board updates"
           }
         >
-          <CommentIcon />
+          <CommentIcon size={17} />
           {board_updates_count > 0 && (
             <span
-              className={`absolute -right-1 -top-1 flex h-[17px] min-w-[17px] items-center justify-center rounded-full px-1 text-[10.5px] font-bold leading-none ${board_updates_unseen ? "bg-brand-500/15 text-brand-500" : "bg-shell-hover-strong text-shell-text-secondary"
+              className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold leading-none ${board_updates_unseen ? "bg-brand-500 text-white" : "bg-shell-hover-strong text-shell-text"
                 }`}
             >
               {board_updates_count > 99 ? "99+" : board_updates_count}
@@ -287,25 +288,20 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           )}
         </button>
 
-        {presence && (
-          <>
-            <span className="mx-1.5 h-5 w-px bg-shell-border-strong" />
-            {presence}
-          </>
-        )}
+        {presence}
 
         {current_user && board_id !== undefined && (
           <>
-            <Tooltip content="View activity log" placement="bottom" className="mx-1">
+            <Tooltip content="View activity log" placement="bottom">
               <button
                 type="button"
                 onClick={() => setIsActivityLogOpen(true)}
-                className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-lg transition-colors hover:bg-shell-hover"
+                className="flex h-8 w-8 flex-none items-center justify-center rounded-[4px] transition-colors hover:bg-shell-hover"
                 aria-label="View activity log"
                 aria-haspopup="dialog"
                 aria-expanded={is_activity_log_open}
               >
-                <PersonAvatar person={current_user} size={28} />
+                <PersonAvatar person={current_user} size={26} />
               </button>
             </Tooltip>
             <BoardActivityLogDrawer
@@ -316,33 +312,35 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           </>
         )}
 
-        <button
-          type="button"
-          onClick={onInviteClick}
-          className="flex items-center gap-[7px] rounded-lg border border-shell-border-strong px-[13px] py-[6px] text-board-nav text-shell-text transition-colors hover:border-brand-500"
-        >
-          <InviteIcon size={14} />
-          Invite / {invite_count}
-        </button>
+        {/* Invite and Copy link read as one split button, as on monday. */}
+        <div className="ml-1 flex h-8 flex-none items-stretch overflow-hidden rounded-[4px] border border-shell-border-strong">
+          <button
+            type="button"
+            onClick={onInviteClick}
+            className="flex items-center px-2.5 text-board-nav text-shell-text transition-colors hover:bg-shell-hover"
+          >
+            Invite / {invite_count}
+          </button>
+          <button
+            type="button"
+            onClick={handleCopyLink}
+            className="hidden w-8 items-center justify-center border-l border-shell-border-strong text-shell-text transition-colors hover:bg-shell-hover sm:flex"
+            aria-label={is_link_copied ? "Board link copied" : "Copy board link"}
+            title={is_link_copied ? "Link copied!" : "Copy board link"}
+          >
+            {is_link_copied ? <CheckIcon size={14} className="text-success-400" /> : <LinkIcon size={16} />}
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={handleCopyLink}
-          className={`${icon_button_class} hidden sm:flex`}
-          aria-label={is_link_copied ? "Board link copied" : "Copy board link"}
-          title={is_link_copied ? "Link copied!" : "Copy board link"}
-        >
-          {is_link_copied ? <CheckIcon size={14} className="text-success-400" /> : <LinkIcon />}
-        </button>
         <button
           ref={options_button_ref}
           type="button"
           onClick={() => options_menu && setIsOptionsOpen((open) => !open)}
-          className={`${icon_button_class} hidden sm:flex ${is_options_open ? "bg-shell-hover" : ""}`}
+          className={`${icon_button_class} ml-1 hidden sm:flex ${is_options_open ? "bg-shell-hover" : ""}`}
           aria-label="More board actions"
           aria-expanded={is_options_open}
         >
-          <MoreDotsIcon />
+          <MoreDotsIcon size={18} />
         </button>
         {options_menu && (
           <BoardOptionsMenu

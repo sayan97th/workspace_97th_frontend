@@ -44,11 +44,13 @@ export type BoardViewTypeOption = {
    * component is built for them.
    */
   is_available: boolean;
+  /** Flags a recently shipped kind with a "New" badge in the picker. */
+  is_new?: boolean;
 };
 
 /**
  * The ordered list of view kinds the "+" tab-bar picker offers, matching
- * Monday's own "Board views" menu. `table` and `kanban` are fully
+ * Monday's own "Board views" menu, in its order. `table` and `kanban` are fully
  * implemented; the rest are reserved categories a board can already be
  * planned around (see {@link BoardViewTypeOption.is_available}).
  */
@@ -58,20 +60,6 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     label: "Table",
     description: "Rows and columns, grouped into tables",
     Icon: TableViewIcon,
-    is_available: true,
-  },
-  {
-    kind: "kanban",
-    label: "Kanban",
-    description: "Cards in lanes, grouped by a status column",
-    Icon: KanbanViewIcon,
-    is_available: true,
-  },
-  {
-    kind: "doc",
-    label: "Doc",
-    description: "A collaborative document",
-    Icon: FileIcon,
     is_available: true,
   },
   {
@@ -96,11 +84,26 @@ export const BOARD_VIEW_TYPES: BoardViewTypeOption[] = [
     is_available: true,
   },
   {
+    kind: "kanban",
+    label: "Kanban",
+    description: "Cards in lanes, grouped by a status column",
+    Icon: KanbanViewIcon,
+    is_available: true,
+    is_new: true,
+  },
+  {
     kind: "canvas",
     label: "Canvas",
     description: "A freeform space to brainstorm and sketch",
     Icon: CanvasViewIcon,
     is_available: false,
+  },
+  {
+    kind: "doc",
+    label: "Doc",
+    description: "A collaborative document",
+    Icon: FileIcon,
+    is_available: true,
   },
   {
     kind: "file_gallery",

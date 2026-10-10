@@ -1,0 +1,58 @@
+/*
+ * monday.com board palette, light mode only.
+ *
+ * The boardtree and shell tokens are shared app wide (Kanban, Calendar, the
+ * item drawer, the sidebar...), so instead of changing them globally every
+ * monday styled surface redeclares them on its own wrapper:
+ *
+ * - `board-table-theme`: the Table view body (BoardTable and its drag preview).
+ * - `board-chrome-theme`: the rows above any board body, the title row, the
+ *   view tabs and the toolbar (BoardShell).
+ *
+ * Every `bg-boardtree-*`/`text-shell-*` utility inside those wrappers reads
+ * these values, while dark mode keeps the hand tuned set from `globals.css`.
+ */
+html:not(.dark) .board-table-theme,
+html:not(.dark) .board-chrome-theme {
+  /* The page behind the tables and their sticky group headers, kept equal to the app shell so no band shows. */
+  --color-boardtree-bg: var(--color-shell-bg);
+  --color-boardtree-surface: #ffffff;
+  --color-boardtree-panel-alt: #f6f7fb;
+  --color-boardtree-border: #d0d4e4;
+  --color-boardtree-border-soft: #e7e9ef;
+  --color-boardtree-hover: #f5f6f8;
+  --color-boardtree-hover-strong: #dcdfec;
+  --color-boardtree-selected: #cce5ff;
+  --color-boardtree-text: #323338;
+  --color-boardtree-text-secondary: #676879;
+  --color-boardtree-text-muted: #676879;
+  --color-boardtree-text-faint: #9699a6;
+  --color-boardtree-accent: #0073ea;
+  --color-boardtree-accent-hover: #0060b9;
+  --color-boardtree-accent-soft: #aed4fc;
+  --color-boardtree-accent-surface: #cce5ff;
+  --color-boardtree-danger: #d83a52;
+  --color-boardtree-danger-hover: #fbe9ec;
+  --color-boardtree-track: #e6e9ef;
+  --color-boardtree-ring: rgba(50, 51, 56, 0.55);
+  --color-boardtree-scrollbar-thumb: rgba(50, 51, 56, 0.2);
+  --color-boardtree-grid: #d0d4e4;
+  --color-boardtree-control-border: #c3c6d4;
+  --color-boardtree-empty: #c4c4c4;
+}
+
+/*
+ * The board chrome is built on the `shell-*` tokens, so it also gets
+ * monday's text grays, its #dcdfec hover and its light separators. Toolbar
+ * buttons already read the boardtree tokens above.
+ */
+html:not(.dark) .board-chrome-theme {
+  --color-shell-text: #323338;
+  --color-shell-text-secondary: #676879;
+  --color-shell-text-muted: #676879;
+  --color-shell-text-faint: #9699a6;
+  --color-shell-hover: #dcdfec;
+  --color-shell-hover-strong: #c3c6d4;
+  --color-shell-border: #e7e9ef;
+  --color-shell-border-strong: #c3c6d4;
+}

@@ -40,7 +40,9 @@ import {
   UnlockIcon,
   ViewsIcon,
 } from "@/icons/workspace-icons";
-import { PinIcon, TableViewIcon } from "@/icons/board-icons";
+import { PinIcon } from "@/icons/board-icons";
+import { ReactSmileyIcon } from "@/icons/drawer-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import AddBoardViewMenu from "./AddBoardViewMenu";
 import type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
 import BoardViewEmojiPicker from "./BoardViewEmojiPicker";
@@ -152,10 +154,7 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
 
   return (
     <div className="flex items-center gap-0.5 border-b border-shell-border">
-      <span className="-mb-px flex items-center gap-2 border-b-2 border-brand-500 px-3 py-[9px] text-board-nav text-shell-text">
-        <span className="text-[#00c875]">
-          <TableViewIcon />
-        </span>
+      <span className="-mb-px flex items-center gap-2 border-b-2 border-boardtree-accent px-3 py-[9px] text-board-nav text-shell-text">
         {primary_label}
         <span className="text-shell-text-muted">
           <MoreDotsIcon size={12} />
@@ -165,19 +164,21 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
       {views.map((view, index) => (
         <span
           key={`${view}-${index}`}
-          className="-mb-px cursor-pointer whitespace-nowrap border-b-2 border-transparent px-3 py-[9px] text-board-nav text-shell-text transition-colors hover:border-shell-border-strong"
+          className="-mb-px cursor-pointer whitespace-nowrap rounded-t-[4px] border-b-2 border-transparent px-3 py-[9px] text-board-nav text-shell-text transition-colors hover:bg-shell-hover"
         >
           {view}
         </span>
       ))}
 
-      <button
-        type="button"
-        className="flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-        aria-label="Add view"
-      >
-        <PlusIcon size={15} />
-      </button>
+      <Tooltip content="Add view" placement="right" className="ml-1 flex">
+        <button
+          type="button"
+          className="flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover"
+          aria-label="Add view"
+        >
+          <PlusIcon size={15} />
+        </button>
+      </Tooltip>
     </div>
   );
 };
@@ -443,6 +444,14 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         onClick: () => setDescriptionId(tab.id),
       });
     }
+    if (onChangeEmoji && !is_locked) {
+      items.push({
+        key: "icon",
+        label: tab.emoji ? "Change icon" : "Add icon",
+        icon: <ReactSmileyIcon size={14} />,
+        onClick: () => setEmojiPickerId(tab.id),
+      });
+    }
     if (onPinView) {
       items.push({ key: "pin", label: tab.pinned ? "Unpin view" : "Pin view", icon: <PinIcon size={14} />, onClick: () => onPinView(tab.id) });
     }
@@ -580,7 +589,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
             <ViewTabFace
               tab={{ ...dragging_tab, is_primary: isPrimary(dragging_tab) }}
               has_menu
-              className="cursor-grabbing rounded-lg border border-brand-500/60 bg-shell-panel motion-safe:animate-[view-tab-lift_160ms_ease-out_forwards]"
+              className="cursor-grabbing rounded-[4px] border border-boardtree-accent/60 bg-shell-panel motion-safe:animate-[view-tab-lift_160ms_ease-out_forwards]"
             />
           ) : null}
         </DragOverlay>
@@ -594,7 +603,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
           aria-haspopup="menu"
           aria-expanded={is_more_menu_open}
           aria-label={overflow_tabs.length > 0 ? `${overflow_tabs.length} more views` : `${hidden_tabs.length} hidden views`}
-          className={`flex h-[30px] flex-none items-center gap-1 rounded-[7px] px-2.5 text-board-nav transition-colors hover:bg-shell-hover hover:text-shell-text ${
+          className={`flex h-8 flex-none items-center gap-1 rounded-[4px] px-2.5 text-board-nav transition-colors hover:bg-shell-hover hover:text-shell-text ${
             is_more_menu_open ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
           }`}
         >
@@ -610,15 +619,22 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         </button>
       )}
 
-      <button
-        ref={add_view_button_ref}
-        type="button"
-        onClick={() => (view_type_options ? setIsViewTypeMenuOpen(true) : onAddView?.())}
-        className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-        aria-label="Add view"
+      {/* Hides only the bubble while the menu is open. Toggling `disabled` would remount the button and detach the menu's anchor. */}
+      <Tooltip
+        content="Add view"
+        placement="right"
+        className={`ml-1 flex flex-none ${is_view_type_menu_open ? "[&>[role=tooltip]]:hidden" : ""}`}
       >
-        <PlusIcon size={15} />
-      </button>
+        <button
+          ref={add_view_button_ref}
+          type="button"
+          onClick={() => (view_type_options ? setIsViewTypeMenuOpen(true) : onAddView?.())}
+          className={`flex h-8 w-8 flex-none items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover ${is_view_type_menu_open ? "bg-shell-hover" : ""}`}
+          aria-label="Add view"
+        >
+          <PlusIcon size={15} />
+        </button>
+      </Tooltip>
 
       {view_type_options && (
         <AddBoardViewMenu
@@ -646,7 +662,11 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
 
       {onChangeEmoji && (
         <BoardViewEmojiPicker
-          anchor_el={emoji_picker_id !== null ? emoji_button_refs.current[String(emoji_picker_id)] ?? null : null}
+          anchor_el={
+            emoji_picker_id !== null
+              ? emoji_button_refs.current[String(emoji_picker_id)] ?? tab_refs.current[String(emoji_picker_id)] ?? null
+              : null
+          }
           is_open={emoji_tab !== null}
           onClose={() => setEmojiPickerId(null)}
           current_emoji={emoji_tab?.emoji ?? null}

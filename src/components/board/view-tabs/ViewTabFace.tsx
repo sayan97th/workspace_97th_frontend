@@ -8,6 +8,9 @@ import type { BoardViewTabItem } from "../BoardViewTabs";
 /** Shared spacing of every tab, so the measuring row, the drag preview and the real tab have the same width. */
 export const VIEW_TAB_PADDING_CLASS = "flex items-center gap-1.5 px-3 py-[9px]";
 
+/** monday shows tabs as plain text, so only a tab the user gave an emoji carries a leading glyph. */
+export const hasViewTabGlyph = (tab: BoardViewTabItem): boolean => Boolean(tab.emoji);
+
 /**
  * The tab's leading glyph: its emoji when it has one, else the icon of its
  * view type (Table, Kanban, Doc...). The primary tab keeps the green table
@@ -65,9 +68,11 @@ const ViewTabFace: React.FC<ViewTabFaceProps> = ({ tab, has_menu = false, classN
         <PinIcon size={11} />
       </span>
     )}
-    <span className={`flex flex-none items-center ${viewTabIconColorClass(tab)}`}>
-      <ViewTabIcon tab={tab} />
-    </span>
+    {hasViewTabGlyph(tab) && (
+      <span className={`flex flex-none items-center ${viewTabIconColorClass(tab)}`}>
+        <ViewTabIcon tab={tab} />
+      </span>
+    )}
     <span className="flex items-center gap-1 whitespace-nowrap text-board-nav text-shell-text">
       <ViewTabLabel tab={tab} />
     </span>

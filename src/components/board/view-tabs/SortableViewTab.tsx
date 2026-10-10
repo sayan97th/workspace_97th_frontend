@@ -6,7 +6,7 @@ import { MoreDotsIcon } from "@/icons/workspace-icons";
 import { PinIcon } from "@/icons/board-icons";
 import InlineTitleEditor from "../InlineTitleEditor";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-import { VIEW_TAB_PADDING_CLASS, ViewTabIcon, ViewTabLabel, viewTabIconColorClass } from "./ViewTabFace";
+import { VIEW_TAB_PADDING_CLASS, ViewTabIcon, ViewTabLabel, hasViewTabGlyph, viewTabIconColorClass } from "./ViewTabFace";
 
 /** Slide timing shared by every tab that moves, whether by dragging or by the "Reorder" menu. */
 export const VIEW_TAB_TRANSITION = { duration: 240, easing: "cubic-bezier(0.25, 1, 0.5, 1)" };
@@ -101,8 +101,8 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
   const state_class = isDragging
     ? "rounded-md border-transparent bg-brand-500/[0.08] outline-dashed outline-1 -outline-offset-1 outline-brand-500/60 [&>*]:opacity-40"
     : is_active
-      ? "border-brand-500"
-      : "border-transparent transition-colors hover:border-shell-border-strong";
+      ? "border-boardtree-accent"
+      : "rounded-t-[4px] border-transparent transition-colors hover:bg-shell-hover";
 
   const label_content = <ViewTabLabel tab={tab} />;
 
@@ -124,7 +124,7 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
         </span>
       )}
 
-      {can_change_emoji ? (
+      {!hasViewTabGlyph(tab) ? null : can_change_emoji ? (
         <button
           ref={emojiButtonRef}
           type="button"

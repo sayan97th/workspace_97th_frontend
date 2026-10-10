@@ -2,6 +2,7 @@
 import React from "react";
 import BoardHeader, { type BoardHeaderProps } from "./BoardHeader";
 import BoardViewTabs, { type BoardViewTabsProps } from "./BoardViewTabs";
+import "./monday-palette.css";
 
 export type BoardShellProps = {
   header: BoardHeaderProps;
@@ -24,15 +25,18 @@ export type BoardShellProps = {
  */
 const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectionBar, children }) => (
   <div className="relative flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
-    <div className="flex-none px-6 pt-4">
-      <BoardHeader {...header} />
-      <div className="mt-3.5">
-        <BoardViewTabs {...tabs} />
+    {/* `board-chrome-theme` repaints the title row, tabs and toolbar with the monday palette (see `monday-palette.css`). */}
+    <div className="board-chrome-theme flex-none">
+      <div className="px-6 pt-4">
+        <BoardHeader {...header} />
+        <div className="mt-2">
+          <BoardViewTabs {...tabs} />
+        </div>
       </div>
-    </div>
 
-    <div className="flex-none px-6 py-3">
-      {toolbar}
+      <div className="px-6 py-3">
+        {toolbar}
+      </div>
     </div>
 
     {/*

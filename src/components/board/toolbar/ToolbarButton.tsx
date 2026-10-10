@@ -7,7 +7,7 @@ export type ToolbarButtonProps = {
   is_open?: boolean;
   has_selection?: boolean;
   badge_count?: number;
-  /** Filter uses the brand accent when open, matching the "New item" button. Other controls use a neutral highlight. */
+  /** Filter uses the light accent surface while open or applied, as on monday. Other controls use a neutral highlight. */
   variant?: "neutral" | "accent";
   /** Defaults to `label` when set; required when `label` is empty (e.g. the icon-only overflow button). */
   aria_label?: string;
@@ -24,7 +24,7 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
     const is_active = is_open || has_selection;
     const active_class =
       variant === "accent"
-        ? "bg-boardtree-accent text-white"
+        ? "bg-boardtree-accent-surface text-boardtree-text"
         : "bg-boardtree-hover-strong text-boardtree-text";
 
     return (
@@ -35,17 +35,13 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         aria-label={aria_label ?? label}
         aria-pressed={is_pressed}
         title={title}
-        className={`flex items-center gap-[7px] rounded-lg px-[11px] py-[6px] text-board-nav transition-colors ${
-          is_active ? active_class : "text-boardtree-text hover:bg-boardtree-hover"
+        className={`flex h-8 items-center gap-1.5 rounded-[4px] px-2 text-board-nav transition-colors ${
+          is_active ? active_class : "text-boardtree-text hover:bg-boardtree-hover-strong"
         }`}
       >
-        <Icon />
-        {label}
-        {badge_count ? (
-          <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gray-800 px-1 text-[11px] font-semibold text-white">
-            {badge_count}
-          </span>
-        ) : null}
+        <Icon size={16} />
+        {/* monday writes the count into the label, e.g. "Filter / 1". */}
+        {label && (badge_count ? `${label} / ${badge_count}` : label)}
       </button>
     );
   }

@@ -70,16 +70,20 @@ function BoardToolbar<TRow>({
   return (
     <div>
       <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
-        <div className="mr-2 flex flex-none items-center overflow-hidden rounded-lg bg-boardtree-accent">
-          <button type="button" onClick={onNewItem} className="px-3.5 py-[6px] text-board-nav text-white">
+        <div className="mr-3 flex h-8 flex-none items-stretch overflow-hidden rounded-[4px] bg-boardtree-accent text-white">
+          <button
+            type="button"
+            onClick={onNewItem}
+            className="px-2 text-board-nav transition-colors hover:bg-boardtree-accent-hover"
+          >
             {new_item_label}
           </button>
           <button
             type="button"
-            className="flex items-center self-stretch border-l border-white/25 px-2 text-white"
+            className="flex w-7 items-center justify-center border-l border-black/15 transition-colors hover:bg-boardtree-accent-hover"
             aria-label="New item options"
           >
-            <ChevronDownIcon size={11} />
+            <ChevronDownIcon size={14} />
           </button>
         </div>
 
@@ -96,10 +100,10 @@ function BoardToolbar<TRow>({
 
         <button
           type="button"
-          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-boardtree-text-muted transition-colors hover:bg-boardtree-hover"
+          className="flex h-6 w-6 flex-none items-center justify-center rounded-full border border-boardtree-border text-boardtree-text transition-colors hover:bg-boardtree-hover-strong"
           aria-label="Collapse all groups"
         >
-          <CollapseTableIcon />
+          <CollapseTableIcon size={14} />
         </button>
 
         <BoardPopover

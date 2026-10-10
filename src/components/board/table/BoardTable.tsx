@@ -16,6 +16,7 @@ import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
 import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEditorModal";
 import CellFilterContextMenu, { type CellFilterContextMenuTarget } from "./menus/CellFilterContextMenu";
+import "../monday-palette.css";
 import "./table-board.css";
 
 /** How many rows the Formula dialog collects to preview against, before it trims to what fits on screen. */
