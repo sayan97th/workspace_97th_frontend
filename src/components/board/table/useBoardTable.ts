@@ -1,5 +1,6 @@
 "use client";
 
+import { reorderByIds } from "../cells/optionOrder";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActiveCell,
@@ -219,6 +220,12 @@ export interface UseBoardTableConfig {
   onRecolorColumnOption?: (column_id: string, option_id: string, color: string) => void;
   /** Permanently removes one of a real column's own existing options. */
   onDeleteColumnOption?: (column_id: string, option_id: string) => void;
+  /** Flips one of a real column's options between active and deactivated (Edit Labels' "Deactivate label"). */
+  onToggleColumnOptionActive?: (column_id: string, option_id: string) => void;
+  /** Sets or clears (null) one of a real column's option descriptions (Edit Labels' "Add label description"). */
+  onSetColumnOptionDescription?: (column_id: string, option_id: string, description: string | null) => void;
+  /** Persists a real column's new label order after a drag in Edit Labels, as the full list of option ids. */
+  onReorderColumnOptions?: (column_id: string, ordered_ids: string[]) => void;
   /**
    * People cell picker's bottom toggle — flips whether assigning someone on
    * this column notifies them (in-app + email), persisted to the real
@@ -1987,6 +1994,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     });
   }, [nextId]);
 
+  const toggleStatusDefActive = useCallback((id: string) => {
+    setState((s) => ({ ...s, status_defs: s.status_defs.map((d) => (d.id === id ? { ...d, is_active: d.is_active === false } : d)) }));
+  }, []);
+
+  const setStatusDefDescription = useCallback((id: string, description: string | null) => {
+    setState((s) => ({ ...s, status_defs: s.status_defs.map((d) => (d.id === id ? { ...d, description } : d)) }));
+  }, []);
+
+  const reorderStatusDefs = useCallback((ordered_ids: string[]) => {
+    setState((s) => ({ ...s, status_defs: reorderByIds(s.status_defs, ordered_ids) }));
+  }, []);
+
   const renameStatusDef = useCallback((id: string, label: string) => {
     setState((s) => ({ ...s, status_defs: s.status_defs.map((d) => (d.id === id ? { ...d, label } : d)) }));
   }, []);
@@ -2081,6 +2100,39 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       })),
     }));
     config_ref.current.onDeleteColumnOption?.(column_id, option_id);
+  }, []);
+
+  /** Deactivates or reactivates one of a column's own options, see `renameColumnOption`. */
+  const toggleColumnOptionActive = useCallback((column_id: string, option_id: string) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        options: (c.options ?? []).map((o) => (o.id === option_id ? { ...o, is_active: o.is_active === false } : o)),
+      })),
+    }));
+    config_ref.current.onToggleColumnOptionActive?.(column_id, option_id);
+  }, []);
+
+  /** Sets or clears one of a column's own option descriptions, see `renameColumnOption`. */
+  const setColumnOptionDescription = useCallback((column_id: string, option_id: string, description: string | null) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({
+        ...c,
+        options: (c.options ?? []).map((o) => (o.id === option_id ? { ...o, description } : o)),
+      })),
+    }));
+    config_ref.current.onSetColumnOptionDescription?.(column_id, option_id, description);
+  }, []);
+
+  /** Reorders a column's own options after a drag in Edit Labels, see `renameColumnOption`. */
+  const reorderColumnOptions = useCallback((column_id: string, ordered_ids: string[]) => {
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, options: reorderByIds(c.options ?? [], ordered_ids) })),
+    }));
+    config_ref.current.onReorderColumnOptions?.(column_id, ordered_ids);
   }, []);
 
   /**
@@ -2363,6 +2415,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameStatusDef,
       setStatusDefColor,
       deleteStatusDef,
+      toggleStatusDefActive,
+      setStatusDefDescription,
+      reorderStatusDefs,
       addLabelDef,
       renameLabelDef,
       setLabelDefColor,
@@ -2371,6 +2426,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumnOption,
       recolorColumnOption,
       deleteColumnOption,
+      toggleColumnOptionActive,
+      setColumnOptionDescription,
+      reorderColumnOptions,
       toggleColumnNotifyOnAssignment,
       updateColumnFormula,
       updateColumnLinkedBoard,
@@ -2403,7 +2461,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
+      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
       setTagDefColor, deleteTagDef, setTagQuery, ensureLinkedBoardItems, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
@@ -2437,7 +2495,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
     "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "renameColumnOption",
-    "recolorColumnOption", "deleteColumnOption", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
+    "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",
+    "toggleStatusDefActive", "setStatusDefDescription", "reorderStatusDefs", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
     "updateColumnLinkedBoard", "updateColumnMirror",
   ];
 

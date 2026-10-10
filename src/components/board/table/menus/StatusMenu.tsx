@@ -12,6 +12,8 @@ interface StatusMenuProps {
   onClear: () => void;
   /** Rename/recolor/delete for the inline "Edit Labels" view. Omit to hide its footer. */
   option_actions?: BoardOptionActions;
+  /** Labels set on at least one loaded item, which can't be deleted. */
+  used_option_ids?: ReadonlySet<string>;
   /** Appends a label from the "+ New label" field. */
   onCreateOption?: (option: { label: string; color: string }) => void;
   onClose: () => void;
@@ -23,7 +25,7 @@ interface StatusMenuProps {
  * so the table picks and edits labels exactly like every other Status cell.
  * The grid draws its own card, so the panel is `unstyled`.
  */
-export default function StatusMenu({ status_defs, selected_id, onPick, onClear, option_actions, onCreateOption, onClose }: StatusMenuProps) {
+export default function StatusMenu({ status_defs, selected_id, onPick, onClear, option_actions, used_option_ids, onCreateOption, onClose }: StatusMenuProps) {
   // The fixed blank def is the "no status" pill the grid already renders on its own.
   const editable_defs = status_defs.filter((def) => !def.fixed && def.label);
 
@@ -34,6 +36,7 @@ export default function StatusMenu({ status_defs, selected_id, onPick, onClear, 
         selected_id={selected_id}
         onPick={(option_id) => (option_id === null ? onClear() : onPick(option_id))}
         option_actions={option_actions}
+        used_option_ids={used_option_ids}
         onCreateOption={
           onCreateOption
             ? async (option) => {

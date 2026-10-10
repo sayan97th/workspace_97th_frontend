@@ -17,6 +17,8 @@ export type StatusOptionGridProps = {
   option_actions?: BoardOptionActions;
   /** Creates a new option and resolves to it with its persisted id, shared with {@link EditLabelsPanel}'s own "+ New label" field. */
   onCreateOption?: (option: { label: string; color: string }) => Promise<BoardCellOption | null>;
+  /** Labels set on at least one item, which Edit Labels won't let you delete. */
+  used_option_ids?: ReadonlySet<string>;
 };
 
 /**
@@ -35,6 +37,7 @@ const StatusOptionGrid: React.FC<StatusOptionGridProps> = ({
   full_options,
   option_actions,
   onCreateOption,
+  used_option_ids,
 }) => {
   const [is_editing_labels, setIsEditingLabels] = useState(false);
 
@@ -54,6 +57,7 @@ const StatusOptionGrid: React.FC<StatusOptionGridProps> = ({
           options={full_options ?? options}
           actions={option_actions}
           onCreateOption={onCreateOption}
+          used_option_ids={used_option_ids}
           onDone={() => setIsEditingLabels(false)}
         />
       ) : (

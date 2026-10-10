@@ -6,7 +6,7 @@ import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
-import { dependencyCandidates, findNode } from "../treeUtils";
+import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import ConnectBoardMenu from "../menus/ConnectBoardMenu";
@@ -181,9 +181,20 @@ export default function CellRenderer({ node_id, column, values, node_name, state
                     onRename: (id, label) => actions.renameColumnOption(column.id, id, label),
                     onRecolor: (id, color) => actions.recolorColumnOption(column.id, id, color),
                     onDelete: (id) => actions.deleteColumnOption(column.id, id),
+                    onToggleActive: (id) => actions.toggleColumnOptionActive(column.id, id),
+                    onSetDescription: (id, description) => actions.setColumnOptionDescription(column.id, id, description),
+                    onReorder: (ordered_ids) => actions.reorderColumnOptions(column.id, ordered_ids),
                   }
-                : { onRename: actions.renameStatusDef, onRecolor: actions.setStatusDefColor, onDelete: actions.deleteStatusDef }
+                : {
+                    onRename: actions.renameStatusDef,
+                    onRecolor: actions.setStatusDefColor,
+                    onDelete: actions.deleteStatusDef,
+                    onToggleActive: actions.toggleStatusDefActive,
+                    onSetDescription: actions.setStatusDefDescription,
+                    onReorder: actions.reorderStatusDefs,
+                  }
             }
+            used_option_ids={collectColumnValues(state.groups, column.id)}
             onCreateOption={
               column.options
                 ? (option) => actions.addColumnOption(column.id, option)

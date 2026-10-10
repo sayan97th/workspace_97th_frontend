@@ -60,6 +60,20 @@ export function findNode(groups: BoardTableGroup[], node_id: string): BoardTable
   return null;
 }
 
+/** Every string value a column holds across the loaded items and subitems, e.g. the Status labels in use. */
+export function collectColumnValues(groups: BoardTableGroup[], column_id: string): Set<string> {
+  const values = new Set<string>();
+  for (const group of groups) {
+    for (const item of group.items) {
+      for (const node of [item, ...item.subs]) {
+        const value = node.values[column_id];
+        if (typeof value === "string" && value !== "") values.add(value);
+      }
+    }
+  }
+  return values;
+}
+
 export function findGroup(groups: BoardTableGroup[], group_key: string): BoardTableGroup | null {
   return groups.find((g) => g.key === group_key) || null;
 }

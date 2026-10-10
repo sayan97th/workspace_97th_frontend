@@ -254,15 +254,16 @@ html.dark .status-picker--card {
 .status-picker__more {
   position: absolute;
   top: 50%;
-  right: -32px;
+  right: -24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 20px;
   height: 24px;
   border-radius: 4px;
   color: var(--status-picker-text);
   opacity: 0;
+  pointer-events: none;
   z-index: 1;
   transform: translateY(-50%);
   cursor: pointer;
@@ -274,8 +275,8 @@ html.dark .status-picker--card {
   content: "";
   position: absolute;
   top: 0;
-  right: -36px;
-  width: 36px;
+  right: -24px;
+  width: 24px;
   height: 100%;
 }
 
@@ -283,12 +284,73 @@ html.dark .status-picker--card {
 .status-picker__field:focus-within .status-picker__more,
 .status-picker__field[data-active="true"] .status-picker__more {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .status-picker__more:hover,
 .status-picker__more:focus-visible,
 .status-picker__field[data-active="true"] .status-picker__more {
   background: var(--status-picker-hover);
+}
+
+/* Drag handle, sitting in the gap to the left of the field (Edit Labels reordering). */
+.status-picker__handle {
+  position: absolute;
+  top: 50%;
+  left: -16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--status-picker-text-faint);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%);
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 70ms ease-in, background-color 70ms ease-in;
+}
+
+/* Bridges the gap between the handle and the field so hovering across keeps it shown. */
+.status-picker__field:has(.status-picker__handle)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -16px;
+  width: 16px;
+  height: 100%;
+}
+
+.status-picker__field:hover .status-picker__handle,
+.status-picker__field:focus-within .status-picker__handle,
+.status-picker__field[data-dragging="true"] .status-picker__handle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.status-picker__handle:hover,
+.status-picker__handle:focus-visible {
+  background: var(--status-picker-hover);
+  color: var(--status-picker-text);
+}
+
+.status-picker__field[data-dragging="true"] {
+  z-index: 2;
+  border-color: var(--status-picker-focus);
+  background: var(--status-picker-surface);
+  box-shadow: var(--status-picker-shadow);
+}
+
+.status-picker__field[data-dragging="true"] .status-picker__handle {
+  cursor: grabbing;
+}
+
+/* The "..." stays hidden while a label is carried around. */
+.status-picker__field[data-dragging="true"] .status-picker__more {
+  opacity: 0;
 }
 
 /* "+ New label" button, same box as a field. */

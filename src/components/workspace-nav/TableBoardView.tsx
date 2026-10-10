@@ -1,4 +1,5 @@
 "use client";
+import { reorderByIds } from "@/components/board/cells/optionOrder";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -218,7 +219,13 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
 const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
-  column.config?.options?.map((option) => ({ id: option.id, label: option.label, color: option.color }));
+  column.config?.options?.map((option) => ({
+    id: option.id,
+    label: option.label,
+    color: option.color,
+    is_active: option.is_active,
+    description: option.description,
+  }));
 
 /** `null` for a column kind the Table view has no cell renderer for. Every `BoardColumnDto["type"]` currently has one, so this only ever matters for a type added to the engine before the Table view picks it up. */
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
@@ -2194,6 +2201,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       void patchColumnOptions(column_id, (options) =>
         options.map((option) => (option.id === option_id ? { ...option, description } : option))
       ),
+    onReorder: (ordered_ids) => void patchColumnOptions(column_id, (options) => reorderByIds(options, ordered_ids)),
   });
 
   // ── Item detail drawer ──
@@ -3074,6 +3082,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void patchColumnOptions(column_id, (options) => options.map((o) => (o.id === option_id ? { ...o, color } : o))),
       onDeleteColumnOption: (column_id, option_id) =>
         void patchColumnOptions(column_id, (options) => options.filter((o) => o.id !== option_id)),
+      // Status cell's inline Edit Labels: deactivate, describe and drag to reorder.
+      // The order of `config.options` is the order every picker shows.
+      onToggleColumnOptionActive: (column_id, option_id) =>
+        void patchColumnOptions(column_id, (options) =>
+          options.map((o) => (o.id === option_id ? { ...o, is_active: o.is_active === false } : o))
+        ),
+      onSetColumnOptionDescription: (column_id, option_id, description) =>
+        void patchColumnOptions(column_id, (options) => options.map((o) => (o.id === option_id ? { ...o, description } : o))),
+      onReorderColumnOptions: (column_id, ordered_ids) =>
+        void patchColumnOptions(column_id, (options) => reorderByIds(options, ordered_ids)),
       onToggleColumnNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
       onUpdateColumnFormula: (column_id, formula) => void handleUpdateColumnFormula(column_id, formula),
       onUpdateColumnLinkedBoard: (column_id, linked_board_id) => void handleUpdateColumnLinkedBoard(column_id, linked_board_id),

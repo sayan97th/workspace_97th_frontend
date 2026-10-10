@@ -162,6 +162,10 @@ export interface StatusDef {
   label: string;
   color: string;
   fixed?: boolean;
+  /** Deactivated labels stay on items that already have them but leave the picker. Defaults to true when omitted. */
+  is_active?: boolean;
+  /** Optional helper text, set from Edit Labels' "Add label description". */
+  description?: string | null;
 }
 
 export interface TagDef {

@@ -232,6 +232,21 @@ export const PaintBucketIcon: React.FC<IconProps> = ({ className, size = 14 }) =
   </svg>
 );
 
+/** Left aligned text lines, Edit Labels' "Add label description". */
+export const TextLinesIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+/** Circle with a slash, Edit Labels' "Deactivate label". */
+export const BlockedIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <circle cx="8" cy="8" r="5.6" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M4.1 4.1 11.9 11.9" stroke="currentColor" strokeWidth="1.3" />
+  </svg>
+);
+
 /** 6-dot grip used as the drag affordance on reorderable rows (e.g. Sort rules). */
 export const DragHandleIcon: React.FC<IconProps> = ({ className, size = 10 }) => (
   <svg className={className} width={size} height={size * 1.6} viewBox="0 0 10 16" fill="currentColor">
