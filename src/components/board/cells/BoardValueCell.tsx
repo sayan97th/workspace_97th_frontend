@@ -566,7 +566,16 @@ const StatusCell: React.FC<{
           </div>
         )}
       </div>
-      <BoardPopover anchor_el={popover.anchor_el} is_open={popover.is_open} onClose={popover.close} align="start" width={470}>
+      {/* The grid draws its own monday style card and sizes to its label columns, `width` only caps it. */}
+      <BoardPopover
+        anchor_el={popover.anchor_el}
+        is_open={popover.is_open}
+        onClose={popover.close}
+        align="start"
+        width={840}
+        hug_content
+        unstyled
+      >
         <StatusOptionGrid
           options={options}
           selected_id={selected}

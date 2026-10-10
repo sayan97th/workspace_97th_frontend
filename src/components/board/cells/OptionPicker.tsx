@@ -78,6 +78,7 @@ const OptionPicker: React.FC<OptionPickerProps> = ({
         actions={option_actions}
         onCreateOption={onCreateOption}
         onDone={() => setIsEditingLabels(false)}
+        max_rows={options.length + 2}
       />
     );
   }

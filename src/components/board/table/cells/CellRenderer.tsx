@@ -172,8 +172,23 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         {is_menu_open && (
           <StatusMenu
             status_defs={defs}
+            selected_id={def?.id ?? null}
             onPick={(id) => actions.setCellValue(node_id, column.id, id)}
-            onEditLabels={() => actions.openLabelEditor("status", column.id)}
+            onClear={() => actions.clearCellValue(node_id, column.id)}
+            option_actions={
+              column.options
+                ? {
+                    onRename: (id, label) => actions.renameColumnOption(column.id, id, label),
+                    onRecolor: (id, color) => actions.recolorColumnOption(column.id, id, color),
+                    onDelete: (id) => actions.deleteColumnOption(column.id, id),
+                  }
+                : { onRename: actions.renameStatusDef, onRecolor: actions.setStatusDefColor, onDelete: actions.deleteStatusDef }
+            }
+            onCreateOption={
+              column.options
+                ? (option) => actions.addColumnOption(column.id, option)
+                : (option) => actions.addStatusDef(option)
+            }
             onClose={actions.closeCellMenu}
           />
         )}

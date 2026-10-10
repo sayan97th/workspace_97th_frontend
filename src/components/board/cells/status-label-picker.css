@@ -1,0 +1,387 @@
+/*
+ * Status label picker and its "Edit Labels" view, styled after monday.com:
+ * a white card with an 8px radius, solid 152x32 label pills laid out in
+ * columns of up to six (filled top to bottom, then left to right), the blank
+ * "no status" pill closing the list, and a centered footer action in 14px
+ * Figtree. Edit mode swaps each pill for an outlined field with a color
+ * bucket swatch and a "..." action that shows on hover.
+ *
+ * Every color is a `--status-picker-*` token declared on `.status-picker`, so
+ * dark mode only swaps the tokens, never the rules below.
+ */
+
+.status-picker {
+  --status-picker-surface: #ffffff;
+  --status-picker-text: #323338;
+  --status-picker-text-faint: #9699a6;
+  --status-picker-border: #c3c6d4;
+  --status-picker-border-hover: #323338;
+  --status-picker-focus: #0073ea;
+  --status-picker-hover: #dcdfec;
+  --status-picker-divider: #e7e9ef;
+  --status-picker-empty: #c4c4c4;
+  --status-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --status-picker-rows: 6;
+  --status-picker-cell-width: 152px;
+
+  display: flex;
+  flex-direction: column;
+  color: var(--status-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .status-picker {
+  --status-picker-surface: #0f1c1c;
+  --status-picker-text: #e9eded;
+  --status-picker-text-faint: #9aa4a5;
+  --status-picker-border: rgba(255, 255, 255, 0.18);
+  --status-picker-border-hover: rgba(255, 255, 255, 0.45);
+  --status-picker-focus: #4d9cff;
+  --status-picker-hover: rgba(255, 255, 255, 0.08);
+  --status-picker-divider: rgba(255, 255, 255, 0.12);
+  --status-picker-empty: #5b6466;
+  --status-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+/* The floating card itself, for hosts that render the popover unstyled. */
+.status-picker--card {
+  min-width: 216px;
+  border-radius: 8px;
+  background: var(--status-picker-surface);
+  box-shadow: var(--status-picker-shadow);
+}
+
+html.dark .status-picker--card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .status-picker--card {
+    animation: status-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes status-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Column major grid: each column holds up to `--status-picker-rows` labels. */
+.status-picker__grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--status-picker-rows), 32px);
+  grid-auto-columns: var(--status-picker-cell-width);
+  gap: 8px;
+  justify-content: start;
+  padding: 24px 24px 8px;
+}
+
+.status-picker__grid--last {
+  padding-bottom: 24px;
+}
+
+.status-picker__grid--editing {
+  column-gap: 40px;
+  padding-right: 48px;
+}
+
+/* Pick mode: solid pills. */
+.status-picker__pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 2px;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  outline: none;
+  transition: filter 70ms ease-in;
+}
+
+.status-picker__pill:hover {
+  filter: brightness(0.92);
+}
+
+.status-picker__pill:focus-visible {
+  box-shadow: 0 0 0 2px var(--status-picker-surface), 0 0 0 4px var(--status-picker-focus);
+}
+
+.status-picker__pill[data-inactive="true"] {
+  opacity: 0.5;
+}
+
+.status-picker__pill--empty {
+  background: var(--status-picker-empty);
+}
+
+.status-picker__pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Centered footer action ("Edit Labels", "Apply"). */
+.status-picker__footer {
+  display: flex;
+  justify-content: center;
+  padding: 4px 8px 8px;
+}
+
+.status-picker__footer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--status-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 70ms ease-in;
+}
+
+.status-picker__footer-button:hover,
+.status-picker__footer-button:focus-visible {
+  background: var(--status-picker-hover);
+}
+
+/* Edit mode: outlined label fields. */
+.status-picker__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border: 1px solid var(--status-picker-border);
+  border-radius: 4px;
+  background: transparent;
+  transition: border-color 70ms ease-in;
+}
+
+.status-picker__field:hover {
+  border-color: var(--status-picker-border-hover);
+}
+
+.status-picker__field:focus-within,
+.status-picker__field[data-active="true"] {
+  border-color: var(--status-picker-focus);
+}
+
+.status-picker__field[data-inactive="true"] .status-picker__swatch,
+.status-picker__field[data-inactive="true"] .status-picker__field-label {
+  opacity: 0.5;
+}
+
+.status-picker__field--default {
+  color: var(--status-picker-text-faint);
+  cursor: not-allowed;
+}
+
+.status-picker__field--default:hover {
+  border-color: var(--status-picker-border);
+}
+
+.status-picker__field-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+  outline: none;
+}
+
+.status-picker__field-input {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--status-picker-text);
+}
+
+.status-picker__field-input input {
+  background: transparent;
+  outline: none;
+}
+
+/* Square color swatch with the paint bucket glyph. */
+.status-picker__swatch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.92);
+  cursor: pointer;
+}
+
+.status-picker__swatch:focus-visible {
+  outline: 2px solid var(--status-picker-focus);
+  outline-offset: 1px;
+}
+
+.status-picker__field--default .status-picker__swatch {
+  background: var(--status-picker-empty);
+  cursor: not-allowed;
+}
+
+/* "..." action, sitting in the gap to the right of the field. */
+.status-picker__more {
+  position: absolute;
+  top: 50%;
+  right: -32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--status-picker-text);
+  opacity: 0;
+  z-index: 1;
+  transform: translateY(-50%);
+  cursor: pointer;
+  transition: opacity 70ms ease-in, background-color 70ms ease-in;
+}
+
+/* Bridges the gap between the field and the "..." so hovering across keeps it shown. */
+.status-picker__field::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -36px;
+  width: 36px;
+  height: 100%;
+}
+
+.status-picker__field:hover .status-picker__more,
+.status-picker__field:focus-within .status-picker__more,
+.status-picker__field[data-active="true"] .status-picker__more {
+  opacity: 1;
+}
+
+.status-picker__more:hover,
+.status-picker__more:focus-visible,
+.status-picker__field[data-active="true"] .status-picker__more {
+  background: var(--status-picker-hover);
+}
+
+/* "+ New label" button, same box as a field. */
+.status-picker__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  border: 1px solid var(--status-picker-border);
+  border-radius: 4px;
+  color: var(--status-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 70ms ease-in, background-color 70ms ease-in;
+}
+
+.status-picker__add:hover,
+.status-picker__add:focus-visible {
+  border-color: var(--status-picker-border-hover);
+  background: var(--status-picker-hover);
+}
+
+/* Label description editor shown under the grid. */
+.status-picker__description {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 24px 0;
+  padding: 12px;
+  border: 1px solid var(--status-picker-border);
+  border-radius: 8px;
+}
+
+.status-picker__description-title {
+  color: var(--status-picker-text-faint);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.status-picker__description-title strong {
+  color: var(--status-picker-text);
+  font-weight: 500;
+}
+
+.status-picker__description-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--status-picker-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--status-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+  resize: none;
+  outline: none;
+}
+
+.status-picker__description-input:focus {
+  border-color: var(--status-picker-focus);
+}
+
+.status-picker__description-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.status-picker__button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  cursor: pointer;
+  transition: background-color 70ms ease-in;
+}
+
+.status-picker__button--secondary {
+  color: var(--status-picker-text);
+}
+
+.status-picker__button--secondary:hover {
+  background: var(--status-picker-hover);
+}
+
+.status-picker__button--primary {
+  background: var(--status-picker-focus);
+  color: #ffffff;
+}
+
+.status-picker__button--primary:hover {
+  filter: brightness(0.9);
+}

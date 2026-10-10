@@ -218,6 +218,20 @@ export const PlusIcon: React.FC<IconProps> = ({ className, size = 13 }) => (
   </svg>
 );
 
+/** Paint bucket glyph drawn on the recolor swatch of each label in Edit Labels. */
+export const PaintBucketIcon: React.FC<IconProps> = ({ className, size = 14 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M6.4 2.6 12 8.2 7.6 12.6a1.1 1.1 0 0 1-1.6 0L2.4 9a1.1 1.1 0 0 1 0-1.6L6.4 3.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+    <path d="M2.6 8.2H12" stroke="currentColor" strokeWidth="1.3" />
+    <path d="M13.4 10.6s-1.2 1.4-1.2 2.2a1.2 1.2 0 0 0 2.4 0c0-.8-1.2-2.2-1.2-2.2Z" fill="currentColor" />
+  </svg>
+);
+
 /** 6-dot grip used as the drag affordance on reorderable rows (e.g. Sort rules). */
 export const DragHandleIcon: React.FC<IconProps> = ({ className, size = 10 }) => (
   <svg className={className} width={size} height={size * 1.6} viewBox="0 0 10 16" fill="currentColor">

@@ -1979,10 +1979,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   );
   const closeConfigEditor = useCallback(() => setState((s) => ({ ...s, config_editor: null })), []);
 
-  const addStatusDef = useCallback(() => {
+  /** Appends a demo status label, named and colored by `option` when given (the Status picker's "+ New label"). */
+  const addStatusDef = useCallback((option?: { label: string; color: string }) => {
     setState((s) => {
-      const color = STATUS_PALETTE[s.status_defs.length % STATUS_PALETTE.length];
-      return { ...s, status_defs: s.status_defs.concat({ id: nextId("sd"), label: "New status", color }) };
+      const color = option?.color ?? STATUS_PALETTE[s.status_defs.length % STATUS_PALETTE.length];
+      return { ...s, status_defs: s.status_defs.concat({ id: nextId("sd"), label: option?.label ?? "New status", color }) };
     });
   }, [nextId]);
 

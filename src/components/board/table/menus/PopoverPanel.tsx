@@ -4,6 +4,9 @@ import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode }
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "../useOutsideClick";
 
+const PANEL_CHROME_CLASS =
+  "rounded-[10px] border border-boardtree-border bg-boardtree-surface shadow-[0_16px_40px_rgba(30,34,55,0.20)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5)]";
+
 /** Gap kept between a nudged panel and the window's (or board area's) edges. */
 const VIEWPORT_MARGIN = 8;
 /** Below this height a capped panel is too cramped to use, so it falls back to the whole window. */
@@ -106,6 +109,8 @@ interface PopoverPanelProps {
   style?: CSSProperties;
   /** See `PopoverFit`, defaults to "flip". */
   fit?: PopoverFit;
+  /** Skips the panel's own border/background/shadow chrome, for content that draws its own card (the Status picker). */
+  unstyled?: boolean;
   children: ReactNode;
 }
 
@@ -126,7 +131,7 @@ interface PopoverPanelProps {
  * context. Portaling to `document.body` sidesteps every ancestor stacking context at once,
  * instead of chasing z-index values row by row.
  */
-export default function PopoverPanel({ onClose, className, style, fit = "flip", children }: PopoverPanelProps) {
+export default function PopoverPanel({ onClose, className, style, fit = "flip", unstyled = false, children }: PopoverPanelProps) {
   const marker_ref = useRef<HTMLDivElement>(null);
   // The board's scrolling table area, found once on open. "flip" panels stay inside it.
   const scroll_container_ref = useRef<HTMLElement | null>(null);
@@ -266,7 +271,7 @@ export default function PopoverPanel({ onClose, className, style, fit = "flip", 
               ref={panel_ref}
               data-capped={placement.max_height !== null || undefined}
               onClick={(e) => e.stopPropagation()}
-              className={`shell-scrollbar absolute rounded-[10px] border border-boardtree-border bg-boardtree-surface text-left shadow-[0_16px_40px_rgba(30,34,55,0.20)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.5)] ${className || ""}`}
+              className={`shell-scrollbar absolute text-left ${unstyled ? "" : PANEL_CHROME_CLASS} ${className || ""}`}
               style={panel_style}
             >
               {children}
