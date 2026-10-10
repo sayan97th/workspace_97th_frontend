@@ -1,0 +1,357 @@
+/*
+ * My Work, styled after monday.com's own page: a calm white canvas, date
+ * sections with a colored title and a colored bar down the left of their
+ * rows, full color Status and Priority cells and gray pills for empty dates.
+ * Every color is a `--mw-*` token declared on the page root (`my-work-theme`)
+ * so dark mode only swaps the tokens, never the rules below.
+ */
+
+.my-work-theme {
+  --mw-bg: #ffffff;
+  --mw-surface: #ffffff;
+  --mw-text: #323338;
+  --mw-text-secondary: #676879;
+  --mw-text-faint: #9699a6;
+  --mw-border: #d0d4e4;
+  --mw-border-soft: #e7e9ef;
+  --mw-control-border: #c3c6d4;
+  --mw-hover: #f5f6f8;
+  --mw-header-active: #ecedf5;
+  --mw-accent: #0073ea;
+  --mw-accent-hover: #0060b9;
+  --mw-accent-soft: #cce5ff;
+  --mw-accent-soft-hover: #aed4fc;
+  --mw-empty: #c4c4c4;
+  --mw-badge: #323338;
+  --mw-neutral-section: #323338;
+  --mw-scrollbar-thumb: rgba(50, 51, 56, 0.25);
+
+  background: var(--mw-bg);
+  color: var(--mw-text);
+}
+
+html.dark .my-work-theme {
+  --mw-bg: var(--color-shell-panel);
+  --mw-surface: var(--color-shell-panel);
+  --mw-text: var(--color-shell-text);
+  --mw-text-secondary: var(--color-shell-text-secondary);
+  --mw-text-faint: var(--color-shell-text-faint);
+  --mw-border: rgba(255, 255, 255, 0.12);
+  --mw-border-soft: rgba(255, 255, 255, 0.07);
+  --mw-control-border: rgba(255, 255, 255, 0.18);
+  --mw-hover: var(--color-shell-hover);
+  --mw-header-active: var(--color-shell-hover-strong);
+  --mw-accent: #3d8ff0;
+  --mw-accent-hover: #2f7ad6;
+  --mw-accent-soft: rgba(61, 143, 240, 0.2);
+  --mw-accent-soft-hover: rgba(61, 143, 240, 0.3);
+  --mw-empty: #5a6162;
+  --mw-badge: #e9eded;
+  --mw-neutral-section: #c2cacb;
+  --mw-scrollbar-thumb: rgba(255, 255, 255, 0.18);
+}
+
+/* ── Header and tabs ─────────────────────────────────────────────────────── */
+
+.my-work-tab {
+  position: relative;
+  padding: 6px 16px 8px;
+  border-radius: 4px 4px 0 0;
+  color: var(--mw-text);
+  transition: background-color 120ms ease;
+}
+
+.my-work-tab:hover {
+  background: var(--mw-hover);
+}
+
+.my-work-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -1px;
+  height: 2px;
+  background: var(--mw-accent);
+}
+
+.my-work-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--mw-text);
+  transition: background-color 120ms ease;
+}
+
+.my-work-ghost-button:hover,
+.my-work-ghost-button[aria-expanded="true"] {
+  background: var(--mw-hover);
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.my-work-primary-button {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--mw-accent);
+  color: #ffffff;
+  transition: background-color 120ms ease;
+}
+
+.my-work-primary-button:hover {
+  background: var(--mw-accent-hover);
+}
+
+.my-work-primary-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.my-work-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 205px;
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--mw-control-border);
+  border-radius: 4px;
+  transition: border-color 120ms ease, width 160ms ease;
+}
+
+.my-work-search:hover {
+  border-color: var(--mw-text);
+}
+
+.my-work-search:focus-within {
+  width: 260px;
+  border-color: var(--mw-accent);
+}
+
+.my-work-soft-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--mw-accent-soft);
+  color: var(--mw-text);
+  transition: background-color 120ms ease;
+}
+
+.my-work-soft-button:hover,
+.my-work-soft-button[aria-expanded="true"] {
+  background: var(--mw-accent-soft-hover);
+}
+
+/* ── Sections ────────────────────────────────────────────────────────────── */
+
+.my-work-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mw-scrollbar-thumb) transparent;
+}
+
+.my-work-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+
+.my-work-scroll::-webkit-scrollbar-thumb {
+  background: var(--mw-scrollbar-thumb);
+  border-radius: 5px;
+}
+
+/* Every row of a section shares one column template, set as `--mw-columns` on the section. */
+.my-work-grid-row {
+  display: grid;
+  grid-template-columns: var(--mw-columns);
+  align-items: stretch;
+}
+
+.my-work-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px;
+  color: var(--mw-text);
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+}
+
+.my-work-column-header:hover,
+.my-work-column-header[data-sorted="true"] {
+  background: var(--mw-header-active);
+}
+
+/* The rows sit in a box with the section color running down its left edge. */
+.my-work-section-body {
+  border-top: 1px solid var(--mw-border);
+  border-left: 6px solid var(--mw-section-color);
+  border-radius: 4px 0 0 4px;
+}
+
+.my-work-row {
+  position: relative;
+  height: 36px;
+  background: var(--mw-surface);
+  transition: background-color 80ms ease;
+}
+
+.my-work-row:hover {
+  background: var(--mw-hover);
+}
+
+.my-work-cell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-bottom: 1px solid var(--mw-border);
+  border-right: 1px solid var(--mw-border);
+}
+
+.my-work-cell:last-child {
+  border-right: 0;
+}
+
+/* Row menu ("..."), hanging just outside the colored bar like monday.com's. */
+.my-work-row-menu {
+  position: absolute;
+  top: 50%;
+  left: -32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--mw-text);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 80ms ease, background-color 80ms ease;
+}
+
+.my-work-row:hover .my-work-row-menu,
+.my-work-row-menu:focus-visible,
+.my-work-row-menu[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.my-work-row-menu:hover {
+  background: var(--mw-hover);
+}
+
+/* Full color Status and Priority cells, with monday.com's folded corner on hover. */
+.my-work-label-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  color: #ffffff;
+  transition: filter 120ms ease;
+}
+
+.my-work-label-cell:not(:disabled):hover {
+  filter: brightness(0.94);
+}
+
+.my-work-label-cell:not(:disabled):hover::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-style: solid;
+  border-width: 0 10px 10px 0;
+  border-color: transparent var(--mw-surface) rgba(0, 0, 0, 0.18) transparent;
+}
+
+.my-work-date-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 32px);
+  max-width: 120px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--mw-empty);
+  color: #ffffff;
+}
+
+.my-work-add-row {
+  height: 36px;
+  border-bottom: 1px solid var(--mw-border);
+  color: var(--mw-text-secondary);
+}
+
+.my-work-add-row:hover {
+  background: var(--mw-hover);
+}
+
+.my-work-updates-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border: 1.5px solid var(--mw-surface);
+  border-radius: 999px;
+  background: var(--mw-badge);
+  color: var(--mw-bg);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ── Calendar ────────────────────────────────────────────────────────────── */
+
+.my-work-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(120px, 1fr));
+  border-top: 1px solid var(--mw-border);
+  border-left: 1px solid var(--mw-border);
+}
+
+.my-work-calendar-day {
+  min-height: 120px;
+  padding: 6px;
+  border-right: 1px solid var(--mw-border);
+  border-bottom: 1px solid var(--mw-border);
+}
+
+.my-work-calendar-day[data-outside="true"] {
+  background: var(--mw-hover);
+}
+
+.my-work-calendar-chip {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #ffffff;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: filter 120ms ease;
+}
+
+.my-work-calendar-chip:hover {
+  filter: brightness(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .my-work-theme *,
+  .my-work-theme *::before,
+  .my-work-theme *::after {
+    transition: none !important;
+  }
+}

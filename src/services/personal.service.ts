@@ -1,5 +1,12 @@
 import { apiClient } from "@/lib/api-client";
-import type { FavoritesResponseDto, MyWorkResponseDto, RecentBoardDto } from "@/types/personal";
+import type {
+  CreateMyWorkItemPayload,
+  CreateMyWorkItemResponseDto,
+  FavoritesResponseDto,
+  MyWorkBoardDto,
+  MyWorkResponseDto,
+  RecentBoardDto,
+} from "@/types/personal";
 
 /**
  * Window event fired whenever a favorite is added or removed anywhere in the
@@ -49,5 +56,14 @@ export const personalService = {
 
   async getMyWork(): Promise<MyWorkResponseDto> {
     return apiClient.get<MyWorkResponseDto>("/api/my-work");
+  },
+
+  async getMyWorkBoards(): Promise<MyWorkBoardDto[]> {
+    const response = await apiClient.get<{ boards: MyWorkBoardDto[] }>("/api/my-work/boards");
+    return response.boards;
+  },
+
+  async createMyWorkItem(payload: CreateMyWorkItemPayload): Promise<CreateMyWorkItemResponseDto> {
+    return apiClient.post<CreateMyWorkItemResponseDto>("/api/my-work/items", payload);
   },
 };

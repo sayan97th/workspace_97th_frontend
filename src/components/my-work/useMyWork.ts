@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { boardContentService } from "@/services/board-content.service";
 import { personalService } from "@/services/personal.service";
-import type { MyWorkItemDto, MyWorkResponseDto, MyWorkStatus } from "@/types/personal";
+import type { CreateMyWorkItemPayload, CreateMyWorkItemResponseDto, MyWorkItemDto, MyWorkResponseDto, MyWorkStatus } from "@/types/personal";
 
 const DONE_LABELS = ["done", "complete", "completed", "finished", "closed"];
 
@@ -17,13 +17,16 @@ export type UseMyWorkResult = {
   error: string | null;
   reload: () => Promise<void>;
   setStatus: (item: MyWorkItemDto, status: MyWorkStatus | null) => Promise<void>;
+  setPriority: (item: MyWorkItemDto, priority: MyWorkStatus | null) => Promise<void>;
   setDueDate: (item: MyWorkItemDto, date: string | null) => Promise<void>;
+  /** Creates an item and reloads the list. Resolves to null when the API refused it. */
+  createItem: (payload: CreateMyWorkItemPayload) => Promise<CreateMyWorkItemResponseDto | null>;
 };
 
 /**
- * My Work's data: loads every item assigned to the user and edits Status and
- * due date inline through the regular item values endpoint, optimistically
- * with a rollback when the board refuses the change.
+ * My Work's data: loads every item assigned to the user and edits Status,
+ * Priority and due date inline through the regular item values endpoint,
+ * optimistically with a rollback when the board refuses the change.
  */
 export default function useMyWork(onError: (message: string) => void): UseMyWorkResult {
   const [data, setData] = useState<MyWorkResponseDto | null>(null);
@@ -76,6 +79,20 @@ export default function useMyWork(onError: (message: string) => void): UseMyWork
     [patchItem, onError]
   );
 
+  const setPriority = useCallback(
+    async (item: MyWorkItemDto, priority: MyWorkStatus | null) => {
+      if (item.priority_column_id === null) return;
+      patchItem(item.id, { priority });
+      try {
+        await boardContentService.updateItemValues(item.board.id, item.id, { [String(item.priority_column_id)]: priority?.id ?? null });
+      } catch (save_error) {
+        patchItem(item.id, { priority: item.priority });
+        onError(getApiErrorMessage(save_error, "We couldn't change the priority."));
+      }
+    },
+    [patchItem, onError]
+  );
+
   const setDueDate = useCallback(
     async (item: MyWorkItemDto, date: string | null) => {
       if (!item.date_column) return;
@@ -98,5 +115,19 @@ export default function useMyWork(onError: (message: string) => void): UseMyWork
     [patchItem, onError]
   );
 
-  return { data, is_loading, error, reload, setStatus, setDueDate };
+  const createItem = useCallback(
+    async (payload: CreateMyWorkItemPayload) => {
+      try {
+        const created = await personalService.createMyWorkItem(payload);
+        await reload();
+        return created;
+      } catch (create_error) {
+        onError(getApiErrorMessage(create_error, "We couldn't create the item."));
+        return null;
+      }
+    },
+    [reload, onError]
+  );
+
+  return { data, is_loading, error, reload, setStatus, setPriority, setDueDate, createItem };
 }
