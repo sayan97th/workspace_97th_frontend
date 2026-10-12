@@ -1,4 +1,5 @@
 import React from "react";
+import BrandLogo from "@/components/common/BrandLogo";
 import SlackLogo from "@/components/slack/SlackLogo";
 import { CHANNEL_LABELS, splitTitle, type CommunicationChannel, type CommunicationTemplate } from "./communicationTemplates";
 
@@ -9,15 +10,11 @@ const EnvelopeIcon = () => (
   </svg>
 );
 
-/** The small "app to channel" strip at the top of a template card. */
+/** The small "app to channel" strip at the top of a template card: the 97th Floor mark, an arrow and the channel. */
 export function ChannelBadge({ channel }: { channel: CommunicationChannel }) {
   return (
     <div className="flex items-center gap-1.5 text-[12px] text-boardtree-text-faint">
-      <span className="flex h-6 w-6 items-center justify-center rounded-[6px] border border-boardtree-border-soft bg-boardtree-panel-alt text-boardtree-accent">
-        <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-          <path d="M2 12 L5.2 4 L8 9.2 L10.8 4 L14 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </span>
+      <BrandLogo size={24} className="!rounded-[6px]" />
       <span aria-hidden="true">&rarr;</span>
       <span className="flex h-6 w-6 items-center justify-center rounded-[6px] border border-boardtree-border-soft bg-boardtree-panel-alt text-boardtree-text-muted">
         {channel === "email" ? <EnvelopeIcon /> : <SlackLogo size={13} />}
