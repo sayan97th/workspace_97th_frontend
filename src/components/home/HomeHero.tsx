@@ -87,25 +87,7 @@ const HomeHero: React.FC<HomeHeroProps> = ({ user, today, recap }) => {
         <p className="home-hero-recap" aria-live="polite">
           {recap ?? "Getting your day ready..."}
         </p>
-        <div className="home-hero-actions">
-          <button type="button" className="home-hero-action" data-variant="primary" onClick={() => openShellPanel("search")}>
-            <SearchIcon size={15} />
-            Search everything
-            <kbd className="home-kbd hidden !border-white/40 !bg-white/15 !text-white sm:inline">{shortcut_label}</kbd>
-          </button>
-          <Link href="/my-work" className="home-hero-action">
-            <CalendarViewIcon size={15} />
-            My work
-          </Link>
-          <button type="button" className="home-hero-action" onClick={() => openShellPanel("notifications")}>
-            <BellIcon size={15} />
-            Inbox
-          </button>
-          <button type="button" className="home-hero-action" onClick={() => openShellPanel("invite")}>
-            <InviteIcon size={15} />
-            Invite teammates
-          </button>
-        </div>
+
       </div>
     </section>
   );
