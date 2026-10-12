@@ -26,6 +26,12 @@ import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow
 import ChecklistMenu from "../menus/ChecklistMenu";
 import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
 
+/** People cell avatar stack, monday style: up to three 28px avatars, then a "+N" bubble. */
+const PEOPLE_CELL_MAX_AVATARS = 3;
+const PEOPLE_CELL_AVATAR_SIZE = 28;
+/** How far each stacked avatar tucks under the previous one, matches `AvatarBadge`'s own overlap. */
+const PEOPLE_CELL_OVERLAP = Math.round(PEOPLE_CELL_AVATAR_SIZE * 0.27);
+
 interface CellRendererProps {
   node_id: string;
   column: ColumnDef;
@@ -282,28 +288,42 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const owner_ids = asArray(value);
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center">
-          <div className="flex items-center pl-[7px]">
-            {owner_ids.slice(0, 3).map((id) => {
+        <button type="button" onClick={openMenu} className="flex h-full w-full items-center justify-center" aria-label="Assign people">
+          {/* The left padding offsets the first avatar's overlap margin, so the stack stays centered. */}
+          <div className="flex items-center" style={{ paddingLeft: PEOPLE_CELL_OVERLAP }}>
+            {owner_ids.slice(0, PEOPLE_CELL_MAX_AVATARS).map((id) => {
               const person = state.people.find((p) => p.id === id);
               return (
                 <AvatarBadge
                   key={id}
+                  size={PEOPLE_CELL_AVATAR_SIZE}
                   initials={person?.initials || id}
                   color={person?.color || "#9aa0b6"}
                   name={person?.name}
+                  avatar_url={person?.avatar_url}
                   is_deactivated={person?.is_deactivated}
                 />
               );
             })}
-            {owner_ids.length > 3 && (
-              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center rounded-full border-2 border-boardtree-surface bg-boardtree-hover text-[9.5px] font-semibold text-boardtree-text-secondary">
-                +{owner_ids.length - 3}
+            {owner_ids.length > PEOPLE_CELL_MAX_AVATARS && (
+              <div
+                className="flex flex-none items-center justify-center rounded-full border-2 border-boardtree-surface bg-boardtree-hover-strong text-[11px] font-medium leading-none text-boardtree-text"
+                style={{ width: PEOPLE_CELL_AVATAR_SIZE, height: PEOPLE_CELL_AVATAR_SIZE, marginLeft: -PEOPLE_CELL_OVERLAP }}
+                title={owner_ids
+                  .slice(PEOPLE_CELL_MAX_AVATARS)
+                  .map((id) => state.people.find((p) => p.id === id)?.name ?? id)
+                  .join(", ")}
+              >
+                +{owner_ids.length - PEOPLE_CELL_MAX_AVATARS}
               </div>
             )}
             {owner_ids.length === 0 && (
               // Empty person placeholder, an outlined avatar like monday.com's.
-              <div className="-ml-[7px] flex h-[26px] w-[26px] items-center justify-center text-boardtree-control-border" aria-label="No one assigned">
+              <div
+                className="flex items-center justify-center text-boardtree-control-border"
+                style={{ marginLeft: -PEOPLE_CELL_OVERLAP }}
+                aria-label="No one assigned"
+              >
                 <svg viewBox="0 0 26 26" width="26" height="26" aria-hidden="true">
                   <circle cx="13" cy="13" r="12.25" fill="var(--color-boardtree-surface)" stroke="currentColor" strokeWidth="1.5" />
                   <circle cx="13" cy="10.4" r="3.9" fill="none" stroke="currentColor" strokeWidth="1.5" />

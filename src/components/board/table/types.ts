@@ -268,6 +268,10 @@ export interface PersonDef {
   initials: string;
   name: string;
   color: string;
+  /** Profile photo, drawn instead of the initials badge when it loads. */
+  avatar_url?: string | null;
+  /** Shown after the name in the People picker, "Name (Job title)". */
+  job_title?: string | null;
   /** The account was disabled or deleted: shown faded on items already assigned to them, and left out of the picker. */
   is_deactivated?: boolean;
 }

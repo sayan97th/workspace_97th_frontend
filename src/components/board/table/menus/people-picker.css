@@ -1,0 +1,336 @@
+/*
+ * People column picker, styled after monday.com: a white card with an 8px
+ * radius, a token field on top that holds the assigned people as light blue
+ * chips (one chip plus a "+ N" chip until expanded), a list of everyone else
+ * as "Name (Job title)" rows with a 28px photo, the "Notify assigned people"
+ * banner and the Cancel / Save footer that confirms the draft.
+ *
+ * Every color is a `--people-picker-*` token declared on `.people-picker`, so
+ * dark mode only swaps the tokens, never the rules below. The card is portaled
+ * to `document.body` (see `PopoverPanel`), outside the table's scoped palette,
+ * which is why it carries its own tokens.
+ */
+
+.people-picker {
+  --people-picker-surface: #ffffff;
+  --people-picker-text: #323338;
+  --people-picker-text-secondary: #676879;
+  --people-picker-text-faint: #9699a6;
+  --people-picker-border: #c3c6d4;
+  --people-picker-border-hover: #323338;
+  --people-picker-focus: #0073ea;
+  --people-picker-hover: #dcdfec;
+  --people-picker-divider: #e7e9ef;
+  --people-picker-chip: #cce5ff;
+  --people-picker-chip-hover: #aed4fc;
+  --people-picker-notice: #cce5ff;
+  --people-picker-notice-off: #f5f6f8;
+  --people-picker-primary: #0073ea;
+  --people-picker-primary-hover: #0060b9;
+  --people-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 360px;
+  max-width: calc(100vw - 16px);
+  padding: 16px 16px 12px;
+  border-radius: 8px;
+  background: var(--people-picker-surface);
+  box-shadow: var(--people-picker-shadow);
+  color: var(--people-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .people-picker {
+  --people-picker-surface: #0f1c1c;
+  --people-picker-text: #e9eded;
+  --people-picker-text-secondary: #b7c0c1;
+  --people-picker-text-faint: #9aa4a5;
+  --people-picker-border: rgba(255, 255, 255, 0.18);
+  --people-picker-border-hover: rgba(255, 255, 255, 0.45);
+  --people-picker-focus: #4d9cff;
+  --people-picker-hover: rgba(255, 255, 255, 0.08);
+  --people-picker-divider: rgba(255, 255, 255, 0.12);
+  --people-picker-chip: rgba(77, 156, 255, 0.24);
+  --people-picker-chip-hover: rgba(77, 156, 255, 0.36);
+  --people-picker-notice: rgba(77, 156, 255, 0.18);
+  --people-picker-notice-off: rgba(255, 255, 255, 0.06);
+  --people-picker-primary: #2f7de1;
+  --people-picker-primary-hover: #4d9cff;
+  --people-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .people-picker {
+    animation: people-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes people-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Only one area scrolls at a time: the list normally, the whole body when the panel is height capped. */
+.people-picker__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-capped] .people-picker__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Token field: the assigned chips and the search input share one outlined box. */
+.people-picker__field {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 5px 36px 5px 8px;
+  border: 1px solid var(--people-picker-border);
+  border-radius: 4px;
+  cursor: text;
+  transition: border-color 120ms ease;
+}
+
+.people-picker__field:hover {
+  border-color: var(--people-picker-border-hover);
+}
+
+.people-picker__field:focus-within {
+  border-color: var(--people-picker-focus);
+}
+
+.people-picker__input {
+  flex: 1 1 80px;
+  min-width: 80px;
+  height: 24px;
+  border: 0;
+  background: transparent;
+  color: var(--people-picker-text);
+  font: inherit;
+  outline: none;
+}
+
+.people-picker__input::placeholder {
+  color: var(--people-picker-text-faint);
+}
+
+.people-picker__chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 4px 0 2px;
+  border-radius: 4px;
+  background: var(--people-picker-chip);
+  color: var(--people-picker-text);
+}
+
+.people-picker__chip-name {
+  overflow: hidden;
+  max-width: 160px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-picker__chip-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  color: var(--people-picker-text);
+}
+
+.people-picker__chip-remove:hover {
+  background: var(--people-picker-chip-hover);
+}
+
+.people-picker__chip--more {
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.people-picker__chip--more:hover {
+  background: var(--people-picker-chip-hover);
+}
+
+.people-picker__clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--people-picker-text-secondary);
+  transform: translateY(-50%);
+}
+
+.people-picker__clear:hover {
+  background: var(--people-picker-hover);
+  color: var(--people-picker-text);
+}
+
+.people-picker__section-title {
+  padding: 12px 8px 4px;
+  color: var(--people-picker-text-secondary);
+  font-size: 14px;
+}
+
+.people-picker__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+[data-capped] .people-picker__list {
+  max-height: none;
+  overflow: visible;
+}
+
+.people-picker__option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--people-picker-text);
+  text-align: left;
+}
+
+.people-picker__option:hover,
+.people-picker__option--active {
+  background: var(--people-picker-hover);
+}
+
+.people-picker__option-label {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-picker__empty {
+  padding: 8px;
+  color: var(--people-picker-text-faint);
+}
+
+/* "Notify assigned people" banner, light blue while on like monday's "Assignees will be notified". */
+.people-picker__notify {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  background: var(--people-picker-notice-off);
+  color: var(--people-picker-text);
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.people-picker__notify[aria-checked="true"] {
+  background: var(--people-picker-notice);
+}
+
+.people-picker__notify:focus-visible,
+.people-picker__button:focus-visible,
+.people-picker__option:focus-visible,
+.people-picker__chip-remove:focus-visible,
+.people-picker__chip--more:focus-visible,
+.people-picker__clear:focus-visible {
+  outline: 2px solid var(--people-picker-focus);
+  outline-offset: 1px;
+}
+
+.people-picker__notify-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.people-picker__divider {
+  flex: none;
+  height: 1px;
+  margin: 12px 0;
+  background: var(--people-picker-divider);
+}
+
+.people-picker__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.people-picker__hint {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  color: var(--people-picker-text-faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-picker__button {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  transition:
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.people-picker__button--secondary {
+  color: var(--people-picker-text);
+}
+
+.people-picker__button--secondary:hover {
+  background: var(--people-picker-hover);
+}
+
+.people-picker__button--primary {
+  background: var(--people-picker-primary);
+  color: #ffffff;
+}
+
+.people-picker__button--primary:hover:not(:disabled) {
+  background: var(--people-picker-primary-hover);
+}
+
+.people-picker__button--primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

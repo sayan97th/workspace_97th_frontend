@@ -2597,6 +2597,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           name: member.full_name,
           initials: getInitials(member.full_name),
           color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+          avatar_url: member.profile_photo_url,
+          job_title: member.job_title,
           is_deactivated: member.is_deactivated,
         })
       ),

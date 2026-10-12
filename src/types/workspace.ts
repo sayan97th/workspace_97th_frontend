@@ -279,6 +279,8 @@ export type WorkspaceMember = {
   full_name: string;
   email: string;
   profile_photo_url: string | null;
+  /** Free text role shown next to the name in the board People pickers, null when the member never set one. */
+  job_title?: string | null;
   /** The account was disabled or deleted. Only present in the roster when requested with `include_deactivated`. */
   is_deactivated?: boolean;
   role: string | null;
