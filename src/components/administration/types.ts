@@ -5,6 +5,7 @@ export type AdminSectionId =
   | "organization"
   | "profile_fields"
   | "users"
+  | "invitations"
   | "departments"
   | "board_ownership"
   | "authentication"

@@ -10,7 +10,7 @@ export type DepartmentMembersModalProps = {
 };
 
 const searchInputClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt py-[9px] pl-[34px] pr-3 text-[13.5px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt py-[9px] pl-[34px] pr-3 text-[13.5px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-[var(--admin-button-primary)]";
 
 const SectionTitle: React.FC<{ children: React.ReactNode; hint?: string }> = ({ children, hint }) => (
   <div className="mb-2.5">
@@ -235,7 +235,7 @@ const DepartmentMembersModal: React.FC<DepartmentMembersModalProps> = ({ members
                       <span
                         className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded-[5px] border ${
                           is_selected
-                            ? "border-brand-500 bg-brand-500 text-white"
+                            ? "border-[var(--admin-button-primary)] bg-[var(--admin-button-primary)] text-white"
                             : "border-shell-border-strong text-transparent"
                         }`}
                       >
@@ -269,7 +269,7 @@ const DepartmentMembersModal: React.FC<DepartmentMembersModalProps> = ({ members
             type="button"
             onClick={() => void members.addSelectedMembers()}
             disabled={selected_count === 0 || members.is_saving}
-            className="rounded-lg bg-brand-500 px-5 py-[10px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-[var(--admin-button-primary)] px-5 py-[10px] text-[13.5px] font-semibold text-white transition-colors hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {members.is_saving ? "Saving…" : selected_count > 0 ? `Add ${selected_count} selected` : "Add selected"}
           </button>

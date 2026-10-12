@@ -34,6 +34,9 @@
   --admin-danger-text: #d83a52;
   --admin-info-bg: #cce5ff;
   --admin-info-text: #0060b9;
+  --admin-neutral-bg: #ecedf5;
+  --admin-button-primary: var(--color-brand-500);
+  --admin-button-primary-hover: var(--color-brand-600);
 }
 
 html.dark {
@@ -62,6 +65,9 @@ html.dark {
   --admin-danger-text: #ff8a94;
   --admin-info-bg: rgba(87, 155, 252, 0.14);
   --admin-info-text: #8cbcff;
+  --admin-neutral-bg: rgba(255, 255, 255, 0.06);
+  --admin-button-primary: var(--color-brand-500);
+  --admin-button-primary-hover: var(--color-brand-600);
 }
 
 /*
@@ -86,6 +92,7 @@ html:not(.dark) .administration-theme {
 
 /* Shared SettingsDropdown triggers read as monday's white bordered select inside the card. */
 html:not(.dark) .administration-theme .settings-dropdown-trigger {
+  min-height: 36px;
   border-color: var(--admin-border);
   border-radius: 4px;
   background-color: #ffffff;
@@ -180,6 +187,11 @@ html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
   gap: 16px;
   padding: 28px 40px 20px;
   border-bottom: 1px solid var(--admin-divider);
+}
+
+.admin-page-header > :first-child {
+  flex: 1 1 360px;
+  min-width: 0;
 }
 
 .admin-page-title {
@@ -297,6 +309,153 @@ html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
   padding-left: 32px;
 }
 
+/* Header actions, monday style buttons. Sections portal them next to the page title. */
+
+.admin-page-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-page-actions:empty {
+  display: none;
+}
+
+.admin-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  white-space: nowrap;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.admin-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.admin-button:focus-visible {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 2px;
+}
+
+.admin-button-primary {
+  background: var(--admin-button-primary);
+  color: #ffffff;
+}
+
+.admin-button-primary:hover:not(:disabled) {
+  background: var(--admin-button-primary-hover);
+}
+
+.admin-button-secondary {
+  border-color: var(--admin-border);
+  background: transparent;
+  color: var(--admin-text);
+}
+
+.admin-button-secondary:hover:not(:disabled) {
+  background: var(--admin-hover);
+}
+
+.admin-button-tertiary {
+  padding: 0 8px;
+  background: transparent;
+  color: var(--admin-text);
+}
+
+.admin-button-tertiary:hover:not(:disabled) {
+  background: var(--admin-hover);
+}
+
+.admin-button-danger {
+  border-color: var(--admin-border);
+  background: transparent;
+  color: var(--admin-danger-text);
+}
+
+.admin-button-danger:hover:not(:disabled) {
+  background: var(--admin-danger-bg);
+}
+
+/* Tables: a bordered frame with a 48px header row and 56px body rows, monday's directory tables. */
+
+.admin-table {
+  overflow-x: auto;
+  border: 1px solid var(--admin-list-border);
+  border-radius: 8px;
+  background: var(--admin-card-bg);
+}
+
+.admin-table-head {
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--admin-list-border);
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.admin-table-row {
+  min-height: 56px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--admin-list-border);
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 20px;
+  transition: background-color 120ms ease;
+}
+
+.admin-table-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-table-row:hover {
+  background: var(--admin-row-hover);
+}
+
+.admin-table-row[data-selected="true"] {
+  background: var(--admin-selected);
+}
+
+.admin-table-empty {
+  padding: 32px 16px;
+  color: var(--admin-text-secondary);
+  font-size: 14px;
+  text-align: center;
+}
+
+.admin-table-caption {
+  margin-bottom: 12px;
+  color: var(--admin-text-secondary);
+  font-size: 14px;
+}
+
+/* Inputs: the shared SearchField and dropdown triggers read as monday's 40px white fields. */
+
+.administration-theme .search-field {
+  height: 40px;
+  border-radius: 4px;
+  background: var(--admin-card-bg);
+}
+
+.administration-theme .search-field input {
+  font-size: 14px;
+}
+
 /* Notices, status pills and text actions shared by every section. */
 
 .admin-notice {
@@ -327,6 +486,34 @@ html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
 .admin-notice-warning {
   background: var(--admin-warning-bg);
   color: var(--admin-text);
+}
+
+/* monday's gray banner with a leading info icon and a close button, e.g. unassigned users on Departments. */
+.admin-notice-neutral {
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px 8px 16px;
+  border-radius: 8px;
+  background: var(--admin-neutral-bg);
+  color: var(--admin-text);
+  font-size: 14px;
+}
+
+.admin-notice-dismiss {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  border-radius: 4px;
+  color: var(--admin-icon);
+}
+
+.admin-notice-dismiss:hover {
+  background: var(--admin-hover);
 }
 
 .admin-pill {
@@ -492,8 +679,8 @@ html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
 }
 
 .admin-checkbox-row input:checked + .admin-checkbox {
-  border-color: var(--admin-accent);
-  background: var(--admin-accent);
+  border-color: var(--admin-button-primary);
+  background: var(--admin-button-primary);
 }
 
 .admin-checkbox-row input:disabled + .admin-checkbox {

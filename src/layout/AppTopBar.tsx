@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
 import { useBranding } from "@/context/BrandingContext";
@@ -8,6 +8,7 @@ import UserAvatar from "@/components/common/UserAvatar";
 import OrganizationLogo from "@/components/common/OrganizationLogo";
 import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import AccountMenu from "./AccountMenu";
+import { isSidebarlessPath } from "./sidebar-routes";
 import HelpMenu from "./HelpMenu";
 import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
@@ -44,6 +45,7 @@ import {
 const AppTopBar: React.FC = () => {
   const router = useRouter();
   const { toggleMobileSidebar } = useSidebar();
+  const is_sidebarless = isSidebarlessPath(usePathname());
   const { user } = useAuth();
   const { branding } = useBranding();
   const { active_workspace, active_workspace_slug } = useWorkspaces();
@@ -164,14 +166,17 @@ const AppTopBar: React.FC = () => {
     <header className="relative z-[60] flex h-[52px] flex-none items-center gap-3.5 bg-sidebar-rail px-3.5 text-shell-text lg:pl-0">
       {/* Left cluster */}
       <div className="flex flex-none items-center gap-2.5 lg:gap-0.5">
-        <button
-          type="button"
-          onClick={toggleMobileSidebar}
-          className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-secondary hover:bg-shell-hover lg:hidden"
-          aria-label="Toggle sidebar"
-        >
-          <HamburgerIcon size={18} />
-        </button>
+        {/* Pages without the workspace sidebar have nothing to toggle. */}
+        {is_sidebarless ? null : (
+          <button
+            type="button"
+            onClick={toggleMobileSidebar}
+            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-secondary hover:bg-shell-hover lg:hidden"
+            aria-label="Toggle sidebar"
+          >
+            <HamburgerIcon size={18} />
+          </button>
+        )}
 
         {/* Same width as the app rail below, so the logo sits centered over it. */}
         <span className="flex flex-none items-center lg:w-[72px] lg:justify-center">

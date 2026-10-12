@@ -139,7 +139,7 @@ const SlackSettingsView: React.FC = () => {
               {workspace ? <SlackMembersCard workspace={workspace} admin={admin} /> : null}
 
               {!needs_setup ? (
-                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-shell-border bg-shell-panel-alt p-5">
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-5">
                   <div className="min-w-0">
                     <div className="text-[14px] font-bold text-shell-text">Slack is ready</div>
                     <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">

@@ -70,7 +70,7 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ board_own
       {board_ownership.orphan_boards.map((board) => (
         <div
           key={board.id}
-          className="mb-2.5 flex items-center gap-[14px] rounded-[11px] border border-shell-border bg-shell-panel-alt px-[14px] py-3"
+          className="mb-2.5 flex items-center gap-[14px] rounded-lg border border-[var(--admin-list-border)] bg-shell-panel px-[14px] py-3"
         >
           <span className="flex-1 text-[13.5px] font-semibold text-shell-text">{board.label}</span>
           <SettingsDropdown

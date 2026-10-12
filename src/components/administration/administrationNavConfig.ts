@@ -101,12 +101,19 @@ export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
         label: "Users",
         title: "User management",
         description:
-          "Manage everyone on this account, see who's an admin, deactivate a user, or assign people to departments. Click a person to see their details.",
+          "Manage everyone on this account, change roles, assign departments or deactivate a user. Click a person to see their details.",
+      },
+      {
+        id: "invitations",
+        label: "Invitations",
+        description: "Everyone invited to the account, whether they joined, are still pending or let the invitation expire.",
       },
       {
         id: "departments",
         label: "Departments",
-        description: "Organize the account by location, business unit or cost center, then assign people from User management.",
+        title: "Manage departments",
+        description:
+          "Organize by location, business unit, cost center or department. Assign owners so they can manage each unit.",
       },
       {
         id: "board_ownership",

@@ -4,9 +4,11 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { DragHandleIcon } from "@/icons/board-icons";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import AdminPageActions from "../AdminPageActions";
 import ProfileFieldDialog, { PROFILE_FIELD_TYPE_LABELS } from "../users/ProfileFieldDialog";
 import { useProfileFieldsManager } from "../useProfileFieldsManager";
 import type { ProfileFieldDto } from "@/types/administration/profile-fields";
@@ -28,7 +30,7 @@ const FieldRow: React.FC<{
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`${GRID} items-center border-b border-shell-border bg-shell-bg px-2.5 py-[11px] text-[12.5px] ${
+      className={`${GRID} items-center admin-table-row ${
         isDragging ? "relative z-10 shadow-xl shadow-black/30" : ""
       }`}
     >
@@ -46,7 +48,7 @@ const FieldRow: React.FC<{
           </button>
         ) : null}
       </span>
-      <span className="truncate text-[13.5px] font-semibold text-shell-text">{field.name}</span>
+      <span className="truncate text-[14px] text-shell-text">{field.name}</span>
       <span>
         <span className="rounded-md bg-shell-hover-strong px-2 py-0.5 text-[11.5px] font-bold text-shell-text-secondary">
           {PROFILE_FIELD_TYPE_LABELS[field.type]}
@@ -74,14 +76,14 @@ const FieldRow: React.FC<{
             <button
               type="button"
               onClick={onEdit}
-              className="rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 py-1.5 text-[11.5px] font-semibold text-shell-text-secondary hover:bg-shell-hover"
+              className="rounded-[4px] border border-[var(--admin-border)] px-2.5 py-1 text-[13px] text-shell-text hover:bg-shell-hover"
             >
               Edit
             </button>
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action"
+              className="rounded-[4px] px-2.5 py-1 text-[13px] admin-danger-action"
             >
               Delete
             </button>
@@ -116,20 +118,14 @@ const ProfileFieldsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-5 flex items-start justify-end gap-5">
-        {can_manage ? (
-          <button
-            type="button"
-            onClick={() => setEditing("new")}
-            className="flex flex-none items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600"
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16">
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-            </svg>
+      {can_manage ? (
+        <AdminPageActions>
+          <button type="button" onClick={() => setEditing("new")} className="admin-button admin-button-primary">
+            <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
             Add field
           </button>
-        ) : null}
-      </div>
+        </AdminPageActions>
+      ) : null}
 
       {manager.error ? (
         <div className="mb-4 admin-notice admin-notice-error">
@@ -137,9 +133,9 @@ const ProfileFieldsSection: React.FC = () => {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto">
+      <div className="admin-table">
         <div className="min-w-[760px]">
-          <div className={`${GRID} px-2.5 pb-2.5 text-[11px] font-bold uppercase tracking-[0.03em] text-shell-text-faint`}>
+          <div className={`${GRID} admin-table-head`}>
             <span />
             <span>Field</span>
             <span>Type</span>
@@ -147,10 +143,9 @@ const ProfileFieldsSection: React.FC = () => {
             <span>Filled in</span>
             <span />
           </div>
-          <div className="h-px bg-shell-hover" />
 
           {manager.is_loading ? (
-            <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading profile fields…</div>
+            <div className="admin-table-empty">Loading profile fields…</div>
           ) : manager.fields.length === 0 ? (
             <div className="px-2.5 py-10 text-center text-[13px] text-shell-text-faint">
               No custom profile fields yet.{can_manage ? " Add one to get started." : ""}

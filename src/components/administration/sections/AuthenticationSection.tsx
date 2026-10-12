@@ -9,7 +9,7 @@ export type AuthenticationSectionProps = {
 };
 
 const textAreaClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[13px] text-shell-text outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[13px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]";
 
 /** Administration > Security > Authentication — sign-in policies, SCIM, guest approval and IP restriction. */
 const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ authentication }) => {

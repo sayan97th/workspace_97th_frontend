@@ -26,7 +26,7 @@ const SearchField: React.FC<SearchFieldProps> = ({
 
   return (
     <div
-      className={`flex h-[36px] items-center gap-2 rounded-[9px] border bg-shell-hover px-[11px] transition-colors ${className}`}
+      className={`search-field flex h-[36px] items-center gap-2 rounded-[9px] border bg-shell-hover px-[11px] transition-colors ${className}`}
       style={{ borderColor: is_focused ? "var(--color-brand-500)" : "var(--color-shell-border-strong)" }}
     >
       <span className="flex flex-none items-center text-shell-text-faint">

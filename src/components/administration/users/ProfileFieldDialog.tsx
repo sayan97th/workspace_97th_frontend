@@ -31,7 +31,7 @@ const type_options = (Object.keys(PROFILE_FIELD_TYPE_LABELS) as ProfileFieldType
 }));
 
 const inputClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[10px] text-[13.5px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[10px] text-[13.5px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-[var(--admin-button-primary)]";
 
 const newOptionId = (): string => `opt_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -205,7 +205,7 @@ const ProfileFieldDialog: React.FC<ProfileFieldDialogProps> = ({ field, is_open,
             type="button"
             disabled={!can_save}
             onClick={() => void submit()}
-            className="rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+            className="rounded-[4px] bg-[var(--admin-button-primary)] px-4 py-[9px] text-[14px] font-medium text-white hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-default disabled:opacity-50"
           >
             {is_saving ? "Saving…" : field ? "Save changes" : "Add field"}
           </button>

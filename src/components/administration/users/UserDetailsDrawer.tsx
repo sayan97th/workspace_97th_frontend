@@ -25,7 +25,7 @@ export type UserDetailsDrawerProps = {
 
 const sectionTitleClass = "mb-2 text-[11px] font-bold uppercase tracking-[0.05em] text-shell-text-faint";
 const inputClass =
-  "h-[34px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500";
+  "h-[34px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]";
 const actionButtonClass =
   "rounded-lg border border-shell-border-strong bg-shell-panel-alt px-3 py-[7px] text-[12px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
 
@@ -250,7 +250,7 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
                 { label: "Items created", value: details.stats.items_created },
                 { label: "Updates posted", value: details.stats.updates_posted },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-xl border border-shell-border bg-shell-panel-alt px-3 py-2.5">
+                <div key={stat.label} className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel px-3 py-2.5">
                   <div className="text-[18px] font-extrabold text-shell-text">{stat.value.toLocaleString()}</div>
                   <div className="text-[11.5px] text-shell-text-muted">{stat.label}</div>
                 </div>
@@ -292,7 +292,7 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
                         type="button"
                         disabled={changed_field_ids.length === 0 || is_saving_fields}
                         onClick={() => void saveFields()}
-                        className="rounded-lg bg-brand-500 px-3.5 py-[7px] text-[12.5px] font-bold text-white hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+                        className="rounded-lg bg-[var(--admin-button-primary)] px-3.5 py-[7px] text-[12.5px] font-bold text-white hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-default disabled:opacity-50"
                       >
                         {is_saving_fields ? "Saving…" : "Save fields"}
                       </button>

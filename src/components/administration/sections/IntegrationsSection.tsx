@@ -47,7 +47,7 @@ const IntegrationsSection: React.FC = () => {
     <div className="max-w-[760px]">
       <SlackMessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} />
 
-      <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-5">
+      <div className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-5">
         <div className="flex flex-wrap items-start gap-4">
           <div className="flex h-11 w-11 flex-none items-center justify-center rounded-[10px] border border-shell-border bg-shell-panel">
             <SlackLogo size={24} />
@@ -94,7 +94,7 @@ const IntegrationsSection: React.FC = () => {
         <ul className="flex flex-col gap-2">
           {SLACK_BENEFITS.map((benefit) => (
             <li key={benefit} className="flex items-start gap-2.5 text-[14px] leading-5 text-shell-text-secondary">
-              <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-brand-500" />
+              <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-[var(--admin-button-primary)]" />
               {benefit}
             </li>
           ))}

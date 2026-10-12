@@ -1,11 +1,15 @@
 "use client";
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
 import { format, formatDistanceToNow } from "date-fns";
+import { Download, Users } from "lucide-react";
 import { PersonAvatar } from "@/components/board";
 import { Pagination } from "@/components/content";
 import SearchField from "@/components/common/SearchField";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import AdminPageActions from "../AdminPageActions";
 import { toPersonOption } from "../adminUserMapping";
+import InviteButton from "../InviteButton";
 import InviteUserModal from "../InviteUserModal";
 import SettingsDropdown from "../SettingsDropdown";
 import {
@@ -17,9 +21,7 @@ import {
   bulkActionButtonClass,
   bulkDangerButtonClass,
 } from "../filters";
-import InvitationsPanel from "../users/InvitationsPanel";
 import UserDetailsDrawer from "../users/UserDetailsDrawer";
-import { useStaffInvitationsManager } from "../useStaffInvitationsManager";
 import { primaryRole, ROLE_LABELS, USERS_PER_PAGE, type UsersManagerApi } from "../useUsersManager";
 import type { AdminUserDto, AdminUsersSortField, PlatformRoleName } from "@/types/administration/admin-users";
 import type { ProfileFieldDto } from "@/types/administration/profile-fields";
@@ -27,8 +29,6 @@ import type { ProfileFieldDto } from "@/types/administration/profile-fields";
 export type UsersSectionProps = {
   users: UsersManagerApi;
 };
-
-type UsersTab = "users" | "invitations";
 
 const role_options = (Object.keys(ROLE_LABELS) as PlatformRoleName[]).map((role) => ({
   id: role,
@@ -64,12 +64,10 @@ const displayFieldValue = (field: ProfileFieldDto, value: string | null | undefi
   return value;
 };
 
-/** Administration > Directory > Users: the account's user directory and its invitations. */
+/** Administration > Directory > Users: the account's user directory. Invitations have their own page. */
 const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
-  const [tab, setTab] = useState<UsersTab>("users");
   const [open_menu_id, setOpenMenuId] = useState<number | null>(null);
   const [pending_bulk_deactivate, setPendingBulkDeactivate] = useState(false);
-  const invitations = useStaffInvitationsManager(users.invitations_version);
 
   const department_options = useMemo(
     () => [
@@ -122,30 +120,24 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
 
   return (
     <div>
-      <div className="mb-5 flex items-center gap-6 border-b border-shell-border">
-        {(
-          [
-            { id: "users", label: "Users", count: users.user_total },
-            { id: "invitations", label: "Invitations", count: invitations.counts.pending },
-          ] as const
-        ).map((item) => (
+      <AdminPageActions>
+        <Link href="/teams" className="admin-button admin-button-secondary">
+          <Users size={18} strokeWidth={1.75} aria-hidden="true" />
+          Manage teams
+        </Link>
+        {users.can_manage_users ? (
           <button
-            key={item.id}
             type="button"
-            onClick={() => setTab(item.id)}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 pb-2.5 text-[13.5px] font-semibold transition-colors ${
-              tab === item.id
-                ? "border-brand-500 text-shell-text"
-                : "border-transparent text-shell-text-muted hover:text-shell-text-secondary"
-            }`}
+            onClick={() => void users.exportUsers(false)}
+            disabled={users.is_exporting}
+            className="admin-button admin-button-secondary"
           >
-            {item.label}
-            <span className="rounded-md bg-shell-hover-strong px-1.5 py-px text-[11px] font-bold text-shell-text-muted">
-              {item.count}
-            </span>
+            <Download size={18} strokeWidth={1.75} aria-hidden="true" />
+            {users.is_exporting ? "Exporting…" : "Export CSV"}
           </button>
-        ))}
-      </div>
+        ) : null}
+        <InviteButton onClick={users.openInvite} />
+      </AdminPageActions>
 
       {users.error ? (
         <div className="mb-3.5 admin-notice admin-notice-error">
@@ -159,39 +151,14 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
         </div>
       ) : null}
 
-      {tab === "invitations" ? (
-        <InvitationsPanel invitations={invitations} can_manage={users.can_manage_users} />
-      ) : (
-        <>
+      <>
           <div className="mb-3 flex flex-wrap items-center gap-2.5">
             <SearchField
               value={users.user_query}
               onChange={users.setUserQuery}
-              placeholder="Search name or email"
-              className="w-[280px]"
+              placeholder="Search user name or email"
+              className="w-[320px] max-w-full"
             />
-            <div className="ml-auto flex items-center gap-2">
-              {users.can_manage_users ? (
-                <button
-                  type="button"
-                  onClick={() => void users.exportUsers(false)}
-                  disabled={users.is_exporting}
-                  className="rounded-lg border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[8px] text-[13px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:opacity-50"
-                >
-                  {users.is_exporting ? "Exporting…" : "Export CSV"}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={users.openInvite}
-                className="flex items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600"
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16">
-                  <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-                </svg>
-                Invite
-              </button>
-            </div>
           </div>
 
           <AdminFilterBar
@@ -202,14 +169,14 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
             className="mb-3.5"
           />
 
-          <div className="mb-2.5 text-[12.5px] text-shell-text-faint">
-            Showing {users.user_rows.length} of {users.user_total} users
+          <div className="admin-table-caption">
+            Showing {users.user_rows.length} of {users.user_total} results
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="admin-table">
             <div style={{ minWidth: min_table_width }}>
               <div
-                className="grid items-center gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint"
+                className="grid items-center gap-3.5 admin-table-head"
                 style={{ gridTemplateColumns: grid_template }}
               >
                 {users.can_manage_users ? (
@@ -235,12 +202,11 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                 ))}
                 <span />
               </div>
-              <div className="h-px bg-shell-hover" />
 
               {users.is_loading ? (
-                <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading users…</div>
+                <div className="admin-table-empty">Loading users…</div>
               ) : users.user_rows.length === 0 ? (
-                <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">
+                <div className="admin-table-empty">
                   No users match these filters.
                 </div>
               ) : (
@@ -254,9 +220,8 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                   return (
                     <div
                       key={row.id}
-                      className={`grid items-center gap-3.5 border-b border-shell-border px-2.5 py-[10px] text-[12.5px] ${
-                        is_selected ? "bg-brand-500/[0.06]" : ""
-                      }`}
+                      className="grid items-center gap-3.5 admin-table-row"
+                      data-selected={is_selected || undefined}
                       style={{ gridTemplateColumns: grid_template }}
                     >
                       {users.can_manage_users ? (
@@ -278,7 +243,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                         <PersonAvatar person={person} size={28} />
                         <span className="min-w-0">
                           <div
-                            className={`truncate text-[13.5px] font-semibold hover:underline ${
+                            className={`truncate text-[14px] hover:underline ${
                               row.is_active && !row.deleted_at ? "text-shell-text" : "text-shell-text-faint line-through"
                             }`}
                           >
@@ -296,7 +261,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                           className={is_updating_role ? "opacity-60" : undefined}
                         />
                       ) : (
-                        <span className="text-[12.5px] font-medium text-shell-text-muted">{ROLE_LABELS[role]}</span>
+                        <span>{ROLE_LABELS[role]}</span>
                       )}
 
                       {users.can_manage_users ? (
@@ -335,7 +300,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                           type="button"
                           onClick={() => setOpenMenuId((current) => (current === row.id ? null : row.id))}
                           aria-label={`Actions for ${row.full_name}`}
-                          className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover"
+                          className="flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text hover:bg-[var(--admin-hover)]"
                         >
                           <svg width="14" height="14" viewBox="0 0 16 16">
                             <circle cx="4" cy="8" r="1.3" fill="currentColor" />
@@ -344,13 +309,13 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                           </svg>
                         </button>
                         {open_menu_id === row.id ? (
-                          <div className="absolute right-0 top-[30px] z-10 w-[180px] rounded-[10px] border border-shell-border-strong bg-shell-panel p-1.5 shadow-2xl shadow-black/40">
+                          <div className="absolute right-0 top-[34px] z-10 w-[200px] rounded-lg bg-shell-panel p-2 shadow-[0_6px_20px_rgba(0,0,0,0.2)]">
                             <div
                               onClick={() => {
                                 users.openDetails(row.id);
                                 setOpenMenuId(null);
                               }}
-                              className="cursor-pointer rounded-lg px-[10px] py-[9px] text-[13px] font-medium text-shell-text-secondary hover:bg-shell-hover"
+                              className="cursor-pointer rounded-[4px] px-2 py-1.5 text-[14px] text-shell-text hover:bg-[var(--admin-hover)]"
                             >
                               View details
                             </div>
@@ -360,7 +325,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                                   users.requestToggleActive(row);
                                   setOpenMenuId(null);
                                 }}
-                                className="cursor-pointer rounded-lg px-[10px] py-[9px] text-[13px] font-medium text-[#e2445c] hover:bg-[#e2445c]/10"
+                                className="cursor-pointer rounded-[4px] px-2 py-1.5 text-[14px] admin-danger-action"
                               >
                                 {row.is_active ? "Deactivate user" : "Reactivate user"}
                               </div>
@@ -427,8 +392,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
               Deactivate
             </button>
           </AdminBulkActionBar>
-        </>
-      )}
+      </>
 
       <ConfirmActionModal
         is_open={users.user_pending_toggle !== null}

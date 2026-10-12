@@ -1,8 +1,10 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
+import { Info, Plus, Trash2, X } from "lucide-react";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import UserAvatar from "@/components/common/UserAvatar";
 import { useAuth } from "@/context/AuthContext";
+import AdminPageActions from "../AdminPageActions";
 import DepartmentMembersModal from "../DepartmentMembersModal";
 import type { DepartmentsManagerApi } from "../useDepartmentsManager";
 
@@ -11,7 +13,7 @@ export type DepartmentsSectionProps = {
   onGoToUsers: () => void;
 };
 
-const GRID_COLUMNS = "grid-cols-[minmax(160px,1fr)_150px_110px_90px_110px_130px]";
+const GRID_COLUMNS = "grid-cols-[minmax(160px,1fr)_140px_130px_130px_130px_130px]";
 const MAX_VISIBLE_OWNERS = 3;
 
 /**
@@ -23,6 +25,7 @@ const MAX_VISIBLE_OWNERS = 3;
 const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, onGoToUsers }) => {
   const { hasAnyRole } = useAuth();
   const is_admin = hasAnyRole("super_admin", "admin");
+  const [is_unassigned_notice_dismissed, setIsUnassignedNoticeDismissed] = useState(false);
 
   return (
     <div>
@@ -32,64 +35,66 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
         </div>
       ) : null}
 
-      {departments.unassigned_user_count > 0 ? (
-        <div className="mb-[18px] flex items-center gap-[10px] admin-notice admin-notice-warning">
-          <svg width="15" height="15" viewBox="0 0 16 16" className="flex-none text-[var(--admin-accent)]">
-            <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth={1.3} />
-            <line x1="8" y1="7" x2="8" y2="11.2" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
-            <circle cx="8" cy="4.9" r="0.9" fill="currentColor" />
-          </svg>
-          <span>
-            {departments.unassigned_user_count} users are not assigned to any department yet.{" "}
-            <button type="button" onClick={onGoToUsers} className="admin-link">
-              Assign them in User management
-            </button>
-          </span>
-        </div>
-      ) : null}
-
       {is_admin ? (
-        <div className="mb-3.5 flex justify-end">
+        <AdminPageActions>
           <button
             type="button"
             onClick={() => void departments.addDepartment()}
             disabled={departments.is_adding_department}
-            className="flex items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+            className="admin-button admin-button-primary"
           >
-            <svg width="13" height="13" viewBox="0 0 16 16">
-              <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
-            </svg>
+            <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
             Add department
+          </button>
+        </AdminPageActions>
+      ) : null}
+
+      {departments.unassigned_user_count > 0 && !is_unassigned_notice_dismissed ? (
+        <div role="status" className="admin-notice admin-notice-neutral mb-6">
+          <Info size={18} strokeWidth={1.75} className="flex-none" aria-hidden="true" />
+          <span className="min-w-0">
+            {departments.unassigned_user_count} users are not assigned to any department. Assign them in{" "}
+            <button type="button" onClick={onGoToUsers} className="admin-link">
+              User management
+            </button>
+            .
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsUnassignedNoticeDismissed(true)}
+            aria-label="Dismiss"
+            className="admin-notice-dismiss"
+          >
+            <X size={16} strokeWidth={1.75} aria-hidden="true" />
           </button>
         </div>
       ) : null}
 
-      <div
-        className={`grid ${GRID_COLUMNS} gap-3.5 px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint`}
-      >
+      <div className="admin-table">
+        <div className="min-w-[860px]">
+      <div className={`grid ${GRID_COLUMNS} gap-3.5 admin-table-head`}>
         <span>Name</span>
         <span>Owners</span>
-        <span>Reserved</span>
-        <span>Assigned</span>
-        <span>Available</span>
+        <span>Reserved seats</span>
+        <span>Assigned seats</span>
+        <span>Available seats</span>
         <span />
       </div>
-      <div className="h-px bg-shell-hover" />
 
       {departments.is_loading ? (
-        <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading departments…</div>
+        <div className="admin-table-empty">Loading departments…</div>
       ) : (
         departments.department_rows.map((department) => (
           <div
             key={department.id}
-            className={`grid ${GRID_COLUMNS} items-center gap-3.5 border-b border-shell-border px-2.5 py-[9px]`}
+            className={`grid ${GRID_COLUMNS} items-center gap-3.5 admin-table-row`}
           >
             <input
               type="text"
               value={department.name}
               readOnly={!department.can_administer}
               onChange={(event) => departments.renameDepartment(department.id, event.target.value)}
-              className="w-full rounded-[7px] border border-transparent bg-transparent px-2 py-[7px] text-[13.5px] font-semibold text-shell-text outline-none hover:border-shell-border-strong hover:bg-shell-panel-alt focus:border-shell-border-strong focus:bg-shell-panel-alt read-only:hover:border-transparent read-only:hover:bg-transparent"
+              className="-ml-2 w-full rounded-[4px] border border-transparent bg-transparent px-2 py-[7px] text-[14px] text-shell-text outline-none hover:border-shell-border-strong hover:bg-shell-panel-alt focus:border-shell-border-strong focus:bg-shell-panel-alt read-only:hover:border-transparent read-only:hover:bg-transparent"
             />
 
             <div className="flex items-center">
@@ -124,23 +129,23 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
                     raw_value === "" ? null : Math.max(0, Math.floor(Number(raw_value))),
                   );
                 }}
-                className="w-full rounded-[7px] border border-transparent bg-transparent px-2 py-[7px] text-[13px] text-shell-text-secondary outline-none placeholder:text-shell-text-secondary hover:border-shell-border-strong hover:bg-shell-panel-alt focus:border-shell-border-strong focus:bg-shell-panel-alt"
+                className="-ml-2 w-full rounded-[4px] border border-transparent bg-transparent px-2 py-[7px] text-[14px] text-shell-text outline-none placeholder:text-shell-text-secondary hover:border-shell-border-strong hover:bg-shell-panel-alt focus:border-shell-border-strong focus:bg-shell-panel-alt"
               />
             ) : (
-              <span className="px-2 text-[13px] text-shell-text-secondary">{department.reserved ?? "Unlimited"}</span>
+              <span className="text-[14px]">{department.reserved ?? "Unlimited"}</span>
             )}
 
             <span
-              className={`text-[13px] ${department.over_by > 0 ? "font-semibold text-[#e2445c]" : "text-shell-text-secondary"}`}
+              className={`text-[14px] ${department.over_by > 0 ? "font-semibold text-[var(--admin-danger-text)]" : ""}`}
             >
               {department.assigned}
             </span>
             {department.over_by > 0 ? (
-              <span className="w-fit rounded-full bg-[#e2445c]/10 px-2 py-0.5 text-[11.5px] font-semibold text-[#e2445c]">
+              <span className="admin-pill admin-pill-danger w-fit">
                 {`Over by ${department.over_by}`}
               </span>
             ) : (
-              <span className="text-[13px] text-shell-text-secondary">{department.available ?? "Unlimited"}</span>
+              <span className="text-[14px]">{department.available ?? "Unlimited"}</span>
             )}
 
             <div className="flex items-center justify-end gap-1.5">
@@ -148,7 +153,7 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
                 <button
                   type="button"
                   onClick={() => departments.openMembers(department)}
-                  className="rounded-lg border border-shell-border-strong px-2.5 py-1 text-[12px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
+                  className="rounded-[4px] border border-[var(--admin-border)] px-2.5 py-1 text-[13px] text-shell-text transition-colors hover:bg-[var(--admin-hover)]"
                 >
                   Manage
                 </button>
@@ -158,24 +163,17 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
                   type="button"
                   onClick={() => departments.requestRemoveDepartment(department)}
                   aria-label={`Remove ${department.name}`}
-                  className="flex h-[26px] w-[26px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-[#e2445c]/10 hover:text-[#e2445c]"
+                  className="flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text-secondary hover:bg-[var(--admin-danger-bg)] hover:text-[var(--admin-danger-text)]"
                 >
-                  <svg width="13" height="13" viewBox="0 0 16 16">
-                    <path
-                      d="M3 4.5h10M6.5 4.5V3.2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1.3M4.3 4.5l.6 8.3a1 1 0 0 0 1 .9h4.2a1 1 0 0 0 1-.9l.6-8.3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={1.3}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Trash2 size={16} strokeWidth={1.75} aria-hidden="true" />
                 </button>
               ) : null}
             </div>
           </div>
         ))
       )}
+        </div>
+      </div>
 
       <DepartmentMembersModal members={departments.members} onClose={departments.closeMembers} />
 

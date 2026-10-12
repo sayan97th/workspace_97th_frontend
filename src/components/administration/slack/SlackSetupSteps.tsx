@@ -67,7 +67,7 @@ const SlackSetupSteps: React.FC<SlackSetupStepsProps> = ({ status }) => {
                   step.is_done
                     ? "bg-[#00c875] text-white"
                     : is_current
-                      ? "bg-brand-500 text-white"
+                      ? "bg-[var(--admin-button-primary)] text-white"
                       : "border border-shell-border-strong text-shell-text-faint"
                 }`}
               >

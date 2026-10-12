@@ -80,7 +80,7 @@ const OwnerTransferCard: React.FC<OwnerTransferCardProps> = ({
         type="button"
         onClick={onTransfer}
         disabled={!can_transfer}
-        className="mt-[18px] rounded-lg px-[18px] py-[10px] text-[13.5px] font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 enabled:bg-brand-500 enabled:hover:bg-brand-600"
+        className="mt-[18px] rounded-lg px-[18px] py-[10px] text-[13.5px] font-bold text-white transition-colors disabled:cursor-not-allowed disabled:opacity-40 enabled:bg-[var(--admin-button-primary)] enabled:hover:bg-[var(--admin-button-primary-hover)]"
       >
         {transfer_label}
       </button>

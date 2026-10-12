@@ -20,7 +20,7 @@ const RANGE_PRESETS: { id: UsageRangePreset; label: string }[] = [
 ];
 
 const dateInputClass =
-  "h-[32px] rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500";
+  "h-[32px] rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]";
 
 const formatBytes = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -44,7 +44,7 @@ const initials = (name: string): string =>
     .toUpperCase();
 
 const StatTile: React.FC<{ label: string; value: string; detail?: string }> = ({ label, value, detail }) => (
-  <div className="rounded-xl border border-shell-border bg-shell-panel-alt px-4 py-3.5">
+  <div className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel px-4 py-3.5">
     <div className="text-[12px] font-semibold text-shell-text-muted">{label}</div>
     <div className="mt-1 text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">{value}</div>
     {detail ? <div className="mt-0.5 text-[11.5px] text-shell-text-faint">{detail}</div> : null}
@@ -121,15 +121,15 @@ const UsageSection: React.FC = () => {
     <div className="max-w-[1100px]">
       <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg border border-shell-border-strong p-[3px]">
+          <div className="flex items-center gap-1 rounded-[4px] border border-[var(--admin-border)] p-[3px]">
             {RANGE_PRESETS.map((preset) => (
               <button
                 key={preset.id}
                 type="button"
                 onClick={() => usage.setPreset(preset.id)}
-                className={`rounded-md px-2.5 py-[5px] text-[12.5px] font-semibold transition-colors ${
+                className={`rounded-[4px] px-2.5 py-[5px] text-[13px] transition-colors ${
                   usage.preset === preset.id
-                    ? "bg-shell-hover-strong text-shell-text"
+                    ? "bg-[var(--admin-selected)] text-shell-text"
                     : "text-shell-text-muted hover:text-shell-text-secondary"
                 }`}
               >
@@ -194,7 +194,7 @@ const UsageSection: React.FC = () => {
             <StatTile label="Deactivated users" value={stats.kpis.deactivated_users.toLocaleString()} detail="deactivated or deleted" />
           </div>
 
-          <div className="mb-5 rounded-xl border border-shell-border bg-shell-panel-alt px-4 pb-2 pt-4">
+          <div className="mb-5 rounded-lg border border-[var(--admin-list-border)] bg-shell-panel px-4 pb-2 pt-4">
             <div className="mb-1 flex items-baseline justify-between gap-3">
               <div className="text-[14px] font-bold text-shell-text">Daily active users</div>
               <div className="text-[12px] text-shell-text-faint">
@@ -206,7 +206,7 @@ const UsageSection: React.FC = () => {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-4">
+            <div className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-4">
               <div className="mb-3 text-[14px] font-bold text-shell-text">Most active boards</div>
               {stats.top_boards.length === 0 ? (
                 <p className="py-4 text-[12.5px] text-shell-text-faint">No board activity in this period.</p>
@@ -232,7 +232,7 @@ const UsageSection: React.FC = () => {
               )}
             </div>
 
-            <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-4">
+            <div className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-4">
               <div className="mb-3 text-[14px] font-bold text-shell-text">Most active people</div>
               {stats.top_users.length === 0 ? (
                 <p className="py-4 text-[12.5px] text-shell-text-faint">No recorded activity in this period.</p>

@@ -1,9 +1,11 @@
 "use client";
 import React from "react";
 import { format, formatDistanceToNow } from "date-fns";
+import { LogOut } from "lucide-react";
 import SearchField from "@/components/common/SearchField";
 import { Pagination } from "@/components/content";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import AdminPageActions from "../AdminPageActions";
 import { AdminFilterBar, AdminSortableHeader } from "../filters";
 import { SESSION_FILTER_DEFS, type AdminSessionsManagerApi } from "../useAdminSessionsManager";
 import type { AdminSessionDto, AdminSessionsSortField } from "@/types/administration/admin-sessions";
@@ -34,25 +36,12 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-end gap-5">
-        <button
-          type="button"
-          onClick={sessions.openLogoutAll}
-          className="flex flex-none items-center gap-[7px] whitespace-nowrap rounded-[4px] bg-[#d83a52] px-4 py-[10px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45]"
-        >
-          <svg width="13" height="13" viewBox="0 0 16 16">
-            <path
-              d="M6 2.5H4a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 4 13.5h2M10.5 5 13.5 8l-3 3M13.5 8h-8"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+      <AdminPageActions>
+        <button type="button" onClick={sessions.openLogoutAll} className="admin-button admin-button-danger">
+          <LogOut size={18} strokeWidth={1.75} aria-hidden="true" />
           Log out all account users
         </button>
-      </div>
+      </AdminPageActions>
 
       {sessions.error ? (
         <div className="mb-4 admin-notice admin-notice-error">
@@ -81,11 +70,11 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
         />
       </div>
 
-      <div className="mb-2.5 text-[12.5px] text-shell-text-faint">{sessions.total} active sessions</div>
+      <div className="admin-table-caption">{sessions.total} active sessions</div>
 
-      <div className="overflow-x-auto">
+      <div className="admin-table">
         <div className="min-w-[860px]">
-          <div className={`${GRID} px-2.5 pb-2.5 text-[11px] font-bold uppercase tracking-[0.03em] text-shell-text-faint`}>
+          <div className={`${GRID} admin-table-head`}>
             {headerSort("Active user", "user")}
             <span>Device</span>
             <span>IP address</span>
@@ -93,17 +82,16 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
             {headerSort("Last usage", "last_used_at")}
             <span />
           </div>
-          <div className="h-px bg-shell-hover" />
 
           {sessions.is_loading ? (
-            <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading active sessions…</div>
+            <div className="admin-table-empty">Loading active sessions…</div>
           ) : sessions.session_rows.length === 0 ? (
-            <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">No active sessions match.</div>
+            <div className="admin-table-empty">No active sessions match.</div>
           ) : (
             sessions.session_rows.map((row) => (
               <div
                 key={row.id}
-                className={`${GRID} items-center border-b border-shell-border px-2.5 py-[10px] text-[12.5px] text-shell-text-secondary`}
+                className={`${GRID} items-center admin-table-row text-shell-text-secondary`}
               >
                 <span className="min-w-0">
                   <div className="truncate font-semibold text-shell-text">{row.user?.full_name ?? "Unknown user"}</div>
@@ -133,7 +121,7 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
                       type="button"
                       onClick={() => sessions.requestLogoutUser({ id: row.user!.id, full_name: row.user!.full_name })}
                       title="Log this user out on every device"
-                      className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action transition-colors"
+                      className="rounded-[4px] px-2.5 py-1 text-[13px] admin-danger-action transition-colors"
                     >
                       Everywhere
                     </button>

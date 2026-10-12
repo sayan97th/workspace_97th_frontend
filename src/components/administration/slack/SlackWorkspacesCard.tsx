@@ -24,7 +24,7 @@ const WorkspaceInitials: React.FC<{ name: string; is_active: boolean }> = ({ nam
     <div
       aria-hidden="true"
       className={`flex h-10 w-10 flex-none items-center justify-center rounded-[10px] text-[13px] font-bold ${
-        is_active ? "bg-brand-500 text-white" : "border border-shell-border bg-shell-panel text-shell-text-secondary"
+        is_active ? "bg-[var(--admin-button-primary)] text-white" : "border border-shell-border bg-shell-panel text-shell-text-secondary"
       }`}
     >
       {initials || "S"}

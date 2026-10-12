@@ -6,6 +6,7 @@ import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import { BrandingProvider } from "@/context/BrandingContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
+import { isSidebarlessPath } from "@/layout/sidebar-routes";
 import Backdrop from "@/layout/Backdrop";
 import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
 import OrganizationAnnouncementBanner from "@/components/organization/OrganizationAnnouncementBanner";
@@ -24,6 +25,7 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const is_embedded = useIsEmbedded();
+  const is_sidebarless = isSidebarlessPath(pathname);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -61,13 +63,20 @@ export default function AdminLayout({
           <ImpersonationBanner />
           <OrganizationAnnouncementBanner />
           <div className="relative flex min-h-0 w-full flex-1 overflow-hidden bg-sidebar-rail">
-            <AppSidebar />
-            <Backdrop />
+            {is_sidebarless ? null : (
+              <>
+                <AppSidebar />
+                <Backdrop />
+              </>
+            )}
             {/* The page continues the sidebar panel's card, its left border is the single divider between them,
-                and the corner rounds once the panel is collapsed. */}
+                and the corner rounds once the panel is collapsed. Account wide settings pages (Administration,
+                Organization) have no workspace sidebar and take the full width. */}
             <main
-              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto border-t border-sidebar-edge bg-shell-bg lg:border-l ${
-                isExpanded ? "" : "lg:rounded-tl-2xl"
+              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto bg-shell-bg ${
+                is_sidebarless
+                  ? ""
+                  : `border-t border-sidebar-edge lg:border-l ${isExpanded ? "" : "lg:rounded-tl-2xl"}`
               }`}
             >
               {children}

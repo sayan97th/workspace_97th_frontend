@@ -127,7 +127,7 @@ const UserDefaultsSection: React.FC<UserDefaultsSectionProps> = ({ account }) =>
           type="button"
           onClick={() => void account.saveDefaults()}
           disabled={!account.has_unsaved_defaults || account.is_saving_defaults}
-          className="h-10 rounded-[4px] bg-brand-500 px-4 text-[14px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+          className="h-10 rounded-[4px] bg-[var(--admin-button-primary)] px-4 text-[14px] font-medium text-white transition-colors hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-default disabled:opacity-50"
         >
           {account.is_saving_defaults ? "Saving…" : "Save defaults"}
         </button>

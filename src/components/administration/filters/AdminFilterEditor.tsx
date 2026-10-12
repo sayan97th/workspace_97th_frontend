@@ -23,7 +23,7 @@ export type AdminFilterEditorProps = {
 };
 
 const inputClass =
-  "h-[34px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500";
+  "h-[34px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]";
 
 const optionRowClass =
   "flex w-full cursor-pointer items-center gap-2.5 rounded-md px-2 py-[7px] text-left text-[12.5px] font-medium text-shell-text-secondary hover:bg-shell-hover";
@@ -37,7 +37,7 @@ export const AdminCheckbox: React.FC<{ is_checked: boolean; is_indeterminate?: b
   <span
     aria-hidden="true"
     className={`flex h-4 w-4 flex-none items-center justify-center rounded-[4px] border transition-colors ${
-      is_checked || is_indeterminate ? "border-brand-500 bg-brand-500 text-white" : "border-shell-text-faint"
+      is_checked || is_indeterminate ? "border-[var(--admin-button-primary)] bg-[var(--admin-button-primary)] text-white" : "border-shell-text-faint"
     } ${className}`}
   >
     {is_indeterminate ? (
@@ -125,10 +125,10 @@ const DateRangeEditor: React.FC<{
           >
             <span
               className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border ${
-                is_selected ? "border-brand-500" : "border-shell-text-faint"
+                is_selected ? "border-[var(--admin-button-primary)]" : "border-shell-text-faint"
               }`}
             >
-              {is_selected ? <span className="h-2 w-2 rounded-full bg-brand-500" /> : null}
+              {is_selected ? <span className="h-2 w-2 rounded-full bg-[var(--admin-button-primary)]" /> : null}
             </span>
             {DATE_PRESET_LABELS[preset]}
           </button>

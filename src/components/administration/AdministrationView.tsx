@@ -1,11 +1,12 @@
 "use client";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { useAuth } from "@/context/AuthContext";
 import { useBranding } from "@/context/BrandingContext";
 import AdministrationRail from "./AdministrationRail";
+import { AdminPageActionsContext } from "./AdminPageActions";
 import { useAccountSettingsManager } from "./useAccountSettingsManager";
 import { useDepartmentsManager } from "./useDepartmentsManager";
 import { useUsersManager } from "./useUsersManager";
@@ -19,6 +20,7 @@ import AccountSection from "./sections/AccountSection";
 import UserDefaultsSection from "./sections/UserDefaultsSection";
 import IntegrationsSection from "./sections/IntegrationsSection";
 import UsersSection from "./sections/UsersSection";
+import InvitationsSection from "./sections/InvitationsSection";
 import DepartmentsSection from "./sections/DepartmentsSection";
 import BoardOwnershipSection from "./sections/BoardOwnershipSection";
 import AuthenticationSection from "./sections/AuthenticationSection";
@@ -61,6 +63,7 @@ const AdministrationView: React.FC = () => {
   const { isLoading: is_auth_loading, hasAnyRole } = useAuth();
   const { branding } = useBranding();
   const active_section = parseAdministrationSection(search_params.get("section")) ?? DEFAULT_ADMINISTRATION_SECTION;
+  const [page_actions_el, setPageActionsEl] = useState<HTMLDivElement | null>(null);
 
   const selectSection = useCallback(
     (section_id: AdminSectionId) => {
@@ -117,6 +120,8 @@ const AdministrationView: React.FC = () => {
         return <ProfileFieldsSection />;
       case "users":
         return <UsersSection users={users} />;
+      case "invitations":
+        return <InvitationsSection users={users} />;
       case "departments":
         return <DepartmentsSection departments={departments} onGoToUsers={() => selectSection("users")} />;
       case "board_ownership":
@@ -169,11 +174,14 @@ const AdministrationView: React.FC = () => {
                 <p className="admin-page-subtitle">{active_item.description}</p>
               ) : null}
             </div>
+            <div ref={setPageActionsEl} className="admin-page-actions" />
           </div>
 
-          <div key={active_section} className="admin-page-content shell-scrollbar">
-            {renderActiveSection()}
-          </div>
+          <AdminPageActionsContext.Provider value={page_actions_el}>
+            <div key={active_section} className="admin-page-content shell-scrollbar">
+              {renderActiveSection()}
+            </div>
+          </AdminPageActionsContext.Provider>
         </section>
       </div>
     </div>

@@ -58,7 +58,7 @@ const AdminBulkMenuButton: React.FC<AdminBulkMenuButtonProps> = ({ label, option
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search…"
-              className="mb-1 h-[32px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-brand-500"
+              className="mb-1 h-[32px] w-full rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 text-[12.5px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]"
             />
           ) : null}
           <div className="max-h-[240px] overflow-y-auto">

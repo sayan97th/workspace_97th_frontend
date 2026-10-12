@@ -32,7 +32,7 @@ const AdminBulkActionBar: React.FC<AdminBulkActionBarProps> = ({ selected_count,
         className="pointer-events-auto flex max-w-full flex-wrap items-center gap-1 rounded-xl border border-shell-border-strong bg-shell-panel px-2 py-1.5 shadow-2xl shadow-black/40"
       >
         <span className="flex items-center gap-2 border-r border-shell-border px-3 py-1 text-[12.5px] font-bold text-shell-text">
-          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-brand-500 px-1.5 text-[12px] text-white">
+          <span className="flex h-[22px] min-w-[22px] items-center justify-center rounded-md bg-[var(--admin-button-primary)] px-1.5 text-[12px] text-white">
             {selected_count}
           </span>
           {selected_count === 1 ? `${noun} selected` : `${noun}s selected`}

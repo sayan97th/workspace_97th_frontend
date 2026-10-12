@@ -44,7 +44,7 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
 
     <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
       <SearchField value={invitations.query} onChange={invitations.setQuery} placeholder="Search email" className="w-[240px]" />
-      <div className="flex items-center gap-1 rounded-lg border border-shell-border-strong p-[3px]">
+      <div className="flex items-center gap-1 rounded-[4px] border border-[var(--admin-border)] p-[3px]">
         {STATUS_TABS.map((tab) => {
           const count = tab.id === "pending" ? invitations.counts.pending : tab.id === "expired" ? invitations.counts.expired : null;
           const is_active = invitations.status === tab.id;
@@ -53,8 +53,8 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
               key={tab.id}
               type="button"
               onClick={() => invitations.setStatus(tab.id)}
-              className={`rounded-md px-2.5 py-[5px] text-[12.5px] font-semibold transition-colors ${
-                is_active ? "bg-shell-hover-strong text-shell-text" : "text-shell-text-muted hover:text-shell-text-secondary"
+              className={`rounded-[4px] px-2.5 py-[5px] text-[13px] transition-colors ${
+                is_active ? "bg-[var(--admin-selected)] text-shell-text" : "text-shell-text-muted hover:text-shell-text-secondary"
               }`}
             >
               {tab.label}
@@ -65,9 +65,9 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
       </div>
     </div>
 
-    <div className="overflow-x-auto">
+    <div className="admin-table">
       <div className="min-w-[860px]">
-        <div className={`${GRID} px-2.5 pb-2.5 text-[11.5px] font-bold uppercase tracking-[0.03em] text-shell-text-faint`}>
+        <div className={`${GRID} admin-table-head`}>
           <span>Email</span>
           <span>Role</span>
           <span>Department</span>
@@ -75,19 +75,18 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
           <span>Status</span>
           <span />
         </div>
-        <div className="h-px bg-shell-hover" />
 
         {invitations.is_loading ? (
-          <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading invitations…</div>
+          <div className="admin-table-empty">Loading invitations…</div>
         ) : invitations.rows.length === 0 ? (
-          <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">No invitations here.</div>
+          <div className="admin-table-empty">No invitations here.</div>
         ) : (
           invitations.rows.map((row) => {
             const is_busy = invitations.busy_id === row.id;
             return (
-              <div key={row.id} className={`${GRID} items-center border-b border-shell-border px-2.5 py-[11px] text-[12.5px]`}>
+              <div key={row.id} className={`${GRID} items-center admin-table-row`}>
                 <span className="min-w-0">
-                  <div className="truncate text-[13.5px] font-semibold text-shell-text">{row.email}</div>
+                  <div className="truncate text-[14px] text-shell-text">{row.email}</div>
                   <div className="truncate text-[11.5px] text-shell-text-faint">
                     Sent {format(new Date(row.updated_at), "MMM d, yyyy")}
                   </div>
@@ -112,14 +111,14 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
                         type="button"
                         disabled={is_busy}
                         onClick={() => void invitations.resend(row)}
-                        className="rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 py-1.5 text-[11.5px] font-semibold text-shell-text-secondary hover:bg-shell-hover disabled:opacity-50"
+                        className="rounded-[4px] border border-[var(--admin-border)] px-2.5 py-1 text-[13px] text-shell-text hover:bg-shell-hover disabled:opacity-50"
                       >
                         {is_busy ? "Sending…" : "Resend"}
                       </button>
                       <button
                         type="button"
                         onClick={() => invitations.requestCancel(row)}
-                        className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action"
+                        className="rounded-[4px] px-2.5 py-1 text-[13px] admin-danger-action"
                       >
                         Cancel
                       </button>

@@ -126,7 +126,7 @@ export default function IntegrationAppsCard() {
           {apps_api.apps.map((app) => {
             const is_open = open_provider === app.provider;
             return (
-              <div key={app.provider} className="rounded-xl border border-shell-border bg-shell-panel-alt p-5">
+              <div key={app.provider} className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-5">
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="flex h-11 flex-none items-center gap-1.5 rounded-[10px] border border-shell-border bg-shell-panel px-2.5">
                     {app.services.map((service) => <ExternalAppLogo key={service.id} app={service.id} size={22} />)}

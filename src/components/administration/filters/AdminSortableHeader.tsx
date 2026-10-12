@@ -31,7 +31,7 @@ function AdminSortableHeader<TField extends string>({
       type="button"
       onClick={() => onSort(field)}
       aria-sort={is_active ? (sort_direction === "asc" ? "ascending" : "descending") : "none"}
-      className={`group flex min-w-0 items-center gap-1 text-left uppercase tracking-[0.03em] transition-colors hover:text-shell-text-secondary ${
+      className={`group flex min-w-0 items-center gap-1 text-left transition-colors hover:text-shell-text-secondary ${
         is_active ? "text-shell-text-secondary" : ""
       } ${className}`}
     >

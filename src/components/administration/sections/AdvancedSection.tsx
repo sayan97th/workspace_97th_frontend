@@ -21,7 +21,7 @@ const max_duration_options = SESSION_MAX_DURATION_OPTIONS.map((option) => ({
 }));
 
 const inputClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[10px] text-[13.5px] text-shell-text outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[10px] text-[13.5px] text-shell-text outline-none focus:border-[var(--admin-button-primary)]";
 
 /** Administration > Security > Advanced — panic mode and session-duration policy. */
 const AdvancedSection: React.FC<AdvancedSectionProps> = ({ advanced }) => {
@@ -127,7 +127,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ advanced }) => {
         ) : null}
       </div>
 
-      <div className="rounded-xl border border-shell-border bg-shell-panel-alt p-5">
+      <div className="rounded-lg border border-[var(--admin-list-border)] bg-shell-panel p-5">
         <div className="mb-1.5 text-[16px] font-semibold text-shell-text">Session duration</div>
         <p className="mb-[18px] max-w-[460px] text-[14px] leading-5 text-shell-text-secondary">
           Shorter sessions require users to log in more often, but are more secure.
@@ -158,7 +158,7 @@ const AdvancedSection: React.FC<AdvancedSectionProps> = ({ advanced }) => {
             type="button"
             onClick={() => void advanced.saveSessionDurations()}
             disabled={!advanced.has_unsaved_changes || advanced.is_saving}
-            className="rounded-[4px] bg-brand-500 px-[18px] py-[10px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+            className="rounded-[4px] bg-[var(--admin-button-primary)] px-[18px] py-[10px] text-[14px] font-medium text-white transition-colors hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-default disabled:opacity-50"
           >
             {advanced.is_saving ? "Saving…" : "Save"}
           </button>

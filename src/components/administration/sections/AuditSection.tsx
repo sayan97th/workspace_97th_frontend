@@ -41,7 +41,9 @@ const AuditSection: React.FC<AuditSectionProps> = ({ audit }) => (
       />
     </div>
 
-    <div className="grid grid-cols-[150px_minmax(120px,1fr)_180px_minmax(180px,1.6fr)_120px_140px] gap-3 px-2.5 pb-2.5 text-[11px] font-bold uppercase tracking-[0.03em] text-shell-text-faint">
+    <div className="admin-table">
+      <div className="min-w-[920px]">
+    <div className="grid grid-cols-[150px_minmax(120px,1fr)_180px_minmax(180px,1.6fr)_120px_140px] gap-3 admin-table-head">
       <span>Timestamp</span>
       <span>User</span>
       <span>Event</span>
@@ -49,17 +51,16 @@ const AuditSection: React.FC<AuditSectionProps> = ({ audit }) => (
       <span>IP address</span>
       <span>Device</span>
     </div>
-    <div className="h-px bg-shell-hover" />
 
     {audit.is_loading ? (
-      <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading audit log…</div>
+      <div className="admin-table-empty">Loading audit log…</div>
     ) : audit.audit_rows.length === 0 ? (
-      <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">No matching audit events.</div>
+      <div className="admin-table-empty">No matching audit events.</div>
     ) : (
       audit.audit_rows.map((row) => (
         <div
           key={row.id}
-          className="grid grid-cols-[150px_minmax(120px,1fr)_180px_minmax(180px,1.6fr)_120px_140px] items-center gap-3 border-b border-shell-border px-2.5 py-[11px] text-[12.5px] text-shell-text-secondary"
+          className="grid grid-cols-[150px_minmax(120px,1fr)_180px_minmax(180px,1.6fr)_120px_140px] items-center gap-3 admin-table-row text-shell-text-secondary"
         >
           <span>{format(new Date(row.created_at), "MMM d, yyyy p")}</span>
           <span className="truncate font-semibold text-shell-text">{row.actor?.full_name ?? "System"}</span>
@@ -70,6 +71,8 @@ const AuditSection: React.FC<AuditSectionProps> = ({ audit }) => (
         </div>
       ))
     )}
+      </div>
+    </div>
 
     <Pagination
       current_page={audit.page}

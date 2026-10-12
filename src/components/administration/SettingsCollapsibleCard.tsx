@@ -26,7 +26,7 @@ const SettingsCollapsibleCard: React.FC<SettingsCollapsibleCardProps> = ({
   const [is_open, setIsOpen] = useState(default_open);
 
   return (
-    <div className={`overflow-hidden rounded-xl border border-shell-border bg-shell-panel-alt ${className}`}>
+    <div className={`overflow-hidden rounded-lg border border-[var(--admin-list-border)] bg-shell-panel ${className}`}>
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}

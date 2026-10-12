@@ -17,7 +17,7 @@ const ROLE_LABELS: Record<PlatformRoleName, string> = {
 };
 
 const inputClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-brand-500";
+  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text placeholder:text-shell-text-faint outline-none focus:border-[var(--admin-button-primary)]";
 
 /**
  * "Invite" sub-dialog opened from {@link UsersSection}'s Invite button. Sends a real email
@@ -130,7 +130,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({ users }) => {
             type="button"
             onClick={() => void users.submitInvite()}
             disabled={!users.can_submit_invite}
-            className="rounded-lg bg-brand-500 px-5 py-[10px] text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-lg bg-[var(--admin-button-primary)] px-5 py-[10px] text-[13.5px] font-semibold text-white transition-colors hover:bg-[var(--admin-button-primary-hover)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {users.is_submitting_invite ? "Sending…" : "Send invite"}
           </button>

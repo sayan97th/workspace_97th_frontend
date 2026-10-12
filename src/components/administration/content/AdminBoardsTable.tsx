@@ -90,7 +90,7 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
           type="button"
           onClick={() => void content.exportBoards(false)}
           disabled={content.is_exporting}
-          className="ml-auto rounded-lg border border-shell-border-strong bg-shell-panel-alt px-3.5 py-[8px] text-[13px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:opacity-50"
+          className="ml-auto admin-button admin-button-secondary disabled:opacity-50"
         >
           {content.is_exporting ? "Exporting…" : "Export CSV"}
         </button>
@@ -104,13 +104,13 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
         className="mb-3.5"
       />
 
-      <div className="mb-2.5 text-[12.5px] text-shell-text-faint">
+      <div className="admin-table-caption">
         {content.total === 1 ? "1 board" : `${content.total.toLocaleString()} boards`}
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="admin-table">
         <div className="min-w-[960px]">
-          <div className={`${GRID} items-center px-2.5 pb-2.5 text-[11px] font-bold uppercase tracking-[0.03em] text-shell-text-faint`}>
+          <div className={`${GRID} items-center admin-table-head`}>
             <button
               type="button"
               onClick={() => content.selection.togglePage(page_ids)}
@@ -127,10 +127,9 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
             {headerSort("Created", "created_at")}
             {headerSort("Last activity", "last_activity_at")}
           </div>
-          <div className="h-px bg-shell-hover" />
 
           {content.is_loading ? (
-            <div className="px-2.5 py-8 text-center text-[13px] text-shell-text-faint">Loading boards…</div>
+            <div className="admin-table-empty">Loading boards…</div>
           ) : content.rows.length === 0 ? (
             <div className="px-2.5 py-10 text-center text-[13px] text-shell-text-faint">{empty_message}</div>
           ) : (
@@ -139,9 +138,8 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
               return (
                 <div
                   key={row.id}
-                  className={`${GRID} items-center border-b border-shell-border px-2.5 py-[10px] text-[12.5px] ${
-                    is_selected ? "bg-brand-500/[0.06]" : ""
-                  }`}
+                  className={`${GRID} items-center admin-table-row`}
+                  data-selected={is_selected || undefined}
                 >
                   <button
                     type="button"
@@ -152,7 +150,7 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
                     <AdminCheckbox is_checked={is_selected} />
                   </button>
                   <span className="flex min-w-0 items-center gap-2">
-                    <a href={`/boards/${row.id}`} className="truncate text-[13.5px] font-semibold text-shell-text hover:underline">
+                    <a href={`/boards/${row.id}`} className="truncate text-[14px] text-shell-text hover:underline">
                       {row.label}
                     </a>
                     {row.is_archived ? (
