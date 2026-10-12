@@ -137,3 +137,57 @@ export function parseRangeValue(value: unknown): { start_iso: string; end_iso: s
 export function encodeRangeValue(start_iso: string, end_iso: string): string {
   return `${start_iso}..${end_iso}`;
 }
+
+const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Today's date as "YYYY-MM-DD" in the viewer's local time zone. */
+export function todayIso(): string {
+  const today = new Date();
+  return isoOf(today.getFullYear(), today.getMonth(), today.getDate());
+}
+
+/** Formats a stored date column value as the date picker's editable "MM/DD/YYYY" text. */
+export function fmtDateInput(iso: string | undefined): string {
+  const { date_iso } = splitDateTime(iso);
+  const parts = date_iso.split("-");
+  if (parts.length !== 3) return "";
+  return `${parts[1]}/${parts[2]}/${parts[0]}`;
+}
+
+/** Parses the date picker's typed text ("09/18/2026", "9/18/2026" or "2026-09-18") into "YYYY-MM-DD", or null when it is not a real date. */
+export function parseDateInput(value: string): string | null {
+  const text = value.trim();
+  const us_match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text);
+  const iso_match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(text);
+  let year: number;
+  let month: number;
+  let day: number;
+  if (us_match) {
+    [month, day, year] = [Number(us_match[1]), Number(us_match[2]), Number(us_match[3])];
+  } else if (iso_match) {
+    [year, month, day] = [Number(iso_match[1]), Number(iso_match[2]), Number(iso_match[3])];
+  } else {
+    return null;
+  }
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return isoOf(year, month - 1, day);
+}
+
+/** The date cell's label while its picker is open, monday style: "Fri, Sep 18", the year only when it is not this year, plus the time when one is set. */
+export function fmtDateWithWeekday(iso: string | undefined): string {
+  const { date_iso, time } = splitDateTime(iso);
+  const parts = date_iso.split("-");
+  if (parts.length !== 3) return "";
+  const [year, month, day] = parts.map(Number);
+  const weekday = WEEKDAY_SHORT_LABELS[new Date(year, month - 1, day).getDay()];
+  const year_suffix = year === new Date().getFullYear() ? "" : `, ${year}`;
+  const date_label = `${weekday}, ${MONTH_LABELS[month - 1]} ${day}${year_suffix}`;
+  return time ? `${date_label}, ${fmtTimeInput(time.hours, time.minutes)}` : date_label;
+}
+
+/** True when the stored date falls before today, which the date cell flags with a red alert icon. */
+export function isPastDate(iso: string | undefined): boolean {
+  const { date_iso } = splitDateTime(iso);
+  return !!date_iso && date_iso < todayIso();
+}

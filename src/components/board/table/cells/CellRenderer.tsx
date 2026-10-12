@@ -5,7 +5,7 @@ import type { CellFile, CellValue, ChecklistItemValue, ColumnDef, LinkValue, Tim
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
-import { encodeRangeValue, fmtDate, fmtRange, parseRangeValue } from "../dateUtils";
+import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue } from "../dateUtils";
 import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
@@ -243,8 +243,21 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const iso = asString(value);
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} title={iso ? fmtDate(iso) : undefined} className="flex h-full w-full min-w-0 items-center justify-center px-2 text-board-cell text-boardtree-text">
-          <span className="truncate">{iso ? fmtDate(iso) : ""}</span>
+        {/* While the picker is open the cell reads like monday's: "Fri, Sep 18" plus a red alert when the date has passed. */}
+        <button
+          type="button"
+          onClick={openMenu}
+          title={iso ? fmtDate(iso) : undefined}
+          className="flex h-full w-full min-w-0 items-center justify-center gap-1.5 px-2 text-board-cell text-boardtree-text"
+        >
+          {is_menu_open && isPastDate(iso) && (
+            <svg viewBox="0 0 16 16" width="15" height="15" className="shrink-0 text-[#d83a52]" aria-label="Past date">
+              <circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M8 4.75 V8.75" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <circle cx="8" cy="11.1" r="0.85" fill="currentColor" />
+            </svg>
+          )}
+          <span className="truncate">{iso ? (is_menu_open ? fmtDateWithWeekday(iso) : fmtDate(iso)) : ""}</span>
         </button>
         {is_menu_open && (
           <DateMenu
