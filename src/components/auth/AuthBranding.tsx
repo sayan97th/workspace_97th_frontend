@@ -86,7 +86,7 @@ export const AuthMobileBrandMark: React.FC = () => {
   const branding = useContext(SignInBrandingContext);
 
   return (
-    <div className="mx-auto mb-6 w-full max-w-md lg:hidden">
+    <div className="auth-shell__content mb-6 lg:hidden">
       <Link href="/" className="inline-flex items-center gap-2.5">
         <LogoTile branding={branding} size="small" />
         <span className="font-outfit text-sm font-semibold text-gray-800 dark:text-white/90">
@@ -103,7 +103,7 @@ export const AuthBrandPanel: React.FC = () => {
   const company_name = branding?.company_name ?? DEFAULT_COMPANY_NAME;
 
   return (
-    <div className="relative hidden h-full w-1/2 items-center justify-center overflow-hidden bg-[linear-gradient(160deg,var(--color-gray-700)_0%,var(--color-gray-600)_55%,var(--color-gray-500)_100%)] lg:flex">
+    <aside className="auth-shell__brand-panel relative h-full items-center justify-center overflow-hidden bg-[linear-gradient(160deg,var(--color-gray-700)_0%,var(--color-gray-600)_55%,var(--color-gray-500)_100%)]">
       <div className="absolute inset-0 bg-[repeating-linear-gradient(108deg,rgba(255,255,255,0.05)_0_2px,transparent_2px_22px)]" />
       <div className="absolute -right-24 -bottom-24 h-96 w-96 rounded-full bg-brand-500/25 blur-[110px]" />
       <div className="absolute -top-20 -left-16 h-72 w-72 rounded-full bg-sunset-500/15 blur-[110px]" />
@@ -138,6 +138,6 @@ export const AuthBrandPanel: React.FC = () => {
       <p className="absolute bottom-6 font-mono-accent text-[11px] tracking-[0.1em] text-white/30">
         © {new Date().getFullYear()} {company_name}
       </p>
-    </div>
+    </aside>
   );
 };

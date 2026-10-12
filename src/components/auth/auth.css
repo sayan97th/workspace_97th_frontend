@@ -1,0 +1,230 @@
+/* Auth pages (sign in, sign up, password reset, invitations).
+   The shell is a grid with fixed column slots, so the form always sits on the
+   left and the brand panel on the right from the very first paint, whatever
+   order the two finish rendering in. */
+
+.auth-shell {
+  --auth-backdrop: var(--color-gray-25);
+  --auth-surface: #ffffff;
+  --auth-border: rgba(10, 23, 23, 0.08);
+  --auth-dot: rgba(10, 23, 23, 0.09);
+  --auth-glow: color-mix(in srgb, var(--color-brand-500) 9%, transparent);
+  --auth-glow-secondary: color-mix(in srgb, var(--color-sunset-500) 7%, transparent);
+  --auth-card-shadow:
+    0 1px 2px rgba(10, 23, 23, 0.04),
+    0 18px 40px -18px rgba(10, 23, 23, 0.16);
+  --auth-muted: var(--color-gray-500);
+
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--auth-backdrop);
+}
+
+.dark .auth-shell {
+  --auth-backdrop: var(--color-shell-bg);
+  --auth-surface: var(--color-shell-panel);
+  --auth-border: var(--color-shell-border);
+  --auth-dot: rgba(255, 255, 255, 0.06);
+  --auth-glow: color-mix(in srgb, var(--color-brand-500) 14%, transparent);
+  --auth-glow-secondary: color-mix(in srgb, var(--color-sunset-500) 8%, transparent);
+  --auth-card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 24px 48px -20px rgba(0, 0, 0, 0.6);
+  --auth-muted: var(--color-gray-400);
+}
+
+/* ── Form column ─────────────────────────────────────────────────────────── */
+
+.auth-shell__form-column {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 24px 16px 40px;
+  isolation: isolate;
+}
+
+/* Faint dot grid that fades out toward the edges. */
+.auth-shell__form-column::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: radial-gradient(var(--auth-dot) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+
+/* Soft brand glow behind the card. */
+.auth-shell__form-column::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 12%, var(--auth-glow), transparent 42%),
+    radial-gradient(circle at 85% 90%, var(--auth-glow-secondary), transparent 40%);
+  pointer-events: none;
+}
+
+.auth-shell__brand-panel {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .auth-shell__form-column {
+    padding: 32px 32px 48px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .auth-shell__form-column {
+    height: 100dvh;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .auth-shell__form-column::-webkit-scrollbar {
+    display: none;
+  }
+
+  .auth-shell__brand-panel {
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+  }
+}
+
+/* Column content: margin auto centers it vertically while still letting a tall
+   form (sign up) scroll from its top instead of being clipped. */
+.auth-shell__content {
+  width: 100%;
+  max-width: 440px;
+  margin-inline: auto;
+}
+
+.auth-shell__content--centered {
+  margin-block: auto;
+}
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+
+.auth-card {
+  border: 1px solid var(--auth-border);
+  border-radius: 20px;
+  background: var(--auth-surface);
+  box-shadow: var(--auth-card-shadow);
+  padding: 24px;
+}
+
+@media (min-width: 640px) {
+  .auth-card {
+    padding: 36px 40px;
+  }
+}
+
+/* Only the content eases in, the card frame itself never moves. */
+.auth-card__body {
+  animation: auth-content-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes auth-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.auth-card__badge {
+  display: flex;
+  height: 52px;
+  width: 52px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+}
+
+.auth-card__title {
+  font-size: 26px;
+  line-height: 1.25;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ── Fields ──────────────────────────────────────────────────────────────── */
+
+/* Pinned to the 44px input row, not the wrapper, so a validation hint under
+   the input does not push the icon off center. */
+.auth-field__icon {
+  pointer-events: none;
+  position: absolute;
+  top: 22px;
+  left: 14px;
+  z-index: 10;
+  height: 18px;
+  width: 18px;
+  transform: translateY(-50%);
+}
+
+.auth-field__toggle {
+  position: absolute;
+  top: 22px;
+  right: 10px;
+  z-index: 10;
+  display: flex;
+  height: 30px;
+  width: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transform: translateY(-50%);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.auth-field__toggle:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 1px;
+}
+
+/* ── Divider ─────────────────────────────────────────────────────────────── */
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-block: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--auth-muted);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--auth-border);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card__body {
+    animation: none;
+  }
+}

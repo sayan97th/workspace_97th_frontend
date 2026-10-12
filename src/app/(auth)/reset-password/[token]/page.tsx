@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
+import { readSearchParam } from "@/components/auth/AuthPrimitives";
 
 export const metadata: Metadata = {
   title: "Reset Password",
@@ -9,14 +9,11 @@ export const metadata: Metadata = {
 
 type Props = {
   params: Promise<{ token: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
-export default async function ResetPasswordTokenPage({ params }: Props) {
-  const { token } = await params;
+export default async function ResetPasswordTokenPage({ params, searchParams }: Props) {
+  const [{ token }, search_params] = await Promise.all([params, searchParams]);
 
-  return (
-    <Suspense>
-      <ResetPasswordForm token={token} />
-    </Suspense>
-  );
+  return <ResetPasswordForm token={token} initial_email={readSearchParam(search_params.email) ?? ""} />;
 }
