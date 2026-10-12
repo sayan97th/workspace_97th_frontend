@@ -1,96 +1,148 @@
+"use client";
 import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Crown, MoreHorizontal } from "lucide-react";
 import { PersonAvatar } from "@/components/board";
-import { CloseIcon } from "@/icons/board-icons";
+import type { ActionMenuItem } from "@/components/ui/dropdown/ActionMenu";
+import TeamsMenuButton from "./TeamsMenuButton";
+import TeamsTooltip from "./TeamsTooltip";
 import type { TeamMember } from "./types";
 
 export type TeamMembersTableProps = {
   members: TeamMember[];
-  /** Shown when `members` is empty, e.g. after a search with no matches. */
-  empty_label?: string;
-  /** Renders a hover "remove" action per row when given, omit for read-only listings like the "All members" dedupe. */
-  onRemoveMember?: (member: TeamMember) => void;
-  /** Hides the remove action on rows the viewer may not remove, such as another team owner. */
-  canRemoveMember?: (member: TeamMember) => boolean;
-  /** Renders a hover "Make owner" / "Remove owner" action per row when given, admins only. */
-  onToggleOwner?: (member: TeamMember) => void;
-  /** The member whose owner change is being saved, its action is disabled meanwhile. */
-  owner_saving_member_id?: string | null;
+  viewer_id: string | null;
+  /** Shown when `members` is empty. */
+  empty_label: string;
+  /** Admins pick owners, everyone else only sees who owns the team. */
+  can_manage_owners: boolean;
+  owner_saving_id: string | null;
+  onToggleOwner: (member: TeamMember) => void;
+  canRemoveMember: (member: TeamMember) => boolean;
+  onRemoveMember: (member: TeamMember) => void;
+  onLeave: () => void;
+};
+
+/** "Make Lea an owner", the tooltip monday shows on the crown. */
+const crownLabel = (member: TeamMember, can_manage_owners: boolean): string => {
+  const first_name = member.name.split(" ")[0] || member.name;
+  if (!can_manage_owners) return `${first_name} is a team owner`;
+  return member.is_team_owner ? `Remove ${first_name} as owner` : `Make ${first_name} an owner`;
 };
 
 /**
- * Name / Email / Title member list shared by every Teams-view member listing (a single
- * team's roster, or the "All members" dedupe across teams) so both render identically.
+ * A team's Users tab, after monday.com: Name (photo and a link to the profile), Email and Title,
+ * then the owner crown and a "..." menu per row. The crown is a toggle for admins, a static badge
+ * on owners for everyone else.
  */
 const TeamMembersTable: React.FC<TeamMembersTableProps> = ({
   members,
-  empty_label = "No people match your search.",
-  onRemoveMember,
-  canRemoveMember,
+  viewer_id,
+  empty_label,
+  can_manage_owners,
+  owner_saving_id,
   onToggleOwner,
-  owner_saving_member_id = null,
-}) => (
-  <div>
-    <div className="flex items-center px-[10px] py-2 text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint">
-      <span className="w-[230px] flex-none">Name</span>
-      <span className="min-w-0 flex-1">Email</span>
-      <span className="w-[200px] flex-none">Title</span>
-      {onRemoveMember || onToggleOwner ? <span className="w-[176px] flex-none" /> : null}
-    </div>
+  canRemoveMember,
+  onRemoveMember,
+  onLeave,
+}) => {
+  const router = useRouter();
+  const rowMenuItems = (member: TeamMember): ActionMenuItem[][] => [
+    [{ key: "profile", label: "View profile", onClick: () => router.push(`/users/${member.id}`) }],
+    can_manage_owners && !member.is_guest
+      ? [
+          {
+            key: "owner",
+            label: member.is_team_owner ? "Remove as team owner" : "Make team owner",
+            onClick: () => onToggleOwner(member),
+          },
+        ]
+      : [],
+    member.id === viewer_id
+      ? [{ key: "leave", label: "Leave team", onClick: onLeave }]
+      : canRemoveMember(member)
+        ? [{ key: "remove", label: "Remove from team", danger: true, onClick: () => onRemoveMember(member) }]
+        : [],
+  ];
 
-    {members.map((member) => (
-      <div
-        key={member.id}
-        className="group flex items-center rounded-[9px] px-[10px] py-[9px] transition-colors hover:bg-shell-hover"
-      >
-        <span className="flex w-[230px] min-w-0 flex-none items-center gap-[9px]">
-          <PersonAvatar person={member} size={28} />
-          <span className="truncate text-[13.5px] font-medium text-shell-text">{member.name}</span>
-          {member.is_owner ? (
-            <span className="flex-none rounded-[5px] bg-warning-500/[0.16] px-[7px] py-0.5 text-[10.5px] font-bold tracking-[0.03em] text-warning-500">
-              OWNER
-            </span>
-          ) : null}
-          {member.is_team_owner ? (
-            <span className="flex-none rounded-[5px] bg-brand-500/[0.16] px-[7px] py-0.5 text-[10.5px] font-bold tracking-[0.03em] text-brand-200">
-              TEAM OWNER
-            </span>
-          ) : null}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] text-shell-text-muted">{member.email}</span>
-        <span className="w-[200px] flex-none truncate text-[13px] text-shell-text-muted">
-          {member.title ?? "No title"}
-        </span>
-        {onRemoveMember || onToggleOwner ? (
-          <span className="flex w-[176px] flex-none items-center justify-end gap-1">
-            {onToggleOwner ? (
-              <button
-                type="button"
-                onClick={() => onToggleOwner(member)}
-                disabled={owner_saving_member_id === member.id}
-                className="flex-none rounded-md px-2 py-1 text-[12px] font-semibold text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover-strong hover:text-shell-text focus-visible:opacity-100 disabled:opacity-50 group-hover:opacity-100"
-              >
-                {member.is_team_owner ? "Remove owner" : "Make owner"}
-              </button>
-            ) : null}
-            {onRemoveMember && (canRemoveMember ? canRemoveMember(member) : true) ? (
-              <button
-                type="button"
-                onClick={() => onRemoveMember(member)}
-                aria-label={`Remove ${member.name} from this team`}
-                className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-shell-text-muted opacity-0 transition-opacity hover:bg-shell-hover-strong hover:text-brand-200 focus-visible:opacity-100 group-hover:opacity-100"
-              >
-                <CloseIcon size={13} />
-              </button>
-            ) : null}
-          </span>
+  return (
+    <table className="teams-table">
+      <thead>
+        <tr>
+          <th style={{ width: "36%" }}>Name</th>
+          <th className="teams-hide-sm" style={{ width: "30%" }}>
+            Email
+          </th>
+          <th className="teams-hide-sm">Title</th>
+          <th style={{ width: 96 }}>
+            <span className="sr-only">Actions</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {members.map((member) => (
+          <tr key={member.id}>
+            <td>
+              <div className="teams-person">
+                <PersonAvatar person={member} size={32} />
+                <Link href={`/users/${member.id}`} className="teams-link">
+                  {member.name}
+                </Link>
+                {member.is_guest ? <span className="teams-pill">Guest</span> : null}
+                {member.id === viewer_id ? <span className="teams-pill">You</span> : null}
+              </div>
+            </td>
+            <td className="teams-hide-sm">
+              <div className="teams-cell-truncate">{member.email}</div>
+            </td>
+            <td className="teams-hide-sm">
+              <div className={`teams-cell-clamp${member.title ? "" : " teams-faint"}`}>{member.title ?? "No title"}</div>
+            </td>
+            <td>
+              <div className="teams-row-actions">
+                {can_manage_owners && !member.is_guest ? (
+                  <TeamsTooltip content={crownLabel(member, true)}>
+                    <button
+                      type="button"
+                      className="teams-crown"
+                      aria-pressed={Boolean(member.is_team_owner)}
+                      aria-label={crownLabel(member, true)}
+                      disabled={owner_saving_id === member.id}
+                      onClick={() => onToggleOwner(member)}
+                    >
+                      <Crown size={13} strokeWidth={2} aria-hidden="true" />
+                    </button>
+                  </TeamsTooltip>
+                ) : member.is_team_owner ? (
+                  <TeamsTooltip content={crownLabel(member, false)}>
+                    <span className="teams-crown" aria-pressed="true" role="img" aria-label={crownLabel(member, false)}>
+                      <Crown size={13} strokeWidth={2} aria-hidden="true" />
+                    </span>
+                  </TeamsTooltip>
+                ) : (
+                  <span className="inline-block w-[26px]" aria-hidden="true" />
+                )}
+                <TeamsMenuButton
+                  aria_label={`${member.name} options`}
+                  sections={rowMenuItems(member).map((items, index) => ({ key: String(index), items }))}
+                  width={220}
+                >
+                  <MoreHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
+                </TeamsMenuButton>
+              </div>
+            </td>
+          </tr>
+        ))}
+        {members.length === 0 ? (
+          <tr>
+            <td colSpan={4} className="teams-table-empty">
+              {empty_label}
+            </td>
+          </tr>
         ) : null}
-      </div>
-    ))}
-
-    {members.length === 0 ? (
-      <div className="px-[10px] py-10 text-center text-[13px] text-shell-text-faint">{empty_label}</div>
-    ) : null}
-  </div>
-);
+      </tbody>
+    </table>
+  );
+};
 
 export default TeamMembersTable;

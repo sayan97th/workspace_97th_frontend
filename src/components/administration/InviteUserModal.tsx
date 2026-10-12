@@ -5,8 +5,29 @@ import SettingsDropdown from "./SettingsDropdown";
 import type { UsersManagerApi } from "./useUsersManager";
 import type { PlatformRoleName } from "@/types/administration/admin-users";
 
+/** The slice of {@link UsersManagerApi} the dialog reads, so pages other than Users (Teams) can drive it with their own hook. */
+export type InviteUserApi = Pick<
+  UsersManagerApi,
+  | "is_invite_open"
+  | "closeInvite"
+  | "invitable_roles"
+  | "department_rows"
+  | "invite_email"
+  | "setInviteEmail"
+  | "invite_role"
+  | "setInviteRole"
+  | "invite_department_id"
+  | "setInviteDepartmentId"
+  | "invite_message"
+  | "setInviteMessage"
+  | "invite_error"
+  | "is_submitting_invite"
+  | "can_submit_invite"
+  | "submitInvite"
+>;
+
 export type InviteUserModalProps = {
-  users: UsersManagerApi;
+  users: InviteUserApi;
 };
 
 const ROLE_LABELS: Record<PlatformRoleName, string> = {

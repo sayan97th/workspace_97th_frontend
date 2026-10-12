@@ -23,8 +23,8 @@ import {
 } from "./filters";
 
 /** A plain admin may only invite into these roles; only a super_admin may invite an admin/super_admin. */
-const INVITABLE_ROLES_FOR_ADMIN: PlatformRoleName[] = ["staff", "client"];
-const INVITABLE_ROLES_FOR_SUPER_ADMIN: PlatformRoleName[] = ["super_admin", "admin", "staff", "client"];
+export const INVITABLE_ROLES_FOR_ADMIN: PlatformRoleName[] = ["staff", "client"];
+export const INVITABLE_ROLES_FOR_SUPER_ADMIN: PlatformRoleName[] = ["super_admin", "admin", "staff", "client"];
 
 const SEARCH_DEBOUNCE_MS = 300;
 export const USERS_PER_PAGE = 20;

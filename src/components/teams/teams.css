@@ -1,0 +1,1201 @@
+/*
+ * Teams page, styled after monday.com's Teams directory: a left rail with "New team", "Filter
+ * teams", "Search teams" and the team list (count badges, sub-teams nested under their parent),
+ * and a main panel with the team's cover, picture, name, tabs and a monday style table.
+ *
+ * Every color is a `--teams-*` token. They live on `:root` so the dialogs and menus the page
+ * portals to `document.body` read the same values, and dark mode only swaps the tokens under
+ * `html.dark`. Buttons, checkboxes and the primary actions use the organization's primary color
+ * (client rule), links, selected rows and the active tab stay monday blue.
+ */
+
+:root {
+  --teams-bg: #ffffff;
+  --teams-text: #323338;
+  --teams-text-secondary: #676879;
+  --teams-text-faint: #9699a6;
+  --teams-border: #c3c6d4;
+  --teams-divider: #e7e9ef;
+  --teams-table-border: #d0d4e4;
+  --teams-hover: #dcdfec;
+  --teams-row-hover: #f5f6f8;
+  --teams-selected: #cce5ff;
+  --teams-accent: #0073ea;
+  --teams-accent-hover: #0060b9;
+  --teams-chip-bg: #cce5ff;
+  --teams-crown-idle: #676879;
+  --teams-avatar-bg: #e6e9ef;
+  --teams-avatar-ring: #ffffff;
+  --teams-danger: #d83a52;
+  --teams-danger-bg: #fbe9ec;
+  --teams-tooltip-bg: #323338;
+  --teams-overlay: rgba(41, 47, 76, 0.7);
+  --teams-modal-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+  --teams-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --teams-cover-sky: #79c8ef;
+  --teams-cover-shape: #4d9ff5;
+  --teams-cover-dots: #ffffff;
+  --teams-button-primary: var(--color-brand-500);
+  --teams-button-primary-hover: var(--color-brand-600);
+}
+
+html.dark {
+  --teams-bg: #0f1c1c;
+  --teams-text: #e9eded;
+  --teams-text-secondary: #9aa4a5;
+  --teams-text-faint: #6f7b7c;
+  --teams-border: rgba(255, 255, 255, 0.24);
+  --teams-divider: rgba(255, 255, 255, 0.1);
+  --teams-table-border: rgba(255, 255, 255, 0.14);
+  --teams-hover: rgba(255, 255, 255, 0.08);
+  --teams-row-hover: rgba(255, 255, 255, 0.04);
+  --teams-selected: rgba(77, 156, 255, 0.24);
+  --teams-accent: #4d9cff;
+  --teams-accent-hover: #7ab4ff;
+  --teams-chip-bg: rgba(77, 156, 255, 0.24);
+  --teams-crown-idle: #6f7b7c;
+  --teams-avatar-bg: rgba(255, 255, 255, 0.1);
+  --teams-avatar-ring: #0f1c1c;
+  --teams-danger: #ff8a94;
+  --teams-danger-bg: rgba(226, 68, 92, 0.14);
+  --teams-tooltip-bg: #2a3838;
+  --teams-overlay: rgba(0, 0, 0, 0.7);
+  --teams-modal-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
+  --teams-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --teams-cover-sky: #1d4e6b;
+  --teams-cover-shape: #2c6cb5;
+  --teams-cover-dots: rgba(255, 255, 255, 0.7);
+}
+
+/* Shared SettingsDropdown triggers read as monday's white bordered select inside the page. */
+.teams-theme .settings-dropdown-trigger {
+  min-height: 40px;
+  border-color: var(--teams-border);
+  border-radius: 4px;
+  background-color: var(--teams-bg);
+  color: var(--teams-text);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Shell */
+
+.teams-shell {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--teams-bg);
+  color: var(--teams-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.teams-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  z-index: 5;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--teams-text);
+  transition: background-color 0.15s ease;
+}
+
+.teams-close:hover {
+  background: var(--teams-hover);
+}
+
+.teams-close.teams-close-on-cover {
+  background: rgba(255, 255, 255, 0.85);
+  color: #323338;
+}
+
+.teams-close.teams-close-on-cover:hover {
+  background: #ffffff;
+}
+
+/* Rail */
+
+.teams-rail {
+  display: flex;
+  width: 280px;
+  flex: none;
+  flex-direction: column;
+  padding: 20px 12px 0 20px;
+  border-right: 1px solid var(--teams-divider);
+}
+
+.teams-rail-title {
+  padding: 0 8px 8px;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+}
+
+.teams-rail-action {
+  display: flex;
+  width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--teams-text);
+  font-size: 14px;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.teams-rail-action:hover,
+.teams-rail-action[aria-expanded="true"] {
+  background: var(--teams-hover);
+}
+
+.teams-rail-action-badge {
+  margin-left: auto;
+  border-radius: 10px;
+  background: var(--teams-selected);
+  padding: 0 8px;
+  color: var(--teams-accent);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.teams-search-field {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--teams-accent);
+  border-radius: 4px;
+}
+
+.teams-search-field input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--teams-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.teams-search-field input::placeholder {
+  color: var(--teams-text-faint);
+}
+
+.teams-rail-divider {
+  height: 1px;
+  margin: 12px 8px 8px 0;
+  background: var(--teams-divider);
+}
+
+.teams-rail-list {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 0 8px 16px 0;
+}
+
+.teams-rail-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.teams-rail-row:hover {
+  background: var(--teams-row-hover);
+}
+
+.teams-rail-row[aria-current="true"] {
+  background: var(--teams-selected);
+}
+
+.teams-rail-row:focus-visible,
+.teams-rail-action:focus-visible,
+.teams-button:focus-visible,
+.teams-icon-button:focus-visible,
+.teams-tab:focus-visible,
+.teams-crown:focus-visible,
+.teams-close:focus-visible {
+  outline: 2px solid var(--teams-accent);
+  outline-offset: 1px;
+}
+
+.teams-rail-chevron {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--teams-text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.teams-rail-chevron:hover {
+  background: var(--teams-hover);
+}
+
+.teams-rail-chevron[aria-expanded="true"] {
+  transform: rotate(90deg);
+}
+
+.teams-rail-chevron-spacer {
+  width: 18px;
+  flex: none;
+}
+
+.teams-rail-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-rail-empty {
+  padding: 24px 8px;
+  color: var(--teams-text-faint);
+  font-size: 14px;
+  text-align: center;
+}
+
+.teams-count-badge {
+  display: inline-flex;
+  min-width: 22px;
+  height: 22px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: 1px solid var(--teams-accent);
+  border-radius: 11px;
+  color: var(--teams-accent);
+  font-size: 12px;
+}
+
+.teams-rail-row[aria-current="true"] .teams-count-badge {
+  background: var(--teams-accent);
+  color: #ffffff;
+}
+
+/* The row's "..." only takes room on hover, so long team names keep the full width otherwise. */
+.teams-rail-row .teams-row-options {
+  display: none;
+}
+
+.teams-rail-row:hover .teams-row-options,
+.teams-rail-row:focus-within .teams-row-options,
+.teams-rail-row .teams-row-options[aria-expanded="true"] {
+  display: inline-flex;
+}
+
+/* Main panel */
+
+.teams-main {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.teams-cover {
+  position: relative;
+  height: 160px;
+  flex: none;
+  overflow: hidden;
+  background: var(--teams-cover-sky);
+}
+
+.teams-cover img,
+.teams-cover svg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.teams-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 20px;
+  padding: 0 40px;
+}
+
+.teams-header-avatar {
+  margin-top: -48px;
+  border: 4px solid var(--teams-avatar-ring);
+  border-radius: 9999px;
+  background: var(--teams-avatar-ring);
+}
+
+.teams-header-text {
+  min-width: 0;
+  flex: 1;
+  padding-bottom: 4px;
+}
+
+.teams-header-title {
+  overflow: hidden;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-header-subtitle {
+  margin-top: 2px;
+  color: var(--teams-text-secondary);
+  font-size: 14px;
+}
+
+.teams-header-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 6px;
+  color: var(--teams-text-secondary);
+  font-size: 13px;
+}
+
+.teams-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 4px;
+  background: var(--teams-row-hover);
+  padding: 0 6px;
+  color: var(--teams-text-secondary);
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.teams-pill-accent {
+  background: var(--teams-selected);
+  color: var(--teams-accent);
+}
+
+.teams-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.teams-page-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 64px 0 40px;
+}
+
+.teams-page-title {
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
+  letter-spacing: -0.01em;
+}
+
+.teams-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 20px 40px 0;
+}
+
+.teams-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--teams-table-border);
+}
+
+.teams-tab {
+  margin-bottom: -1px;
+  padding: 6px 12px 8px;
+  border-bottom: 2px solid transparent;
+  color: var(--teams-text);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.teams-tab:hover {
+  border-radius: 4px 4px 0 0;
+  background: var(--teams-row-hover);
+}
+
+.teams-tab[aria-selected="true"] {
+  border-bottom-color: var(--teams-accent);
+}
+
+.teams-search-box {
+  display: flex;
+  width: 260px;
+  max-width: 100%;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--teams-border);
+  border-radius: 4px;
+  color: var(--teams-text-secondary);
+  transition: border-color 0.15s ease;
+}
+
+.teams-search-box:hover {
+  border-color: var(--teams-text);
+}
+
+.teams-search-box:focus-within {
+  border-color: var(--teams-accent);
+}
+
+.teams-search-box input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--teams-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.teams-search-box input::placeholder {
+  color: var(--teams-text-faint);
+}
+
+.teams-panel-body {
+  padding: 16px 40px 40px;
+}
+
+.teams-notice {
+  margin-bottom: 12px;
+  border-radius: 4px;
+  background: var(--teams-row-hover);
+  padding: 8px 12px;
+  color: var(--teams-text-secondary);
+  font-size: 13px;
+}
+
+.teams-notice-error {
+  background: var(--teams-danger-bg);
+  color: var(--teams-danger);
+}
+
+/* Buttons */
+
+.teams-button {
+  display: inline-flex;
+  height: 40px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.teams-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.teams-button-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 14px;
+}
+
+.teams-button-primary {
+  background: var(--teams-button-primary);
+  color: #ffffff;
+}
+
+.teams-button-primary:hover:not(:disabled) {
+  background: var(--teams-button-primary-hover);
+}
+
+.teams-button-secondary {
+  border: 1px solid var(--teams-border);
+  color: var(--teams-text);
+}
+
+.teams-button-secondary:hover:not(:disabled) {
+  background: var(--teams-row-hover);
+}
+
+.teams-button-tertiary {
+  color: var(--teams-text);
+}
+
+.teams-button-tertiary:hover:not(:disabled) {
+  background: var(--teams-hover);
+}
+
+.teams-button-danger {
+  background: var(--teams-danger);
+  color: #ffffff;
+}
+
+.teams-split-button {
+  display: inline-flex;
+  border-radius: 4px;
+}
+
+.teams-split-button .teams-button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.teams-split-button .teams-button:last-child {
+  width: 40px;
+  padding: 0;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 0 4px 4px 0;
+}
+
+.teams-icon-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--teams-text);
+  transition: background-color 0.15s ease;
+}
+
+.teams-icon-button:hover,
+.teams-icon-button[aria-expanded="true"] {
+  background: var(--teams-hover);
+}
+
+.teams-icon-button-sm {
+  width: 24px;
+  height: 24px;
+}
+
+/* Tables */
+
+.teams-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.teams-table th {
+  height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--teams-table-border);
+  color: var(--teams-text);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+}
+
+.teams-table td {
+  height: 56px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--teams-table-border);
+  color: var(--teams-text);
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.teams-table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+.teams-table tbody tr:hover {
+  background: var(--teams-row-hover);
+}
+
+.teams-cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-cell-clamp {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.teams-person {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 12px;
+}
+
+.teams-link {
+  overflow: hidden;
+  color: var(--teams-accent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-link:hover {
+  color: var(--teams-accent-hover);
+  text-decoration: underline;
+}
+
+.teams-muted {
+  color: var(--teams-text-secondary);
+}
+
+.teams-faint {
+  color: var(--teams-text-faint);
+}
+
+.teams-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.teams-table-empty {
+  padding: 40px 16px;
+  color: var(--teams-text-secondary);
+  font-size: 14px;
+  text-align: center;
+}
+
+.teams-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 12px;
+  color: var(--teams-text-secondary);
+  text-align: center;
+}
+
+.teams-empty-state strong {
+  color: var(--teams-text);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+/* Owner crown, monday's round toggle next to each member. */
+
+.teams-crown {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--teams-crown-idle);
+  color: #ffffff;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.teams-crown:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.teams-crown[aria-pressed="true"] {
+  background: var(--teams-accent);
+  opacity: 1;
+}
+
+.teams-crown:disabled {
+  cursor: default;
+}
+
+/* Small dark tooltip, monday style, CSS only. */
+
+.teams-tooltip {
+  position: relative;
+  display: inline-flex;
+}
+
+.teams-tooltip-bubble {
+  pointer-events: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 30;
+  width: max-content;
+  max-width: 240px;
+  transform: translateX(-50%);
+  border-radius: 4px;
+  background: var(--teams-tooltip-bg);
+  padding: 6px 10px;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 18px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.teams-tooltip-bubble::before {
+  content: "";
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-bottom-color: var(--teams-tooltip-bg);
+}
+
+.teams-tooltip:hover .teams-tooltip-bubble,
+.teams-tooltip:focus-within .teams-tooltip-bubble {
+  opacity: 1;
+}
+
+/* Team avatars stacked in the "All users" Teams column. */
+
+.teams-stack {
+  display: flex;
+  align-items: center;
+}
+
+.teams-stack > * + * {
+  margin-left: -8px;
+}
+
+.teams-stack-more {
+  display: inline-flex;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--teams-avatar-ring);
+  border-radius: 9999px;
+  background: var(--teams-row-hover);
+  color: var(--teams-text);
+  font-size: 12px;
+}
+
+.teams-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--teams-avatar-bg);
+  color: var(--teams-text);
+}
+
+.teams-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.teams-avatar-ringed {
+  border: 2px solid var(--teams-avatar-ring);
+}
+
+.teams-avatar-editable {
+  position: relative;
+  cursor: pointer;
+}
+
+.teams-avatar-editable::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0);
+  transition: background-color 0.15s ease;
+}
+
+.teams-avatar-editable:hover::after {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.teams-avatar-edit-label {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #ffffff;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.teams-avatar-editable:hover .teams-avatar-edit-label,
+.teams-avatar-editable:focus-visible .teams-avatar-edit-label {
+  opacity: 1;
+}
+
+/*
+ * Dialogs. The body never scrolls on its own so the people picker's floating list can overflow
+ * the card, a tall dialog scrolls with the whole backdrop instead.
+ */
+
+.teams-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: flex;
+  overflow-y: auto;
+  padding: 24px 16px;
+}
+
+.teams-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--teams-overlay);
+}
+
+.teams-modal {
+  position: relative;
+  display: flex;
+  width: 520px;
+  max-width: 100%;
+  flex-direction: column;
+  margin: auto;
+  border-radius: 8px;
+  background: var(--teams-bg);
+  color: var(--teams-text);
+  box-shadow: var(--teams-modal-shadow);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.teams-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 32px 4px;
+}
+
+.teams-modal-title {
+  min-width: 0;
+  flex: 1;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+}
+
+.teams-modal-title-sm {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.teams-modal-close {
+  align-self: flex-start;
+}
+
+.teams-modal-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 32px 8px;
+}
+
+.teams-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 32px 24px;
+}
+
+.teams-field-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--teams-text);
+  font-size: 14px;
+}
+
+.teams-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--teams-border);
+  border-radius: 4px;
+  background: var(--teams-bg);
+  color: var(--teams-text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.teams-input:hover {
+  border-color: var(--teams-text);
+}
+
+.teams-input:focus {
+  border-color: var(--teams-accent);
+}
+
+.teams-input::placeholder {
+  color: var(--teams-text-faint);
+}
+
+.teams-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.teams-checkbox-row input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 1px;
+  accent-color: var(--teams-button-primary);
+  cursor: pointer;
+}
+
+.teams-checkbox-label {
+  font-size: 14px;
+}
+
+.teams-checkbox-help {
+  margin-top: 2px;
+  color: var(--teams-text-secondary);
+  font-size: 13px;
+}
+
+.teams-upload-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* People picker: chips inside the field and a floating "Name (Title)" list. */
+
+.teams-picker {
+  position: relative;
+}
+
+.teams-picker-field {
+  display: flex;
+  min-height: 40px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px 3px 8px;
+  border: 1px solid var(--teams-border);
+  border-radius: 4px;
+  background: var(--teams-bg);
+  cursor: text;
+  transition: border-color 0.15s ease;
+}
+
+.teams-picker-field:hover {
+  border-color: var(--teams-text);
+}
+
+.teams-picker-field[data-open="true"] {
+  border-color: var(--teams-accent);
+}
+
+.teams-picker-field input {
+  min-width: 60px;
+  flex: 1;
+  height: 32px;
+  background: transparent;
+  color: var(--teams-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.teams-picker-field input::placeholder {
+  color: var(--teams-text-faint);
+}
+
+.teams-picker-chip {
+  display: inline-flex;
+  max-width: 200px;
+  height: 26px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--teams-chip-bg);
+  color: var(--teams-text);
+  font-size: 14px;
+}
+
+.teams-picker-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-picker-chip button {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--teams-text-secondary);
+}
+
+.teams-picker-chip button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--teams-text);
+}
+
+.teams-picker-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
+.teams-picker-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  z-index: 40;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--teams-bg);
+  box-shadow: var(--teams-menu-shadow);
+}
+
+.teams-picker-option {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--teams-text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.teams-picker-option[data-active="true"] {
+  background: var(--teams-hover);
+}
+
+.teams-picker-option-text {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.teams-picker-empty {
+  padding: 10px 8px;
+  color: var(--teams-text-secondary);
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  .teams-rail {
+    width: 240px;
+  }
+
+  .teams-header,
+  .teams-toolbar,
+  .teams-panel-body {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .teams-header-avatar .teams-avatar {
+    width: 72px !important;
+    height: 72px !important;
+  }
+
+  .teams-page-heading {
+    padding: 24px 56px 0 16px;
+  }
+}
+
+@media (max-width: 640px) {
+  .teams-shell {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .teams-rail {
+    width: 100%;
+    max-height: 45vh;
+    padding: 16px 12px 0;
+    border-right: none;
+    border-bottom: 1px solid var(--teams-divider);
+  }
+
+  .teams-main {
+    overflow: visible;
+  }
+
+  .teams-header-title {
+    font-size: 22px;
+    line-height: 30px;
+  }
+
+  .teams-modal-header,
+  .teams-modal-body,
+  .teams-modal-footer {
+    padding-right: 20px;
+    padding-left: 20px;
+  }
+
+  .teams-modal-title {
+    font-size: 20px;
+    line-height: 28px;
+  }
+
+  .teams-table .teams-hide-sm {
+    display: none;
+  }
+}

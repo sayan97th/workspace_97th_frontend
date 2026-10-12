@@ -1,119 +1,216 @@
-import React from "react";
-import SearchField from "@/components/common/SearchField";
-import { PlusIcon, TeamFolderIcon, TeamsIcon } from "@/icons/workspace-icons";
-import TeamOptionsButton from "./TeamOptionsButton";
-import { ALL_TEAMS_ID, type TeamsManagerApi } from "./useTeamsManager";
+"use client";
+import React, { useEffect, useRef, useState } from "react";
+import { Check, ChevronRight, Filter, MoreHorizontal, Plus, Search, Users, X } from "lucide-react";
+import ActionMenu from "@/components/ui/dropdown/ActionMenu";
+import TeamAvatar from "./TeamAvatar";
+import TeamsMenuButton from "./TeamsMenuButton";
+import { TEAMS_FILTER_LABELS, type TeamRow, type TeamsManagerApi } from "./useTeamsManager";
+import type { TeamsFilterId } from "./types";
 
 export type TeamsRailProps = {
   teams: TeamsManagerApi;
+  /** Total of "All users", shown in its badge once known. */
+  all_users_total: number | null;
 };
 
-const railRowClass = (is_selected: boolean) =>
-  `group flex items-center gap-[10px] rounded-[9px] px-[10px] py-[9px] text-left transition-colors ${
-    is_selected ? "bg-shell-hover-strong" : "hover:bg-shell-hover"
-  }`;
+const FILTER_IDS: TeamsFilterId[] = ["all", "member", "owner", "guests"];
+
+/** Indent per sub-team level, in pixels. */
+const DEPTH_INDENT = 20;
 
 /**
- * Left rail of the Teams view: search, the "All teams" master row, and one row per team.
- * Fully driven by {@link useTeamsManager}'s output so it stays presentational.
+ * Left rail of the Teams page, monday.com style: the "Teams" title, the New team / Filter teams /
+ * Search teams actions, "All users", then every team with its member count badge. Sub-teams nest
+ * under their parent behind a chevron, while searching or filtering the matches list flat.
  */
-const TeamsRail: React.FC<TeamsRailProps> = ({ teams }) => (
-  <div className="flex w-[280px] flex-none flex-col border-r border-shell-border bg-shell-panel-alt">
-    <div className="flex items-center justify-between gap-2.5 px-[18px] pb-3.5 pt-[22px]">
-      <div>
-        <div className="text-[18px] font-extrabold tracking-[-0.01em] text-shell-text">Teams</div>
-        <div className="mt-0.5 text-[12.5px] text-shell-text-muted">
-          {teams.total_team_count} {teams.total_team_count === 1 ? "team" : "teams"} in this account
-        </div>
+const TeamsRail: React.FC<TeamsRailProps> = ({ teams, all_users_total }) => {
+  const [is_search_open, setIsSearchOpen] = useState(false);
+  const [is_filter_open, setIsFilterOpen] = useState(false);
+  const filter_button_ref = useRef<HTMLButtonElement>(null);
+  const search_input_ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (is_search_open) search_input_ref.current?.focus();
+  }, [is_search_open]);
+
+  const closeSearch = () => {
+    teams.setTeamQuery("");
+    setIsSearchOpen(false);
+  };
+
+  const renderRow = (row: TeamRow) => {
+    const { team } = row;
+    return (
+      // div[role=button], not <button>: it nests the chevron and the options menu's own buttons.
+      <div
+        key={team.id}
+        role="button"
+        tabIndex={0}
+        aria-current={row.is_selected ? "true" : undefined}
+        onClick={() => teams.selectTeam(team.id)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            teams.selectTeam(team.id);
+          }
+        }}
+        className="teams-rail-row"
+        style={{ paddingLeft: 8 + row.depth * DEPTH_INDENT }}
+      >
+        {row.has_children ? (
+          <button
+            type="button"
+            className="teams-rail-chevron"
+            aria-expanded={row.is_expanded}
+            aria-label={row.is_expanded ? `Hide sub-teams of ${team.name}` : `Show sub-teams of ${team.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              teams.toggleExpanded(team.id);
+            }}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+          </button>
+        ) : teams.is_filtering || !teams.has_nested_teams ? null : (
+          <span className="teams-rail-chevron-spacer" aria-hidden="true" />
+        )}
+        <TeamAvatar name={team.name} picture_url={team.picture_url} size={26} />
+        <span className="teams-rail-name" title={team.name}>
+          {team.name}
+        </span>
+        {team.can_manage ? (
+          <TeamsMenuButton
+            aria_label={`${team.name} options`}
+            className="teams-icon-button teams-icon-button-sm teams-row-options"
+            width={200}
+            sections={[
+              {
+                key: "manage",
+                items: [
+                  { key: "edit", label: "Edit team", onClick: () => teams.openEditTeam(team) },
+                  { key: "sub_team", label: "Add sub-team", onClick: () => teams.openCreateTeam(team.id) },
+                ],
+              },
+              { key: "danger", items: [{ key: "delete", label: "Delete team", danger: true, onClick: () => teams.requestDeleteTeam(team) }] },
+            ]}
+          >
+            <MoreHorizontal size={16} strokeWidth={1.75} aria-hidden="true" />
+          </TeamsMenuButton>
+        ) : null}
+        <span className="teams-count-badge" aria-label={`${team.member_count} members`}>
+          {team.member_count}
+        </span>
       </div>
+    );
+  };
+
+  return (
+    <aside className="teams-rail" aria-label="Teams">
+      <h1 className="teams-rail-title">Teams</h1>
+
       {teams.can_create_teams ? (
-        <button
-          type="button"
-          onClick={teams.openCreateTeam}
-          className="flex flex-none items-center gap-1.5 rounded-lg bg-brand-500 px-3 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-        >
-          <PlusIcon size={11} />
+        <button type="button" className="teams-rail-action" onClick={() => teams.openCreateTeam()}>
+          <Plus size={18} strokeWidth={1.5} aria-hidden="true" />
           New team
         </button>
       ) : null}
-    </div>
 
-    <div className="px-3.5 pb-3">
-      <SearchField value={teams.team_query} onChange={teams.setTeamQuery} placeholder="Search teams" />
-    </div>
-
-    <div className="shell-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-3.5">
-      <button type="button" onClick={() => teams.selectTeam(ALL_TEAMS_ID)} className={railRowClass(teams.is_all_selected)}>
-        <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-brand-500/[0.16] text-brand-200">
-          <TeamsIcon size={14} />
-        </span>
-        <span
-          className={`flex-1 truncate text-[13.5px] font-semibold ${
-            teams.is_all_selected ? "text-shell-text" : "text-shell-text-secondary"
-          }`}
-        >
-          All teams
-        </span>
-        <span className="text-[12px] text-shell-text-faint">{teams.total_team_count}</span>
+      <button
+        ref={filter_button_ref}
+        type="button"
+        className="teams-rail-action"
+        aria-haspopup="menu"
+        aria-expanded={is_filter_open}
+        onClick={() => setIsFilterOpen((open) => !open)}
+      >
+        <Filter size={18} strokeWidth={1.5} aria-hidden="true" />
+        Filter teams
+        {teams.filter !== "all" ? <span className="teams-rail-action-badge">{TEAMS_FILTER_LABELS[teams.filter]}</span> : null}
       </button>
+      <ActionMenu
+        anchor_el={filter_button_ref.current}
+        is_open={is_filter_open}
+        onClose={() => setIsFilterOpen(false)}
+        aria_label="Filter teams"
+        width={240}
+        align="start"
+        sections={[
+          {
+            key: "filters",
+            items: FILTER_IDS.map((filter_id) => ({
+              key: filter_id,
+              label: TEAMS_FILTER_LABELS[filter_id],
+              icon: teams.filter === filter_id ? <Check size={16} strokeWidth={2} /> : <span className="inline-block w-4" />,
+              onClick: () => teams.setFilter(filter_id),
+            })),
+          },
+        ]}
+      />
 
-      {teams.is_loading_teams ? (
-        <div className="px-[10px] py-4 text-center text-[12.5px] text-shell-text-faint">Loading teams…</div>
-      ) : teams.teams_error ? (
-        <div className="px-[10px] py-4 text-center text-[12.5px] text-brand-200">{teams.teams_error}</div>
-      ) : (
-        teams.team_rows.map((row) => (
-          // div[role=button], not <button>: it nests TeamOptionsButton's own <button>,
-          // and a button can't validly contain another button.
-          <div
-            key={row.id}
-            role="button"
-            tabIndex={0}
-            onClick={row.select}
+      {is_search_open || teams.team_query ? (
+        <div className="teams-search-field">
+          <Search size={18} strokeWidth={1.5} aria-hidden="true" className="teams-muted" />
+          <input
+            ref={search_input_ref}
+            value={teams.team_query}
+            onChange={(event) => teams.setTeamQuery(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                row.select();
-              }
+              if (event.key === "Escape") closeSearch();
             }}
-            className={`${railRowClass(row.is_selected)} cursor-pointer`}
-          >
-            <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-shell-hover text-shell-text-muted">
-              <TeamFolderIcon size={14} />
-            </span>
-            <span
-              className={`min-w-0 flex-1 truncate text-[13.5px] font-medium ${
-                row.is_selected ? "text-shell-text" : "text-shell-text-secondary"
-              }`}
-            >
-              {row.name}
-            </span>
-            <span className="text-[12px] text-shell-text-faint">{row.member_count}</span>
-            {row.team.can_manage ? (
-              <TeamOptionsButton
-                team_name={row.name}
-                onEdit={() => teams.openEditTeam(row.team)}
-                onDelete={() => teams.requestDeleteTeam(row.team)}
-              />
-            ) : null}
-          </div>
-        ))
-      )}
-    </div>
-
-    {teams.can_create_teams ? (
-      <div className="border-t border-shell-border px-4 py-3">
-        <button
-          type="button"
-          onClick={teams.openCreateTeam}
-          className="flex items-center gap-2 text-[12.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text-secondary"
-        >
-          <PlusIcon size={12} />
-          New team
+            onBlur={() => {
+              if (!teams.team_query) setIsSearchOpen(false);
+            }}
+            placeholder="Search teams"
+            aria-label="Search teams"
+          />
+          <button type="button" className="teams-icon-button teams-icon-button-sm" onClick={closeSearch} aria-label="Clear search">
+            <X size={14} strokeWidth={1.75} aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <button type="button" className="teams-rail-action" onClick={() => setIsSearchOpen(true)}>
+          <Search size={18} strokeWidth={1.5} aria-hidden="true" />
+          Search teams
         </button>
+      )}
+
+      <div className="teams-rail-divider" />
+
+      <div className="teams-rail-list shell-scrollbar">
+        <div
+          role="button"
+          tabIndex={0}
+          aria-current={teams.is_all_users ? "true" : undefined}
+          onClick={() => teams.selectTeam(null)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              teams.selectTeam(null);
+            }
+          }}
+          className="teams-rail-row"
+        >
+          <span className="teams-avatar" style={{ width: 26, height: 26, background: "transparent" }}>
+            <Users size={18} strokeWidth={1.5} aria-hidden="true" />
+          </span>
+          <span className="teams-rail-name">All users</span>
+          {all_users_total !== null ? <span className="teams-count-badge">{all_users_total}</span> : null}
+        </div>
+
+        {teams.is_loading_teams ? (
+          <div className="teams-rail-empty">Loading teams...</div>
+        ) : teams.teams_error ? (
+          <div className="teams-rail-empty">{teams.teams_error}</div>
+        ) : teams.team_rows.length === 0 ? (
+          <div className="teams-rail-empty">
+            {teams.is_filtering ? "No teams match your search or filter." : "No teams yet."}
+          </div>
+        ) : (
+          teams.team_rows.map(renderRow)
+        )}
       </div>
-    ) : null}
-  </div>
-);
+    </aside>
+  );
+};
 
 export default TeamsRail;

@@ -87,6 +87,13 @@ const AdministrationView: React.FC = () => {
   const selectSection = useCallback(
     (section_id: AdminSectionId) => {
       if (section_id === active_section || !confirmLeave()) return;
+      // Standalone pages (Teams) open on their own route, their close button comes back to this section.
+      const standalone_href = findAdministrationItem(section_id)?.href;
+      if (standalone_href) {
+        const from = `${pathname}?${new URLSearchParams({ section: active_section }).toString()}`;
+        router.push(`${standalone_href}?${new URLSearchParams({ from }).toString()}`);
+        return;
+      }
       // Only `?section=` carries over, so one page's params (Slack's `reason`, a hash) never leak into the next.
       router.replace(`${pathname}?${new URLSearchParams({ section: section_id }).toString()}`, { scroll: false });
     },

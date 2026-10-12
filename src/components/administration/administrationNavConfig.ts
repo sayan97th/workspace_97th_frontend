@@ -11,6 +11,11 @@ export type AdministrationNavItem = {
   description: string;
   /** Restricts the item to these platform roles, mirroring the API route's role gate. Visible to every Administration role when absent. */
   roles?: string[];
+  /**
+   * Opens a standalone page instead of a section inside the view, like Teams. The rail links to
+   * it with `?from=` so the page's close button returns to Administration.
+   */
+  href?: string;
 };
 
 /** A collapsible rail group with child pages, like monday's "Directory" or "Security". */
@@ -99,6 +104,12 @@ export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
         title: "User management",
         description:
           "Manage everyone on this account, change roles, assign departments or deactivate a user. Click a person to see their details.",
+      },
+      {
+        id: "teams",
+        label: "Teams",
+        description: "Group people into teams with owners, sub-teams and the boards each team works on.",
+        href: "/teams",
       },
       {
         id: "invitations",
@@ -228,9 +239,9 @@ export const canSeeAdministrationItem = (
 export const findAdministrationItem = (section_id: AdminSectionId): AdministrationNavItem | undefined =>
   ADMINISTRATION_NAV_ITEMS.find((item) => item.id === section_id);
 
-/** Narrows a `?section=` value to a rail page, `null` when it names none. */
+/** Narrows a `?section=` value to a rail page shown inside the view, `null` when it names none (or a standalone page). */
 export const parseAdministrationSection = (value: string | null): AdminSectionId | null =>
-  (value ? ADMINISTRATION_NAV_ITEMS.find((candidate) => candidate.id === value)?.id : undefined) ?? null;
+  (value ? ADMINISTRATION_NAV_ITEMS.find((candidate) => candidate.id === value && !candidate.href)?.id : undefined) ?? null;
 
 export const administrationGroupForSection = (section_id: AdminSectionId): AdminNavGroupId | null => {
   const group = ADMINISTRATION_NAV.find(

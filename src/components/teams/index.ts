@@ -1,10 +1,14 @@
 export { default as TeamsView } from "./TeamsView";
 export { default as CreateTeamModal } from "./CreateTeamModal";
 export { default as AddTeamMembersModal } from "./AddTeamMembersModal";
+export { default as AddTeamBoardsModal } from "./AddTeamBoardsModal";
 export { default as TeamsRail } from "./TeamsRail";
 export { default as TeamMembersTable } from "./TeamMembersTable";
-export { default as TeamOptionsButton } from "./TeamOptionsButton";
-export { useTeamsManager, ALL_TEAMS_ID } from "./useTeamsManager";
+export { default as AllUsersTable } from "./AllUsersTable";
+export { default as TeamAvatar } from "./TeamAvatar";
+export { useTeamsManager } from "./useTeamsManager";
+export { useTeamRoster } from "./useTeamRoster";
+export { useTeamBoards } from "./useTeamBoards";
 export type { TeamFormMode, TeamsManagerApi, TeamRow } from "./useTeamsManager";
-export type { Team, TeamMember, TeamsTabId } from "./types";
+export type { Team, TeamMember, TeamsTabId, TeamsFilterId, TeamBoard } from "./types";
 export { mapAccountTeamMemberDtoToTeamMember } from "./teamMapping";

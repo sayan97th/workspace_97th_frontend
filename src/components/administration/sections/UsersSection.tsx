@@ -121,7 +121,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
   return (
     <div>
       <AdminPageActions>
-        <Link href="/teams" className="admin-button admin-button-secondary">
+        <Link href="/teams?from=%2Fadministration%3Fsection%3Dusers" className="admin-button admin-button-secondary">
           <Users size={18} strokeWidth={1.75} aria-hidden="true" />
           Manage teams
         </Link>
