@@ -17,12 +17,12 @@ type PrivacyOption = { value: BoardType; label: string; icon?: React.ReactNode; 
 
 const PRIVACY_OPTIONS: PrivacyOption[] = [
   { value: "main", label: "Main", hint: "Visible to everyone in your account" },
-  { value: "private", label: "Private", icon: <LockIcon size={14} />, hint: "Visible only to you and the people you invite" },
+  { value: "private", label: "Private", icon: <LockIcon size={14} />, hint: "For working privately - alone or with selected team members." },
   {
     value: "shareable",
     label: "Shareable",
     icon: <ShareNodesIcon size={14} />,
-    hint: "Visible to everyone in your account and to guests you invite",
+    hint: "For working privately with guests outside your account.",
   },
 ];
 
