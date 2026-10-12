@@ -7,11 +7,11 @@ import type {
   SlackAppCredentialsDto,
   SlackAppCredentialsPayload,
   SlackConnectedWorkspaceDto,
-  SlackSelectableAppSource,
+  SlackAppKey,
   SlackWorkspacesResponse,
 } from "@/types/slack";
 
-/** What an administration action is running on: a workspace id, the credentials form, the app switch or the email match. */
+/** What an administration action is running on: a workspace id, the credentials form, the app selection or the email match. */
 export type SlackAdministrationBusyKey = number | "credentials" | "select_app" | "match" | null;
 
 export type SlackAdministrationApi = {
@@ -23,13 +23,13 @@ export type SlackAdministrationApi = {
   /** Resolves to true when the workspace was disconnected. */
   disconnectWorkspace: (workspace_id: number) => Promise<boolean>;
   matchMembers: () => Promise<void>;
-  /** Creates the Slack app from a configuration token, resolves to true when it worked. */
-  createApp: (configuration_token: string) => Promise<boolean>;
-  /** Resolves to true when the credentials were saved. */
-  saveCredentials: (payload: SlackAppCredentialsPayload) => Promise<boolean>;
-  clearCredentials: () => Promise<boolean>;
-  /** Switches between the production app and the testing app, resolves to true when it worked. */
-  selectApp: (source: SlackSelectableAppSource) => Promise<boolean>;
+  /** Creates a Slack app from a configuration token, resolves to true when it worked. */
+  createApp: (configuration_token: string, label: string | null) => Promise<boolean>;
+  /** Saves a new app, or updates the saved app `app_id`. Resolves to true when the credentials were saved. */
+  saveCredentials: (payload: SlackAppCredentialsPayload, app_id: number | null) => Promise<boolean>;
+  removeCredentials: (app_id: number) => Promise<boolean>;
+  /** Selects the app in use, resolves to true when it worked. */
+  selectApp: (app: SlackAppKey) => Promise<boolean>;
 };
 
 /**
@@ -130,25 +130,32 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
   );
 
   const createApp = useCallback(
-    async (configuration_token: string) =>
-      applyCredentials(await runAction("credentials", () => slackService.createApp(configuration_token), "Failed to create the Slack app.")),
+    async (configuration_token: string, label: string | null) =>
+      applyCredentials(await runAction("credentials", () => slackService.createApp(configuration_token, label), "Failed to create the Slack app.")),
     [applyCredentials, runAction]
   );
 
   const saveCredentials = useCallback(
-    async (payload: SlackAppCredentialsPayload) =>
-      applyCredentials(await runAction("credentials", () => slackService.saveAppCredentials(payload), "Failed to save the Slack app credentials.")),
+    async (payload: SlackAppCredentialsPayload, app_id: number | null) =>
+      applyCredentials(
+        await runAction(
+          "credentials",
+          () => (app_id === null ? slackService.addAppCredentials(payload) : slackService.updateAppCredentials(app_id, payload)),
+          "Failed to save the Slack app credentials."
+        )
+      ),
     [applyCredentials, runAction]
   );
 
-  const clearCredentials = useCallback(
-    async () => applyCredentials(await runAction("credentials", () => slackService.clearAppCredentials(), "Failed to remove the Slack app credentials.")),
+  const removeCredentials = useCallback(
+    async (app_id: number) =>
+      applyCredentials(await runAction("credentials", () => slackService.removeAppCredentials(app_id), "Failed to remove the Slack app credentials.")),
     [applyCredentials, runAction]
   );
 
   const selectApp = useCallback(
-    async (source: SlackSelectableAppSource) => {
-      const response = await runAction("select_app", () => slackService.selectApp(source), "Failed to switch the Slack app.");
+    async (app: SlackAppKey) => {
+      const response = await runAction("select_app", () => slackService.selectApp(app), "Failed to switch the Slack app.");
       if (!response) return false;
 
       // The active workspace follows the app, so the list is read again. A failed read keeps the current list.
@@ -168,7 +175,7 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     matchMembers,
     createApp,
     saveCredentials,
-    clearCredentials,
+    removeCredentials,
     selectApp,
   };
 }

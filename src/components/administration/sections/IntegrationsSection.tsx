@@ -34,8 +34,7 @@ const IntegrationsSection: React.FC = () => {
   const workspaces_count = status?.workspaces_count ?? 0;
   const needs_setup = slackNeedsSetup(status);
 
-  const is_testing_app = status?.credentials_source === "database";
-  const app_summary = status?.app_name ? ` Using the ${status.app_name} Slack app${is_testing_app ? " for testing" : ""}.` : "";
+  const app_summary = status?.app_name ? ` Using the ${status.app_name} Slack app.` : "";
 
   let summary: string;
   if (!needs_setup && workspace) {
@@ -64,7 +63,6 @@ const IntegrationsSection: React.FC = () => {
               ) : (
                 <span className="admin-pill admin-pill-success">Connected</span>
               )}
-              {can_manage && is_testing_app ? <span className="admin-pill admin-pill-warning">Testing app</span> : null}
             </div>
             <p className="mt-1 text-[14px] leading-5 text-shell-text-secondary">{summary}</p>
           </div>

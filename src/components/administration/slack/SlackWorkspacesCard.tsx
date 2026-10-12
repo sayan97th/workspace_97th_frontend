@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { format } from "date-fns";
 import type { SlackAdministrationApi } from "@/hooks/useSlackAdministration";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
-import type { SlackConnectedWorkspaceDto, SlackSelectableAppSource } from "@/types/slack";
+import type { SlackConnectedWorkspaceDto } from "@/types/slack";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON, SECTION_CARD, SECTION_HINT, SECTION_TITLE } from "@/components/administration/slack/slackAdminStyles";
 
 export type SlackWorkspacesCardProps = {
@@ -38,19 +38,8 @@ type WorkspaceRowProps = {
   admin: SlackAdministrationApi;
 };
 
-/** Which Slack app installed the workspace, named after the app on the Slack app card. */
-function appSourceLabel(source: SlackSelectableAppSource | null | undefined, admin: SlackAdministrationApi): string | null {
-  if (source === "environment") return `${admin.credentials?.environment_app.name ?? "Production"} app`;
-  if (source === "database") {
-    const testing_label = admin.credentials?.testing_app?.label;
-    return testing_label ? `${testing_label} app (testing)` : "Testing app";
-  }
-  return null;
-}
-
 const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) => {
   const [is_confirming, setIsConfirming] = useState(false);
-  const app_label = appSourceLabel(workspace.app_source, admin);
   const is_busy = admin.busy_key === workspace.id;
   const is_last = admin.workspaces.length === 1;
   const domain = workspace.team_url?.replace(/^https?:\/\//, "").replace(/\/$/, "") ?? null;
@@ -70,8 +59,8 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) 
             {workspace.is_active ? (
               <span className="admin-pill admin-pill-success">Active</span>
             ) : null}
-            {app_label ? (
-              <span className="rounded-md bg-shell-hover px-2 py-0.5 text-[11px] font-bold text-shell-text-secondary">{app_label}</span>
+            {workspace.app ? (
+              <span className="rounded-md bg-shell-hover px-2 py-0.5 text-[11px] font-bold text-shell-text-secondary">{workspace.app.name} app</span>
             ) : null}
             {workspace.missing_scopes.length > 0 ? (
               <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11px] font-bold text-[#fdab3d]" title={`Missing ${workspace.missing_scopes.join(", ")}`}>
@@ -185,7 +174,7 @@ const SlackWorkspacesCard: React.FC<SlackWorkspacesCardProps> = ({ slack, admin 
       ) : (
         <p className="mt-2 text-[12px] text-shell-text-faint">
           {slack.status?.can_configure_app
-            ? "Set the Slack app on the server or add a testing app above first, then connect a workspace."
+            ? "Set the Slack app in the API .env file or add Slack app credentials above first, then connect a workspace."
             : "An administrator or the account owner needs to set up the Slack app once before a workspace can be connected."}
         </p>
       )}

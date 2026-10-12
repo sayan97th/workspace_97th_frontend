@@ -2,7 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   SlackAppCredentialsDto,
   SlackAppCredentialsPayload,
-  SlackSelectableAppSource,
+  SlackAppKey,
   SlackAuthorizationDisplay,
   SlackChannelDto,
   SlackConnectedWorkspaceDto,
@@ -104,35 +104,40 @@ export const slackService = {
     return apiClient.post<SlackWorkspacesResponse & { result: SlackMemberMatchResult }>("/api/integrations/slack/match-members");
   },
 
-  /** GET /api/integrations/slack/app, administrators only. The app in use plus the production and testing apps. */
+  /** GET /api/integrations/slack/app, administrators only. The app in use plus every app that can be selected. */
   async getAppCredentials(): Promise<SlackAppCredentialsDto> {
     return apiClient.get<SlackAppCredentialsDto>("/api/integrations/slack/app");
   },
 
   /**
-   * POST /api/integrations/slack/app/create, account owner only. Creates the Slack app from the
+   * POST /api/integrations/slack/app/create, administrators only. Creates a Slack app from the
    * site's manifest with an app configuration token and saves its credentials, the token is not stored.
    */
-  async createApp(configuration_token: string): Promise<SlackAppCredentialsDto & { message: string }> {
-    return apiClient.post<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/create", { configuration_token });
+  async createApp(configuration_token: string, label: string | null): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.post<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/create", { configuration_token, label });
   },
 
-  /** PUT /api/integrations/slack/app, administrators only. Saves the testing app, it is not used until selected. */
-  async saveAppCredentials(payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
-    return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
+  /** POST /api/integrations/slack/app, administrators only. Saves another app, it is not used until selected. */
+  async addAppCredentials(payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.post<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
   },
 
-  /** DELETE /api/integrations/slack/app, administrators only. Removes the testing app, the production app takes over. */
-  async clearAppCredentials(): Promise<SlackAppCredentialsDto & { message: string }> {
-    return apiClient.delete<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app");
+  /** PUT /api/integrations/slack/app/{id}, administrators only. */
+  async updateAppCredentials(app_id: number, payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.put<SlackAppCredentialsDto & { message: string }>(`/api/integrations/slack/app/${app_id}`, payload);
+  },
+
+  /** DELETE /api/integrations/slack/app/{id}, administrators only. When it was in use, the app in the API .env file takes over. */
+  async removeAppCredentials(app_id: number): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.delete<SlackAppCredentialsDto & { message: string }>(`/api/integrations/slack/app/${app_id}`);
   },
 
   /**
-   * PUT /api/integrations/slack/app/active, administrators only. Switches between the production
-   * app (`environment`) and the testing app (`database`), the active workspace follows the app.
+   * PUT /api/integrations/slack/app/active, administrators only. Selects the app in use, the active
+   * workspace follows the app.
    */
-  async selectApp(source: SlackSelectableAppSource): Promise<SlackAppCredentialsDto & { message: string }> {
-    return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/active", { source });
+  async selectApp(app: SlackAppKey): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/active", { app });
   },
 
   /** DELETE /api/integrations/slack/link */
