@@ -1,27 +1,64 @@
 /*
- * Styles scoped to the Organization page's root wrapper (`organization-settings-theme` in
- * OrganizationSettingsView.tsx). Same approach as `workspace-manage.css`: the monday.com
- * palette is redeclared on the wrapper instead of changing the `shell-*` tokens app wide.
- * Dark mode keeps the hand tuned set from `globals.css`.
+ * Styles of Administration > Organization (`OrganizationSettingsView.tsx`). The section renders
+ * inside the Administration view, so the page palette, buttons and notices come from
+ * `administration.css` (`--admin-*` tokens and the light `shell-*` set on `.administration-theme`).
+ * This file only adds what is specific to the Organization cards.
  */
-html:not(.dark) .organization-settings-theme {
-  --color-shell-bg: #ffffff;
-  --color-shell-surface: #ffffff;
-  --color-shell-panel: #ffffff;
-  --color-shell-panel-alt: #f6f7fb;
-  --color-shell-border: #d0d4e4;
-  --color-shell-border-strong: #c3c6d4;
-  --color-shell-hover: #f5f6f8;
-  --color-shell-hover-strong: #dcdfec;
-  --color-shell-text: #323338;
-  --color-shell-text-secondary: #676879;
-  --color-shell-text-muted: #676879;
-  --color-shell-text-faint: #9699a6;
+
+/* Every card, the "On this page" list and the live preview share the Administration list frame. */
+.organization-panel {
+  border: 1px solid var(--admin-list-border);
+  border-radius: 8px;
+  background: var(--admin-card-bg);
 }
 
-/* Cards land below the sticky page header when jumped to from the side navigation. */
-.organization-settings-theme [data-organization-section] {
-  scroll-margin-top: 24px;
+.organization-panel-header {
+  border-bottom: 1px solid var(--admin-divider);
+}
+
+/* Cards stop a little below the top of the scroll area when jumped to from "On this page". */
+.organization-settings [data-organization-section] {
+  scroll-margin-top: 16px;
+}
+
+/* "On this page" rows, selected like the Administration rail. */
+.organization-toc-link {
+  display: block;
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--admin-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+  transition: background-color 120ms ease;
+}
+
+.organization-toc-link:hover {
+  background: var(--admin-hover);
+  color: var(--admin-text);
+}
+
+.organization-toc-link[aria-current="location"] {
+  background: var(--admin-selected);
+  color: var(--admin-text);
+  font-weight: 500;
+}
+
+/* "Unsaved changes" next to Discard and Save in the page header. */
+.organization-unsaved-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.organization-unsaved-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: #fdab3d;
 }
 
 /* Checkerboard behind uploaded logos, so transparent edges stay visible. */

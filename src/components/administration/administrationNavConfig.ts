@@ -1,6 +1,5 @@
 import { ChartLine, Contact, FileStack, Lock, Network, Paintbrush, Settings, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
-import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
-import { SLACK_SETUP_PATH, SLACK_SETUP_ROLES } from "@/lib/slackSetup";
+import { SLACK_SETUP_ROLES } from "@/lib/slackSetup";
 import type { AdminNavGroupId, AdminSectionId } from "./types";
 
 export type AdministrationNavItem = {
@@ -10,8 +9,6 @@ export type AdministrationNavItem = {
   title?: string;
   /** Subtitle under the page heading. */
   description: string;
-  /** Opens a page of its own instead of a section of the Administration view. */
-  href?: string;
   /** Restricts the item to these platform roles, mirroring the API route's role gate. Visible to every Administration role when absent. */
   roles?: string[];
 };
@@ -79,8 +76,8 @@ export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
       {
         id: "organization",
         label: "Organization",
-        description: "Company profile, logo, favicon, brand color and announcements.",
-        href: ORGANIZATION_SETTINGS_PATH,
+        description:
+          "Brand the whole workspace with your company's identity: the logo in the top left corner, colors, favicon, contact details, the sign in page and announcements.",
       },
       {
         id: "profile_fields",
@@ -167,8 +164,9 @@ export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
       {
         id: "slack",
         label: "Slack settings",
-        description: "Slack app credentials and connected workspaces.",
-        href: SLACK_SETUP_PATH,
+        title: "Slack",
+        description:
+          "Set up Slack once for the whole account. After that, members only use \"Connect my Slack\" in My Profile to get their notifications as Slack messages.",
         roles: SLACK_SETUP_ROLES,
       },
     ],
@@ -230,11 +228,9 @@ export const canSeeAdministrationItem = (
 export const findAdministrationItem = (section_id: AdminSectionId): AdministrationNavItem | undefined =>
   ADMINISTRATION_NAV_ITEMS.find((item) => item.id === section_id);
 
-/** Narrows a `?section=` value to a section rendered inside the view (pages with their own route are excluded). */
-export const parseAdministrationSection = (value: string | null): AdminSectionId | null => {
-  const item = value ? ADMINISTRATION_NAV_ITEMS.find((candidate) => candidate.id === value) : undefined;
-  return item && !item.href ? item.id : null;
-};
+/** Narrows a `?section=` value to a rail page, `null` when it names none. */
+export const parseAdministrationSection = (value: string | null): AdminSectionId | null =>
+  (value ? ADMINISTRATION_NAV_ITEMS.find((candidate) => candidate.id === value)?.id : undefined) ?? null;
 
 export const administrationGroupForSection = (section_id: AdminSectionId): AdminNavGroupId | null => {
   const group = ADMINISTRATION_NAV.find(

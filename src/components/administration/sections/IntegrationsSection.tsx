@@ -17,9 +17,9 @@ const SLACK_BENEFITS = [
 
 /**
  * Administration > Integrations, the list of integrations of the account, modeled on monday.com's
- * Integrations page. The Slack setup itself lives on its own page,
- * Administration > Integrations > Slack ({@link SLACK_SETUP_PATH}), which only administrators and
- * the account owner can open. Everyone else sees whether Slack is ready and links their own account.
+ * Integrations page. The Slack setup itself is the next rail page,
+ * Administration > Connections > Slack settings ({@link SLACK_SETUP_PATH}), which only administrators
+ * and the account owner can open. Everyone else sees whether Slack is ready and links their own account.
  */
 const IntegrationsSection: React.FC = () => {
   const slack = useSlackIntegration();

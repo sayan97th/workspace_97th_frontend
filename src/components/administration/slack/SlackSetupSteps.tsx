@@ -56,8 +56,8 @@ const SlackSetupSteps: React.FC<SlackSetupStepsProps> = ({ status }) => {
           <li
             key={step.key}
             aria-current={is_current ? "step" : undefined}
-            className={`rounded-xl border p-4 ${
-              is_current ? "border-brand-500/50 bg-brand-500/[0.08]" : "border-shell-border bg-shell-panel-alt"
+            className={`rounded-lg border p-4 ${
+              is_current ? "border-brand-500/50 bg-brand-500/[0.08]" : "border-[var(--admin-list-border)] bg-shell-panel-alt"
             }`}
           >
             <div className="flex items-center gap-2.5">

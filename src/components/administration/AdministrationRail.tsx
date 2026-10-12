@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -24,7 +23,7 @@ type NavRowProps = {
   is_child?: boolean;
 };
 
-/** One rail page. Items with their own route (Organization, Slack settings) render as links. */
+/** One rail page, every page opens inside the Administration view. */
 const NavRow: React.FC<NavRowProps> = ({ item, is_active, onSelect, icon, is_child = false }) => {
   const class_name = `admin-rail-row${is_child ? " admin-rail-child" : ""}`;
   const content = (
@@ -33,14 +32,6 @@ const NavRow: React.FC<NavRowProps> = ({ item, is_active, onSelect, icon, is_chi
       <span className="admin-rail-label">{item.label}</span>
     </>
   );
-
-  if (item.href) {
-    return (
-      <Link href={item.href} className={class_name}>
-        {content}
-      </Link>
-    );
-  }
 
   return (
     <button

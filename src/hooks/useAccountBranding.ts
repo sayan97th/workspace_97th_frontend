@@ -9,7 +9,7 @@ export type AccountBranding = {
 /**
  * Read only account logo and email header for any authenticated user, kept for the automation
  * cards that show the account logo. Reads the shared {@link useBranding} copy, so it no longer
- * fires its own request per card. The full Organization surface lives at `/admin/organization`.
+ * fires its own request per card. The full Organization surface lives at `/administration?section=organization`.
  */
 export function useAccountBranding(): AccountBranding {
   const { branding } = useBranding();

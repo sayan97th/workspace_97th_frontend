@@ -35,7 +35,7 @@ const OrganizationLivePreview: React.FC<{ organization: OrganizationDto; draft: 
   const logo_url = preview_theme === "dark" ? organization.logo_dark_url ?? organization.logo_url : organization.logo_url;
 
   return (
-    <div className="rounded-xl border border-shell-border bg-shell-panel p-4">
+    <div className="organization-panel p-4">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="text-[13.5px] font-semibold text-shell-text">Live preview</div>
         <div className="flex rounded-md bg-shell-panel-alt p-0.5" role="radiogroup" aria-label="Preview theme">

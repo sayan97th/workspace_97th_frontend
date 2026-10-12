@@ -15,17 +15,17 @@ export const OrganizationCard: React.FC<{
     id={id}
     data-organization-section
     aria-labelledby={`${id}-title`}
-    className="rounded-xl border border-shell-border bg-shell-panel"
+    className="organization-panel"
   >
-    <header className="flex items-start gap-3 border-b border-shell-border px-6 py-4">
+    <header className="organization-panel-header flex items-start gap-3 px-6 py-4">
       <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
         <Icon className="h-4 w-4" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <h2 id={`${id}-title`} className="font-outfit text-section-title text-shell-text">
+        <h3 id={`${id}-title`} className="text-[16px] font-semibold text-shell-text">
           {title}
-        </h2>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-shell-text-muted">{description}</p>
+        </h3>
+        <p className="mt-0.5 text-[14px] leading-5 text-shell-text-secondary">{description}</p>
       </div>
       {aside}
     </header>
@@ -74,7 +74,7 @@ export const Field: React.FC<FieldProps> = ({ label, hint, error, counter, is_op
 };
 
 export const input_class =
-  "h-10 w-full rounded-md border border-shell-border-strong bg-shell-panel px-3 text-[14px] text-shell-text outline-none transition-colors placeholder:text-shell-text-faint hover:border-shell-text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-shell-panel-alt disabled:text-shell-text-muted aria-[invalid=true]:border-[#d83a52]";
+  "h-10 w-full rounded-[4px] border border-[var(--admin-border)] bg-shell-panel px-3 text-[14px] text-shell-text outline-none transition-colors placeholder:text-shell-text-faint hover:border-shell-text-muted focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15 disabled:cursor-not-allowed disabled:bg-shell-panel-alt disabled:text-shell-text-muted aria-[invalid=true]:border-[#d83a52]";
 
 export const textarea_class = `${input_class} h-auto min-h-[88px] resize-y py-2.5 leading-relaxed`;
 

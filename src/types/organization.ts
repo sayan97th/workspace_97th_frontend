@@ -1,5 +1,5 @@
 /**
- * API types for Administration > Organization (`/admin/organization`), mirroring the Laravel
+ * API types for Administration > Organization (`/administration?section=organization`), mirroring the Laravel
  * `OrganizationResource` payload. The company display name is the account name and the main
  * logo is the same file the older Branding section managed.
  */

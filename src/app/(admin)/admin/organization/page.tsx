@@ -1,11 +1,7 @@
-import type { Metadata } from "next";
-import OrganizationSettingsView from "@/components/organization/OrganizationSettingsView";
+import { redirect } from "next/navigation";
+import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 
-export const metadata: Metadata = {
-  title: "Organization",
-  description: "Company profile, logo, brand color, contact details, sign in page and announcements",
-};
-
+/** Organization is a section of the Administration view now, old links and bookmarks land there. */
 export default function OrganizationPage() {
-  return <OrganizationSettingsView />;
+  redirect(ORGANIZATION_SETTINGS_PATH);
 }

@@ -1,5 +1,5 @@
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
@@ -8,6 +8,7 @@ import { useBranding } from "@/context/BrandingContext";
 import { readWorkspacePath } from "@/layout/sidebar-routes";
 import AdministrationRail from "./AdministrationRail";
 import { AdminPageActionsContext } from "./AdminPageActions";
+import { AdminLeaveGuardContext } from "./AdminLeaveGuard";
 import { useAccountSettingsManager } from "./useAccountSettingsManager";
 import { useDepartmentsManager } from "./useDepartmentsManager";
 import { useUsersManager } from "./useUsersManager";
@@ -33,6 +34,8 @@ import ProfileFieldsSection from "./sections/ProfileFieldsSection";
 import ContentDirectorySection from "./sections/ContentDirectorySection";
 import TidyUpSection from "./sections/TidyUpSection";
 import PermissionsSection from "./sections/PermissionsSection";
+import OrganizationSettingsView from "@/components/organization/OrganizationSettingsView";
+import SlackSettingsView from "./slack/SlackSettingsView";
 import {
   DEFAULT_ADMINISTRATION_SECTION,
   canSeeAdministrationItem,
@@ -51,7 +54,12 @@ const ADMINISTRATION_ROLES = ["super_admin", "admin", "staff"];
  * with its title and subtitle. Styles live in `administration.css`.
  *
  * The active section is the `?section=` query param, so a refresh, the browser Back button and
- * links such as `/administration?section=integrations` all land on the same page.
+ * links such as `/administration?section=integrations` all land on the same page. Organization
+ * (`?section=organization`) and Slack settings (`?section=slack`) render here too, their old
+ * routes redirect to these sections.
+ *
+ * A section with unsaved edits registers a question through {@link AdminLeaveGuardContext},
+ * asked before the view switches to another page or goes back to the workspace.
  *
  * Every section owns its own backend driven `use<Section>Manager` hook. Gated to
  * `super_admin`/`admin`/`staff`, matching the API's `/admin` route group floor, and tightened
@@ -65,15 +73,29 @@ const AdministrationView: React.FC = () => {
   const { branding } = useBranding();
   const active_section = parseAdministrationSection(search_params.get("section")) ?? DEFAULT_ADMINISTRATION_SECTION;
   const [page_actions_el, setPageActionsEl] = useState<HTMLDivElement | null>(null);
+  const leave_guard_ref = useRef<string | null>(null);
+
+  const setLeaveGuard = useCallback((message: string | null) => {
+    leave_guard_ref.current = message;
+  }, []);
+
+  const confirmLeave = useCallback(
+    () => !leave_guard_ref.current || window.confirm(leave_guard_ref.current),
+    []
+  );
 
   const selectSection = useCallback(
     (section_id: AdminSectionId) => {
-      const next_params = new URLSearchParams(search_params.toString());
-      next_params.set("section", section_id);
-      router.replace(`${pathname}?${next_params.toString()}`, { scroll: false });
+      if (section_id === active_section || !confirmLeave()) return;
+      // Only `?section=` carries over, so one page's params (Slack's `reason`, a hash) never leak into the next.
+      router.replace(`${pathname}?${new URLSearchParams({ section: section_id }).toString()}`, { scroll: false });
     },
-    [pathname, router, search_params]
+    [active_section, confirmLeave, pathname, router]
   );
+
+  const goBackToWorkspace = () => {
+    if (confirmLeave()) router.push(readWorkspacePath());
+  };
 
   const account_settings = useAccountSettingsManager();
   const departments = useDepartmentsManager();
@@ -115,6 +137,8 @@ const AdministrationView: React.FC = () => {
     switch (active_section) {
       case "account":
         return <AccountSection account={account_settings} />;
+      case "organization":
+        return <OrganizationSettingsView />;
       case "user_defaults":
         return <UserDefaultsSection account={account_settings} />;
       case "profile_fields":
@@ -137,6 +161,8 @@ const AdministrationView: React.FC = () => {
         return <AdvancedSection advanced={advanced} />;
       case "integrations":
         return <IntegrationsSection />;
+      case "slack":
+        return <SlackSettingsView />;
       case "usage":
         return <UsageSection />;
       case "tidy_up":
@@ -154,7 +180,7 @@ const AdministrationView: React.FC = () => {
     <div className="admin-shell administration-theme">
       <header className="admin-topbar">
         {/* The page has no workspace sidebar, so this is the way back to the last workspace page (Home by default). */}
-        <button type="button" onClick={() => router.push(readWorkspacePath())} className="admin-back-button">
+        <button type="button" onClick={goBackToWorkspace} className="admin-back-button">
           <ArrowLeft size={16} strokeWidth={1.75} aria-hidden="true" />
           Back to workspace
         </button>
@@ -180,9 +206,11 @@ const AdministrationView: React.FC = () => {
           </div>
 
           <AdminPageActionsContext.Provider value={page_actions_el}>
-            <div key={active_section} className="admin-page-content shell-scrollbar">
-              {renderActiveSection()}
-            </div>
+            <AdminLeaveGuardContext.Provider value={setLeaveGuard}>
+              <div key={active_section} className="admin-page-content shell-scrollbar">
+                {renderActiveSection()}
+              </div>
+            </AdminLeaveGuardContext.Provider>
           </AdminPageActionsContext.Provider>
         </section>
       </div>
