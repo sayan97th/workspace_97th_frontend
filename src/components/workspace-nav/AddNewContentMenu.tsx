@@ -6,6 +6,7 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useAuth } from "@/context/AuthContext";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import NavItemFormModal from "./NavItemFormModal";
+import CreateDocModal, { type CreateDocValues } from "./CreateDocModal";
 import BoardTemplatePickerModal, { type TemplateKind } from "./BoardTemplatePickerModal";
 import { getLeafHref } from "./helpers";
 import type { CreateNavItemPayload, WorkspaceNavNode } from "@/types/workspace";
@@ -57,13 +58,13 @@ const INTEGRATIONS_HREF = "/administration?section=integrations";
 const ICON_SIZE = 16;
 
 const BOARD: CreateOption = { dialog_title: "New Board", placeholder: "Board name", payload: { type: "leaf", view_key: "board" } };
-const DOC: CreateOption = { dialog_title: "New Doc", placeholder: "Doc name", payload: { type: "leaf", view_key: "doc" } };
 const FORM: CreateOption = { dialog_title: "New Form", placeholder: "Form name", payload: { type: "leaf", view_key: "form" } };
 
 /**
  * The sidebar's "Add to workspace" menu, laid out like monday.com's: content
  * types first (Board and Doc are split rows, a click creates, the chevron
- * shows their variants), then Folder and More. Every create
+ * shows their variants), then Folder and More. Doc rows open
+ * {@link CreateDocModal} for a name and privacy, every other create
  * row asks for a name in {@link NavItemFormModal}, creates the item through
  * {@link WorkspaceNavApi.createItem} and opens it. "Start with template"
  * rows open {@link BoardTemplatePickerModal} with the saved templates. Opened from the "+" next
@@ -75,6 +76,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
   const { hasAnyRole } = useAuth();
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
   const [template_kind, setTemplateKind] = useState<TemplateKind | null>(null);
+  const [is_doc_form_open, setIsDocFormOpen] = useState(false);
 
   const can_manage_apps = hasAnyRole(...APP_ADMIN_ROLES);
 
@@ -88,6 +90,14 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
   const withStyle = (option: CreateOption, display_style: string): CreateOption => ({
     ...option,
     payload: { ...option.payload, display_style },
+  });
+
+  /** Doc rows open the monday style "Create Doc" dialog, which also asks for the doc's privacy. */
+  const docRow = (key: string, label: string): ActionMenuItem => ({
+    key,
+    label,
+    icon: <FileIcon size={ICON_SIZE} />,
+    onClick: () => setIsDocFormOpen(true),
   });
 
   /** "Start with template" rows open the saved templates picker for their kind. */
@@ -115,10 +125,10 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
           ],
         },
         {
-          ...createRow("doc", "Doc", <FileIcon size={ICON_SIZE} />, DOC),
+          ...docRow("doc", "Doc"),
           split: true,
           submenu: [
-            createRow("new-doc", "New Doc", <FileIcon size={ICON_SIZE} />, DOC),
+            docRow("new-doc", "New Doc"),
             templateRow("doc-template", "doc"),
           ],
         },
@@ -226,6 +236,17 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     router.push(option.opens_import ? `${href}?import=1` : href);
   };
 
+  const submitDocForm = async ({ label, board_type }: CreateDocValues) => {
+    try {
+      const created_item = await nav.createItem({ type: "leaf", view_key: "doc", label, board_type, parent_id });
+      if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
+      if (created_item) router.push(getLeafHref(created_item));
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "We couldn't create this doc."));
+      throw error;
+    }
+  };
+
   const openCreatedFromTemplate = (board: WorkspaceNavNode) => {
     void nav.reload();
     if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
@@ -259,6 +280,8 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
         }
         onClose={() => setForm(CLOSED_FORM)}
       />
+
+      <CreateDocModal is_open={is_doc_form_open} onSubmit={submitDocForm} onClose={() => setIsDocFormOpen(false)} />
 
       <BoardTemplatePickerModal
         is_open={template_kind !== null}

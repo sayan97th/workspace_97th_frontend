@@ -34,6 +34,7 @@ import FolderColorPopover from "./FolderColorPopover";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import AddNewContentMenu from "./AddNewContentMenu";
 import NavItemFormModal from "./NavItemFormModal";
+import CreateDocModal, { type CreateDocValues } from "./CreateDocModal";
 import MoveNavItemModal from "./MoveNavItemModal";
 import MoveToWorkspaceModal from "./MoveToWorkspaceModal";
 import NavItemMenu, { type NavItemCreateKind, type NavItemMenuActions } from "./NavItemMenu";
@@ -130,6 +131,8 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
 
   const [menu, setMenu] = useState<MenuState>(CLOSED_MENU);
   const [form, setForm] = useState<FormState>(CLOSED_FORM);
+  /** Folder a new doc lands in while the "Create Doc" dialog is open, undefined while closed. */
+  const [doc_parent_id, setDocParentId] = useState<number | null | undefined>(undefined);
   const [moving_nodes, setMovingNodes] = useState<WorkspaceNavNode[]>([]);
   const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode[]>([]);
   const [pending_archive, setPendingArchive] = useState<WorkspaceNavNode[]>([]);
@@ -404,8 +407,13 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   const closeMenu = () => setMenu(CLOSED_MENU);
   const closeOverlay = useCallback(() => setOverlayNode(null), []);
 
-  const openCreateForm = (option: CreateOption, parent_id: number | null) =>
+  const openCreateForm = (option: CreateOption, parent_id: number | null) => {
+    if (option.key === "doc") {
+      setDocParentId(parent_id);
+      return;
+    }
     setForm({ is_open: true, title: option.label, placeholder: option.placeholder, parent_id, payload: option.payload });
+  };
 
   const buildHeaderSections = (): ActionMenuSection[] => {
     const group_ids = collectGroupIds(nav.tree).map(Number);
@@ -487,6 +495,17 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   const submitForm = async (label: string) => {
     await nav.createItem({ ...form.payload, label, parent_id: form.parent_id });
     if (form.parent_id !== null) nav.setGroupsExpanded([form.parent_id], true);
+  };
+
+  const submitDocForm = async ({ label, board_type }: CreateDocValues) => {
+    const parent_id = doc_parent_id ?? null;
+    try {
+      await nav.createItem({ type: "leaf", view_key: "doc", label, board_type, parent_id });
+      if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
+    } catch (error) {
+      toast.error(apiErrorMessage(error, "We couldn't create this doc."));
+      throw error;
+    }
   };
 
   const runBulk = async (action: "archive" | "delete", nodes: WorkspaceNavNode[]) => {
@@ -698,6 +717,8 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
         onSubmit={submitForm}
         onClose={() => setForm(CLOSED_FORM)}
       />
+
+      <CreateDocModal is_open={doc_parent_id !== undefined} onSubmit={submitDocForm} onClose={() => setDocParentId(undefined)} />
 
       <MoveNavItemModal
         is_open={moving_nodes.length > 0}

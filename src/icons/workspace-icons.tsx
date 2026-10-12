@@ -484,6 +484,16 @@ export const ShareableBadgeIcon: React.FC<IconProps> = ({ className, size = 9 })
   </svg>
 );
 
+/** Outline three node share mark, the "Shareable" privacy option next to {@link LockIcon}. */
+export const ShareNodesIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M10.4 4.6 L5.6 7.2 M5.6 8.8 L10.4 11.4" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="11.8" cy="3.9" r="1.9" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="4.2" cy="8" r="1.9" stroke="currentColor" strokeWidth="1.2" />
+    <circle cx="11.8" cy="12.1" r="1.9" stroke="currentColor" strokeWidth="1.2" />
+  </svg>
+);
+
 /** Open-shackle padlock — used by "Unlock view" menu rows. */
 export const UnlockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
