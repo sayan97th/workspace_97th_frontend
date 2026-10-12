@@ -1,14 +1,12 @@
 import React from "react";
+import { RefreshCw } from "lucide-react";
 import UserAvatar from "@/components/common/UserAvatar";
-import { RefreshIcon } from "@/components/websocket-test/icons";
 import type { SlackNotificationTestsApi } from "@/hooks/useSlackNotificationTests";
-
-const FIELD =
-  "w-full rounded-lg border border-shell-border bg-shell-panel-alt px-3 py-2 text-xs text-shell-text focus:border-brand-300 focus:outline-none disabled:opacity-50";
+import { CARD, CARD_HINT, CARD_TITLE, FIELD_HINT, FIELD_LABEL, SELECT, TEXT_ACTION } from "./slackTestStyles";
 
 /**
  * Who receives the direct message tests and which channel the channel tests post to, plus the
- * workspace and queue the suite runs against.
+ * workspace, queue and events setup the suite runs against.
  */
 const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ suite }) => {
   const { catalog, recipients, channels, selected_user_id, selected_channel_id, is_running_batch, running_key } = suite;
@@ -16,17 +14,13 @@ const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ 
   const recipient = recipients.find((candidate) => candidate.user_id === selected_user_id) ?? null;
 
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border border-shell-border bg-shell-panel p-5 shadow-theme-xs">
-      <div>
-        <div className="text-sm font-semibold text-shell-text">Test targets</div>
-        <div className="text-xs text-shell-text-faint">
-          {catalog?.workspace ? `Runs against the ${catalog.workspace.team_name} workspace.` : "No Slack workspace is connected."}
-        </div>
-      </div>
+    <section className={CARD}>
+      <h3 className={CARD_TITLE}>Test targets</h3>
+      <p className={CARD_HINT}>{catalog?.workspace ? `Every test runs against the ${catalog.workspace.team_name} workspace.` : "No Slack workspace is connected."}</p>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-4 flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <label htmlFor="slack-suite-recipient" className="text-xs font-medium text-shell-text-secondary">
+          <label htmlFor="slack-suite-recipient" className={FIELD_LABEL}>
             Recipient
           </label>
           <select
@@ -34,7 +28,7 @@ const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ 
             value={selected_user_id ?? ""}
             onChange={(event) => suite.setSelectedUserId(event.target.value ? Number(event.target.value) : null)}
             disabled={recipients.length === 0 || is_busy}
-            className={FIELD}
+            className={SELECT}
           >
             {recipients.length === 0 ? (
               <option value="">No member linked Slack yet</option>
@@ -47,34 +41,27 @@ const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ 
             )}
           </select>
           {recipient ? (
-            <div className="flex items-center gap-2.5 rounded-lg bg-shell-panel-alt px-3 py-2">
-              <UserAvatar user={recipient} size={28} />
+            <div className="flex items-center gap-2.5 rounded-lg bg-[var(--admin-neutral-bg)] px-3 py-2">
+              <UserAvatar user={recipient} size={32} />
               <div className="min-w-0">
-                <div className="truncate text-xs font-medium text-shell-text">{recipient.full_name}</div>
-                <div className="truncate text-[11px] text-shell-text-faint">
-                  Slack: {recipient.slack_display_name ?? recipient.slack_user_id} · {recipient.email}
+                <div className="truncate text-[14px] font-medium text-shell-text">{recipient.full_name}</div>
+                <div className="truncate text-[13px] text-shell-text-faint">
+                  Slack: {recipient.slack_display_name ?? recipient.slack_user_id}, {recipient.email}
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-[11px] leading-relaxed text-shell-text-faint">
-              Direct message tests need a member who used &quot;Connect my Slack&quot; or was matched by email.
-            </p>
+            <p className={FIELD_HINT}>Direct message tests need a member who used &quot;Connect my Slack&quot; or was matched by email.</p>
           )}
         </div>
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <label htmlFor="slack-suite-channel" className="text-xs font-medium text-shell-text-secondary">
+            <label htmlFor="slack-suite-channel" className={FIELD_LABEL}>
               Channel
             </label>
-            <button
-              type="button"
-              onClick={() => void suite.refreshChannels()}
-              disabled={!catalog?.workspace || suite.is_refreshing_channels || is_busy}
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-200 hover:underline disabled:cursor-default disabled:opacity-50 disabled:no-underline"
-            >
-              <RefreshIcon size={11} className={suite.is_refreshing_channels ? "animate-spin" : undefined} />
+            <button type="button" onClick={() => void suite.refreshChannels()} disabled={!catalog?.workspace || suite.is_refreshing_channels || is_busy} className={TEXT_ACTION}>
+              <RefreshCw size={13} strokeWidth={1.75} className={suite.is_refreshing_channels ? "animate-spin" : undefined} aria-hidden="true" />
               Refresh
             </button>
           </div>
@@ -83,7 +70,7 @@ const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ 
             value={selected_channel_id ?? ""}
             onChange={(event) => suite.setSelectedChannelId(event.target.value || null)}
             disabled={channels.length === 0 || is_busy}
-            className={FIELD}
+            className={SELECT}
           >
             {channels.length === 0 ? (
               <option value="">No channels</option>
@@ -96,28 +83,30 @@ const SlackTestTargetsCard: React.FC<{ suite: SlackNotificationTestsApi }> = ({ 
               ))
             )}
           </select>
-          <p className="text-[11px] leading-relaxed text-shell-text-faint">
-            Use a test channel, these tests post real messages. Private channels need the app invited first, and the ephemeral and
-            mention tests need the recipient in the channel too.
+          <p className={FIELD_HINT}>
+            Use a test channel, these tests post real messages. Private channels need the app invited first, and the ephemeral and mention tests need the
+            recipient in the channel too.
           </p>
         </div>
       </div>
 
       {catalog ? (
-        <div className="flex flex-wrap gap-x-5 gap-y-1 border-t border-shell-border pt-3 text-[11px] text-shell-text-faint">
-          <span>
-            Queue connection: <span className="font-semibold text-shell-text-secondary">{catalog.queue_connection}</span>
-          </span>
-          <span>
-            Events URL reachable by Slack:{" "}
-            <span className="font-semibold text-shell-text-secondary">{catalog.can_receive_events ? "Yes" : "No, not public HTTPS"}</span>
-          </span>
-          <span>
-            Granted scopes: <span className="font-semibold text-shell-text-secondary">{catalog.granted_scopes.length}</span>
-          </span>
-        </div>
+        <dl className="mt-4 grid grid-cols-1 gap-x-4 gap-y-1 border-t border-[var(--admin-divider)] pt-3 text-[13px] sm:grid-cols-3">
+          <div>
+            <dt className="text-shell-text-faint">Queue connection</dt>
+            <dd className="font-medium text-shell-text">{catalog.queue_connection}</dd>
+          </div>
+          <div>
+            <dt className="text-shell-text-faint">Events from Slack</dt>
+            <dd className="font-medium text-shell-text">{catalog.can_receive_events ? "Reachable" : "Not public HTTPS"}</dd>
+          </div>
+          <div>
+            <dt className="text-shell-text-faint">Granted scopes</dt>
+            <dd className="font-medium text-shell-text">{catalog.granted_scopes.length}</dd>
+          </div>
+        </dl>
       ) : null}
-    </div>
+    </section>
   );
 };
 

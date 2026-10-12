@@ -1,74 +1,70 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
-import SlackLogo from "@/components/slack/SlackLogo";
+import { BellRing, RefreshCw } from "lucide-react";
+import AdminPageActions from "@/components/administration/AdminPageActions";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
-import { SendIcon } from "@/components/websocket-test/icons";
 import { useSlackDiagnostics } from "@/hooks/useSlackDiagnostics";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
 import { useSlackUserNotification } from "@/hooks/useSlackUserNotification";
 import SlackAppSetupCard from "./SlackAppSetupCard";
 import SlackChecklistCard from "./SlackChecklistCard";
 import SlackLiveTestsCard from "./SlackLiveTestsCard";
-import SlackTestAccessGate from "./SlackTestAccessGate";
+import SlackOverviewTiles from "./SlackOverviewTiles";
 import SlackUserNotificationCard from "./SlackUserNotificationCard";
-import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
+import { SLACK_NOTIFICATION_TESTS_PATH } from "./slackTestNav";
+import { StatusPill } from "./slackTestStatus";
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "./slackTestStyles";
 
 /**
- * Admin diagnostic screen at /admin/test/slack. Checks every piece the Slack integration depends
- * on (credentials, redirect URL, signing secret, workspace, bot token, scopes, channels and
- * the admin's own link) and runs real messages through Slack, including a custom notification to any linked member, so a broken setup can be
- * narrowed down without reading server logs.
+ * Slack diagnostics at /admin/test/slack, inside the Slack testing frame (`SlackTestShell`), which
+ * owns the heading and the admin only gate.
+ *
+ * Top to bottom: what is in use (app, workspace, your accounts), every server side check next to
+ * the values to copy into the Slack app, the live round trips (install, connect, direct message,
+ * channel post) and a custom message to any linked member. The checks run again on their own
+ * when a Slack authorization started here finishes in its tab.
  */
-const SlackTestView: React.FC = () => (
-  <SlackTestAccessGate>
-    <SlackTestContent />
-  </SlackTestAccessGate>
-);
-
-const SlackTestContent: React.FC = () => {
+const SlackTestView: React.FC = () => {
   const slack = useSlackIntegration();
   const diagnostics = useSlackDiagnostics();
   const notification = useSlackUserNotification(diagnostics.has_working_bot, diagnostics.diagnostics?.ran_at ?? null);
+  const { runDiagnostics } = diagnostics;
+  const summary = diagnostics.diagnostics?.summary ?? null;
+
+  // An install or "Connect my Slack" finished in the Slack tab, show its effect on every check.
+  useEffect(() => {
+    if (slack.completed_at > 0) void runDiagnostics();
+  }, [slack.completed_at, runDiagnostics]);
+
+  const renderOverallPill = () => {
+    if (!summary || diagnostics.is_running) return null;
+    if (summary.failed > 0) return <StatusPill status="failed" count={summary.failed} />;
+    if (summary.warning > 0) return <StatusPill status="warning" count={summary.warning} />;
+    return <span className="admin-pill admin-pill-success">All checks passed</span>;
+  };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-shell-border bg-shell-panel">
-            <SlackLogo size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-shell-text">Slack diagnostics</h1>
-            <p className="text-sm text-shell-text-secondary">
-              Verify the Slack app credentials, the workspace connection and real message delivery.
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href={SLACK_SETUP_PATH} className="text-xs font-semibold text-brand-200 hover:underline">
-            Back to Slack settings
-          </Link>
-          <Link
-            href="/admin/test/slack/notifications"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-600"
-          >
-            <SendIcon size={13} />
-            Notification test suite
-          </Link>
-        </div>
-      </div>
+    <div className="flex min-w-0 flex-col gap-5">
+      <AdminPageActions>
+        {renderOverallPill()}
+        <Link href={SLACK_NOTIFICATION_TESTS_PATH} className={SECONDARY_BUTTON}>
+          <BellRing size={16} strokeWidth={1.75} aria-hidden="true" />
+          Notification tests
+        </Link>
+        <button type="button" onClick={() => void runDiagnostics()} disabled={diagnostics.is_running} className={PRIMARY_BUTTON}>
+          <RefreshCw size={16} strokeWidth={1.75} className={diagnostics.is_running ? "animate-spin" : undefined} aria-hidden="true" />
+          {diagnostics.is_running ? "Running checks…" : "Run checks"}
+        </button>
+      </AdminPageActions>
 
       <SlackMessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <SlackChecklistCard
-          diagnostics={diagnostics.diagnostics}
-          is_running={diagnostics.is_running}
-          run_error={diagnostics.run_error}
-          onRun={() => void diagnostics.runDiagnostics()}
-        />
+      <SlackOverviewTiles status={slack.status} is_loading={slack.is_loading} />
+
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <SlackChecklistCard diagnostics={diagnostics.diagnostics} is_running={diagnostics.is_running} run_error={diagnostics.run_error} />
         <SlackAppSetupCard app={diagnostics.diagnostics?.app ?? null} />
       </div>
 

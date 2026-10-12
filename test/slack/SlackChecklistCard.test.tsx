@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import SlackChecklistCard from "@/components/slack-test/SlackChecklistCard";
 import { slackService } from "@/services/slack.service";
 import type { SlackDiagnosticsDto } from "@/types/slack";
@@ -28,7 +27,7 @@ afterEach(() => {
 
 describe("SlackChecklistCard", () => {
   test("lists every check with its status and the summary counts", () => {
-    render(<SlackChecklistCard diagnostics={diagnostics} is_running={false} run_error={null} onRun={() => {}} />);
+    render(<SlackChecklistCard diagnostics={diagnostics} is_running={false} run_error={null} />);
 
     expect(screen.getByText("Client ID and secret are set")).toBeInTheDocument();
     expect(screen.getByText("Use Add to Slack.")).toBeInTheDocument();
@@ -36,19 +35,15 @@ describe("SlackChecklistCard", () => {
     expect(screen.queryByText("0 warning")).not.toBeInTheDocument();
   });
 
-  test("runs the checks again and disables the button while running", async () => {
-    const on_run = vi.fn();
-    const { rerender } = render(<SlackChecklistCard diagnostics={diagnostics} is_running={false} run_error={null} onRun={on_run} />);
+  test("keeps the last results on screen, dimmed, while the checks run again", () => {
+    render(<SlackChecklistCard diagnostics={diagnostics} is_running run_error={null} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Run again" }));
-    expect(on_run).toHaveBeenCalledTimes(1);
-
-    rerender(<SlackChecklistCard diagnostics={diagnostics} is_running run_error={null} onRun={on_run} />);
-    expect(screen.getByRole("button", { name: "Running…" })).toBeDisabled();
+    expect(screen.getByText("Client ID and secret are set")).toBeInTheDocument();
+    expect(screen.getByRole("list")).toHaveClass("opacity-60");
   });
 
   test("shows the error when the diagnostics request fails", () => {
-    render(<SlackChecklistCard diagnostics={null} is_running={false} run_error="Failed to run the Slack diagnostics." onRun={() => {}} />);
+    render(<SlackChecklistCard diagnostics={null} is_running={false} run_error="Failed to run the Slack diagnostics." />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Failed to run the Slack diagnostics.");
   });

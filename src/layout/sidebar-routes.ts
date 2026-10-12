@@ -2,9 +2,10 @@
  * Account wide pages that render without the workspace sidebar, like monday.com's administration
  * and Teams directory: they apply to the whole site, so the page brings its own navigation (the
  * Administration rail, the Teams rail) instead of the workspace tree. Organization and Slack
- * settings are sections of the Administration view, so `/administration` covers them too.
+ * settings are sections of the Administration view, so `/administration` covers them too. The
+ * Slack testing pages open from Slack settings and share the Administration frame.
  */
-const SIDEBARLESS_PATH_PREFIXES = ["/administration", "/teams"];
+const SIDEBARLESS_PATH_PREFIXES = ["/administration", "/teams", "/admin/test/slack"];
 
 export const isSidebarlessPath = (pathname: string | null): boolean =>
   Boolean(pathname) &&

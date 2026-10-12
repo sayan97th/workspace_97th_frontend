@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { CheckCircleIcon, ClockIcon, RefreshIcon, XCircleIcon } from "@/components/websocket-test/icons";
-import { TONE_CLASSES, type StatusTone } from "@/components/websocket-test/status-meta";
-import type { SlackDiagnosticStatus, SlackNotificationTestDto, SlackNotificationTestResultDto, SlackNotificationTestTarget } from "@/types/slack";
+import { ChevronDown, ExternalLink } from "lucide-react";
+import type { SlackNotificationTestDto, SlackNotificationTestResultDto, SlackNotificationTestTarget } from "@/types/slack";
+import { STATUS_META, StatusIcon } from "./slackTestStatus";
+import { CHIP } from "./slackTestStyles";
 
 type SlackNotificationTestRowProps = {
   test: SlackNotificationTestDto;
@@ -13,13 +14,6 @@ type SlackNotificationTestRowProps = {
   onRun: () => void;
 };
 
-export const RESULT_STATUS_META: Record<SlackDiagnosticStatus, { tone: StatusTone; label: string }> = {
-  passed: { tone: "success", label: "Passed" },
-  warning: { tone: "warning", label: "Warning" },
-  failed: { tone: "error", label: "Failed" },
-  skipped: { tone: "neutral", label: "Skipped" },
-};
-
 const TARGET_LABELS: Record<SlackNotificationTestTarget, string | null> = {
   none: null,
   user: "Recipient",
@@ -28,41 +22,79 @@ const TARGET_LABELS: Record<SlackNotificationTestTarget, string | null> = {
   slack_member: "Slack member",
 };
 
-const ResultIcon: React.FC<{ status: SlackDiagnosticStatus | null; is_running: boolean }> = ({ status, is_running }) => {
-  if (is_running) return <RefreshIcon size={16} className="mt-0.5 flex-none animate-spin text-brand-300" />;
-  if (status === null) return <span className="mt-1 h-3.5 w-3.5 flex-none rounded-full border-2 border-shell-border" aria-hidden="true" />;
-
-  const class_name = `mt-0.5 flex-none ${TONE_CLASSES[RESULT_STATUS_META[status].tone].text}`;
-  if (status === "passed") return <CheckCircleIcon size={16} className={class_name} />;
-  if (status === "failed") return <XCircleIcon size={16} className={class_name} />;
-  return <ClockIcon size={16} className={class_name} />;
+/** The colored dot of one step, the same tones as the result. */
+const STEP_DOT: Record<SlackNotificationTestResultDto["status"], string> = {
+  passed: "bg-[var(--admin-success-text)]",
+  warning: "bg-[var(--admin-warning-text)]",
+  failed: "bg-[var(--admin-danger-text)]",
+  skipped: "bg-[var(--admin-text-faint)]",
 };
 
-/** One test of the suite: what it does and needs, a Run button, and its last result with every Slack call it made. */
-const SlackNotificationTestRow: React.FC<SlackNotificationTestRowProps> = ({ test, result, is_running, blocker, is_disabled, onRun }) => {
+/** Result box of a test: Slack's answer, links to what it produced, and every call it made on demand. */
+const TestResult: React.FC<{ result: SlackNotificationTestResultDto }> = ({ result }) => {
   const [is_expanded, setIsExpanded] = useState(false);
+  const meta = STATUS_META[result.status];
+
+  return (
+    <div className={`admin-notice mt-2 flex-col gap-1.5 ${meta.notice_class}`}>
+      <div className="leading-5">{result.detail}</div>
+
+      {result.links.length > 0 || result.steps.length > 0 || result.duration_ms > 0 ? (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
+          {result.links.map((link) => (
+            <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" className="admin-link inline-flex items-center gap-1">
+              {link.label}
+              <ExternalLink size={13} strokeWidth={1.75} aria-hidden="true" />
+            </a>
+          ))}
+          {result.steps.length > 0 ? (
+            <button
+              type="button"
+              onClick={() => setIsExpanded((current) => !current)}
+              aria-expanded={is_expanded}
+              className="inline-flex items-center gap-1 font-medium text-shell-text-secondary hover:text-shell-text"
+            >
+              {is_expanded ? "Hide" : "Show"} {result.steps.length} {result.steps.length === 1 ? "step" : "steps"}
+              <ChevronDown size={14} strokeWidth={1.75} className={`transition-transform ${is_expanded ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+          ) : null}
+          {result.duration_ms > 0 ? <span className="text-shell-text-faint">{result.duration_ms} ms</span> : null}
+        </div>
+      ) : null}
+
+      {is_expanded ? (
+        <ol className="mt-1 flex flex-col gap-1 border-t border-[var(--admin-divider)] pt-2">
+          {result.steps.map((step, index) => (
+            <li key={`${step.name}-${index}`} className="flex items-baseline gap-2 text-[12.5px]">
+              <span className={`h-1.5 w-1.5 flex-none translate-y-[-1px] rounded-full ${STEP_DOT[step.status]}`} aria-hidden="true" />
+              <code className="font-semibold text-shell-text">{step.name}</code>
+              <span className="text-shell-text-secondary">{step.detail ?? STATUS_META[step.status].label.toLowerCase()}</span>
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+};
+
+/** One test of the suite: what it does and needs, a Run button, and its last result. */
+const SlackNotificationTestRow: React.FC<SlackNotificationTestRowProps> = ({ test, result, is_running, blocker, is_disabled, onRun }) => {
   const status = result?.status ?? null;
   const target_label = TARGET_LABELS[test.target];
 
   return (
     <li className="flex items-start gap-3 py-3.5">
-      <ResultIcon status={status} is_running={is_running} />
+      <StatusIcon status={status} is_running={is_running} />
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[13px] font-medium text-shell-text">{test.label}</span>
-          {status ? (
-            <span className={`text-[11px] font-semibold ${TONE_CLASSES[RESULT_STATUS_META[status].tone].text}`}>{RESULT_STATUS_META[status].label}</span>
-          ) : null}
-          {target_label ? (
-            <span className="rounded-md bg-shell-panel-alt px-1.5 py-0.5 text-[10.5px] font-medium text-shell-text-secondary">{target_label}</span>
-          ) : null}
-          {test.sends_message ? null : (
-            <span className="rounded-md bg-shell-panel-alt px-1.5 py-0.5 text-[10.5px] font-medium text-shell-text-secondary">Read only</span>
-          )}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-[14px] font-medium text-shell-text">{test.label}</span>
+          {status ? <span className={`text-[12px] font-semibold ${STATUS_META[status].text_class}`}>{STATUS_META[status].label}</span> : null}
+          {target_label ? <span className={CHIP}>{target_label}</span> : null}
+          {test.sends_message ? null : <span className={CHIP}>Read only</span>}
         </div>
 
-        <p className="mt-0.5 text-xs leading-relaxed text-shell-text-secondary">{test.description}</p>
+        <p className="mt-0.5 text-[13px] leading-[19px] text-shell-text-secondary">{test.description}</p>
 
         {test.required_scopes.length > 0 ? (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -72,7 +104,9 @@ const SlackNotificationTestRow: React.FC<SlackNotificationTestRowProps> = ({ tes
                 <code
                   key={scope}
                   title={is_missing ? "The workspace was installed without this scope" : "Granted"}
-                  className={`rounded px-1.5 py-0.5 text-[10.5px] ${is_missing ? `${TONE_CLASSES.error.bg} ${TONE_CLASSES.error.text}` : "bg-shell-panel-alt text-shell-text-faint"}`}
+                  className={`rounded-[4px] px-1.5 py-0.5 text-[11.5px] ${
+                    is_missing ? "bg-[var(--admin-danger-bg)] text-[var(--admin-danger-text)]" : "bg-[var(--admin-neutral-bg)] text-shell-text-faint"
+                  }`}
                 >
                   {scope}
                 </code>
@@ -81,44 +115,7 @@ const SlackNotificationTestRow: React.FC<SlackNotificationTestRowProps> = ({ tes
           </div>
         ) : null}
 
-        {result ? (
-          <div className={`mt-2 rounded-lg border px-3 py-2 text-xs ${TONE_CLASSES[RESULT_STATUS_META[result.status].tone].border} ${TONE_CLASSES[RESULT_STATUS_META[result.status].tone].bg}`}>
-            <div className={`leading-relaxed ${TONE_CLASSES[RESULT_STATUS_META[result.status].tone].text}`}>{result.detail}</div>
-
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
-              {result.links.map((link) => (
-                <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
-                  {link.label}
-                </a>
-              ))}
-              {result.steps.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded((current) => !current)}
-                  aria-expanded={is_expanded}
-                  className="font-semibold text-shell-text-secondary hover:underline"
-                >
-                  {is_expanded ? "Hide" : "Show"} {result.steps.length} {result.steps.length === 1 ? "step" : "steps"}
-                </button>
-              ) : null}
-              {result.duration_ms > 0 ? <span className="text-shell-text-faint">{result.duration_ms} ms</span> : null}
-            </div>
-
-            {is_expanded ? (
-              <ol className="mt-2 flex flex-col gap-1 border-t border-shell-border pt-2">
-                {result.steps.map((step, index) => (
-                  <li key={`${step.name}-${index}`} className="flex items-baseline gap-2 text-[11px]">
-                    <span className={`h-1.5 w-1.5 flex-none translate-y-[-1px] rounded-full ${TONE_CLASSES[RESULT_STATUS_META[step.status].tone].dot}`} aria-hidden="true" />
-                    <code className="font-semibold text-shell-text">{step.name}</code>
-                    <span className="text-shell-text-secondary">{step.detail ?? RESULT_STATUS_META[step.status].label.toLowerCase()}</span>
-                  </li>
-                ))}
-              </ol>
-            ) : null}
-          </div>
-        ) : blocker ? (
-          <p className="mt-1.5 text-[11px] text-shell-text-faint">{blocker}</p>
-        ) : null}
+        {result ? <TestResult result={result} /> : blocker ? <p className="mt-1.5 text-[13px] text-shell-text-faint">{blocker}</p> : null}
       </div>
 
       <button
@@ -126,7 +123,8 @@ const SlackNotificationTestRow: React.FC<SlackNotificationTestRowProps> = ({ tes
         onClick={onRun}
         disabled={is_disabled || blocker !== null}
         title={blocker ?? undefined}
-        className="flex-none rounded-lg border border-shell-border bg-shell-panel-alt px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50"
+        aria-label={`${result ? "Run again" : "Run"}: ${test.label}`}
+        className="admin-button admin-button-secondary h-8 px-3 text-[13px]"
       >
         {is_running ? "Running…" : result ? "Run again" : "Run"}
       </button>

@@ -2,15 +2,16 @@
 
 import React from "react";
 import Link from "next/link";
-import SlackLogo from "@/components/slack/SlackLogo";
-import { RefreshIcon, SendIcon } from "@/components/websocket-test/icons";
-import { TONE_CLASSES } from "@/components/websocket-test/status-meta";
+import { Play, RefreshCw, Square } from "lucide-react";
+import AdminPageActions from "@/components/administration/AdminPageActions";
 import { useSlackNotificationTests } from "@/hooks/useSlackNotificationTests";
-import type { SlackDiagnosticStatus, SlackNotificationTestCategory, SlackNotificationTestDto } from "@/types/slack";
+import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
+import type { SlackNotificationTestCategory, SlackNotificationTestDto } from "@/types/slack";
 import SlackMemberMessageCard from "./SlackMemberMessageCard";
-import SlackNotificationTestRow, { RESULT_STATUS_META } from "./SlackNotificationTestRow";
-import SlackTestAccessGate from "./SlackTestAccessGate";
+import SlackNotificationTestRow from "./SlackNotificationTestRow";
 import SlackTestTargetsCard from "./SlackTestTargetsCard";
+import { StatusSummary } from "./slackTestStatus";
+import { CARD, CARD_HEADER, CARD_HINT, CARD_TITLE, PRIMARY_BUTTON, ROW_LIST, SECONDARY_BUTTON } from "./slackTestStyles";
 
 const CATEGORIES: { key: SlackNotificationTestCategory; label: string; description: string }[] = [
   { key: "connection", label: "Connection and recipient", description: "Checks the bot and the recipient before any message is sent." },
@@ -20,135 +21,126 @@ const CATEGORIES: { key: SlackNotificationTestCategory; label: string; descripti
   { key: "events", label: "Events from Slack", description: "Things Slack sends to the app, they only work when Slack can reach the events URL." },
 ];
 
-const PRIMARY_BUTTON =
-  "inline-flex items-center justify-center gap-1.5 rounded-lg bg-brand-500 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50";
-
-const SECONDARY_BUTTON =
-  "inline-flex items-center gap-1.5 rounded-lg border border-shell-border bg-shell-panel-alt px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
-
 /**
- * Admin test suite at /admin/test/slack/notifications. Lists every Slack notification test the
- * API offers, grouped by what it exercises, and runs them one at a time or all together against
- * the real workspace, showing each result with Slack's own answer and a link to the message.
+ * Slack notification tests at /admin/test/slack/notifications, inside the Slack testing frame
+ * (`SlackTestShell`), which owns the heading and the admin only gate.
+ *
+ * Choose who and where the tests send to, then run one test, one group or every test against the
+ * real workspace. Tests run one at a time and each result shows Slack's own answer, every call it
+ * made and a link to the message. Run all, Stop and Reload sit in the page header.
  */
-const SlackNotificationTestsView: React.FC = () => (
-  <SlackTestAccessGate>
-    <SlackNotificationTestsContent />
-  </SlackTestAccessGate>
-);
-
-const SlackNotificationTestsContent: React.FC = () => {
+const SlackNotificationTestsView: React.FC = () => {
   const suite = useSlackNotificationTests();
   const { catalog, results, summary, running_key, is_running_batch } = suite;
   const tests = catalog?.tests ?? [];
   const is_busy = is_running_batch || running_key !== null;
   const runnable_count = tests.filter((test) => suite.getBlocker(test) === null).length;
-  const has_results = Object.keys(results).length > 0;
+  const result_count = Object.keys(results).length;
 
-  const renderCategory = (category: (typeof CATEGORIES)[number], category_tests: SlackNotificationTestDto[]) => (
-    <section key={category.key} className="flex flex-col rounded-2xl border border-shell-border bg-shell-panel p-5 shadow-theme-xs">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-shell-text">{category.label}</h2>
-          <p className="text-xs text-shell-text-faint">{category.description}</p>
+  const renderCategory = (category: (typeof CATEGORIES)[number], category_tests: SlackNotificationTestDto[]) => {
+    const done_count = category_tests.filter((test) => results[test.key]).length;
+
+    return (
+      <section key={category.key} className={CARD} aria-labelledby={`slack-tests-${category.key}`}>
+        <div className={CARD_HEADER}>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 id={`slack-tests-${category.key}`} className={CARD_TITLE}>
+                {category.label}
+              </h3>
+              <span className="text-[13px] text-shell-text-faint">
+                {done_count > 0 ? `${done_count} of ${category_tests.length} run` : `${category_tests.length} ${category_tests.length === 1 ? "test" : "tests"}`}
+              </span>
+            </div>
+            <p className={CARD_HINT}>{category.description}</p>
+          </div>
+          <button type="button" onClick={() => void suite.runTests(category_tests)} disabled={is_busy} className={SECONDARY_BUTTON}>
+            <Play size={15} strokeWidth={1.75} aria-hidden="true" />
+            Run group
+          </button>
         </div>
-        <button type="button" onClick={() => void suite.runTests(category_tests)} disabled={is_busy} className={SECONDARY_BUTTON}>
-          Run group
-        </button>
-      </div>
 
-      <ul className="divide-y divide-shell-border">
-        {category_tests.map((test) => (
-          <SlackNotificationTestRow
-            key={test.key}
-            test={test}
-            result={results[test.key] ?? null}
-            is_running={running_key === test.key}
-            blocker={suite.getBlocker(test)}
-            is_disabled={is_busy}
-            onRun={() => void suite.runTest(test)}
-          />
-        ))}
-      </ul>
-    </section>
-  );
+        <ul className={ROW_LIST}>
+          {category_tests.map((test) => (
+            <SlackNotificationTestRow
+              key={test.key}
+              test={test}
+              result={results[test.key] ?? null}
+              is_running={running_key === test.key}
+              blocker={suite.getBlocker(test)}
+              is_disabled={is_busy}
+              onRun={() => void suite.runTest(test)}
+            />
+          ))}
+        </ul>
+      </section>
+    );
+  };
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 p-6 sm:p-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-shell-border bg-shell-panel">
-            <SlackLogo size={20} />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold text-shell-text">Slack notification tests</h1>
-            <p className="text-sm text-shell-text-secondary">Send real notifications through Slack and check every step of their delivery.</p>
-          </div>
-        </div>
-        <Link href="/admin/test/slack" className="text-xs font-semibold text-brand-200 hover:underline">
-          Back to Slack diagnostics
-        </Link>
-      </div>
+    <div className="flex min-w-0 flex-col gap-5">
+      <AdminPageActions>
+        <button type="button" onClick={() => void suite.reload()} disabled={is_busy || suite.is_loading} className={SECONDARY_BUTTON}>
+          <RefreshCw size={16} strokeWidth={1.75} className={suite.is_loading ? "animate-spin" : undefined} aria-hidden="true" />
+          Reload
+        </button>
+        {is_running_batch ? (
+          <button type="button" onClick={suite.stopBatch} className="admin-button admin-button-danger">
+            <Square size={14} strokeWidth={2} aria-hidden="true" />
+            Stop
+          </button>
+        ) : null}
+        <button type="button" onClick={() => void suite.runTests(tests)} disabled={is_busy || runnable_count === 0} className={PRIMARY_BUTTON}>
+          <Play size={16} strokeWidth={1.75} aria-hidden="true" />
+          {is_running_batch ? "Running…" : "Run all tests"}
+        </button>
+      </AdminPageActions>
 
       {suite.load_error ? (
-        <div role="alert" className="flex items-start justify-between gap-3 rounded-lg border border-error-300 bg-error-50 px-3 py-2 text-xs text-error-600">
+        <div role="alert" className="admin-notice admin-notice-error justify-between">
           <span>{suite.load_error}</span>
-          <button type="button" onClick={() => void suite.reload()} className="flex-none font-semibold hover:underline">
+          <button type="button" onClick={() => void suite.reload()} className="flex-none font-medium hover:underline">
             Try again
           </button>
         </div>
       ) : null}
 
-      {suite.is_loading && !catalog ? <div className="text-xs text-shell-text-faint">Loading the tests…</div> : null}
+      {suite.is_loading && !catalog ? <p className="text-[14px] text-shell-text-faint">Loading the tests…</p> : null}
+
+      {catalog && !catalog.workspace ? (
+        <div className="admin-notice admin-notice-warning justify-between">
+          <span>No Slack workspace is connected, so every test is skipped. Connect one in Slack settings, then reload this page.</span>
+          <Link href={SLACK_SETUP_PATH} className="admin-link flex-none">
+            Open Slack settings
+          </Link>
+        </div>
+      ) : null}
 
       {catalog ? (
         <>
-          <SlackMemberMessageCard suite={suite} />
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <SlackTestTargetsCard suite={suite} />
+            <SlackMemberMessageCard suite={suite} />
+          </div>
 
-          <SlackTestTargetsCard suite={suite} />
-
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-shell-border bg-shell-panel px-5 py-4 shadow-theme-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-[var(--admin-neutral-bg)] px-4 py-3">
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-shell-text">
+              <div className="text-[14px] font-semibold text-shell-text">
                 {tests.length} tests, {runnable_count} ready to run
               </div>
-              <div className="mt-1 flex flex-wrap gap-1.5">
-                {has_results ? (
-                  (Object.keys(RESULT_STATUS_META) as SlackDiagnosticStatus[]).map((status) =>
-                    summary[status] > 0 ? (
-                      <span
-                        key={status}
-                        className={`rounded-md px-2 py-0.5 text-[11px] font-semibold ${TONE_CLASSES[RESULT_STATUS_META[status].tone].bg} ${TONE_CLASSES[RESULT_STATUS_META[status].tone].text}`}
-                      >
-                        {summary[status]} {RESULT_STATUS_META[status].label.toLowerCase()}
-                      </span>
-                    ) : null
-                  )
-                ) : (
-                  <span className="text-xs text-shell-text-faint">Running a test sends real messages to the recipient and the channel.</span>
-                )}
+              <div className="mt-0.5 text-[13px] text-shell-text-secondary">
+                {result_count > 0
+                  ? `${result_count} of ${tests.length} have a result.`
+                  : "Running a test sends real messages to the recipient and the channel."}
               </div>
             </div>
-
             <div className="flex flex-wrap items-center gap-2">
-              <button type="button" onClick={() => void suite.reload()} disabled={is_busy || suite.is_loading} className={SECONDARY_BUTTON}>
-                <RefreshIcon size={13} className={suite.is_loading ? "animate-spin" : undefined} />
-                Reload
-              </button>
-              {has_results ? (
-                <button type="button" onClick={suite.clearResults} disabled={is_busy} className={SECONDARY_BUTTON}>
+              {result_count > 0 ? <StatusSummary summary={summary} /> : null}
+              {result_count > 0 ? (
+                <button type="button" onClick={suite.clearResults} disabled={is_busy} className="admin-button admin-button-tertiary h-8 text-[13px]">
                   Clear results
                 </button>
               ) : null}
-              {is_running_batch ? (
-                <button type="button" onClick={suite.stopBatch} className={SECONDARY_BUTTON}>
-                  Stop
-                </button>
-              ) : null}
-              <button type="button" onClick={() => void suite.runTests(tests)} disabled={is_busy || runnable_count === 0} className={PRIMARY_BUTTON}>
-                <SendIcon size={13} />
-                {is_running_batch ? "Running…" : "Run all tests"}
-              </button>
             </div>
           </div>
 

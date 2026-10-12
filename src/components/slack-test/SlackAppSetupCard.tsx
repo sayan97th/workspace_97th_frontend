@@ -1,5 +1,7 @@
 import React, { useState } from "react";
+import { Check, Copy } from "lucide-react";
 import type { SlackAppSetupDto } from "@/types/slack";
+import { CARD, CARD_HINT, CARD_TITLE, CHIP, FIELD_HINT, ROW_LIST } from "./slackTestStyles";
 
 type SlackAppSetupCardProps = {
   app: SlackAppSetupDto | null;
@@ -22,58 +24,71 @@ const SetupRow: React.FC<{ label: string; value: string | null; hint: string }> 
   return (
     <div className="py-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-shell-text-secondary">{label}</span>
+        <span className="text-[14px] font-medium text-shell-text">{label}</span>
         <button
           type="button"
           onClick={() => void copyValue()}
           disabled={!value}
-          className="text-[11px] font-semibold text-brand-200 hover:underline disabled:cursor-default disabled:opacity-50"
+          aria-label={`Copy ${label}`}
+          className="inline-flex items-center gap-1 rounded-[4px] px-1.5 py-0.5 text-[13px] text-[var(--admin-accent)] transition-colors hover:bg-[var(--admin-hover)] disabled:cursor-default disabled:opacity-50 disabled:hover:bg-transparent"
         >
+          {is_copied ? <Check size={14} strokeWidth={2} aria-hidden="true" /> : <Copy size={14} strokeWidth={1.75} aria-hidden="true" />}
           {is_copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <div className="mt-1 break-all font-mono text-xs text-shell-text">{value || "Not set"}</div>
-      <div className="mt-1 text-[11px] text-shell-text-faint">{hint}</div>
-    </div>
-  );
-};
-
-/** The values an administrator has to enter in the Slack app settings at api.slack.com/apps. */
-const SlackAppSetupCard: React.FC<SlackAppSetupCardProps> = ({ app }) => {
-  return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-shell-border bg-shell-panel p-5 shadow-theme-xs">
-      <div>
-        <div className="text-sm font-semibold text-shell-text">Slack app settings</div>
-        <div className="text-xs text-shell-text-faint">Enter these in your Slack app at api.slack.com/apps.</div>
-      </div>
-
-      <div className="divide-y divide-shell-border">
-        <SetupRow label="Client ID" value={app?.client_id ?? null} hint="Saved in Administration > Integrations > Slack, must match Basic Information in Slack." />
-        <SetupRow label="Redirect URL" value={app?.redirect_uri ?? null} hint="OAuth & Permissions, Redirect URLs." />
-        <SetupRow label="Events request URL" value={app?.events_url ?? null} hint="Event Subscriptions, Request URL. Saving it proves the signing secret." />
-      </div>
-
-      {app ? (
-        <div className="flex flex-col gap-2 pt-1">
-          <ScopeList label="Bot token scopes" scopes={app.bot_scopes} />
-          <ScopeList label="User token scopes" scopes={app.user_scopes} />
-        </div>
-      ) : null}
+      <div className="mt-1.5 break-all rounded-[4px] bg-[var(--admin-neutral-bg)] px-2.5 py-1.5 font-mono text-[12.5px] text-shell-text">{value || "Not set"}</div>
+      <p className={`mt-1 ${FIELD_HINT}`}>{hint}</p>
     </div>
   );
 };
 
 const ScopeList: React.FC<{ label: string; scopes: string[] }> = ({ label, scopes }) => (
   <div>
-    <div className="text-xs font-medium text-shell-text-secondary">{label}</div>
-    <div className="mt-1 flex flex-wrap gap-1.5">
+    <div className="text-[14px] font-medium text-shell-text">{label}</div>
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
       {scopes.map((scope) => (
-        <span key={scope} className="rounded-md bg-shell-panel-alt px-2 py-0.5 font-mono text-[11px] text-shell-text">
+        <code key={scope} className={CHIP}>
           {scope}
-        </span>
+        </code>
       ))}
     </div>
   </div>
+);
+
+/** The values an administrator enters in the Slack app at api.slack.com/apps, for the app in use. */
+const SlackAppSetupCard: React.FC<SlackAppSetupCardProps> = ({ app }) => (
+  <section className={CARD}>
+    <h3 className={CARD_TITLE}>Slack app settings</h3>
+    <p className={CARD_HINT}>
+      {app?.app_name ? `Values for the ${app.app_name} app. ` : ""}Enter them in the Slack app at api.slack.com/apps.
+    </p>
+
+    <div className={ROW_LIST}>
+      <SetupRow label="Client ID" value={app?.client_id ?? null} hint="Must match Basic Information in the Slack app." />
+      <SetupRow
+        label="Redirect URL"
+        value={app?.redirect_uri ?? null}
+        hint={
+          app?.link_method === "authorize"
+            ? "OAuth & Permissions, Redirect URLs. Not HTTPS, so Connect my Slack uses a Slack authorization instead of Sign in with Slack."
+            : "OAuth & Permissions, Redirect URLs."
+        }
+      />
+      <SetupRow label="Events request URL" value={app?.events_url ?? null} hint="Event Subscriptions, Request URL. Saving it proves the signing secret." />
+    </div>
+
+    {app ? (
+      <details className="group mt-1 border-t border-[var(--admin-divider)] pt-3">
+        <summary className="cursor-pointer select-none text-[14px] font-medium text-[var(--admin-accent)] hover:underline">
+          Scopes the app requests ({app.bot_scopes.length + app.user_scopes.length})
+        </summary>
+        <div className="mt-3 flex flex-col gap-3">
+          <ScopeList label="Bot token scopes" scopes={app.bot_scopes} />
+          <ScopeList label="User token scopes" scopes={app.user_scopes} />
+        </div>
+      </details>
+    ) : null}
+  </section>
 );
 
 export default SlackAppSetupCard;

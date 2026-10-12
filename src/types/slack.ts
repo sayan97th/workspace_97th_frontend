@@ -227,6 +227,10 @@ export type SlackDiagnosticCheckDto = {
 export type SlackAppSetupDto = {
   client_id: string | null;
   credentials_source?: SlackCredentialsSource;
+  /** Name of the Slack app in use, null when none is set up. */
+  app_name?: string | null;
+  /** How "Connect my Slack" opens Slack with the current redirect URL. */
+  link_method?: SlackLinkMethod;
   redirect_uri: string;
   events_url: string;
   bot_scopes: string[];
