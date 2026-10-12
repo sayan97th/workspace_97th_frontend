@@ -375,6 +375,28 @@ export function useTeamsManager() {
     [applyUpdatedTeam, showToast]
   );
 
+  // Cover changes come from CoverBanner, which shows its own toasts, so these let errors propagate.
+  const uploadTeamCover = useCallback(
+    async (team: Team, file: File) => {
+      applyUpdatedTeam(await accountTeamsService.uploadTeamImage(team.id, "cover", file, team.cover_position_y));
+    },
+    [applyUpdatedTeam]
+  );
+
+  const repositionTeamCover = useCallback(
+    async (team: Team, cover_position_y: number) => {
+      applyUpdatedTeam(await accountTeamsService.updateTeamCoverPosition(team.id, cover_position_y));
+    },
+    [applyUpdatedTeam]
+  );
+
+  const removeTeamCover = useCallback(
+    async (team: Team) => {
+      applyUpdatedTeam(await accountTeamsService.removeTeamImage(team.id, "cover"));
+    },
+    [applyUpdatedTeam]
+  );
+
   /** Teams the form may pick as a parent: never the team itself or one of its own sub-teams. */
   const parent_options = useMemo(() => {
     const editing_id = team_form?.mode === "edit" ? team_form.team_id : null;
@@ -441,6 +463,9 @@ export function useTeamsManager() {
     image_saving_kind,
     uploadTeamImage,
     removeTeamImage,
+    uploadTeamCover,
+    repositionTeamCover,
+    removeTeamCover,
   };
 }
 

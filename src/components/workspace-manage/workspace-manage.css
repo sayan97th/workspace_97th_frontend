@@ -56,13 +56,3 @@ html.dark .workspace-manage-theme {
   background: var(--color-shell-scrollbar-thumb);
   border-radius: 4px;
 }
-
-/* Cover reposition mode: the image follows the pointer vertically. */
-.workspace-cover.is-repositioning {
-  cursor: grab;
-  touch-action: none;
-}
-
-.workspace-cover.is-repositioning:active {
-  cursor: grabbing;
-}

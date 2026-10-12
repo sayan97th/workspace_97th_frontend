@@ -1,8 +1,8 @@
 "use client";
 import React, { useRef } from "react";
 import { Camera, ChevronDown, MoreHorizontal, Plus } from "lucide-react";
+import CoverBanner from "@/components/ui/cover/CoverBanner";
 import type { ActionMenuItem } from "@/components/ui/dropdown/ActionMenu";
-import type { AccountTeamImageKind } from "@/services/account-teams.service";
 import TeamAvatar from "./TeamAvatar";
 import TeamCoverArt from "./TeamCoverArt";
 import TeamsMenuButton from "./TeamsMenuButton";
@@ -14,6 +14,8 @@ export type TeamHeaderProps = {
   teams: TeamsManagerApi;
   onAddUsers: () => void;
   onInvite: () => void;
+  /** Floats on the cover's top right corner, the page's way back to the workspace. */
+  back_button?: React.ReactNode;
 };
 
 const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp,image/gif";
@@ -21,33 +23,28 @@ const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp,image/gif";
 /**
  * Top of a team's page, after monday.com: the cover banner, the round team picture overlapping
  * it, the name with the member count, the "Add users" split button and the "..." team menu.
- * Admins and team owners change the picture (click it) and the cover from the menu, admins also
- * edit, move and delete the team. Anyone on the team can leave it.
+ * Admins and team owners change the picture (click it) and the cover (the banner's "Change
+ * cover" button: upload, drag to reposition, remove), admins also edit, move and delete the team.
+ * Anyone on the team can leave it.
  */
-const TeamHeader: React.FC<TeamHeaderProps> = ({ team, teams, onAddUsers, onInvite }) => {
+const TeamHeader: React.FC<TeamHeaderProps> = ({ team, teams, onAddUsers, onInvite, back_button }) => {
   const picture_input_ref = useRef<HTMLInputElement>(null);
-  const cover_input_ref = useRef<HTMLInputElement>(null);
   const can_edit_images = team.can_manage_members;
   const is_saving_picture = teams.image_saving_kind === "picture";
 
-  const pickFile = (kind: AccountTeamImageKind) =>
-    (kind === "picture" ? picture_input_ref : cover_input_ref).current?.click();
+  const pickPicture = () => picture_input_ref.current?.click();
 
-  const handleFile = (kind: AccountTeamImageKind) => (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePictureFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (file) void teams.uploadTeamImage(team, kind, file);
+    if (file) void teams.uploadTeamImage(team, "picture", file);
   };
 
   const image_items: ActionMenuItem[] = can_edit_images
     ? [
-        { key: "picture", label: team.picture_url ? "Change team picture" : "Upload team picture", onClick: () => pickFile("picture") },
+        { key: "picture", label: team.picture_url ? "Change team picture" : "Upload team picture", onClick: pickPicture },
         ...(team.picture_url
           ? [{ key: "remove_picture", label: "Remove team picture", onClick: () => void teams.removeTeamImage(team, "picture") }]
-          : []),
-        { key: "cover", label: team.cover_url ? "Change cover image" : "Upload cover image", onClick: () => pickFile("cover") },
-        ...(team.cover_url
-          ? [{ key: "remove_cover", label: "Remove cover image", onClick: () => void teams.removeTeamImage(team, "cover") }]
           : []),
       ]
     : [];
@@ -73,13 +70,20 @@ const TeamHeader: React.FC<TeamHeaderProps> = ({ team, teams, onAddUsers, onInvi
 
   return (
     <>
-      <div className="teams-cover">
-        {team.cover_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={team.cover_url} alt="" />
-        ) : (
-          <TeamCoverArt />
-        )}
+      {/* Keyed by team so a half finished reposition never carries over to another team. */}
+      <div className="relative">
+        <CoverBanner
+          key={team.id}
+          cover_url={team.cover_url}
+          cover_position_y={team.cover_position_y}
+          fallback={<TeamCoverArt />}
+          class_name="teams-cover"
+          can_manage={can_edit_images}
+          onUpload={(file) => teams.uploadTeamCover(team, file)}
+          onReposition={(cover_position_y) => teams.repositionTeamCover(team, cover_position_y)}
+          onRemove={() => teams.removeTeamCover(team)}
+        />
+        {back_button}
       </div>
 
       <div className="teams-header">
@@ -87,7 +91,7 @@ const TeamHeader: React.FC<TeamHeaderProps> = ({ team, teams, onAddUsers, onInvi
           <button
             type="button"
             className="teams-header-avatar teams-avatar-editable"
-            onClick={() => pickFile("picture")}
+            onClick={pickPicture}
             disabled={is_saving_picture}
             aria-label={team.picture_url ? "Change team picture" : "Upload team picture"}
           >
@@ -160,8 +164,7 @@ const TeamHeader: React.FC<TeamHeaderProps> = ({ team, teams, onAddUsers, onInvi
         </div>
       </div>
 
-      <input ref={picture_input_ref} type="file" accept={ACCEPTED_IMAGES} hidden onChange={handleFile("picture")} />
-      <input ref={cover_input_ref} type="file" accept={ACCEPTED_IMAGES} hidden onChange={handleFile("cover")} />
+      <input ref={picture_input_ref} type="file" accept={ACCEPTED_IMAGES} hidden onChange={handlePictureFile} />
     </>
   );
 };

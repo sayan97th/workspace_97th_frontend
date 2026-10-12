@@ -1,4 +1,5 @@
 import type { AccountTeamDto, AccountTeamMemberDto, AccountTeamOwnerDto } from "@/types/account-teams";
+import { DEFAULT_COVER_POSITION_Y } from "@/components/ui/cover/CoverBanner";
 import type { Team, TeamMember } from "./types";
 
 const getInitials = (full_name: string): string =>
@@ -44,6 +45,7 @@ export const mapAccountTeamDtoToTeam = (dto: AccountTeamDto): Team => ({
   allow_guests: dto.allow_guests,
   picture_url: dto.picture_url,
   cover_url: dto.cover_url,
+  cover_position_y: dto.cover_position_y ?? DEFAULT_COVER_POSITION_Y,
   member_count: dto.member_count,
   sub_team_count: dto.sub_team_count,
   board_count: dto.board_count,

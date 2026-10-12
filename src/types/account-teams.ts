@@ -24,6 +24,8 @@ export type AccountTeamDto = {
   allow_guests: boolean;
   picture_url: string | null;
   cover_url: string | null;
+  /** Vertical focal point of the cover inside the banner, 0 (top) to 100 (bottom). */
+  cover_position_y: number;
   member_count: number;
   sub_team_count: number;
   board_count: number;

@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, UserPlus, UserRound, X } from "lucide-react";
+import { ArrowLeft, Search, UserPlus, UserRound } from "lucide-react";
 import { Pagination } from "@/components/content";
 import InviteUserModal from "@/components/administration/InviteUserModal";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -25,7 +25,7 @@ import { useTeamsManager } from "./useTeamsManager";
 import "@/components/administration/administration.css";
 import "./teams.css";
 
-/** Where the close button leads when the page was opened from Administration (`?from=/administration...`). */
+/** Where the back button leads when the page was opened from Administration (`?from=/administration...`). */
 const ADMINISTRATION_PREFIX = "/administration";
 
 /**
@@ -33,7 +33,8 @@ const ADMINISTRATION_PREFIX = "/administration";
  * Teams directory: {@link TeamsRail} on the left, and on the right either "All users" (everyone
  * with the teams they belong to) or one team with its cover, picture, Users / Sub-teams / Content
  * tabs and the actions the viewer is allowed to take. Opened from the account menu or from
- * Administration's Directory, the close button returns to where the user came from.
+ * Administration's Directory, the "Back to workspace" button returns to where the user came from:
+ * Administration when opened from there, otherwise the last workspace page (Home by default).
  *
  * State lives in {@link useTeamsManager} (teams, selection, dialogs), {@link useTeamRoster}
  * (Users tab and All users), {@link useTeamBoards} (Content tab) and {@link useTeamInvite}, so the
@@ -70,10 +71,20 @@ const TeamsView: React.FC = () => {
     if (teams.is_all_users && !roster.is_loading && roster.user_query.trim() === "") setAllUsersTotal(roster.total);
   }, [teams.is_all_users, roster.is_loading, roster.user_query, roster.total]);
 
-  const closePage = () => {
-    const from = search_params.get("from");
-    router.push(from && from.startsWith(ADMINISTRATION_PREFIX) ? from : readWorkspacePath());
+  const from_path = search_params.get("from");
+  const is_from_administration = Boolean(from_path?.startsWith(ADMINISTRATION_PREFIX));
+
+  const goBack = () => {
+    router.push(is_from_administration && from_path ? from_path : readWorkspacePath());
   };
+
+  // The page has no workspace sidebar, so this is the way back. It floats on a team's cover.
+  const renderBackButton = (is_on_cover: boolean) => (
+    <button type="button" onClick={goBack} className={`teams-back-button${is_on_cover ? " teams-back-on-cover" : ""}`}>
+      <ArrowLeft size={16} strokeWidth={1.75} aria-hidden="true" />
+      {is_from_administration ? "Back to administration" : "Back to workspace"}
+    </button>
+  );
 
   const search_value = active_tab === "users" ? roster.user_query : tab_query;
   const setSearchValue = active_tab === "users" ? roster.setUserQuery : setTabQuery;
@@ -134,7 +145,13 @@ const TeamsView: React.FC = () => {
     if (!team) return null;
     return (
       <>
-        <TeamHeader team={team} teams={teams} onAddUsers={roster.openAddUsers} onInvite={invite.openInvite} />
+        <TeamHeader
+          team={team}
+          teams={teams}
+          onAddUsers={roster.openAddUsers}
+          onInvite={invite.openInvite}
+          back_button={renderBackButton(true)}
+        />
         <div className="teams-toolbar">
           <div className="teams-tabs" role="tablist" aria-label={`${team.name} sections`}>
             {tabs.map((tab) => (
@@ -174,8 +191,9 @@ const TeamsView: React.FC = () => {
     <>
       <div className="teams-page-heading">
         <h2 className="teams-page-title">All users</h2>
-        {teams.is_admin ? (
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {teams.is_admin ? (
+            <>
             <Link href="/administration?section=users" className="teams-button teams-button-secondary teams-button-sm">
               <UserRound size={16} strokeWidth={1.75} aria-hidden="true" />
               Manage users
@@ -184,8 +202,10 @@ const TeamsView: React.FC = () => {
               <UserPlus size={16} strokeWidth={1.75} aria-hidden="true" />
               Invite
             </button>
-          </div>
-        ) : null}
+            </>
+          ) : null}
+          {renderBackButton(false)}
+        </div>
       </div>
       <div className="teams-toolbar" style={{ paddingTop: 16 }}>
         {search_box}
@@ -205,27 +225,24 @@ const TeamsView: React.FC = () => {
       <TeamsRail teams={teams} all_users_total={all_users_total} />
 
       <main className="teams-main shell-scrollbar" aria-label={team ? team.name : "All users"}>
-        <button
-          type="button"
-          onClick={closePage}
-          className={`teams-close${team ? " teams-close-on-cover" : ""}`}
-          aria-label="Close Teams"
-        >
-          <X size={18} strokeWidth={1.75} aria-hidden="true" />
-        </button>
-
         {is_unknown_team ? (
-          <div className="teams-empty-state" style={{ marginTop: 80 }}>
+          <>
+          <div className="teams-page-heading justify-end">{renderBackButton(false)}</div>
+          <div className="teams-empty-state" style={{ marginTop: 56 }}>
             <strong>This team doesn&apos;t exist anymore</strong>
             <span>It may have been deleted. Pick another team from the list.</span>
             <button type="button" className="teams-button teams-button-secondary mt-2" onClick={() => teams.selectTeam(null)}>
               Show all users
             </button>
           </div>
+          </>
         ) : team ? (
           renderTeamPanel()
         ) : teams.selected_team_id ? (
-          <div className="teams-table-empty">Loading team...</div>
+          <>
+            <div className="teams-page-heading justify-end">{renderBackButton(false)}</div>
+            <div className="teams-table-empty">Loading team...</div>
+          </>
         ) : (
           renderAllUsers()
         )}

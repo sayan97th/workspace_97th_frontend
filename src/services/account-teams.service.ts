@@ -110,11 +110,25 @@ export const accountTeamsService = {
     return apiClient.get<AccountTeamMembersPage>(`/api/account-team-candidates${buildQuery(query)}`);
   },
 
-  /** POST /api/account-teams/{id}/picture or /cover, upload (or replace) the team's picture or cover image. */
-  async uploadTeamImage(team_id: string, kind: AccountTeamImageKind, file: File): Promise<AccountTeamDto> {
+  /**
+   * POST /api/account-teams/{id}/picture or /cover, upload (or replace) the team's picture or cover
+   * image. A cover may come with the vertical position it should start framed at.
+   */
+  async uploadTeamImage(team_id: string, kind: AccountTeamImageKind, file: File, cover_position_y?: number): Promise<AccountTeamDto> {
     const form_data = new FormData();
     form_data.append("file", file);
+    if (kind === "cover" && cover_position_y !== undefined) {
+      form_data.append("cover_position_y", String(Math.round(cover_position_y)));
+    }
     const response = await apiClient.postFormData<{ team: AccountTeamDto }>(`/api/account-teams/${team_id}/${kind}`, form_data);
+    return response.team;
+  },
+
+  /** PATCH /api/account-teams/{id}/cover, save where the cover is framed inside the banner. */
+  async updateTeamCoverPosition(team_id: string, cover_position_y: number): Promise<AccountTeamDto> {
+    const response = await apiClient.patch<{ team: AccountTeamDto }>(`/api/account-teams/${team_id}/cover`, {
+      cover_position_y: Math.round(cover_position_y),
+    });
     return response.team;
   },
 

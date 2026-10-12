@@ -91,31 +91,39 @@ html.dark {
   line-height: 20px;
 }
 
-.teams-close {
+/* "Back to workspace": in the All users heading, or floating on a team's cover. */
+.teams-back-button {
+  display: inline-flex;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--teams-border);
+  border-radius: 4px;
+  color: var(--teams-text);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background-color 0.15s ease;
+}
+
+.teams-back-button:hover {
+  background: var(--teams-hover);
+}
+
+.teams-back-button.teams-back-on-cover {
   position: absolute;
   top: 12px;
   right: 16px;
   z-index: 5;
-  display: inline-flex;
-  width: 32px;
-  height: 32px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--teams-text);
-  transition: background-color 0.15s ease;
-}
-
-.teams-close:hover {
-  background: var(--teams-hover);
-}
-
-.teams-close.teams-close-on-cover {
-  background: rgba(255, 255, 255, 0.85);
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.9);
   color: #323338;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(4px);
 }
 
-.teams-close.teams-close-on-cover:hover {
+.teams-back-button.teams-back-on-cover:hover {
   background: #ffffff;
 }
 
@@ -233,7 +241,7 @@ html.dark {
 .teams-icon-button:focus-visible,
 .teams-tab:focus-visible,
 .teams-crown:focus-visible,
-.teams-close:focus-visible {
+.teams-back-button:focus-visible {
   outline: 2px solid var(--teams-accent);
   outline-offset: 1px;
 }
@@ -321,18 +329,17 @@ html.dark {
 }
 
 .teams-cover {
-  position: relative;
   height: 160px;
   flex: none;
-  overflow: hidden;
   background: var(--teams-cover-sky);
 }
 
-.teams-cover img,
-.teams-cover svg {
+/* Only the default art: the custom image and the cover controls are styled by CoverBanner. */
+.teams-cover > svg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
 }
 
 .teams-header {
@@ -412,7 +419,7 @@ html.dark {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 24px 64px 0 40px;
+  padding: 24px 40px 0;
 }
 
 .teams-page-title {
@@ -1156,7 +1163,7 @@ html.dark {
   }
 
   .teams-page-heading {
-    padding: 24px 56px 0 16px;
+    padding: 24px 16px 0;
   }
 }
 
