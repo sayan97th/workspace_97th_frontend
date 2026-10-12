@@ -342,6 +342,8 @@ const AppTopBar: React.FC = () => {
       <AccountMenu
         is_open={is_account_open}
         organization_name={branding.company_name}
+        organization_logo_url={branding.logo_url}
+        organization_logo_dark_url={branding.logo_dark_url}
         onOpenOrganization={openOrganization}
         onClose={closeAccount}
         onOpenProfile={openProfile}

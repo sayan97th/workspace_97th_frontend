@@ -1,0 +1,340 @@
+/*
+ * Account menu, styled after monday.com's avatar menu: a white card with an
+ * 8px radius, a header with the organization, two labelled columns (Account,
+ * Manage) of 32px Figtree rows, a Working status footer and Log out last. Every color is an
+ * `--account-menu-*` token declared on the root, so dark mode only swaps the
+ * tokens, never the rules below. The theme and status flyouts reuse the same
+ * tokens through `.account-menu-flyout`.
+ */
+
+.account-menu,
+.account-menu-flyout {
+  --account-menu-surface: #ffffff;
+  --account-menu-text: #323338;
+  --account-menu-text-secondary: #676879;
+  --account-menu-icon: #323338;
+  --account-menu-hover: #dcdfec;
+  --account-menu-divider: #e7e9ef;
+  --account-menu-button-border: #c3c6d4;
+  --account-menu-accent: #0073ea;
+  --account-menu-accent-hover: #0060b9;
+  --account-menu-accent-soft: #cce5ff;
+  --account-menu-radio-border: #c3c6d4;
+  --account-menu-status-icon: #676879;
+  --account-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  color: var(--account-menu-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .account-menu,
+html.dark .account-menu-flyout {
+  --account-menu-surface: #0f1c1c;
+  --account-menu-text: #e9eded;
+  --account-menu-text-secondary: #9aa4a5;
+  --account-menu-icon: #c2cacb;
+  --account-menu-hover: rgba(255, 255, 255, 0.08);
+  --account-menu-divider: rgba(255, 255, 255, 0.12);
+  --account-menu-button-border: rgba(255, 255, 255, 0.24);
+  --account-menu-accent: #4d9cff;
+  --account-menu-accent-hover: #7ab4ff;
+  --account-menu-accent-soft: rgba(77, 156, 255, 0.24);
+  --account-menu-radio-border: rgba(255, 255, 255, 0.35);
+  --account-menu-status-icon: #9aa4a5;
+  --account-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.account-menu {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  z-index: 201;
+  width: 456px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 64px);
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--account-menu-surface);
+  box-shadow: var(--account-menu-shadow);
+  outline: none;
+}
+
+html.dark .account-menu,
+html.dark .account-menu-flyout {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .account-menu,
+  .account-menu-flyout {
+    animation: account-menu-enter 120ms ease-out;
+  }
+}
+
+@keyframes account-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header: organization and signed in user ────────────────────────── */
+
+.account-menu__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--account-menu-divider);
+}
+
+.account-menu__identity {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-menu__organization {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu__user {
+  overflow: hidden;
+  color: var(--account-menu-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Two column body ────────────────────────────────────────────────── */
+
+.account-menu__columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 24px;
+  padding: 16px 16px 12px;
+}
+
+.account-menu__column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.account-menu__title {
+  padding: 0 8px 4px;
+  color: var(--account-menu-text-secondary);
+}
+
+.account-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--account-menu-text);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: background-color 70ms ease-in;
+}
+
+.account-menu__item:hover,
+.account-menu__item:focus-visible,
+.account-menu__item[aria-expanded="true"] {
+  background: var(--account-menu-hover);
+}
+
+.account-menu__item:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--account-menu-accent);
+}
+
+.account-menu__icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--account-menu-icon);
+}
+
+.account-menu__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-menu__chevron {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--account-menu-text-secondary);
+}
+
+.account-menu__divider {
+  flex: none;
+  height: 1px;
+  margin: 8px;
+  background: var(--account-menu-divider);
+}
+
+/* ── Working status footer ──────────────────────────────────────────── */
+
+.account-menu__footer {
+  padding: 12px 24px;
+  border-top: 1px solid var(--account-menu-divider);
+}
+
+.account-menu__footer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: var(--account-menu-text-secondary);
+}
+
+.account-menu__current-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--account-menu-text);
+}
+
+.account-menu__current-status span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu__status-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+}
+
+.account-menu__status-row > .account-menu__icon {
+  color: var(--account-menu-text-secondary);
+}
+
+.account-menu__status-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-menu__radio {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+  color: var(--account-menu-text);
+  cursor: pointer;
+}
+
+.account-menu__radio:disabled {
+  cursor: progress;
+}
+
+.account-menu__radio-dot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--account-menu-radio-border);
+  border-radius: 50%;
+  transition: border-color 70ms ease-in;
+}
+
+.account-menu__radio:hover .account-menu__radio-dot,
+.account-menu__radio:focus-visible .account-menu__radio-dot {
+  border-color: var(--account-menu-accent);
+}
+
+.account-menu__radio:focus-visible {
+  outline: none;
+}
+
+.account-menu__radio[aria-checked="true"] .account-menu__radio-dot {
+  border: 5px solid var(--account-menu-accent);
+}
+
+.account-menu__link {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--account-menu-accent);
+  outline: none;
+}
+
+.account-menu__link:hover,
+.account-menu__link[aria-expanded="true"] {
+  color: var(--account-menu-accent-hover);
+}
+
+.account-menu__link:focus-visible {
+  box-shadow: 0 0 0 1px var(--account-menu-accent);
+}
+
+/* ── Log out ─────────────────────────────────────────────────────────── */
+
+.account-menu__signout {
+  padding: 8px 16px;
+  border-top: 1px solid var(--account-menu-divider);
+}
+
+.account-menu__signout .account-menu__item:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ── Flyouts (Change theme, More statuses) ──────────────────────────── */
+
+.account-menu-flyout {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--account-menu-surface);
+  box-shadow: var(--account-menu-shadow);
+}
+
+.account-menu-flyout .account-menu__item[aria-checked="true"] {
+  background: var(--account-menu-accent-soft);
+}
+
+.account-menu-flyout .account-menu__icon--status {
+  color: var(--account-menu-status-icon);
+}
+
+.account-menu__check {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--account-menu-accent);
+}

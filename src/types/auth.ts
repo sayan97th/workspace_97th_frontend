@@ -27,6 +27,8 @@ export interface User {
   working_status_dates: string | null;
   disable_notifications_while_away: boolean;
   hide_online_status: boolean;
+  /** Manual Do not disturb switch from the account menu, silences email, Slack, toast and desktop push like quiet hours. */
+  do_not_disturb: boolean;
   notification_preferences: Record<string, boolean>;
   desktop_notifications_enabled: boolean;
   /** Plays a short sound when a live notification arrives. */
@@ -170,6 +172,8 @@ export interface ProfileResponse extends ProfileData {
   working_status_dates: string | null;
   disable_notifications_while_away: boolean;
   hide_online_status: boolean;
+  /** Manual Do not disturb switch from the account menu, silences email, Slack, toast and desktop push like quiet hours. */
+  do_not_disturb: boolean;
   notification_preferences: Record<string, boolean>;
   desktop_notifications_enabled: boolean;
   /** Plays a short sound when a live notification arrives. */

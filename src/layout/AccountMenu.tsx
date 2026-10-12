@@ -1,20 +1,25 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import UserAvatar from "@/components/common/UserAvatar";
-import ThemeMenu from "@/components/common/ThemeMenu";
+import { useTheme, type ThemeMode } from "@/context/ThemeContext";
+import OrganizationLogo from "@/components/common/OrganizationLogo";
+import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
+import { boardTreeFontClassName } from "@/components/board/board-tree-font";
+import { CheckIcon } from "@/icons/workspace-icons";
 import { getUserDisplayName } from "@/lib/user";
+import { profilePreferencesService } from "@/services/profile-preferences.service";
+import "./account-menu.css";
 
 /* ------------------------------------------------------------------ *
- * Inline icons — copied from the approved "97 Workspace Menu" design
- * so the account panel stays pixel-faithful without bloating the
- * shared icon module with single-use glyphs.
+ * Inline icons, copied from the approved "97 Workspace Menu" design
+ * so the account panel stays pixel faithful without bloating the
+ * shared icon module with single use glyphs.
  * ------------------------------------------------------------------ */
 const iconBaseProps = {
-  width: 15,
-  height: 15,
+  width: 16,
+  height: 16,
   viewBox: "0 0 16 16",
   fill: "none" as const,
   stroke: "currentColor",
@@ -50,11 +55,11 @@ const ArchiveGlyph = () => (
 );
 const AdministrationGlyph = () => (
   <svg {...iconBaseProps}>
-    <circle cx="8" cy="8" r="2.2" />
     <path
-      d="M8 1.8 v2 M8 12.2 v2 M1.8 8 h2 M12.2 8 h2 M3.6 3.6 l1.4 1.4 M11 11 l1.4 1.4 M12.4 3.6 l-1.4 1.4 M5 11 l-1.4 1.4"
-      strokeLinecap="round"
+      d="M8 1.8 L9.2 2 L9.6 3.5 L10.8 4.1 L12.2 3.4 L13 4.3 L12.4 5.7 L12.9 6.9 L14.3 7.4 V8.6 L12.9 9.1 L12.4 10.3 L13 11.7 L12.2 12.6 L10.8 11.9 L9.6 12.5 L9.2 14 L8 14.2 L6.8 14 L6.4 12.5 L5.2 11.9 L3.8 12.6 L3 11.7 L3.6 10.3 L3.1 9.1 L1.7 8.6 V7.4 L3.1 6.9 L3.6 5.7 L3 4.3 L3.8 3.4 L5.2 4.1 L6.4 3.5 L6.8 2 Z"
+      strokeLinejoin="round"
     />
+    <circle cx="8" cy="8" r="2" />
   </svg>
 );
 const OrganizationGlyph = () => (
@@ -88,35 +93,6 @@ const LogOutGlyph = () => (
     />
   </svg>
 );
-const MarketplaceGlyph = () => (
-  <svg {...iconBaseProps}>
-    <rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" />
-    <rect x="9" y="2.5" width="4.5" height="4.5" rx="1" />
-    <rect x="2.5" y="9" width="4.5" height="4.5" rx="1" />
-    <path d="M11.25 9 v4.5 M9 11.25 h4.5" strokeLinecap="round" />
-  </svg>
-);
-const MobileGlyph = () => (
-  <svg {...iconBaseProps}>
-    <rect x="4.5" y="1.8" width="7" height="12.4" rx="1.6" />
-    <line x1="7" y1="12.2" x2="9" y2="12.2" strokeLinecap="round" />
-  </svg>
-);
-const LabsGlyph = () => (
-  <svg {...iconBaseProps}>
-    <path d="M8 2 a4 4 0 0 0-2 7.5 V11 h4 V9.5 A4 4 0 0 0 8 2Z" strokeLinejoin="round" />
-    <line x1="6.4" y1="13" x2="9.6" y2="13" strokeLinecap="round" />
-  </svg>
-);
-const ShortcutsGlyph = () => (
-  <svg {...iconBaseProps}>
-    <path
-      d="M2 5 h12 M4 5 V3.5 M12 5 V3.5 M2 5 v7 a1 1 0 0 0 1 1 h10 a1 1 0 0 0 1-1 V5 M5.5 8.5 L7 10 L10.5 6.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 const InviteGlyph = () => (
   <svg {...iconBaseProps}>
     <circle cx="6" cy="5.2" r="2.4" />
@@ -124,20 +100,28 @@ const InviteGlyph = () => (
     <path d="M12.5 5.5 V9.5 M10.5 7.5 H14.5" strokeLinecap="round" />
   </svg>
 );
-const HelpGlyph = () => (
-  <svg {...iconBaseProps}>
-    <circle cx="8" cy="8" r="6" />
-    <path d="M6.3 6.2 a1.8 1.8 0 0 1 3.4 .8 c0 1.2 -1.7 1.4 -1.7 2.6" strokeLinecap="round" />
-    <circle cx="8" cy="11.4" r="0.7" fill="currentColor" stroke="none" />
-  </svg>
-);
 const ThemeGlyph = () => (
   <svg {...iconBaseProps}>
     <path d="M9.8 2.2 a5.8 5.8 0 1 0 4 8.4 A4.6 4.6 0 0 1 9.8 2.2Z" strokeLinejoin="round" />
   </svg>
 );
+const LightGlyph = () => (
+  <svg {...iconBaseProps}>
+    <circle cx="8" cy="8" r="3" />
+    <path
+      d="M8 1.6 v1.8 M8 12.6 v1.8 M1.6 8 h1.8 M12.6 8 h1.8 M3.5 3.5 l1.3 1.3 M11.2 11.2 l1.3 1.3 M12.5 3.5 l-1.3 1.3 M4.8 11.2 l-1.3 1.3"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+const SystemGlyph = () => (
+  <svg {...iconBaseProps}>
+    <rect x="2" y="3" width="12" height="8" rx="1" />
+    <path d="M6 13.5 h4 M8 11 v2.5" strokeLinecap="round" />
+  </svg>
+);
 const ChevronGlyph = () => (
-  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+  <svg width="16" height="16" viewBox="0 0 12 12" fill="none">
     <path
       d="M4.5 3 L7.5 6 L4.5 9"
       stroke="currentColor"
@@ -148,7 +132,7 @@ const ChevronGlyph = () => (
   </svg>
 );
 const DoNotDisturbGlyph = () => (
-  <svg {...iconBaseProps} className="flex-none">
+  <svg {...iconBaseProps}>
     <path
       d="M8 2 C5.8 2 4.3 3.6 4.3 5.8 V8.5 L3 11 H13 L11.7 8.5 V5.8 C11.7 3.6 10.2 2 8 2Z"
       strokeLinejoin="round"
@@ -157,37 +141,102 @@ const DoNotDisturbGlyph = () => (
   </svg>
 );
 
-/* ------------------------------------------------------------------ */
+/* Working status glyphs: a filled disc with the symbol cut out, as monday.com draws them. */
+const statusDiscProps = { width: 16, height: 16, viewBox: "0 0 16 16", fill: "none" as const };
+const status_cutout = "var(--account-menu-surface)";
 
-type MenuItem = {
-  label: string;
-  icon: React.ReactNode;
-  onSelect?: () => void;
-};
-
-const rowClass =
-  "flex w-full items-center gap-[11px] rounded-lg px-2 py-2 text-left text-[13.5px] font-medium text-shell-text transition-colors hover:bg-shell-hover";
-
-const MenuRow: React.FC<{ item: MenuItem; trailing?: React.ReactNode }> = ({
-  item,
-  trailing,
-}) => (
-  <button type="button" onClick={item.onSelect} className={rowClass}>
-    <span className="flex w-4 flex-none justify-center text-shell-text-muted">{item.icon}</span>
-    {item.label}
-    {trailing ? <span className="ml-auto flex text-shell-text-muted">{trailing}</span> : null}
-  </button>
+const WorkFromHomeGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path d="M4.8 8 L8 5.2 L11.2 8 V11 H9 V9.2 H7 V11 H4.8 Z" fill={status_cutout} />
+  </svg>
+);
+const OutSickGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path d="M8 4.8 V11.2 M4.8 8 H11.2" stroke={status_cutout} strokeWidth={1.8} strokeLinecap="round" />
+  </svg>
+);
+const OnBreakGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path
+      d="M4.6 6 H7 L4.6 9 H7 M8.6 7.4 H11.2 L8.6 10.6 H11.2"
+      stroke={status_cutout}
+      strokeWidth={1.2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+const OutOfOfficeGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path d="M4.8 8 H11.2" stroke={status_cutout} strokeWidth={1.8} strokeLinecap="round" />
+  </svg>
+);
+const WorkingOutsideGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path
+      d="M5.4 10.6 A1.7 1.7 0 0 1 5.6 7.2 A2.5 2.5 0 0 1 10.4 6.8 A1.9 1.9 0 0 1 10.6 10.6 Z"
+      fill={status_cutout}
+    />
+  </svg>
+);
+const FamilyTimeGlyph = () => (
+  <svg {...statusDiscProps}>
+    <circle cx="8" cy="8" r="7" fill="currentColor" />
+    <path
+      d="M8 11.2 L5.2 8.4 A1.6 1.6 0 0 1 8 6.2 A1.6 1.6 0 0 1 10.8 8.4 Z"
+      fill={status_cutout}
+    />
+  </svg>
 );
 
-const sectionLabelClass =
-  "mb-2 text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint";
+/* ------------------------------------------------------------------ */
+
+/** The default "available" status, the one every other status is cleared back to. */
+const DEFAULT_WORKING_STATUS = "office";
+
+/** Away statuses listed under "More", same keys as the API `WorkingStatus` enum and My Profile. */
+const WORKING_STATUS_OPTIONS: { key: string; label: string; icon: React.ReactNode }[] = [
+  { key: "wfh", label: "Working from home", icon: <WorkFromHomeGlyph /> },
+  { key: "sick", label: "Out sick", icon: <OutSickGlyph /> },
+  { key: "break", label: "On break", icon: <OnBreakGlyph /> },
+  { key: "ooo", label: "Out of office", icon: <OutOfOfficeGlyph /> },
+  { key: "outside", label: "Working outside", icon: <WorkingOutsideGlyph /> },
+  { key: "family", label: "Family time", icon: <FamilyTimeGlyph /> },
+];
+
+const THEME_OPTIONS: { mode: ThemeMode; label: string; icon: React.ReactNode }[] = [
+  { mode: "light", label: "Light", icon: <LightGlyph /> },
+  { mode: "dark", label: "Dark", icon: <ThemeGlyph /> },
+  { mode: "system", label: "System default", icon: <SystemGlyph /> },
+];
+
+type FlyoutId = "theme" | "status";
+
+type MenuItem = {
+  key: string;
+  label: string;
+  icon: React.ReactNode;
+  onSelect: () => void;
+};
+
+const MenuRow: React.FC<{ item: MenuItem }> = ({ item }) => (
+  <button type="button" role="menuitem" onClick={item.onSelect} className="account-menu__item">
+    <span className="account-menu__icon">{item.icon}</span>
+    <span className="account-menu__label">{item.label}</span>
+  </button>
+);
 
 export type AccountMenuProps = {
   is_open: boolean;
   onClose: () => void;
   /** Opens the My Profile dialog owned by the top bar. */
   onOpenProfile?: () => void;
-  /** Opens the invite-members flow owned by the top bar. */
+  /** Opens the invite members flow owned by the top bar. */
   onInviteMembers?: () => void;
   /** Navigates to the Teams directory page, provided by the top bar. */
   onOpenTeams?: () => void;
@@ -201,16 +250,20 @@ export type AccountMenuProps = {
   onOpenOrganization?: () => void;
   /** Opens the account Administration dialog owned by the top bar. */
   onOpenAdministration?: () => void;
-  /** Navigates to the site-wide Users directory page, provided by the top bar. */
+  /** Navigates to the site wide Users directory page, provided by the top bar. */
   onOpenUsers?: () => void;
-  /** Organization / workspace name shown in the panel header. */
+  /** Organization name shown in the panel header. */
   organization_name?: string;
+  /** Organization logo (Administration > Organization), the 97th mark when unset. */
+  organization_logo_url?: string | null;
+  organization_logo_dark_url?: string | null;
 };
 
 /**
- * Account panel triggered from the top-bar avatar. Mirrors the approved
- * "97 Workspace Menu" design and wires the functional entries (My profile,
- * Log out, Invite members, Change theme) to the existing app plumbing.
+ * Account panel triggered from the top bar avatar, laid out like monday.com's
+ * avatar menu: organization header, Account and Manage columns, a Working
+ * status footer whose Do not disturb switch and away statuses are saved through
+ * `PATCH /api/profile/working-status`, and Log out at the very bottom.
  */
 const AccountMenu: React.FC<AccountMenuProps> = ({
   is_open,
@@ -225,182 +278,307 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   onOpenOrganization,
   onOpenUsers,
   organization_name = "97th Floor",
+  organization_logo_url = null,
+  organization_logo_dark_url = null,
 }) => {
   const router = useRouter();
-  const { user, logout, hasAnyRole } = useAuth();
+  const { user, logout, hasAnyRole, refreshUser } = useAuth();
+  const { theme_mode, setThemeMode } = useTheme();
+  const theme_row_ref = useRef<HTMLButtonElement>(null);
+  const status_link_ref = useRef<HTMLButtonElement>(null);
+  const [open_flyout, setOpenFlyout] = useState<FlyoutId | null>(null);
+  const [is_signing_out, setIsSigningOut] = useState(false);
+  const [is_saving_status, setIsSavingStatus] = useState(false);
+  // Optimistic copies of the saved values, so the radios and the check move on click.
   const [do_not_disturb, setDoNotDisturb] = useState(false);
+  const [working_status, setWorkingStatus] = useState(DEFAULT_WORKING_STATUS);
 
-  // Close on Escape while the panel is open.
+  useEffect(() => {
+    setDoNotDisturb(Boolean(user?.do_not_disturb));
+    setWorkingStatus(user?.working_status ?? DEFAULT_WORKING_STATUS);
+  }, [user?.do_not_disturb, user?.working_status]);
+
+  useEffect(() => {
+    if (!is_open) setOpenFlyout(null);
+  }, [is_open]);
+
+  // Escape closes an open flyout first, then the panel itself.
   useEffect(() => {
     if (!is_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key !== "Escape") return;
+      if (open_flyout) setOpenFlyout(null);
+      else onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [is_open, onClose]);
+  }, [is_open, open_flyout, onClose]);
 
   if (!is_open) return null;
 
-  const handleOpenProfile = () => {
+  /** Closes the panel before running a row's action, so dialogs open on a clean screen. */
+  const runAndClose = (action?: () => void) => () => {
     onClose();
-    onOpenProfile?.();
+    action?.();
   };
 
+  const toggleFlyout = (flyout_id: FlyoutId) => () =>
+    setOpenFlyout((current) => (current === flyout_id ? null : flyout_id));
+
+  const closeFlyout = () => setOpenFlyout(null);
+
   const handleSignOut = async () => {
+    setIsSigningOut(true);
     try {
       await logout();
       router.replace("/signin");
     } finally {
+      setIsSigningOut(false);
       onClose();
     }
   };
 
-  const handleInvite = () => {
-    onClose();
-    onInviteMembers?.();
+  const saveWorkingStatus = async (
+    payload: { do_not_disturb?: boolean; working_status?: string },
+    rollback: () => void
+  ) => {
+    setIsSavingStatus(true);
+    try {
+      await profilePreferencesService.updateWorkingStatus(payload);
+      await refreshUser();
+    } catch {
+      rollback();
+    } finally {
+      setIsSavingStatus(false);
+    }
   };
 
-  const handleOpenTeams = () => {
-    onClose();
-    onOpenTeams?.();
+  const handleDoNotDisturbChange = (next_value: boolean) => {
+    if (next_value === do_not_disturb) return;
+    const previous_value = do_not_disturb;
+    setDoNotDisturb(next_value);
+    void saveWorkingStatus({ do_not_disturb: next_value }, () => setDoNotDisturb(previous_value));
   };
 
-  const handleOpenInvitations = () => {
-    onClose();
-    onOpenInvitations?.();
+  /** Picking the active status again clears it back to the default "In the office". */
+  const handleWorkingStatusSelect = (status_key: string) => {
+    const previous_status = working_status;
+    const next_status = status_key === working_status ? DEFAULT_WORKING_STATUS : status_key;
+    setWorkingStatus(next_status);
+    closeFlyout();
+    void saveWorkingStatus({ working_status: next_status }, () => setWorkingStatus(previous_status));
   };
 
-  const handleOpenTrash = () => {
-    onClose();
-    onOpenTrash?.();
-  };
-
-  const handleOpenArchive = () => {
-    onClose();
-    onOpenArchive?.();
-  };
-
-  const handleOpenAdministration = () => {
-    onClose();
-    onOpenAdministration?.();
-  };
-
-  const handleOpenOrganization = () => {
-    onClose();
-    onOpenOrganization?.();
-  };
-
-  const handleOpenUsers = () => {
-    onClose();
-    onOpenUsers?.();
+  const handleThemeSelect = (mode: ThemeMode) => {
+    setThemeMode(mode);
+    closeFlyout();
   };
 
   /** Only super_admin/admin/staff may view the Users directory, mirroring the page's own gate. */
   const can_view_users = hasAnyRole("super_admin", "admin", "staff");
 
   const account_items: MenuItem[] = [
-    { label: "My profile", icon: <ProfileGlyph />, onSelect: handleOpenProfile },
-    { label: "Invitations", icon: <InvitationsGlyph />, onSelect: handleOpenInvitations },
-    { label: "Trash", icon: <TrashGlyph />, onSelect: handleOpenTrash },
-    { label: "Archive", icon: <ArchiveGlyph />, onSelect: handleOpenArchive },
-    { label: "Administration", icon: <AdministrationGlyph />, onSelect: handleOpenAdministration },
-    ...(can_view_users ? [{ label: "Organization", icon: <OrganizationGlyph />, onSelect: handleOpenOrganization }] : []),
-    ...(can_view_users ? [{ label: "Users", icon: <UsersGlyph />, onSelect: handleOpenUsers }] : []),
-    { label: "Teams", icon: <TeamsGlyph />, onSelect: handleOpenTeams },
-    { label: "Log out", icon: <LogOutGlyph />, onSelect: handleSignOut },
+    { key: "profile", label: "My profile", icon: <ProfileGlyph />, onSelect: runAndClose(onOpenProfile) },
+    { key: "invitations", label: "Invitations", icon: <InvitationsGlyph />, onSelect: runAndClose(onOpenInvitations) },
+    { key: "teams", label: "Teams", icon: <TeamsGlyph />, onSelect: runAndClose(onOpenTeams) },
+    { key: "trash", label: "Trash", icon: <TrashGlyph />, onSelect: runAndClose(onOpenTrash) },
+    { key: "archive", label: "Archive", icon: <ArchiveGlyph />, onSelect: runAndClose(onOpenArchive) },
   ];
 
-  const explore_items: MenuItem[] = [
-    { label: "App marketplace", icon: <MarketplaceGlyph />, onSelect: onClose },
-    { label: "Mobile app", icon: <MobileGlyph />, onSelect: onClose },
-    { label: "97 Labs", icon: <LabsGlyph />, onSelect: onClose },
-    { label: "Shortcuts", icon: <ShortcutsGlyph />, onSelect: onClose },
+  const manage_items: MenuItem[] = [
+    { key: "administration", label: "Administration", icon: <AdministrationGlyph />, onSelect: runAndClose(onOpenAdministration) },
+    ...(can_view_users
+      ? [
+          { key: "organization", label: "Organization", icon: <OrganizationGlyph />, onSelect: runAndClose(onOpenOrganization) },
+          { key: "users", label: "Users", icon: <UsersGlyph />, onSelect: runAndClose(onOpenUsers) },
+        ]
+      : []),
+    { key: "invite", label: "Invite members", icon: <InviteGlyph />, onSelect: runAndClose(onInviteMembers) },
   ];
 
   const display_name = getUserDisplayName(user);
+  const active_status = WORKING_STATUS_OPTIONS.find((option) => option.key === working_status);
 
   return (
     <>
-      {/* Click-away layer */}
+      {/* Click away layer */}
       <div className="fixed inset-0 z-[200]" onClick={onClose} aria-hidden="true" />
 
-      <div
-        role="menu"
-        aria-label="Account menu"
-        className="fixed right-3 top-[58px] z-[201] w-[448px] max-w-[calc(100vw-24px)] overflow-hidden rounded-[14px] border border-shell-border bg-shell-panel font-outfit text-shell-text shadow-[0_22px_54px_rgba(0,0,0,0.5)]"
-      >
-        {/* Header — current user + organization */}
-        <div className="flex items-center gap-[11px] border-b border-shell-border px-[18px] py-4">
-          <UserAvatar user={user} size={30} className="!rounded-[7px]" />
-          <div className="flex min-w-0 flex-col">
-            <span className="truncate text-[15px] font-bold leading-tight">
-              {display_name}
-            </span>
-            <span className="truncate text-[12px] font-medium text-shell-text-muted">
+      <div role="menu" aria-label="Account menu" className={`account-menu ${boardTreeFontClassName}`}>
+        {/* Header: organization and signed in user */}
+        <div className="account-menu__header">
+          <OrganizationLogo
+            logo_url={organization_logo_url}
+            logo_dark_url={organization_logo_dark_url}
+            company_name={organization_name}
+            size={28}
+            max_width={56}
+          />
+          <div className="account-menu__identity">
+            <span className="account-menu__organization" title={organization_name}>
               {organization_name}
             </span>
+            <span className="account-menu__user" title={user?.email ?? display_name}>
+              {display_name}
+              {user?.email ? `, ${user.email}` : ""}
+            </span>
           </div>
         </div>
 
-        {/* Two columns — Account / Explore */}
-        <div className="flex gap-6 px-3 pb-2 pt-4">
-          <div className="flex-1">
-            <div className={`${sectionLabelClass} px-2`}>Account</div>
+        {/* Two columns: Account / Manage */}
+        <div className="account-menu__columns">
+          <div className="account-menu__column" role="group" aria-label="Account">
+            <div className="account-menu__title">Account</div>
             {account_items.map((item) => (
-              <MenuRow key={item.label} item={item} />
+              <MenuRow key={item.key} item={item} />
             ))}
           </div>
-          <div className="flex-1">
-            <div className={`${sectionLabelClass} px-2`}>Explore</div>
-            {explore_items.map((item) => (
-              <MenuRow key={item.label} item={item} />
-            ))}
-          </div>
-        </div>
 
-        {/* Shared actions */}
-        <div className="px-2.5 pb-2 pt-1">
-          <MenuRow
-            item={{ label: "Invite members", icon: <InviteGlyph />, onSelect: handleInvite }}
-          />
-          <MenuRow item={{ label: "Get help", icon: <HelpGlyph />, onSelect: onClose }} />
-          <ThemeMenu trigger_icon={<ThemeGlyph />} />
+          <div className="account-menu__column" role="group" aria-label="Manage">
+            <div className="account-menu__title">Manage</div>
+            {manage_items.map((item) => (
+              <MenuRow key={item.key} item={item} />
+            ))}
+            <div className="account-menu__divider" role="separator" />
+            <button
+              ref={theme_row_ref}
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={open_flyout === "theme"}
+              onClick={toggleFlyout("theme")}
+              className="account-menu__item"
+            >
+              <span className="account-menu__icon">
+                <LightGlyph />
+              </span>
+              <span className="account-menu__label">Change theme</span>
+              <span className="account-menu__chevron">
+                <ChevronGlyph />
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Working status */}
-        <div className="border-t border-shell-border bg-shell-panel-alt px-[18px] py-3.5">
-          <div className="mb-[11px] text-[11.5px] font-semibold tracking-[0.04em] text-shell-text-faint">
+        <div className="account-menu__footer">
+          <div className="account-menu__footer-title">
             Working status
+            {active_status && (
+              <span className="account-menu__current-status">
+                <span className="account-menu__icon account-menu__icon--status">{active_status.icon}</span>
+                <span>{active_status.label}</span>
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-[11px]">
-            <span className="text-shell-text-muted">
+          <div className="account-menu__status-row">
+            <span className="account-menu__icon">
               <DoNotDisturbGlyph />
             </span>
-            <span className="flex-1 text-[13.5px] font-medium text-shell-text">
+            <span className="account-menu__status-label" id="account-menu-dnd-label">
               Do not disturb
             </span>
-            <DndOption
-              label="On"
-              is_active={do_not_disturb}
-              onSelect={() => setDoNotDisturb(true)}
-            />
-            <DndOption
-              label="Off"
-              is_active={!do_not_disturb}
-              onSelect={() => setDoNotDisturb(false)}
-            />
+            <div role="radiogroup" aria-labelledby="account-menu-dnd-label" className="flex items-center">
+              <DndOption label="On" is_active={do_not_disturb} is_disabled={is_saving_status} onSelect={() => handleDoNotDisturbChange(true)} />
+              <DndOption label="Off" is_active={!do_not_disturb} is_disabled={is_saving_status} onSelect={() => handleDoNotDisturbChange(false)} />
+            </div>
             <button
+              ref={status_link_ref}
               type="button"
-              onClick={onClose}
-              className="ml-1.5 flex items-center gap-[3px] text-[12.5px] text-shell-text-muted transition-colors hover:text-shell-text"
+              aria-haspopup="menu"
+              aria-expanded={open_flyout === "status"}
+              onClick={toggleFlyout("status")}
+              className="account-menu__link"
             >
               More
               <ChevronGlyph />
             </button>
           </div>
         </div>
+
+        {/* Log out, kept apart at the very bottom */}
+        <div className="account-menu__signout">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleSignOut}
+            disabled={is_signing_out}
+            className="account-menu__item"
+          >
+            <span className="account-menu__icon">
+              <LogOutGlyph />
+            </span>
+            <span className="account-menu__label">{is_signing_out ? "Logging out..." : "Log out"}</span>
+          </button>
+        </div>
       </div>
+
+      <MenuFlyout
+        anchor_el={theme_row_ref.current}
+        is_open={open_flyout === "theme"}
+        onClose={closeFlyout}
+        width={200}
+        side="left"
+        unstyled
+      >
+        <div role="menu" aria-label="Theme options" className={`account-menu-flyout ${boardTreeFontClassName}`}>
+          {THEME_OPTIONS.map((option) => {
+            const is_active = option.mode === theme_mode;
+            return (
+              <button
+                key={option.mode}
+                type="button"
+                role="menuitemradio"
+                aria-checked={is_active}
+                onClick={() => handleThemeSelect(option.mode)}
+                className="account-menu__item"
+              >
+                <span className="account-menu__icon">{option.icon}</span>
+                <span className="account-menu__label">{option.label}</span>
+                {is_active && (
+                  <span className="account-menu__check">
+                    <CheckIcon size={14} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </MenuFlyout>
+
+      <MenuFlyout
+        anchor_el={status_link_ref.current}
+        is_open={open_flyout === "status"}
+        onClose={closeFlyout}
+        width={220}
+        side="left"
+        unstyled
+      >
+        <div role="menu" aria-label="Working status options" className={`account-menu-flyout ${boardTreeFontClassName}`}>
+          {WORKING_STATUS_OPTIONS.map((option) => {
+            const is_active = option.key === working_status;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                role="menuitemradio"
+                aria-checked={is_active}
+                title={is_active ? "Click again to clear this status" : undefined}
+                onClick={() => handleWorkingStatusSelect(option.key)}
+                className="account-menu__item"
+              >
+                <span className="account-menu__icon account-menu__icon--status">{option.icon}</span>
+                <span className="account-menu__label">{option.label}</span>
+                {is_active && (
+                  <span className="account-menu__check">
+                    <CheckIcon size={14} />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </MenuFlyout>
     </>
   );
 };
@@ -408,20 +586,18 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
 const DndOption: React.FC<{
   label: string;
   is_active: boolean;
+  is_disabled: boolean;
   onSelect: () => void;
-}> = ({ label, is_active, onSelect }) => (
+}> = ({ label, is_active, is_disabled, onSelect }) => (
   <button
     type="button"
+    role="radio"
+    aria-checked={is_active}
+    disabled={is_disabled}
     onClick={onSelect}
-    className={`flex items-center gap-1.5 text-[13px] transition-colors ${is_active ? "text-brand-200" : "text-shell-text-muted"
-      }`}
+    className="account-menu__radio"
   >
-    <span
-      className={`flex h-[15px] w-[15px] items-center justify-center rounded-full border-2 ${is_active ? "border-brand-200" : "border-shell-text-muted"
-        }`}
-    >
-      {is_active && <span className="h-[7px] w-[7px] rounded-full bg-brand-200" />}
-    </span>
+    <span className="account-menu__radio-dot" />
     {label}
   </button>
 );

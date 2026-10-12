@@ -12,6 +12,7 @@ export type WorkingStatusPayload = {
   working_status_dates?: string | null;
   disable_notifications_while_away?: boolean;
   hide_online_status?: boolean;
+  do_not_disturb?: boolean;
 };
 
 export type NotificationPreferencesPayload = {
