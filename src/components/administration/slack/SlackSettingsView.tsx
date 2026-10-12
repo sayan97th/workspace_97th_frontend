@@ -2,13 +2,15 @@
 import React from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, FlaskConical } from "lucide-react";
 import AdminPageActions from "@/components/administration/AdminPageActions";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
 import SlackSetupSteps from "@/components/administration/slack/SlackSetupSteps";
 import SlackAppCredentialsCard from "@/components/administration/slack/SlackAppCredentialsCard";
 import SlackWorkspacesCard from "@/components/administration/slack/SlackWorkspacesCard";
 import SlackMembersCard from "@/components/administration/slack/SlackMembersCard";
+import { SLACK_DIAGNOSTICS_PATH, SLACK_TEST_ROLES } from "@/components/slack-test/slackTestNav";
+import { useAuth } from "@/context/AuthContext";
 import { SECONDARY_BUTTON, SECTION_CARD, SECTION_HINT, SECTION_TITLE } from "@/components/administration/slack/slackAdminStyles";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
 import { useSlackAdministration } from "@/hooks/useSlackAdministration";
@@ -26,10 +28,13 @@ import { SLACK_SETUP_REASON_PARAM, slackNeedsSetup } from "@/lib/slackSetup";
  *
  * Rendered inside the Administration view, which owns the page title and subtitle and only
  * opens this section for `super_admin` and `admin`, the same `role:` gate the API puts on every
- * endpoint it calls. The setup status and "Open Slack" sit in the page header next to the title.
+ * endpoint it calls. The setup status, "Open Slack" and "Test Slack" (the Slack testing pages, shown
+ * only to the roles those pages and their endpoints accept) sit in the page header next to the title.
  */
 const SlackSettingsView: React.FC = () => {
   const search_params = useSearchParams();
+  const { hasAnyRole } = useAuth();
+  const can_test_slack = hasAnyRole(...SLACK_TEST_ROLES);
   const slack = useSlackIntegration();
   const status = slack.status;
   const admin = useSlackAdministration(slack, status?.can_manage ?? false, status?.can_configure_app ?? false);
@@ -53,6 +58,12 @@ const SlackSettingsView: React.FC = () => {
             Open Slack
             <ExternalLink size={14} strokeWidth={1.75} aria-hidden="true" />
           </a>
+        ) : null}
+        {can_test_slack ? (
+          <Link href={SLACK_DIAGNOSTICS_PATH} className={`${SECONDARY_BUTTON} gap-1.5`}>
+            <FlaskConical size={16} strokeWidth={1.75} aria-hidden="true" />
+            Test Slack
+          </Link>
         ) : null}
       </AdminPageActions>
 
@@ -90,9 +101,11 @@ const SlackSettingsView: React.FC = () => {
                 <Link href="/profile?section=notifications" className={SECONDARY_BUTTON}>
                   Connect my Slack
                 </Link>
-                <Link href="/admin/test/slack" className={SECONDARY_BUTTON}>
-                  Test the Slack connection
-                </Link>
+                {can_test_slack ? (
+                  <Link href={SLACK_DIAGNOSTICS_PATH} className={SECONDARY_BUTTON}>
+                    Test the Slack connection
+                  </Link>
+                ) : null}
               </div>
             </section>
           ) : null}
