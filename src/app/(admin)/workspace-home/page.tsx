@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import HomeView from "@/components/personal/HomeView";
+import HomeView from "@/components/home/HomeView";
 
 export const metadata: Metadata = {
   title: "Home",
-  description: "Recently visited boards, your work and notifications",
+  description: "Your day at a glance: recent boards, work due soon, inbox and workspaces",
 };
 
 export default function WorkspaceHomePage() {

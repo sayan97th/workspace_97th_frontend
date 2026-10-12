@@ -19,7 +19,7 @@ import type { FavoriteItemDto, PersonalWorkspaceSummary } from "@/types/personal
 const RECENTLY_VIEWED_LIMIT = 10;
 
 /** Where a favorite opens: a board at its own page, a folder at its workspace. */
-const favoriteHref = (favorite: FavoriteItemDto): string =>
+export const favoriteHref = (favorite: FavoriteItemDto): string =>
   favorite.type === "leaf" ? `/boards/${favorite.id}` : favorite.workspace ? `/workspaces/${favorite.workspace.id}` : "/workspace-home";
 
 const matchesQuery = (label: string, query: string): boolean => label.toLowerCase().includes(query);

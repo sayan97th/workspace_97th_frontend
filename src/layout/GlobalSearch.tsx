@@ -2,6 +2,8 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import { useShortcutLabel } from "@/hooks/useShortcutLabel";
+import { onShellPanelOpen } from "./shell-events";
 import WorkspaceBadge from "./WorkspaceBadge";
 import { buildBoardPath, BOARD_ROUTE_BASE } from "@/components/workspace-nav/helpers";
 import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
@@ -121,17 +123,6 @@ const buildSearchOptions = (results: GlobalSearchResults): SearchOption[] => {
   return [...boards, ...items, ...workspaces];
 };
 
-/** "Ctrl K" or the Command glyph, resolved after mount so server and client markup match. */
-const useShortcutLabel = (): string => {
-  const [shortcut_label, setShortcutLabel] = useState("Ctrl K");
-
-  useEffect(() => {
-    if (/mac|iphone|ipad/i.test(navigator.userAgent)) setShortcutLabel("⌘ K");
-  }, []);
-
-  return shortcut_label;
-};
-
 /**
  * The top bar's "Search for anything..." box. A typeahead over boards, docs,
  * items and workspaces backed by `GET /api/search` (see `useGlobalSearch`).
@@ -174,6 +165,17 @@ const GlobalSearch: React.FC = () => {
     document.addEventListener("keydown", handleShortcut);
     return () => document.removeEventListener("keydown", handleShortcut);
   }, []);
+
+  // Pages (Home's "Search everything") can ask the box to take focus.
+  useEffect(
+    () =>
+      onShellPanelOpen((panel) => {
+        if (panel !== "search") return;
+        input_ref.current?.focus();
+        setIsOpen(true);
+      }),
+    []
+  );
 
   // Close when the user clicks anywhere outside the box and its dropdown.
   useEffect(() => {

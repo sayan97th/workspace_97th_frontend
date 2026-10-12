@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -10,6 +10,7 @@ import OrganizationLogo from "@/components/common/OrganizationLogo";
 import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import AccountMenu from "./AccountMenu";
 import { HOME_PATH, isSidebarlessPath } from "./sidebar-routes";
+import { onShellPanelOpen } from "./shell-events";
 import HelpMenu from "./HelpMenu";
 import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
@@ -99,6 +100,17 @@ const AppTopBar: React.FC = () => {
 
   const openInvite = () => setIsInviteOpen(true);
   const closeInvite = () => setIsInviteOpen(false);
+
+  // Pages (Home's quick actions) open the inbox, the feed or the invite dialog through `openShellPanel`.
+  useEffect(
+    () =>
+      onShellPanelOpen((panel) => {
+        if (panel === "notifications") setIsNotificationsOpen(true);
+        if (panel === "feed") setIsFeedOpen(true);
+        if (panel === "invite") setIsInviteOpen(true);
+      }),
+    []
+  );
 
   /** "My Profile" is now a routed page (`/profile`) rather than a modal. */
   const openProfile = () => router.push("/profile");

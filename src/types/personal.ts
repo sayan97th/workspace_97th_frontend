@@ -23,6 +23,16 @@ export type FavoritesResponseDto = {
   workspaces: PersonalWorkspaceSummary[];
 };
 
+/** One group of a recent board's snapshot, drawn as a colored bar with its rows. */
+export type RecentBoardPreviewGroup = { id: number; name: string; color: string | null; item_count: number };
+
+/** The first groups of a board's primary view, what the Home card thumbnail draws. */
+export type RecentBoardPreview = {
+  item_count: number;
+  group_count: number;
+  groups: RecentBoardPreviewGroup[];
+};
+
 /** `GET /api/home/recent-boards`, one board the user opened recently. */
 export type RecentBoardDto = {
   id: number;
@@ -32,6 +42,8 @@ export type RecentBoardDto = {
   is_favorite: boolean;
   visited_at: string;
   workspace: PersonalWorkspaceSummary | null;
+  /** Null for a board without a primary view. */
+  preview: RecentBoardPreview | null;
 };
 
 export type MyWorkStatus = { id: string; label: string; color: string };
