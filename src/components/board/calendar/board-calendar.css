@@ -2,8 +2,7 @@
  * Repoints react-big-calendar's own (hardcoded-hex) stylesheet at the
  * workspace shell's design tokens (--color-shell-*, --color-brand-*, defined
  * in src/app/globals.css) so the calendar reads as a native shell surface
- * instead of a themed-in third-party widget — mirrors board-doc-editor.css's
- * approach for @mdxeditor/editor. Unlike that file, react-big-calendar has no
+ * instead of a themed-in third-party widget. react-big-calendar has no
  * CSS-variable theming layer of its own, so every rule below targets its
  * `.rbc-*` class names directly. Both light and dark values come from the
  * shell tokens, which already flip under `.dark` on <html>, so no separate

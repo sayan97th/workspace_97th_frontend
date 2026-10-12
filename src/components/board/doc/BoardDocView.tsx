@@ -1,120 +1,80 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
+import { CalendarPlus, Clock } from "lucide-react";
 import UserAvatar from "@/components/common/UserAvatar";
-import { ClockIcon, CheckIcon } from "@/icons/workspace-icons";
 import type { BoardViewDto } from "@/types/board-content";
-import BoardDocEditor from "./BoardDocEditor";
+import { DocEditorProvider, DocEditorSurface, DocToolbar, type DocMember, type DocUploadHandler } from "./editor";
+import DocSaveIndicator from "./DocSaveIndicator";
+import { useDocAutosave } from "./useDocAutosave";
 
 export type BoardDocViewProps = {
   view: BoardViewDto;
-  /** Persists the doc's markdown — called by the debounced autosave below. */
+  /** Persists the doc body (editor JSON), called by the debounced autosave. */
   onSaveDocContent: (doc_content: string) => Promise<void>;
-  /** Uploads an image dropped/pasted/inserted into the doc, resolving to its public URL — omit to fall back to inline base64 data URIs. */
-  onUploadImage?: (file: File) => Promise<string>;
+  /** Uploads images, videos and files embedded in the doc. Omit to only allow images, inlined as data URLs. */
+  onUploadFile?: DocUploadHandler;
+  /** People offered by "@" mentions. */
+  members?: DocMember[];
+  /** False renders the doc read only. */
+  editable?: boolean;
 };
-
-const AUTOSAVE_DELAY_MS = 800;
 
 const formatDateTime = (value: string | null): string => {
-  if (!value) return "—";
+  if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 
-type SaveStatus = "idle" | "saving" | "saved";
-
 /**
- * The "Doc" board view — a Notion-style freeform document tab: a slim
- * creator/created/updated metadata header (the document's title is just the
- * tab's own label — renamed from the tab itself, not duplicated here) and a
- * markdown editor (`BoardDocEditor`) below it. Owns the autosave debounce so
- * `TableBoardView` only has to supply persistence (`onSaveDocContent`);
- * everything content-shaped lives here and in the reusable `BoardDocEditor`,
- * which any future long-form-text view can reuse on its own.
+ * The "Doc" board tab: the same Notion style editor as a standalone Doc
+ * (`DocPageView`), under a slim creator/created/updated row (the tab's own
+ * label is its title). Stored in the view's `doc_content`; tabs written by
+ * the previous markdown editor still load and are saved as editor JSON
+ * from their next edit on.
  */
-const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent, onUploadImage }) => {
-  const [save_status, setSaveStatus] = useState<SaveStatus>("idle");
+const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent, onUploadFile, members = [], editable = true }) => {
+  const [updated_at, setUpdatedAt] = useState(view.updated_at);
+  const { status, queueSave, flushSave } = useDocAutosave((content) =>
+    onSaveDocContent(content).then(() => setUpdatedAt(new Date().toISOString()))
+  );
 
-  const save_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const latest_content_ref = useRef(view.doc_content ?? "");
-  const dirty_since_save_ref = useRef(false);
-
-  const flushSave = () => {
-    if (save_timeout_ref.current) clearTimeout(save_timeout_ref.current);
-    if (!dirty_since_save_ref.current) return;
-    dirty_since_save_ref.current = false;
-    setSaveStatus("saving");
-    void onSaveDocContent(latest_content_ref.current).then(() => setSaveStatus("saved"));
-  };
-
-  // A different tab (a different `view.id`) is a different document. Flushes
-  // — rather than discards — any pending debounced autosave from the tab
-  // just left (or on unmount), so a fast tab switch right after typing can't
-  // silently drop the last edit; `flushSave` here is the closure captured
-  // from the render this effect last ran in, so it still targets the
-  // *previous* view's id and `onSaveDocContent`, not the newly active one.
   useEffect(() => {
-    latest_content_ref.current = view.doc_content ?? "";
-    dirty_since_save_ref.current = false;
-    setSaveStatus("idle");
-    return () => flushSave();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view.id]);
-
-  const handleChange = (markdown: string, is_initial_normalize: boolean) => {
-    latest_content_ref.current = markdown;
-    // MDXEditor fires one change on mount while normalizing the initial
-    // markdown — not a real edit, so it shouldn't trigger a save or flip the
-    // status indicator to "Saving…" on every tab open.
-    if (is_initial_normalize) return;
-    dirty_since_save_ref.current = true;
-    setSaveStatus("saving");
-    if (save_timeout_ref.current) clearTimeout(save_timeout_ref.current);
-    save_timeout_ref.current = setTimeout(flushSave, AUTOSAVE_DELAY_MS);
-  };
+    setUpdatedAt(view.updated_at);
+  }, [view.id, view.updated_at]);
 
   return (
-    <div className="flex w-full flex-col gap-4 pb-24">
-      <div className="flex flex-col gap-2 px-1">
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12.5px] text-shell-text-muted">
-          <span className="flex items-center gap-1.5">
-            <UserAvatar user={view.creator} size={20} font_size={9} />
-            Creator <span className="font-semibold text-shell-text-secondary">{view.creator?.full_name ?? "Unknown"}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <ClockIcon size={13} />
-            Created <span className="font-semibold text-shell-text-secondary">{formatDateTime(view.created_at)}</span>
-          </span>
-          <span className="flex items-center gap-1.5">
-            <ClockIcon size={13} />
-            Last updated <span className="font-semibold text-shell-text-secondary">{formatDateTime(view.updated_at)}</span>
-          </span>
-          <span className="ml-auto flex items-center gap-1 text-[12px]">
-            {save_status === "saving" && <span className="text-shell-text-faint">Saving…</span>}
-            {save_status === "saved" && (
-              <span className="flex items-center gap-1 text-shell-text-faint">
-                <CheckIcon size={11} /> Saved
-              </span>
-            )}
-          </span>
-        </div>
-      </div>
-
-      <BoardDocEditor
+    <div className="doc-theme flex w-full flex-col overflow-hidden rounded-lg border border-[var(--doc-border)] bg-[var(--doc-surface)]">
+      <DocEditorProvider
         key={view.id}
-        markdown={view.doc_content ?? ""}
-        onChange={handleChange}
+        initial_content={view.doc_content}
+        onChange={queueSave}
         onBlur={flushSave}
-        placeholder=""
-        onUploadImage={onUploadImage}
-      />
+        editable={editable}
+        members={members}
+        onUploadFile={onUploadFile}
+      >
+        <div className="sticky top-0 z-10">
+          <DocToolbar trailing={<DocSaveIndicator status={status} onRetry={flushSave} />} />
+        </div>
+        <div className="mx-auto w-full max-w-[860px] px-6 pt-6 sm:px-16">
+          <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13.5px] text-[var(--doc-text-secondary)]">
+            <span className="flex items-center gap-2">
+              <UserAvatar user={view.creator} size={20} font_size={9} />
+              Creator <span className="font-semibold text-[var(--doc-text)]">{view.creator?.full_name ?? "Unknown"}</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <CalendarPlus size={15} aria-hidden="true" />
+              Created <span className="font-semibold text-[var(--doc-text)]">{formatDateTime(view.created_at)}</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <Clock size={15} aria-hidden="true" />
+              Last updated <span className="font-semibold text-[var(--doc-text)]">{formatDateTime(updated_at)}</span>
+            </span>
+          </div>
+          <DocEditorSurface />
+        </div>
+      </DocEditorProvider>
     </div>
   );
 };

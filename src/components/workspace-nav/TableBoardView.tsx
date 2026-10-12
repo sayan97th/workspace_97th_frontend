@@ -128,6 +128,7 @@ import { buildItemDependencySections } from "../board/dependencies/buildItemDepe
 import { countAutomationsByColumn } from "../board/automations/builder/automationColumns";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { boardDocService } from "@/services/board-doc.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
@@ -4184,7 +4185,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardDocView
           view={active_doc_view}
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
-          onUploadImage={(file) => boardContentService.uploadDocImage(board_id, active_doc_view.id, file)}
+          onUploadFile={(file) => boardDocService.uploadFile(board_id, file)}
+          members={workspace_members}
+          editable={node.permission_level === "full" || node.permission_level === "content"}
         />
       ) : active_view_type === "file_gallery" && active_doc_view ? (
         <BoardFileGalleryView board_id={board_id} view_id={active_doc_view.id} />

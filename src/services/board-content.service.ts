@@ -580,22 +580,4 @@ export const boardContentService = {
       personal_default_view_id: response.personal_default_view_id ?? null,
     };
   },
-
-  /**
-   * POST /api/boards/{board_id}/views/{view_id}/images — uploads an image
-   * embedded into a `doc` view's markdown body (`BoardDocEditor`'s
-   * image-upload plugin) and returns its public URL. Stateless: the caller
-   * embeds the returned URL into the view's markdown, persisted through the
-   * existing `saveView`/`updateDocContent` autosave — no separate record to
-   * track here.
-   */
-  async uploadDocImage(board_id: number, view_id: number, image: File): Promise<string> {
-    const form_data = new FormData();
-    form_data.append("image", image);
-    const response = await apiClient.postFormData<{ url: string }>(
-      `/api/boards/${board_id}/views/${view_id}/images`,
-      form_data
-    );
-    return response.url;
-  },
 };

@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { WorkspaceManage } from "@/components/workspace-manage";
+import DocPageView from "@/components/board/doc/DocPageView";
 import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
 
 /**
@@ -17,6 +18,8 @@ import TableBoardView, { type WorkspaceViewProps } from "./TableBoardView";
  */
 export const VIEW_REGISTRY: Record<string, React.ComponentType<WorkspaceViewProps>> = {
   workspace_manage: WorkspaceManage,
+  // A Doc ("Create Doc" in the sidebar) is a Notion style document page, not a table.
+  doc: DocPageView,
 };
 
 /** Resolve the component for a view key, defaulting to the generic table board view. */

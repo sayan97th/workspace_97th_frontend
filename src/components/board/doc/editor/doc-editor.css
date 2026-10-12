@@ -1,0 +1,1456 @@
+/*
+ * Notion style doc editor with monday.com's doc look: Figtree copy, Poppins
+ * headings, monday's grays and blue, a left gutter for the block handle and
+ * Notion's "/" menu. Every color is a `--doc-*` token declared on
+ * `.doc-theme` (the page root and every portaled menu), so dark mode only
+ * swaps the tokens.
+ */
+
+.doc-theme {
+  --doc-surface: #ffffff;
+  --doc-page: #ffffff;
+  --doc-panel-alt: #f6f7fb;
+  --doc-text: #323338;
+  --doc-text-secondary: #676879;
+  --doc-text-faint: #9699a6;
+  --doc-placeholder: #c3c6d4;
+  --doc-border: #e7e9ef;
+  --doc-border-strong: #d0d4e4;
+  --doc-hover: #dcdfec;
+  --doc-hover-soft: #f0f1f5;
+  --doc-selected: #cce5ff;
+  --doc-accent: #0073ea;
+  --doc-accent-hover: #0060b9;
+  --doc-accent-soft: rgba(0, 115, 234, 0.12);
+  --doc-danger: #d83a52;
+  --doc-code-bg: #f6f7fb;
+  --doc-inline-code: #d83a52;
+  --doc-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(15, 15, 15, 0.05);
+  --doc-overlay: rgba(41, 47, 76, 0.7);
+  --doc-font: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --doc-font-heading: var(--font-poppins), "Poppins", var(--doc-font);
+  --doc-font-mono: var(--font-roboto-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --doc-callout-gray: #f1f1ef;
+  --doc-callout-blue: #e7f3fe;
+  --doc-callout-green: #e8f6ee;
+  --doc-callout-yellow: #fbf3db;
+  --doc-callout-red: #fdebec;
+  --doc-callout-purple: #f2ecfb;
+
+  font-family: var(--doc-font);
+  color: var(--doc-text);
+}
+
+html.dark .doc-theme {
+  --doc-surface: var(--color-shell-panel);
+  --doc-page: var(--color-shell-bg);
+  --doc-panel-alt: var(--color-shell-panel-alt);
+  --doc-text: var(--color-shell-text);
+  --doc-text-secondary: var(--color-shell-text-secondary);
+  --doc-text-faint: var(--color-shell-text-faint);
+  --doc-placeholder: rgba(255, 255, 255, 0.28);
+  --doc-border: var(--color-shell-border);
+  --doc-border-strong: var(--color-shell-border-strong);
+  --doc-hover: var(--color-shell-hover);
+  --doc-hover-soft: var(--color-shell-hover);
+  --doc-selected: rgba(61, 143, 240, 0.28);
+  --doc-accent: #3d8ff0;
+  --doc-accent-hover: #2f7ad6;
+  --doc-accent-soft: rgba(61, 143, 240, 0.18);
+  --doc-danger: #ff8599;
+  --doc-code-bg: rgba(255, 255, 255, 0.06);
+  --doc-inline-code: #ff8599;
+  --doc-shadow: 0 8px 28px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --doc-overlay: rgba(6, 14, 14, 0.62);
+  --doc-callout-gray: rgba(255, 255, 255, 0.06);
+  --doc-callout-blue: rgba(61, 143, 240, 0.16);
+  --doc-callout-green: rgba(0, 200, 117, 0.14);
+  --doc-callout-yellow: rgba(255, 203, 0, 0.14);
+  --doc-callout-red: rgba(255, 133, 153, 0.14);
+  --doc-callout-purple: rgba(162, 93, 220, 0.16);
+
+  color-scheme: dark;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────────────────── */
+
+.doc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--doc-border);
+  background: var(--doc-surface);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.doc-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+.doc-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.doc-toolbar-trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex: none;
+  padding-left: 12px;
+}
+
+.doc-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 8px;
+  background: var(--doc-border-strong);
+  flex: none;
+}
+
+.doc-add-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px 0 10px;
+  margin-right: 8px;
+  border-radius: 4px;
+  background: var(--doc-accent);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.1s ease;
+}
+
+.doc-add-button:hover {
+  background: var(--doc-accent-hover);
+}
+
+.doc-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--doc-text);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background-color 0.1s ease;
+}
+
+.doc-toolbar-button:hover:not(:disabled) {
+  background: var(--doc-hover);
+}
+
+.doc-toolbar-button.is-active {
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+}
+
+.doc-toolbar-button:disabled {
+  color: var(--doc-text-faint);
+  cursor: default;
+}
+
+.doc-toolbar-button.is-labeled {
+  padding: 0 8px;
+}
+
+.doc-toolbar-button.is-text-type {
+  width: 152px;
+  justify-content: flex-start;
+}
+
+.doc-toolbar-button.is-text-type > svg:last-child {
+  margin-left: auto;
+}
+
+.doc-toolbar-button.is-text {
+  padding: 0 10px;
+}
+
+/* ── Page layout pieces shared by the Doc page and the Doc tab ──────────── */
+
+.doc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--doc-text-secondary);
+  transition: background-color 0.1s ease;
+}
+
+.doc-icon-button:hover {
+  background: var(--doc-hover);
+  color: var(--doc-text);
+}
+
+.doc-icon-button.is-active {
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+}
+
+.doc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--doc-text);
+  transition: background-color 0.1s ease;
+}
+
+.doc-button.is-secondary {
+  border: 1px solid var(--doc-border-strong);
+}
+
+.doc-button.is-secondary:hover,
+.doc-button.is-tertiary:hover {
+  background: var(--doc-hover);
+}
+
+.doc-button.is-primary {
+  background: var(--doc-accent);
+  color: #ffffff;
+}
+
+.doc-button.is-primary:hover:not(:disabled) {
+  background: var(--doc-accent-hover);
+}
+
+.doc-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── Writing surface ─────────────────────────────────────────────────────── */
+
+.doc-surface {
+  position: relative;
+  /* Room on the left for the block handle. */
+  padding-left: 56px;
+  margin-left: -56px;
+}
+
+.doc-editor-content {
+  min-height: 320px;
+  padding-bottom: 30vh;
+  outline: none;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--doc-text);
+  caret-color: var(--doc-text);
+  word-break: break-word;
+}
+
+.doc-editor-content > * + * {
+  margin-top: 4px;
+}
+
+.doc-editor-content p {
+  min-height: 1.65em;
+  padding: 2px 0;
+}
+
+.doc-editor-content h1,
+.doc-editor-content h2,
+.doc-editor-content h3,
+.doc-editor-content h4 {
+  font-family: var(--doc-font-heading);
+  color: var(--doc-text);
+  letter-spacing: -0.01em;
+}
+
+.doc-editor-content h1 {
+  margin-top: 28px;
+  font-size: 30px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.doc-editor-content h2 {
+  margin-top: 22px;
+  font-size: 24px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.doc-editor-content h3 {
+  margin-top: 18px;
+  font-size: 20px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.doc-editor-content h4 {
+  margin-top: 14px;
+  font-size: 17px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.doc-editor-content > :first-child {
+  margin-top: 0;
+}
+
+.doc-editor-content a {
+  color: var(--doc-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.doc-editor-content strong {
+  font-weight: 700;
+}
+
+.doc-editor-content code {
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  background: var(--doc-code-bg);
+  color: var(--doc-inline-code);
+  font-family: var(--doc-font-mono);
+  font-size: 0.86em;
+}
+
+.doc-editor-content mark {
+  border-radius: 3px;
+  padding: 0 2px;
+  color: inherit;
+}
+
+/* Placeholder text, only shown on the line holding the caret (and on an empty doc). */
+.doc-editor-content .is-empty::before,
+.doc-editor-content .is-editor-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--doc-placeholder);
+  pointer-events: none;
+}
+
+/* Lists: Tailwind's preflight strips the markers, so they come back here. */
+.doc-editor-content ul:not([data-type="taskList"]),
+.doc-editor-content ol {
+  padding-inline-start: 1.6em;
+}
+
+.doc-editor-content ul:not([data-type="taskList"]) {
+  list-style: disc;
+}
+
+.doc-editor-content ul:not([data-type="taskList"]) ul:not([data-type="taskList"]) {
+  list-style: circle;
+}
+
+.doc-editor-content ul:not([data-type="taskList"]) ul:not([data-type="taskList"]) ul:not([data-type="taskList"]) {
+  list-style: square;
+}
+
+.doc-editor-content ol {
+  list-style: decimal;
+}
+
+.doc-editor-content ol ol {
+  list-style: lower-alpha;
+}
+
+.doc-editor-content li {
+  padding: 1px 0;
+}
+
+.doc-editor-content li > p {
+  padding: 0;
+}
+
+.doc-editor-content li::marker {
+  color: var(--doc-text);
+}
+
+/* To-do lists */
+.doc-editor-content ul[data-type="taskList"] {
+  padding-inline-start: 2px;
+}
+
+.doc-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.doc-editor-content ul[data-type="taskList"] li > label {
+  flex: none;
+  margin-top: 0.3em;
+  user-select: none;
+}
+
+.doc-editor-content ul[data-type="taskList"] li > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-editor-content ul[data-type="taskList"] input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border-radius: 4px;
+  accent-color: var(--doc-accent);
+  cursor: pointer;
+}
+
+.doc-editor-content ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--doc-text-faint);
+  text-decoration: line-through;
+}
+
+/* Quote */
+.doc-editor-content blockquote {
+  margin: 6px 0;
+  padding: 2px 0 2px 16px;
+  border-left: 3px solid var(--doc-text);
+  font-size: 17px;
+}
+
+/* Divider */
+.doc-editor-content hr {
+  margin: 14px 0;
+  border: none;
+  border-top: 1px solid var(--doc-border-strong);
+  cursor: pointer;
+}
+
+.doc-editor-content hr.ProseMirror-selectednode {
+  border-top-color: var(--doc-accent);
+}
+
+/* Code block, colored by lowlight's highlight.js classes */
+.doc-editor-content pre {
+  margin: 8px 0;
+  padding: 16px 18px;
+  border-radius: 6px;
+  background: var(--doc-code-bg);
+  color: var(--doc-text);
+  font-family: var(--doc-font-mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+.doc-editor-content pre code {
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-size: inherit;
+}
+
+.doc-editor-content .hljs-comment,
+.doc-editor-content .hljs-quote {
+  color: #8a8f98;
+  font-style: italic;
+}
+
+.doc-editor-content .hljs-keyword,
+.doc-editor-content .hljs-selector-tag,
+.doc-editor-content .hljs-built_in {
+  color: #a626a4;
+}
+
+.doc-editor-content .hljs-string,
+.doc-editor-content .hljs-attr,
+.doc-editor-content .hljs-template-tag {
+  color: #2f8a3a;
+}
+
+.doc-editor-content .hljs-number,
+.doc-editor-content .hljs-literal,
+.doc-editor-content .hljs-variable {
+  color: #c25b00;
+}
+
+.doc-editor-content .hljs-title,
+.doc-editor-content .hljs-section,
+.doc-editor-content .hljs-name {
+  color: #0060b9;
+}
+
+.doc-editor-content .hljs-type,
+.doc-editor-content .hljs-class {
+  color: #b5831d;
+}
+
+html.dark .doc-editor-content .hljs-keyword,
+html.dark .doc-editor-content .hljs-selector-tag,
+html.dark .doc-editor-content .hljs-built_in {
+  color: #d58cf0;
+}
+
+html.dark .doc-editor-content .hljs-string,
+html.dark .doc-editor-content .hljs-attr {
+  color: #8fd18f;
+}
+
+html.dark .doc-editor-content .hljs-number,
+html.dark .doc-editor-content .hljs-literal {
+  color: #f4a259;
+}
+
+html.dark .doc-editor-content .hljs-title,
+html.dark .doc-editor-content .hljs-section {
+  color: #7cb7ff;
+}
+
+/* Toggle list */
+.doc-editor-content .doc-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.doc-editor-content .doc-toggle > button {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 3px;
+  border-radius: 4px;
+  color: var(--doc-text);
+}
+
+.doc-editor-content .doc-toggle > button:hover {
+  background: var(--doc-hover-soft);
+}
+
+.doc-editor-content .doc-toggle > button::after {
+  content: "";
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid currentColor;
+  transition: transform 0.15s ease;
+}
+
+.doc-editor-content .doc-toggle.is-open > button::after {
+  transform: rotate(90deg);
+}
+
+.doc-editor-content .doc-toggle > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-editor-content .doc-toggle summary {
+  list-style: none;
+  padding: 2px 0;
+  font-weight: 500;
+}
+
+.doc-editor-content .doc-toggle summary::-webkit-details-marker {
+  display: none;
+}
+
+.doc-editor-content .doc-toggle [data-type="detailsContent"] {
+  padding-left: 2px;
+}
+
+.doc-editor-content .doc-toggle:not(.is-open) [data-type="detailsContent"] {
+  display: none;
+}
+
+/* Callout */
+.doc-editor-content .doc-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 6px 0;
+  padding: 14px 16px 14px 12px;
+  border-radius: 6px;
+  background: var(--doc-callout-gray);
+}
+
+.doc-editor-content .doc-callout[data-color="blue"] {
+  background: var(--doc-callout-blue);
+}
+
+.doc-editor-content .doc-callout[data-color="green"] {
+  background: var(--doc-callout-green);
+}
+
+.doc-editor-content .doc-callout[data-color="yellow"] {
+  background: var(--doc-callout-yellow);
+}
+
+.doc-editor-content .doc-callout[data-color="red"] {
+  background: var(--doc-callout-red);
+}
+
+.doc-editor-content .doc-callout[data-color="purple"] {
+  background: var(--doc-callout-purple);
+}
+
+.doc-callout-emoji {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  font-size: 19px;
+  line-height: 26px;
+  text-align: center;
+}
+
+.doc-callout-emoji:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.doc-callout-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-callout-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--doc-border-strong);
+  background: var(--doc-callout-gray);
+}
+
+.doc-callout-swatch[data-color="blue"] {
+  background: var(--doc-callout-blue);
+}
+
+.doc-callout-swatch[data-color="green"] {
+  background: var(--doc-callout-green);
+}
+
+.doc-callout-swatch[data-color="yellow"] {
+  background: var(--doc-callout-yellow);
+}
+
+.doc-callout-swatch[data-color="red"] {
+  background: var(--doc-callout-red);
+}
+
+.doc-callout-swatch[data-color="purple"] {
+  background: var(--doc-callout-purple);
+}
+
+.doc-callout-swatch.is-active {
+  outline: 2px solid var(--doc-accent);
+  outline-offset: 1px;
+}
+
+.doc-emoji-option {
+  height: 32px;
+  border-radius: 4px;
+  font-size: 18px;
+}
+
+.doc-emoji-option:hover {
+  background: var(--doc-hover);
+}
+
+/* Mentions */
+.doc-editor-content .doc-mention {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Tables */
+.doc-editor-content .tableWrapper {
+  margin: 10px 0;
+  overflow-x: auto;
+}
+
+.doc-editor-content table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.doc-editor-content th,
+.doc-editor-content td {
+  position: relative;
+  min-width: 80px;
+  padding: 6px 10px;
+  border: 1px solid var(--doc-border-strong);
+  vertical-align: top;
+  text-align: left;
+}
+
+.doc-editor-content th {
+  background: var(--doc-panel-alt);
+  font-weight: 600;
+}
+
+.doc-editor-content td > p,
+.doc-editor-content th > p {
+  padding: 0;
+}
+
+.doc-editor-content .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--doc-accent-soft);
+  pointer-events: none;
+}
+
+.doc-editor-content .column-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: var(--doc-accent);
+  pointer-events: none;
+}
+
+.doc-editor-content.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Selected atom blocks (dividers, cards) */
+.doc-editor-content .ProseMirror-selectednode {
+  outline: none;
+}
+
+.doc-editor-content ::selection {
+  background: var(--doc-selected);
+}
+
+.doc-editor-content .ProseMirror-gapcursor::after {
+  border-top-color: var(--doc-text);
+}
+
+/* ── Media blocks ────────────────────────────────────────────────────────── */
+
+.doc-media-container {
+  display: flex;
+  margin: 8px 0;
+}
+
+.doc-media-container[data-align="left"] {
+  justify-content: flex-start;
+}
+
+.doc-media-container[data-align="center"] {
+  justify-content: center;
+}
+
+.doc-media-container[data-align="right"] {
+  justify-content: flex-end;
+}
+
+.doc-media-frame {
+  position: relative;
+  max-width: 100%;
+  border-radius: 4px;
+  line-height: 0;
+}
+
+.doc-media-frame.is-selected,
+.doc-media-frame.is-resizing {
+  outline: 2px solid var(--doc-accent);
+  outline-offset: 2px;
+}
+
+.doc-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.doc-video {
+  display: block;
+  width: 100%;
+  border-radius: 4px;
+  background: #000000;
+}
+
+.doc-video-embed {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+
+.doc-video-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 4px;
+}
+
+.doc-media-frame.is-resizing iframe {
+  pointer-events: none;
+}
+
+.doc-video-cover {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.doc-media-empty {
+  padding: 24px;
+  border-radius: 4px;
+  background: var(--doc-panel-alt);
+  color: var(--doc-text-secondary);
+  font-size: 14px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.doc-media-uploading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--doc-text);
+  font-size: 14px;
+  line-height: 1;
+}
+
+html.dark .doc-media-uploading {
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.doc-media-handle {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 48px;
+  max-height: 50%;
+  border-radius: 999px;
+  background: rgba(15, 15, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%);
+  opacity: 0;
+  cursor: col-resize;
+  transition: opacity 0.12s ease;
+}
+
+.doc-media-handle.is-left {
+  left: 8px;
+}
+
+.doc-media-handle.is-right {
+  right: 8px;
+}
+
+.doc-media-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--doc-surface);
+  box-shadow: var(--doc-shadow);
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.doc-media-frame:hover .doc-media-handle,
+.doc-media-frame.is-selected .doc-media-handle,
+.doc-media-frame.is-resizing .doc-media-handle,
+.doc-media-frame:hover .doc-media-toolbar,
+.doc-media-frame.is-selected .doc-media-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.doc-media-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--doc-text);
+}
+
+.doc-media-toolbar-button:hover {
+  background: var(--doc-hover);
+}
+
+.doc-media-toolbar-button.is-active {
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+}
+
+.doc-media-toolbar-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--doc-border-strong);
+}
+
+/* Cards: audio, file, web bookmark */
+.doc-card {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--doc-border-strong);
+  border-radius: 6px;
+  background: var(--doc-surface);
+  transition: background-color 0.1s ease;
+}
+
+.doc-card:hover {
+  background: var(--doc-hover-soft);
+}
+
+.doc-card.is-selected {
+  outline: 2px solid var(--doc-accent);
+  outline-offset: 1px;
+}
+
+.doc-card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.doc-card-icon {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: var(--doc-panel-alt);
+  color: var(--doc-text-secondary);
+}
+
+.doc-card-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--doc-text);
+}
+
+.doc-card-row > .doc-card-title {
+  flex: 1;
+}
+
+.doc-card-link:hover {
+  text-decoration: underline;
+}
+
+.doc-card-meta {
+  font-size: 13px;
+  color: var(--doc-text-faint);
+  white-space: nowrap;
+}
+
+.doc-card-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--doc-text-secondary);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.doc-card:hover .doc-card-action,
+.doc-card.is-selected .doc-card-action {
+  opacity: 1;
+}
+
+.doc-card-action:hover {
+  background: var(--doc-hover);
+  color: var(--doc-text);
+}
+
+.doc-audio-player {
+  width: 100%;
+  height: 40px;
+  margin-top: 10px;
+}
+
+/* ── Block handle ────────────────────────────────────────────────────────── */
+
+.doc-block-handle {
+  position: absolute;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  z-index: 5;
+  animation: doc-fade-in 0.12s ease;
+}
+
+.doc-block-handle-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--doc-text-faint);
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.doc-block-handle-button:hover {
+  background: var(--doc-hover-soft);
+  color: var(--doc-text-secondary);
+}
+
+.doc-block-handle-button.is-grip {
+  width: 18px;
+  cursor: grab;
+}
+
+.doc-block-handle-button.is-grip:active {
+  cursor: grabbing;
+}
+
+.doc-empty-add {
+  position: absolute;
+  left: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: var(--doc-accent);
+  color: #ffffff;
+  z-index: 5;
+}
+
+.doc-empty-add:hover {
+  background: var(--doc-accent-hover);
+}
+
+@keyframes doc-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ── "/" and "@" menus (Notion's look) ───────────────────────────────────── */
+
+.doc-suggestion {
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--doc-surface);
+  box-shadow: var(--doc-shadow);
+}
+
+.doc-menu-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.doc-menu-section.is-divided {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--doc-border);
+}
+
+.doc-menu-section-label {
+  padding: 6px 8px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--doc-text-secondary);
+}
+
+.doc-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--doc-text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.doc-menu-row[data-selected="true"] {
+  background: var(--doc-hover-soft);
+}
+
+.doc-menu-row-icon {
+  flex: none;
+  color: var(--doc-text);
+}
+
+.doc-menu-row-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.doc-menu-row-shortcut {
+  flex: none;
+  max-width: 45%;
+  font-size: 12px;
+  color: var(--doc-text-faint);
+}
+
+.doc-menu-empty {
+  padding: 10px 8px;
+  font-size: 14px;
+  color: var(--doc-text-faint);
+}
+
+.doc-menu-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-top: 1px solid var(--doc-border);
+  color: var(--doc-text);
+  font-size: 14px;
+}
+
+.doc-menu-footer:hover {
+  background: var(--doc-hover-soft);
+}
+
+/* ── Bubble menus ────────────────────────────────────────────────────────── */
+
+.doc-bubble {
+  z-index: 60;
+  padding: 4px;
+  border-radius: 8px;
+  background: var(--doc-surface);
+  box-shadow: var(--doc-shadow);
+}
+
+.doc-bubble-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.doc-bubble-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  color: var(--doc-text);
+}
+
+.doc-bubble-button:hover {
+  background: var(--doc-hover);
+}
+
+.doc-bubble-button.is-active {
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+}
+
+.doc-bubble-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+  background: var(--doc-border-strong);
+}
+
+.doc-bubble-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--doc-border);
+}
+
+.doc-bubble-link .doc-input {
+  width: 240px;
+}
+
+/* ── Popovers, colors and inputs ─────────────────────────────────────────── */
+
+.doc-popover-label {
+  padding: 6px 4px 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--doc-text-secondary);
+}
+
+.doc-color-palette {
+  padding: 4px 0 0;
+  min-width: 232px;
+}
+
+.doc-color-grid {
+  display: grid;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 3px;
+  padding: 0 2px 4px;
+}
+
+.doc-color-swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid var(--doc-border);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.doc-color-swatch:hover {
+  border-color: var(--doc-text-faint);
+}
+
+.doc-color-swatch.is-active {
+  outline: 2px solid var(--doc-accent);
+  outline-offset: 1px;
+}
+
+.doc-color-swatch.is-clear {
+  background: linear-gradient(135deg, transparent 45%, var(--doc-danger) 45%, var(--doc-danger) 55%, transparent 55%);
+}
+
+.doc-input {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--doc-border-strong);
+  border-radius: 4px;
+  background: var(--doc-surface);
+  color: var(--doc-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.doc-input:focus {
+  border-color: var(--doc-accent);
+}
+
+.doc-input.is-large {
+  width: 100%;
+  height: 40px;
+}
+
+/* ── Media dialog ────────────────────────────────────────────────────────── */
+
+.doc-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.doc-dialog-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--doc-overlay);
+}
+
+.doc-dialog {
+  position: relative;
+  width: 520px;
+  max-width: 100%;
+  border-radius: 8px;
+  background: var(--doc-surface);
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+}
+
+.doc-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 24px 8px;
+}
+
+.doc-dialog-title {
+  font-family: var(--doc-font-heading);
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--doc-text);
+}
+
+.doc-dialog-tabs {
+  display: flex;
+  gap: 16px;
+  margin: 0 24px;
+  border-bottom: 1px solid var(--doc-border);
+}
+
+.doc-dialog-tab {
+  padding: 10px 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  font-size: 14px;
+  color: var(--doc-text-secondary);
+}
+
+.doc-dialog-tab[aria-selected="true"] {
+  border-bottom-color: var(--doc-accent);
+  color: var(--doc-text);
+  font-weight: 500;
+}
+
+.doc-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 20px 24px 24px;
+}
+
+.doc-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  border: 1px dashed var(--doc-border-strong);
+  border-radius: 8px;
+  color: var(--doc-text-secondary);
+  transition: border-color 0.1s ease, background-color 0.1s ease;
+}
+
+.doc-dropzone:hover,
+.doc-dropzone.is-over {
+  border-color: var(--doc-accent);
+  background: var(--doc-accent-soft);
+  color: var(--doc-accent);
+}
+
+.doc-dropzone-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--doc-text);
+}
+
+.doc-dropzone-hint,
+.doc-field-hint {
+  font-size: 13px;
+  color: var(--doc-text-faint);
+}
+
+.doc-field-label {
+  font-size: 14px;
+  color: var(--doc-text);
+}
+
+.doc-field-error {
+  font-size: 13px;
+  color: var(--doc-danger);
+}
+
+.doc-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+/* ── Outline ─────────────────────────────────────────────────────────────── */
+
+.doc-outline {
+  width: 240px;
+  padding: 8px;
+}
+
+.doc-outline-title {
+  padding: 6px 8px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--doc-text-faint);
+}
+
+.doc-outline-empty {
+  padding: 4px 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--doc-text-faint);
+}
+
+.doc-outline-item {
+  display: block;
+  width: 100%;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-right: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13.5px;
+  color: var(--doc-text-secondary);
+  text-align: left;
+}
+
+.doc-outline-item:hover {
+  background: var(--doc-hover-soft);
+  color: var(--doc-text);
+}
+
+/* ── Print ───────────────────────────────────────────────────────────────── */
+
+@media print {
+  .doc-toolbar,
+  .doc-block-handle,
+  .doc-empty-add,
+  .doc-print-hidden {
+    display: none !important;
+  }
+}
