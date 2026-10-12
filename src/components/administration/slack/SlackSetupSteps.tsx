@@ -25,7 +25,11 @@ const SlackSetupSteps: React.FC<SlackSetupStepsProps> = ({ status }) => {
     {
       key: "app",
       title: "Set up the Slack app",
-      detail: status?.is_configured ? "Saved, done once for the whole account." : "Create it with a configuration token or paste its credentials.",
+      detail: status?.is_configured
+        ? status.credentials_source === "database"
+          ? `Using the ${status.app_name ?? "testing"} app for testing.`
+          : `Using the ${status.app_name ?? "production"} app from the server.`
+        : "Add the SLACK_* variables to the API .env file, or save a testing app.",
       is_done: status?.is_configured ?? false,
     },
     {

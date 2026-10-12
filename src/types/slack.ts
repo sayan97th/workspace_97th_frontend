@@ -29,11 +29,17 @@ export type SlackUserLinkDto = {
  */
 export type SlackLinkMethod = "sign_in" | "authorize";
 
-/** Whether a Slack app was saved in Administration > Integrations > Slack, the only place it is read from. */
-export type SlackCredentialsSource = "database" | "none";
+/**
+ * Which Slack app the integration uses: `environment` is the production 97th Floor app, read from
+ * the API .env file, `database` is the testing app saved in Administration > Integrations > Slack.
+ */
+export type SlackCredentialsSource = "environment" | "database" | "none";
+
+/** The two Slack apps an administrator can switch between. */
+export type SlackSelectableAppSource = Exclude<SlackCredentialsSource, "none">;
 
 export type SlackStatusDto = {
-  /** Whether the Slack app credentials were saved in Administration > Integrations > Slack. */
+  /** Whether a Slack app is set up, the production app on the server or a testing app. */
   is_configured: boolean;
   is_connected: boolean;
   /** True until the Slack app is set up and a workspace is connected, "Connect my Slack" cannot work before that. */
@@ -47,6 +53,8 @@ export type SlackStatusDto = {
   /** Which Slack page "Connect my Slack" opens, older API answers omit it. */
   link_method?: SlackLinkMethod;
   credentials_source: SlackCredentialsSource;
+  /** Name of the Slack app in use, "97th Floor" or the testing app's name. */
+  app_name?: string | null;
   /** How many Slack workspaces are connected, only one of them is active. */
   workspaces_count: number;
   /** The active workspace, the one notifications and automations use. */
@@ -124,6 +132,8 @@ export type SlackConnectedWorkspaceDto = {
   linked_members_count: number;
   /** Bot scopes this workspace was installed without, "Reconnect" grants them. */
   missing_scopes: string[];
+  /** Which Slack app installed it, null when it matches neither of the two apps. */
+  app_source?: SlackSelectableAppSource | null;
 };
 
 /** Answer of the workspace actions: a message, the refreshed status and the refreshed list. */
@@ -139,10 +149,42 @@ export type SlackMemberMatchResult = {
 };
 
 /** `GET /api/integrations/slack/app`. Secrets are never returned, only their last four characters. */
+/** The production 97th Floor app, read only, it is set in the API .env file (SLACK_* variables). */
+export type SlackEnvironmentAppDto = {
+  name: string;
+  is_configured: boolean;
+  is_active: boolean;
+  app_id: string | null;
+  app_settings_url: string | null;
+  client_id: string | null;
+  client_secret_hint: string | null;
+  signing_secret_hint: string | null;
+  has_verification_token: boolean;
+  redirect_uri: string;
+};
+
+/** The testing app saved from Administration, for example the Make It Simple app. */
+export type SlackTestingAppDto = {
+  /** The label, or "Testing" when none was given. */
+  name: string;
+  label: string | null;
+  is_active: boolean;
+  app_id: string | null;
+  app_settings_url: string | null;
+  client_id: string;
+  client_secret_hint: string | null;
+  signing_secret_hint: string | null;
+  redirect_uri: string;
+  updated_at: string | null;
+  updated_by: string | null;
+};
+
+/** The Slack app in use (top level fields) plus a summary of each of the two apps. */
 export type SlackAppCredentialsDto = {
   source: SlackCredentialsSource;
   is_configured: boolean;
-  /** Set when the site created the app itself, links below go to that app in Slack. */
+  app_name: string | null;
+  /** Slack app id of the app in use, links below go to that app in Slack. */
   app_id: string | null;
   app_settings_url: string | null;
   /** Where public distribution is turned on, needed to add the app to more than one workspace. */
@@ -162,10 +204,13 @@ export type SlackAppCredentialsDto = {
   updated_by: string | null;
   /** A Slack app manifest, pasted into "Create New App > From an app manifest". */
   manifest: Record<string, unknown>;
+  environment_app: SlackEnvironmentAppDto;
+  testing_app: SlackTestingAppDto | null;
 };
 
-/** Body of `PUT /api/integrations/slack/app`, a blank secret keeps the saved one. */
+/** Body of `PUT /api/integrations/slack/app`, saves the testing app, a blank secret keeps the saved one. */
 export type SlackAppCredentialsPayload = {
+  label?: string | null;
   client_id: string;
   client_secret?: string | null;
   signing_secret?: string | null;

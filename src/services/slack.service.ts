@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   SlackAppCredentialsDto,
   SlackAppCredentialsPayload,
+  SlackSelectableAppSource,
   SlackAuthorizationDisplay,
   SlackChannelDto,
   SlackConnectedWorkspaceDto,
@@ -103,7 +104,7 @@ export const slackService = {
     return apiClient.post<SlackWorkspacesResponse & { result: SlackMemberMatchResult }>("/api/integrations/slack/match-members");
   },
 
-  /** GET /api/integrations/slack/app, account owner only. */
+  /** GET /api/integrations/slack/app, administrators only. The app in use plus the production and testing apps. */
   async getAppCredentials(): Promise<SlackAppCredentialsDto> {
     return apiClient.get<SlackAppCredentialsDto>("/api/integrations/slack/app");
   },
@@ -116,14 +117,22 @@ export const slackService = {
     return apiClient.post<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/create", { configuration_token });
   },
 
-  /** PUT /api/integrations/slack/app, account owner only. */
+  /** PUT /api/integrations/slack/app, administrators only. Saves the testing app, it is not used until selected. */
   async saveAppCredentials(payload: SlackAppCredentialsPayload): Promise<SlackAppCredentialsDto & { message: string }> {
     return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app", payload);
   },
 
-  /** DELETE /api/integrations/slack/app, account owner only. Connected workspaces keep working, new ones cannot be added until an app is saved again. */
+  /** DELETE /api/integrations/slack/app, administrators only. Removes the testing app, the production app takes over. */
   async clearAppCredentials(): Promise<SlackAppCredentialsDto & { message: string }> {
     return apiClient.delete<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app");
+  },
+
+  /**
+   * PUT /api/integrations/slack/app/active, administrators only. Switches between the production
+   * app (`environment`) and the testing app (`database`), the active workspace follows the app.
+   */
+  async selectApp(source: SlackSelectableAppSource): Promise<SlackAppCredentialsDto & { message: string }> {
+    return apiClient.put<SlackAppCredentialsDto & { message: string }>("/api/integrations/slack/app/active", { source });
   },
 
   /** DELETE /api/integrations/slack/link */

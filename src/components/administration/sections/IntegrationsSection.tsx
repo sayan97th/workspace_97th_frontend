@@ -34,11 +34,14 @@ const IntegrationsSection: React.FC = () => {
   const workspaces_count = status?.workspaces_count ?? 0;
   const needs_setup = slackNeedsSetup(status);
 
+  const is_testing_app = status?.credentials_source === "database";
+  const app_summary = status?.app_name ? ` Using the ${status.app_name} Slack app${is_testing_app ? " for testing" : ""}.` : "";
+
   let summary: string;
   if (!needs_setup && workspace) {
-    summary = `Active workspace: ${workspace.team_name}.${workspaces_count > 1 ? ` ${workspaces_count} workspaces are connected.` : ""}`;
+    summary = `Active workspace: ${workspace.team_name}.${workspaces_count > 1 ? ` ${workspaces_count} workspaces are connected.` : ""}${can_manage ? app_summary : ""}`;
   } else if (status?.is_configured) {
-    summary = "The Slack app is set up. Connect a Slack workspace to start sending notifications.";
+    summary = `The Slack app is set up.${can_manage ? app_summary : ""} Connect a Slack workspace to start sending notifications.`;
   } else {
     summary = "Send notifications and automation messages straight to Slack. Set it up once for the whole account.";
   }
@@ -61,6 +64,7 @@ const IntegrationsSection: React.FC = () => {
               ) : (
                 <span className="admin-pill admin-pill-success">Connected</span>
               )}
+              {can_manage && is_testing_app ? <span className="admin-pill admin-pill-warning">Testing app</span> : null}
             </div>
             <p className="mt-1 text-[14px] leading-5 text-shell-text-secondary">{summary}</p>
           </div>

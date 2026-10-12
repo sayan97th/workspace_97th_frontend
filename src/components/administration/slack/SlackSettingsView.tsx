@@ -18,7 +18,8 @@ import { SLACK_SETUP_REASON_PARAM, slackNeedsSetup } from "@/lib/slackSetup";
  * Administration > Connections > Slack settings (`/administration?section=slack`).
  *
  * The one place the Slack integration is set up, kept apart from "Connect my Slack" on purpose:
- * an administrator or the account owner saves the Slack app once and connects a workspace here,
+ * the production 97th Floor app comes from the API .env file, an administrator can switch to a
+ * testing app, and connects a workspace here,
  * after which every member only links their own account from My Profile. "Connect my Slack"
  * sends administrators here while the setup is unfinished (`&reason=connect`), and the Slack
  * OAuth callback returns here with `&slack=connected` when the flow could not use a new tab.
@@ -47,6 +48,9 @@ const SlackSettingsView: React.FC = () => {
             <span className="admin-pill admin-pill-success">Connected</span>
           )
         ) : null}
+        {!slack.is_loading && status?.credentials_source === "database" ? (
+          <span className="admin-pill admin-pill-warning">Testing app in use</span>
+        ) : null}
         {workspace?.team_url ? (
           <a href={workspace.team_url} target="_blank" rel="noopener noreferrer" className={`${SECONDARY_BUTTON} gap-1.5`}>
             Open Slack
@@ -57,7 +61,7 @@ const SlackSettingsView: React.FC = () => {
 
       {came_from_connect && needs_setup && !slack.is_loading ? (
         <div className="admin-notice admin-notice-info">
-          <span className="font-semibold">Finish the Slack setup first.</span> &quot;Connect my Slack&quot; works once the Slack app is saved and a
+          <span className="font-semibold">Finish the Slack setup first.</span> &quot;Connect my Slack&quot; works once a Slack app is set up and a
           workspace is connected. Complete the steps below, then connect your own account from My Profile.
         </div>
       ) : null}

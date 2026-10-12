@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import type { SlackAdministrationApi } from "@/hooks/useSlackAdministration";
-import type { SlackAppCredentialsDto } from "@/types/slack";
+import type { SlackSelectableAppSource } from "@/types/slack";
 import {
   FIELD_LABEL,
   PRIMARY_BUTTON,
@@ -17,10 +17,8 @@ export type SlackAppCredentialsCardProps = {
   admin: SlackAdministrationApi;
 };
 
-const SOURCE_LABELS: Record<SlackAppCredentialsDto["source"], string> = {
-  database: "Connected",
-  none: "Not set",
-};
+/** The environment variables the production app is read from, listed when one is missing. */
+const ENVIRONMENT_VARIABLES = ["SLACK_APP_ID", "SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET", "SLACK_SIGNING_SECRET"];
 
 const CopyButton: React.FC<{ value: string; label?: string }> = ({ value, label = "Copy" }) => {
   const [is_copied, setIsCopied] = useState(false);
@@ -52,19 +50,71 @@ const CopyField: React.FC<{ label: string; value: string }> = ({ label, value })
   </div>
 );
 
+type AppOptionProps = {
+  name: string;
+  kind_label: string;
+  is_active: boolean;
+  details: string[];
+  /** Shown instead of the details while the app is not set up. */
+  empty_message?: React.ReactNode;
+  children?: React.ReactNode;
+};
+
+/** One of the two Slack apps, with whether it is in use and its actions. */
+const AppOption: React.FC<AppOptionProps> = ({ name, kind_label, is_active, details, empty_message, children }) => (
+  <li
+    className={`rounded-lg border p-4 ${
+      is_active ? "border-[var(--admin-button-primary)] bg-[var(--admin-button-primary)]/[0.05]" : "border-[var(--admin-list-border)] bg-shell-panel"
+    }`}
+  >
+    <div className="flex flex-wrap items-start gap-3">
+      <span
+        aria-hidden="true"
+        className={`mt-1 flex h-4 w-4 flex-none items-center justify-center rounded-full border-2 ${
+          is_active ? "border-[var(--admin-button-primary)]" : "border-shell-border-strong"
+        }`}
+      >
+        {is_active ? <span className="h-2 w-2 rounded-full bg-[var(--admin-button-primary)]" /> : null}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[14px] font-semibold text-shell-text">{name}</span>
+          <span className="rounded-md bg-shell-hover px-2 py-0.5 text-[11px] font-bold text-shell-text-secondary">{kind_label}</span>
+          {is_active ? <span className="admin-pill admin-pill-success">In use</span> : null}
+        </div>
+        {empty_message ? (
+          <div className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">{empty_message}</div>
+        ) : (
+          <div className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">{details.filter(Boolean).join(" · ")}</div>
+        )}
+      </div>
+
+      {children ? <div className="flex flex-none flex-wrap gap-2">{children}</div> : null}
+    </div>
+  </li>
+);
+
+function secretDetails(credentials: { client_id: string | null; client_secret_hint: string | null; signing_secret_hint: string | null }): string[] {
+  return [
+    credentials.client_id ? `Client ID ${credentials.client_id}` : "",
+    credentials.client_secret_hint ? `Client secret ${credentials.client_secret_hint}` : "No client secret",
+    credentials.signing_secret_hint ? `Signing secret ${credentials.signing_secret_hint}` : "No signing secret",
+  ];
+}
+
 /**
- * Administration > Integrations > Slack > Slack app, administrators and the account owner. The
- * Slack app is set up once, like monday.com's own app, after which administrators only ever use
- * "Add workspace" and members only use "Connect my Slack".
+ * Administration > Integrations > Slack > Slack app, administrators and the account owner.
  *
- * Quick setup creates the app from a single app configuration token, the site sends its own
- * manifest and saves the credentials Slack answers with. The manual path (manifest plus three
- * credentials) stays as a fallback. Turning on public distribution, which lets the same app be
- * added to every workspace, is the one step Slack keeps on its own site.
+ * Two apps, like a production and a staging environment. The production 97th Floor app is read
+ * from the API .env file (SLACK_* variables) and is read only here. The testing app, for example
+ * the Make It Simple app, is saved from this card so changes can be tried without messaging the
+ * 97th Floor workspace. An administrator switches between them and the active workspace follows.
  */
 const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin }) => {
   const credentials = admin.credentials;
   const [is_open, setIsOpen] = useState(false);
+  const [label, setLabel] = useState("");
   const [client_id, setClientId] = useState("");
   const [client_secret, setClientSecret] = useState("");
   const [signing_secret, setSigningSecret] = useState("");
@@ -73,14 +123,15 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
   const [configuration_token, setConfigurationToken] = useState("");
   const [is_manual, setIsManual] = useState(false);
 
-  // Opens on its own while nothing is set, there is nothing else to do on the page until then.
+  // Opens on its own while no app is set at all, there is nothing else to do on the page until then.
   useEffect(() => {
     if (credentials && !credentials.is_configured) setIsOpen(true);
   }, [credentials]);
 
   useEffect(() => {
     if (!credentials) return;
-    setClientId(credentials.source === "database" ? credentials.client_id ?? "" : "");
+    setLabel(credentials.testing_app?.label ?? "");
+    setClientId(credentials.testing_app?.client_id ?? "");
     setRedirectUri(credentials.redirect_uri_override ?? "");
     setClientSecret("");
     setSigningSecret("");
@@ -88,19 +139,24 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
 
   if (!credentials) return null;
 
-  const is_saved_app = credentials.source === "database" && client_id.trim() === credentials.client_id;
+  const environment_app = credentials.environment_app;
+  const testing_app = credentials.testing_app;
+  const is_saved_app = testing_app !== null && client_id.trim() === testing_app.client_id;
   const is_saving = admin.busy_key === "credentials";
+  const is_switching = admin.busy_key === "select_app";
   const can_save = client_id.trim() !== "" && (is_saved_app || client_secret.trim() !== "");
   const manifest_json = JSON.stringify(credentials.manifest, null, 2);
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
-    await admin.saveCredentials({
+    const is_saved = await admin.saveCredentials({
+      label: label.trim() || null,
       client_id: client_id.trim(),
       client_secret: client_secret.trim() || null,
       signing_secret: signing_secret.trim() || null,
       redirect_uri: redirect_uri.trim() || null,
     });
+    if (is_saved) setIsOpen(false);
   };
 
   const createApp = async (event: React.FormEvent) => {
@@ -112,130 +168,154 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
   };
 
   const clear = async () => {
-    if (await admin.clearCredentials()) setIsConfirmingClear(false);
+    if (await admin.clearCredentials()) {
+      setIsConfirmingClear(false);
+      setIsOpen(false);
+    }
   };
+
+  const selectApp = (source: SlackSelectableAppSource) => void admin.selectApp(source);
 
   return (
     <section className={SECTION_CARD}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className={SECTION_TITLE}>Slack app</h3>
-            <span
-              className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
-                credentials.is_configured ? "bg-shell-hover text-shell-text-secondary" : "bg-[var(--admin-danger-bg)] text-[var(--admin-danger-text)]"
-              }`}
-            >
-              {SOURCE_LABELS[credentials.source]}
-            </span>
-          </div>
-          <p className={SECTION_HINT}>
-            {credentials.is_configured
-              ? `Client ID ${credentials.client_id}${credentials.updated_by ? `, updated by ${credentials.updated_by}` : ""}${
-                  credentials.updated_at ? ` on ${format(new Date(credentials.updated_at), "MMM d, yyyy")}` : ""
-                }.`
-              : "Set up the Slack app once, then administrators can add workspaces by signing in to Slack."}
-          </p>
-        </div>
-        <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={is_open} className={`${SECONDARY_BUTTON} flex-none`}>
-          {is_open ? "Close" : credentials.is_configured ? "Change app" : "Set up"}
-        </button>
+      <div className="min-w-0">
+        <h3 className={SECTION_TITLE}>Slack app</h3>
+        <p className={SECTION_HINT}>
+          Production uses the {environment_app.name} Slack app set on the server. Switch to a testing app to try changes without messaging the{" "}
+          {environment_app.name} workspace.
+        </p>
       </div>
+
+      {credentials.source === "database" && environment_app.is_configured ? (
+        <div className="mt-4 admin-notice admin-notice-warning">
+          <span className="font-bold">Testing app in use.</span> Notifications and automations go through {testing_app?.label ?? "the testing app"}. Switch back to{" "}
+          {environment_app.name} when you finish testing.
+        </div>
+      ) : null}
+
+      <ul className="mt-4 flex flex-col gap-3">
+        <AppOption
+          name={environment_app.name}
+          kind_label="Production"
+          is_active={environment_app.is_active}
+          details={[...secretDetails(environment_app), "Set in the API .env file"]}
+          empty_message={
+            environment_app.is_configured ? undefined : (
+              <>
+                Not set on the server. Add {ENVIRONMENT_VARIABLES.map((variable, index) => (
+                  <React.Fragment key={variable}>
+                    {index > 0 ? ", " : ""}
+                    <code className="text-[12px]">{variable}</code>
+                  </React.Fragment>
+                ))}{" "}
+                to the API .env file.
+              </>
+            )
+          }
+        >
+          {environment_app.is_configured && !environment_app.is_active ? (
+            <button type="button" onClick={() => selectApp("environment")} disabled={admin.busy_key !== null} className={PRIMARY_BUTTON}>
+              {is_switching ? "Switching…" : "Use this app"}
+            </button>
+          ) : null}
+          {environment_app.app_settings_url ? (
+            <a href={environment_app.app_settings_url} target="_blank" rel="noopener noreferrer" className={SECONDARY_BUTTON}>
+              Open in Slack
+            </a>
+          ) : null}
+        </AppOption>
+
+        <AppOption
+          name={testing_app?.label ?? "Testing app"}
+          kind_label="Testing"
+          is_active={testing_app?.is_active ?? false}
+          details={
+            testing_app
+              ? [
+                  ...secretDetails(testing_app),
+                  testing_app.updated_by || testing_app.updated_at
+                    ? `Updated${testing_app.updated_by ? ` by ${testing_app.updated_by}` : ""}${
+                        testing_app.updated_at ? ` on ${format(new Date(testing_app.updated_at), "MMM d, yyyy")}` : ""
+                      }`
+                    : "",
+                ]
+              : []
+          }
+          empty_message={testing_app ? undefined : "Optional. Save a second Slack app, for example the Make It Simple app, to test without reaching production."}
+        >
+          {testing_app && !testing_app.is_active ? (
+            <button type="button" onClick={() => selectApp("database")} disabled={admin.busy_key !== null} className={PRIMARY_BUTTON}>
+              {is_switching ? "Switching…" : "Use this app"}
+            </button>
+          ) : null}
+          <button type="button" onClick={() => setIsOpen((open) => !open)} aria-expanded={is_open} className={SECONDARY_BUTTON}>
+            {is_open ? "Close" : testing_app ? "Edit" : "Add testing app"}
+          </button>
+          {testing_app && !is_confirming_clear ? (
+            <button type="button" onClick={() => setIsConfirmingClear(true)} disabled={admin.busy_key !== null} className={SECONDARY_BUTTON}>
+              Remove
+            </button>
+          ) : null}
+        </AppOption>
+      </ul>
+
+      {is_confirming_clear ? (
+        <div className="mt-4 rounded-[9px] border border-[#e2445c]/25 bg-[#e2445c]/[0.06] p-3.5">
+          <div className="text-[13px] font-bold text-shell-text">Remove the testing app?</div>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
+            {environment_app.is_configured
+              ? `Slack goes back to the ${environment_app.name} app. Workspaces added with the testing app stay connected until you disconnect them.`
+              : "No Slack app is set on the server, so no new workspace can be connected until a testing app is saved again."}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => void clear()}
+              disabled={is_saving}
+              className="rounded-[4px] bg-[#d83a52] px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
+            >
+              {is_saving ? "Removing…" : "Remove"}
+            </button>
+            <button type="button" onClick={() => setIsConfirmingClear(false)} className={SECONDARY_BUTTON}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {credentials.is_configured ? (
+        <div className="mt-4">
+          <div className="text-[13px] font-bold text-shell-text">URLs to register in the {credentials.app_name ?? "Slack"} app</div>
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <CopyField label="Redirect URL" value={credentials.redirect_uri} />
+            <CopyField label="Events request URL" value={credentials.events_url} />
+          </div>
+        </div>
+      ) : null}
 
       {credentials.is_configured && credentials.distribution_url ? (
         <div className="mt-4 admin-notice admin-notice-info">
-          <span className="font-bold">Last step in Slack:</span> to add this app to more than one workspace, open{" "}
+          <span className="font-bold">Adding more workspaces:</span> to add the {credentials.app_name ?? "Slack"} app to a workspace other than the one it
+          was created in, open{" "}
           <a href={credentials.distribution_url} target="_blank" rel="noopener noreferrer" className="admin-link">
             Manage Distribution
           </a>{" "}
           and click Activate Public Distribution. Slack requires an HTTPS redirect URL for that.
-          {credentials.app_settings_url ? (
-            <>
-              {" "}
-              <a href={credentials.app_settings_url} target="_blank" rel="noopener noreferrer" className="admin-link">
-                Open the app in Slack
-              </a>
-              .
-            </>
-          ) : null}
         </div>
       ) : null}
 
       {is_open ? (
         <div className="mt-4 border-t border-shell-border pt-4">
-          <form onSubmit={(event) => void createApp(event)}>
-            <div className="text-[13px] font-bold text-shell-text">Quick setup</div>
-            <ol className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed text-shell-text-muted">
-              <li>
-                1. Open{" "}
-                <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="admin-link">
-                  api.slack.com/apps
-                </a>{" "}
-                and, under &quot;Your App Configuration Tokens&quot;, click Generate Token.
-              </li>
-              <li>2. Choose the workspace the app should belong to, for example 97th Floor, and click Generate.</li>
-              <li>3. Copy the Access Token (it starts with xoxe.xoxp-) and paste it here. It is used once and never stored.</li>
-            </ol>
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-              <input
-                type="password"
-                value={configuration_token}
-                onChange={(event) => setConfigurationToken(event.target.value)}
-                placeholder="xoxe.xoxp-..."
-                autoComplete="off"
-                aria-label="App configuration access token"
-                className={`${TEXT_INPUT} !mt-0 flex-1`}
-              />
-              <button type="submit" disabled={!configuration_token.trim().startsWith("xoxe.xoxp-") || is_saving} className={`${PRIMARY_BUTTON} flex-none`}>
-                {is_saving ? "Creating…" : credentials.is_configured ? "Create a new Slack app" : "Create Slack app"}
-              </button>
-            </div>
-            {credentials.is_configured ? (
-              <p className="mt-2 text-[12px] text-shell-text-faint">Creating a new app replaces the current one. Workspaces already connected keep working until you reconnect them.</p>
-            ) : null}
-            {!credentials.can_receive_events ? (
-              <p className="mt-2 text-[12px] text-shell-text-faint">
-                This API is not reachable from the internet, so the app is created without event subscriptions. Removing the app from a workspace is then only noticed on the next message.
-              </p>
-            ) : null}
-          </form>
+          <div className="text-[14px] font-semibold text-shell-text">{testing_app ? `Edit ${testing_app.label ?? "the testing app"}` : "Add a testing app"}</div>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
+            Saving does not switch to it. Use &quot;Use this app&quot; above when you want to test with it.
+          </p>
 
-          <button type="button" onClick={() => setIsManual((manual) => !manual)} aria-expanded={is_manual} className="mt-5 text-[12.5px] admin-link">
-            {is_manual ? "Hide manual setup" : "Enter credentials manually instead"}
-          </button>
-
-          {is_manual ? (
-          <div className="mt-4">
-          <ol className="flex flex-col gap-3 text-[12.5px] leading-relaxed text-shell-text-muted">
-            <li>
-              <span className="font-bold text-shell-text-secondary">1. Create the Slack app.</span> Open{" "}
-              <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noopener noreferrer" className="admin-link">
-                api.slack.com/apps
-              </a>
-              , choose &quot;From a manifest&quot;, pick any workspace you own and paste this manifest. It already has the redirect URL, events URL and permissions.
-              <div className="mt-2 flex items-start gap-2">
-                <pre className="max-h-[140px] min-w-0 flex-1 overflow-auto rounded-[8px] border border-shell-border bg-shell-panel px-3 py-2 text-[11.5px] text-shell-text-secondary">
-                  {manifest_json}
-                </pre>
-                <CopyButton value={manifest_json} label="Copy manifest" />
-              </div>
-            </li>
-            <li>
-              <span className="font-bold text-shell-text-secondary">2. Allow it in every workspace.</span> In the Slack app, open Manage Distribution and
-              activate public distribution. Without it the app can only be added to the workspace it was created in.
-            </li>
-            <li>
-              <span className="font-bold text-shell-text-secondary">3. Paste the credentials below.</span> They are on the Basic Information page of the Slack
-              app, under App Credentials.
-            </li>
-          </ol>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <CopyField label="Redirect URL" value={credentials.redirect_uri} />
-            <CopyField label="Events request URL" value={credentials.events_url} />
-          </div>
-
-          <form onSubmit={(event) => void save(event)} className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <form onSubmit={(event) => void save(event)} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className={FIELD_LABEL}>Name</span>
+              <input value={label} onChange={(event) => setLabel(event.target.value)} placeholder="Make It Simple" maxLength={80} autoComplete="off" className={TEXT_INPUT} />
+            </label>
             <label className="block">
               <span className={FIELD_LABEL}>Client ID</span>
               <input value={client_id} onChange={(event) => setClientId(event.target.value)} placeholder="1234567890.1234567890" autoComplete="off" className={TEXT_INPUT} />
@@ -246,7 +326,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
                 type="password"
                 value={client_secret}
                 onChange={(event) => setClientSecret(event.target.value)}
-                placeholder={is_saved_app && credentials.client_secret_hint ? `Saved ${credentials.client_secret_hint}, leave blank to keep` : "Client secret"}
+                placeholder={is_saved_app && testing_app?.client_secret_hint ? `Saved ${testing_app.client_secret_hint}, leave blank to keep` : "Client secret"}
                 autoComplete="new-password"
                 className={TEXT_INPUT}
               />
@@ -257,12 +337,12 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
                 type="password"
                 value={signing_secret}
                 onChange={(event) => setSigningSecret(event.target.value)}
-                placeholder={is_saved_app && credentials.signing_secret_hint ? `Saved ${credentials.signing_secret_hint}, leave blank to keep` : "Signing secret"}
+                placeholder={is_saved_app && testing_app?.signing_secret_hint ? `Saved ${testing_app.signing_secret_hint}, leave blank to keep` : "Signing secret"}
                 autoComplete="new-password"
                 className={TEXT_INPUT}
               />
             </label>
-            <label className="block">
+            <label className="block sm:col-span-2">
               <span className={FIELD_LABEL}>Redirect URL override (optional)</span>
               <input
                 value={redirect_uri}
@@ -274,44 +354,79 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
             </label>
 
             <p className="text-[12px] leading-relaxed text-shell-text-faint sm:col-span-2">
-              Slack only accepts HTTPS redirect URLs for &quot;Connect my Slack&quot;. Use the override when the API is reached through a tunnel. Workspaces
-              already connected keep working after you change the app, reconnect them to move them to the new one.
+              The values are on the Basic Information page of the Slack app, under App Credentials. Slack only accepts HTTPS redirect URLs for
+              &quot;Connect my Slack&quot;, use the override when the API is reached through a tunnel.
             </p>
 
             <div className="flex flex-wrap gap-2 sm:col-span-2">
               <button type="submit" disabled={!can_save || is_saving} className={PRIMARY_BUTTON}>
-                {is_saving ? "Saving…" : "Save credentials"}
+                {is_saving ? "Saving…" : "Save testing app"}
               </button>
-              {credentials.source === "database" && !is_confirming_clear ? (
-                <button type="button" onClick={() => setIsConfirmingClear(true)} disabled={is_saving} className={SECONDARY_BUTTON}>
-                  Remove saved credentials
-                </button>
-              ) : null}
             </div>
           </form>
 
-          {is_confirming_clear ? (
-            <div className="mt-4 rounded-[9px] border border-[#e2445c]/25 bg-[#e2445c]/[0.06] p-3.5">
-              <div className="text-[13px] font-bold text-shell-text">Remove the saved credentials?</div>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
-                Workspaces already connected keep working, but no new workspace can be connected until a Slack app is saved again.
-              </p>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => void clear()}
-                  disabled={is_saving}
-                  className="rounded-[4px] bg-[#d83a52] px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
-                >
-                  {is_saving ? "Removing…" : "Remove"}
-                </button>
-                <button type="button" onClick={() => setIsConfirmingClear(false)} className={SECONDARY_BUTTON}>
-                  Cancel
-                </button>
+          <button type="button" onClick={() => setIsManual((manual) => !manual)} aria-expanded={is_manual} className="mt-5 text-[12.5px] admin-link">
+            {is_manual ? "Hide the other ways to create a testing app" : "Do not have a testing app yet? Create one"}
+          </button>
+
+          {is_manual ? (
+            <div className="mt-4 flex flex-col gap-5">
+              <form onSubmit={(event) => void createApp(event)}>
+                <div className="text-[13px] font-bold text-shell-text">Create it with a configuration token</div>
+                <ol className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed text-shell-text-muted">
+                  <li>
+                    1. Open{" "}
+                    <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="admin-link">
+                      api.slack.com/apps
+                    </a>{" "}
+                    and, under &quot;Your App Configuration Tokens&quot;, click Generate Token.
+                  </li>
+                  <li>2. Choose the workspace you test in, for example Make It Simple, and click Generate.</li>
+                  <li>3. Copy the Access Token (it starts with xoxe.xoxp-) and paste it here. It is used once and never stored.</li>
+                </ol>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <input
+                    type="password"
+                    value={configuration_token}
+                    onChange={(event) => setConfigurationToken(event.target.value)}
+                    placeholder="xoxe.xoxp-..."
+                    autoComplete="off"
+                    aria-label="App configuration access token"
+                    className={`${TEXT_INPUT} !mt-0 flex-1`}
+                  />
+                  <button type="submit" disabled={!configuration_token.trim().startsWith("xoxe.xoxp-") || is_saving} className={`${PRIMARY_BUTTON} flex-none`}>
+                    {is_saving ? "Creating…" : "Create testing app"}
+                  </button>
+                </div>
+                {testing_app ? (
+                  <p className="mt-2 text-[12px] text-shell-text-faint">Creating a new app replaces the current testing app.</p>
+                ) : null}
+                {!credentials.can_receive_events ? (
+                  <p className="mt-2 text-[12px] text-shell-text-faint">
+                    This API is not reachable from the internet, so the app is created without event subscriptions. Removing the app from a workspace is
+                    then only noticed on the next message.
+                  </p>
+                ) : null}
+              </form>
+
+              <div>
+                <div className="text-[13px] font-bold text-shell-text">Or create it from this manifest</div>
+                <p className="mt-1 text-[12.5px] leading-relaxed text-shell-text-muted">
+                  Open{" "}
+                  <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noopener noreferrer" className="admin-link">
+                    api.slack.com/apps
+                  </a>
+                  , choose &quot;From a manifest&quot;, pick the workspace you test in and paste it. It already has the redirect URL, events URL and
+                  permissions. Then paste the credentials in the form above.
+                </p>
+                <div className="mt-2 flex items-start gap-2">
+                  <pre className="max-h-[140px] min-w-0 flex-1 overflow-auto rounded-[8px] border border-shell-border bg-shell-panel px-3 py-2 text-[11.5px] text-shell-text-secondary">
+                    {manifest_json}
+                  </pre>
+                  <CopyButton value={manifest_json} label="Copy manifest" />
+                </div>
               </div>
             </div>
-          ) : null}
-          </div>
           ) : null}
         </div>
       ) : null}

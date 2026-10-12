@@ -3,10 +3,16 @@ import { useCallback, useEffect, useState } from "react";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { slackService } from "@/services/slack.service";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
-import type { SlackAppCredentialsDto, SlackAppCredentialsPayload, SlackConnectedWorkspaceDto, SlackWorkspacesResponse } from "@/types/slack";
+import type {
+  SlackAppCredentialsDto,
+  SlackAppCredentialsPayload,
+  SlackConnectedWorkspaceDto,
+  SlackSelectableAppSource,
+  SlackWorkspacesResponse,
+} from "@/types/slack";
 
-/** What an administration action is running on: a workspace id, the credentials form or the email match. */
-export type SlackAdministrationBusyKey = number | "credentials" | "match" | null;
+/** What an administration action is running on: a workspace id, the credentials form, the app switch or the email match. */
+export type SlackAdministrationBusyKey = number | "credentials" | "select_app" | "match" | null;
 
 export type SlackAdministrationApi = {
   workspaces: SlackConnectedWorkspaceDto[];
@@ -22,6 +28,8 @@ export type SlackAdministrationApi = {
   /** Resolves to true when the credentials were saved. */
   saveCredentials: (payload: SlackAppCredentialsPayload) => Promise<boolean>;
   clearCredentials: () => Promise<boolean>;
+  /** Switches between the production app and the testing app, resolves to true when it worked. */
+  selectApp: (source: SlackSelectableAppSource) => Promise<boolean>;
 };
 
 /**
@@ -138,5 +146,29 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     [applyCredentials, runAction]
   );
 
-  return { workspaces, credentials, is_loading, busy_key, activateWorkspace, disconnectWorkspace, matchMembers, createApp, saveCredentials, clearCredentials };
+  const selectApp = useCallback(
+    async (source: SlackSelectableAppSource) => {
+      const response = await runAction("select_app", () => slackService.selectApp(source), "Failed to switch the Slack app.");
+      if (!response) return false;
+
+      // The active workspace follows the app, so the list is read again. A failed read keeps the current list.
+      await slackService.getWorkspaces().then(setWorkspaces, () => undefined);
+      return applyCredentials(response);
+    },
+    [applyCredentials, runAction]
+  );
+
+  return {
+    workspaces,
+    credentials,
+    is_loading,
+    busy_key,
+    activateWorkspace,
+    disconnectWorkspace,
+    matchMembers,
+    createApp,
+    saveCredentials,
+    clearCredentials,
+    selectApp,
+  };
 }
