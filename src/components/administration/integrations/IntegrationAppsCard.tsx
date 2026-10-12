@@ -89,7 +89,7 @@ function ProviderForm({ app, is_working, onSave, onRemove }: { app: IntegrationA
         {app.is_configured && (
           <button type="button" disabled={is_working} onClick={onRemove} className={SECONDARY_BUTTON}>Remove app</button>
         )}
-        <a href={app.console_url} target="_blank" rel="noopener noreferrer" className="text-[12.5px] font-semibold text-brand-200 hover:underline">
+        <a href={app.console_url} target="_blank" rel="noopener noreferrer" className="text-[12.5px] admin-link">
           Open the {app.label} console
         </a>
       </div>
@@ -114,7 +114,7 @@ export default function IntegrationAppsCard() {
     <div className="mt-6">
       <div className="mb-2.5 text-[13px] font-bold text-shell-text-secondary">Gmail, Google Calendar and Outlook</div>
       {message && (
-        <div role={apps_api.error ? "alert" : "status"} className={`mb-3 flex items-start justify-between gap-3 rounded-[9px] px-3 py-2 text-[12.5px] ${apps_api.error ? "bg-[#e2445c]/[0.12] text-[#ff8a9b]" : "bg-[#00c875]/[0.12] text-[#3ddc97]"}`}>
+        <div role={apps_api.error ? "alert" : "status"} className={`mb-3 flex items-start justify-between gap-3 rounded-[9px] px-3 py-2 text-[12.5px] ${apps_api.error ? "bg-[var(--admin-danger-bg)] text-[var(--admin-danger-text)]" : "bg-[var(--admin-success-bg)] text-[var(--admin-success-text)]"}`}>
           <span>{message}</span>
           <button type="button" onClick={apps_api.dismissMessages} className="flex-none font-semibold opacity-80 hover:opacity-100">Dismiss</button>
         </div>
@@ -133,14 +133,14 @@ export default function IntegrationAppsCard() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-[15px] font-bold text-shell-text">{app.services.map((service) => service.label).join(" and ")}</div>
+                      <div className="text-[16px] font-semibold text-shell-text">{app.services.map((service) => service.label).join(" and ")}</div>
                       {app.is_configured ? (
-                        <span className="rounded-md bg-[#00c875]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#3ddc97]">Ready</span>
+                        <span className="admin-pill admin-pill-success">Ready</span>
                       ) : (
-                        <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#fdab3d]">Setup required</span>
+                        <span className="admin-pill admin-pill-warning">Setup required</span>
                       )}
                     </div>
-                    <p className="mt-1 text-[13px] leading-relaxed text-shell-text-muted">
+                    <p className="mt-1 text-[14px] leading-5 text-shell-text-secondary">
                       {app.is_configured
                         ? `Members connect their own ${app.label} account from the Automations center.${app.updated_by ? ` Saved by ${app.updated_by}.` : ""}`
                         : `Save a ${app.label} OAuth app so members can use the ${app.services.map((service) => service.label).join(" and ")} recipes.`}

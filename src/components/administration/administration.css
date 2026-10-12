@@ -1,0 +1,571 @@
+/*
+ * Administration view, styled after monday.com's "monday administration" page: a top bar
+ * with a bordered Back button and the page name, a grouped left rail on a soft gray page,
+ * and the active section inside a white rounded card with a title, subtitle and a divider.
+ *
+ * Every color is an `--admin-*` token. They live on `:root` (not on the view's wrapper) so the
+ * drawers and modals the sections portal to `document.body` read the same values, and dark
+ * mode only swaps the tokens under `html.dark`, never the rules below.
+ */
+
+:root {
+  --admin-page-bg: #eceff8;
+  --admin-card-bg: #ffffff;
+  --admin-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
+  --admin-text: #323338;
+  --admin-text-secondary: #676879;
+  --admin-text-faint: #9699a6;
+  --admin-icon: #323338;
+  --admin-border: #c3c6d4;
+  --admin-divider: #e7e9ef;
+  --admin-list-border: #d0d4e4;
+  --admin-hover: #dcdfec;
+  --admin-row-hover: #f5f6f8;
+  --admin-selected: #cce5ff;
+  --admin-accent: #0073ea;
+  --admin-accent-hover: #0060b9;
+  --admin-checkbox-border: #c3c6d4;
+  --admin-checkbox-disabled: #c3c6d4;
+  --admin-success-bg: #bbdbc9;
+  --admin-success-text: #00854d;
+  --admin-warning-bg: #ffe9c4;
+  --admin-warning-text: #9d5e00;
+  --admin-danger-bg: #fbe9ec;
+  --admin-danger-text: #d83a52;
+  --admin-info-bg: #cce5ff;
+  --admin-info-text: #0060b9;
+}
+
+html.dark {
+  --admin-page-bg: #0b1515;
+  --admin-card-bg: #0f1c1c;
+  --admin-card-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --admin-text: #e9eded;
+  --admin-text-secondary: #9aa4a5;
+  --admin-text-faint: #6f7b7c;
+  --admin-icon: #c2cacb;
+  --admin-border: rgba(255, 255, 255, 0.24);
+  --admin-divider: rgba(255, 255, 255, 0.1);
+  --admin-list-border: rgba(255, 255, 255, 0.14);
+  --admin-hover: rgba(255, 255, 255, 0.08);
+  --admin-row-hover: rgba(255, 255, 255, 0.04);
+  --admin-selected: rgba(77, 156, 255, 0.24);
+  --admin-accent: #4d9cff;
+  --admin-accent-hover: #7ab4ff;
+  --admin-checkbox-border: rgba(255, 255, 255, 0.35);
+  --admin-checkbox-disabled: rgba(255, 255, 255, 0.24);
+  --admin-success-bg: rgba(0, 200, 117, 0.14);
+  --admin-success-text: #3ddc97;
+  --admin-warning-bg: rgba(253, 171, 61, 0.14);
+  --admin-warning-text: #ffc46b;
+  --admin-danger-bg: rgba(226, 68, 92, 0.14);
+  --admin-danger-text: #ff8a94;
+  --admin-info-bg: rgba(87, 155, 252, 0.14);
+  --admin-info-text: #8cbcff;
+}
+
+/*
+ * The sections are built on the `shell-*` utilities, so inside the card they get monday's
+ * light palette (same approach as `organization-settings.css`). Dark mode keeps the hand
+ * tuned set from `globals.css`.
+ */
+html:not(.dark) .administration-theme {
+  --color-shell-bg: #ffffff;
+  --color-shell-surface: #ffffff;
+  --color-shell-panel: #ffffff;
+  --color-shell-panel-alt: #f6f7fb;
+  --color-shell-border: #e7e9ef;
+  --color-shell-border-strong: #d0d4e4;
+  --color-shell-hover: #f5f6f8;
+  --color-shell-hover-strong: #dcdfec;
+  --color-shell-text: #323338;
+  --color-shell-text-secondary: #676879;
+  --color-shell-text-muted: #676879;
+  --color-shell-text-faint: #9699a6;
+}
+
+/* Shared SettingsDropdown triggers read as monday's white bordered select inside the card. */
+html:not(.dark) .administration-theme .settings-dropdown-trigger {
+  border-color: var(--admin-border);
+  border-radius: 4px;
+  background-color: #ffffff;
+  color: var(--admin-text);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
+  border-color: var(--admin-text);
+}
+
+/* Shell: top bar, rail and card. */
+
+.admin-shell {
+  display: flex;
+  height: 100%;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--admin-page-bg);
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.admin-topbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 0 24px;
+}
+
+.admin-back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px 0 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 4px;
+  color: var(--admin-text);
+  font-size: 14px;
+  transition: background-color 120ms ease;
+}
+
+.admin-back-button:hover {
+  background: var(--admin-hover);
+}
+
+.admin-topbar-title {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--admin-text);
+  font-size: 18px;
+  line-height: 24px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-topbar-title strong {
+  font-weight: 700;
+}
+
+.admin-body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.admin-card {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  margin: 0 16px 16px 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--admin-card-bg);
+  box-shadow: var(--admin-card-shadow);
+}
+
+.admin-page-header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 40px 20px;
+  border-bottom: 1px solid var(--admin-divider);
+}
+
+.admin-page-title {
+  color: var(--admin-text);
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
+  letter-spacing: -0.2px;
+}
+
+.admin-page-subtitle {
+  max-width: 720px;
+  margin-top: 4px;
+  color: var(--admin-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.admin-page-content {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 40px 40px;
+}
+
+.admin-header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  color: var(--admin-accent);
+  font-size: 14px;
+  transition: background-color 120ms ease;
+}
+
+.admin-header-link:hover {
+  background: var(--admin-hover);
+}
+
+/* Left rail. */
+
+.admin-rail {
+  display: flex;
+  width: 232px;
+  flex: none;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  padding: 8px 12px 24px 24px;
+}
+
+.admin-rail-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.admin-rail-row:hover {
+  background: var(--admin-hover);
+}
+
+.admin-rail-row[aria-current="page"] {
+  background: var(--admin-selected);
+}
+
+.admin-rail-row:focus-visible,
+.admin-back-button:focus-visible,
+.admin-role-row:focus-visible,
+.admin-checkbox-row input:focus-visible + .admin-checkbox {
+  outline: 2px solid var(--admin-accent);
+  outline-offset: 1px;
+}
+
+.admin-rail-icon {
+  display: flex;
+  width: 16px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--admin-icon);
+}
+
+.admin-rail-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.admin-rail-chevron {
+  display: flex;
+  flex: none;
+  color: var(--admin-icon);
+  transition: transform 150ms ease;
+}
+
+.admin-rail-row[aria-expanded="true"] .admin-rail-chevron {
+  transform: rotate(180deg);
+}
+
+.admin-rail-child {
+  padding-left: 32px;
+}
+
+/* Notices, status pills and text actions shared by every section. */
+
+.admin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 13.5px;
+  line-height: 20px;
+}
+
+.admin-notice-error {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
+}
+
+.admin-notice-success {
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+}
+
+.admin-notice-info {
+  background: var(--admin-info-bg);
+  color: var(--admin-text);
+}
+
+.admin-notice-warning {
+  background: var(--admin-warning-bg);
+  color: var(--admin-text);
+}
+
+.admin-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.admin-pill-success {
+  background: var(--admin-success-bg);
+  color: var(--admin-success-text);
+}
+
+.admin-pill-warning {
+  background: var(--admin-warning-bg);
+  color: var(--admin-warning-text);
+}
+
+.admin-pill-danger {
+  background: var(--admin-danger-bg);
+  color: var(--admin-danger-text);
+}
+
+.admin-pill-info {
+  background: var(--admin-info-bg);
+  color: var(--admin-info-text);
+}
+
+.admin-link {
+  color: var(--admin-accent);
+  font-weight: 500;
+}
+
+.admin-link:hover {
+  color: var(--admin-accent-hover);
+  text-decoration: underline;
+}
+
+.admin-danger-action {
+  color: var(--admin-danger-text);
+}
+
+.admin-danger-action:hover:not(:disabled) {
+  background: var(--admin-danger-bg);
+}
+
+/* Permissions: role list on the left, checkbox lists on the right. */
+
+.admin-permissions {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100%;
+}
+
+.admin-permissions-roles {
+  padding: 4px 24px 24px 0;
+  border-right: 1px solid var(--admin-divider);
+}
+
+.admin-permissions-list {
+  min-width: 0;
+  padding: 4px 0 24px 24px;
+}
+
+.admin-group-title {
+  margin-bottom: 8px;
+  color: var(--admin-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.admin-group-hint {
+  margin: -4px 0 8px;
+  color: var(--admin-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.admin-role-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px;
+  border-radius: 4px;
+  color: var(--admin-text);
+  font-size: 14px;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+
+.admin-role-row:hover {
+  background: var(--admin-hover);
+}
+
+.admin-role-row[aria-selected="true"] {
+  background: var(--admin-selected);
+}
+
+.admin-role-caption {
+  color: var(--admin-text-secondary);
+  font-size: 12px;
+}
+
+.admin-checkbox-list {
+  overflow: hidden;
+  border: 1px solid var(--admin-list-border);
+  border-radius: 4px;
+}
+
+.admin-checkbox-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--admin-list-border);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.admin-checkbox-row:last-child {
+  border-bottom: 0;
+}
+
+.admin-checkbox-row:hover {
+  background: var(--admin-row-hover);
+}
+
+.admin-checkbox-row[data-disabled="true"] {
+  cursor: default;
+}
+
+.admin-checkbox-row input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-checkbox {
+  display: flex;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--admin-checkbox-border);
+  border-radius: 4px;
+  background: var(--admin-card-bg);
+  color: #ffffff;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.admin-checkbox-row input:checked + .admin-checkbox {
+  border-color: var(--admin-accent);
+  background: var(--admin-accent);
+}
+
+.admin-checkbox-row input:disabled + .admin-checkbox {
+  opacity: 0.6;
+}
+
+.admin-checkbox-row input:checked:disabled + .admin-checkbox {
+  border-color: var(--admin-checkbox-disabled);
+  background: var(--admin-checkbox-disabled);
+  opacity: 1;
+}
+
+.admin-checkbox-label {
+  min-width: 0;
+  flex: 1;
+  color: var(--admin-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.admin-checkbox-row[data-disabled="true"] .admin-checkbox-label {
+  color: var(--admin-text-secondary);
+}
+
+.admin-checkbox-description {
+  color: var(--admin-text-faint);
+  font-size: 12.5px;
+}
+
+@media (max-width: 1023px) {
+  .admin-rail {
+    width: 200px;
+    padding-left: 12px;
+  }
+
+  .admin-page-header {
+    padding: 20px 24px 16px;
+  }
+
+  .admin-page-content {
+    padding: 20px 24px 32px;
+  }
+}
+
+@media (max-width: 767px) {
+  .admin-body {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .admin-rail {
+    width: 100%;
+    max-height: 40vh;
+    padding: 0 16px 12px;
+  }
+
+  .admin-card {
+    margin: 0 8px 8px;
+    border-radius: 12px;
+  }
+
+  .admin-permissions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-permissions-roles {
+    padding: 0 0 16px;
+    border-right: 0;
+    border-bottom: 1px solid var(--admin-divider);
+  }
+
+  .admin-permissions-list {
+    padding: 16px 0 0;
+  }
+}

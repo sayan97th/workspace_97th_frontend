@@ -81,7 +81,7 @@ const FieldRow: React.FC<{
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-[#ff8a94] hover:bg-[#e2445c]/[0.12]"
+              className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action"
             >
               Delete
             </button>
@@ -116,16 +116,12 @@ const ProfileFieldsSection: React.FC = () => {
 
   return (
     <div>
-      <div className="mb-5 flex items-start justify-between gap-5">
-        <p className="max-w-[560px] text-[13px] leading-relaxed text-shell-text-muted">
-          Add fields to every user&apos;s profile, like office location, employee ID or start date. Admins fill them in
-          from the user details panel, and each field becomes a filterable column in the Users table.
-        </p>
+      <div className="mb-5 flex items-start justify-end gap-5">
         {can_manage ? (
           <button
             type="button"
             onClick={() => setEditing("new")}
-            className="flex flex-none items-center gap-[7px] rounded-lg bg-brand-500 px-4 py-[9px] text-[13.5px] font-bold text-white transition-colors hover:bg-brand-600"
+            className="flex flex-none items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600"
           >
             <svg width="13" height="13" viewBox="0 0 16 16">
               <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
@@ -136,7 +132,7 @@ const ProfileFieldsSection: React.FC = () => {
       </div>
 
       {manager.error ? (
-        <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-4 admin-notice admin-notice-error">
           {manager.error}
         </div>
       ) : null}

@@ -1,99 +1,152 @@
 "use client";
-import React from "react";
-import { ToggleSwitch } from "@/components/board";
+import React, { useMemo, useState } from "react";
+import { Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAccountPermissionsManager } from "../useAccountPermissionsManager";
-import type { AccountPermissionRole } from "@/types/administration/account-permissions";
+import type {
+  AccountPermissionDefinitionDto,
+  AccountPermissionRole,
+} from "@/types/administration/account-permissions";
 
-const ROLE_COLUMN_LABELS: Record<AccountPermissionRole, { label: string; description: string }> = {
-  staff: { label: "Staff", description: "Team members" },
-  client: { label: "Client", description: "External and guest accounts" },
+/** Admin is listed first like monday's default roles, but it is locked: admins always hold every permission. */
+type PermissionRoleId = AccountPermissionRole | "admin";
+
+const ROLE_DETAILS: Record<PermissionRoleId, { label: string; caption: string }> = {
+  admin: { label: "Admin", caption: "Always allowed" },
+  staff: { label: "Staff", caption: "Team members" },
+  client: { label: "Client", caption: "External and guests" },
 };
 
-const GRID = "grid grid-cols-[minmax(240px,1fr)_120px_120px_130px] items-center gap-3";
+type PermissionCheckboxProps = {
+  definition: AccountPermissionDefinitionDto;
+  is_checked: boolean;
+  is_disabled: boolean;
+  is_saving: boolean;
+  onToggle: () => void;
+};
+
+const PermissionCheckbox: React.FC<PermissionCheckboxProps> = ({ definition, is_checked, is_disabled, is_saving, onToggle }) => (
+  <label className={`admin-checkbox-row ${is_saving ? "opacity-60" : ""}`} data-disabled={is_disabled || undefined}>
+    <input type="checkbox" checked={is_checked} disabled={is_disabled || is_saving} onChange={onToggle} />
+    <span className="admin-checkbox" aria-hidden="true">
+      {is_checked ? <Check size={12} strokeWidth={3} /> : null}
+    </span>
+    <span className="admin-checkbox-label">
+      {definition.label}
+      <span className="admin-checkbox-description block">{definition.description}</span>
+    </span>
+  </label>
+);
 
 /**
- * Administration > Security > Permissions, monday's account permissions matrix: what each
- * user role may do across the whole account. Admins always hold every permission; the API
- * enforces the matrix on every guarded endpoint.
+ * Administration > Permissions, styled after monday.com: the account roles on the left and,
+ * for the selected role, what it may do across the whole account as checkbox lists grouped by
+ * area ("Account", "Boards"). Each checkbox saves as soon as it flips and the API enforces the
+ * matrix on every guarded endpoint. Admins always hold every permission, so their list is
+ * shown checked and locked.
  */
 const PermissionsSection: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const can_manage = hasAnyRole("super_admin", "admin");
   const manager = useAccountPermissionsManager();
   const permissions = manager.permissions;
+  const [selected_role, setSelectedRole] = useState<PermissionRoleId>("staff");
+
+  const grouped_definitions = useMemo(() => {
+    if (!permissions) return [];
+    const groups = permissions.groups?.length ? permissions.groups : [{ key: "", label: "Account" }];
+    return groups
+      .map((group) => ({
+        ...group,
+        definitions: permissions.definitions.filter((definition) => !group.key || definition.group === group.key),
+      }))
+      .filter((group) => group.definitions.length > 0);
+  }, [permissions]);
+
+  if (manager.is_loading) {
+    return <div className="text-[14px] text-shell-text-faint">Loading permissions…</div>;
+  }
+
+  if (!permissions) {
+    return manager.error ? (
+      <div role="alert" className="admin-notice admin-notice-error">
+        {manager.error}
+      </div>
+    ) : null;
+  }
+
+  const role_ids: PermissionRoleId[] = ["admin", ...permissions.roles];
+  const is_admin_selected = selected_role === "admin";
 
   return (
-    <div className="max-w-[860px]">
-      <p className="mb-5 max-w-[620px] text-[13px] leading-relaxed text-shell-text-muted">
-        Choose what each role can do across the account. Changes apply right away. Admins and super admins can always do
-        everything.
-      </p>
-
-      {manager.error ? (
-        <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
-          {manager.error}
+    <div className="admin-permissions">
+      <div className="admin-permissions-roles">
+        <h3 className="admin-group-title" id="admin-roles-title">
+          Default account roles
+        </h3>
+        <div role="listbox" aria-labelledby="admin-roles-title" className="flex flex-col gap-0.5">
+          {role_ids.map((role) => (
+            <button
+              key={role}
+              type="button"
+              role="option"
+              aria-selected={selected_role === role}
+              onClick={() => setSelectedRole(role)}
+              className="admin-role-row"
+            >
+              <span>{ROLE_DETAILS[role]?.label ?? role}</span>
+              <span className="admin-role-caption">{ROLE_DETAILS[role]?.caption}</span>
+            </button>
+          ))}
         </div>
-      ) : null}
+      </div>
 
-      {manager.is_loading || !permissions ? (
-        manager.is_loading ? <div className="text-[13px] text-shell-text-faint">Loading permissions…</div> : null
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-shell-border">
-          <div className="min-w-[640px]">
-            <div className={`${GRID} border-b border-shell-border bg-shell-panel-alt px-4 py-3`}>
-              <span className="text-[11px] font-bold uppercase tracking-[0.04em] text-shell-text-faint">Permission</span>
-              {permissions.roles.map((role) => (
-                <span key={role} className="text-center">
-                  <span className="block text-[12.5px] font-bold text-shell-text">{ROLE_COLUMN_LABELS[role]?.label ?? role}</span>
-                  <span className="block text-[11px] text-shell-text-faint">{ROLE_COLUMN_LABELS[role]?.description}</span>
-                </span>
-              ))}
-              <span className="text-center">
-                <span className="block text-[12.5px] font-bold text-shell-text">Admin</span>
-                <span className="block text-[11px] text-shell-text-faint">Always allowed</span>
-              </span>
-            </div>
-
-            {permissions.definitions.map((definition) => (
-              <div key={definition.key} className={`${GRID} border-b border-shell-border px-4 py-3.5 last:border-b-0`}>
-                <span>
-                  <span className="block text-[13.5px] font-semibold text-shell-text">{definition.label}</span>
-                  <span className="block text-[12px] text-shell-text-muted">{definition.description}</span>
-                </span>
-                {permissions.roles.map((role) => {
-                  const is_on = permissions.matrix[role]?.[definition.key] ?? true;
-                  const is_saving = manager.saving_cell === `${role}.${definition.key}`;
-                  return (
-                    <span key={role} className={`flex justify-center ${is_saving ? "opacity-60" : ""}`}>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={is_on}
-                        aria-label={`${definition.label} for ${ROLE_COLUMN_LABELS[role]?.label ?? role}`}
-                        disabled={!can_manage || is_saving}
-                        onClick={() => void manager.togglePermission(role, definition.key)}
-                        className="flex disabled:cursor-default"
-                      >
-                        <ToggleSwitch is_on={is_on} />
-                      </button>
-                    </span>
-                  );
-                })}
-                <span className="flex justify-center">
-                  <span className="flex opacity-50">
-                    <ToggleSwitch is_on />
-                  </span>
-                </span>
-              </div>
-            ))}
+      <div className="admin-permissions-list">
+        {manager.error ? (
+          <div role="alert" className="admin-notice admin-notice-error mb-4">
+            {manager.error}
           </div>
-        </div>
-      )}
+        ) : null}
 
-      {!can_manage ? (
-        <p className="mt-3 text-[12px] text-shell-text-faint">Only account admins can change permissions.</p>
-      ) : null}
+        {is_admin_selected ? (
+          <div className="admin-notice admin-notice-info mb-5">Admins and super admins can always do everything.</div>
+        ) : !can_manage ? (
+          <div className="admin-notice admin-notice-info mb-5">You can view these permissions. Only account admins can change them.</div>
+        ) : null}
+
+        {grouped_definitions.map((group) => (
+          <section key={group.key || "all"} className="mb-6 last:mb-0">
+            <h3 className="admin-group-title">{group.label}</h3>
+            <div className="admin-checkbox-list">
+              {group.definitions.map((definition) => {
+                if (is_admin_selected) {
+                  return (
+                    <PermissionCheckbox
+                      key={definition.key}
+                      definition={definition}
+                      is_checked
+                      is_disabled
+                      is_saving={false}
+                      onToggle={() => undefined}
+                    />
+                  );
+                }
+                const role = selected_role as AccountPermissionRole;
+                return (
+                  <PermissionCheckbox
+                    key={definition.key}
+                    definition={definition}
+                    is_checked={permissions.matrix[role]?.[definition.key] ?? true}
+                    is_disabled={!can_manage}
+                    is_saving={manager.saving_cell === `${role}.${definition.key}`}
+                    onToggle={() => void manager.togglePermission(role, definition.key)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
     </div>
   );
 };

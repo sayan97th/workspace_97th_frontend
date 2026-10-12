@@ -11,15 +11,24 @@ export type AccountPermissionKey =
 /** Only these tiers are configurable, admins and super admins can always do everything. */
 export type AccountPermissionRole = "staff" | "client";
 
+/** Heading the Permissions page lists definitions under, e.g. "Account" or "Boards". */
+export type AccountPermissionGroupDto = {
+  key: string;
+  label: string;
+};
+
 export type AccountPermissionDefinitionDto = {
   key: AccountPermissionKey;
   label: string;
   description: string;
+  /** Key of the {@link AccountPermissionGroupDto} it is listed under. */
+  group: string;
 };
 
 export type AccountPermissionMatrix = Record<AccountPermissionRole, Record<AccountPermissionKey, boolean>>;
 
 export type AccountPermissionsDto = {
+  groups: AccountPermissionGroupDto[];
   definitions: AccountPermissionDefinitionDto[];
   roles: AccountPermissionRole[];
   matrix: AccountPermissionMatrix;

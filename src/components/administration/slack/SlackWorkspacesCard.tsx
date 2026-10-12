@@ -57,7 +57,7 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) 
           <div className="flex flex-wrap items-center gap-2">
             <span className="truncate text-[13.5px] font-bold text-shell-text">{workspace.team_name}</span>
             {workspace.is_active ? (
-              <span className="rounded-md bg-[#00c875]/[0.14] px-2 py-0.5 text-[11px] font-bold text-[#3ddc97]">Active</span>
+              <span className="admin-pill admin-pill-success">Active</span>
             ) : null}
             {workspace.missing_scopes.length > 0 ? (
               <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11px] font-bold text-[#fdab3d]" title={`Missing ${workspace.missing_scopes.join(", ")}`}>
@@ -120,7 +120,7 @@ const WorkspaceRow: React.FC<WorkspaceRowProps> = ({ workspace, slack, admin }) 
               type="button"
               onClick={() => void confirmDisconnect()}
               disabled={is_busy}
-              className="rounded-[9px] bg-[#e2445c] px-4 py-[9px] text-[13px] font-bold text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
+              className="rounded-[4px] bg-[#d83a52] px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
             >
               {is_busy ? "Disconnecting…" : "Disconnect"}
             </button>
@@ -157,7 +157,7 @@ const SlackWorkspacesCard: React.FC<SlackWorkspacesCardProps> = ({ slack, admin 
       </div>
 
       {slack.awaiting_purpose === "install" ? (
-        <div className="mt-3 flex items-start justify-between gap-3 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.08] px-3.5 py-2.5 text-[12.5px] text-shell-text-secondary">
+        <div className="mt-3 flex items-start justify-between gap-3 admin-notice admin-notice-info">
           <span>Waiting for Slack. Finish in the new tab, choose the workspace in the top right corner of the Slack page and click Allow.</span>
           <button type="button" onClick={slack.cancelAwaitingSlack} className="flex-none text-[12px] font-semibold opacity-70 hover:opacity-100">
             Cancel

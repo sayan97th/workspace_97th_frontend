@@ -34,14 +34,11 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
 
   return (
     <div>
-      <div className="mb-4 flex items-start justify-between gap-5">
-        <p className="max-w-[480px] text-[13px] leading-relaxed text-shell-text-muted">
-          As an admin, you can view and control the sessions for every user on this account.
-        </p>
+      <div className="mb-4 flex items-start justify-end gap-5">
         <button
           type="button"
           onClick={sessions.openLogoutAll}
-          className="flex flex-none items-center gap-[7px] whitespace-nowrap rounded-[9px] bg-[#e2445c] px-4 py-[10px] text-[13px] font-bold text-white transition-colors hover:bg-[#c22d45]"
+          className="flex flex-none items-center gap-[7px] whitespace-nowrap rounded-[4px] bg-[#d83a52] px-4 py-[10px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45]"
         >
           <svg width="13" height="13" viewBox="0 0 16 16">
             <path
@@ -58,13 +55,13 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
       </div>
 
       {sessions.error ? (
-        <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-4 admin-notice admin-notice-error">
           {sessions.error}
         </div>
       ) : null}
 
       {sessions.logoutAllNotice ? (
-        <div className="mb-4 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-2.5 text-[12.5px] font-medium text-[#8fe3b8]">
+        <div className="mb-4 admin-notice admin-notice-success">
           {sessions.logoutAllNotice}
         </div>
       ) : null}
@@ -127,7 +124,7 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
                   <button
                     type="button"
                     onClick={() => void sessions.logoutSession(row.id)}
-                    className="rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 py-1.5 text-center text-[11.5px] font-semibold text-shell-text-secondary transition-colors hover:border-[#e2445c]/30 hover:bg-[#e2445c]/[0.14] hover:text-[#ff8a94]"
+                    className="rounded-lg border border-shell-border-strong bg-shell-panel-alt px-2.5 py-1.5 text-center text-[11.5px] font-semibold text-shell-text-secondary transition-colors hover:border-[#e2445c]/30 hover:bg-[#e2445c]/[0.14] hover:text-[var(--admin-danger-text)]"
                   >
                     Log out
                   </button>
@@ -136,7 +133,7 @@ const SessionsSection: React.FC<SessionsSectionProps> = ({ sessions }) => {
                       type="button"
                       onClick={() => sessions.requestLogoutUser({ id: row.user!.id, full_name: row.user!.full_name })}
                       title="Log this user out on every device"
-                      className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-[#ff8a94] transition-colors hover:bg-[#e2445c]/[0.12]"
+                      className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action transition-colors"
                     >
                       Everywhere
                     </button>

@@ -73,12 +73,12 @@ const AdminBoardsTable: React.FC<AdminBoardsTableProps> = ({ content, toolbar_st
   return (
     <div>
       {content.error ? (
-        <div className="mb-3.5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-3.5 admin-notice admin-notice-error">
           {content.error}
         </div>
       ) : null}
       {content.notice ? (
-        <div className="mb-3.5 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-2.5 text-[12.5px] font-medium text-[#8fe3b8]">
+        <div className="mb-3.5 admin-notice admin-notice-success">
           {content.notice}
         </div>
       ) : null}

@@ -23,13 +23,13 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ board_own
   return (
     <div className="max-w-[640px]">
       {board_ownership.error ? (
-        <div className="mb-5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-5 admin-notice admin-notice-error">
           {board_ownership.error}
         </div>
       ) : null}
 
-      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Reassign a board&apos;s owner</div>
-      <p className="mb-5 text-[13px] leading-relaxed text-shell-text-muted">
+      <div className="mb-1.5 text-[16px] font-semibold text-shell-text">Reassign a board&apos;s owner</div>
+      <p className="mb-5 text-[14px] leading-5 text-shell-text-secondary">
         Did someone leave the account? Move their boards, including private and shareable ones, to a new
         owner.
       </p>
@@ -45,7 +45,7 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ board_own
         transfer_label={board_ownership.is_transferring ? "Reassigning…" : "Reassign boards"}
       />
       {board_ownership.board_transfer_notice ? (
-        <div className="mt-3 text-[12.5px] font-medium text-[#8fe3b8]">{board_ownership.board_transfer_notice}</div>
+        <div className="admin-notice admin-notice-success mt-3">{board_ownership.board_transfer_notice}</div>
       ) : null}
 
       <ConfirmActionModal
@@ -60,8 +60,8 @@ const BoardOwnershipSection: React.FC<BoardOwnershipSectionProps> = ({ board_own
 
       <div className="my-7 h-px bg-shell-hover" />
 
-      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Boards without an owner</div>
-      <p className="mb-4 text-[13px] leading-relaxed text-shell-text-muted">
+      <div className="mb-1.5 text-[16px] font-semibold text-shell-text">Boards without an owner</div>
+      <p className="mb-4 text-[14px] leading-5 text-shell-text-secondary">
         {board_ownership.orphan_boards.length > 0
           ? "Assign an owner so these boards stay covered by an account admin."
           : "Every board in this account currently has an owner."}

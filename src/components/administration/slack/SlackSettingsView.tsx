@@ -16,6 +16,7 @@ import { useSlackIntegration } from "@/hooks/useSlackIntegration";
 import { useSlackAdministration } from "@/hooks/useSlackAdministration";
 import { SLACK_SETUP_REASON_PARAM, SLACK_SETUP_ROLES, slackNeedsSetup } from "@/lib/slackSetup";
 
+import "../administration.css";
 const INTEGRATIONS_HREF = "/administration?section=integrations";
 
 /**
@@ -94,13 +95,13 @@ const SlackSettingsView: React.FC = () => {
                 <h1 className="font-heading text-page-title">Slack</h1>
                 {!slack.is_loading ? (
                   needs_setup ? (
-                    <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#fdab3d]">Setup required</span>
+                    <span className="admin-pill admin-pill-warning">Setup required</span>
                   ) : (
-                    <span className="rounded-md bg-[#00c875]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#3ddc97]">Connected</span>
+                    <span className="admin-pill admin-pill-success">Connected</span>
                   )
                 ) : null}
               </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-shell-text-muted">
+              <p className="mt-1 text-[14px] leading-5 text-shell-text-secondary">
                 Set up Slack once for the whole account. After that, members only use &quot;Connect my Slack&quot; in My Profile to get their
                 notifications as Slack messages.
               </p>
@@ -113,7 +114,7 @@ const SlackSettingsView: React.FC = () => {
           </div>
 
           {came_from_connect && needs_setup && !slack.is_loading ? (
-            <div className="mt-5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.08] px-3.5 py-3 text-[12.5px] leading-relaxed text-shell-text-secondary">
+            <div className="mt-5 admin-notice admin-notice-info">
               <span className="font-bold">Finish the Slack setup first.</span> &quot;Connect my Slack&quot; works once the Slack app is saved and a workspace is
               connected. Complete the steps below, then connect your own account from My Profile.
             </div>

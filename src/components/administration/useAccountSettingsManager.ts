@@ -25,17 +25,6 @@ export type AccountSettingsManagerApi = {
   is_loading: boolean;
   error: string | null;
 
-  // ── Profile (explicit "Save changes") ────────────────────────────────
-  account_name: string;
-  setAccountName: (value: string) => void;
-  account_url: string;
-  setAccountUrl: (value: string) => void;
-  is_saving_profile: boolean;
-  profile_save_error: string | null;
-  /** True once the account name/URL differ from the last saved value. */
-  has_unsaved_profile_changes: boolean;
-  saveProfile: () => Promise<void>;
-
   // ── Account preferences (save immediately) ───────────────────────────
   weekend_start: "fri_sat" | "sat_sun";
   setWeekendStart: (value: "fri_sat" | "sat_sun") => void;
@@ -56,22 +45,14 @@ export type AccountSettingsManagerApi = {
 };
 
 /**
- * Owns the account-wide `AccountSetting` singleton for the Profile and Account
- * Administration sections. Profile's name/URL fields only persist when "Save changes" is
- * clicked (an account URL change redirects the whole account for 30 days, not something to
- * fire on every keystroke); Account's radio preferences save immediately on change, the
- * same optimistic-then-persist shape as {@link useProfileManager}'s working-status fields.
+ * Owns the account wide `AccountSetting` singleton for the Account and New user defaults
+ * Administration sections. Account's radio preferences save immediately on change, the same
+ * optimistic then persist shape as {@link useProfileManager}'s working status fields, while the
+ * defaults form only persists when "Save defaults" is clicked.
  */
 export function useAccountSettingsManager(): AccountSettingsManagerApi {
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const [account_name, setAccountNameValue] = useState("");
-  const [account_url, setAccountUrlValue] = useState("");
-  const [saved_account_name, setSavedAccountName] = useState("");
-  const [saved_account_url, setSavedAccountUrl] = useState("");
-  const [is_saving_profile, setIsSavingProfile] = useState(false);
-  const [profile_save_error, setProfileSaveError] = useState<string | null>(null);
 
   const [weekend_start, setWeekendStartValue] = useState<"fri_sat" | "sat_sun">("sat_sun");
   const [show_weekends, setShowWeekendsValue] = useState(true);
@@ -85,10 +66,6 @@ export function useAccountSettingsManager(): AccountSettingsManagerApi {
   const [defaults_saved_notice, setDefaultsSavedNotice] = useState<string | null>(null);
 
   const hydrate = (dto: AccountSettingsDto) => {
-    setAccountNameValue(dto.account_name);
-    setAccountUrlValue(dto.account_url);
-    setSavedAccountName(dto.account_name);
-    setSavedAccountUrl(dto.account_url);
     setWeekendStartValue(dto.weekend_start);
     setShowWeekendsValue(dto.show_weekends);
     setHomePageValue(dto.home_page);
@@ -120,21 +97,6 @@ export function useAccountSettingsManager(): AccountSettingsManagerApi {
       cancelled = true;
     };
   }, []);
-
-  // ── Profile ───────────────────────────────────────────────────────────
-
-  const saveProfile = async () => {
-    setIsSavingProfile(true);
-    setProfileSaveError(null);
-    try {
-      const dto = await accountSettingsService.updateProfile({ account_name, account_url });
-      hydrate(dto);
-    } catch (err) {
-      setProfileSaveError(apiErrorMessage(err, "Failed to save profile settings."));
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
 
   // ── Account preferences ──────────────────────────────────────────────
 
@@ -195,15 +157,6 @@ export function useAccountSettingsManager(): AccountSettingsManagerApi {
   return {
     is_loading,
     error,
-
-    account_name,
-    setAccountName: setAccountNameValue,
-    account_url,
-    setAccountUrl: setAccountUrlValue,
-    is_saving_profile,
-    profile_save_error,
-    has_unsaved_profile_changes: account_name !== saved_account_name || account_url !== saved_account_url,
-    saveProfile,
 
     weekend_start,
     setWeekendStart,

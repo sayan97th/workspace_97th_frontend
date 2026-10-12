@@ -119,11 +119,7 @@ const UsageSection: React.FC = () => {
 
   return (
     <div className="max-w-[1100px]">
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-[520px] text-[13px] leading-relaxed text-shell-text-muted">
-          See how the account is being used. A person counts as active on a day they signed in, changed an item, posted an
-          update or made a recorded change.
-        </p>
+      <div className="mb-5 flex flex-wrap items-center justify-end gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1 rounded-lg border border-shell-border-strong p-[3px]">
             {RANGE_PRESETS.map((preset) => (
@@ -166,7 +162,7 @@ const UsageSection: React.FC = () => {
       </div>
 
       {usage.error ? (
-        <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-4 admin-notice admin-notice-error">
           {usage.error}
         </div>
       ) : null}

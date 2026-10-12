@@ -1,8 +1,7 @@
 /**
  * API types for the Administration singleton `AccountSetting` row, mirroring the Laravel
- * `AccountSettingResource` payload. Powers the Profile, Account, Branding (metadata only,
- * see `administration/branding.ts` for the upload payloads), Authentication, and Advanced
- * sections.
+ * `AccountSettingResource` payload. Powers the Account, New user defaults, Authentication and
+ * Advanced sections. The company name and logo are edited on the Organization page instead.
  */
 
 export type AccountSettingsDto = {
@@ -11,7 +10,7 @@ export type AccountSettingsDto = {
   weekend_start: "fri_sat" | "sat_sun";
   show_weekends: boolean;
   home_page: "default" | "dashboard";
-  /** Account defaults applied to every new user, see Administration > Account. */
+  /** Account defaults applied to every new user, see Administration > General > New user defaults. */
   default_timezone: string | null;
   default_language: string;
   default_date_format: "long" | "euro";
@@ -37,8 +36,6 @@ export type AccountSettingsDto = {
   panic_mode_activated_at: string | null;
   updated_at: string;
 };
-
-export type UpdateProfileSettingsPayload = Partial<Pick<AccountSettingsDto, "account_name" | "account_url">>;
 
 export type UpdateAccountPreferencesPayload = Partial<
   Pick<AccountSettingsDto, "weekend_start" | "show_weekends" | "home_page">

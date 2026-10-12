@@ -36,9 +36,9 @@ const role_options = (Object.keys(ROLE_LABELS) as PlatformRoleName[]).map((role)
 }));
 
 const STATUS_STYLES = {
-  active: { label: "Active", className: "bg-[#00c875]/[0.14] text-[#3ddc97]" },
-  disabled: { label: "Deactivated", className: "bg-[#fdab3d]/[0.14] text-[#ffc46b]" },
-  deleted: { label: "Deleted", className: "bg-[#e2445c]/[0.14] text-[#ff8a94]" },
+  active: { label: "Active", className: "admin-pill-success" },
+  disabled: { label: "Deactivated", className: "admin-pill-warning" },
+  deleted: { label: "Deleted", className: "admin-pill-danger" },
 };
 
 const statusKey = (row: AdminUserDto): keyof typeof STATUS_STYLES =>
@@ -122,11 +122,6 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
 
   return (
     <div>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-        Manage everyone on this account, see who&apos;s an admin, deactivate a user, or assign people to departments. Click a
-        person to see their details.
-      </p>
-
       <div className="mb-5 flex items-center gap-6 border-b border-shell-border">
         {(
           [
@@ -153,13 +148,13 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
       </div>
 
       {users.error ? (
-        <div className="mb-3.5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-3.5 admin-notice admin-notice-error">
           {users.error}
         </div>
       ) : null}
 
       {users.invite_sent_notice || users.notice ? (
-        <div className="mb-3.5 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-2.5 text-[12.5px] font-medium text-[#8fe3b8]">
+        <div className="mb-3.5 admin-notice admin-notice-success">
           {users.notice ?? users.invite_sent_notice}
         </div>
       ) : null}
@@ -189,7 +184,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
               <button
                 type="button"
                 onClick={users.openInvite}
-                className="flex items-center gap-[7px] rounded-lg bg-brand-500 px-4 py-[9px] text-[13.5px] font-bold text-white transition-colors hover:bg-brand-600"
+                className="flex items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600"
               >
                 <svg width="13" height="13" viewBox="0 0 16 16">
                   <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />
@@ -317,7 +312,7 @@ const UsersSection: React.FC<UsersSectionProps> = ({ users }) => {
                       )}
 
                       <span>
-                        <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${status.className}`}>{status.label}</span>
+                        <span className={`admin-pill ${status.className}`}>{status.label}</span>
                       </span>
 
                       <span

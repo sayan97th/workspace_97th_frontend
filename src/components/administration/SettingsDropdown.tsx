@@ -54,7 +54,7 @@ const SettingsDropdown: React.FC<SettingsDropdownProps> = ({
           setQuery("");
           setIsOpen((current) => !current);
         }}
-        className={`flex items-center justify-between gap-2 rounded-lg border border-shell-border-strong bg-shell-hover-strong px-[10px] py-2 text-[12.5px] font-medium transition-colors hover:border-shell-text-muted ${
+        className={`settings-dropdown-trigger flex items-center justify-between gap-2 rounded-lg border border-shell-border-strong bg-shell-hover-strong px-[10px] py-2 text-[12.5px] font-medium transition-colors hover:border-shell-text-muted ${
           selected_label && !is_muted ? "text-shell-text-secondary" : "text-shell-text-muted"
         } ${className}`}
       >

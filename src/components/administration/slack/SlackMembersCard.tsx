@@ -22,7 +22,7 @@ const SlackMembersCard: React.FC<SlackMembersCardProps> = ({ workspace, admin })
         <p className={SECTION_HINT}>
           {workspace.linked_members_count === 1 ? "1 member receives" : `${workspace.linked_members_count} members receive`} Slack notifications in{" "}
           {workspace.team_name}. Match members whose email is the same in Slack, anyone else can use &quot;Connect my Slack&quot; in{" "}
-          <Link href="/profile?section=notifications" className="font-semibold text-brand-200 hover:underline">
+          <Link href="/profile?section=notifications" className="admin-link">
             My Profile
           </Link>
           .

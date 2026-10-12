@@ -21,9 +21,9 @@ const STATUS_TABS: { id: StaffInvitationStatus | "all"; label: string }[] = [
 ];
 
 const STATUS_BADGE: Record<StaffInvitationStatus, string> = {
-  pending: "bg-[#579bfc]/[0.14] text-[#8cbcff]",
-  expired: "bg-[#fdab3d]/[0.14] text-[#ffc46b]",
-  accepted: "bg-[#00c875]/[0.14] text-[#3ddc97]",
+  pending: "admin-pill-info",
+  expired: "admin-pill-warning",
+  accepted: "admin-pill-success",
 };
 
 const GRID = "grid grid-cols-[minmax(200px,1.4fr)_110px_minmax(130px,1fr)_minmax(140px,1fr)_130px_150px] gap-3";
@@ -32,12 +32,12 @@ const GRID = "grid grid-cols-[minmax(200px,1.4fr)_110px_minmax(130px,1fr)_minmax
 const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_manage }) => (
   <div>
     {invitations.error ? (
-      <div className="mb-3.5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+      <div className="mb-3.5 admin-notice admin-notice-error">
         {invitations.error}
       </div>
     ) : null}
     {invitations.notice ? (
-      <div className="mb-3.5 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-2.5 text-[12.5px] font-medium text-[#8fe3b8]">
+      <div className="mb-3.5 admin-notice admin-notice-success">
         {invitations.notice}
       </div>
     ) : null}
@@ -96,7 +96,7 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
                 <span className="truncate text-shell-text-muted">{row.department?.name ?? "None"}</span>
                 <span className="truncate text-shell-text-muted">{row.inviter?.full_name ?? "Unknown"}</span>
                 <span className="flex flex-col items-start gap-0.5">
-                  <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold capitalize ${STATUS_BADGE[row.status]}`}>
+                  <span className={`admin-pill capitalize ${STATUS_BADGE[row.status]}`}>
                     {row.status}
                   </span>
                   {row.status === "pending" && row.expires_at ? (
@@ -119,7 +119,7 @@ const InvitationsPanel: React.FC<InvitationsPanelProps> = ({ invitations, can_ma
                       <button
                         type="button"
                         onClick={() => invitations.requestCancel(row)}
-                        className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold text-[#ff8a94] hover:bg-[#e2445c]/[0.12]"
+                        className="rounded-lg px-2.5 py-1.5 text-[11.5px] font-semibold admin-danger-action"
                       >
                         Cancel
                       </button>

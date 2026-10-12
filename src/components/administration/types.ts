@@ -1,23 +1,22 @@
 /** Every page reachable from the Administration view's left rail. */
 export type AdminSectionId =
-  | "profile"
   | "account"
-  | "integrations"
-  | "customization"
+  | "user_defaults"
   | "organization"
-  | "branding"
+  | "profile_fields"
   | "users"
   | "departments"
   | "board_ownership"
   | "authentication"
+  | "sessions"
   | "audit"
   | "advanced"
-  | "sessions"
+  | "integrations"
+  | "slack"
   | "usage"
-  | "profile_fields"
-  | "content_directory"
   | "tidy_up"
+  | "content_directory"
   | "permissions";
 
 /** Which collapsible group of the left rail a given section lives under, if any. */
-export type AdminNavGroupId = "customization" | "directory" | "security";
+export type AdminNavGroupId = "general" | "customization" | "directory" | "security" | "connections";

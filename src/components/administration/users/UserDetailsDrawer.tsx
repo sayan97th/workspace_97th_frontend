@@ -30,9 +30,9 @@ const actionButtonClass =
   "rounded-lg border border-shell-border-strong bg-shell-panel-alt px-3 py-[7px] text-[12px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
 
 const statusOf = (user: AdminUserDto): { label: string; className: string } => {
-  if (user.deleted_at) return { label: "Deleted", className: "bg-[#e2445c]/[0.14] text-[#ff8a94]" };
-  if (!user.is_active) return { label: "Deactivated", className: "bg-[#fdab3d]/[0.14] text-[#ffc46b]" };
-  return { label: "Active", className: "bg-[#00c875]/[0.14] text-[#3ddc97]" };
+  if (user.deleted_at) return { label: "Deleted", className: "admin-pill-danger" };
+  if (!user.is_active) return { label: "Deactivated", className: "admin-pill-warning" };
+  return { label: "Active", className: "admin-pill-success" };
 };
 
 const InfoRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
@@ -196,12 +196,12 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
 
       <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-[22px] py-5">
         {error ? (
-          <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+          <div className="mb-4 admin-notice admin-notice-error">
             {error}
           </div>
         ) : null}
         {notice ? (
-          <div className="mb-4 rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-3.5 py-2.5 text-[12.5px] font-medium text-[#8fe3b8]">
+          <div className="mb-4 admin-notice admin-notice-success">
             {notice}
           </div>
         ) : null}
@@ -220,7 +220,7 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
                     {ROLE_LABELS[primaryRole(user)]}
                   </span>
                   {status ? (
-                    <span className={`rounded-md px-2 py-0.5 text-[11.5px] font-bold ${status.className}`}>{status.label}</span>
+                    <span className={`admin-pill ${status.className}`}>{status.label}</span>
                   ) : null}
                 </div>
               </div>
@@ -237,7 +237,7 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
                 <button
                   type="button"
                   onClick={() => onRequestToggleActive(user)}
-                  className={`${actionButtonClass} ${user.is_active ? "text-[#ff8a94]" : ""}`}
+                  className={`${actionButtonClass} ${user.is_active ? "text-[var(--admin-danger-text)]" : ""}`}
                 >
                   {user.is_active ? "Deactivate" : "Reactivate"}
                 </button>

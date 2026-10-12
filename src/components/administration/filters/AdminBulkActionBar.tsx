@@ -14,7 +14,7 @@ export const bulkActionButtonClass =
   "flex items-center gap-1.5 rounded-lg px-3 py-[7px] text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-default disabled:opacity-50";
 
 export const bulkDangerButtonClass =
-  "flex items-center gap-1.5 rounded-lg px-3 py-[7px] text-[12.5px] font-semibold text-[#ff8a94] transition-colors hover:bg-[#e2445c]/[0.12] disabled:cursor-default disabled:opacity-50";
+  "flex items-center gap-1.5 rounded-lg px-3 py-[7px] text-[12.5px] font-semibold admin-danger-action transition-colors disabled:cursor-default disabled:opacity-50";
 
 /**
  * Floating bar pinned to the bottom of an Administration table while rows are selected, the

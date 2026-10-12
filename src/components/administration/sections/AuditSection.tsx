@@ -19,12 +19,8 @@ const event_options = [
 /** Administration > Security > Audit — sign-ins and security-setting changes across the account. */
 const AuditSection: React.FC<AuditSectionProps> = ({ audit }) => (
   <div>
-    <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-      See who made changes to security-sensitive settings across this account, and when.
-    </p>
-
     {audit.error ? (
-      <div className="mb-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+      <div className="mb-4 admin-notice admin-notice-error">
         {audit.error}
       </div>
     ) : null}

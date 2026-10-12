@@ -123,7 +123,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
             <h3 className={SECTION_TITLE}>Slack app</h3>
             <span
               className={`rounded-md px-2 py-0.5 text-[11px] font-bold ${
-                credentials.is_configured ? "bg-shell-hover text-shell-text-secondary" : "bg-[#e2445c]/[0.12] text-[#ff7a8a]"
+                credentials.is_configured ? "bg-shell-hover text-shell-text-secondary" : "bg-[var(--admin-danger-bg)] text-[var(--admin-danger-text)]"
               }`}
             >
               {SOURCE_LABELS[credentials.source]}
@@ -143,16 +143,16 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
       </div>
 
       {credentials.is_configured && credentials.distribution_url ? (
-        <div className="mt-4 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.08] px-3.5 py-3 text-[12.5px] leading-relaxed text-shell-text-secondary">
+        <div className="mt-4 admin-notice admin-notice-info">
           <span className="font-bold">Last step in Slack:</span> to add this app to more than one workspace, open{" "}
-          <a href={credentials.distribution_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+          <a href={credentials.distribution_url} target="_blank" rel="noopener noreferrer" className="admin-link">
             Manage Distribution
           </a>{" "}
           and click Activate Public Distribution. Slack requires an HTTPS redirect URL for that.
           {credentials.app_settings_url ? (
             <>
               {" "}
-              <a href={credentials.app_settings_url} target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+              <a href={credentials.app_settings_url} target="_blank" rel="noopener noreferrer" className="admin-link">
                 Open the app in Slack
               </a>
               .
@@ -168,7 +168,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
             <ol className="mt-2 flex flex-col gap-1.5 text-[12.5px] leading-relaxed text-shell-text-muted">
               <li>
                 1. Open{" "}
-                <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+                <a href="https://api.slack.com/apps" target="_blank" rel="noopener noreferrer" className="admin-link">
                   api.slack.com/apps
                 </a>{" "}
                 and, under &quot;Your App Configuration Tokens&quot;, click Generate Token.
@@ -200,7 +200,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
             ) : null}
           </form>
 
-          <button type="button" onClick={() => setIsManual((manual) => !manual)} aria-expanded={is_manual} className="mt-5 text-[12.5px] font-semibold text-brand-200 hover:underline">
+          <button type="button" onClick={() => setIsManual((manual) => !manual)} aria-expanded={is_manual} className="mt-5 text-[12.5px] admin-link">
             {is_manual ? "Hide manual setup" : "Enter credentials manually instead"}
           </button>
 
@@ -209,7 +209,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
           <ol className="flex flex-col gap-3 text-[12.5px] leading-relaxed text-shell-text-muted">
             <li>
               <span className="font-bold text-shell-text-secondary">1. Create the Slack app.</span> Open{" "}
-              <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-200 hover:underline">
+              <a href="https://api.slack.com/apps?new_app=1" target="_blank" rel="noopener noreferrer" className="admin-link">
                 api.slack.com/apps
               </a>
               , choose &quot;From a manifest&quot;, pick any workspace you own and paste this manifest. It already has the redirect URL, events URL and permissions.
@@ -301,7 +301,7 @@ const SlackAppCredentialsCard: React.FC<SlackAppCredentialsCardProps> = ({ admin
                   type="button"
                   onClick={() => void clear()}
                   disabled={is_saving}
-                  className="rounded-[9px] bg-[#e2445c] px-4 py-[9px] text-[13px] font-bold text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
+                  className="rounded-[4px] bg-[#d83a52] px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-[#c22d45] disabled:cursor-default disabled:opacity-50"
                 >
                   {is_saving ? "Removing…" : "Remove"}
                 </button>

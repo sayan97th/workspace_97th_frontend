@@ -50,7 +50,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({ users }) => {
       <div className="relative z-[421] flex max-h-[90vh] w-[480px] max-w-full flex-col overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
         <div className="flex items-center justify-between border-b border-shell-border px-[22px] py-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-brand-500/[0.16] text-brand-200">
+            <span className="flex h-9 w-9 flex-none items-center justify-center rounded-[10px] bg-[var(--admin-selected)] text-[var(--admin-accent)]">
               <InviteIcon size={17} />
             </span>
             <span className="text-[18px] font-extrabold tracking-[-0.01em]">Invite a new user</span>
@@ -112,7 +112,7 @@ const InviteUserModal: React.FC<InviteUserModalProps> = ({ users }) => {
           </div>
 
           {users.invite_error ? (
-            <div className="rounded-lg border border-brand-500/30 bg-brand-500/[0.1] px-3 py-2.5 text-[13px] font-medium text-brand-200">
+            <div className="admin-notice admin-notice-error">
               {users.invite_error}
             </div>
           ) : null}

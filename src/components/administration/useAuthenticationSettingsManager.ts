@@ -6,8 +6,6 @@ import type { AccountSettingsDto } from "@/types/administration/account-settings
 
 const TEXT_DEBOUNCE_MS = 600;
 
-export const DEFAULT_PRODUCT_OPTIONS = ["Work Management", "CRM", "Dev", "Service"];
-
 const splitList = (value: string): string[] =>
   value
     .split(/[,\n]/)
@@ -41,8 +39,6 @@ export type AuthenticationSettingsManagerApi = {
   ip_ranges: string;
   setIpRanges: (value: string) => void;
 
-  default_product: string;
-  setDefaultProduct: (value: string) => void;
 };
 
 /**
@@ -66,7 +62,6 @@ export function useAuthenticationSettingsManager(): AuthenticationSettingsManage
   const [approved_domains, setApprovedDomainsValue] = useState("");
   const [ip_restriction_enabled, setIpRestrictionEnabledValue] = useState(false);
   const [ip_ranges, setIpRangesValue] = useState("");
-  const [default_product, setDefaultProductValue] = useState(DEFAULT_PRODUCT_OPTIONS[0]);
 
   const domains_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ip_ranges_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -81,7 +76,6 @@ export function useAuthenticationSettingsManager(): AuthenticationSettingsManage
     setApprovedDomainsValue(dto.approved_domains.join(", "));
     setIpRestrictionEnabledValue(dto.ip_restriction_enabled);
     setIpRangesValue(dto.ip_ranges.join("\n"));
-    setDefaultProductValue(dto.default_product ?? DEFAULT_PRODUCT_OPTIONS[0]);
   };
 
   useEffect(() => {
@@ -182,11 +176,6 @@ export function useAuthenticationSettingsManager(): AuthenticationSettingsManage
     }, TEXT_DEBOUNCE_MS);
   };
 
-  const setDefaultProduct = (value: string) => {
-    setDefaultProductValue(value);
-    void save({ default_product: value });
-  };
-
   return {
     is_loading,
     error,
@@ -214,7 +203,5 @@ export function useAuthenticationSettingsManager(): AuthenticationSettingsManage
     ip_ranges,
     setIpRanges,
 
-    default_product,
-    setDefaultProduct,
   };
 }

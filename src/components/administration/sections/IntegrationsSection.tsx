@@ -55,14 +55,14 @@ const IntegrationsSection: React.FC = () => {
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-[15px] font-bold text-shell-text">Slack</div>
+              <div className="text-[16px] font-semibold text-shell-text">Slack</div>
               {needs_setup ? (
-                <span className="rounded-md bg-[#fdab3d]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#fdab3d]">Setup required</span>
+                <span className="admin-pill admin-pill-warning">Setup required</span>
               ) : (
-                <span className="rounded-md bg-[#00c875]/[0.14] px-2 py-0.5 text-[11.5px] font-bold text-[#3ddc97]">Connected</span>
+                <span className="admin-pill admin-pill-success">Connected</span>
               )}
             </div>
-            <p className="mt-1 text-[13px] leading-relaxed text-shell-text-muted">{summary}</p>
+            <p className="mt-1 text-[14px] leading-5 text-shell-text-secondary">{summary}</p>
           </div>
 
           {can_manage ? (
@@ -93,7 +93,7 @@ const IntegrationsSection: React.FC = () => {
         <div className="mb-2.5 text-[13px] font-bold text-shell-text-secondary">What Slack adds</div>
         <ul className="flex flex-col gap-2">
           {SLACK_BENEFITS.map((benefit) => (
-            <li key={benefit} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-shell-text-muted">
+            <li key={benefit} className="flex items-start gap-2.5 text-[14px] leading-5 text-shell-text-secondary">
               <span aria-hidden="true" className="mt-[7px] h-1.5 w-1.5 flex-none rounded-full bg-brand-500" />
               {benefit}
             </li>

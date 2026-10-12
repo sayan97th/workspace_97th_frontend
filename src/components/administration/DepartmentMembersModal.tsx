@@ -95,7 +95,7 @@ const DepartmentMembersModal: React.FC<DepartmentMembersModalProps> = ({ members
 
         <div className="shell-scrollbar flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-[22px] py-5">
           {members.error ? (
-            <div className="rounded-lg border border-brand-500/30 bg-brand-500/[0.1] px-3 py-2.5 text-[13px] font-medium text-brand-200">
+            <div className="admin-notice admin-notice-error">
               {members.error}
             </div>
           ) : null}
@@ -158,7 +158,7 @@ const DepartmentMembersModal: React.FC<DepartmentMembersModalProps> = ({ members
                           <span className="block truncate text-[13px] font-semibold">{candidate.full_name}</span>
                           <span className="block truncate text-[11.5px] text-shell-text-muted">{candidate.email}</span>
                         </span>
-                        <span className="text-[12px] font-semibold text-brand-200">Make owner</span>
+                        <span className="text-[12px] font-semibold text-[var(--admin-accent)]">Make owner</span>
                       </button>
                     ))
                   )}

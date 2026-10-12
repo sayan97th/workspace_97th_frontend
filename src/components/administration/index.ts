@@ -3,8 +3,6 @@ export { default as AdministrationRail } from "./AdministrationRail";
 export * from "./administrationNavConfig";
 export { useAccountSettingsManager } from "./useAccountSettingsManager";
 export type { AccountSettingsManagerApi } from "./useAccountSettingsManager";
-export { useBrandingManager } from "./useBrandingManager";
-export type { BrandingManagerApi } from "./useBrandingManager";
 export { useDepartmentsManager } from "./useDepartmentsManager";
 export type { DepartmentsManagerApi } from "./useDepartmentsManager";
 export { useUsersManager, primaryRole } from "./useUsersManager";

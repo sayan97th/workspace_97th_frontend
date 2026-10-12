@@ -5,7 +5,6 @@ import type {
   UpdateAccountPreferencesPayload,
   UpdateAdvancedSettingsPayload,
   UpdateAuthenticationSettingsPayload,
-  UpdateProfileSettingsPayload,
 } from "@/types/administration/account-settings";
 
 /**
@@ -17,15 +16,6 @@ export const accountSettingsService = {
   /** GET /api/admin/account-settings */
   async getAccountSettings(): Promise<AccountSettingsDto> {
     return apiClient.get<AccountSettingsDto>("/api/admin/account-settings");
-  },
-
-  /** PATCH /api/admin/account-settings/profile */
-  async updateProfile(payload: UpdateProfileSettingsPayload): Promise<AccountSettingsDto> {
-    const response = await apiClient.patch<{ account_settings: AccountSettingsDto }>(
-      "/api/admin/account-settings/profile",
-      payload
-    );
-    return response.account_settings;
   },
 
   /** PATCH /api/admin/account-settings/preferences */
@@ -42,44 +32,6 @@ export const accountSettingsService = {
     const response = await apiClient.patch<{ account_settings: AccountSettingsDto }>(
       "/api/admin/account-settings/defaults",
       payload
-    );
-    return response.account_settings;
-  },
-
-  /** POST /api/admin/account-settings/logo */
-  async uploadLogo(file: File): Promise<AccountSettingsDto> {
-    const form_data = new FormData();
-    form_data.append("file", file);
-    const response = await apiClient.postFormData<{ account_settings: AccountSettingsDto }>(
-      "/api/admin/account-settings/logo",
-      form_data
-    );
-    return response.account_settings;
-  },
-
-  /** DELETE /api/admin/account-settings/logo */
-  async removeLogo(): Promise<AccountSettingsDto> {
-    const response = await apiClient.delete<{ account_settings: AccountSettingsDto }>(
-      "/api/admin/account-settings/logo"
-    );
-    return response.account_settings;
-  },
-
-  /** POST /api/admin/account-settings/email-header */
-  async uploadEmailHeader(file: File): Promise<AccountSettingsDto> {
-    const form_data = new FormData();
-    form_data.append("file", file);
-    const response = await apiClient.postFormData<{ account_settings: AccountSettingsDto }>(
-      "/api/admin/account-settings/email-header",
-      form_data
-    );
-    return response.account_settings;
-  },
-
-  /** DELETE /api/admin/account-settings/email-header */
-  async removeEmailHeader(): Promise<AccountSettingsDto> {
-    const response = await apiClient.delete<{ account_settings: AccountSettingsDto }>(
-      "/api/admin/account-settings/email-header"
     );
     return response.account_settings;
   },

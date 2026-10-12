@@ -2,8 +2,7 @@
 import React, { useState } from "react";
 import SettingsCollapsibleCard from "../SettingsCollapsibleCard";
 import SettingsToggleRow from "../SettingsToggleRow";
-import SettingsDropdown from "../SettingsDropdown";
-import { DEFAULT_PRODUCT_OPTIONS, type AuthenticationSettingsManagerApi } from "../useAuthenticationSettingsManager";
+import type { AuthenticationSettingsManagerApi } from "../useAuthenticationSettingsManager";
 
 export type AuthenticationSectionProps = {
   authentication: AuthenticationSettingsManagerApi;
@@ -11,8 +10,6 @@ export type AuthenticationSectionProps = {
 
 const textAreaClass =
   "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[13px] text-shell-text outline-none focus:border-brand-500";
-
-const default_product_options = DEFAULT_PRODUCT_OPTIONS.map((product) => ({ id: product, label: product }));
 
 /** Administration > Security > Authentication — sign-in policies, SCIM, guest approval and IP restriction. */
 const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ authentication }) => {
@@ -31,12 +28,8 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ authentic
 
   return (
     <div className="max-w-[700px]">
-      <p className="mb-6 text-[13px] leading-relaxed text-shell-text-muted">
-        Control how people sign up for and log into this account.
-      </p>
-
       {authentication.error ? (
-        <div className="mb-5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-5 admin-notice admin-notice-error">
           {authentication.error}
         </div>
       ) : null}
@@ -145,18 +138,6 @@ const AuthenticationSection: React.FC<AuthenticationSectionProps> = ({ authentic
         </SettingsCollapsibleCard>
       </div>
 
-      <div className="my-6 h-px bg-shell-hover" />
-
-      <div className="mb-1.5 text-[15px] font-bold text-shell-text">Default product for new users</div>
-      <p className="mb-4 max-w-[460px] text-[13px] leading-relaxed text-shell-text-muted">
-        Users who aren&apos;t directly assigned to a product will automatically be added to this one.
-      </p>
-      <SettingsDropdown
-        value={authentication.default_product}
-        options={default_product_options}
-        onChange={authentication.setDefaultProduct}
-        className="w-[220px]"
-      />
     </div>
   );
 };

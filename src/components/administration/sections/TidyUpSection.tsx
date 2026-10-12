@@ -22,11 +22,6 @@ const TidyUpSection: React.FC = () => {
 
   return (
     <div>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-        Keep the account clean. These boards had no item changes, updates or board activity in the chosen period.
-        Archive them, or reassign them to someone who will pick them up.
-      </p>
-
       <AdminBoardsTable
         content={content}
         toolbar_start={

@@ -1,13 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { ChevronRightIcon } from "@/icons/workspace-icons";
 import {
-  ADMINISTRATION_GENERAL_ITEMS,
-  ADMINISTRATION_NAV_GROUPS,
+  ADMINISTRATION_NAV,
   administrationGroupForSection,
-  administrationItemsForGroup,
   canSeeAdministrationItem,
   type AdministrationNavItem,
 } from "./administrationNavConfig";
@@ -18,121 +16,123 @@ export type AdministrationRailProps = {
   onSelectSection: (id: AdminSectionId) => void;
 };
 
-const rowClass = (is_active: boolean, indent: boolean) =>
-  `flex w-full cursor-pointer items-center gap-[9px] rounded-lg py-2 text-left text-[13.5px] transition-colors ${
-    indent ? "pl-[30px] pr-[10px]" : "px-[10px]"
-  } ${is_active ? "bg-shell-hover-strong font-bold text-brand-200" : "font-medium text-shell-text-secondary hover:bg-shell-hover"}`;
+type NavRowProps = {
+  item: AdministrationNavItem;
+  is_active: boolean;
+  onSelect: (id: AdminSectionId) => void;
+  icon?: React.ReactNode;
+  is_child?: boolean;
+};
 
-const groupHeaderClass = "mb-1.5 px-2 text-[11px] font-bold uppercase tracking-[0.06em] text-shell-text-faint";
+/** One rail page. Items with their own route (Organization, Slack settings) render as links. */
+const NavRow: React.FC<NavRowProps> = ({ item, is_active, onSelect, icon, is_child = false }) => {
+  const class_name = `admin-rail-row${is_child ? " admin-rail-child" : ""}`;
+  const content = (
+    <>
+      {icon ? <span className="admin-rail-icon">{icon}</span> : null}
+      <span className="admin-rail-label">{item.label}</span>
+    </>
+  );
 
-const NavRow: React.FC<{ item: AdministrationNavItem; is_active: boolean; onSelect: () => void; indent?: boolean }> = ({
-  item,
-  is_active,
-  onSelect,
-  indent = false,
-}) => {
-  const Icon = item.icon;
+  if (item.href) {
+    return (
+      <Link href={item.href} className={class_name}>
+        {content}
+      </Link>
+    );
+  }
+
   return (
-    <button type="button" onClick={onSelect} className={rowClass(is_active, indent)}>
-      <span className="flex flex-none items-center justify-center text-shell-text-muted">
-        <Icon size={15} />
-      </span>
-      {item.label}
+    <button
+      type="button"
+      onClick={() => onSelect(item.id)}
+      aria-current={is_active ? "page" : undefined}
+      className={class_name}
+    >
+      {content}
     </button>
   );
 };
 
-const NavGroupToggle: React.FC<{
-  label: string;
-  is_expanded: boolean;
-  is_active: boolean;
-  onToggle: () => void;
-}> = ({ label, is_expanded, is_active, onToggle }) => (
-  <button type="button" onClick={onToggle} className={rowClass(is_active, false)}>
-    <span
-      className="flex flex-none items-center justify-center text-shell-text-muted transition-transform duration-150"
-      style={{ width: 14, height: 14, transform: is_expanded ? "rotate(90deg)" : "rotate(0deg)" }}
-    >
-      <ChevronRightIcon size={10} />
-    </span>
-    {label}
-  </button>
-);
-
 /**
- * Left rail of the Administration view: driven entirely by `administrationNavConfig`
- * instead of hardcoded JSX, so adding or reordering a section only means editing that one
- * config file. Group expand/collapse is presentational-only local state (a single
- * `Record<AdminNavGroupId, boolean>` instead of three separate booleans), and auto-expands
- * whichever group contains the active section, including when navigation arrives from a
- * section's own internal link (see `CustomizationSection`/`DepartmentsSection`).
+ * Left rail of the Administration view, monday.com style: collapsible groups with an icon and
+ * a chevron, child pages indented below them, and top level pages after the groups. Driven
+ * entirely by `administrationNavConfig`. Only the group holding the active page starts open,
+ * the others open and close on click and stay that way while the view is mounted.
  */
-const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section, onSelectSection: selectSection }) => {
-  const router = useRouter();
-  /** Items with their own page (Organization) navigate, the rest switch the section in place. */
-  const onSelectSection = (id: AdminSectionId) => {
-    const href = [...ADMINISTRATION_GENERAL_ITEMS, ...ADMINISTRATION_NAV_GROUPS.flatMap((group) => administrationItemsForGroup(group.id))].find(
-      (item) => item.id === id
-    )?.href;
-    if (href) router.push(href);
-    else selectSection(id);
-  };
+const AdministrationRail: React.FC<AdministrationRailProps> = ({ active_section, onSelectSection }) => {
   const { hasAnyRole } = useAuth();
-  const [expanded_groups, setExpandedGroups] = useState<Record<AdminNavGroupId, boolean>>({
-    customization: true,
-    directory: true,
-    security: true,
+  const [expanded_groups, setExpandedGroups] = useState<Partial<Record<AdminNavGroupId, boolean>>>(() => {
+    const group = administrationGroupForSection(active_section);
+    return group ? { [group]: true } : {};
   });
 
+  // Opening a page from a deep link or a section's own link reveals its group.
   useEffect(() => {
     const group = administrationGroupForSection(active_section);
     if (!group) return;
     setExpandedGroups((current) => (current[group] ? current : { ...current, [group]: true }));
   }, [active_section]);
 
-  const toggleGroup = (id: AdminNavGroupId) =>
-    setExpandedGroups((current) => ({ ...current, [id]: !current[id] }));
+  const toggleGroup = (id: AdminNavGroupId) => setExpandedGroups((current) => ({ ...current, [id]: !current[id] }));
 
   return (
-    <div className="scrollnice flex h-full w-[264px] flex-none flex-col overflow-y-auto border-r border-shell-border bg-shell-panel-alt px-[14px] py-5">
-      <div className={groupHeaderClass}>General</div>
-      {ADMINISTRATION_GENERAL_ITEMS.map((item, index) => (
-        <div key={item.id} className={index === ADMINISTRATION_GENERAL_ITEMS.length - 1 ? "mb-4" : undefined}>
-          <NavRow item={item} is_active={active_section === item.id} onSelect={() => onSelectSection(item.id)} />
-        </div>
-      ))}
+    <nav aria-label="Administration" className="admin-rail scrollnice">
+      {ADMINISTRATION_NAV.map((node) => {
+        const Icon = node.icon;
 
-      {ADMINISTRATION_NAV_GROUPS.map((group) => {
-        const items = administrationItemsForGroup(group.id).filter((item) => canSeeAdministrationItem(item, hasAnyRole));
-        const is_expanded = expanded_groups[group.id];
-        const is_group_active = group.own_section_id ? active_section === group.own_section_id : false;
+        if (node.kind === "page") {
+          if (!canSeeAdministrationItem(node.item, hasAnyRole)) return null;
+          return (
+            <NavRow
+              key={node.item.id}
+              item={node.item}
+              is_active={active_section === node.item.id}
+              onSelect={onSelectSection}
+              icon={<Icon size={16} strokeWidth={1.75} aria-hidden="true" />}
+            />
+          );
+        }
+
+        const items = node.items.filter((item) => canSeeAdministrationItem(item, hasAnyRole));
+        if (items.length === 0) return null;
+        const is_expanded = Boolean(expanded_groups[node.id]);
+        const list_id = `admin-rail-group-${node.id}`;
 
         return (
-          <div key={group.id}>
-            <NavGroupToggle
-              label={group.label}
-              is_expanded={is_expanded}
-              is_active={is_group_active}
-              onToggle={() => {
-                if (group.own_section_id) onSelectSection(group.own_section_id);
-                toggleGroup(group.id);
-              }}
-            />
-            {is_expanded
-              ? items.map((item) => (
+          <div key={node.id} className="flex flex-col gap-0.5">
+            <button
+              type="button"
+              onClick={() => toggleGroup(node.id)}
+              aria-expanded={is_expanded}
+              aria-controls={list_id}
+              className="admin-rail-row"
+            >
+              <span className="admin-rail-icon">
+                <Icon size={16} strokeWidth={1.75} aria-hidden="true" />
+              </span>
+              <span className="admin-rail-label">{node.label}</span>
+              <span className="admin-rail-chevron">
+                <ChevronDown size={16} strokeWidth={1.75} aria-hidden="true" />
+              </span>
+            </button>
+            {is_expanded ? (
+              <div id={list_id} className="flex flex-col gap-0.5">
+                {items.map((item) => (
                   <NavRow
                     key={item.id}
                     item={item}
                     is_active={active_section === item.id}
-                    onSelect={() => onSelectSection(item.id)}
-                    indent
+                    onSelect={onSelectSection}
+                    is_child
                   />
-                ))
-              : null}
+                ))}
+              </div>
+            ) : null}
           </div>
         );
       })}
-    </div>
+    </nav>
   );
 };
 

@@ -26,28 +26,25 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
 
   return (
     <div>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-        Organize your account by location, business unit or cost center, then assign each user in the{" "}
-        <button type="button" onClick={onGoToUsers} className="text-brand-200 hover:underline">
-          Users
-        </button>{" "}
-        tab.
-      </p>
-
       {departments.error ? (
-        <div className="mb-[18px] rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
+        <div className="mb-[18px] admin-notice admin-notice-error">
           {departments.error}
         </div>
       ) : null}
 
       {departments.unassigned_user_count > 0 ? (
-        <div className="mb-[18px] flex items-center gap-[10px] rounded-[9px] bg-brand-200/10 px-[14px] py-3 text-[12.5px] text-[#ffb7ae]">
-          <svg width="15" height="15" viewBox="0 0 16 16" className="flex-none text-brand-200">
+        <div className="mb-[18px] flex items-center gap-[10px] admin-notice admin-notice-warning">
+          <svg width="15" height="15" viewBox="0 0 16 16" className="flex-none text-[var(--admin-accent)]">
             <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" strokeWidth={1.3} />
             <line x1="8" y1="7" x2="8" y2="11.2" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round" />
             <circle cx="8" cy="4.9" r="0.9" fill="currentColor" />
           </svg>
-          {departments.unassigned_user_count} users are not assigned to any department yet.
+          <span>
+            {departments.unassigned_user_count} users are not assigned to any department yet.{" "}
+            <button type="button" onClick={onGoToUsers} className="admin-link">
+              Assign them in User management
+            </button>
+          </span>
         </div>
       ) : null}
 
@@ -57,7 +54,7 @@ const DepartmentsSection: React.FC<DepartmentsSectionProps> = ({ departments, on
             type="button"
             onClick={() => void departments.addDepartment()}
             disabled={departments.is_adding_department}
-            className="flex items-center gap-[7px] rounded-lg bg-brand-500 px-4 py-[9px] text-[13.5px] font-bold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+            className="flex items-center gap-[7px] rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
           >
             <svg width="13" height="13" viewBox="0 0 16 16">
               <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" />

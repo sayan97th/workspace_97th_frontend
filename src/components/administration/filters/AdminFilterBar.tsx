@@ -37,10 +37,10 @@ const FilterButton: React.FC<{
         type="button"
         ref={setAnchorEl}
         onClick={() => setIsOpen((current) => !current)}
-        className={`flex max-w-[260px] items-center gap-1.5 rounded-lg border px-2.5 py-[7px] text-[12.5px] font-medium transition-colors ${
+        className={`flex h-8 max-w-[260px] items-center gap-1.5 rounded-[4px] border px-2.5 text-[13px] transition-colors ${
           is_active
-            ? "border-brand-500/50 bg-brand-500/[0.1] text-brand-200"
-            : "border-shell-border-strong bg-shell-hover-strong text-shell-text-secondary hover:border-shell-text-muted"
+            ? "border-[var(--admin-accent)] bg-[var(--admin-selected)] text-shell-text"
+            : "border-[var(--admin-border)] bg-transparent text-shell-text hover:bg-[var(--admin-hover)]"
         }`}
       >
         <span className="min-w-0 truncate">

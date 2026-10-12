@@ -1,78 +1,218 @@
-import {
-  ArchiveIcon,
-  BoardGridIcon,
-  BuildingIcon,
-  CameraIcon,
-  ClockIcon,
-  ContentTabIcon,
-  DashboardIcon,
-  FileIcon,
-  FolderIcon,
-  KeyIcon,
-  LinkIcon,
-  LockIcon,
-  PermissionsIcon,
-  PersonIcon,
-  ShieldIcon,
-  TeamsIcon,
-  type IconComponent,
-} from "@/icons/workspace-icons";
+import { ChartLine, Contact, FileStack, Lock, Network, Paintbrush, Settings, Shield, SlidersHorizontal, type LucideIcon } from "lucide-react";
 import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
+import { SLACK_SETUP_PATH, SLACK_SETUP_ROLES } from "@/lib/slackSetup";
 import type { AdminNavGroupId, AdminSectionId } from "./types";
-
-export type AdministrationNavGroup = {
-  id: AdminNavGroupId;
-  label: string;
-  /** Set when the group header itself is also a selectable page, like "Customization". */
-  own_section_id?: AdminSectionId;
-};
 
 export type AdministrationNavItem = {
   id: AdminSectionId;
   label: string;
-  icon: IconComponent;
-  /** Which collapsible group this item renders under, or null for the always-visible "General" rows. */
-  group: AdminNavGroupId | null;
+  /** Page heading when it differs from the rail label, e.g. "Users" opens "User management". */
+  title?: string;
+  /** Subtitle under the page heading. */
+  description: string;
   /** Opens a page of its own instead of a section of the Administration view. */
   href?: string;
   /** Restricts the item to these platform roles, mirroring the API route's role gate. Visible to every Administration role when absent. */
   roles?: string[];
 };
 
-/**
- * Single source of truth for the Administration left rail: the collapsible groups and the
- * items inside them. Adding, removing, or reordering a section is now a one-place edit here
- * instead of touching the nav JSX, the section-title map, and the section-panel map
- * separately, which is what made the old {@link AdministrationNav} easy to drift out of sync.
- */
+/** A collapsible rail group with child pages, like monday's "Directory" or "Security". */
+export type AdministrationNavGroupNode = {
+  kind: "group";
+  id: AdminNavGroupId;
+  label: string;
+  icon: LucideIcon;
+  items: AdministrationNavItem[];
+};
+
+/** A rail page shown at the top level with its own icon, like monday's "Tidy up" or "Permissions". */
+export type AdministrationNavPageNode = {
+  kind: "page";
+  icon: LucideIcon;
+  item: AdministrationNavItem;
+};
+
+export type AdministrationNavNode = AdministrationNavGroupNode | AdministrationNavPageNode;
+
 /** Roles allowed on the admin only pages (the API gates them with `role:super_admin,admin`). */
 const ADMIN_ROLES = ["super_admin", "admin"];
 
-export const ADMINISTRATION_NAV_GROUPS: AdministrationNavGroup[] = [
-  { id: "customization", label: "Customization", own_section_id: "customization" },
-  { id: "directory", label: "Directory" },
-  { id: "security", label: "Security" },
+/** The page the view opens on when the URL names no section, or one that no longer exists. */
+export const DEFAULT_ADMINISTRATION_SECTION: AdminSectionId = "account";
+
+/**
+ * Single source of truth for the Administration left rail, in display order: the collapsible
+ * groups with their child pages, then the top level pages, same layout as monday.com's
+ * administration. Page titles and subtitles come from here too, so adding, removing or
+ * reordering a page is a one place edit.
+ *
+ * The old Profile (account name and URL), Branding (email header) and Customization landing
+ * pages were dropped: the company name, logo and brand now live on the Organization page, and
+ * neither the account URL nor the email header was used anywhere else in the product.
+ */
+export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
+  {
+    kind: "group",
+    id: "general",
+    label: "General",
+    icon: Settings,
+    items: [
+      {
+        id: "account",
+        label: "Account",
+        title: "Account settings",
+        description: "Account wide preferences for the work week, the Timeline and the home page.",
+      },
+      {
+        id: "user_defaults",
+        label: "New user defaults",
+        description: "The language, timezone and formats everyone who joins the account starts with.",
+      },
+    ],
+  },
+  {
+    kind: "group",
+    id: "customization",
+    label: "Customization",
+    icon: SlidersHorizontal,
+    items: [
+      {
+        id: "organization",
+        label: "Organization",
+        description: "Company profile, logo, favicon, brand color and announcements.",
+        href: ORGANIZATION_SETTINGS_PATH,
+      },
+      {
+        id: "profile_fields",
+        label: "Profile fields",
+        description:
+          "Add fields to every user's profile, like office location or employee ID. Each field becomes a filterable column in the Users table.",
+      },
+    ],
+  },
+  {
+    kind: "group",
+    id: "directory",
+    label: "Directory",
+    icon: Contact,
+    items: [
+      {
+        id: "users",
+        label: "Users",
+        title: "User management",
+        description:
+          "Manage everyone on this account, see who's an admin, deactivate a user, or assign people to departments. Click a person to see their details.",
+      },
+      {
+        id: "departments",
+        label: "Departments",
+        description: "Organize the account by location, business unit or cost center, then assign people from User management.",
+      },
+      {
+        id: "board_ownership",
+        label: "Board ownership",
+        description: "Move the boards of someone who left to a new owner, and give an owner to boards that have none.",
+      },
+    ],
+  },
+  {
+    kind: "group",
+    id: "security",
+    label: "Security",
+    icon: Shield,
+    items: [
+      {
+        id: "authentication",
+        label: "Authentication",
+        title: "Security and authentication",
+        description: "Control how people sign up for and log into this account.",
+      },
+      {
+        id: "sessions",
+        label: "Sessions",
+        title: "Active user sessions",
+        description: "View and control the sessions of every user on this account.",
+      },
+      {
+        id: "audit",
+        label: "Audit log",
+        description: "See who made changes to security sensitive settings across this account, and when.",
+      },
+      {
+        id: "advanced",
+        label: "Advanced",
+        title: "Advanced security",
+        description: "Panic mode for emergencies and how long a session lasts before people have to sign in again.",
+      },
+    ],
+  },
+  {
+    kind: "group",
+    id: "connections",
+    label: "Connections",
+    icon: Network,
+    items: [
+      {
+        id: "integrations",
+        label: "Integrations",
+        description: "Connect the account to Slack and the other apps your team uses for notifications and automations.",
+      },
+      {
+        id: "slack",
+        label: "Slack settings",
+        description: "Slack app credentials and connected workspaces.",
+        href: SLACK_SETUP_PATH,
+        roles: SLACK_SETUP_ROLES,
+      },
+    ],
+  },
+  {
+    kind: "page",
+    icon: ChartLine,
+    item: {
+      id: "usage",
+      label: "Usage stats",
+      description:
+        "See how the account is being used. A person counts as active on a day they signed in, changed an item, posted an update or made a recorded change.",
+    },
+  },
+  {
+    kind: "page",
+    icon: Paintbrush,
+    item: {
+      id: "tidy_up",
+      label: "Tidy up",
+      description:
+        "Keep the account clean. These boards had no item changes, updates or board activity in the chosen period. Archive them, or reassign them to someone who will pick them up.",
+      roles: ADMIN_ROLES,
+    },
+  },
+  {
+    kind: "page",
+    icon: FileStack,
+    item: {
+      id: "content_directory",
+      label: "Content directory",
+      description:
+        "Browse every board in the account, including private ones, see who owns what and how active it is, and clean up in bulk.",
+      roles: ADMIN_ROLES,
+    },
+  },
+  {
+    kind: "page",
+    icon: Lock,
+    item: {
+      id: "permissions",
+      label: "Permissions",
+      description: "Define the default account level permissions for your users.",
+    },
+  },
 ];
 
-export const ADMINISTRATION_NAV_ITEMS: AdministrationNavItem[] = [
-  { id: "profile", label: "Profile", icon: PersonIcon, group: null },
-  { id: "account", label: "Account", icon: BuildingIcon, group: null },
-  { id: "usage", label: "Usage stats", icon: DashboardIcon, group: null },
-  { id: "integrations", label: "Integrations", icon: LinkIcon, group: null },
-  { id: "organization", label: "Organization", icon: BuildingIcon, group: "customization", href: ORGANIZATION_SETTINGS_PATH },
-  { id: "branding", label: "Branding", icon: CameraIcon, group: "customization" },
-  { id: "profile_fields", label: "Profile fields", icon: FileIcon, group: "customization" },
-  { id: "users", label: "Users", icon: TeamsIcon, group: "directory" },
-  { id: "departments", label: "Departments", icon: FolderIcon, group: "directory" },
-  { id: "board_ownership", label: "Board ownership", icon: BoardGridIcon, group: "directory" },
-  { id: "content_directory", label: "Content directory", icon: ContentTabIcon, group: "directory", roles: ADMIN_ROLES },
-  { id: "tidy_up", label: "Tidy up", icon: ArchiveIcon, group: "directory", roles: ADMIN_ROLES },
-  { id: "permissions", label: "Permissions", icon: PermissionsIcon, group: "security" },
-  { id: "authentication", label: "Authentication", icon: ShieldIcon, group: "security" },
-  { id: "audit", label: "Audit", icon: ClockIcon, group: "security" },
-  { id: "advanced", label: "Advanced", icon: KeyIcon, group: "security" },
-  { id: "sessions", label: "Sessions", icon: LockIcon, group: "security" },
-];
+/** Every rail page, groups flattened, in display order. */
+export const ADMINISTRATION_NAV_ITEMS: AdministrationNavItem[] = ADMINISTRATION_NAV.flatMap((node) =>
+  node.kind === "group" ? node.items : [node.item]
+);
 
 /** Whether a user holding `hasAnyRole` may open `item`. */
 export const canSeeAdministrationItem = (
@@ -80,13 +220,18 @@ export const canSeeAdministrationItem = (
   hasAnyRole: (...roles: string[]) => boolean
 ): boolean => !item.roles || hasAnyRole(...item.roles);
 
-/** Section ids rendered outside any collapsible group, always visible under "General". */
-export const ADMINISTRATION_GENERAL_ITEMS = ADMINISTRATION_NAV_ITEMS.filter((item) => item.group === null);
+export const findAdministrationItem = (section_id: AdminSectionId): AdministrationNavItem | undefined =>
+  ADMINISTRATION_NAV_ITEMS.find((item) => item.id === section_id);
 
-export const administrationItemsForGroup = (group_id: AdminNavGroupId): AdministrationNavItem[] =>
-  ADMINISTRATION_NAV_ITEMS.filter((item) => item.group === group_id);
+/** Narrows a `?section=` value to a section rendered inside the view (pages with their own route are excluded). */
+export const parseAdministrationSection = (value: string | null): AdminSectionId | null => {
+  const item = value ? ADMINISTRATION_NAV_ITEMS.find((candidate) => candidate.id === value) : undefined;
+  return item && !item.href ? item.id : null;
+};
 
-export const administrationGroupForSection = (section_id: AdminSectionId): AdminNavGroupId | null =>
-  ADMINISTRATION_NAV_ITEMS.find((item) => item.id === section_id)?.group ??
-  ADMINISTRATION_NAV_GROUPS.find((group) => group.own_section_id === section_id)?.id ??
-  null;
+export const administrationGroupForSection = (section_id: AdminSectionId): AdminNavGroupId | null => {
+  const group = ADMINISTRATION_NAV.find(
+    (node): node is AdministrationNavGroupNode => node.kind === "group" && node.items.some((item) => item.id === section_id)
+  );
+  return group?.id ?? null;
+};

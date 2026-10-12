@@ -179,7 +179,7 @@ const ProfileFieldDialog: React.FC<ProfileFieldDialogProps> = ({ field, is_open,
                 <button
                   type="button"
                   onClick={addOption}
-                  className="self-start rounded-lg px-2 py-1.5 text-[12.5px] font-semibold text-brand-200 hover:bg-shell-hover"
+                  className="self-start rounded-lg px-2 py-1.5 text-[12.5px] font-semibold text-[var(--admin-accent)] hover:bg-shell-hover"
                 >
                   + Add option
                 </button>
@@ -205,7 +205,7 @@ const ProfileFieldDialog: React.FC<ProfileFieldDialogProps> = ({ field, is_open,
             type="button"
             disabled={!can_save}
             onClick={() => void submit()}
-            className="rounded-[9px] bg-brand-500 px-4 py-[9px] text-[13px] font-bold text-white hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
+            className="rounded-[4px] bg-brand-500 px-4 py-[9px] text-[14px] font-medium text-white hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
           >
             {is_saving ? "Saving…" : field ? "Save changes" : "Add field"}
           </button>

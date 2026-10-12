@@ -16,11 +16,6 @@ const ContentDirectorySection: React.FC = () => {
 
   return (
     <div>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-        Browse every board in the account, including private ones, see who owns what and how active it is, and clean up
-        in bulk.
-      </p>
-
       <AdminBoardsTable
         content={content}
         onRequestArchive={() => setIsArchiveOpen(true)}
