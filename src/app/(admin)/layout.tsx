@@ -6,7 +6,7 @@ import { WorkspaceProvider } from "@/context/WorkspaceContext";
 import { BrandingProvider } from "@/context/BrandingContext";
 import AppSidebar from "@/layout/AppSidebar";
 import AppTopBar from "@/layout/AppTopBar";
-import { isSidebarlessPath } from "@/layout/sidebar-routes";
+import { isSidebarlessPath, rememberWorkspacePath } from "@/layout/sidebar-routes";
 import Backdrop from "@/layout/Backdrop";
 import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
 import OrganizationAnnouncementBanner from "@/components/organization/OrganizationAnnouncementBanner";
@@ -32,6 +32,12 @@ export default function AdminLayout({
       router.replace(`/signin?callbackUrl=${encodeURIComponent(pathname)}`);
     }
   }, [isLoading, isAuthenticated, pathname, router]);
+
+  // Track the last workspace page so Administration's "Back to workspace" returns to it.
+  useEffect(() => {
+    if (is_embedded || is_sidebarless) return;
+    rememberWorkspacePath(`${window.location.pathname}${window.location.search}`);
+  }, [pathname, is_embedded, is_sidebarless]);
 
   if (isLoading || !isAuthenticated) {
     return (

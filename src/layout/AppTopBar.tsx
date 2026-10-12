@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useState } from "react";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSidebar } from "@/context/SidebarContext";
@@ -8,7 +9,7 @@ import UserAvatar from "@/components/common/UserAvatar";
 import OrganizationLogo from "@/components/common/OrganizationLogo";
 import { ORGANIZATION_SETTINGS_PATH } from "@/components/organization/organization-routes";
 import AccountMenu from "./AccountMenu";
-import { isSidebarlessPath } from "./sidebar-routes";
+import { HOME_PATH, isSidebarlessPath } from "./sidebar-routes";
 import HelpMenu from "./HelpMenu";
 import GlobalSearch from "./GlobalSearch";
 import RequestAccessModal, {
@@ -178,14 +179,21 @@ const AppTopBar: React.FC = () => {
           </button>
         )}
 
-        {/* Same width as the app rail below, so the logo sits centered over it. */}
+        {/* Same width as the app rail below, so the logo sits centered over it. Clicking it opens Home. */}
         <span className="flex flex-none items-center lg:w-[72px] lg:justify-center">
-          <OrganizationLogo
-            logo_url={branding.logo_url}
-            logo_dark_url={branding.logo_dark_url}
-            company_name={branding.company_name}
-            size={32}
-          />
+          <Link
+            href={HOME_PATH}
+            aria-label="Go to Home"
+            title="Home"
+            className="flex rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+          >
+            <OrganizationLogo
+              logo_url={branding.logo_url}
+              logo_dark_url={branding.logo_dark_url}
+              company_name={branding.company_name}
+              size={32}
+            />
+          </Link>
         </span>
 
         {branding.show_name_in_top_bar && (

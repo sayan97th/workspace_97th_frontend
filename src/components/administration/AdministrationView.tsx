@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import { useAuth } from "@/context/AuthContext";
 import { useBranding } from "@/context/BrandingContext";
+import { readWorkspacePath } from "@/layout/sidebar-routes";
 import AdministrationRail from "./AdministrationRail";
 import { AdminPageActionsContext } from "./AdminPageActions";
 import { useAccountSettingsManager } from "./useAccountSettingsManager";
@@ -45,7 +46,7 @@ const ADMINISTRATION_ROLES = ["super_admin", "admin", "staff"];
 
 /**
  * Account wide "Administration" page, mounted at `/administration` and styled after monday.com's
- * administration: a top bar with Back and the page name, the grouped rail
+ * administration: a top bar with "Back to workspace" and the page name, the grouped rail
  * ({@link AdministrationRail}) on a soft gray page, and the active section inside a white card
  * with its title and subtitle. Styles live in `administration.css`.
  *
@@ -152,9 +153,10 @@ const AdministrationView: React.FC = () => {
   return (
     <div className="admin-shell administration-theme">
       <header className="admin-topbar">
-        <button type="button" onClick={() => router.back()} className="admin-back-button">
+        {/* The page has no workspace sidebar, so this is the way back to the last workspace page (Home by default). */}
+        <button type="button" onClick={() => router.push(readWorkspacePath())} className="admin-back-button">
           <ArrowLeft size={16} strokeWidth={1.75} aria-hidden="true" />
-          Back
+          Back to workspace
         </button>
         <h1 className="admin-topbar-title">
           <strong>{branding.company_name}</strong> administration
