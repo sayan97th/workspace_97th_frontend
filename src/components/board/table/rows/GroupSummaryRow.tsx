@@ -1,5 +1,6 @@
 import type { BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
+import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
 
@@ -63,7 +64,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
                   className="flex h-6 w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-cell text-white"
                   style={
                     summary.range_label
-                      ? { background: group.color }
+                      ? { background: timelineFillBackground(group.color, summary.elapsed_ratio) }
                       : { background: "var(--color-boardtree-empty)" }
                   }
                 >

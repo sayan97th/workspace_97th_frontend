@@ -5,6 +5,10 @@
  * and year dropdowns with the previous/next arrows, and a 7 column day grid
  * whose picked day is a solid blue square.
  *
+ * The Timeline column picker reuses the same card with `.date-picker--range`:
+ * a "Set dates" title, a Start date / End date pair of fields, and range
+ * states on the grid (solid blue edges joined by a light blue band).
+ *
  * Every color is a `--date-picker-*` token declared on `.date-picker`, so
  * dark mode only swaps the tokens, never the rules below. The card is portaled
  * to `document.body` (see `PopoverPanel`), outside the table's scoped palette,
@@ -25,6 +29,7 @@
   --date-picker-primary: #0073ea;
   --date-picker-primary-hover: #0060b9;
   --date-picker-on-primary: #ffffff;
+  --date-picker-range: #cce5ff;
   --date-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 
   display: flex;
@@ -54,6 +59,7 @@ html.dark .date-picker {
   --date-picker-active-text: #8fc1ff;
   --date-picker-primary: #2f7de1;
   --date-picker-primary-hover: #4d9cff;
+  --date-picker-range: rgba(77, 156, 255, 0.24);
   --date-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
 
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -324,4 +330,104 @@ html.dark .date-picker {
 
 .date-picker__day--selected:hover {
   background: var(--date-picker-primary-hover);
+}
+
+/*
+ * Timeline range picker. A wider card so the 7 day columns sit edge to edge
+ * (7 x 40px inside 12px padding) and the range band reads as one strip.
+ */
+.date-picker--range {
+  width: 304px;
+  padding: 12px;
+}
+
+.date-picker__title {
+  color: var(--date-picker-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.date-picker__range-fields {
+  display: flex;
+  gap: 8px;
+}
+
+.date-picker__field--range {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+}
+
+/* The field the next day click fills, focused or not. */
+.date-picker__field--active,
+.date-picker__field--active:hover {
+  border-color: var(--date-picker-focus);
+}
+
+.date-picker--range .date-picker__grid {
+  grid-template-columns: repeat(7, 40px);
+}
+
+/* monday marks today with a short blue underline instead of a colored number. */
+.date-picker--range .date-picker__day {
+  position: relative;
+}
+
+.date-picker--range .date-picker__day--today {
+  color: var(--date-picker-text);
+  font-weight: 400;
+}
+
+.date-picker--range .date-picker__day--today::after {
+  content: "";
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--date-picker-primary);
+  transform: translateX(-50%);
+}
+
+.date-picker__day--in-range,
+.date-picker__day--in-range:hover,
+.date-picker__day--range-end-preview,
+.date-picker__day--range-end-preview:hover {
+  border-radius: 0;
+  background: var(--date-picker-range);
+  color: var(--date-picker-text);
+}
+
+.date-picker__day--range-end-preview {
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset 0 0 0 1px var(--date-picker-primary);
+}
+
+.date-picker__day--range-start,
+.date-picker__day--range-start:hover,
+.date-picker__day--range-end,
+.date-picker__day--range-end:hover {
+  background: var(--date-picker-primary);
+  color: var(--date-picker-on-primary);
+}
+
+.date-picker__day--range-start:hover,
+.date-picker__day--range-end:hover {
+  background: var(--date-picker-primary-hover);
+}
+
+/* The start squares off its right side when the band continues, the end its left side. */
+.date-picker__day--range-open {
+  border-radius: 4px 0 0 4px;
+}
+
+.date-picker__day--range-end {
+  border-radius: 0 4px 4px 0;
+}
+
+.date-picker__day--range-start.date-picker__day--today::after,
+.date-picker__day--range-end.date-picker__day--today::after {
+  background: var(--date-picker-on-primary);
 }

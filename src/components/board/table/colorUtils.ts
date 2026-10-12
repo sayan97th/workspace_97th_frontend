@@ -37,3 +37,13 @@ export function contrastFg(hex: string): string {
 export function pillColors(color: string) {
   return { fg: color || "#9aa0b6", bd: tintOf(color || "#9aa0b6", 0.66), bg: tintOf(color || "#9aa0b6", 0.93) };
 }
+
+/**
+ * A set Timeline pill's fill, monday style: the elapsed share of the range in the group color,
+ * the time still ahead in a dark track. A range fully in the past is all group color.
+ */
+export function timelineFillBackground(color: string, elapsed_ratio: number): string {
+  if (elapsed_ratio >= 1) return color;
+  const elapsed_percent = `${Math.round(elapsed_ratio * 1000) / 10}%`;
+  return `linear-gradient(to right, ${color} ${elapsed_percent}, var(--color-boardtree-timeline-rest) ${elapsed_percent})`;
+}

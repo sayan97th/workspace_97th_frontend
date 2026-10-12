@@ -1,6 +1,6 @@
 import type { ColumnDef, StatusDef, BoardTableItem } from "./types";
 import { findDef } from "./colorUtils";
-import { fmtRange, parseRangeValue } from "./dateUtils";
+import { fmtRange, parseRangeValue, rangeElapsedRatio } from "./dateUtils";
 import { computeFormulaOutcome, isNumericFormula } from "./formulaUtils";
 
 export interface StatusSegment {
@@ -29,6 +29,8 @@ export interface ColumnSummary {
   /** Which aggregation `sum_value` actually holds, for `GroupSummaryRow`'s caption — defaults to `"sum"` for columns with no `aggregation` set (existing behavior, unchanged). */
   aggregation: NumberAggregation;
   range_label: string;
+  /** The share of the widest range already gone by, see `rangeElapsedRatio`. */
+  elapsed_ratio: number;
 }
 
 /** A Number cell's value, stored as text by the cell editor or as a JSON number by automations and imports. */
@@ -61,11 +63,11 @@ function fmtAggregate(n: number): string {
 
 /** Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row. */
 export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
-  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "" };
+  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0 };
 
   if (column.kind === "timeline") {
     const { start_iso, end_iso } = widestRangeOf(items, column.id);
-    return { ...base, is_timeline: true, range_label: start_iso ? fmtRange(start_iso, end_iso) : "" };
+    return { ...base, is_timeline: true, range_label: start_iso ? fmtRange(start_iso, end_iso) : "", elapsed_ratio: rangeElapsedRatio(start_iso, end_iso) };
   }
 
   if (column.kind === "status") {

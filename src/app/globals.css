@@ -161,6 +161,8 @@
   --color-boardtree-control-border: #c3c6d4;
   /* Fill of an empty Timeline pill, monday's neutral gray. */
   --color-boardtree-empty: #c4c4c4;
+  /* The part of a set Timeline pill still ahead of today, the elapsed part takes the group color. */
+  --color-boardtree-timeline-rest: #333333;
 
   --z-index-1: 1;
   --z-index-2: 2;
@@ -275,6 +277,7 @@
   --color-boardtree-grid: rgba(255, 255, 255, 0.1);
   --color-boardtree-control-border: rgba(255, 255, 255, 0.24);
   --color-boardtree-empty: rgba(255, 255, 255, 0.18);
+  --color-boardtree-timeline-rest: rgba(255, 255, 255, 0.32);
 }
 
 /* Entrance animation for `ConfirmActionModal` — panel rises + scales in

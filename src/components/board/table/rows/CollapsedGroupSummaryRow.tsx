@@ -2,6 +2,7 @@
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup } from "../types";
+import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
@@ -99,7 +100,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
                     className="flex h-[18px] w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-caption text-white"
                     style={
                       summary.range_label
-                        ? { background: group.color }
+                        ? { background: timelineFillBackground(group.color, summary.elapsed_ratio) }
                         : { background: "var(--color-boardtree-empty)" }
                     }
                   >

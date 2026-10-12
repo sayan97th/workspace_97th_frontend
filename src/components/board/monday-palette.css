@@ -39,6 +39,7 @@ html:not(.dark) .board-chrome-theme {
   --color-boardtree-grid: #d0d4e4;
   --color-boardtree-control-border: #c3c6d4;
   --color-boardtree-empty: #c4c4c4;
+  --color-boardtree-timeline-rest: #333333;
 }
 
 /*

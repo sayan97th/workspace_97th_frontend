@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import type { CellFile, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import { contrastFg, findDef, pillColors } from "../colorUtils";
+import { contrastFg, findDef, pillColors, timelineFillBackground } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
-import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue } from "../dateUtils";
+import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
 import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
@@ -273,16 +273,25 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "timeline") {
     const { start_iso, end_iso } = parseRangeValue(value);
+    const range_label = start_iso ? fmtRange(start_iso, end_iso || start_iso) : "";
+    // On hover a set pill trades its dates for the range length ("7d") and an empty one reads "Set Dates", like monday.com.
+    const hover_label = start_iso ? `${rangeDayCount(start_iso, end_iso)}d` : "Set Dates";
     return (
       <div className="relative flex flex-1 items-center px-3">
         <button
           type="button"
           onClick={openMenu}
-          title={start_iso ? fmtRange(start_iso, end_iso || start_iso) : undefined}
-          className="flex h-6 w-full min-w-0 items-center justify-center rounded-full px-2 text-board-cell text-white"
-          style={{ background: start_iso ? (group_color ?? "var(--color-boardtree-accent)") : "var(--color-boardtree-empty)" }}
+          title={range_label || undefined}
+          aria-label={range_label ? `Timeline ${range_label}` : "Set dates"}
+          className="group/timeline relative flex h-6 w-full min-w-0 items-center justify-center rounded-full px-2 text-board-cell text-white transition-[filter] duration-150 hover:brightness-90"
+          style={{
+            background: start_iso
+              ? timelineFillBackground(group_color ?? "var(--color-boardtree-accent)", rangeElapsedRatio(start_iso, end_iso))
+              : "var(--color-boardtree-empty)",
+          }}
         >
-          <span className="truncate">{start_iso ? fmtRange(start_iso, end_iso || start_iso) : "-"}</span>
+          <span className="truncate group-hover/timeline:invisible">{range_label || "-"}</span>
+          <span className="invisible absolute inset-0 flex items-center justify-center truncate px-2 group-hover/timeline:visible">{hover_label}</span>
         </button>
         {is_menu_open && (
           <TimelineMenu

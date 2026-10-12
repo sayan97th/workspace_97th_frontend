@@ -1,4 +1,4 @@
-import { DAY_OF_WEEK_LABELS, MONTH_LABELS } from "./constants";
+import { MONTH_LABELS } from "./constants";
 
 const pad2 = (n: number) => (n < 10 ? "0" + n : String(n));
 
@@ -59,13 +59,49 @@ export function fmtDateShort(iso: string | undefined): string {
   return `${MONTH_LABELS[Number(parts[1]) - 1]} ${Number(parts[2])}`;
 }
 
+/** One side of a range label, "Mar 31", plus ", '25" when the date is not in the current year. */
+function fmtRangeEdge(iso: string): string {
+  const year = iso.slice(0, 4);
+  const year_suffix = Number(year) === new Date().getFullYear() ? "" : `, '${year.slice(2)}`;
+  return `${fmtDateShort(iso)}${year_suffix}`;
+}
+
+/**
+ * A Timeline range label, monday style: "Oct 11 - 18" inside one month, "Sep 28 - Oct 4"
+ * across months, and "Mar 31, '25 - Apr 5, '25" when the dates are not in the current year.
+ */
 export function fmtRange(startIso: string, endIso: string): string {
   if (!startIso && !endIso) return "";
-  if (!endIso) return fmtDateShort(startIso);
-  const a = startIso.split("-");
-  const b = endIso.split("-");
-  if (a[0] === b[0] && a[1] === b[1]) return `${fmtDateShort(startIso)} – ${Number(b[2])}`;
-  return `${fmtDateShort(startIso)} – ${fmtDateShort(endIso)}`;
+  if (!endIso || endIso === startIso) return fmtRangeEdge(startIso || endIso);
+  if (startIso.slice(0, 7) === endIso.slice(0, 7)) {
+    const end_day = Number(endIso.slice(8, 10));
+    const start_label = fmtRangeEdge(startIso);
+    const year_suffix = start_label.slice(fmtDateShort(startIso).length);
+    return `${fmtDateShort(startIso)} - ${end_day}${year_suffix}`;
+  }
+  return `${fmtRangeEdge(startIso)} - ${fmtRangeEdge(endIso)}`;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Whole days between two "YYYY-MM-DD" dates, counted in UTC so daylight saving shifts never skew it. */
+function daysBetween(from_iso: string, to_iso: string): number {
+  const toUtc = (iso: string) => Date.UTC(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  return Math.round((toUtc(to_iso) - toUtc(from_iso)) / MS_PER_DAY);
+}
+
+/** How many days a range covers, both ends included, the "7d" a Timeline pill shows on hover. */
+export function rangeDayCount(start_iso: string, end_iso: string): number {
+  if (!start_iso) return 0;
+  return daysBetween(start_iso, end_iso || start_iso) + 1;
+}
+
+/** The share of a range that has already gone by (0 to 1), today counted as elapsed, which a Timeline pill fills with the group color. */
+export function rangeElapsedRatio(start_iso: string, end_iso: string): number {
+  const total_days = rangeDayCount(start_iso, end_iso);
+  if (!total_days) return 0;
+  const elapsed_days = daysBetween(start_iso, todayIso()) + 1;
+  return Math.min(1, Math.max(0, elapsed_days / total_days));
 }
 
 export interface MonthCursor {
@@ -84,8 +120,6 @@ export function shiftMonth(cursor: MonthCursor, delta: number): MonthCursor {
   const d = new Date(cursor.year, cursor.month + delta, 1);
   return { year: d.getFullYear(), month: d.getMonth() };
 }
-
-export const DOW_CELLS = DAY_OF_WEEK_LABELS.map((label, i) => ({ key: `dow-${i}`, label }));
 
 export interface CalendarDay {
   iso: string;
@@ -111,10 +145,6 @@ export function buildCalendarDays(cursor: MonthCursor): CalendarDay[] {
     });
   }
   return days;
-}
-
-export function monthLabelOf(cursor: MonthCursor): string {
-  return `${MONTH_LABELS[cursor.month]} ${cursor.year}`;
 }
 
 /**
