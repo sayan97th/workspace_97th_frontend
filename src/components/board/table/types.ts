@@ -139,6 +139,8 @@ export interface ConnectItemOption {
   color: string | null;
   /** Where the item opens, `/boards/{board_id}/pulses/{id}?view_id=...`. */
   href: string | null;
+  /** The tab of its board that holds the item, which decides the columns its card shows. */
+  view_id: string | null;
   created_at: string | null;
   /** Searchable text of each cell, keyed by column id. */
   texts: Record<string, string>;
@@ -165,6 +167,43 @@ export interface ConnectedBoardSummary {
   is_accessible: boolean;
   /** Workspace, then each folder down to the board. */
   path: string[];
+}
+
+/** Which connected item the linked item card shows, see `LinkedItemDetail`. */
+export interface LinkedItemRef {
+  board_id: string;
+  board_name: string;
+  item_id: string;
+  view_id: string | null;
+}
+
+/** One field of a linked item card: a column of the connected board and the item's value in it. */
+export interface LinkedItemField {
+  id: string;
+  label: string;
+  type: BoardColumnKind;
+  description: string | null;
+  /** Status, label and dropdown labels. */
+  options: StatusDef[];
+  value: CellValue;
+  /** Connect boards fields only: the names and group colors of the items it links. */
+  linked_items?: { name: string; color: string | null }[];
+}
+
+/**
+ * A connected item opened from a Connect boards cell (its card, monday style): where it lives,
+ * its group and every field of its board, read on open from that board.
+ */
+export interface LinkedItemDetail {
+  board_id: string;
+  board_name: string;
+  board_href: string;
+  item_id: string;
+  name: string;
+  /** The item's own page, where its updates (the conversation) live. */
+  href: string;
+  group: { name: string; color: string };
+  fields: LinkedItemField[];
 }
 
 /** Everything a Connect boards column's cells and picker read, fetched once per column. */

@@ -14,6 +14,7 @@ import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
+import LinkedItemDialog from "./menus/LinkedItemDialog";
 import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEditorModal";
 import CellFilterContextMenu, { type CellFilterContextMenuTarget } from "./menus/CellFilterContextMenu";
 import "../monday-palette.css";
@@ -595,6 +596,7 @@ export default function BoardTable({
           onClose={actions.closeTagEditor}
         />
       )}
+      {state.linked_item && <LinkedItemDialog item_ref={state.linked_item} people={state.people} actions={actions} />}
       {state.config_editor && config_editor_column &&
         (state.config_editor.kind === "formula" ? (
           <FormulaEditorModal column={config_editor_column} preview_rows={formula_preview_rows} actions={actions} onClose={actions.closeConfigEditor} />

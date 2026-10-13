@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { CellValue, ColumnDef, ConnectColumnOptions, ConnectItemOption } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
@@ -76,6 +75,8 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
   }, [is_menu_open]);
 
   const openMenu = () => actions.openCellMenu(scope_key);
+  const openItem = (item: ConnectItemOption) =>
+    actions.openLinkedItem({ board_id: item.board_id, board_name: options?.boards.find((board) => board.id === item.board_id)?.name ?? "", item_id: item.id, view_id: item.view_id });
   const openSettings = () => actions.openConfigEditor("connect_board", column.id);
 
   const toggleItem = (item_id: string) => {
@@ -118,7 +119,7 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
         )}
         {is_loading && <span className="connect-cell__skeleton" aria-label="Loading linked items" />}
         {is_restricted && <RestrictedNotice />}
-        {first_item && <ConnectItemChip item={first_item} />}
+        {first_item && <ConnectItemChip item={first_item} onOpen={() => openItem(first_item)} />}
         {other_items.length > 0 && <ConnectCountBubble items={other_items} onClick={openMenu} />}
         {!first_item && !is_loading && !is_restricted && can_edit && (
           <span className="connect-cell__empty-add" aria-hidden="true">
@@ -141,6 +142,7 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
           onToggle={toggleItem}
           onCreateItem={createItem}
           onOpenSettings={() => setIsSettingsView(true)}
+          onOpenItem={openItem}
           onClose={actions.closeCellMenu}
         />
       )}
@@ -148,24 +150,27 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
   );
 }
 
-/** One linked item: its group color bar and name, opening the item, full name in a tooltip. */
-function ConnectItemChip({ item }: { item: ConnectItemOption }) {
+/** One linked item: its group color bar and name, opening its card, full name in a tooltip. */
+function ConnectItemChip({ item, onOpen }: { item: ConnectItemOption; onOpen: () => void }) {
   const name = item.name || "Untitled item";
-  const { anchor_props, hide, tooltip } = useCellTooltip<HTMLAnchorElement>(name);
+  const { anchor_props, hide, tooltip } = useCellTooltip<HTMLButtonElement>(name);
   const style = { "--connect-cell-chip-color": item.color ?? undefined } as CSSProperties;
-  const content = <span className="connect-cell__chip-name">{name}</span>;
 
   return (
     <>
-      {item.href ? (
-        <Link {...anchor_props} href={item.href} className="connect-cell__chip" style={style} onClick={hide}>
-          {content}
-        </Link>
-      ) : (
-        <span className="connect-cell__chip" style={style}>
-          {content}
-        </span>
-      )}
+      <button
+        type="button"
+        {...anchor_props}
+        className="connect-cell__chip"
+        style={style}
+        aria-label={`Open ${name}`}
+        onClick={() => {
+          hide();
+          onOpen();
+        }}
+      >
+        <span className="connect-cell__chip-name">{name}</span>
+      </button>
       {tooltip}
     </>
   );

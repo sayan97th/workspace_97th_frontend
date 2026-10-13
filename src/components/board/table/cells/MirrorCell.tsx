@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { CellValue, ColumnDef, ConnectItemOption, MirroredColumnOption, StatusDef } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
@@ -163,6 +162,7 @@ export default function MirrorCell({ node_id, column, values, state, actions }: 
       content={popover}
       entries={entries}
       mirrored={mirrored}
+      onOpenItem={(item) => actions.openLinkedItem({ board_id: item.board_id, board_name: board?.name ?? "", item_id: item.id, view_id: item.view_id })}
       onClose={actions.closeCellMenu}
     />
   );
@@ -292,11 +292,12 @@ interface MirrorItemsPopoverProps {
   content: PopoverContent;
   entries: MirrorEntry[];
   mirrored: MirroredColumnOption;
+  onOpenItem: (item: ConnectItemOption) => void;
   onClose: () => void;
 }
 
 /** The linked items behind a mirror cell: one label's share ("Done - 90.9% (10/11)"), or all with their values. */
-function MirrorItemsPopover({ content, entries, mirrored, onClose }: MirrorItemsPopoverProps) {
+function MirrorItemsPopover({ content, entries, mirrored, onOpenItem, onClose }: MirrorItemsPopoverProps) {
   const [is_expanded, setIsExpanded] = useState(false);
   const is_label_kind = LABEL_KINDS.has(mirrored.type);
 
@@ -327,7 +328,7 @@ function MirrorItemsPopover({ content, entries, mirrored, onClose }: MirrorItems
         <div className="mirror-items__title">{title}</div>
         <div className="mirror-items__list shell-scrollbar">
           {shown.map((entry) => (
-            <MirrorItemRow key={entry.item.id} entry={entry} value_text={is_label_kind ? null : valueText(entry, mirrored)} onNavigate={onClose} />
+            <MirrorItemRow key={entry.item.id} entry={entry} value_text={is_label_kind ? null : valueText(entry, mirrored)} onOpen={() => onOpenItem(entry.item)} />
           ))}
         </div>
         {hidden_count > 0 && (
@@ -340,7 +341,7 @@ function MirrorItemsPopover({ content, entries, mirrored, onClose }: MirrorItems
   );
 }
 
-function MirrorItemRow({ entry, value_text, onNavigate }: { entry: MirrorEntry; value_text: string | null; onNavigate: () => void }) {
+function MirrorItemRow({ entry, value_text, onOpen }: { entry: MirrorEntry; value_text: string | null; onOpen: () => void }) {
   const name = entry.item.name || "Untitled item";
   const { anchor_props, hide, tooltip } = useCellTooltip<HTMLSpanElement>(name, { only_when_truncated: true });
   const style = { "--mirror-items-color": entry.item.color ?? undefined } as CSSProperties;
@@ -353,21 +354,17 @@ function MirrorItemRow({ entry, value_text, onNavigate }: { entry: MirrorEntry; 
       {tooltip}
     </>
   );
-  return entry.item.href ? (
-    <Link
-      href={entry.item.href}
+  return (
+    <button
+      type="button"
       className="mirror-items__row"
       style={style}
       onClick={() => {
         hide();
-        onNavigate();
+        onOpen();
       }}
     >
       {content}
-    </Link>
-  ) : (
-    <div className="mirror-items__row" style={style}>
-      {content}
-    </div>
+    </button>
   );
 }

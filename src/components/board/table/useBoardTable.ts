@@ -22,6 +22,8 @@ import type {
   ConnectItemOption,
   ConnectSettings,
   ConnectedBoardSummary,
+  LinkedItemDetail,
+  LinkedItemRef,
   PersonDef,
   ReorderPayload,
   SortState,
@@ -172,6 +174,10 @@ export interface UseBoardTableConfig {
   onFetchConnectOptions?: (column_id: string) => Promise<ConnectColumnOptions>;
   /** "Connected board column settings": the boards a Connect boards column connects, with their privacy and location. */
   onFetchConnectedBoards?: (column_id: string) => Promise<ConnectedBoardSummary[]>;
+  /** The linked item card: reads a connected item and its board's fields. */
+  onFetchLinkedItem?: (ref: LinkedItemRef) => Promise<LinkedItemDetail>;
+  /** The linked item card's "Delete item": deletes the connected item on its own board. */
+  onDeleteLinkedItem?: (board_id: string, item_id: string) => Promise<void>;
   /** A Mirror cell's edit: sets `column_id` of the connected item `item_id` on `board_id` (the item's own board). */
   onUpdateLinkedItemValue?: (board_id: string, item_id: string, column_id: string, value: CellValue) => Promise<void>;
   /** "Add a mirror column": creates a Mirror column reading through this Connect boards column, right after it, and resolves with its id. */
@@ -509,6 +515,8 @@ export interface BoardTableState {
    * picker. An absent key means "not fetched yet" (the cell shows a loading state).
    */
   connect_options: Record<string, ConnectColumnOptions>;
+  /** The connected item whose card is open (from a Connect boards chip, the picker or a Mirror), or null. */
+  linked_item: LinkedItemRef | null;
   drag: DragState | null;
   /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
   column_drag: ColumnDragState | null;
@@ -606,6 +614,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     config_editor: null,
     tag_editor_open: false,
     connect_options: {},
+    linked_item: null,
     drag: null,
     column_drag: null,
     sort: null,
@@ -2338,6 +2347,29 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     }
   }, [ensureConnectOptions]);
 
+  /** Opens a connected item's card, closing any cell menu it was opened from. */
+  const openLinkedItem = useCallback((ref: LinkedItemRef) => setState((s) => ({ ...s, linked_item: ref, ...closeAllMenus })), []);
+  const closeLinkedItem = useCallback(() => setState((s) => ({ ...s, linked_item: null })), []);
+  const fetchLinkedItem = useCallback(async (ref: LinkedItemRef): Promise<LinkedItemDetail | null> => {
+    const on_fetch = config_ref.current.onFetchLinkedItem;
+    return on_fetch ? on_fetch(ref) : null;
+  }, []);
+
+  /** The card's "Delete item": deletes it on its board and drops it from every Connect boards column's cached items. */
+  const deleteLinkedItem = useCallback(async (board_id: string, item_id: string) => {
+    await config_ref.current.onDeleteLinkedItem?.(board_id, item_id);
+    setState((s) => ({
+      ...s,
+      linked_item: null,
+      connect_options: Object.fromEntries(
+        Object.entries(s.connect_options).map(([column_id, options]) => [
+          column_id,
+          { ...options, boards: options.boards.map((board) => (board.id === board_id ? { ...board, items: board.items.filter((item) => item.id !== item_id) } : board)) },
+        ])
+      ),
+    }));
+  }, []);
+
   /** "Add a mirror column": adds the Mirror column, then opens its settings so a column of the connected board can be picked. */
   const addMirrorColumn = useCallback(async (connect_column_id: string) => {
     const created_id = await config_ref.current.onAddMirrorColumn?.(connect_column_id);
@@ -2520,6 +2552,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       fetchConnectedBoards,
       addMirrorColumn,
       setLinkedItemValue,
+      openLinkedItem,
+      closeLinkedItem,
+      fetchLinkedItem,
+      deleteLinkedItem,
       pressButton,
       closeAllOverlays,
       copyRowLink,
@@ -2541,7 +2577,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2559,7 +2595,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
-    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards", "openLinkedItem", "closeLinkedItem", "fetchLinkedItem",
     "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);

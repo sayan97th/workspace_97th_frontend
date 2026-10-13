@@ -76,7 +76,7 @@ import {
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
-import type { ConnectColumnOptions, ConnectedBoardSummary, ConnectItemOption, ConnectSettings } from "@/components/board/table/types";
+import type { ConnectColumnOptions, ConnectedBoardSummary, ConnectItemOption, ConnectSettings, LinkedItemDetail, LinkedItemField, LinkedItemRef } from "@/components/board/table/types";
 import {
   buildBoardFilterFields,
   buildBoardGroupByOptions,
@@ -262,6 +262,9 @@ const toColumnLinkage = (linkage: NonNullable<BoardColumnDto["linkage"]>): Table
     ? { label: linkage.mirrored_column.label, board_name: linkage.mirrored_column.board_name, board_href: buildBoardPath(linkage.mirrored_column.board_id) }
     : null,
 });
+
+/** Columns the linked item card leaves out: computed or action-only ones that need their own board loaded. */
+const LINKED_ITEM_CARD_EXCLUDED_TYPES = new Set<BoardColumnDto["type"]>(["mirror", "formula", "button", "dependency"]);
 
 /** Where a connected item opens: its board, on the tab that holds it. */
 const connectItemHref = (board_id: number, item_id: number, view_id: number | null): string =>
@@ -2232,6 +2235,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             group_id: item.group_id != null ? String(item.group_id) : null,
             color: item.color,
             href: connectItemHref(board.id, item.id, item.view_id),
+            view_id: item.view_id != null ? String(item.view_id) : null,
             created_at: item.created_at,
             texts: item.texts,
             values: item.values ?? {},
@@ -2256,6 +2260,53 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id]
   );
 
+  // The linked item card: the connected item, its board's item columns (in the tab holding it)
+  // and, for its own Connect boards fields, the names of the items they link.
+  const handleFetchLinkedItem = useCallback(async (ref: LinkedItemRef): Promise<LinkedItemDetail> => {
+    const linked_board_id = Number(ref.board_id);
+    const view_id = ref.view_id ? Number(ref.view_id) : null;
+    const [item, linked_columns] = await Promise.all([
+      boardContentService.getItem(linked_board_id, Number(ref.item_id)),
+      boardContentService.getColumns(linked_board_id, view_id),
+    ]);
+    const card_columns = linked_columns
+      .filter((column) => column.scope === "item" && !LINKED_ITEM_CARD_EXCLUDED_TYPES.has(column.type))
+      .sort((a, b) => a.position - b.position);
+
+    const connect_names = new Map<number, { name: string; color: string | null }[]>();
+    await Promise.all(
+      card_columns
+        .filter((column) => column.type === "connect_board" && Array.isArray(item.values[String(column.id)]))
+        .map(async (column) => {
+          const linked_ids = (item.values[String(column.id)] as unknown[]).map(String);
+          const options = await boardContentService.getConnectItems(linked_board_id, column.id).catch(() => null);
+          const by_id = new Map((options?.boards ?? []).flatMap((board) => board.items).map((linked) => [String(linked.id), linked]));
+          connect_names.set(column.id, linked_ids.flatMap((id) => (by_id.has(id) ? [{ name: by_id.get(id)!.name, color: by_id.get(id)!.color }] : [])));
+        })
+    );
+
+    const fields: LinkedItemField[] = card_columns.map((column) => ({
+      id: String(column.id),
+      label: column.label,
+      type: column.type,
+      description: column.config?.description?.trim() || null,
+      options: (column.config?.options ?? []).map((option) => ({ id: option.id, label: option.label, color: option.color, is_active: option.is_active })),
+      value: (item.values[String(column.id)] ?? null) as LinkedItemField["value"],
+      linked_items: connect_names.get(column.id),
+    }));
+
+    return {
+      board_id: ref.board_id,
+      board_name: ref.board_name,
+      board_href: buildBoardPath(linked_board_id),
+      item_id: ref.item_id,
+      name: item.name,
+      href: connectItemHref(linked_board_id, item.id, view_id),
+      group: { name: item.group.name, color: item.group.accent_color },
+      fields,
+    };
+  }, []);
+
   const handleCreateConnectItem = useCallback(async (linked_board_id: string, group_id: string, name: string): Promise<ConnectItemOption> => {
     const created = await boardContentService.createItem(Number(linked_board_id), { name, group_id: Number(group_id) });
     return {
@@ -2265,6 +2316,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       group_id,
       color: null,
       href: connectItemHref(created.board_id, created.id, null),
+      view_id: null,
       created_at: created.created_at ?? new Date().toISOString(),
       texts: {},
       values: {},
@@ -3123,6 +3175,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onDeleteTagDef: handleDeleteTagDef,
       onFetchConnectOptions: handleFetchConnectOptions,
       onFetchConnectedBoards: handleFetchConnectedBoards,
+      onFetchLinkedItem: handleFetchLinkedItem,
+      onDeleteLinkedItem: (linked_board_id, item_id) => boardContentService.deleteItem(Number(linked_board_id), Number(item_id)),
       // A Mirror cell edits the mirrored value on the connected item itself, on its own board.
       onUpdateLinkedItemValue: async (linked_board_id, item_id, column_id, value) => {
         await boardContentService.updateItemValues(Number(linked_board_id), Number(item_id), { [column_id]: value as BoardItemValue });

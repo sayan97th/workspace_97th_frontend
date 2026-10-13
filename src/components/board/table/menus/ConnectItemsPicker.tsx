@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useEffect, useMemo, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { COLUMN_KIND_SWATCH } from "../../columnTypes";
@@ -44,6 +43,8 @@ interface ConnectItemsPickerProps {
   /** Creates `name` in the group and links it to the cell. Rejects with a message to show. */
   onCreateItem: (board_id: string, group_id: string, name: string) => Promise<void>;
   onOpenSettings: () => void;
+  /** Opens a connected item's card. */
+  onOpenItem: (item: ConnectItemOption) => void;
   onClose: () => void;
 }
 
@@ -86,7 +87,7 @@ function sortItems(items: ConnectItemOption[], mode: SortMode): ConnectItemOptio
  * of every group, and a hover button that opens the item. Arrow keys move through the list,
  * Enter links the active item (or adds the typed name when nothing matches), Escape closes.
  */
-export default function ConnectItemsPicker({ column_id, options, selected_ids, can_edit, can_edit_settings, onToggle, onCreateItem, onOpenSettings, onClose }: ConnectItemsPickerProps) {
+export default function ConnectItemsPicker({ column_id, options, selected_ids, can_edit, can_edit_settings, onToggle, onCreateItem, onOpenSettings, onOpenItem, onClose }: ConnectItemsPickerProps) {
   const [query, setQuery] = useState("");
   const [sort_mode, setSortMode] = useState<SortMode>("board");
   const [search_column_ids, setSearchColumnIds] = useState<string[]>(() => readSearchColumns(column_id));
@@ -378,7 +379,7 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
                             is_active={active_key === `linked:${item.id}`}
                             can_edit={can_edit}
                             onToggle={() => onToggle(item.id)}
-                            onNavigate={onClose}
+                            onOpen={() => onOpenItem(item)}
                           />
                         ))}
                       </div>
@@ -405,7 +406,7 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
                             is_active={active_key === `item:${item.id}`}
                             can_edit={can_edit}
                             onToggle={() => onToggle(item.id)}
-                            onNavigate={onClose}
+                            onOpen={() => onOpenItem(item)}
                           />
                         ))}
                         {canAdd(board) && renderAddRow(board, group.id, group.color)}
@@ -442,15 +443,15 @@ interface ItemRowProps {
   is_active: boolean;
   can_edit: boolean;
   onToggle: () => void;
-  /** Called when the item is opened, so the picker closes. */
-  onNavigate: () => void;
+  /** Opens the item's card. */
+  onOpen: () => void;
 }
 
 /** One linkable item: group color bar, checkbox, name (full name in a tooltip when cut off) and a hover "Open item". */
-function ItemRow({ nav_key, item, is_selected, is_active, can_edit, onToggle, onNavigate }: ItemRowProps) {
+function ItemRow({ nav_key, item, is_selected, is_active, can_edit, onToggle, onOpen }: ItemRowProps) {
   const name = item.name || "Untitled item";
   const name_tooltip = useCellTooltip<HTMLSpanElement>(name, { only_when_truncated: true });
-  const open_tooltip = useCellTooltip<HTMLAnchorElement>("Open item");
+  const open_tooltip = useCellTooltip<HTMLButtonElement>("Open item");
   const style = item.color ? ({ "--connect-picker-group-color": item.color } as CSSProperties) : undefined;
 
   return (
@@ -476,21 +477,19 @@ function ItemRow({ nav_key, item, is_selected, is_active, can_edit, onToggle, on
       <span {...name_tooltip.anchor_props} className="connect-picker__row-name">
         {name}
       </span>
-      {item.href && (
-        <Link
-          {...open_tooltip.anchor_props}
-          href={item.href}
-          className="connect-picker__open"
-          aria-label={`Open ${name}`}
-          onClick={(event) => {
-            event.stopPropagation();
-            open_tooltip.hide();
-            onNavigate();
-          }}
-        >
-          <ExpandIcon />
-        </Link>
-      )}
+      <button
+        type="button"
+        {...open_tooltip.anchor_props}
+        className="connect-picker__open"
+        aria-label={`Open ${name}`}
+        onClick={(event) => {
+          event.stopPropagation();
+          open_tooltip.hide();
+          onOpen();
+        }}
+      >
+        <ExpandIcon />
+      </button>
       {name_tooltip.tooltip}
       {open_tooltip.tooltip}
     </div>
