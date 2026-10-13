@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import { contrastFg, findDef, pillColors, timelineFillBackground } from "../colorUtils";
+import { contrastFg, findDef, timelineFillBackground } from "../colorUtils";
 import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
 import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import StatusMenu from "../menus/StatusMenu";
-import LabelMenu from "../menus/LabelMenu";
+import LabelMenu, { LabelPill } from "../menus/LabelMenu";
 import PeopleMenu from "../menus/PeopleMenu";
 import DateMenu from "../menus/DateMenu";
 import TimelineMenu from "../menus/TimelineMenu";
@@ -212,23 +212,44 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   if (column.kind === "label") {
     const defs = column.options ?? state.label_defs;
     const def = findDef(defs, asString(value));
-    const pill = pillColors(def?.color || "");
     return (
       <div className="relative flex-1">
-        <button type="button" onClick={openMenu} title={def?.label} className="flex h-full w-full min-w-0 items-center justify-center px-2">
-          {def && (
-            <span className="max-w-full truncate rounded-[4px] border px-2.5 py-0.5 text-[11.5px] font-medium" style={{ color: pill.fg, borderColor: pill.bd, background: pill.bg }}>
-              {def.label}
-            </span>
-          )}
+        <button type="button" onClick={openMenu} title={def?.description || def?.label} className="flex h-full w-full min-w-0 items-center justify-center px-2">
+          {def?.label && <LabelPill label={def.label} color={def.color} is_inactive={def.is_active === false} />}
         </button>
         {is_menu_open && (
           <LabelMenu
             label_defs={defs}
-            selected={def ? [def.id] : []}
+            selected_id={def?.id ?? null}
             onPick={(id) => actions.setCellValue(node_id, column.id, id)}
             onClear={() => actions.clearCellValue(node_id, column.id)}
             onClose={actions.closeCellMenu}
+            onCreateAndSelect={
+              column.options
+                ? (option) => actions.createColumnOptionOnCell(node_id, column.id, option, "set")
+                : (option) => actions.createLabelDefOnCell(node_id, column.id, option)
+            }
+            onAddOption={column.options ? (option) => actions.addColumnOption(column.id, option) : (option) => actions.addLabelDef(option)}
+            option_actions={
+              column.options
+                ? {
+                    onRename: (id, label) => actions.renameColumnOption(column.id, id, label),
+                    onRecolor: (id, color) => actions.recolorColumnOption(column.id, id, color),
+                    onDelete: (id) => actions.deleteColumnOption(column.id, id),
+                    onToggleActive: (id) => actions.toggleColumnOptionActive(column.id, id),
+                    onSetDescription: (id, description) => actions.setColumnOptionDescription(column.id, id, description),
+                    onReorder: (ordered_ids) => actions.reorderColumnOptions(column.id, ordered_ids),
+                  }
+                : {
+                    onRename: actions.renameLabelDef,
+                    onRecolor: actions.setLabelDefColor,
+                    onDelete: actions.deleteLabelDef,
+                    onToggleActive: actions.toggleLabelDefActive,
+                    onSetDescription: actions.setLabelDefDescription,
+                    onReorder: actions.reorderLabelDefs,
+                  }
+            }
+            used_option_ids={collectColumnValues(state.groups, column.id)}
           />
         )}
       </div>

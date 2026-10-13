@@ -2030,12 +2030,37 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, status_defs: s.status_defs.filter((d) => d.id !== id) }));
   }, []);
 
-  const addLabelDef = useCallback(() => {
+  /** Appends a demo label, named and colored by `option` when given (the Label picker's "+ New label"). */
+  const addLabelDef = useCallback((option?: { label: string; color: string }) => {
     setState((s) => {
-      const color = STATUS_PALETTE[s.label_defs.length % STATUS_PALETTE.length];
-      return { ...s, label_defs: s.label_defs.concat({ id: nextId("lb"), label: "New label", color }) };
+      const color = option?.color ?? STATUS_PALETTE[s.label_defs.length % STATUS_PALETTE.length];
+      return { ...s, label_defs: s.label_defs.concat({ id: nextId("lb"), label: option?.label ?? "New label", color }) };
     });
   }, [nextId]);
+
+  /** The demo Label picker's "Create": appends a label to the shared `label_defs` and sets it on the cell. */
+  const createLabelDefOnCell = useCallback(
+    (node_id: string, column_id: string, option: { label: string; color: string }) => {
+      const label = option.label.trim();
+      if (!label) return;
+      const new_def: StatusDef = { id: nextId("lb"), label, color: option.color };
+      setState((s) => ({ ...s, label_defs: s.label_defs.concat(new_def) }));
+      setCellValue(node_id, column_id, new_def.id);
+    },
+    [nextId, setCellValue]
+  );
+
+  const toggleLabelDefActive = useCallback((id: string) => {
+    setState((s) => ({ ...s, label_defs: s.label_defs.map((d) => (d.id === id ? { ...d, is_active: d.is_active === false } : d)) }));
+  }, []);
+
+  const setLabelDefDescription = useCallback((id: string, description: string | null) => {
+    setState((s) => ({ ...s, label_defs: s.label_defs.map((d) => (d.id === id ? { ...d, description } : d)) }));
+  }, []);
+
+  const reorderLabelDefs = useCallback((ordered_ids: string[]) => {
+    setState((s) => ({ ...s, label_defs: reorderByIds(s.label_defs, ordered_ids) }));
+  }, []);
 
   const renameLabelDef = useCallback((id: string, label: string) => {
     setState((s) => ({ ...s, label_defs: s.label_defs.map((d) => (d.id === id ? { ...d, label } : d)) }));
@@ -2077,16 +2102,20 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * `addColumnOption` and then selects it on the cell. A real column waits for
    * `onAddColumnOption` to confirm the option (its id comes back with it), the
    * standalone demo appends locally and selects it right away.
+   * `select_mode` "set" replaces the cell value instead of adding to it, for
+   * single select columns (the Label picker's "Create").
    */
   const createColumnOptionOnCell = useCallback(
-    (node_id: string, column_id: string, option: { label: string; color: string }) => {
+    (node_id: string, column_id: string, option: { label: string; color: string }, select_mode: "toggle" | "set" = "toggle") => {
       const label = option.label.trim();
       if (!label) return;
+      const selectOption = (option_id: string) =>
+        select_mode === "set" ? setCellValue(node_id, column_id, option_id) : toggleArrayValue(node_id, column_id, option_id);
       const on_add_option = config_ref.current.onAddColumnOption;
       if (on_add_option) {
         void on_add_option(column_id, { label, color: option.color }).then((created) => {
           const created_id = (created as { id?: unknown } | null)?.id;
-          if (typeof created_id === "string") toggleArrayValue(node_id, column_id, created_id);
+          if (typeof created_id === "string") selectOption(created_id);
         });
         return;
       }
@@ -2095,9 +2124,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         ...s,
         groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, options: (c.options ?? []).concat(new_option) })),
       }));
-      toggleArrayValue(node_id, column_id, new_option.id);
+      selectOption(new_option.id);
     },
-    [nextId, toggleArrayValue]
+    [nextId, setCellValue, toggleArrayValue]
   );
 
   /**
@@ -2557,6 +2586,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameLabelDef,
       setLabelDefColor,
       deleteLabelDef,
+      createLabelDefOnCell,
+      toggleLabelDefActive,
+      setLabelDefDescription,
+      reorderLabelDefs,
       addColumnOption,
       createColumnOptionOnCell,
       renameColumnOption,
@@ -2605,7 +2638,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
+      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
       setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
@@ -2638,7 +2671,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
     "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
-    "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "createColumnOptionOnCell", "renameColumnOption",
+    "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "createLabelDefOnCell", "toggleLabelDefActive", "setLabelDefDescription", "reorderLabelDefs", "addColumnOption", "createColumnOptionOnCell", "renameColumnOption",
     "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",
     "toggleStatusDefActive", "setStatusDefDescription", "reorderStatusDefs", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
     "updateConnectSettings", "addMirrorColumn", "updateColumnMirror",

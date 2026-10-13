@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CloseIcon, PlusIcon } from "@/icons/board-icons";
+import { DeleteIcon } from "@/icons/workspace-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { boardTreeFontClassName } from "../../board-tree-font";
 import type { StatusDef } from "../types";
 import { STATUS_PALETTE } from "../constants";
 import OptionLabelInput from "./OptionLabelInput";
+import "./label-editor-modal.css";
 
 interface LabelEditorModalProps {
   title: string;
@@ -15,6 +20,11 @@ interface LabelEditorModalProps {
   onClose: () => void;
 }
 
+/**
+ * "Edit labels" dialog for a Status or Label column, opened from its header
+ * menu: recolor, rename and delete each label, or add a new one. Styles live
+ * in `label-editor-modal.css`. Escape closes the color grid first, then the dialog.
+ */
 export default function LabelEditorModal({ title, defs, onRename, onColor, onDelete, onAdd, onClose }: LabelEditorModalProps) {
   const [color_picker_id, setColorPickerId] = useState<string | null>(null);
   const editable_defs = defs.filter((d) => !d.fixed);
@@ -34,38 +44,55 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
     input?.select();
   }, [editable_defs]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (color_picker_id) setColorPickerId(null);
+      else onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [color_picker_id, onClose]);
+
   const handleAdd = () => {
     ids_before_add_ref.current = new Set(editable_defs.map((d) => d.id));
     onAdd();
   };
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[rgba(30,34,55,0.35)]" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-[420px] flex-col rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
-        <div className="flex items-center justify-between border-b border-boardtree-border-soft px-5 py-4">
-          <div className="text-[15px] font-semibold text-boardtree-text">{title}</div>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover">
-            <svg viewBox="0 0 14 14" width="12" height="12"><path d="M2.6 2.6 L11.4 11.4 M11.4 2.6 L2.6 11.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+    <div className={`label-editor ${boardTreeFontClassName}`} onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()} className="label-editor__card">
+        <div className="label-editor__header">
+          <h2 className="label-editor__title">{title}</h2>
+          <button type="button" onClick={onClose} aria-label="Close" className="label-editor__icon-button">
+            <CloseIcon size={16} />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-3">
+        <div className="label-editor__body">
+          {editable_defs.length === 0 && <div className="label-editor__empty">No labels yet. Add the first one below.</div>}
           {editable_defs.map((def) => (
-            <div key={def.id} className="relative flex items-center gap-2.5 py-1.5">
-              <button
-                type="button"
-                onClick={() => setColorPickerId(color_picker_id === def.id ? null : def.id)}
-                className="h-7 w-7 flex-none rounded-[6px]"
-                style={{ background: def.color }}
-              />
+            <div key={def.id} className="label-editor__row">
+              <Tooltip content="Change color" placement="right" disabled={color_picker_id === def.id}>
+                <button
+                  type="button"
+                  onClick={() => setColorPickerId(color_picker_id === def.id ? null : def.id)}
+                  aria-label={`Change color of ${def.label}`}
+                  aria-expanded={color_picker_id === def.id}
+                  className="label-editor__swatch"
+                  style={{ background: def.color }}
+                />
+              </Tooltip>
               {color_picker_id === def.id && (
-                <div className="absolute left-9 top-8 z-10 grid w-[168px] grid-cols-6 gap-1.5 rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
+                <div className="label-editor__palette" role="group" aria-label="Label colors">
                   {STATUS_PALETTE.map((color) => (
                     <button
                       type="button"
                       key={color}
                       onClick={() => { onColor(def.id, color); setColorPickerId(null); }}
-                      className="h-5 w-5 rounded-[4px]"
-                      style={{ background: color, boxShadow: color === def.color ? "0 0 0 2px var(--color-boardtree-ring)" : "none" }}
+                      aria-label={`Use color ${color}`}
+                      aria-pressed={color === def.color}
+                      className="label-editor__palette-color"
+                      style={{ background: color }}
                     />
                   ))}
                 </div>
@@ -78,19 +105,22 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
                 value={def.label}
                 onCommit={(label) => onRename(def.id, label)}
                 aria_label="Label name"
-                className="h-8 flex-1 rounded-[6px] border border-transparent px-2 text-[13px] text-boardtree-text outline-none hover:border-boardtree-border focus:border-boardtree-accent"
+                className="label-editor__input"
               />
-              <button type="button" onClick={() => onDelete(def.id)} className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-boardtree-text-faint hover:bg-boardtree-danger-hover hover:text-boardtree-danger">
-                <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
+              <Tooltip content="Delete label" placement="left">
+                <button type="button" onClick={() => onDelete(def.id)} aria-label={`Delete ${def.label}`} className="label-editor__icon-button label-editor__icon-button--danger">
+                  <DeleteIcon size={16} />
+                </button>
+              </Tooltip>
             </div>
           ))}
-          <button type="button" onClick={handleAdd} className="mt-2 flex h-9 w-full items-center justify-center gap-2 rounded-[7px] border border-dashed border-boardtree-border text-[13px] text-boardtree-text-muted hover:border-boardtree-accent hover:text-boardtree-accent">
-            + Add new
+          <button type="button" onClick={handleAdd} className="label-editor__add">
+            <PlusIcon size={14} />
+            Add label
           </button>
         </div>
-        <div className="flex justify-end border-t border-boardtree-border-soft px-5 py-3.5">
-          <button type="button" onClick={onClose} className="rounded-[7px] bg-boardtree-accent px-4 py-2 text-[13px] font-medium text-white hover:bg-boardtree-accent-hover">
+        <div className="label-editor__footer">
+          <button type="button" onClick={onClose} className="label-editor__done">
             Done
           </button>
         </div>

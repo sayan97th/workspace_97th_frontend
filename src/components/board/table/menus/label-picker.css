@@ -1,0 +1,292 @@
+/*
+ * Label column picker and cell pill, styled after the monday.com pickers the
+ * rest of the board already uses (Status, Dropdown, People): a white card
+ * with an 8px radius, 14px Figtree, a "Search or create a label" field, the
+ * labels as tinted pills with a check on the selected one, a "+ Create" row
+ * while the typed name is new and a footer with "Edit labels" plus a "Clear"
+ * icon. "Edit labels" swaps the card for the shared Status `EditLabelsPanel`.
+ *
+ * Every color is a `--label-picker-*` token declared on `.label-picker`, so
+ * dark mode only swaps the tokens, never the rules below. The card is
+ * portaled to `document.body` (see `PopoverPanel`), outside the table's scoped
+ * palette, which is why it carries its own tokens. A pill's tint comes from
+ * its label color through `--label-pill-color`.
+ */
+
+/* The pill, shared by the table cell and the picker rows. */
+.label-pill {
+  --label-pill-surface: #ffffff;
+  --label-pill-ink: #1f2023;
+
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--label-pill-color, #9699a6) 45%, var(--label-pill-surface));
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--label-pill-color, #9699a6) 14%, var(--label-pill-surface));
+  color: color-mix(in srgb, var(--label-pill-color, #9699a6) 72%, var(--label-pill-ink));
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+html.dark .label-pill {
+  --label-pill-surface: #0f1c1c;
+  --label-pill-ink: #ffffff;
+}
+
+.label-pill[data-inactive="true"] {
+  opacity: 0.55;
+}
+
+.label-pill__text {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.label-picker {
+  --label-picker-surface: #ffffff;
+  --label-picker-text: #323338;
+  --label-picker-text-secondary: #676879;
+  --label-picker-text-faint: #9699a6;
+  --label-picker-border: #c3c6d4;
+  --label-picker-border-hover: #323338;
+  --label-picker-focus: #0073ea;
+  --label-picker-hover: #dcdfec;
+  --label-picker-selected: #cce5ff;
+  --label-picker-check: #0073ea;
+  --label-picker-divider: #e7e9ef;
+  --label-picker-danger: #d83a52;
+  --label-picker-danger-hover: rgba(216, 58, 82, 0.1);
+  --label-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 12px 8px 0;
+  border-radius: 8px;
+  background: var(--label-picker-surface);
+  box-shadow: var(--label-picker-shadow);
+  color: var(--label-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .label-picker {
+  --label-picker-surface: #0f1c1c;
+  --label-picker-text: #e9eded;
+  --label-picker-text-secondary: #b7c0c1;
+  --label-picker-text-faint: #9aa4a5;
+  --label-picker-border: rgba(255, 255, 255, 0.18);
+  --label-picker-border-hover: rgba(255, 255, 255, 0.45);
+  --label-picker-focus: #4d9cff;
+  --label-picker-hover: rgba(255, 255, 255, 0.08);
+  --label-picker-selected: rgba(77, 156, 255, 0.2);
+  --label-picker-check: #4d9cff;
+  --label-picker-divider: rgba(255, 255, 255, 0.12);
+  --label-picker-danger: #ff7085;
+  --label-picker-danger-hover: rgba(255, 112, 133, 0.14);
+  --label-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .label-picker {
+    animation: label-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes label-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Search field with a leading magnifier. */
+.label-picker__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 4px 8px;
+}
+
+.label-picker__search-icon {
+  position: absolute;
+  left: 10px;
+  display: flex;
+  color: var(--label-picker-text-secondary);
+  pointer-events: none;
+}
+
+.label-picker__search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 32px;
+  border: 1px solid var(--label-picker-border);
+  border-radius: 4px;
+  outline: none;
+  background: transparent;
+  color: var(--label-picker-text);
+  font: inherit;
+  transition: border-color 120ms ease;
+}
+
+.label-picker__search-input::placeholder {
+  color: var(--label-picker-text-faint);
+}
+
+.label-picker__search-input:hover {
+  border-color: var(--label-picker-border-hover);
+}
+
+.label-picker__search-input:focus {
+  border-color: var(--label-picker-focus);
+}
+
+/* Only one area scrolls: the list normally, the whole list area when the panel is height capped. */
+.label-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 0;
+  max-height: 252px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 4px 8px;
+}
+
+[data-capped] .label-picker__list {
+  max-height: none;
+}
+
+.label-picker__option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--label-picker-text);
+  text-align: left;
+  transition: background-color 100ms ease;
+}
+
+.label-picker__option[data-highlighted="true"] {
+  background: var(--label-picker-hover);
+}
+
+.label-picker__option[aria-selected="true"] {
+  background: var(--label-picker-selected);
+}
+
+.label-picker__option .label-pill {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.label-picker__check {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--label-picker-check);
+}
+
+.label-picker__create {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--label-picker-text);
+  text-align: left;
+}
+
+.label-picker__create[data-highlighted="true"] {
+  background: var(--label-picker-hover);
+}
+
+.label-picker__create-icon {
+  display: flex;
+  flex: none;
+  color: var(--label-picker-text-secondary);
+}
+
+.label-picker__create-text {
+  flex: none;
+  color: var(--label-picker-text-secondary);
+}
+
+.label-picker__empty {
+  padding: 8px 8px 4px;
+  color: var(--label-picker-text-faint);
+  font-size: 13px;
+}
+
+/* Footer: "Edit labels" on the left, the "Clear" icon on the right. */
+.label-picker__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 -8px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--label-picker-divider);
+}
+
+.label-picker__footer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--label-picker-text);
+  transition: background-color 100ms ease;
+}
+
+.label-picker__footer-button:hover {
+  background: var(--label-picker-hover);
+}
+
+.label-picker__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--label-picker-text-secondary);
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.label-picker__clear:hover {
+  background: var(--label-picker-danger-hover);
+  color: var(--label-picker-danger);
+}
+
+.label-picker__search-input:focus-visible,
+.label-picker__option:focus-visible,
+.label-picker__create:focus-visible,
+.label-picker__footer-button:focus-visible,
+.label-picker__clear:focus-visible {
+  outline: 2px solid var(--label-picker-focus);
+  outline-offset: -2px;
+}

@@ -1,0 +1,263 @@
+/*
+ * "Edit labels" dialog opened from a Status or Label column header, styled
+ * like the monday.com pickers: a white 8px radius card in 14px Figtree, one
+ * row per label (color swatch, inline name field, delete), a dashed
+ * "+ Add label" row and a "Done" footer in the primary color.
+ *
+ * Every color is a `--label-editor-*` token declared on `.label-editor`, so
+ * dark mode only swaps the tokens, never the rules below.
+ */
+
+.label-editor {
+  --label-editor-backdrop: rgba(41, 47, 76, 0.45);
+  --label-editor-surface: #ffffff;
+  --label-editor-text: #323338;
+  --label-editor-text-secondary: #676879;
+  --label-editor-border: #c3c6d4;
+  --label-editor-border-hover: #323338;
+  --label-editor-focus: #0073ea;
+  --label-editor-hover: #dcdfec;
+  --label-editor-divider: #e7e9ef;
+  --label-editor-primary: #0073ea;
+  --label-editor-primary-hover: #0060b9;
+  --label-editor-danger: #d83a52;
+  --label-editor-danger-hover: rgba(216, 58, 82, 0.1);
+  --label-editor-ring: #0073ea;
+  --label-editor-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--label-editor-backdrop);
+}
+
+html.dark .label-editor {
+  --label-editor-backdrop: rgba(0, 0, 0, 0.6);
+  --label-editor-surface: #0f1c1c;
+  --label-editor-text: #e9eded;
+  --label-editor-text-secondary: #b7c0c1;
+  --label-editor-border: rgba(255, 255, 255, 0.18);
+  --label-editor-border-hover: rgba(255, 255, 255, 0.45);
+  --label-editor-focus: #4d9cff;
+  --label-editor-hover: rgba(255, 255, 255, 0.08);
+  --label-editor-divider: rgba(255, 255, 255, 0.12);
+  --label-editor-primary: #2f7de1;
+  --label-editor-primary-hover: #4d9cff;
+  --label-editor-danger: #ff7085;
+  --label-editor-danger-hover: rgba(255, 112, 133, 0.14);
+  --label-editor-ring: #4d9cff;
+  --label-editor-shadow: 0 15px 50px rgba(0, 0, 0, 0.6);
+}
+
+.label-editor__card {
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-width: 100%;
+  max-height: 80vh;
+  border-radius: 8px;
+  background: var(--label-editor-surface);
+  box-shadow: var(--label-editor-shadow);
+  color: var(--label-editor-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .label-editor__card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .label-editor__card {
+    animation: label-editor-enter 140ms ease-out;
+  }
+}
+
+@keyframes label-editor-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.label-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 12px;
+}
+
+.label-editor__title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.label-editor__icon-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--label-editor-text-secondary);
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.label-editor__icon-button:hover {
+  background: var(--label-editor-hover);
+  color: var(--label-editor-text);
+}
+
+.label-editor__icon-button--danger:hover {
+  background: var(--label-editor-danger-hover);
+  color: var(--label-editor-danger);
+}
+
+.label-editor__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 24px 12px;
+}
+
+.label-editor__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.label-editor__swatch {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  transition: transform 100ms ease, box-shadow 100ms ease;
+}
+
+.label-editor__swatch:hover,
+.label-editor__swatch[aria-expanded="true"] {
+  box-shadow: 0 0 0 2px var(--label-editor-surface), 0 0 0 4px var(--label-editor-ring);
+}
+
+.label-editor__input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: none;
+  background: transparent;
+  color: var(--label-editor-text);
+  font: inherit;
+  transition: border-color 120ms ease;
+}
+
+.label-editor__input:hover {
+  border-color: var(--label-editor-border);
+}
+
+.label-editor__input:focus {
+  border-color: var(--label-editor-focus);
+}
+
+.label-editor__palette {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(6, 22px);
+  gap: 6px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--label-editor-surface);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+html.dark .label-editor__palette {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.label-editor__palette-color {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  transition: transform 100ms ease;
+}
+
+.label-editor__palette-color:hover {
+  transform: scale(1.12);
+}
+
+.label-editor__palette-color[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--label-editor-surface), 0 0 0 4px var(--label-editor-ring);
+}
+
+.label-editor__add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin-top: 8px;
+  border: 1px dashed var(--label-editor-border);
+  border-radius: 4px;
+  color: var(--label-editor-text-secondary);
+  transition: border-color 120ms ease, color 120ms ease;
+}
+
+.label-editor__add:hover {
+  border-color: var(--label-editor-primary);
+  color: var(--label-editor-primary);
+}
+
+.label-editor__empty {
+  padding: 8px 0;
+  color: var(--label-editor-text-secondary);
+}
+
+.label-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 24px 20px;
+}
+
+.label-editor__done {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: var(--label-editor-primary);
+  color: #ffffff;
+  font-weight: 500;
+  transition: background-color 100ms ease;
+}
+
+.label-editor__done:hover {
+  background: var(--label-editor-primary-hover);
+}
+
+.label-editor__swatch:focus-visible,
+.label-editor__palette-color:focus-visible,
+.label-editor__icon-button:focus-visible,
+.label-editor__add:focus-visible,
+.label-editor__done:focus-visible {
+  outline: 2px solid var(--label-editor-focus);
+  outline-offset: 2px;
+}
