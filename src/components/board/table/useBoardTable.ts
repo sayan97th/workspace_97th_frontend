@@ -162,6 +162,8 @@ export interface UseBoardTableConfig {
   onCreateTagDef?: (label: string) => Promise<TagDef>;
   /** "Manage tags" modal's color swatch — see `onCreateTagDef`'s own doc comment for the real-vs-demo split. */
   onRecolorTagDef?: (id: string, color: string) => void;
+  /** "Manage tags" modal's inline name field, committed on blur or Enter. */
+  onRenameTagDef?: (id: string, label: string) => void;
   /** "Manage tags" modal's delete "×" — see `onCreateTagDef`'s own doc comment. */
   onDeleteTagDef?: (id: string) => void;
   /**
@@ -2300,6 +2302,13 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onRecolorTagDef?.(id, color);
   }, []);
 
+  const renameTagDef = useCallback((id: string, label: string) => {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    setState((s) => ({ ...s, tag_defs: s.tag_defs.map((d) => (d.id === id ? { ...d, label: trimmed } : d)) }));
+    config_ref.current.onRenameTagDef?.(id, trimmed);
+  }, []);
+
   const deleteTagDef = useCallback((id: string) => {
     setState((s) => ({ ...s, tag_defs: s.tag_defs.filter((d) => d.id !== id) }));
     config_ref.current.onDeleteTagDef?.(id);
@@ -2607,6 +2616,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addTagDef,
       createTagOnCell,
       setTagDefColor,
+      renameTagDef,
       deleteTagDef,
       setTagQuery,
       ensureConnectOptions,
@@ -2639,7 +2649,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 

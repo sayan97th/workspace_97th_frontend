@@ -2186,13 +2186,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id, columns_by_id]
   );
 
-  // ── Tags column's board-wide option list (see `BoardTag`'s own doc comment
-  // server-side) — unlike Status/Dropdown/Label's own per-column
-  // `patchColumnOptions`, these act on the board, not on any one column. ──
+  // ── Tags column's option list: the board's own tags plus the account's
+  // public tags (see `TagCatalog` server-side). Unlike Status/Dropdown/Label's
+  // per-column `patchColumnOptions`, these act on the board, not on a column.
+  // Update responses carry no `usage_count`, so the known count is kept. ──
+  const mergeTag = useCallback(
+    (updated: BoardTagDto) => setTags((current) => current.map((t) => (t.id === updated.id ? { ...updated, usage_count: t.usage_count } : t))),
+    []
+  );
+
   const handleCreateTagDef = useCallback(
     async (label: string) => {
+      // On a main board the API hands back an existing public tag with the same label instead of a duplicate.
       const created = await boardContentService.createTag(board_id, { label, color: COLUMN_OPTION_PALETTE[tags.length % COLUMN_OPTION_PALETTE.length] });
-      setTags((current) => current.concat(created));
+      setTags((current) => (current.some((t) => t.id === created.id) ? current : current.concat({ ...created, usage_count: created.usage_count ?? 0 })));
       return { id: String(created.id), label: created.label, color: created.color };
     },
     [board_id, tags.length]
@@ -2200,11 +2207,20 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   const handleRecolorTagDef = useCallback(
     (tag_id: string, color: string) => {
-      void boardContentService
-        .updateTag(board_id, Number(tag_id), { color })
-        .then((updated) => setTags((current) => current.map((t) => (t.id === updated.id ? updated : t))));
+      void boardContentService.updateTag(board_id, Number(tag_id), { color }).then(mergeTag);
     },
-    [board_id]
+    [board_id, mergeTag]
+  );
+
+  const handleRenameTagDef = useCallback(
+    (tag_id: string, label: string) => {
+      void boardContentService
+        .updateTag(board_id, Number(tag_id), { label })
+        .then(mergeTag)
+        // A label already taken on the tag's board is rejected, so the list goes back to the saved name.
+        .catch(() => setTags((current) => current.slice()));
+    },
+    [board_id, mergeTag]
   );
 
   const handleDeleteTagDef = useCallback(
@@ -3166,12 +3182,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     () => ({
       initial_groups: table_groups,
       people: table_people,
-      // Tags is board-wide (see `BoardTag`'s own doc comment server-side),
-      // never per-column, so this maps straight off `tags` rather than
-      // anything scoped to `columns`.
-      tag_defs: tags.map((tag) => ({ id: String(tag.id), label: tag.label, color: tag.color })),
+      // Tags is board-wide, never per-column, so this maps straight off `tags`
+      // rather than anything scoped to `columns`. Tags living on another board
+      // are the account's public tags shared with this one.
+      tag_defs: tags.map((tag) => ({
+        id: String(tag.id),
+        label: tag.label,
+        color: tag.color,
+        usage_count: tag.usage_count,
+        is_shared: tag.board_id !== board_id,
+      })),
       onCreateTagDef: handleCreateTagDef,
       onRecolorTagDef: handleRecolorTagDef,
+      onRenameTagDef: handleRenameTagDef,
       onDeleteTagDef: handleDeleteTagDef,
       onFetchConnectOptions: handleFetchConnectOptions,
       onFetchConnectedBoards: handleFetchConnectedBoards,
@@ -3376,6 +3399,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       tags,
       handleCreateTagDef,
       handleRecolorTagDef,
+      handleRenameTagDef,
       handleDeleteTagDef,
       handleFetchConnectOptions,
       handleFetchConnectedBoards,

@@ -434,6 +434,8 @@ export type BoardTagDto = {
   label: string;
   color: string;
   position: number;
+  /** Items using the tag, sent by the list endpoint only. */
+  usage_count?: number;
 };
 
 export type CreateBoardTagPayload = {

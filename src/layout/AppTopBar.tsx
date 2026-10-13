@@ -13,6 +13,7 @@ import { HOME_PATH, isSidebarlessPath } from "./sidebar-routes";
 import { onShellPanelOpen } from "./shell-events";
 import HelpMenu from "./HelpMenu";
 import GlobalSearch from "./GlobalSearch";
+import SearchEverythingHost from "@/components/search-everything/SearchEverythingHost";
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
@@ -361,6 +362,8 @@ const AppTopBar: React.FC = () => {
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
+
+      <SearchEverythingHost />
 
       <HelpMenu anchor_el={help_button_ref.current} is_open={is_help_open} onClose={() => setIsHelpOpen(false)} />
 

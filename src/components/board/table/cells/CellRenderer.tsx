@@ -17,6 +17,9 @@ import ProgressMenu from "../menus/ProgressMenu";
 import DropdownMenu from "../menus/DropdownMenu";
 import DropdownCellChips from "./DropdownCellChips";
 import TagsMenu from "../menus/TagsMenu";
+import { formatTagLabel } from "../tagLabels";
+import { PlusIcon } from "@/icons/board-icons";
+import { openSearchEverything } from "@/layout/shell-events";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import FileLinkModal from "../menus/FileLinkModal";
@@ -456,29 +459,50 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "tags") {
-    // Tags is board-wide (`state.tag_defs`), never per-column — unlike
-    // Status/Dropdown/Label, monday.com's Tags column shares one option list
-    // across every Tags column on the board, so `column.options` is never
-    // consulted here even when set.
+    // Tags is board-wide (`state.tag_defs`), never per-column. Like monday.com,
+    // every Tags column shares one list, the board's own tags plus the public
+    // tags of the account, so `column.options` is never consulted here.
     const defs = state.tag_defs;
     const selected = asArray(value);
-    // See the Dropdown cell's own comment above — `overflow-hidden` stays off
-    // this wrapping div so `TagsMenu` isn't clipped either.
+    const can_edit = actions.canEditCell(node_id, column.id);
+    // `overflow-hidden` stays off this host (see the Dropdown cell above) so `TagsMenu` isn't clipped.
     return (
-      <div className="relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5">
-        {/* See the Dropdown cell's own comment above — same fix, same reason. */}
-        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-2.5 overflow-hidden">
+      <div className="tags-cell" data-open={is_menu_open} onClick={can_edit ? openMenu : undefined}>
+        <div className="tags-cell__list">
           {selected.map((entry) => {
             const def = findDef(defs, entry);
-            const label = def?.label ?? entry;
+            const label = formatTagLabel(def?.label ?? entry);
             return (
-              // See the Dropdown cell's own chip comment above — same fix, same reason.
-              <span key={entry} title={label} className="min-w-0 max-w-full truncate text-[12px] font-medium" style={{ color: def?.color || "#9aa0b6" }}>
+              <button
+                key={entry}
+                type="button"
+                title={`Search ${label}`}
+                onClick={(event) => {
+                  // Clicking a tag searches every item that uses it, like monday.com, instead of opening the picker.
+                  event.stopPropagation();
+                  openSearchEverything({ query: label, tab: "boards" });
+                }}
+                className="tags-cell__tag"
+                style={{ color: def?.color || "#9699a6" }}
+              >
                 {label}
-              </span>
+              </button>
             );
           })}
-        </button>
+        </div>
+        {can_edit && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openMenu();
+            }}
+            aria-label="Add tags"
+            className="tags-cell__add"
+          >
+            <PlusIcon size={10} />
+          </button>
+        )}
         {is_menu_open && (
           <TagsMenu
             tag_defs={defs}
@@ -487,7 +511,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             onQueryChange={actions.setTagQuery}
             onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
             onCreateTag={() => {
-              actions.createTagOnCell(node_id, column.id, state.tag_query);
+              actions.createTagOnCell(node_id, column.id, formatTagLabel(state.tag_query));
               actions.setTagQuery("");
             }}
             onManageTags={actions.openTagEditor}

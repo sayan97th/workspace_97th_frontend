@@ -338,6 +338,10 @@ export interface TagDef {
   id: string;
   label: string;
   color: string;
+  /** Items using the tag across every board the user can see, from the API. Omitted by the standalone demo. */
+  usage_count?: number;
+  /** True for a public tag that lives on another board and is shared with this one, editing it changes it everywhere. */
+  is_shared?: boolean;
 }
 
 /** A `link`-type column's value — the display text is separate from the URL, unlike a plain Text column. */

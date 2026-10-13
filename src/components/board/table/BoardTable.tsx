@@ -591,6 +591,7 @@ export default function BoardTable({
         <TagManagerModal
           tag_defs={state.tag_defs}
           onColor={actions.setTagDefColor}
+          onRename={actions.renameTagDef}
           onDelete={actions.deleteTagDef}
           onAdd={actions.addTagDef}
           onClose={actions.closeTagEditor}

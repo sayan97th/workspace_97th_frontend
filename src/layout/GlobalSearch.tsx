@@ -3,7 +3,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
-import { onShellPanelOpen } from "./shell-events";
+import { onShellPanelOpen, openSearchEverything } from "./shell-events";
 import WorkspaceBadge from "./WorkspaceBadge";
 import { buildBoardPath, BOARD_ROUTE_BASE } from "@/components/workspace-nav/helpers";
 import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
@@ -210,6 +210,12 @@ const GlobalSearch: React.FC = () => {
     closeAndReset();
   };
 
+  /** Hands the typed query over to the full "Search Everything" dialog. */
+  const openFullSearch = () => {
+    openSearchEverything({ query: trimmed_query, tab: "all" });
+    closeAndReset();
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     switch (event.key) {
       case "ArrowDown":
@@ -226,6 +232,9 @@ const GlobalSearch: React.FC = () => {
         if (is_open && safe_active_index >= 0) {
           event.preventDefault();
           selectOption(options[safe_active_index]);
+        } else if (trimmed_query !== "") {
+          event.preventDefault();
+          openFullSearch();
         }
         break;
       case "Escape":
@@ -370,6 +379,17 @@ const GlobalSearch: React.FC = () => {
               })}
             </div>
           )}
+
+          <button
+            type="button"
+            // Keep focus on the input so the click doesn't blur and close the list first.
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={openFullSearch}
+            className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-shell-border px-3 py-2.5 text-left text-[13px] text-brand-500 hover:bg-shell-hover-strong"
+          >
+            <SearchIcon size={14} className="flex-none" />
+            <span className="truncate">{trimmed_query ? `See all results for "${trimmed_query}"` : "Open Search Everything"}</span>
+          </button>
         </div>
       )}
 

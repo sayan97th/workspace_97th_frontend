@@ -1,0 +1,439 @@
+/*
+ * Tags column picker, styled after monday.com's: a white card with an
+ * "Add tags" field (the tags already on the cell sit in it as chips), the
+ * account's tags listed in their own color with how many items use each one
+ * in an outlined pill, a soft "+ Create new tag" button and a "Manage tags"
+ * link. The highlighted row turns primary blue with white text.
+ *
+ * Every color is a `--tags-picker-*` token declared on `.tags-picker`, so dark
+ * mode only swaps the tokens. The card is portaled to `document.body` (see
+ * `PopoverPanel`), outside the table's scoped palette, which is why it carries
+ * its own tokens. A row's color comes from its tag through `--tag-color`.
+ */
+
+.tags-picker {
+  --tags-picker-surface: #ffffff;
+  --tags-picker-text: #323338;
+  --tags-picker-text-secondary: #676879;
+  --tags-picker-text-faint: #9699a6;
+  --tags-picker-divider: #e7e9ef;
+  --tags-picker-primary: #0073ea;
+  --tags-picker-primary-text: #ffffff;
+  --tags-picker-create: #ecedf5;
+  --tags-picker-create-hover: #dcdfec;
+  --tags-picker-chip: #f0f1f5;
+  --tags-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  padding: 8px 8px 6px;
+  border-radius: 8px;
+  background: var(--tags-picker-surface);
+  box-shadow: var(--tags-picker-shadow);
+  color: var(--tags-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .tags-picker {
+  --tags-picker-surface: #181b34;
+  --tags-picker-text: #d5d8df;
+  --tags-picker-text-secondary: #a8aec4;
+  --tags-picker-text-faint: #8a90a8;
+  --tags-picker-divider: rgba(255, 255, 255, 0.12);
+  --tags-picker-primary: #2f80ed;
+  --tags-picker-create: rgba(255, 255, 255, 0.08);
+  --tags-picker-create-hover: rgba(255, 255, 255, 0.14);
+  --tags-picker-chip: rgba(255, 255, 255, 0.1);
+  --tags-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tags-picker {
+    animation: tags-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes tags-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* "Add tags" field, the selected tags wrap inside it as chips. */
+.tags-picker__field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  cursor: text;
+}
+
+.tags-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  border-radius: 12px;
+  background: var(--tags-picker-chip);
+  color: var(--tag-color, var(--tags-picker-text-faint));
+  font-size: 13px;
+}
+
+.tags-picker__chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags-picker__chip-remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--tags-picker-text-secondary);
+}
+
+.tags-picker__chip-remove:hover {
+  background: var(--tags-picker-create-hover);
+  color: var(--tags-picker-text);
+}
+
+.tags-picker__input {
+  flex: 1;
+  min-width: 80px;
+  height: 28px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--tags-picker-text);
+  font: inherit;
+}
+
+.tags-picker__input::placeholder {
+  color: var(--tags-picker-text-secondary);
+}
+
+.tags-picker__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+[data-capped] .tags-picker__list {
+  max-height: none;
+}
+
+.tags-picker__option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--tag-color, var(--tags-picker-text-faint));
+  font-size: 14px;
+  text-align: left;
+}
+
+.tags-picker__option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags-picker__count {
+  flex: none;
+  min-width: 26px;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.tags-picker__option[data-highlighted="true"] {
+  background: var(--tags-picker-primary);
+  color: var(--tags-picker-primary-text);
+}
+
+.tags-picker__empty {
+  padding: 6px 8px;
+  color: var(--tags-picker-text-faint);
+  font-size: 13px;
+}
+
+.tags-picker__create {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 32px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--tags-picker-create);
+  color: var(--tags-picker-text);
+  font-size: 13.5px;
+  transition: background-color 100ms ease;
+}
+
+.tags-picker__create:hover:not(:disabled),
+.tags-picker__create[data-highlighted="true"] {
+  background: var(--tags-picker-create-hover);
+}
+
+.tags-picker__create:disabled {
+  color: var(--tags-picker-text-faint);
+  cursor: default;
+}
+
+.tags-picker__create-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags-picker__manage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  border-radius: 4px;
+  color: var(--tags-picker-primary);
+  font-size: 13.5px;
+}
+
+.tags-picker__manage:hover {
+  text-decoration: underline;
+}
+
+.tags-picker__option:focus-visible,
+.tags-picker__create:focus-visible,
+.tags-picker__manage:focus-visible,
+.tags-picker__chip-remove:focus-visible {
+  outline: 2px solid var(--tags-picker-primary);
+  outline-offset: -2px;
+}
+
+/* The table cell: the tags as colored text, each one searches its tag. */
+.tags-cell {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.tags-cell__list {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tags-cell__tag {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tags-cell__tag:hover {
+  text-decoration: underline;
+}
+
+.tags-cell__add {
+  display: none;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 4px;
+  border-radius: 50%;
+  background: #0073ea;
+  color: #ffffff;
+}
+
+.tags-cell:hover .tags-cell__add,
+.tags-cell[data-open="true"] .tags-cell__add {
+  display: flex;
+}
+
+/*
+ * "Manage tags" dialog extras. The dialog itself reuses the "Edit labels"
+ * card (`label-editor-modal.css`), so these read its `--label-editor-*` tokens.
+ */
+.tag-manager__intro {
+  margin: -4px 24px 12px;
+  color: var(--label-editor-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.tag-manager__search {
+  padding: 0 24px 8px;
+}
+
+.tag-manager__search-input,
+.tag-manager__add-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--label-editor-border);
+  border-radius: 4px;
+  outline: none;
+  background: transparent;
+  color: var(--label-editor-text);
+  font: inherit;
+  transition: border-color 120ms ease;
+}
+
+.tag-manager__search-input:hover,
+.tag-manager__add-input:hover {
+  border-color: var(--label-editor-border-hover);
+}
+
+.tag-manager__search-input:focus,
+.tag-manager__add-input:focus {
+  border-color: var(--label-editor-focus);
+}
+
+.tag-manager__search-input::placeholder,
+.tag-manager__add-input::placeholder {
+  color: var(--label-editor-text-secondary);
+}
+
+.tag-manager__shared,
+.tag-manager__count {
+  flex: none;
+  color: var(--label-editor-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tag-manager__shared {
+  padding: 0 6px;
+  border: 1px solid var(--label-editor-divider);
+  border-radius: 10px;
+  line-height: 18px;
+}
+
+.tag-manager__confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--label-editor-danger-hover);
+  font-size: 13px;
+}
+
+.tag-manager__confirm-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-manager__confirm-cancel,
+.tag-manager__confirm-delete {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.tag-manager__confirm-cancel:hover {
+  background: var(--label-editor-hover);
+}
+
+.tag-manager__confirm-delete {
+  background: var(--label-editor-danger);
+  color: #ffffff;
+}
+
+.tag-manager__confirm-delete:hover {
+  filter: brightness(0.92);
+}
+
+.tag-manager__add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tag-manager__add-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--label-editor-primary);
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.tag-manager__add-button:hover:not(:disabled) {
+  background: var(--label-editor-primary-hover);
+}
+
+.tag-manager__add-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tag-manager__search-input:focus-visible,
+.tag-manager__add-input:focus-visible,
+.tag-manager__add-button:focus-visible,
+.tag-manager__confirm-cancel:focus-visible,
+.tag-manager__confirm-delete:focus-visible {
+  outline: 2px solid var(--label-editor-ring);
+  outline-offset: 1px;
+}
