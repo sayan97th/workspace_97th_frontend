@@ -24,12 +24,13 @@ interface TagsMenuProps {
 const tagColorStyle = (color: string | undefined): CSSProperties => (color ? ({ "--tag-color": color } as CSSProperties) : {});
 
 /**
- * Tags cell picker, monday.com style: the cell's tags sit as chips in the
- * "Add tags" field, the rest of the account's tags are listed in their own
+ * Tags cell picker, monday.com style: the open cell grows into a card that
+ * lists its tags one per line, each with a remove button, and below it the
+ * "Add tags" field lists the rest of the account's tags in their own
  * color with how many items use each one, then "+ Create new tag" and
  * "Manage tags". The first match is highlighted, so typing and pressing
  * Enter picks it, or creates the tag when nothing matches exactly.
- * Backspace on an empty field removes the last chip. Styles live in
+ * Backspace on an empty field removes the last tag. Styles live in
  * `tags-picker.css`.
  */
 export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onToggle, onCreateTag, onManageTags, onClose }: TagsMenuProps) {
@@ -111,38 +112,43 @@ export default function TagsMenu({ tag_defs, selected, query, onQueryChange, onT
     }
   };
 
+  // The open cell grows into a card listing its tags, one per line, each with a remove button.
+  const cell_card = (
+    <div className={`tags-cell-card ${boardTreeFontClassName}`}>
+      {selected.map((entry, index) => {
+        const tag = selected_defs[index];
+        const label = formatTagLabel(tag?.label ?? entry);
+        return (
+          <span key={entry} className="tags-cell-card__tag" style={tagColorStyle(tag?.color)} title={label}>
+            <span className="tags-cell-card__label">{label}</span>
+            <button
+              type="button"
+              onClick={() => {
+                onToggle(entry);
+                input_ref.current?.focus();
+              }}
+              aria-label={`Remove ${label}`}
+              className="tags-cell-card__remove"
+            >
+              <CloseIcon size={8} />
+            </button>
+          </span>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <PopoverPanel onClose={onClose} unstyled className="left-1/2 top-[calc(100%+4px)] -translate-x-1/2">
+    <PopoverPanel onClose={onClose} unstyled anchor_overlay={cell_card} className="left-1/2 top-[calc(100%+8px)] -translate-x-1/2">
       <div className={`tags-picker ${boardTreeFontClassName}`}>
         <div className="tags-picker__field" onClick={() => input_ref.current?.focus()}>
-          {selected.map((entry, index) => {
-            const tag = selected_defs[index];
-            const label = formatTagLabel(tag?.label ?? entry);
-            return (
-              <span key={entry} className="tags-picker__chip" style={tagColorStyle(tag?.color)} title={label}>
-                <span className="tags-picker__chip-label">{label}</span>
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onToggle(entry);
-                    input_ref.current?.focus();
-                  }}
-                  aria-label={`Remove ${label}`}
-                  className="tags-picker__chip-remove"
-                >
-                  <CloseIcon size={10} />
-                </button>
-              </span>
-            );
-          })}
           <input
             ref={input_ref}
             autoFocus
             value={query}
             onChange={(event) => changeQuery(event.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={selected.length > 0 ? "" : "Add tags"}
+            placeholder="Add tags"
             aria-label="Add tags"
             role="combobox"
             aria-expanded="true"

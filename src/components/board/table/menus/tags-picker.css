@@ -1,17 +1,19 @@
 /*
- * Tags column picker, styled after monday.com's: a white card with an
- * "Add tags" field (the tags already on the cell sit in it as chips), the
+ * Tags column picker, styled after monday.com's: the open cell grows into a
+ * card listing its tags (`.tags-cell-card`), and below it a white card with an
+ * "Add tags" field, the
  * account's tags listed in their own color with how many items use each one
  * in an outlined pill, a soft "+ Create new tag" button and a "Manage tags"
  * link. The highlighted row turns primary blue with white text.
  *
- * Every color is a `--tags-picker-*` token declared on `.tags-picker`, so dark
+ * Every color is a `--tags-picker-*` token declared on both cards, so dark
  * mode only swaps the tokens. The card is portaled to `document.body` (see
  * `PopoverPanel`), outside the table's scoped palette, which is why it carries
  * its own tokens. A row's color comes from its tag through `--tag-color`.
  */
 
-.tags-picker {
+.tags-picker,
+.tags-cell-card {
   --tags-picker-surface: #ffffff;
   --tags-picker-text: #323338;
   --tags-picker-text-secondary: #676879;
@@ -21,9 +23,10 @@
   --tags-picker-primary-text: #ffffff;
   --tags-picker-create: #ecedf5;
   --tags-picker-create-hover: #dcdfec;
-  --tags-picker-chip: #f0f1f5;
   --tags-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
 
+.tags-picker {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -38,7 +41,8 @@
   line-height: 20px;
 }
 
-html.dark .tags-picker {
+html.dark .tags-picker,
+html.dark .tags-cell-card {
   --tags-picker-surface: #181b34;
   --tags-picker-text: #d5d8df;
   --tags-picker-text-secondary: #a8aec4;
@@ -47,9 +51,10 @@ html.dark .tags-picker {
   --tags-picker-primary: #2f80ed;
   --tags-picker-create: rgba(255, 255, 255, 0.08);
   --tags-picker-create-hover: rgba(255, 255, 255, 0.14);
-  --tags-picker-chip: rgba(255, 255, 255, 0.1);
   --tags-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
 
+html.dark .tags-picker {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -70,51 +75,62 @@ html.dark .tags-picker {
   }
 }
 
-/* "Add tags" field, the selected tags wrap inside it as chips. */
+/* "Add tags" field. */
 .tags-picker__field {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
   min-height: 40px;
   margin-bottom: 8px;
   padding: 4px 8px;
   cursor: text;
 }
 
-.tags-picker__chip {
-  display: inline-flex;
+/* The open cell, grown into a card that lists its tags one per line. */
+.tags-cell-card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
-  max-width: 100%;
-  height: 24px;
-  padding: 0 4px 0 8px;
-  border-radius: 12px;
-  background: var(--tags-picker-chip);
-  color: var(--tag-color, var(--tags-picker-text-faint));
-  font-size: 13px;
+  padding: 4px 6px;
+  border: 1px solid var(--tags-picker-primary);
+  background: var(--tags-picker-surface);
+  font-size: 14px;
+  line-height: 20px;
 }
 
-.tags-picker__chip-label {
+.tags-cell-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  color: var(--tag-color, var(--tags-picker-text-faint));
+}
+
+.tags-cell-card__label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tags-picker__chip-remove {
+/* Filled circle in the tag's color with a white "x". */
+.tags-cell-card__remove {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  color: var(--tags-picker-text-secondary);
+  background: var(--tag-color, var(--tags-picker-text-faint));
+  color: #ffffff;
+  transition: filter 100ms ease;
 }
 
-.tags-picker__chip-remove:hover {
-  background: var(--tags-picker-create-hover);
-  color: var(--tags-picker-text);
+.tags-cell-card__remove:hover {
+  filter: brightness(0.85);
 }
 
 .tags-picker__input {
@@ -243,7 +259,7 @@ html.dark .tags-picker {
 .tags-picker__option:focus-visible,
 .tags-picker__create:focus-visible,
 .tags-picker__manage:focus-visible,
-.tags-picker__chip-remove:focus-visible {
+.tags-cell-card__remove:focus-visible {
   outline: 2px solid var(--tags-picker-primary);
   outline-offset: -2px;
 }
@@ -264,6 +280,7 @@ html.dark .tags-picker {
   display: flex;
   flex: 1;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
   height: 100%;
@@ -285,21 +302,24 @@ html.dark .tags-picker {
   text-decoration: underline;
 }
 
+/* Hover "+" at the start of the cell, like monday.com. */
 .tags-cell__add {
   display: none;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  margin-left: 4px;
-  border-radius: 50%;
-  background: #0073ea;
-  color: #ffffff;
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  border-radius: 2px;
+  color: #323338;
 }
 
-.tags-cell:hover .tags-cell__add,
-.tags-cell[data-open="true"] .tags-cell__add {
+html.dark .tags-cell__add {
+  color: #d5d8df;
+}
+
+.tags-cell:hover .tags-cell__add {
   display: flex;
 }
 

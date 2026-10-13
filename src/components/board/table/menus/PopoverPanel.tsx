@@ -111,6 +111,12 @@ interface PopoverPanelProps {
   fit?: PopoverFit;
   /** Skips the panel's own border/background/shadow chrome, for content that draws its own card (the Status picker). */
   unstyled?: boolean;
+  /**
+   * Content laid right over the anchor cell, as wide as it and growing downward (the Tags
+   * cell's expanded list of tags). The panel moves down by however much it outgrows the cell,
+   * and clicks inside it count as inside the panel.
+   */
+  anchor_overlay?: ReactNode;
   children: ReactNode;
 }
 
@@ -131,7 +137,7 @@ interface PopoverPanelProps {
  * context. Portaling to `document.body` sidesteps every ancestor stacking context at once,
  * instead of chasing z-index values row by row.
  */
-export default function PopoverPanel({ onClose, className, style, fit = "flip", unstyled = false, children }: PopoverPanelProps) {
+export default function PopoverPanel({ onClose, className, style, fit = "flip", unstyled = false, anchor_overlay, children }: PopoverPanelProps) {
   const marker_ref = useRef<HTMLDivElement>(null);
   // The board's scrolling table area, found once on open. "flip" panels stay inside it.
   const scroll_container_ref = useRef<HTMLElement | null>(null);
@@ -144,6 +150,10 @@ export default function PopoverPanel({ onClose, className, style, fit = "flip", 
   // The panel's last uncapped height. Content that shrinks to fit a cap (the People list) can't
   // be measured at full size while capped, and reading the capped size instead would uncap it again.
   const uncapped_height_ref = useRef(0);
+  // How much taller than the anchor the `anchor_overlay` is, the panel is pushed down by it.
+  const overlay_ref = useRef<HTMLDivElement>(null);
+  const [overlay_extra, setOverlayExtra] = useState(0);
+  const has_overlay = anchor_overlay !== undefined && anchor_overlay !== null;
 
   useLayoutEffect(() => {
     const marker_el = marker_ref.current;
@@ -166,6 +176,19 @@ export default function PopoverPanel({ onClose, className, style, fit = "flip", 
       resize_observer.disconnect();
     };
   }, []);
+
+  useLayoutEffect(() => {
+    const overlay_el = overlay_ref.current;
+    if (!has_overlay || !anchor_rect || !overlay_el) {
+      setOverlayExtra(0);
+      return;
+    }
+    const measure = () => setOverlayExtra(Math.max(0, Math.round(overlay_el.offsetHeight - anchor_rect.height)));
+    measure();
+    const resize_observer = new ResizeObserver(measure);
+    resize_observer.observe(overlay_el);
+    return () => resize_observer.disconnect();
+  }, [has_overlay, anchor_rect]);
 
   // The panel is `fixed`, so the page can never scroll a cut off part of it back into view.
   // A menu opened on a cell near the right edge of a narrow window (the People picker's
@@ -232,11 +255,12 @@ export default function PopoverPanel({ onClose, className, style, fit = "flip", 
     const resize_observer = new ResizeObserver(clampToViewport);
     resize_observer.observe(panel_el);
     return () => resize_observer.disconnect();
-  }, [anchor_rect, panel_ref, fit]);
+  }, [anchor_rect, panel_ref, fit, overlay_extra]);
 
   // `transform` composes with Tailwind's own `translate` utilities (e.g. `-translate-x-1/2`)
   // instead of replacing them, so the caller's centering is kept under the nudge.
   const panel_style: CSSProperties = { ...style };
+  if (overlay_extra) panel_style.marginTop = overlay_extra;
   if (placement.shift_x || placement.shift_y) {
     panel_style.transform = `translate(${placement.shift_x}px, ${placement.shift_y}px)`;
   }
@@ -267,6 +291,17 @@ export default function PopoverPanel({ onClose, className, style, fit = "flip", 
             className="fixed z-[1000]"
             style={{ top: anchor_rect.top, left: anchor_rect.left, width: anchor_rect.width, height: anchor_rect.height }}
           >
+            {has_overlay && (
+              <div
+                ref={overlay_ref}
+                data-board-menu-flyout
+                onClick={(e) => e.stopPropagation()}
+                className="absolute left-0 top-0 flex w-full flex-col"
+                style={{ minHeight: anchor_rect.height, ...(placement.is_hidden ? { visibility: "hidden", pointerEvents: "none" } : {}) }}
+              >
+                {anchor_overlay}
+              </div>
+            )}
             <div
               ref={panel_ref}
               data-capped={placement.max_height !== null || undefined}

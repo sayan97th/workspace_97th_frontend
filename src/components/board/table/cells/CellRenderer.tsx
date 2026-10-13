@@ -17,7 +17,7 @@ import ProgressMenu from "../menus/ProgressMenu";
 import DropdownMenu from "../menus/DropdownMenu";
 import DropdownCellChips from "./DropdownCellChips";
 import TagsMenu from "../menus/TagsMenu";
-import { formatTagLabel } from "../tagLabels";
+import { formatTagLabel, tagSearchKey } from "../tagLabels";
 import { PlusIcon } from "@/icons/board-icons";
 import { openSearchEverything } from "@/layout/shell-events";
 import LinkMenu from "../menus/LinkMenu";
@@ -468,9 +468,23 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     // `overflow-hidden` stays off this host (see the Dropdown cell above) so `TagsMenu` isn't clipped.
     return (
       <div className="tags-cell" data-open={is_menu_open} onClick={can_edit ? openMenu : undefined}>
+        {can_edit && (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openMenu();
+            }}
+            aria-label="Add tags"
+            className="tags-cell__add"
+          >
+            <PlusIcon size={12} />
+          </button>
+        )}
         <div className="tags-cell__list">
           {selected.map((entry) => {
-            const def = findDef(defs, entry);
+            // Imported cells may hold the raw label ("design") instead of an id, those match by label like in `TagsMenu`.
+            const def = findDef(defs, entry) ?? defs.find((tag) => tagSearchKey(tag.label) === tagSearchKey(entry));
             const label = formatTagLabel(def?.label ?? entry);
             return (
               <button
@@ -490,19 +504,6 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             );
           })}
         </div>
-        {can_edit && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              openMenu();
-            }}
-            aria-label="Add tags"
-            className="tags-cell__add"
-          >
-            <PlusIcon size={10} />
-          </button>
-        )}
         {is_menu_open && (
           <TagsMenu
             tag_defs={defs}
