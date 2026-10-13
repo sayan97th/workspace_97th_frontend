@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { PlusIcon } from "@/icons/board-icons";
 import BoardPopover from "../toolbar/BoardPopover";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "../cells/OptionPicker";
-import { KANBAN_COLORS, kanbanTint } from "./kanbanDesign";
+import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type KanbanCardLabelsProps = {
   options: BoardCellOption[];
@@ -38,8 +38,8 @@ const KanbanCardLabels: React.FC<KanbanCardLabelsProps> = ({ options, selected_i
         selected.map((label) => (
           <span
             key={label.id}
-            className="max-w-[170px] cursor-pointer truncate rounded-[6px] px-2 py-[3px] text-[11px] font-bold transition-opacity hover:opacity-80"
-            style={{ background: kanbanTint(label.color), color: label.color }}
+            className="kanban-pill max-w-[170px] cursor-pointer transition-opacity hover:opacity-80"
+            style={{ "--kanban-pill-color": label.color } as React.CSSProperties}
           >
             {label.label}
           </span>

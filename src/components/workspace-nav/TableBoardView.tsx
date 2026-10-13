@@ -26,12 +26,11 @@ import {
   TABLE_KIND_TO_ENGINE_KIND,
   DependencyPickerList,
   GanttChart,
-  InlineTitleEditor,
-  KANBAN_COLORS,
   KANBAN_DEFAULT_LANE_OPTIONS,
   KanbanCardLabels,
   KanbanCardMembers,
   KanbanItemDrawer,
+  KanbanTaskCard,
   PersonAvatarStack,
   PresenceAvatarStack,
   SelectionActionBar,
@@ -48,6 +47,8 @@ import {
   type BoardCellOption,
   type BoardColumn,
   type BoardKanbanLane,
+  type KanbanDueDateTone,
+  type KanbanTaskPill,
   type BoardOptionActions,
   type BoardGroup as BoardGroupRow,
   type BoardHeaderInfo,
@@ -88,16 +89,23 @@ import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/fo
 import { computeFormulaValue, legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
 import type { CellValue, FormulaSourceColumn } from "@/components/board/table/types";
 import {
-  AttachmentIcon,
   CalendarViewIcon,
-  CheckIcon,
   GanttViewIcon,
   KanbanViewIcon,
   LinkIcon,
   PlusIcon,
-  RowChatIcon,
 } from "@/icons/board-icons";
-import { ChevronRightIcon, MoreDotsIcon } from "@/icons/workspace-icons";
+import {
+  ArchiveIcon,
+  CheckCircleIcon,
+  ChevronRightIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  MoveToIcon,
+  OpenInOverlayIcon,
+  RenameIcon,
+} from "@/icons/workspace-icons";
+import type { ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
@@ -151,6 +159,7 @@ import type {
   BoardTagDto,
   BoardViewDto,
   BoardViewPersonalStateDto,
+  ReorderBoardItemsPayload,
 } from "@/types/board-content";
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
@@ -319,28 +328,37 @@ const formatDate = (value: string | null): string => {
 };
 
 /**
- * A Kanban card's due-date pill: "Today" (flagged urgent) beats the usual
- * short "Nov 4" form, and a past-due date is flagged urgent too.
+ * A Kanban card's due date, labeled the Asana way: "Today", "Tomorrow" and
+ * "Yesterday" for the days around now, "Oct 14" for the rest of this year and
+ * "Oct 14, 2027" otherwise. The tone paints it red once it's past due and
+ * green when it's due today or tomorrow.
  *
- * A plain `YYYY-MM-DD` string parses as UTC midnight (`new Date(value)`),
- * but `toDateString()`/`toLocaleDateString()` read it back in the *local*
- * zone — west of UTC that rolls the calendar day back by one (a stored
- * "2026-08-06" reads as "Aug 5"). Parsing the y/m/d digits directly into a
- * *local* `Date` sidesteps the UTC round-trip entirely.
+ * A plain `YYYY-MM-DD` string parses as UTC midnight (`new Date(value)`), but
+ * `toLocaleDateString()` reads it back in the local zone, so west of UTC a
+ * stored "2026-08-06" would read as "Aug 5". Parsing the y/m/d digits into a
+ * local `Date` sidesteps that round trip.
  */
-const formatKanbanDueDate = (value: string): { label: string; urgent: boolean } => {
+const formatKanbanDueDate = (value: string): { label: string; tone: KanbanDueDateTone } => {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-  const date = match
-    ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]))
-    : new Date(value);
-  if (Number.isNaN(date.getTime())) return { label: value, urgent: false };
+  const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
+  if (Number.isNaN(date.getTime())) return { label: value, tone: "default" };
   const today = new Date();
   const start_of_today = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-  const is_same_day = date.getTime() === start_of_today.getTime();
-  return {
-    label: is_same_day ? "Today" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    urgent: date < new Date(start_of_today.getTime() + 24 * 60 * 60 * 1000),
-  };
+  const start_of_date = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day_offset = Math.round((start_of_date.getTime() - start_of_today.getTime()) / (24 * 60 * 60 * 1000));
+  const label =
+    day_offset === 0
+      ? "Today"
+      : day_offset === 1
+        ? "Tomorrow"
+        : day_offset === -1
+          ? "Yesterday"
+          : date.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              ...(date.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}),
+            });
+  return { label, tone: day_offset < 0 ? "overdue" : day_offset <= 1 ? "soon" : "default" };
 };
 
 /** Resolves a node into the "Board info" popover content shown from its header chevron. */
@@ -885,6 +903,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     Object.fromEntries(initial_collapsed_group_ids.map((id) => [String(id), true]))
   );
   const [adding_kanban_lane_id, setAddingKanbanLaneId] = useState<string | null>(null);
+  // A Kanban card menu's "Archive" or "Delete", waiting on its confirm dialog.
+  const [kanban_card_confirm, setKanbanCardConfirm] = useState<{ kind: "archive" | "delete"; row_id: string } | null>(null);
 
   const columns_by_id = useMemo(
     () => Object.fromEntries(columns.map((c) => [String(c.id), c])),
@@ -3404,184 +3424,151 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return lanes;
   }, [board_status_column, filtered_rows]);
 
+  const isKanbanRowDone = (row: BoardItemDto): boolean =>
+    board_done_column ? row.values[String(board_done_column.id)] === true : false;
+
+  /** A card's "..." menu: open, complete, rename, move to another lane, duplicate, copy link, archive and delete. */
+  const getKanbanCardMenuSections = (row: BoardItemDto): ActionMenuSection[] => {
+    const row_id = String(row.id);
+    const is_done = isKanbanRowDone(row);
+    const current_lane_id = board_status_column ? row.values[String(board_status_column.id)] ?? "__none__" : null;
+    const move_targets = kanban_lanes.filter((lane) => lane.id !== current_lane_id && lane.id !== "__none__");
+    return [
+      {
+        key: "open",
+        items: [
+          { key: "open", label: "Open task details", icon: <OpenInOverlayIcon size={14} />, onClick: () => handleRowClick(row) },
+          ...(board_done_column
+            ? [
+                {
+                  key: "complete",
+                  label: is_done ? "Mark incomplete" : "Mark complete",
+                  icon: <CheckCircleIcon size={14} />,
+                  onClick: () => void handleUpdateCellValue(row.id, String(board_done_column.id), !is_done),
+                },
+              ]
+            : []),
+          { key: "rename", label: "Rename", icon: <RenameIcon size={14} />, onClick: () => setEditingItemId(row.id) },
+        ],
+      },
+      {
+        key: "organize",
+        items: [
+          ...(move_targets.length > 0
+            ? [
+                {
+                  key: "move",
+                  label: "Move to lane",
+                  icon: <MoveToIcon size={14} />,
+                  submenu: move_targets.map((lane) => ({
+                    key: lane.id,
+                    label: lane.label,
+                    icon: <span className="h-3 w-3 rounded-[4px]" style={{ background: lane.color }} />,
+                    onClick: () => handleMoveKanbanCard(row_id, lane.id),
+                  })),
+                },
+              ]
+            : []),
+          { key: "duplicate", label: "Duplicate", icon: <DuplicateIcon size={14} />, onClick: () => void handleDuplicateTableNode(row_id, true) },
+          { key: "copy-link", label: "Copy task link", icon: <LinkIcon size={14} />, onClick: () => void handleCopyKanbanCardLink(row) },
+        ],
+      },
+      {
+        key: "remove",
+        items: [
+          { key: "archive", label: "Archive", icon: <ArchiveIcon size={14} />, onClick: () => setKanbanCardConfirm({ kind: "archive", row_id }) },
+          { key: "delete", label: "Delete", icon: <DeleteIcon size={14} />, danger: true, onClick: () => setKanbanCardConfirm({ kind: "delete", row_id }) },
+        ],
+      },
+    ];
+  };
+
   const renderKanbanCard = (row: BoardItemDto): React.ReactNode => {
     const label_ids = board_label_column ? asStringArray(row.values[String(board_label_column.id)]) : [];
     const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
-    const members = board_member_column
-      ? roster_members.filter((member) => member_ids.includes(String(member.id)))
-      : [];
+    const members = board_member_column ? roster_members.filter((member) => member_ids.includes(String(member.id))) : [];
 
     const priority_value = board_priority_column ? row.values[String(board_priority_column.id)] : null;
     const priority_option =
       board_priority_column && typeof priority_value === "string"
         ? (board_priority_column.config?.options ?? []).find((option) => option.id === priority_value) ?? null
         : null;
+    const pills: KanbanTaskPill[] = priority_option
+      ? [{ key: "priority", label: priority_option.label, color: priority_option.color, solid: true }]
+      : [];
 
-    const is_done = board_done_column ? row.values[String(board_done_column.id)] === true : false;
     const due_date_value = board_date_column ? row.values[String(board_date_column.id)] : null;
-    const due_date = typeof due_date_value === "string" && due_date_value ? formatKanbanDueDate(due_date_value) : null;
-    const has_checklist = row.checklist_total_count > 0;
-    const checklist_pct = has_checklist ? Math.round((100 * row.checklist_done_count) / row.checklist_total_count) : 0;
-    const description_snippet = row.description?.trim();
-
-    const has_meta_row = Boolean(
-      priority_option || due_date || row.attachment_count > 0 || row.comment_count > 0 || board_member_column
-    );
 
     return (
-      <div className="flex flex-col">
-        {priority_option && <div className="h-[6px]" style={{ background: priority_option.color }} />}
-
-        <div className="flex flex-col" style={{ padding: "13px 14px 12px" }}>
-          <div className="flex items-start gap-2">
-            {board_done_column && (
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  void handleUpdateCellValue(row.id, String(board_done_column.id), !is_done);
-                }}
-                aria-label={is_done ? "Mark incomplete" : "Mark complete"}
-                title={is_done ? "Mark incomplete" : "Mark complete"}
-                className="mt-px flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.6px] transition-colors"
-                style={is_done ? { background: KANBAN_COLORS.success, borderColor: KANBAN_COLORS.success } : { borderColor: KANBAN_COLORS.text_hairline }}
-              >
-                {is_done && <CheckIcon size={9} className="text-white" />}
-              </button>
-            )}
-
-            {editing_item_id === row.id ? (
-              <InlineTitleEditor
-                value={row.name}
-                onCommit={(name) => handleRenameItem(row.id, name)}
-                onCancel={() => setEditingItemId(null)}
-                className="w-full min-w-0 text-[14px] font-bold"
-                style={{ color: KANBAN_COLORS.text_strong }}
-                aria_label="Rename item"
-              />
-            ) : (
-              <span
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setEditingItemId(row.id);
-                }}
-                className="min-w-0 flex-1 cursor-text text-[14px] font-bold leading-snug"
-                style={{ color: is_done ? KANBAN_COLORS.text_faded : KANBAN_COLORS.text_strong, textDecoration: is_done ? "line-through" : "none" }}
-                title="Click to rename"
-              >
-                {row.name}
-              </span>
-            )}
-            <span
-              className="-mr-1 -mt-1 flex-none rounded-[6px] p-1 opacity-0 transition-opacity group-hover:opacity-100"
-              style={{ color: KANBAN_COLORS.text_hairline }}
-            >
-              <MoreDotsIcon size={13} />
-            </span>
-          </div>
-
-          {/* The Project row is only ever painted on the card once it has a value.
-              An unset Project stays a drawer-only field instead of cluttering every
-              card with an empty "+ Add label" affordance. */}
-          {board_label_column && label_ids.length > 0 && (
-            <div style={{ margin: "9px 0 0", paddingLeft: 24 }}>
-              <KanbanCardLabels
-                options={board_label_column.config?.options ?? []}
-                selected_ids={label_ids}
-                onToggle={(option_id) => {
-                  const next = label_ids.includes(option_id)
-                    ? label_ids.filter((id) => id !== option_id)
-                    : [...label_ids, option_id];
-                  void handleUpdateCellValue(row.id, String(board_label_column.id), next.length ? next : null);
-                }}
-                onCreateOption={(option) => handleAddColumnOption(String(board_label_column.id), option)}
-                onEditOptions={makeOptionActions(String(board_label_column.id))}
-              />
-            </div>
-          )}
-
-          {description_snippet && (
-            <div
-              className="overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px]"
-              style={{ color: KANBAN_COLORS.text_disabled, paddingLeft: 24, margin: "6px 0 0" }}
-            >
-              {description_snippet}
-            </div>
-          )}
-
-          {has_checklist && (
-            <div className="flex items-center gap-2" style={{ paddingLeft: 24, margin: "10px 0 0" }} onClick={(event) => event.stopPropagation()}>
-              <div className="h-[5px] flex-1 overflow-hidden rounded-full" style={{ background: "var(--color-shell-border-strong)" }}>
-                <div
-                  className="h-full rounded-full transition-[width]"
-                  style={{ width: `${checklist_pct}%`, background: KANBAN_COLORS.success }}
-                />
-              </div>
-              <span className="flex-none text-[11px] font-bold" style={{ color: checklist_pct === 100 ? KANBAN_COLORS.success : KANBAN_COLORS.text_placeholder }}>
-                {row.checklist_done_count}/{row.checklist_total_count}
-              </span>
-            </div>
-          )}
-
-          {has_meta_row && (
-            <div
-              className="flex flex-wrap items-center gap-2"
-              style={{ paddingLeft: 24, margin: "11px 0 0" }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              {priority_option && (
-                <span
-                  className="rounded-[6px] px-[7px] py-[3px] text-[10.5px] font-extrabold uppercase tracking-wide"
-                  style={{ background: `${priority_option.color}1A`, color: priority_option.color }}
-                >
-                  {priority_option.label}
-                </span>
-              )}
-              {due_date && (
-                <span
-                  className="flex items-center gap-1 rounded-[6px] px-[7px] py-[3px] text-[11.5px] font-semibold"
-                  style={
-                    due_date.urgent && !is_done
-                      ? { background: KANBAN_COLORS.danger_bg, color: KANBAN_COLORS.red }
-                      : { background: KANBAN_COLORS.chip_bg, color: KANBAN_COLORS.text_faint }
-                  }
-                >
-                  <CalendarViewIcon size={11} />
-                  {due_date.label}
-                </span>
-              )}
-              {row.attachment_count > 0 && (
-                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
-                  <AttachmentIcon size={11} />
-                  {row.attachment_count}
-                </span>
-              )}
-              {row.comment_count > 0 && (
-                <span className="flex items-center gap-1 text-[11.5px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
-                  <RowChatIcon size={11} />
-                  {row.comment_count}
-                </span>
-              )}
-              {board_member_column && (
-                <span className="ml-auto flex-none">
-                  <KanbanCardMembers
-                    people={roster_members}
-                    selected={members}
-                    onSave={(person_ids) => {
-                      void handleUpdateCellValue(row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
-                    }}
-                  />
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Custom properties (`other_kanban_columns`) are drawer-only, they never
-              spill onto the card itself, unlike the four core fields above. See the
-              drawer's own "Properties" section for where they're editable. */}
-        </div>
-      </div>
+      <KanbanTaskCard
+        title={row.name}
+        is_done={isKanbanRowDone(row)}
+        onToggleDone={
+          board_done_column ? () => void handleUpdateCellValue(row.id, String(board_done_column.id), !isKanbanRowDone(row)) : undefined
+        }
+        is_editing_title={editing_item_id === row.id}
+        onStartEditTitle={() => setEditingItemId(row.id)}
+        onCommitTitle={(name) => handleRenameItem(row.id, name)}
+        onCancelEditTitle={() => setEditingItemId(null)}
+        description={row.description?.trim() || null}
+        pills={pills}
+        labels_slot={
+          board_label_column && label_ids.length > 0 ? (
+            <KanbanCardLabels
+              options={board_label_column.config?.options ?? []}
+              selected_ids={label_ids}
+              onToggle={(option_id) => {
+                const next = label_ids.includes(option_id) ? label_ids.filter((id) => id !== option_id) : [...label_ids, option_id];
+                void handleUpdateCellValue(row.id, String(board_label_column.id), next.length ? next : null);
+              }}
+              onCreateOption={(option) => handleAddColumnOption(String(board_label_column.id), option)}
+              onEditOptions={makeOptionActions(String(board_label_column.id))}
+            />
+          ) : null
+        }
+        checklist={row.checklist_total_count > 0 ? { done: row.checklist_done_count, total: row.checklist_total_count } : null}
+        due_date={typeof due_date_value === "string" && due_date_value ? formatKanbanDueDate(due_date_value) : null}
+        members_slot={
+          board_member_column ? (
+            <KanbanCardMembers
+              people={roster_members}
+              selected={members}
+              onSave={(person_ids) => {
+                void handleUpdateCellValue(row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
+              }}
+            />
+          ) : null
+        }
+        subitem_count={row.subitem_count || row.children.length}
+        comment_count={row.comment_count}
+        attachment_count={row.attachment_count}
+        menu_sections={getKanbanCardMenuSections(row)}
+      />
     );
+  };
+
+  const handleCopyKanbanCardLink = async (row: BoardItemDto) => {
+    const suffix = view_tabs.active_view && !view_tabs.active_view.is_primary ? `?view_id=${view_tabs.active_view.id}` : "";
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/boards/${board_id}/pulses/${row.id}${suffix}`);
+      toast.success("Task link copied.");
+    } catch {
+      toast.error("Couldn't copy the link. Please try again.");
+    }
+  };
+
+  /** Runs a card menu's confirmed "Archive" or "Delete". Throwing keeps the confirm dialog open with the message. */
+  const handleConfirmKanbanCardAction = async () => {
+    if (!kanban_card_confirm) return;
+    const { kind, row_id } = kanban_card_confirm;
+    try {
+      if (kind === "archive") await handleDrawerArchiveItem(row_id);
+      else await handleDrawerDeleteItem(row_id);
+    } catch (error) {
+      throw new Error(getApiErrorMessage(error, kind === "archive" ? "Couldn't archive the task. Please try again." : "Couldn't delete the task. Please try again."));
+    }
+    if (drawer.open_row_id === row_id) handleDrawerClose();
+    setKanbanCardConfirm(null);
   };
 
   /** Guarantees an item has a table (group) to belong to even when the active tab (Kanban/Calendar) has never opened the Table tab — auto-creates one silently. */
@@ -3599,67 +3586,76 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   /**
-   * Persists a lane's new card order after a drag by recomputing `position`
-   * only for that lane's rows, splicing them back into each backing table's
-   * existing position sequence in place — so rows in other lanes (which may
-   * share the same table/group) keep their relative order untouched.
+   * Persists a lane's new card order after a drag. Lanes are a Kanban only
+   * concept while `position` lives per table (group), so each table that holds
+   * cards of this lane keeps its other rows where they are and only has this
+   * lane's rows re-sequenced in its slots. Every touched table is saved through
+   * the transactional reorder endpoint, one call per table.
    */
-  const handleReorderKanbanCards = (lane_id: string, ordered_row_ids: string[]) => {
-    const moved_ids = new Set(ordered_row_ids);
-    const rows_by_group = new Map<number, BoardItemDto[]>();
-    for (const row of filtered_rows) {
-      const list = rows_by_group.get(row.group_id) ?? [];
-      list.push(row);
-      rows_by_group.set(row.group_id, list);
+  const handleReorderKanbanCards = (_lane_id: string, ordered_row_ids: string[]) => {
+    const lane_order = new Map(ordered_row_ids.map((id, index) => [id, index]));
+    const root_items_by_group = new Map<number, BoardItemDto[]>();
+    for (const item of [...items].sort((a, b) => a.position - b.position)) {
+      if (item.parent_id !== null) continue;
+      const list = root_items_by_group.get(item.group_id) ?? [];
+      list.push(item);
+      root_items_by_group.set(item.group_id, list);
     }
 
-    const position_updates: Array<{ id: number; position: number }> = [];
-    for (const group_rows of rows_by_group.values()) {
-      const lane_rows_in_group = group_rows.filter((row) => moved_ids.has(String(row.id)));
-      if (lane_rows_in_group.length === 0) continue;
-
-      const new_lane_order = ordered_row_ids
-        .map((id) => lane_rows_in_group.find((row) => String(row.id) === id))
-        .filter((row): row is BoardItemDto => Boolean(row));
-
+    const next_position_by_id = new Map<number, number>();
+    const payloads: ReorderBoardItemsPayload[] = [];
+    for (const [group_id, group_items] of root_items_by_group) {
+      const lane_rows = group_items.filter((item) => lane_order.has(String(item.id)));
+      if (lane_rows.length === 0) continue;
+      const reordered_lane_rows = [...lane_rows].sort(
+        (a, b) => (lane_order.get(String(a.id)) ?? 0) - (lane_order.get(String(b.id)) ?? 0)
+      );
       let cursor = 0;
-      group_rows
-        .map((row) => (moved_ids.has(String(row.id)) ? new_lane_order[cursor++] : row))
-        .forEach((row, index) => {
-          if (row.position !== index) position_updates.push({ id: row.id, position: index });
-        });
+      const next_order = group_items.map((item) => (lane_order.has(String(item.id)) ? reordered_lane_rows[cursor++] : item));
+      const has_changed = next_order.some((item, index) => item.id !== group_items[index].id || item.position !== index);
+      if (!has_changed) continue;
+      next_order.forEach((item, index) => next_position_by_id.set(item.id, index));
+      payloads.push({
+        scope: "root",
+        moved_item_id: reordered_lane_rows[0].id,
+        target_group_id: group_id,
+        target_ordered_ids: next_order.map((item) => item.id),
+      });
     }
-
-    if (position_updates.length === 0) return;
+    if (payloads.length === 0) return;
 
     const previous = items;
     setItems((current) =>
       current.map((item) => {
-        const update = position_updates.find((entry) => entry.id === item.id);
-        return update ? { ...item, position: update.position } : item;
+        const position = next_position_by_id.get(item.id);
+        return position === undefined ? item : { ...item, position };
       })
     );
-
-    Promise.all(
-      position_updates.map((update) => boardContentService.updateItem(board_id, update.id, { position: update.position }))
-    ).catch(() => setItems(previous));
+    Promise.all(payloads.map((payload) => boardContentService.reorderItems(board_id, payload))).catch((error) => {
+      setItems(previous);
+      toast.error(getApiErrorMessage(error, "Couldn't save the new card order. Please try again."));
+    });
   };
 
+  /** Creates a task in a lane. The composer stays open so several tasks can be typed in a row. */
   const handleSubmitNewKanbanCard = async (lane_id: string, title: string) => {
-    const target_group = await ensureBoardGroup();
-    if (!target_group) return;
-    const values =
-      board_status_column && lane_id !== "__none__" ? { [String(board_status_column.id)]: lane_id } : undefined;
-    const created = await boardContentService.createItem(board_id, { name: title, group_id: target_group.id, values });
-    setItems((current) => [...current, created]);
-    setAddingKanbanLaneId(null);
+    try {
+      const target_group = await ensureBoardGroup();
+      if (!target_group) return;
+      const values =
+        board_status_column && lane_id !== "__none__" ? { [String(board_status_column.id)]: lane_id } : undefined;
+      const created = await boardContentService.createItem(board_id, { name: title, group_id: target_group.id, values });
+      setItems((current) => [...current, created]);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't create the task. Please try again."));
+    }
   };
 
-  const handleAddKanbanLane = () => {
+  const handleAddKanbanLane = (label: string) => {
     if (!board_status_column) return;
     const next_index = board_status_column.config?.options?.length ?? 0;
     void handleAddColumnOption(String(board_status_column.id), {
-      label: `New lane ${next_index + 1}`,
+      label,
       color: COLUMN_OPTION_PALETTE[next_index % COLUMN_OPTION_PALETTE.length],
     });
   };
@@ -3667,6 +3663,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const handleRenameKanbanLane = (lane_id: string, label: string) => {
     if (!board_status_column) return;
     makeOptionActions(String(board_status_column.id)).onRename(lane_id, label);
+  };
+
+  const handleRecolorKanbanLane = (lane_id: string, color: string) => {
+    if (!board_status_column) return;
+    makeOptionActions(String(board_status_column.id)).onRecolor(lane_id, color);
+  };
+
+  /** Removes the lane's status option. Its cards keep existing and show up in the "No status" lane. */
+  const handleDeleteKanbanLane = (lane_id: string) => {
+    if (!board_status_column) return;
+    makeOptionActions(String(board_status_column.id)).onDelete(lane_id);
+  };
+
+  const handleReorderKanbanLanes = (ordered_lane_ids: string[]) => {
+    if (!board_status_column) return;
+    makeOptionActions(String(board_status_column.id)).onReorder?.(ordered_lane_ids);
   };
 
   /**
@@ -4065,21 +4077,42 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (
-          <BoardKanban<BoardItemDto>
-            lanes={kanban_lanes}
-            getRowId={(row) => String(row.id)}
-            renderCard={renderKanbanCard}
-            onCardClick={handleRowClick}
-            selectedRowId={drawer.open_row_id}
-            onMoveCard={handleMoveKanbanCard}
-            onReorderCards={handleReorderKanbanCards}
-            onAddCard={(lane_id) => setAddingKanbanLaneId(lane_id)}
-            addingLaneId={adding_kanban_lane_id}
-            onSubmitNewCard={handleSubmitNewKanbanCard}
-            onCancelAddCard={() => setAddingKanbanLaneId(null)}
-            onAddLane={handleAddKanbanLane}
-            onRenameLane={handleRenameKanbanLane}
-          />
+          <>
+            <BoardKanban<BoardItemDto>
+              lanes={kanban_lanes}
+              getRowId={(row) => String(row.id)}
+              getRowTitle={(row) => row.name}
+              renderCard={renderKanbanCard}
+              isRowDone={isKanbanRowDone}
+              onCardClick={handleRowClick}
+              selectedRowId={drawer.open_row_id}
+              onMoveCard={handleMoveKanbanCard}
+              onReorderCards={handleReorderKanbanCards}
+              onAddCard={(lane_id) => setAddingKanbanLaneId(lane_id)}
+              addingLaneId={adding_kanban_lane_id}
+              onSubmitNewCard={handleSubmitNewKanbanCard}
+              onCancelAddCard={() => setAddingKanbanLaneId(null)}
+              onAddLane={handleAddKanbanLane}
+              onRenameLane={handleRenameKanbanLane}
+              onRecolorLane={handleRecolorKanbanLane}
+              onDeleteLane={handleDeleteKanbanLane}
+              onReorderLanes={handleReorderKanbanLanes}
+              storage_key={`${board_id}:${view_tabs.active_view_id ?? "primary"}`}
+            />
+            <ConfirmActionModal
+              is_open={kanban_card_confirm !== null}
+              title={kanban_card_confirm?.kind === "delete" ? "Delete task" : "Archive task"}
+              description={
+                kanban_card_confirm?.kind === "delete"
+                  ? "Are you sure you want to delete this task? Its subitems will be deleted too."
+                  : "This task and its subitems will be hidden from the board. You can restore it later from the board's archive."
+              }
+              confirm_label={kanban_card_confirm?.kind === "delete" ? "Delete" : "Archive"}
+              variant={kanban_card_confirm?.kind === "delete" ? "danger" : "neutral"}
+              onClose={() => setKanbanCardConfirm(null)}
+              onConfirm={handleConfirmKanbanCardAction}
+            />
+          </>
         ) : (
           <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
@@ -4087,7 +4120,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </span>
             <h2 className="text-lg font-semibold text-shell-text">Set up your Kanban board</h2>
             <p className="text-[13.5px] text-shell-text-muted">
-              Kanban lanes come from a Status column — add one to start grouping cards into lanes.
+              Kanban lanes come from a Status column. Add one to start grouping cards into lanes.
             </p>
             <button
               type="button"
