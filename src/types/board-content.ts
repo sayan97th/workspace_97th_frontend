@@ -616,6 +616,23 @@ export type ConnectItemsResponseDto = {
   hidden_board_count: number;
 };
 
+/** One connected board in "Connected board column settings". `name` and `path` are null/empty for a board the viewer may not open. */
+export type ConnectedBoardSummaryDto = {
+  id: number;
+  name: string | null;
+  is_private: boolean;
+  is_accessible: boolean;
+  /** Workspace, then each folder down to the board. */
+  path: string[];
+};
+
+/** GET /api/boards/{id}/columns/{column_id}/connect-settings */
+export type ConnectSettingsResponseDto = {
+  boards: ConnectedBoardSummaryDto[];
+  allow_multiple_items: boolean;
+  two_way: boolean;
+};
+
 /** PUT /api/boards/{id}/columns/{column_id}/connect-settings */
 export type UpdateConnectSettingsPayload = {
   linked_board_ids: number[];

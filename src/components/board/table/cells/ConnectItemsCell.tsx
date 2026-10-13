@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, type CSSProperties } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import type { CellValue, ColumnDef, ConnectColumnOptions, ConnectItemOption } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import ConnectItemsPicker from "../menus/ConnectItemsPicker";
+import ConnectBoardSettings from "../menus/ConnectBoardSettings";
+import PopoverPanel from "../menus/PopoverPanel";
 import { useCellTooltip } from "./CellTooltip";
 import "./connect-items.css";
 
@@ -67,6 +69,12 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
     if (is_menu_open && is_configured) actions.ensureConnectOptions(column.id, true);
   }, [is_menu_open, is_configured, column.id, actions]);
 
+  // The picker's "Boards settings" swaps the popover to the column settings card, in place.
+  const [is_settings_view, setIsSettingsView] = useState(false);
+  useEffect(() => {
+    if (!is_menu_open) setIsSettingsView(false);
+  }, [is_menu_open]);
+
   const openMenu = () => actions.openCellMenu(scope_key);
   const openSettings = () => actions.openConfigEditor("connect_board", column.id);
 
@@ -96,6 +104,8 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
 
   const [first_item, ...other_items] = linked_items;
   const is_loading = !options && linked_ids.length > 0;
+  // Like monday.com, the contents only show to users who can open every connected board.
+  const is_restricted = (options?.hidden_board_count ?? 0) > 0;
 
   return (
     <div className="connect-cell">
@@ -107,15 +117,21 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
           </button>
         )}
         {is_loading && <span className="connect-cell__skeleton" aria-label="Loading linked items" />}
+        {is_restricted && <RestrictedNotice />}
         {first_item && <ConnectItemChip item={first_item} />}
         {other_items.length > 0 && <ConnectCountBubble items={other_items} onClick={openMenu} />}
-        {!first_item && !is_loading && can_edit && (
+        {!first_item && !is_loading && !is_restricted && can_edit && (
           <span className="connect-cell__empty-add" aria-hidden="true">
             <PlusIcon />
           </span>
         )}
       </div>
-      {is_menu_open && (
+      {is_menu_open && is_settings_view && (
+        <PopoverPanel onClose={actions.closeCellMenu} unstyled className="left-1/2 top-full mt-1 -translate-x-1/2">
+          <ConnectBoardSettings column={column} actions={actions} onClose={actions.closeCellMenu} />
+        </PopoverPanel>
+      )}
+      {is_menu_open && !is_settings_view && (
         <ConnectItemsPicker
           column_id={column.id}
           options={options}
@@ -124,7 +140,7 @@ export default function ConnectItemsCell({ node_id, column, value, state, action
           can_edit_settings={can_edit_settings}
           onToggle={toggleItem}
           onCreateItem={createItem}
-          onOpenSettings={openSettings}
+          onOpenSettings={() => setIsSettingsView(true)}
           onClose={actions.closeCellMenu}
         />
       )}
@@ -182,6 +198,22 @@ function ConnectCountBubble({ items, onClick }: { items: ConnectItemOption[]; on
       >
         +{items.length}
       </button>
+      {tooltip}
+    </>
+  );
+}
+
+/** A lock in place of the contents of a column whose boards the viewer cannot all open. */
+function RestrictedNotice() {
+  const { anchor_props, tooltip } = useCellTooltip<HTMLSpanElement>("Only users with access to all connected boards can see this column's contents.");
+  return (
+    <>
+      <span {...anchor_props} tabIndex={0} className="connect-cell__restricted" aria-label="Contents hidden, you cannot open every connected board">
+        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true">
+          <rect x="3.5" y="7" width="9" height="6.5" rx="1.2" stroke="currentColor" strokeWidth="1.3" />
+          <path d="M5.5 7 V5.2 a2.5 2.5 0 0 1 5 0 V7" stroke="currentColor" strokeWidth="1.3" />
+        </svg>
+      </span>
       {tooltip}
     </>
   );

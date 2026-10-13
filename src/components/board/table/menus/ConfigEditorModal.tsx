@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { boardContentService } from "@/services/board-content.service";
 import type { BoardColumnDto } from "@/types/board-content";
-import type { BoardTableActions, BoardTableState } from "../useBoardTable";
+import type { BoardTableActions } from "../useBoardTable";
 import type { ColumnDef } from "../types";
 import ConnectBoardSettings from "./ConnectBoardSettings";
 
@@ -12,30 +12,37 @@ interface ConfigEditorModalProps {
   column: ColumnDef;
   /** Every other column in this tab (both scopes' own list, shared across groups), for Mirror's connect-board-column picker. */
   sibling_columns: ColumnDef[];
-  state: BoardTableState;
   actions: BoardTableActions;
   onClose: () => void;
 }
 
-const MODAL_TITLE: Record<ConfigEditorModalProps["kind"], string> = {
-  connect_board: "Boards settings",
-  mirror: "Configure mirror",
-};
+/**
+ * The Connect-board/Mirror settings dialogs, dispatched by `kind` (the Formula column has its own
+ * `FormulaEditorModal`). Connect boards draws its own monday style card ("Connected board column
+ * settings"), Mirror uses the shared chrome that mirrors `LabelEditorModal`'s overlay/card layout.
+ */
+export default function ConfigEditorModal({ kind, column, sibling_columns, actions, onClose }: ConfigEditorModalProps) {
+  if (kind === "connect_board") {
+    return (
+      <div className="connect-settings-overlay" onClick={onClose}>
+        <div onClick={(event) => event.stopPropagation()}>
+          <ConnectBoardSettings column={column} actions={actions} onClose={onClose} />
+        </div>
+      </div>
+    );
+  }
 
-/** Shared chrome for the Connect-board/Mirror settings modals, dispatched by `kind` (the Formula column has its own `FormulaEditorModal`). Mirrors `LabelEditorModal`'s own overlay/card layout. */
-export default function ConfigEditorModal({ kind, column, sibling_columns, state, actions, onClose }: ConfigEditorModalProps) {
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-[rgba(30,34,55,0.35)]" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className="flex max-h-[80vh] w-[420px] flex-col rounded-[14px] bg-boardtree-surface shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
         <div className="flex items-center justify-between border-b border-boardtree-border-soft px-5 py-4">
-          <div className="text-[15px] font-semibold text-boardtree-text">{MODAL_TITLE[kind]}</div>
+          <div className="text-[15px] font-semibold text-boardtree-text">Configure mirror</div>
           <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-[6px] text-boardtree-text-muted hover:bg-boardtree-hover">
             <svg viewBox="0 0 14 14" width="12" height="12"><path d="M2.6 2.6 L11.4 11.4 M11.4 2.6 L2.6 11.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          {kind === "connect_board" && <ConnectBoardSettings column={column} state={state} actions={actions} onClose={onClose} />}
-          {kind === "mirror" && <MirrorBody column={column} sibling_columns={sibling_columns} actions={actions} onClose={onClose} />}
+          <MirrorBody column={column} sibling_columns={sibling_columns} actions={actions} onClose={onClose} />
         </div>
       </div>
     </div>

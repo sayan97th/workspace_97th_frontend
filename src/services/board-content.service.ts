@@ -3,6 +3,7 @@ import type { DependencyLinkType } from "@/components/board/table/types";
 import type {
   BoardColumnDto,
   ConnectItemsResponseDto,
+  ConnectSettingsResponseDto,
   UpdateConnectSettingsPayload,
   BoardGroupDto,
   BoardGroupsIndexDto,
@@ -82,6 +83,11 @@ export const boardContentService = {
   /** GET /api/boards/{board_id}/columns/{column_id}/connect-items, the connected boards' groups, columns and items for a Connect boards cell. */
   async getConnectItems(board_id: number, column_id: number): Promise<ConnectItemsResponseDto> {
     return apiClient.get<ConnectItemsResponseDto>(`/api/boards/${board_id}/columns/${column_id}/connect-items`);
+  },
+
+  /** GET /api/boards/{board_id}/columns/{column_id}/connect-settings, the connected boards listed in "Connected board column settings". */
+  async getConnectSettings(board_id: number, column_id: number): Promise<ConnectSettingsResponseDto> {
+    return apiClient.get<ConnectSettingsResponseDto>(`/api/boards/${board_id}/columns/${column_id}/connect-settings`);
   },
 
   /** PUT /api/boards/{board_id}/columns/{column_id}/connect-settings, the Connect boards column's "Boards settings". */

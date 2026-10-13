@@ -20,6 +20,7 @@ import type {
   ConnectColumnOptions,
   ConnectItemOption,
   ConnectSettings,
+  ConnectedBoardSummary,
   PersonDef,
   ReorderPayload,
   SortState,
@@ -168,6 +169,10 @@ export interface UseBoardTableConfig {
    * cell just shows its raw linked count.
    */
   onFetchConnectOptions?: (column_id: string) => Promise<ConnectColumnOptions>;
+  /** "Connected board column settings": the boards a Connect boards column connects, with their privacy and location. */
+  onFetchConnectedBoards?: (column_id: string) => Promise<ConnectedBoardSummary[]>;
+  /** "Add a mirror column": creates a Mirror column reading through this Connect boards column, right after it, and resolves with its id. */
+  onAddMirrorColumn?: (connect_column_id: string) => Promise<string | undefined>;
   /** The Connect boards picker's "+ Add item": creates `name` in `group_id` of the connected board and resolves with it. */
   onCreateConnectItem?: (board_id: string, group_id: string, name: string) => Promise<ConnectItemOption>;
   /**
@@ -2317,6 +2322,18 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     ensureConnectOptions(column_id);
   }, [ensureConnectOptions]);
 
+  /** "Connected board column settings": the column's boards as the settings list them. Empty without a backing board (the demo). */
+  const fetchConnectedBoards = useCallback(async (column_id: string): Promise<ConnectedBoardSummary[]> => {
+    const on_fetch = config_ref.current.onFetchConnectedBoards;
+    return on_fetch ? on_fetch(column_id) : [];
+  }, []);
+
+  /** "Add a mirror column": adds the Mirror column, then opens its settings so a column of the connected board can be picked. */
+  const addMirrorColumn = useCallback(async (connect_column_id: string) => {
+    const created_id = await config_ref.current.onAddMirrorColumn?.(connect_column_id);
+    if (created_id) setState((s) => ({ ...s, config_editor: { kind: "mirror", column_id: created_id }, ...closeAllMenus }));
+  }, []);
+
   const closeAllOverlays = useCallback(() => setState((s) => ({ ...s, ...closeAllMenus })), []);
 
   const openComments = useCallback((node_id: string) => {
@@ -2490,6 +2507,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setTagQuery,
       ensureConnectOptions,
       createConnectItem,
+      fetchConnectedBoards,
+      addMirrorColumn,
       pressButton,
       closeAllOverlays,
       copyRowLink,
@@ -2511,7 +2530,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2529,7 +2548,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
-    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards",
     "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
@@ -2546,7 +2565,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "renameColumnOption",
     "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",
     "toggleStatusDefActive", "setStatusDefDescription", "reorderStatusDefs", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
-    "updateConnectSettings", "updateColumnMirror",
+    "updateConnectSettings", "addMirrorColumn", "updateColumnMirror",
   ];
 
   /** Row actions whose first argument is the row id, checked against `config.canEditNode`. */

@@ -221,3 +221,11 @@ html.dark .connect-cell {
   gap: 2px;
   text-align: left;
 }
+
+/* Contents hidden: the viewer cannot open every connected board. */
+.connect-cell__restricted {
+  display: flex;
+  margin: 0 auto;
+  color: var(--connect-cell-placeholder);
+  outline: none;
+}

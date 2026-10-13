@@ -76,7 +76,7 @@ import {
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
-import type { ConnectColumnOptions, ConnectItemOption, ConnectSettings } from "@/components/board/table/types";
+import type { ConnectColumnOptions, ConnectedBoardSummary, ConnectItemOption, ConnectSettings } from "@/components/board/table/types";
 import {
   buildBoardFilterFields,
   buildBoardGroupByOptions,
@@ -2230,6 +2230,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id]
   );
 
+  const handleFetchConnectedBoards = useCallback(
+    async (column_id: string): Promise<ConnectedBoardSummary[]> => {
+      const response = await boardContentService.getConnectSettings(board_id, Number(column_id));
+      return response.boards.map((board) => ({ ...board, id: String(board.id) }));
+    },
+    [board_id]
+  );
+
   const handleCreateConnectItem = useCallback(async (linked_board_id: string, group_id: string, name: string): Promise<ConnectItemOption> => {
     const created = await boardContentService.createItem(Number(linked_board_id), { name, group_id: Number(group_id) });
     return {
@@ -3095,6 +3103,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onRecolorTagDef: handleRecolorTagDef,
       onDeleteTagDef: handleDeleteTagDef,
       onFetchConnectOptions: handleFetchConnectOptions,
+      onFetchConnectedBoards: handleFetchConnectedBoards,
+      // "Add a mirror column" in the Connect boards settings: a Mirror right after the column, reading through it.
+      onAddMirrorColumn: (connect_column_id) => {
+        const connect_column = columns_by_id[connect_column_id];
+        if (!connect_column) return Promise.resolve(undefined);
+        return handleAddColumn({ kind: "mirror", label: "Mirror", default_width: 160 }, connect_column.scope, { source_column_id: connect_column.id }, connect_column.position + 1);
+      },
       onCreateConnectItem: handleCreateConnectItem,
       onPressButton: handlePressButton,
       initial_item_column_width: item_column_width,
@@ -3285,7 +3300,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       handleRecolorTagDef,
       handleDeleteTagDef,
       handleFetchConnectOptions,
+      handleFetchConnectedBoards,
       handleCreateConnectItem,
+      columns_by_id,
       board_id,
       items,
       item_column_width,

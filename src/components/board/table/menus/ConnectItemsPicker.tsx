@@ -323,12 +323,6 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
           </div>
         )}
 
-        {hidden_board_count > 0 && boards.length > 0 && (
-          <div className="connect-picker__notice">
-            {hidden_board_count === 1 ? "1 connected board is private or was deleted, its items are not listed." : `${hidden_board_count} connected boards are private or were deleted, their items are not listed.`}
-          </div>
-        )}
-
         <div ref={list_ref} id="connect-picker-list" className="connect-picker__list shell-scrollbar" role="listbox" aria-label="Items">
           {create_error && <div className="connect-picker__error" role="alert">{create_error}</div>}
 
@@ -340,7 +334,7 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
             </div>
           ) : boards.length === 0 ? (
             <div className="connect-picker__empty">
-              {hidden_board_count > 0 ? "The connected board is private or was deleted." : "This column is not connected to a board yet."}
+              {hidden_board_count > 0 ? "Only users with access to all connected boards can see this column's contents." : "This column is not connected to a board yet."}
               {can_edit_settings && (
                 <div>
                   <button type="button" className="connect-picker__empty-action" onClick={onOpenSettings}>
@@ -538,8 +532,7 @@ function AddItemRow({ nav_key, color, query, is_active, is_editing, is_creating,
         />
       ) : (
         <span className="connect-picker__add-label">
-          <PlusIcon />
-          <span>{is_creating ? "Adding..." : query ? `Add "${query}"` : "Add item"}</span>
+          <span>{is_creating ? "Adding..." : query ? `+ Add "${query}"` : "+ Add item"}</span>
         </span>
       )}
     </div>
@@ -740,14 +733,6 @@ function ExpandIcon() {
   return (
     <svg viewBox="0 0 16 16" width="16" height="16" fill="none" aria-hidden="true">
       <path d="M9.5 2.5 H13.5 V6.5 M13.5 2.5 L9 7 M6.5 13.5 H2.5 V9.5 M2.5 13.5 L7 9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" aria-hidden="true" style={{ flex: "none" }}>
-      <path d="M8 3 V13 M3 8 H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
   );
 }

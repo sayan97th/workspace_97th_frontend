@@ -106,6 +106,16 @@ export interface ConnectBoardOption {
   items: ConnectItemOption[];
 }
 
+/** One connected board in "Connected board column settings". `name` is null and `path` empty for a board the viewer may not open. */
+export interface ConnectedBoardSummary {
+  id: string;
+  name: string | null;
+  is_private: boolean;
+  is_accessible: boolean;
+  /** Workspace, then each folder down to the board. */
+  path: string[];
+}
+
 /** Everything a Connect boards column's cells and picker read, fetched once per column. */
 export interface ConnectColumnOptions {
   boards: ConnectBoardOption[];
