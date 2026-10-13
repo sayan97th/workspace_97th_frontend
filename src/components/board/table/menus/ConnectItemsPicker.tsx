@@ -123,6 +123,22 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
     [selected_ids, item_index, matches, sort_mode]
   );
 
+  // "Connected items": the cell's items under their own group (board order), like monday. Items from
+  // another tab of the board have no listed group and close the board's part as "Other items".
+  const linked_sections = useMemo(() => {
+    const sections: { key: string; board_name: string; title: string; color: string | null; items: ConnectItemOption[] }[] = [];
+    for (const board of boards) {
+      const board_items = linked_items.filter((item) => item.board_id === board.id);
+      for (const group of board.groups) {
+        const items = board_items.filter((item) => item.group_id === group.id);
+        if (items.length > 0) sections.push({ key: `${board.id}:${group.id}`, board_name: board.name, title: group.name, color: group.color, items });
+      }
+      const ungrouped = board_items.filter((item) => item.group_id === null || !board.groups.some((group) => group.id === item.group_id));
+      if (ungrouped.length > 0) sections.push({ key: `${board.id}:other`, board_name: board.name, title: "Other items", color: null, items: ungrouped });
+    }
+    return sections;
+  }, [boards, linked_items]);
+
   // Each board's groups with their matching items, sorted. While searching, groups without a match are left out.
   const board_sections = useMemo(
     () =>
@@ -141,7 +157,7 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
   const fallback_add_targets = !has_any_match && normalized_query ? boards.filter((board) => canAdd(board) && board.groups.length > 0) : [];
 
   // Every row the arrow keys walk through, in the order they are drawn.
-  const nav_rows: NavRow[] = linked_items.map((item) => ({ key: `linked:${item.id}`, kind: "item", item }));
+  const nav_rows: NavRow[] = linked_sections.flatMap((section) => section.items.map((item): NavRow => ({ key: `linked:${item.id}`, kind: "item", item })));
   for (const { board, groups } of board_sections) {
     for (const { group, items } of groups) {
       for (const item of items) nav_rows.push({ key: `item:${item.id}`, kind: "item", item });
@@ -345,23 +361,29 @@ export default function ConnectItemsPicker({ column_id, options, selected_ids, c
             </div>
           ) : (
             <>
-              {linked_items.length > 0 && (
+              {linked_sections.length > 0 && (
                 <>
-                  <div className="connect-picker__section-title">Linked items</div>
-                  <div className="connect-picker__rows">
-                    {linked_items.map((item) => (
-                      <ItemRow
-                        key={`linked:${item.id}`}
-                        nav_key={`linked:${item.id}`}
-                        item={item}
-                        is_selected
-                        is_active={active_key === `linked:${item.id}`}
-                        can_edit={can_edit}
-                        onToggle={() => onToggle(item.id)}
-                        onNavigate={onClose}
-                      />
-                    ))}
-                  </div>
+                  <div className="connect-picker__section-title">Connected items</div>
+                  {linked_sections.map((section, index) => (
+                    <section key={section.key} style={section.color ? ({ "--connect-picker-group-color": section.color } as CSSProperties) : undefined}>
+                      {boards.length > 1 && section.board_name !== linked_sections[index - 1]?.board_name && <div className="connect-picker__board-title">{section.board_name}</div>}
+                      <div className="connect-picker__group-title">{section.title}</div>
+                      <div className="connect-picker__rows">
+                        {section.items.map((item) => (
+                          <ItemRow
+                            key={`linked:${item.id}`}
+                            nav_key={`linked:${item.id}`}
+                            item={item}
+                            is_selected
+                            is_active={active_key === `linked:${item.id}`}
+                            can_edit={can_edit}
+                            onToggle={() => onToggle(item.id)}
+                            onNavigate={onClose}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ))}
                 </>
               )}
 

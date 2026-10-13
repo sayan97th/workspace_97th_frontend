@@ -155,11 +155,12 @@ html.dark .connect-cell {
   justify-content: center;
   min-width: 22px;
   height: 22px;
-  padding: 0 5px;
+  padding: 0 4px;
   border-radius: 11px;
   background: var(--connect-cell-count-bg);
   color: var(--connect-cell-count-text);
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: -0.2px;
   font-weight: 500;
   line-height: 1;
 }
