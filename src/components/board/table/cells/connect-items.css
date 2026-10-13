@@ -1,0 +1,223 @@
+/*
+ * Connect boards cell, styled after monday.com: each linked item is a white
+ * chip with its group color as a bar on the left and the name truncated with
+ * an ellipsis (full name in the shared dark tooltip). One chip shows, the rest
+ * collapse into a dark "+N" bubble, and a grey "+" appears on hover to link
+ * more. Every color is a `--connect-cell-*` token, so dark mode only swaps the
+ * tokens, never the rules below.
+ */
+
+.connect-cell {
+  --connect-cell-chip-bg: #ffffff;
+  --connect-cell-chip-border: #d0d4e4;
+  --connect-cell-chip-border-hover: #c3c6d4;
+  --connect-cell-chip-text: #323338;
+  --connect-cell-chip-text-hover: #1f76c2;
+  --connect-cell-count-bg: #323338;
+  --connect-cell-count-text: #ffffff;
+  --connect-cell-add: #676879;
+  --connect-cell-add-hover-bg: #dcdfec;
+  --connect-cell-skeleton: #e7e9ef;
+  --connect-cell-placeholder: #9699a6;
+
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+}
+
+html.dark .connect-cell {
+  --connect-cell-chip-bg: #1c2525;
+  --connect-cell-chip-border: rgba(255, 255, 255, 0.16);
+  --connect-cell-chip-border-hover: rgba(255, 255, 255, 0.3);
+  --connect-cell-chip-text: #e9eded;
+  --connect-cell-chip-text-hover: #69a7ef;
+  --connect-cell-count-bg: #e9eded;
+  --connect-cell-count-text: #1c2525;
+  --connect-cell-add: #9aa4a5;
+  --connect-cell-add-hover-bg: rgba(255, 255, 255, 0.1);
+  --connect-cell-skeleton: rgba(255, 255, 255, 0.1);
+  --connect-cell-placeholder: #9aa4a5;
+}
+
+/* The whole cell opens the picker, the chips and buttons sit above that hit area. */
+.connect-cell__hit-area {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.connect-cell__hit-area:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: -2px;
+}
+
+.connect-cell__content {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.connect-cell__content > * {
+  pointer-events: auto;
+}
+
+/* Hover "+" left of the chips, monday's "add more items" affordance. */
+.connect-cell__add {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 20px;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--connect-cell-add);
+  opacity: 0;
+  transition:
+    width 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+.connect-cell:hover .connect-cell__add,
+.connect-cell__add:focus-visible {
+  width: 20px;
+  opacity: 1;
+}
+
+.connect-cell__add:hover {
+  background: var(--connect-cell-add-hover-bg);
+}
+
+/* One linked item: group color bar plus its name. */
+.connect-cell__chip {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+  align-items: center;
+  height: 26px;
+  padding: 0 8px 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--connect-cell-chip-border);
+  border-radius: 4px;
+  background: var(--connect-cell-chip-bg);
+  color: var(--connect-cell-chip-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+  transition: border-color 120ms ease-out;
+}
+
+.connect-cell__chip::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--connect-cell-chip-color, #579bfc);
+}
+
+.connect-cell__chip:hover,
+.connect-cell__chip:focus-visible {
+  border-color: var(--connect-cell-chip-border-hover);
+  color: var(--connect-cell-chip-text-hover);
+  outline: none;
+}
+
+.connect-cell__chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connect-cell__chip:hover .connect-cell__chip-name {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* "+1" bubble for the linked items that did not fit. */
+.connect-cell__count {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 11px;
+  background: var(--connect-cell-count-bg);
+  color: var(--connect-cell-count-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.connect-cell__count:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: 1px;
+}
+
+/* An empty cell shows a faint centered "+" on hover. */
+.connect-cell__empty-add {
+  margin: 0 auto;
+  color: var(--connect-cell-add);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.connect-cell:hover .connect-cell__empty-add {
+  opacity: 1;
+}
+
+/* Column not connected to a board yet. */
+.connect-cell__placeholder {
+  margin: 0 auto;
+  overflow: hidden;
+  color: var(--connect-cell-placeholder);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Linked ids known, names still loading. */
+.connect-cell__skeleton {
+  flex: 1 1 auto;
+  max-width: 120px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--connect-cell-skeleton);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .connect-cell__skeleton {
+    animation: connect-cell-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes connect-cell-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Each hidden name on its own line in the "+N" tooltip. */
+.connect-cell__count-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}

@@ -9,7 +9,6 @@ import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, pa
 import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
-import ConnectBoardMenu from "../menus/ConnectBoardMenu";
 import StatusMenu from "../menus/StatusMenu";
 import LabelMenu from "../menus/LabelMenu";
 import PeopleMenu from "../menus/PeopleMenu";
@@ -23,6 +22,7 @@ import FilesMenu from "../menus/FilesMenu";
 import FileLinkModal from "../menus/FileLinkModal";
 import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import CellHyperlink from "./CellHyperlink";
+import ConnectItemsCell from "./ConnectItemsCell";
 import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
@@ -92,16 +92,6 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const timer = setTimeout(() => setPressFeedback(null), 2600);
     return () => clearTimeout(timer);
   }, [press_feedback]);
-
-  // Connect-board cell's linked item names — declared unconditionally (Rules
-  // of Hooks, same as `running_since` above) even though only the
-  // "connect_board" branch below reads `state.connect_board_items`.
-  // `ensureLinkedBoardItems` itself is a no-op past the first call for a
-  // given board id, so every cell in the column re-triggering this on every
-  // render is cheap.
-  useEffect(() => {
-    if (column.kind === "connect_board" && column.linked_board_id) actions.ensureLinkedBoardItems(column.linked_board_id);
-  }, [column.kind, column.linked_board_id, actions]);
 
   if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
     // While the board is searched, a matching cell shows its text with the match highlighted
@@ -819,57 +809,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "connect_board") {
-    const linked_ids = asArray(value);
-    const linked_board_id = column.linked_board_id;
-    // `undefined` means `ensureLinkedBoardItems` (fired by the unconditional
-    // effect above) hasn't resolved yet — falls back to a bare count until it
-    // does, then swaps to the linked items' real names, mirroring monday.com.
-    const linked_items = linked_board_id ? state.connect_board_items[linked_board_id] : undefined;
-    const resolved_names = linked_items
-      ? linked_ids.map((id) => linked_items.find((candidate) => candidate.id === id)?.name).filter((name): name is string => Boolean(name))
-      : [];
-    // Unconfigured (no `linked_board_id` yet — e.g. a column created before
-    // this board ever had a second board to link to): there's no candidate
-    // list to show in a popover, so the click instead opens the same
-    // "Configure linked board" setup modal the column header's own "..."
-    // menu does, rather than silently doing nothing.
-    return (
-      <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
-        <button
-          type="button"
-          onClick={linked_board_id ? openMenu : () => actions.openConfigEditor("connect_board", column.id)}
-          className="flex h-full min-w-0 flex-1 items-center gap-1 overflow-hidden"
-        >
-          {!linked_board_id ? (
-            <span className="text-board-cell text-boardtree-text-faint underline decoration-dotted">Connect this column to a board</span>
-          ) : linked_ids.length === 0 ? (
-            <span className="text-board-cell text-boardtree-text-faint">Connect items</span>
-          ) : !linked_items ? (
-            <span className="flex-none rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
-              {linked_ids.length} linked
-            </span>
-          ) : (
-            <>
-              {resolved_names.slice(0, 2).map((name, index) => (
-                <span key={index} title={name} className="max-w-[110px] flex-none truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
-                  {name}
-                </span>
-              ))}
-              {linked_ids.length > 2 && <span className="flex-none text-[11px] text-boardtree-text-faint">+{linked_ids.length - 2}</span>}
-            </>
-          )}
-        </button>
-        {is_menu_open && linked_board_id && (
-          <ConnectBoardMenu
-            candidates={linked_items ?? []}
-            is_loading={linked_items === undefined}
-            selected={linked_ids}
-            onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
-            onClose={actions.closeCellMenu}
-          />
-        )}
-      </div>
-    );
+    return <ConnectItemsCell node_id={node_id} column={column} value={value} state={state} actions={actions} />;
   }
 
   if (column.kind === "mirror") {

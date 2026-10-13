@@ -2,6 +2,8 @@ import { apiClient } from "@/lib/api-client";
 import type { DependencyLinkType } from "@/components/board/table/types";
 import type {
   BoardColumnDto,
+  ConnectItemsResponseDto,
+  UpdateConnectSettingsPayload,
   BoardGroupDto,
   BoardGroupsIndexDto,
   BoardItemActivityPageDto,
@@ -77,6 +79,17 @@ export const boardContentService = {
   },
 
   /** PATCH /api/boards/{board_id}/columns/{column_id}/move */
+  /** GET /api/boards/{board_id}/columns/{column_id}/connect-items, the connected boards' groups, columns and items for a Connect boards cell. */
+  async getConnectItems(board_id: number, column_id: number): Promise<ConnectItemsResponseDto> {
+    return apiClient.get<ConnectItemsResponseDto>(`/api/boards/${board_id}/columns/${column_id}/connect-items`);
+  },
+
+  /** PUT /api/boards/{board_id}/columns/{column_id}/connect-settings, the Connect boards column's "Boards settings". */
+  async updateConnectSettings(board_id: number, column_id: number, payload: UpdateConnectSettingsPayload): Promise<BoardColumnDto> {
+    const response = await apiClient.put<{ column: BoardColumnDto }>(`/api/boards/${board_id}/columns/${column_id}/connect-settings`, payload);
+    return response.column;
+  },
+
   async moveColumn(board_id: number, column_id: number, position: number): Promise<BoardColumnDto> {
     const response = await apiClient.patch<{ column: BoardColumnDto }>(
       `/api/boards/${board_id}/columns/${column_id}/move`,

@@ -603,6 +603,7 @@ export default function BoardTable({
             kind={state.config_editor.kind}
             column={config_editor_column}
             sibling_columns={all_columns}
+            state={state}
             actions={actions}
             onClose={actions.closeConfigEditor}
           />

@@ -51,8 +51,15 @@ export type BoardColumnConfig = {
   /** Formula columns only, legacy: the fixed operation applied to `source_column_ids` before expressions existed. Converted to an `expression` when read, and dropped the next time the formula is saved. */
   operation?: "sum" | "subtract" | "multiply" | "divide" | "concat";
   source_column_ids?: number[];
-  /** Connect-board columns only: the other board this column's cells link items on. */
+  /** Connect-board columns only: the first of `linked_board_ids`, kept for automations and mirrors that read a single board. */
   linked_board_id?: number;
+  /** Connect-board columns only: every board this column's cells link items on, in the order the settings list them. */
+  linked_board_ids?: number[];
+  /** Connect-board columns only: whether a cell may link more than one item. Unset means true. */
+  allow_multiple_items?: boolean;
+  /** Connect-board columns only: the links also show in a column on the connected board (`reverse_column_id`). */
+  two_way?: boolean;
+  reverse_column_id?: number;
   /** Mirror columns only: which of this tab's own connect-board columns to read through (`source_column_id`), and which column on that linked board to display (`mirrored_column_id`). */
   source_column_id?: number;
   mirrored_column_id?: number;
@@ -563,4 +570,55 @@ export type BoardItemMoveTargetDto = {
 export type MoveBoardItemToBoardPayload = {
   target_board_id: number;
   target_group_id: number;
+};
+
+/** One group of a connected board, see {@link ConnectItemsResponseDto}. */
+export type ConnectBoardGroupDto = {
+  id: number;
+  name: string;
+  color: string;
+};
+
+/** One column of a connected board, offered in the picker's "Choose columns to search". */
+export type ConnectBoardColumnDto = {
+  id: number;
+  label: string;
+  type: BoardColumnType;
+  is_searchable: boolean;
+};
+
+/** One item of a connected board. `group_id` is null when it lives in another tab of that board. */
+export type ConnectBoardItemDto = {
+  id: number;
+  name: string;
+  group_id: number | null;
+  color: string | null;
+  view_id: number | null;
+  created_at: string | null;
+  /** Searchable text of each cell, keyed by column id. */
+  texts: Record<string, string>;
+};
+
+export type ConnectBoardDto = {
+  id: number;
+  name: string;
+  view_id: number | null;
+  can_add_items: boolean;
+  groups: ConnectBoardGroupDto[];
+  columns: ConnectBoardColumnDto[];
+  items: ConnectBoardItemDto[];
+};
+
+/** GET /api/boards/{id}/columns/{column_id}/connect-items, a Connect boards column's picker data. */
+export type ConnectItemsResponseDto = {
+  boards: ConnectBoardDto[];
+  /** Connected boards the viewer may not open, left out of `boards`. */
+  hidden_board_count: number;
+};
+
+/** PUT /api/boards/{id}/columns/{column_id}/connect-settings */
+export type UpdateConnectSettingsPayload = {
+  linked_board_ids: number[];
+  allow_multiple_items: boolean;
+  two_way: boolean;
 };

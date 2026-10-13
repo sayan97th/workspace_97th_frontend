@@ -17,6 +17,9 @@ import type {
   FillDragState,
   FormulaConfig,
   MirrorConfig,
+  ConnectColumnOptions,
+  ConnectItemOption,
+  ConnectSettings,
   PersonDef,
   ReorderPayload,
   SortState,
@@ -158,15 +161,15 @@ export interface UseBoardTableConfig {
   /** "Manage tags" modal's delete "×" — see `onCreateTagDef`'s own doc comment. */
   onDeleteTagDef?: (id: string) => void;
   /**
-   * Fetches the display name of every item on a Connect-board column's
-   * linked board, for both the closed cell's own name chips and its
-   * `ConnectBoardMenu` popover — called at most once per `linked_board_id`
-   * (see `ensureLinkedBoardItems`), so every Connect-board cell/column
-   * pointing at the same linked board shares one fetch. Omitted (the
-   * standalone demo, which has no other board to link to), a Connect-board
-   * cell just shows its raw linked count with no names.
+   * Fetches a Connect boards column's connected boards (groups, columns and items), read by
+   * both the closed cell's item chips and its "Choose items" picker. Called once per column
+   * (see `ensureConnectOptions`) and again whenever the picker opens, so it stays fresh.
+   * Omitted (the standalone demo, which has no other board to link to), a Connect boards
+   * cell just shows its raw linked count.
    */
-  onFetchLinkedBoardItems?: (linked_board_id: string) => Promise<{ id: string; name: string }[]>;
+  onFetchConnectOptions?: (column_id: string) => Promise<ConnectColumnOptions>;
+  /** The Connect boards picker's "+ Add item": creates `name` in `group_id` of the connected board and resolves with it. */
+  onCreateConnectItem?: (board_id: string, group_id: string, name: string) => Promise<ConnectItemOption>;
   /**
    * A `button`-type cell's press: stores nothing, it only runs the automations watching that
    * button. Resolves with a short message for the cell to flash. Omitted (the standalone demo),
@@ -239,8 +242,8 @@ export interface UseBoardTableConfig {
   onToggleColumnNotifyOnAssignment?: (column_id: string) => void;
   /** Formula settings modal's "Save" — see `ColumnDef.formula`. */
   onUpdateColumnFormula?: (column_id: string, formula: FormulaConfig) => void;
-  /** Connect-board settings modal's "Save" — see `ColumnDef.linked_board_id`. */
-  onUpdateColumnLinkedBoard?: (column_id: string, linked_board_id: string) => void;
+  /** Connect boards "Boards settings" dialog's "Save", see `ConnectSettings`. Rejects with the API's message when it fails. */
+  onUpdateConnectSettings?: (column_id: string, settings: ConnectSettings) => Promise<void>;
   /** Mirror settings modal's "Save" — see `ColumnDef.mirror`. */
   onUpdateColumnMirror?: (column_id: string, mirror: MirrorConfig) => void;
   onDeleteNode?: (node_id: string) => void;
@@ -513,15 +516,11 @@ export interface BoardTableState {
   config_editor: { kind: "formula" | "mirror" | "connect_board"; column_id: string } | null;
   tag_editor_open: boolean;
   /**
-   * Cache of every Connect-board column's linked-board item names, keyed by
-   * `linked_board_id` — populated at most once per board id by
-   * `ensureLinkedBoardItems`, and shared by every Connect-board cell/column
-   * pointing at that same linked board (both the closed cell's own name
-   * chips and its `ConnectBoardMenu` popover read from here). An absent key
-   * means "not fetched yet" (renders a loading state); an empty array means
-   * "fetched, the linked board has no items".
+   * Every Connect boards column's connected boards, keyed by column id and filled by
+   * `ensureConnectOptions`. Shared by all the column's cells (their item chips) and its
+   * picker. An absent key means "not fetched yet" (the cell shows a loading state).
    */
-  connect_board_items: Record<string, { id: string; name: string }[]>;
+  connect_options: Record<string, ConnectColumnOptions>;
   drag: DragState | null;
   /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
   column_drag: ColumnDragState | null;
@@ -618,7 +617,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     label_editor_column_id: null,
     config_editor: null,
     tag_editor_open: false,
-    connect_board_items: {},
+    connect_options: {},
     drag: null,
     column_drag: null,
     sort: null,
@@ -2174,11 +2173,6 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onUpdateColumnFormula?.(column_id, formula);
   }, []);
 
-  /** Connect-board settings modal's "Save" — see `updateColumnFormula`. */
-  const updateColumnLinkedBoard = useCallback((column_id: string, linked_board_id: string) => {
-    setState((s) => ({ ...s, groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, linked_board_id })) }));
-    config_ref.current.onUpdateColumnLinkedBoard?.(column_id, linked_board_id);
-  }, []);
 
   /** Mirror settings modal's "Save" — see `updateColumnFormula`. */
   const updateColumnMirror = useCallback((column_id: string, mirror: MirrorConfig) => {
@@ -2258,12 +2252,6 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const setTagQuery = useCallback((value: string) => setState((s) => ({ ...s, tag_query: value })), []);
 
-  /**
-   * Resolves a Connect-board column's linked item names — called from the
-   * closed cell's own chip display and from `ConnectBoardMenu` alike (see
-   * `connect_board_items`'s own doc comment), fetching at most once per
-   * `linked_board_id` regardless of how many cells/columns point at it.
-   */
   /** A Button cell's press, see `UseBoardTableConfig.onPressButton`. Resolves with what to flash on the button. */
   const pressButton = useCallback(async (node_id: string, column_id: string): Promise<string> => {
     const on_press = config_ref.current.onPressButton;
@@ -2271,20 +2259,63 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     return on_press(node_id, column_id);
   }, []);
 
-  const requested_linked_boards_ref = useRef<Set<string>>(new Set());
-  const ensureLinkedBoardItems = useCallback((linked_board_id: string) => {
-    const on_fetch = config_ref.current.onFetchLinkedBoardItems;
-    if (!on_fetch || requested_linked_boards_ref.current.has(linked_board_id)) return;
-    requested_linked_boards_ref.current.add(linked_board_id);
-    void on_fetch(linked_board_id)
-      .then((items) => {
-        setState((s) => ({ ...s, connect_board_items: { ...s.connect_board_items, [linked_board_id]: items } }));
+  /**
+   * Loads a Connect boards column's connected boards into `connect_options`, once per column
+   * no matter how many of its cells ask. `refresh` fetches again (the picker does on open, so
+   * renames and new items on the other board show up), keeping the cached copy meanwhile.
+   */
+  const requested_connect_columns_ref = useRef<Set<string>>(new Set());
+  const ensureConnectOptions = useCallback((column_id: string, refresh = false) => {
+    const on_fetch = config_ref.current.onFetchConnectOptions;
+    if (!on_fetch || (!refresh && requested_connect_columns_ref.current.has(column_id))) return;
+    requested_connect_columns_ref.current.add(column_id);
+    void on_fetch(column_id)
+      .then((options) => {
+        setState((s) => ({ ...s, connect_options: { ...s.connect_options, [column_id]: options } }));
       })
       .catch(() => {
-        // Leaves the board id unresolved (no cache entry) so a later mount can retry.
-        requested_linked_boards_ref.current.delete(linked_board_id);
+        // Leaves the column unresolved (no cache entry) so a later mount can retry.
+        requested_connect_columns_ref.current.delete(column_id);
       });
   }, []);
+
+  /**
+   * The Connect boards picker's "+ Add item": creates the item on the connected board, adds it
+   * to the column's cached options so it is listed right away, and resolves with it.
+   */
+  const createConnectItem = useCallback(async (column_id: string, board_id: string, group_id: string, name: string): Promise<ConnectItemOption | undefined> => {
+    const on_create = config_ref.current.onCreateConnectItem;
+    if (!on_create) return undefined;
+    const created = await on_create(board_id, group_id, name);
+    setState((s) => {
+      const options = s.connect_options[column_id];
+      if (!options) return s;
+      const boards = options.boards.map((board) => {
+        if (board.id !== board_id) return board;
+        // The new item takes its group's color, like every item already listed.
+        const color = created.color ?? board.groups.find((group) => group.id === group_id)?.color ?? null;
+        return { ...board, items: [...board.items, { ...created, color }] };
+      });
+      return { ...s, connect_options: { ...s.connect_options, [column_id]: { ...options, boards } } };
+    });
+    return created;
+  }, []);
+
+  /**
+   * Connect boards "Boards settings" dialog's "Save". Waits for the API (two-way connections
+   * create a column on the other board, which can be refused), then applies the settings and
+   * fetches the column's connected boards again.
+   */
+  const updateConnectSettings = useCallback(async (column_id: string, settings: ConnectSettings) => {
+    const on_update = config_ref.current.onUpdateConnectSettings;
+    if (on_update) await on_update(column_id, settings);
+    setState((s) => ({
+      ...s,
+      groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, linked_board_id: settings.linked_board_ids[0], linked_board_ids: settings.linked_board_ids, connect: settings })),
+    }));
+    requested_connect_columns_ref.current.delete(column_id);
+    ensureConnectOptions(column_id);
+  }, [ensureConnectOptions]);
 
   const closeAllOverlays = useCallback(() => setState((s) => ({ ...s, ...closeAllMenus })), []);
 
@@ -2448,7 +2479,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       reorderColumnOptions,
       toggleColumnNotifyOnAssignment,
       updateColumnFormula,
-      updateColumnLinkedBoard,
+      updateConnectSettings,
       updateColumnMirror,
       openTagEditor,
       closeTagEditor,
@@ -2457,7 +2488,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setTagDefColor,
       deleteTagDef,
       setTagQuery,
-      ensureLinkedBoardItems,
+      ensureConnectOptions,
+      createConnectItem,
       pressButton,
       closeAllOverlays,
       copyRowLink,
@@ -2478,8 +2510,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateColumnLinkedBoard, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureLinkedBoardItems, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2497,7 +2529,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
-    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureLinkedBoardItems",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions",
     "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
@@ -2514,7 +2546,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "renameColumnOption",
     "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",
     "toggleStatusDefActive", "setStatusDefDescription", "reorderStatusDefs", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
-    "updateColumnLinkedBoard", "updateColumnMirror",
+    "updateConnectSettings", "updateColumnMirror",
   ];
 
   /** Row actions whose first argument is the row id, checked against `config.canEditNode`. */

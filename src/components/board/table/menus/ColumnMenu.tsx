@@ -223,7 +223,7 @@ export default function ColumnMenu({
         {column?.kind === "connect_board" && onEditConnectBoard && (
           <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditConnectBoard(); onClose(); }} className={ROW_ITEM}>
             <span className="w-4 text-boardtree-text-muted">⛓</span>
-            <span className="flex-1">Configure linked board</span>
+            <span className="flex-1">Boards settings</span>
           </button>
         )}
         {column?.kind === "mirror" && onEditMirror && (

@@ -3,6 +3,8 @@
 // the generic board/types.ts, mirroring how the chart and gantt views keep
 // their own types.ts.
 
+import type { BoardColumnKind } from "../columnTypes";
+
 export type ColumnKind =
   | "text"
   | "longtext"
@@ -56,6 +58,62 @@ export interface MirrorConfig {
 }
 
 /**
+ * A Connect boards column's "Boards settings", monday.com style: the boards it connects, whether
+ * a cell may link more than one item, and whether the links also show in a column on the
+ * connected board (two-way, only possible with a single board).
+ */
+export interface ConnectSettings {
+  linked_board_ids: string[];
+  allow_multiple_items: boolean;
+  two_way: boolean;
+}
+
+/** One group of a connected board, listed with its color in the cell picker. */
+export interface ConnectGroupOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
+/** One column of a connected board, offered in the picker's "Choose columns to search". */
+export interface ConnectColumnOption {
+  id: string;
+  label: string;
+  /** The board engine's column type, which picks its icon from `COLUMN_KIND_SWATCH`. */
+  type: BoardColumnKind;
+}
+
+/** One item of a connected board. `group_id` is null when it lives in another tab of that board, so it is only shown in cells. */
+export interface ConnectItemOption {
+  id: string;
+  board_id: string;
+  name: string;
+  group_id: string | null;
+  color: string | null;
+  /** Where the item opens, `/boards/{board_id}/pulses/{id}?view_id=...`. */
+  href: string | null;
+  created_at: string | null;
+  /** Searchable text of each cell, keyed by column id. */
+  texts: Record<string, string>;
+}
+
+export interface ConnectBoardOption {
+  id: string;
+  name: string;
+  can_add_items: boolean;
+  groups: ConnectGroupOption[];
+  columns: ConnectColumnOption[];
+  items: ConnectItemOption[];
+}
+
+/** Everything a Connect boards column's cells and picker read, fetched once per column. */
+export interface ConnectColumnOptions {
+  boards: ConnectBoardOption[];
+  /** Connected boards the viewer may not open. */
+  hidden_board_count: number;
+}
+
+/**
  * Any column kind's own validation rules, set from the header menu's
  * "Settings" panel (`ColumnSettingsPanel`) — advisory only: an unmet rule
  * flags the cell with a red outline/asterisk (see `isValueInvalid` in
@@ -106,8 +164,12 @@ export interface ColumnDef {
   formula_sources?: FormulaSourceColumn[];
   /** Mirror kind only, see `MirrorConfig`. */
   mirror?: MirrorConfig;
-  /** Connect-board kind only: the other board this column's cells link items on. */
+  /** Connect-board kind only: the first of `linked_board_ids`, read by automations and mirrors that handle a single board. */
   linked_board_id?: string;
+  /** Connect-board kind only: every board this column's cells link items on. */
+  linked_board_ids?: string[];
+  /** Connect-board kind only, see `ConnectSettings`. */
+  connect?: ConnectSettings;
   /** Any kind, see `ColumnValidation`'s own doc comment. */
   validation?: ColumnValidation;
   /** Number kind only: which aggregation the group summary row's footer shows for this column. Undefined behaves as `"sum"` (existing behavior). See `summaryUtils.ts`'s `summaryForColumn`. */

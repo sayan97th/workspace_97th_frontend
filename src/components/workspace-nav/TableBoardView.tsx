@@ -76,6 +76,7 @@ import {
   type UseBoardTableConfig,
 } from "@/components/board";
 import { AVATAR_COLORS } from "@/components/board/TeamAvatars";
+import type { ConnectColumnOptions, ConnectItemOption, ConnectSettings } from "@/components/board/table/types";
 import {
   buildBoardFilterFields,
   buildBoardGroupByOptions,
@@ -165,6 +166,7 @@ import type {
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
+import { buildBoardPath } from "./helpers";
 
 export type WorkspaceViewProps = {
   /** The navigation node whose view is being rendered, plus the workspace it belongs to. */
@@ -238,6 +240,24 @@ const toTableOptions = (column: BoardColumnDto): TableColumnDef["options"] =>
     description: option.description,
   }));
 
+/** A Connect boards column's boards and settings, reading the single `linked_board_id` columns saved before several boards were allowed. */
+const toConnectSettings = (column: BoardColumnDto): Pick<TableColumnDef, "linked_board_ids" | "connect"> => {
+  const board_ids = column.config?.linked_board_ids ?? (column.config?.linked_board_id != null ? [column.config.linked_board_id] : []);
+  const linked_board_ids = board_ids.map(String);
+  return {
+    linked_board_ids,
+    connect: {
+      linked_board_ids,
+      allow_multiple_items: column.config?.allow_multiple_items ?? true,
+      two_way: column.config?.two_way ?? false,
+    },
+  };
+};
+
+/** Where a connected item opens: its board, on the tab that holds it. */
+const connectItemHref = (board_id: number, item_id: number, view_id: number | null): string =>
+  `${buildBoardPath(board_id)}/pulses/${item_id}${view_id ? `?view_id=${view_id}` : ""}`;
+
 /** `null` for a column kind the Table view has no cell renderer for. Every `BoardColumnDto["type"]` currently has one, so this only ever matters for a type added to the engine before the Table view picks it up. */
 const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
   const kind = TABLE_COLUMN_KIND[column.type];
@@ -262,6 +282,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         ? { source_column_id: String(column.config.source_column_id), mirrored_column_id: String(column.config.mirrored_column_id) }
         : undefined,
     linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
+    ...(column.type === "connect_board" ? toConnectSettings(column) : {}),
     button: column.type === "button" ? { label: column.config?.button_label ?? column.label, color: column.config?.button_color ?? "#579bfc" } : undefined,
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
@@ -2121,16 +2142,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id, columns_by_id]
   );
 
-  const handleUpdateColumnLinkedBoard = useCallback(
-    async (column_id: string, linked_board_id: string) => {
-      const column = columns_by_id[column_id];
-      if (!column) return;
-      const updated = await boardContentService.updateColumn(board_id, Number(column_id), {
-        config: { ...(column.config ?? {}), linked_board_id: Number(linked_board_id) },
+  // The Connect boards "Boards settings" dialog. Rejects so the dialog can show the API's message
+  // (a two-way connection needs permission to add a column on the other board).
+  const handleUpdateConnectSettings = useCallback(
+    async (column_id: string, settings: ConnectSettings) => {
+      const updated = await boardContentService.updateConnectSettings(board_id, Number(column_id), {
+        linked_board_ids: settings.linked_board_ids.map(Number),
+        allow_multiple_items: settings.allow_multiple_items,
+        two_way: settings.two_way,
       });
       setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+      // Connecting the board to itself both ways adds the other side's column right here.
+      if (settings.two_way && settings.linked_board_ids[0] === String(board_id)) {
+        boardContentService.getColumns(board_id, view_tabs.active_view_id).then(setColumns).catch(() => {});
+      }
     },
-    [board_id, columns_by_id]
+    [board_id, view_tabs.active_view_id]
   );
 
   const handleUpdateColumnMirror = useCallback(
@@ -2173,12 +2200,48 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id]
   );
 
-  // ── Connect-board cell/column's linked item names — see
-  // `UseBoardTableConfig.onFetchLinkedBoardItems`'s own doc comment for why
-  // this is fetched once per linked board rather than per cell. ──
-  const handleFetchLinkedBoardItems = useCallback(async (linked_board_id: string) => {
-    const items = await boardContentService.getItems(Number(linked_board_id));
-    return items.map((item) => ({ id: String(item.id), name: item.name }));
+  // ── Connect boards column: its connected boards for the cells and the "Choose items"
+  // picker (fetched once per column, see `UseBoardTableConfig.onFetchConnectOptions`), and the
+  // picker's "+ Add item", which creates the item on the connected board. ──
+  const handleFetchConnectOptions = useCallback(
+    async (column_id: string): Promise<ConnectColumnOptions> => {
+      const response = await boardContentService.getConnectItems(board_id, Number(column_id));
+      return {
+        hidden_board_count: response.hidden_board_count,
+        boards: response.boards.map((board) => ({
+          id: String(board.id),
+          name: board.name,
+          can_add_items: board.can_add_items,
+          groups: board.groups.map((group) => ({ id: String(group.id), name: group.name, color: group.color })),
+          columns: board.columns.filter((column) => column.is_searchable).map((column) => ({ id: String(column.id), label: column.label, type: column.type })),
+          items: board.items.map((item) => ({
+            id: String(item.id),
+            board_id: String(board.id),
+            name: item.name,
+            group_id: item.group_id != null ? String(item.group_id) : null,
+            color: item.color,
+            href: connectItemHref(board.id, item.id, item.view_id),
+            created_at: item.created_at,
+            texts: item.texts,
+          })),
+        })),
+      };
+    },
+    [board_id]
+  );
+
+  const handleCreateConnectItem = useCallback(async (linked_board_id: string, group_id: string, name: string): Promise<ConnectItemOption> => {
+    const created = await boardContentService.createItem(Number(linked_board_id), { name, group_id: Number(group_id) });
+    return {
+      id: String(created.id),
+      board_id: linked_board_id,
+      name: created.name,
+      group_id,
+      color: null,
+      href: connectItemHref(created.board_id, created.id, null),
+      created_at: created.created_at ?? new Date().toISOString(),
+      texts: {},
+    };
   }, []);
 
   // A Button cell's press runs the automations watching it on the server, then the item (and its
@@ -3031,7 +3094,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onCreateTagDef: handleCreateTagDef,
       onRecolorTagDef: handleRecolorTagDef,
       onDeleteTagDef: handleDeleteTagDef,
-      onFetchLinkedBoardItems: handleFetchLinkedBoardItems,
+      onFetchConnectOptions: handleFetchConnectOptions,
+      onCreateConnectItem: handleCreateConnectItem,
       onPressButton: handlePressButton,
       initial_item_column_width: item_column_width,
       // Like `item_column_label`, the item-title column isn't a real `board_columns`
@@ -3119,7 +3183,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         void patchColumnOptions(column_id, (options) => reorderByIds(options, ordered_ids)),
       onToggleColumnNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
       onUpdateColumnFormula: (column_id, formula) => void handleUpdateColumnFormula(column_id, formula),
-      onUpdateColumnLinkedBoard: (column_id, linked_board_id) => void handleUpdateColumnLinkedBoard(column_id, linked_board_id),
+      onUpdateConnectSettings: handleUpdateConnectSettings,
       onUpdateColumnMirror: (column_id, mirror) => void handleUpdateColumnMirror(column_id, mirror),
       // The row menu's "Delete" is optimistic: the row disappears right away and
       // comes back, with a toast, if the server refuses.
@@ -3220,7 +3284,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       handleCreateTagDef,
       handleRecolorTagDef,
       handleDeleteTagDef,
-      handleFetchLinkedBoardItems,
+      handleFetchConnectOptions,
+      handleCreateConnectItem,
       board_id,
       items,
       item_column_width,
