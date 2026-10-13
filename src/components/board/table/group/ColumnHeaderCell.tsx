@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import ColumnMenu from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
+import ColumnInfoButton, { hasColumnInfo } from "./ColumnInfoButton";
+import ColumnDescriptionModal from "../menus/ColumnDescriptionModal";
 import EmojiInsertButton from "../../EmojiInsertButton";
-import type { ColumnDef, ColumnKind, ColumnValidation, DependencyConfig, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { ColumnDef, ColumnKind, ColumnLinkage, ColumnSettingsPatch, ColumnValidation, DependencyConfig, StatusDef } from "../types";
 import type { NumberAggregation } from "../summaryUtils";
 
 interface ColumnHeaderCellProps {
@@ -12,7 +14,7 @@ interface ColumnHeaderCellProps {
   title: string;
   height: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"] };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"]; description?: string; linkage?: ColumnLinkage };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible?: boolean;
@@ -33,7 +35,7 @@ interface ColumnHeaderCellProps {
   onCommitRename: () => void;
   onCancelRename: () => void;
   onSort: (dir: "asc" | "desc" | null) => void;
-  onUpdateSettings?: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig }) => void;
+  onUpdateSettings?: (patch: ColumnSettingsPatch) => void;
   /** Local-only width preview fired on every pointer move of a resize drag — see `ColumnResizeHandle`. Omitted for the sub-title virtual column, which isn't resizable. */
   onResizePreview?: (width: number) => void;
   /**
@@ -91,6 +93,7 @@ export default function ColumnHeaderCell({
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the rename out from under it.
   const is_emoji_palette_open_ref = useRef(false);
+  const [is_description_open, setIsDescriptionOpen] = useState(false);
   return (
     <div
       onMouseEnter={onEnter}
@@ -160,6 +163,9 @@ export default function ColumnHeaderCell({
           {title}
         </button>
       )}
+      {column && !is_editing && hasColumnInfo(column.linkage, column.description) && (
+        <ColumnInfoButton title={title} linkage={column.linkage} description={column.description} />
+      )}
       {is_restricted && (
         <span className="flex flex-none text-boardtree-text-faint" title="This column has restricted permissions" aria-label="Restricted column">
           <svg viewBox="0 0 16 16" width="11" height="11"><rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.5" /><path d="M5.4 7 V5.2 a2.6 2.6 0 0 1 5.2 0 V7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -190,6 +196,8 @@ export default function ColumnHeaderCell({
           onEditFormula={onEditFormula}
           onEditMirror={onEditMirror}
           onEditConnectBoard={onEditConnectBoard}
+          has_description={Boolean(column?.description)}
+          onEditDescription={column && onUpdateSettings ? () => setIsDescriptionOpen(true) : undefined}
           onRequestFilter={onRequestFilter ?? (() => {})}
           onRequestGroupBy={onRequestGroupBy ?? (() => {})}
           onCollapseAll={onCollapseAll}
@@ -201,6 +209,14 @@ export default function ColumnHeaderCell({
           onClose={onCloseMenu}
           onRequestPermissions={onRequestPermissions}
           automation={automation}
+        />
+      )}
+      {is_description_open && column && onUpdateSettings && (
+        <ColumnDescriptionModal
+          title={title}
+          description={column.description ?? ""}
+          onSave={(description) => onUpdateSettings({ description })}
+          onClose={() => setIsDescriptionOpen(false)}
         />
       )}
       {((column && onUpdateSettings) || (resizable_width !== undefined && onResizeEnd)) && (

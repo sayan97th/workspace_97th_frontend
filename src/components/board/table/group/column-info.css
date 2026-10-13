@@ -1,0 +1,153 @@
+/*
+ * Column header info: the (i) next to a column title and the card it opens on
+ * hover, styled after monday.com. It lists the column's "Linkage" (the column
+ * and board a Mirror mirrors, the boards a Connect boards column shows items
+ * from, as light blue chips) and its "Column description". Every color is a
+ * `--column-info-*` token, so dark mode only swaps the tokens. The card is
+ * portaled to the body, outside the table's scoped palette.
+ */
+
+.column-info-trigger {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--color-boardtree-text-muted);
+}
+
+.column-info-trigger:hover,
+.column-info-trigger[aria-expanded="true"] {
+  background: #cce5ff;
+  color: #0073ea;
+}
+
+html.dark .column-info-trigger:hover,
+html.dark .column-info-trigger[aria-expanded="true"] {
+  background: rgba(77, 156, 255, 0.24);
+  color: #69a7ef;
+}
+
+.column-info-trigger:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: 1px;
+}
+
+.column-info {
+  --column-info-surface: #ffffff;
+  --column-info-text: #323338;
+  --column-info-text-secondary: #676879;
+  --column-info-link: #1f76c2;
+  --column-info-chip: #cce5ff;
+  --column-info-chip-hover: #aed4fc;
+  --column-info-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--column-info-surface);
+  box-shadow: var(--column-info-shadow);
+  color: var(--column-info-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+}
+
+html.dark .column-info {
+  --column-info-surface: #0f1c1c;
+  --column-info-text: #e9eded;
+  --column-info-text-secondary: #b7c0c1;
+  --column-info-link: #69a7ef;
+  --column-info-chip: rgba(77, 156, 255, 0.24);
+  --column-info-chip-hover: rgba(77, 156, 255, 0.36);
+  --column-info-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .column-info {
+    animation: column-info-enter 120ms ease-out;
+  }
+}
+
+@keyframes column-info-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.column-info__section {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  column-gap: 10px;
+}
+
+.column-info__icon {
+  grid-row: span 2;
+  padding-top: 1px;
+  color: var(--column-info-text-secondary);
+}
+
+.column-info__label {
+  color: var(--column-info-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.column-info__text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.column-info__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--column-info-link);
+  vertical-align: bottom;
+}
+
+.column-info__link:hover {
+  text-decoration: underline;
+}
+
+.column-info__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.column-info__chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--column-info-chip);
+  color: var(--column-info-text);
+}
+
+.column-info__chip:hover {
+  background: var(--column-info-chip-hover);
+}
+
+.column-info__chip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

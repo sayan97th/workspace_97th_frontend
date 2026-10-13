@@ -254,6 +254,15 @@ const toConnectSettings = (column: BoardColumnDto): Pick<TableColumnDef, "linked
   };
 };
 
+/** A Connect boards or Mirror column's linkage, with where each board opens. */
+const toColumnLinkage = (linkage: NonNullable<BoardColumnDto["linkage"]>): TableColumnDef["linkage"] => ({
+  boards: linkage.boards.map((board) => ({ id: String(board.id), name: board.name, href: buildBoardPath(board.id) })),
+  hidden_board_count: linkage.hidden_board_count,
+  mirrored_column: linkage.mirrored_column
+    ? { label: linkage.mirrored_column.label, board_name: linkage.mirrored_column.board_name, board_href: buildBoardPath(linkage.mirrored_column.board_id) }
+    : null,
+});
+
 /** Where a connected item opens: its board, on the tab that holds it. */
 const connectItemHref = (board_id: number, item_id: number, view_id: number | null): string =>
   `${buildBoardPath(board_id)}/pulses/${item_id}${view_id ? `?view_id=${view_id}` : ""}`;
@@ -283,6 +292,8 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         : undefined,
     linked_board_id: column.config?.linked_board_id != null ? String(column.config.linked_board_id) : undefined,
     ...(column.type === "connect_board" ? toConnectSettings(column) : {}),
+    linkage: column.linkage ? toColumnLinkage(column.linkage) : undefined,
+    description: column.config?.description?.trim() || undefined,
     button: column.type === "button" ? { label: column.config?.button_label ?? column.label, color: column.config?.button_color ?? "#579bfc" } : undefined,
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
@@ -2223,6 +2234,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             href: connectItemHref(board.id, item.id, item.view_id),
             created_at: item.created_at,
             texts: item.texts,
+            values: item.values ?? {},
+          })),
+          mirrored_columns: (board.mirrored_columns ?? []).map((mirrored) => ({
+            id: String(mirrored.id),
+            label: mirrored.label,
+            type: mirrored.type,
+            options: mirrored.options.map((option) => ({ id: option.id, label: option.label, color: option.color, is_active: option.is_active, description: option.description })),
           })),
         })),
       };
@@ -2249,6 +2267,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       href: connectItemHref(created.board_id, created.id, null),
       created_at: created.created_at ?? new Date().toISOString(),
       texts: {},
+      values: {},
     };
   }, []);
 
@@ -3104,6 +3123,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onDeleteTagDef: handleDeleteTagDef,
       onFetchConnectOptions: handleFetchConnectOptions,
       onFetchConnectedBoards: handleFetchConnectedBoards,
+      // A Mirror cell edits the mirrored value on the connected item itself, on its own board.
+      onUpdateLinkedItemValue: async (linked_board_id, item_id, column_id, value) => {
+        await boardContentService.updateItemValues(Number(linked_board_id), Number(item_id), { [column_id]: value as BoardItemValue });
+      },
       // "Add a mirror column" in the Connect boards settings: a Mirror right after the column, reading through it.
       onAddMirrorColumn: (connect_column_id) => {
         const connect_column = columns_by_id[connect_column_id];
@@ -3250,9 +3273,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
+        if (description !== undefined) config_patch.description = description?.trim() || null;
         if (validation !== undefined) config_patch.validation = validation;
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
         if (reminder !== undefined) config_patch.reminder = reminder;

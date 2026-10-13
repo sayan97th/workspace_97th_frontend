@@ -7,19 +7,19 @@ import ColumnSettingsPanel from "./ColumnSettingsPanel";
 import BoardPickerMenu from "./BoardPickerMenu";
 import DependencySettingsPanel from "./DependencySettingsPanel";
 import type { ColumnTypeDef } from "../constants";
-import type { ColumnDef, ColumnKind, ColumnValidation, DependencyConfig, FormulaConfig, MirrorConfig, StatusDef } from "../types";
+import type { ColumnDef, ColumnKind, ColumnLinkage, ColumnSettingsPatch, ColumnValidation, DependencyConfig, StatusDef } from "../types";
 import type { NumberAggregation } from "../summaryUtils";
 
 interface ColumnMenuProps {
   title: string;
   /** Undefined for the item-title/sub-title virtual columns — renders the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"] };
+  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"]; description?: string; linkage?: ColumnLinkage };
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible: boolean;
   onRename: (title: string) => void;
   onSort: (direction: "asc" | "desc" | null) => void;
-  onUpdateSettings: (patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig }) => void;
+  onUpdateSettings: (patch: ColumnSettingsPatch) => void;
   onEditLabels?: () => void;
   /** Formula columns only: opens the operation/source-columns settings modal. */
   onEditFormula?: () => void;
@@ -27,6 +27,9 @@ interface ColumnMenuProps {
   onEditMirror?: () => void;
   /** Connect-board columns only: opens the linked-board settings modal. */
   onEditConnectBoard?: () => void;
+  /** Opens the "Column description" dialog. Omitted for the item-title/sub-title virtual columns. */
+  onEditDescription?: () => void;
+  has_description?: boolean;
   onRequestFilter: () => void;
   onRequestGroupBy: () => void;
   onCollapseAll: () => void;
@@ -81,7 +84,7 @@ const HOVER_INTENT_DELAY_MS = 250;
 
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
-  onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onRequestFilter, onRequestGroupBy, onCollapseAll,
+  onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
   onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
 }: ColumnMenuProps) {
   const [draft, setDraft] = useState(title);
@@ -230,6 +233,14 @@ export default function ColumnMenu({
           <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditMirror(); onClose(); }} className={ROW_ITEM}>
             <span className="w-4 text-boardtree-text-muted">⧉</span>
             <span className="flex-1">Configure mirror</span>
+          </button>
+        )}
+        {column && onEditDescription && (
+          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditDescription(); onClose(); }} className={ROW_ITEM}>
+            <span className="w-4 text-boardtree-text-muted">
+              <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 4 H13.5 M2.5 8 H13.5 M2.5 12 H9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+            </span>
+            <span className="flex-1">{has_description ? "Edit description" : "Add description"}</span>
           </button>
         )}
 

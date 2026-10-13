@@ -52,6 +52,34 @@ export interface FormulaSourceColumn {
 }
 
 /** A `mirror`-kind column's own config: which of this tab's `connect_board` columns to read through, and which column on that linked board to display. */
+/**
+ * A column's settings change from its header (menu, resize, settings panels), persisted through
+ * `UseBoardTableConfig.onUpdateColumnSettings`. Each key belongs to the column kinds noted.
+ */
+export interface ColumnSettingsPatch {
+  width?: number;
+  hideable?: boolean;
+  pinnable?: boolean;
+  /** Formula columns only, see `ColumnDef.formula`. */
+  formula?: FormulaConfig;
+  /** Mirror columns only, see `ColumnDef.mirror`. */
+  mirror?: MirrorConfig;
+  /** Connect-board columns only, see `ColumnDef.linked_board_id`. */
+  linked_board_id?: string;
+  /** Any column kind, see `ColumnDef.validation`. */
+  validation?: ColumnValidation;
+  /** Number columns only, see `ColumnDef.aggregation`. */
+  aggregation?: ColumnDef["aggregation"];
+  /** Date columns only, see `ColumnDef.reminder`. */
+  reminder?: ColumnDef["reminder"];
+  /** Button columns only, see `ColumnDef.button`. */
+  button?: ColumnDef["button"];
+  /** Dependency columns only, see `ColumnDef.dependency`. */
+  dependency?: DependencyConfig;
+  /** Any column kind, see `ColumnDef.description`. Null removes it. */
+  description?: string | null;
+}
+
 export interface MirrorConfig {
   source_column_id: string;
   mirrored_column_id: string;
@@ -66,6 +94,25 @@ export interface ConnectSettings {
   linked_board_ids: string[];
   allow_multiple_items: boolean;
   two_way: boolean;
+}
+
+/**
+ * What a Connect boards or Mirror column is linked to, for the header's "Linkage" popover: the
+ * boards it shows items from (each with where it opens) and, for a Mirror, the column it mirrors.
+ */
+export interface ColumnLinkage {
+  boards: { id: string; name: string; href: string }[];
+  /** Connected boards the viewer may not open, never named. */
+  hidden_board_count: number;
+  mirrored_column: { label: string; board_name: string; board_href: string } | null;
+}
+
+/** A connected board's column shown by a Mirror column, with its labels for status-like kinds. */
+export interface MirroredColumnOption {
+  id: string;
+  label: string;
+  type: BoardColumnKind;
+  options: StatusDef[];
 }
 
 /** One group of a connected board, listed with its color in the cell picker. */
@@ -95,6 +142,8 @@ export interface ConnectItemOption {
   created_at: string | null;
   /** Searchable text of each cell, keyed by column id. */
   texts: Record<string, string>;
+  /** Raw values of the columns this board's Mirror columns show, keyed by column id. */
+  values: Record<string, CellValue>;
 }
 
 export interface ConnectBoardOption {
@@ -104,6 +153,8 @@ export interface ConnectBoardOption {
   groups: ConnectGroupOption[];
   columns: ConnectColumnOption[];
   items: ConnectItemOption[];
+  /** The columns of this board that Mirror columns show through the Connect boards column. */
+  mirrored_columns: MirroredColumnOption[];
 }
 
 /** One connected board in "Connected board column settings". `name` is null and `path` empty for a board the viewer may not open. */
@@ -180,6 +231,10 @@ export interface ColumnDef {
   linked_board_ids?: string[];
   /** Connect-board kind only, see `ConnectSettings`. */
   connect?: ConnectSettings;
+  /** Connect-board and Mirror kinds only: what the column is linked to, shown in the header's info popover. */
+  linkage?: ColumnLinkage;
+  /** Any kind: the "Column description" shown in the header's info popover. */
+  description?: string;
   /** Any kind, see `ColumnValidation`'s own doc comment. */
   validation?: ColumnValidation;
   /** Number kind only: which aggregation the group summary row's footer shows for this column. Undefined behaves as `"sum"` (existing behavior). See `summaryUtils.ts`'s `summaryForColumn`. */

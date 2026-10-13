@@ -17,6 +17,7 @@ import type {
   FillDragState,
   FormulaConfig,
   MirrorConfig,
+  ColumnSettingsPatch,
   ConnectColumnOptions,
   ConnectItemOption,
   ConnectSettings,
@@ -171,6 +172,8 @@ export interface UseBoardTableConfig {
   onFetchConnectOptions?: (column_id: string) => Promise<ConnectColumnOptions>;
   /** "Connected board column settings": the boards a Connect boards column connects, with their privacy and location. */
   onFetchConnectedBoards?: (column_id: string) => Promise<ConnectedBoardSummary[]>;
+  /** A Mirror cell's edit: sets `column_id` of the connected item `item_id` on `board_id` (the item's own board). */
+  onUpdateLinkedItemValue?: (board_id: string, item_id: string, column_id: string, value: CellValue) => Promise<void>;
   /** "Add a mirror column": creates a Mirror column reading through this Connect boards column, right after it, and resolves with its id. */
   onAddMirrorColumn?: (connect_column_id: string) => Promise<string | undefined>;
   /** The Connect boards picker's "+ Add item": creates `name` in `group_id` of the connected board and resolves with it. */
@@ -337,27 +340,7 @@ export interface UseBoardTableConfig {
     group_key: string,
     scope: ColumnScope,
     column_id: string,
-    patch: {
-      width?: number;
-      hideable?: boolean;
-      pinnable?: boolean;
-      /** Formula columns only, see `ColumnDef.formula`. */
-      formula?: FormulaConfig;
-      /** Mirror columns only, see `ColumnDef.mirror`. */
-      mirror?: MirrorConfig;
-      /** Connect-board columns only, see `ColumnDef.linked_board_id`. */
-      linked_board_id?: string;
-      /** Any column kind, see `ColumnDef.validation`. */
-      validation?: ColumnValidation;
-      /** Number columns only, see `ColumnDef.aggregation`. */
-      aggregation?: ColumnDef["aggregation"];
-      /** Date columns only, see `ColumnDef.reminder`. */
-      reminder?: ColumnDef["reminder"];
-      /** Button columns only, see `ColumnDef.button`. */
-      button?: ColumnDef["button"];
-      /** Dependency columns only, see `ColumnDef.dependency`. */
-      dependency?: DependencyConfig;
-    }
+    patch: ColumnSettingsPatch
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
   /**
@@ -1837,7 +1820,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       group_key: string,
       scope: ColumnScope,
       column_id: string,
-      patch: { width?: number; hideable?: boolean; pinnable?: boolean; formula?: FormulaConfig; mirror?: MirrorConfig; linked_board_id?: string; validation?: ColumnValidation; aggregation?: ColumnDef["aggregation"]; reminder?: ColumnDef["reminder"]; button?: ColumnDef["button"]; dependency?: DependencyConfig }
+      patch: ColumnSettingsPatch
     ) => {
       const local_patch: Partial<ColumnDef> = {};
       if (patch.width != null) local_patch.width = patch.width;
@@ -1849,6 +1832,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.reminder) local_patch.reminder = patch.reminder;
       if (patch.button) local_patch.button = patch.button;
       if (patch.dependency) local_patch.dependency = patch.dependency;
+      if (patch.description !== undefined) local_patch.description = patch.description ?? undefined;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },
@@ -2328,6 +2312,32 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     return on_fetch ? on_fetch(column_id) : [];
   }, []);
 
+  /**
+   * A Mirror cell's edit of the connected item's own value. Shows it right away in every
+   * Connect boards column's cached items, and fetches them again when the save fails.
+   */
+  const setLinkedItemValue = useCallback(async (board_id: string, item_id: string, column_id: string, value: CellValue) => {
+    const patchItem = (options: Record<string, ConnectColumnOptions>) =>
+      Object.fromEntries(
+        Object.entries(options).map(([connect_column_id, column_options]) => [
+          connect_column_id,
+          {
+            ...column_options,
+            boards: column_options.boards.map((board) =>
+              board.id !== board_id ? board : { ...board, items: board.items.map((item) => (item.id === item_id ? { ...item, values: { ...item.values, [column_id]: value } } : item)) }
+            ),
+          },
+        ])
+      );
+    setState((s) => ({ ...s, connect_options: patchItem(s.connect_options) }));
+    try {
+      await config_ref.current.onUpdateLinkedItemValue?.(board_id, item_id, column_id, value);
+    } catch (error) {
+      for (const connect_column_id of Object.keys(state_ref.current.connect_options)) ensureConnectOptions(connect_column_id, true);
+      throw error;
+    }
+  }, [ensureConnectOptions]);
+
   /** "Add a mirror column": adds the Mirror column, then opens its settings so a column of the connected board can be picked. */
   const addMirrorColumn = useCallback(async (connect_column_id: string) => {
     const created_id = await config_ref.current.onAddMirrorColumn?.(connect_column_id);
@@ -2509,6 +2519,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       createConnectItem,
       fetchConnectedBoards,
       addMirrorColumn,
+      setLinkedItemValue,
       pressButton,
       closeAllOverlays,
       copyRowLink,
@@ -2530,7 +2541,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 

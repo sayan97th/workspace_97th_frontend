@@ -23,6 +23,7 @@ import FileLinkModal from "../menus/FileLinkModal";
 import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import CellHyperlink from "./CellHyperlink";
 import ConnectItemsCell from "./ConnectItemsCell";
+import MirrorCell from "./MirrorCell";
 import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
@@ -813,23 +814,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "mirror") {
-    const raw_values = Array.isArray(value) ? value : value !== undefined && value !== null ? [value] : [];
-    const display_values = raw_values.map((entry) =>
-      typeof entry === "string" ? entry : typeof entry === "number" ? String(entry) : typeof entry === "boolean" ? (entry ? "Yes" : "No") : ""
-    ).filter(Boolean);
-    return (
-      <div className="flex h-full w-full min-w-0 items-center gap-1 overflow-hidden px-2.5">
-        {display_values.length > 0 ? (
-          display_values.map((text, index) => (
-            <span key={index} className="max-w-[110px] flex-none truncate rounded-full bg-boardtree-hover px-2 py-0.5 text-[11px] font-medium text-boardtree-text-secondary">
-              {text}
-            </span>
-          ))
-        ) : (
-          <span className="text-board-cell text-boardtree-text-faint">–</span>
-        )}
-      </div>
-    );
+    return <MirrorCell node_id={node_id} column={column} values={values} state={state} actions={actions} />;
   }
 
   if (column.kind === "button") {

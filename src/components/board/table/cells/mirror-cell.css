@@ -1,0 +1,231 @@
+/*
+ * Mirror cell, styled after monday.com: a mirrored Status/Label column shows a
+ * single linked item as its colored pill (with a folded corner that marks the
+ * value as mirrored) and several items as a stacked bar, one segment per label
+ * sized by its share. Hovering a segment names it ("Done 10/11 90.9%") and a
+ * click lists its items. Other kinds show their values as text. Every color is
+ * a `--mirror-*` token, so dark mode only swaps the tokens.
+ */
+
+.mirror-cell {
+  --mirror-empty: #c4c4c4;
+  --mirror-text: #323338;
+  --mirror-text-secondary: #676879;
+  --mirror-fold: rgba(255, 255, 255, 0.85);
+
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+}
+
+html.dark .mirror-cell {
+  --mirror-empty: #5b6170;
+  --mirror-text: #e9eded;
+  --mirror-text-secondary: #b7c0c1;
+  --mirror-fold: rgba(15, 28, 28, 0.85);
+}
+
+/* One linked item: its label as a pill, inset like monday's mirrored status. */
+.mirror-cell__pill {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  height: calc(100% - 8px);
+  margin: 0 6px;
+  padding: 0 14px;
+  overflow: hidden;
+  border-radius: 2px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.mirror-cell__pill > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.mirror-cell__pill:not([aria-disabled="true"]):hover {
+  filter: brightness(0.95);
+}
+
+button.mirror-cell__pill:focus-visible,
+.mirror-cell__segment:focus-visible,
+.mirror-cell__text:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: 1px;
+}
+
+/* Folded top right corner: the value lives on the connected item. */
+.mirror-cell__pill::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  border-width: 0 10px 10px 0;
+  border-style: solid;
+  border-color: transparent var(--mirror-fold) transparent transparent;
+}
+
+/* Several linked items: one segment per label, sized by its share. */
+.mirror-cell__bar {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 24px;
+  margin: 0 8px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--mirror-empty);
+}
+
+.mirror-cell__segment {
+  height: 100%;
+  min-width: 3px;
+  transition: filter 100ms ease-out;
+}
+
+.mirror-cell__segment:hover {
+  filter: brightness(0.92);
+}
+
+/* Any other mirrored kind: its values as text. */
+.mirror-cell__text {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 0 10px;
+  overflow: hidden;
+  color: var(--mirror-text);
+  font-size: 14px;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mirror-cell__placeholder {
+  margin: 0 auto;
+  color: var(--mirror-text-secondary);
+  font-size: 13px;
+}
+
+button.mirror-cell__placeholder:hover {
+  text-decoration: underline;
+}
+
+/* ── Items popover ("Done - 90.9% (10/11)") ── */
+
+.mirror-items {
+  --mirror-items-surface: #ffffff;
+  --mirror-items-text: #323338;
+  --mirror-items-text-secondary: #676879;
+  --mirror-items-border: #d0d4e4;
+  --mirror-items-hover: #f5f6f8;
+  --mirror-items-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  max-height: min(440px, calc(100vh - 16px));
+  padding: 16px 16px 8px;
+  border-radius: 8px;
+  background: var(--mirror-items-surface);
+  box-shadow: var(--mirror-items-shadow);
+  color: var(--mirror-items-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .mirror-items {
+  --mirror-items-surface: #0f1c1c;
+  --mirror-items-text: #e9eded;
+  --mirror-items-text-secondary: #b7c0c1;
+  --mirror-items-border: rgba(255, 255, 255, 0.14);
+  --mirror-items-hover: rgba(255, 255, 255, 0.06);
+  --mirror-items-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mirror-items__title {
+  flex: none;
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.mirror-items__list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 4px;
+  overflow-y: auto;
+  padding-left: 16px;
+}
+
+.mirror-items__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 10px 0 16px;
+  overflow: hidden;
+  border: 1px solid var(--mirror-items-border);
+  border-radius: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.mirror-items__row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
+  background: var(--mirror-items-color, #579bfc);
+}
+
+a.mirror-items__row:hover {
+  background: var(--mirror-items-hover);
+}
+
+.mirror-items__name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mirror-items__value {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--mirror-items-text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mirror-items__more {
+  flex: none;
+  align-self: center;
+  margin-top: 8px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.mirror-items__more:hover {
+  background: var(--mirror-items-hover);
+}

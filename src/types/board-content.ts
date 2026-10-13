@@ -78,6 +78,8 @@ export type BoardColumnConfig = {
   dependency_mode?: DependencyMode;
   /** Dependency columns only: lags count working days of the board's calendar. */
   use_working_days?: boolean;
+  /** Any column: the "Column description" shown in the header's info popover. */
+  description?: string | null;
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };
@@ -105,6 +107,15 @@ export type BoardColumnDto = {
   edit_restriction: BoardColumnRestriction | null;
   /** Whether the current user may change this column's cells (board owners always may). */
   can_edit_values: boolean;
+  /** Connect boards and Mirror columns only: what they are linked to. Null for every other type. */
+  linkage?: BoardColumnLinkageDto | null;
+};
+
+/** See {@link BoardColumnDto.linkage}. Boards the viewer may not open are only counted. */
+export type BoardColumnLinkageDto = {
+  boards: { id: number; name: string }[];
+  hidden_board_count: number;
+  mirrored_column: { id: number; label: string; board_id: number; board_name: string } | null;
 };
 
 /** The people and teams a restricted column lets through, on top of the board owners. */
@@ -597,6 +608,8 @@ export type ConnectBoardItemDto = {
   created_at: string | null;
   /** Searchable text of each cell, keyed by column id. */
   texts: Record<string, string>;
+  /** Raw values of the mirrored columns, keyed by column id. */
+  values: Record<string, BoardItemValue>;
 };
 
 export type ConnectBoardDto = {
@@ -607,6 +620,8 @@ export type ConnectBoardDto = {
   groups: ConnectBoardGroupDto[];
   columns: ConnectBoardColumnDto[];
   items: ConnectBoardItemDto[];
+  /** This board's columns shown by Mirror columns reading through the Connect boards column. */
+  mirrored_columns: { id: number; label: string; type: BoardColumnType; options: BoardColumnOption[] }[];
 };
 
 /** GET /api/boards/{id}/columns/{column_id}/connect-items, a Connect boards column's picker data. */
