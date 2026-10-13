@@ -4292,6 +4292,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
               ? {
                   columns: kanban_item_fields,
                   people: roster_members,
+                  people_picker: {
+                    people: table_people,
+                    getNotifyOnAssignment: (column_id) => columns_by_id[column_id]?.config?.notify_on_assignment ?? true,
+                    onToggleNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
+                  },
                   getValue: (column_id) => kanban_open_row.values[column_id] ?? null,
                   onCommit: (column_id, value) => void handleUpdateCellValue(kanban_open_row.id, column_id, value),
                   onAddOption: (column_id, option) => handleAddColumnOption(column_id, option),

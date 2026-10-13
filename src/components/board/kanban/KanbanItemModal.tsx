@@ -18,6 +18,8 @@ import PersonAvatar from "../PersonAvatar";
 import BoardPopover from "../toolbar/BoardPopover";
 import KanbanChecklistSection from "./KanbanChecklistSection";
 import KanbanItemActivityPanel from "./KanbanItemActivityPanel";
+import KanbanPeopleField from "./KanbanPeopleField";
+import type { PersonDef } from "../table/types";
 import { GroupFieldIcon, KanbanColumnIcon } from "./kanbanColumnIcons";
 import "../monday-palette.css";
 import "./kanban-item-modal.css";
@@ -67,6 +69,13 @@ export type KanbanItemModalProps<TRow> = {
     onCommit: (column_id: string, value: BoardCellValue) => void;
     onAddOption: (column_id: string, option: { label: string; color: string }) => Promise<BoardCellOption | null>;
     onEditOptions: (column_id: string) => BoardOptionActions;
+    /** People columns open the board table's own picker, with this roster. */
+    people_picker: {
+      people: PersonDef[];
+      /** Whether assigning someone on that column notifies them. */
+      getNotifyOnAssignment: (column_id: string) => boolean;
+      onToggleNotifyOnAssignment: (column_id: string) => void;
+    };
     /** Omit to hide "Add field". */
     onAddProperty?: (type: AddableColumnType) => void;
     onRemoveProperty?: (column_id: string) => void;
@@ -110,6 +119,13 @@ const getPersonInitials = (full_name: string): string =>
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+/** A People value as a list of ids, whatever shape it was stored in. */
+const toIdList = (value: BoardCellValue): string[] => {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string" || typeof value === "number") return value === "" ? [] : [String(value)];
+  return [];
+};
 
 const formatCreatedAt = (value: string): string => {
   const date = new Date(value);
@@ -540,6 +556,15 @@ function KanbanItemModal<TRow>(props: KanbanItemModalProps<TRow>) {
                           )}
                         </div>
                         <div className="kanban-item-modal__value" data-bleed={is_bleed || undefined}>
+                          {column.kind === "people" ? (
+                            <KanbanPeopleField
+                              people={fields.people_picker.people}
+                              selected_ids={toIdList(fields.getValue(column.id))}
+                              onSave={(person_ids) => fields.onCommit(column.id, person_ids.length ? person_ids : null)}
+                              notify_on_assignment={fields.people_picker.getNotifyOnAssignment(column.id)}
+                              onToggleNotifyOnAssignment={() => fields.people_picker.onToggleNotifyOnAssignment(column.id)}
+                            />
+                          ) : (
                           <BoardValueCell
                             column={{ id: column.id, kind: column.kind, options: column.options }}
                             value={fields.getValue(column.id)}
@@ -550,6 +575,7 @@ function KanbanItemModal<TRow>(props: KanbanItemModalProps<TRow>) {
                             bleed={is_bleed}
                             pill_style={column.pill_style}
                           />
+                          )}
                         </div>
                       </div>
                     );
