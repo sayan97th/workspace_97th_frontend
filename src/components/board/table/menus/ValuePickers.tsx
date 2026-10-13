@@ -7,12 +7,9 @@ import {
   isHexColor,
   isoWeekNumber,
   listCountries,
-  listTimeZones,
   parseIsoDay,
   startOfIsoWeek,
-  timeInZone,
   toIsoDay,
-  zoneOffsetLabel,
 } from "../columnValueFormats";
 import PopoverPanel from "./PopoverPanel";
 import "./value-picker.css";
@@ -53,7 +50,7 @@ interface SearchListPickerProps {
   width?: number;
 }
 
-/** A searchable single choice list, the body of the Country and World clock pickers. */
+/** A searchable single choice list, the body of the Country picker. */
 function SearchListPicker({ title, placeholder, options, selected_id, onPick, onClear, onClose, width = 280 }: SearchListPickerProps) {
   const [query, setQuery] = useState("");
   const list_ref = useRef<HTMLDivElement>(null);
@@ -157,20 +154,6 @@ export function CountryMenu(props: ValuePickerProps) {
     []
   );
   return <SearchListPicker title="Choose a country" placeholder="Search a country" options={options} selected_id={props.value} {...props} />;
-}
-
-/** The World clock cell's picker: every time zone by city, with its current time and UTC offset. */
-export function WorldClockMenu(props: ValuePickerProps) {
-  const options = useMemo(() => {
-    const now = Date.now();
-    return listTimeZones().map((zone) => ({
-      id: zone.zone,
-      label: zone.city,
-      keywords: `${zone.zone} ${zone.region}`,
-      hint: `${timeInZone(zone.zone, now)} · ${zoneOffsetLabel(zone.zone, now)}`,
-    }));
-  }, []);
-  return <SearchListPicker title="Choose a city or time zone" placeholder="Search a city" options={options} selected_id={props.value} width={320} {...props} />;
 }
 
 const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
@@ -435,65 +418,6 @@ export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePicker
           </div>
         )}
       </div>
-    </PopoverPanel>
-  );
-}
-
-/** A Google Maps search for an address, opened in a new tab. */
-export const mapsSearchUrl = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-
-/** The Location cell's editor: an address field, saved on Enter, with a link to see it on a map. */
-export function LocationMenu({ value, onPick, onClear, onClose }: ValuePickerProps) {
-  const [draft, setDraft] = useState(value ?? "");
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    const address = draft.trim();
-    if (address) onPick(address);
-    else if (value) onClear();
-    onClose();
-  };
-
-  return (
-    <PopoverPanel unstyled onClose={onClose} className={PANEL_CLASS}>
-      <form className="value-picker" style={{ width: 300 }} onSubmit={handleSubmit} onKeyDown={(event) => event.key === "Escape" && onClose()}>
-        <div className="value-picker__title">Location</div>
-        <label className="value-picker__field">
-          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-            <path d="M8 13.5s4-3.6 4-7a4 4 0 0 0-8 0c0 3.4 4 7 4 7z" fill="none" stroke="currentColor" strokeWidth="1.4" />
-            <circle cx="8" cy="6.5" r="1.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
-          </svg>
-          <input
-            autoFocus
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Enter an address"
-            aria-label="Address"
-            className="value-picker__input"
-          />
-        </label>
-        {draft.trim() && (
-          <a href={mapsSearchUrl(draft.trim())} target="_blank" rel="noopener noreferrer" className="value-picker__link">
-            Open in Google Maps
-          </a>
-        )}
-        <div className="value-picker__footer">
-          <button
-            type="button"
-            className="value-picker__ghost"
-            disabled={!value}
-            onClick={() => {
-              onClear();
-              onClose();
-            }}
-          >
-            Remove
-          </button>
-          <button type="submit" className="value-picker__primary">
-            Save
-          </button>
-        </div>
-      </form>
     </PopoverPanel>
   );
 }

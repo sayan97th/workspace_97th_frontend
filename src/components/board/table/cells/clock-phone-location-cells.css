@@ -1,0 +1,207 @@
+/*
+ * World clock, Phone and Location table cells, styled after monday.com: an
+ * empty cell shows a faint "+" with the column's icon on hover, a set cell
+ * reads in 14px Figtree with the value's own glyph (sun or moon, country
+ * flag, map pin) and a grey hover "×" to empty it. The whole cell opens its
+ * editor, the links and buttons inside sit above that hit area. Colors come
+ * from the table's `--color-boardtree-*` palette plus `--value-cell-*`
+ * tokens, dark mode only swaps the tokens.
+ */
+
+.value-cell {
+  --value-cell-link-hover: #0060b9;
+  --value-cell-remove-bg: #e7e9ef;
+  --value-cell-remove-bg-hover: #d0d4e4;
+  --value-cell-remove-icon: #323338;
+  --value-cell-add: #676879;
+  --value-cell-day: #fdab3d;
+  --value-cell-night: #5559df;
+  --value-cell-pin: #f65f7c;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  color: var(--color-boardtree-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .value-cell {
+  --value-cell-link-hover: #8fbdf4;
+  --value-cell-remove-bg: rgba(255, 255, 255, 0.12);
+  --value-cell-remove-bg-hover: rgba(255, 255, 255, 0.2);
+  --value-cell-remove-icon: #e9eded;
+  --value-cell-add: #9aa4a5;
+  --value-cell-night: #8f92ff;
+}
+
+.value-cell__hit-area {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.value-cell__hit-area:disabled,
+.value-cell__hit-area[data-readonly="true"] {
+  cursor: default;
+}
+
+.value-cell__content {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 10px;
+  pointer-events: none;
+}
+
+.value-cell__content--start {
+  justify-content: flex-start;
+  padding-left: 8px;
+}
+
+.value-cell__content > * {
+  pointer-events: auto;
+}
+
+/* Hover "+" with the column icon, the empty state. */
+.value-cell__add {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 auto;
+  color: var(--value-cell-add);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.value-cell:hover .value-cell__add,
+.value-cell__hit-area:focus-visible + .value-cell__content .value-cell__add {
+  opacity: 1;
+}
+
+.value-cell__text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value-cell__secondary {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-boardtree-text-muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Grey hover "×" */
+.value-cell__remove {
+  display: none;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--value-cell-remove-bg);
+  color: var(--value-cell-remove-icon);
+}
+
+.value-cell__remove:hover {
+  background: var(--value-cell-remove-bg-hover);
+}
+
+.value-cell:hover .value-cell__remove,
+.value-cell__remove:focus-visible {
+  display: flex;
+}
+
+/* World clock */
+.value-cell__clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* The clock text lets clicks and hovers through to the hit area, which holds its tooltip. */
+.value-cell__content > .value-cell__clock {
+  pointer-events: none;
+}
+
+.value-cell__daytime {
+  display: flex;
+  flex: none;
+}
+
+.value-cell__daytime.is-day {
+  color: var(--value-cell-day);
+}
+
+.value-cell__daytime.is-night {
+  color: var(--value-cell-night);
+}
+
+.value-cell__time {
+  flex: none;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Phone */
+.value-cell__flag {
+  flex: none;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.value-cell__link {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-boardtree-text);
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value-cell__link:hover,
+.value-cell__link:focus-visible {
+  color: var(--value-cell-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  outline: none;
+}
+
+/* The open Phone cell, a blue outlined field inside the cell. */
+.value-cell__editor {
+  width: 100%;
+  min-width: 0;
+}
+
+.value-cell__editor-input {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Location */
+.value-cell__pin {
+  display: flex;
+  flex: none;
+  color: var(--value-cell-pin);
+  transition: transform 70ms ease-in;
+}
+
+.value-cell__pin:hover,
+.value-cell__pin:focus-visible {
+  transform: scale(1.12);
+  outline: none;
+}

@@ -40,12 +40,11 @@ import {
   HourCell,
   ItemNumberCell,
   LastUpdatedCell,
-  LocationCell,
   ProgressTrackingCell,
   WeekCell,
-  WorldClockCell,
   type ColumnCenterCellProps,
 } from "./ColumnCenterCells";
+import { LocationCell, PhoneCell, WorldClockCell } from "./ClockPhoneLocationCells";
 
 /** People cell avatar stack, monday style: up to three 28px avatars, then a "+N" bubble. */
 const PEOPLE_CELL_MAX_AVATARS = 3;
@@ -127,6 +126,8 @@ export default function CellRenderer({ node_id, column, values, node_name, state
       return <ColorPickerCell {...center_props} />;
     case "location":
       return <LocationCell {...center_props} />;
+    case "phone":
+      return <PhoneCell {...center_props} />;
     case "doc":
       return <DocCell {...center_props} />;
     case "creation_log":
@@ -139,7 +140,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
       return <ProgressTrackingCell {...center_props} values={values} />;
   }
 
-  if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
+  if (column.kind === "text" || column.kind === "email") {
     // While the board is searched, a matching cell shows its text with the match highlighted
     // (an input can't), and turns back into the input as soon as it is clicked.
     if (!is_text_editing && containsSearchQuery(asString(value), state.search_query)) {
@@ -793,9 +794,16 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "auto_number") {
+    // Item ID is the item's own id, like monday.com. The API stores it as the cell value, a row
+    // that has not been reloaded since its column was added falls back to its id (a saved row's
+    // id is all digits, a row still being created has a temporary one and shows a dash).
+    const item_id = typeof value === "number" || typeof value === "string" ? String(value) : /^\d+$/.test(node_id) ? node_id : "";
     return (
-      <div className="flex h-full w-full items-center justify-center font-mono text-board-cell text-boardtree-text-faint">
-        {typeof value === "number" ? value : "–"}
+      <div
+        className="flex h-full w-full min-w-0 items-center justify-center px-2 text-board-cell tabular-nums text-boardtree-text"
+        title={item_id ? `Item ID ${item_id}` : undefined}
+      >
+        <span className="truncate">{item_id || <span className="text-boardtree-text-faint">–</span>}</span>
       </div>
     );
   }

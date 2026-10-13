@@ -1,0 +1,260 @@
+/*
+ * In cell search of the World clock and Location columns, styled after
+ * monday.com: the open cell becomes a white field with a 1px primary blue
+ * outline (`.inline-search-field`, laid over the cell), and the matches show
+ * under it, either as a flat outlined list (`--list`, World clock) or a
+ * roomy shadowed card with a bold heading (`--card`, Location). Both read
+ * 14px Figtree like the rest of the board.
+ *
+ * They are portaled to `document.body` (see `PopoverPanel`), outside the
+ * table's scoped palette, so every color is an `--inline-search-*` token
+ * declared here and dark mode only swaps the tokens.
+ */
+
+.inline-search-field,
+.inline-search {
+  --inline-search-surface: #ffffff;
+  --inline-search-text: #323338;
+  --inline-search-muted: #676879;
+  --inline-search-faint: #9699a6;
+  --inline-search-border: #d0d4e4;
+  --inline-search-divider: #e7e9ef;
+  --inline-search-hover: #dcdfec;
+  --inline-search-selected: #cce5ff;
+  --inline-search-primary: #0073ea;
+  --inline-search-pin: #676879;
+  --inline-search-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --inline-search-list-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+html.dark .inline-search-field,
+html.dark .inline-search {
+  --inline-search-surface: #181b34;
+  --inline-search-text: #d5d8df;
+  --inline-search-muted: #a8aec4;
+  --inline-search-faint: #8a90a8;
+  --inline-search-border: rgba(255, 255, 255, 0.16);
+  --inline-search-divider: rgba(255, 255, 255, 0.1);
+  --inline-search-hover: rgba(255, 255, 255, 0.08);
+  --inline-search-selected: rgba(47, 128, 237, 0.28);
+  --inline-search-primary: #2f80ed;
+  --inline-search-pin: #a8aec4;
+  --inline-search-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  --inline-search-list-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+
+/* The field laid over the open cell. */
+.inline-search-field {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  height: 100%;
+  padding: 4px 6px;
+}
+
+.inline-search-field__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--inline-search-primary);
+  border-radius: 4px;
+  background: var(--inline-search-surface);
+  color: var(--inline-search-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  outline: none;
+}
+
+.inline-search-field__input::placeholder {
+  color: var(--inline-search-faint);
+  opacity: 1;
+}
+
+/* Results */
+.inline-search {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: inherit;
+  color: var(--inline-search-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .inline-search {
+    animation: inline-search-enter 120ms ease-out;
+  }
+}
+
+@keyframes inline-search-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* World clock: a flat outlined list as wide as the field, one zone per row. */
+.inline-search--list {
+  width: 100%;
+  min-width: 240px;
+  max-width: calc(100vw - 16px);
+  border: 1px solid var(--inline-search-border);
+  border-radius: 0 0 4px 4px;
+  background: var(--inline-search-surface);
+  box-shadow: var(--inline-search-list-shadow);
+}
+
+.inline-search--list .inline-search__list {
+  max-height: 232px;
+}
+
+.inline-search--list .inline-search__option {
+  min-height: 29px;
+  padding: 0 10px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--inline-search-divider);
+}
+
+.inline-search--list .inline-search__option:last-child {
+  border-bottom: 0;
+}
+
+/* Location: a white card with a bold heading. */
+.inline-search--card {
+  width: 352px;
+  max-width: calc(100vw - 16px);
+  padding: 16px 8px 8px;
+  border-radius: 8px;
+  background: var(--inline-search-surface);
+  box-shadow: var(--inline-search-shadow);
+}
+
+html.dark .inline-search--card {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.inline-search__title {
+  flex: none;
+  padding: 0 16px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.inline-search__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: 248px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.inline-search__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 4px;
+  color: var(--inline-search-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.inline-search__option[data-highlighted="true"] {
+  background: var(--inline-search-hover);
+}
+
+.inline-search__option[aria-selected="true"] {
+  background: var(--inline-search-selected);
+}
+
+.inline-search__option-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-search__option-hint {
+  flex: none;
+  max-width: 45%;
+  overflow: hidden;
+  color: var(--inline-search-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inline-search__check {
+  flex: none;
+  color: var(--inline-search-primary);
+}
+
+.inline-search__pin {
+  flex: none;
+  color: var(--inline-search-pin);
+}
+
+.inline-search__empty {
+  padding: 12px 16px;
+  color: var(--inline-search-muted);
+  font-size: 13px;
+}
+
+.inline-search--list .inline-search__empty {
+  padding: 8px 10px;
+}
+
+/* Footer actions */
+.inline-search__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 6px 8px 0;
+  border-top: 1px solid var(--inline-search-divider);
+}
+
+.inline-search--list .inline-search__footer {
+  margin-top: 0;
+  padding: 4px;
+}
+
+.inline-search__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--inline-search-muted);
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background-color 70ms ease-in, color 70ms ease-in;
+}
+
+.inline-search__action:hover {
+  background: var(--inline-search-hover);
+  color: var(--inline-search-text);
+}
+
+.inline-search__action--link {
+  color: var(--inline-search-primary);
+}
+
+.inline-search__action--link:hover {
+  color: var(--inline-search-primary);
+}

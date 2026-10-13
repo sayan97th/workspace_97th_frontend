@@ -72,6 +72,15 @@ export interface TimeZoneOption {
   region: string;
 }
 
+/**
+ * Legacy aliases monday's World clock still offers ("US/Pacific"), which
+ * `Intl.supportedValuesOf` leaves out since it only lists canonical zones.
+ */
+const LEGACY_TIME_ZONES = [
+  "US/Alaska", "US/Aleutian", "US/Arizona", "US/Central", "US/East-Indiana", "US/Eastern", "US/Hawaii",
+  "US/Indiana-Starke", "US/Michigan", "US/Mountain", "US/Pacific", "US/Samoa",
+];
+
 let time_zone_options: TimeZoneOption[] | null = null;
 
 /** "America/Mexico_City" reads as "Mexico City". */
@@ -90,6 +99,8 @@ export function listTimeZones(): TimeZoneOption[] {
   } catch {
     // Older runtime, keep the fallback list.
   }
+  const known = new Set(zones);
+  zones = [...zones, ...LEGACY_TIME_ZONES.filter((zone) => !known.has(zone) && isTimeZone(zone))];
   time_zone_options = zones
     .map((zone) => ({ zone, city: timeZoneCity(zone), region: zone.includes("/") ? zone.split("/")[0].replace(/_/g, " ") : "" }))
     .sort((a, b) => a.city.localeCompare(b.city));
@@ -133,6 +144,91 @@ export function isDaytimeInZone(zone: string, now: number = Date.now()): boolean
   } catch {
     return true;
   }
+}
+
+/** "America/Argentina/Buenos_Aires" reads as "America/Argentina/Buenos Aires", the World clock list's row label. */
+export const timeZoneLabel = (zone: string): string => zone.replace(/_/g, " ");
+
+/** The viewer's own time zone, offered first in the World clock picker. */
+export function localTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+/** "Tue, Oct 13, 3:45 PM", the World clock cell's tooltip. */
+export function dateTimeInZone(zone: string, now: number = Date.now()): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", { timeZone: zone, weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(now);
+  } catch {
+    return "";
+  }
+}
+
+/** A Google Maps search for an address, opened in a new tab. */
+export const mapsSearchUrl = (address: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
+/** Longest phone numbers allowed, E.164 caps a number at 15 digits, the rest is room for spaces and signs. */
+export const PHONE_MAX_LENGTH = 30;
+
+/** Keeps what a phone number may hold: digits, a leading "+", spaces, dashes, dots and parentheses. */
+export function sanitizePhoneInput(text: string): string {
+  const cleaned = text.replace(/[^\d+()\-. ]/g, "").replace(/(?!^)\+/g, "");
+  return cleaned.slice(0, PHONE_MAX_LENGTH);
+}
+
+const phoneDigits = (value: string): string => value.replace(/\D/g, "");
+
+/**
+ * A stored phone number as monday shows it: North American numbers as
+ * "+1 (123) 123 4567" (or "(123) 123 4567" without the country code), other
+ * numbers keep their own grouping with the spaces tidied up.
+ */
+export function formatPhoneNumber(value: string): string {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  const digits = phoneDigits(trimmed);
+  const has_plus = trimmed.startsWith("+");
+  if (digits.length === 11 && digits.startsWith("1") && (has_plus || !/[()]/.test(trimmed))) {
+    return `${has_plus ? "+" : ""}1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && !has_plus) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  return trimmed;
+}
+
+/** A `tel:` link that dials the number, null when it has too few digits to call. */
+export function phoneHref(value: string): string | null {
+  const digits = phoneDigits(value);
+  if (digits.length < 3) return null;
+  return `tel:${value.trim().startsWith("+") ? "+" : ""}${digits}`;
+}
+
+/** Country calling codes and the country each one names, for the Phone cell's flag. Shared codes (+1, +7) name the larger country. */
+const CALLING_CODES: Record<string, string> = {
+  "1": "US", "7": "RU", "20": "EG", "27": "ZA", "30": "GR", "31": "NL", "32": "BE", "33": "FR", "34": "ES", "36": "HU",
+  "39": "IT", "40": "RO", "41": "CH", "43": "AT", "44": "GB", "45": "DK", "46": "SE", "47": "NO", "48": "PL", "49": "DE",
+  "51": "PE", "52": "MX", "53": "CU", "54": "AR", "55": "BR", "56": "CL", "57": "CO", "58": "VE", "60": "MY", "61": "AU",
+  "62": "ID", "63": "PH", "64": "NZ", "65": "SG", "66": "TH", "81": "JP", "82": "KR", "84": "VN", "86": "CN", "90": "TR",
+  "91": "IN", "92": "PK", "93": "AF", "94": "LK", "95": "MM", "98": "IR", "212": "MA", "213": "DZ", "216": "TN", "234": "NG",
+  "254": "KE", "351": "PT", "352": "LU", "353": "IE", "354": "IS", "358": "FI", "359": "BG", "370": "LT", "371": "LV",
+  "372": "EE", "380": "UA", "385": "HR", "386": "SI", "420": "CZ", "421": "SK", "502": "GT", "503": "SV", "504": "HN",
+  "505": "NI", "506": "CR", "507": "PA", "509": "HT", "591": "BO", "593": "EC", "595": "PY", "598": "UY", "852": "HK",
+  "886": "TW", "961": "LB", "962": "JO", "965": "KW", "966": "SA", "971": "AE", "972": "IL", "974": "QA",
+};
+
+/**
+ * The country of an international number ("+52 55 1234 5678" is "MX"), by
+ * the longest matching calling code. Null for numbers without a "+".
+ */
+export function phoneCountry(value: string): string | null {
+  if (!value.trim().startsWith("+")) return null;
+  const digits = phoneDigits(value);
+  for (let length = 3; length >= 1; length--) {
+    const code = CALLING_CODES[digits.slice(0, length)];
+    if (code) return code;
+  }
+  return null;
 }
 
 const HOUR_PATTERN = /^([01]\d|2[0-3]):([0-5]\d)$/;

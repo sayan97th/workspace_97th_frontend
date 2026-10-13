@@ -1,6 +1,6 @@
 /*
- * Shared look of the Column Center value pickers (Country, World clock, Week,
- * Hour, Color picker, Location): monday.com's white 8px card with a soft
+ * Shared look of the Column Center value pickers (Country, Week, Hour, Color
+ * picker): monday.com's white 8px card with a soft
  * shadow, a 32px outlined search box, 36px rows in 14px Figtree and a blue
  * primary button. Every color is a `--value-picker-*` token, dark mode only
  * swaps the tokens.
@@ -240,18 +240,6 @@ html.dark .value-picker {
   cursor: not-allowed;
 }
 
-.value-picker__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  color: var(--value-picker-primary);
-  font-size: 13px;
-}
-
-.value-picker__link:hover {
-  text-decoration: underline;
-}
 
 /* Week calendar */
 

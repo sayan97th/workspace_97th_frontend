@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { BoardTableGroup, CellValue, ColumnDef, DocCellValue, PersonDef } from "../types";
 import type { BoardTableActions, BoardTableState, ColumnScope } from "../useBoardTable";
 import { findDef } from "../colorUtils";
@@ -11,17 +10,13 @@ import {
   formatHour,
   formatWeekRange,
   isCountryCode,
-  isDaytimeInZone,
   isHexColor,
   isHourValue,
-  isTimeZone,
   isWeekValue,
-  timeInZone,
-  timeZoneCity,
 } from "../columnValueFormats";
 import AvatarBadge from "../menus/AvatarBadge";
 import DocCellModal from "../menus/DocCellModal";
-import { ColorPickerMenu, CountryMenu, HourMenu, LocationMenu, WeekMenu, WorldClockMenu, mapsSearchUrl } from "../menus/ValuePickers";
+import { ColorPickerMenu, CountryMenu, HourMenu, WeekMenu } from "../menus/ValuePickers";
 import "./column-center-cells.css";
 
 /** What every Column Center cell receives from `CellRenderer`. */
@@ -146,60 +141,6 @@ export function CountryCell({ node_id, column, value, actions, is_menu_open, ope
   );
 }
 
-/** Re-renders every 30 seconds while mounted, for the World clock's live time. */
-function useMinuteTick(is_active: boolean): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (!is_active) return;
-    const id = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(id);
-  }, [is_active]);
-  return now;
-}
-
-export function WorldClockCell({ node_id, column, value, actions, is_menu_open, openMenu }: ColumnCenterCellProps) {
-  const zone = isTimeZone(value) ? value : null;
-  const now = useMinuteTick(zone !== null);
-  const is_day = zone ? isDaytimeInZone(zone, now) : true;
-  return (
-    <PickerCellShell
-      label={zone ? `Time in ${timeZoneCity(zone)}` : "Choose a time zone"}
-      is_empty={!zone}
-      can_edit={actions.canEditCell(node_id, column.id)}
-      openMenu={openMenu}
-      menu={
-        is_menu_open && (
-          <WorldClockMenu
-            value={zone}
-            onPick={(next) => actions.setCellValue(node_id, column.id, next)}
-            onClear={() => actions.clearCellValue(node_id, column.id)}
-            onClose={actions.closeCellMenu}
-          />
-        )
-      }
-    >
-      {zone && (
-        <>
-          <span className={`center-cell__daytime ${is_day ? "is-day" : "is-night"}`} aria-label={is_day ? "Daytime" : "Nighttime"}>
-            {is_day ? (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <circle cx="8" cy="8" r="3" fill="currentColor" />
-                <path d="M8 1.75v1.5M8 12.75v1.5M1.75 8h1.5M12.75 8h1.5M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path d="M12.75 10.1A5.25 5.25 0 0 1 5.9 3.25a5.25 5.25 0 1 0 6.85 6.85z" fill="currentColor" />
-              </svg>
-            )}
-          </span>
-          <span className="center-cell__strong">{timeInZone(zone, now)}</span>
-          <span className="center-cell__muted" title={zone}>{timeZoneCity(zone)}</span>
-        </>
-      )}
-    </PickerCellShell>
-  );
-}
-
 export function WeekCell({ node_id, column, value, actions, is_menu_open, openMenu }: ColumnCenterCellProps) {
   const week = isWeekValue(value) ? value : null;
   return (
@@ -289,52 +230,6 @@ export function ColorPickerCell({ node_id, column, value, actions, is_menu_open,
         </>
       )}
     </PickerCellShell>
-  );
-}
-
-export function LocationCell({ node_id, column, value, actions, is_menu_open, openMenu }: ColumnCenterCellProps) {
-  const address = asString(value).trim();
-  const can_edit = actions.canEditCell(node_id, column.id);
-  return (
-    <div className="relative flex h-full w-full min-w-0">
-      <button
-        type="button"
-        onClick={can_edit ? openMenu : undefined}
-        aria-label={address ? `Location: ${address}` : "Add a location"}
-        disabled={!can_edit && !address}
-        className="center-cell center-cell--start"
-        data-empty={!address || undefined}
-      >
-        {address ? (
-          <span className="center-cell__text" title={address}>{address}</span>
-        ) : (
-          can_edit && <AddGlyph />
-        )}
-      </button>
-      {address && (
-        <a
-          href={mapsSearchUrl(address)}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open ${address} in Google Maps`}
-          title="Open in Google Maps"
-          className="center-cell__map-link"
-        >
-          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
-            <path d="M8 13.5s4-3.6 4-7a4 4 0 0 0-8 0c0 3.4 4 7 4 7z" fill="currentColor" />
-            <circle cx="8" cy="6.5" r="1.5" fill="#ffffff" />
-          </svg>
-        </a>
-      )}
-      {is_menu_open && (
-        <LocationMenu
-          value={address || null}
-          onPick={(next) => actions.setCellValue(node_id, column.id, next)}
-          onClear={() => actions.clearCellValue(node_id, column.id)}
-          onClose={actions.closeCellMenu}
-        />
-      )}
-    </div>
   );
 }
 
