@@ -31,7 +31,18 @@ export type ColumnKind =
   | "connect_board"
   | "mirror"
   | "checklist"
-  | "button";
+  | "button"
+  | "doc"
+  | "world_clock"
+  | "location"
+  | "creation_log"
+  | "last_updated"
+  | "item_number"
+  | "week"
+  | "country"
+  | "color_picker"
+  | "hour"
+  | "progress_tracking";
 
 /**
  * A `formula`-kind column's own config: an expression written with the
@@ -80,7 +91,12 @@ export interface ColumnSettingsPatch {
   description?: string | null;
   /** Any column kind, see `ColumnDef.hide_summary`. */
   hide_summary?: boolean;
+  /** Hour columns only, see `ColumnDef.hour_format`. */
+  hour_format?: HourFormat;
 }
+
+/** An Hour column's display, "2:30 PM" or "14:30". */
+export type HourFormat = "12" | "24";
 
 export interface MirrorConfig {
   source_column_id: string;
@@ -290,6 +306,8 @@ export interface ColumnDef {
   dependency_date_columns?: { id: string; title: string; kind: ColumnKind }[];
   /** Date kind only: notifies everyone assigned in a People column on the same item once the date is `days_before` days away — sent daily by the backend's `board:send-due-date-reminders` scheduled command. */
   reminder?: { enabled: boolean; days_before: number };
+  /** Hour columns only, see `HourFormat`. Unset reads as 12 hour. */
+  hour_format?: HourFormat;
 }
 
 /**
@@ -392,13 +410,26 @@ export type CellValue =
   | TimeTrackingValue
   | CellFile[]
   | ChecklistItemValue[]
+  | DocCellValue
   | null
   | undefined;
+
+/** A Doc cell's own small document: its title and the editor JSON body (same format as a board Doc). */
+export interface DocCellValue {
+  title: string;
+  content: string | null;
+  updated_at?: string;
+}
 
 export interface BoardTableNode {
   id: string;
   name: string;
   values: Record<string, CellValue>;
+  /** Item details the Creation log and Last updated columns show. Missing on rows built before they were loaded. */
+  created_by_id?: string | null;
+  created_at?: string | null;
+  last_updated_by_id?: string | null;
+  last_updated_at?: string | null;
   /** Total comments posted on this row (item or subitem) — drives the message-icon badge in `ItemRow`/`SubitemRow`. Undefined for the standalone mock demo, which has no backing comments drawer. */
   comment_count?: number;
   /** Flags this individual row (item or subitem) as a priority row — the per-row counterpart of `BoardTableGroup.is_priority`, independent of any per-item Status/Priority column. Renders a star next to the row's name in `ItemRow`/`SubitemRow`. */

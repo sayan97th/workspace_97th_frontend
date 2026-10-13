@@ -82,6 +82,8 @@ export type BoardColumnConfig = {
   description?: string | null;
   /** Any column: the column menu's "Hide column summary", see `ColumnDef.hide_summary` in `@/components/board/table/types`. */
   hide_summary?: boolean;
+  /** Hour columns only: "12" (2:30 PM, the default) or "24" (14:30). */
+  hour_format?: "12" | "24";
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };
@@ -226,6 +228,8 @@ export type BoardItemDto = {
   created_at?: string | null;
   /** ISO timestamp of the latest change to the item or any of its values, the "Last updated" filter and sort field. */
   last_updated_at?: string | null;
+  /** Who made the newest recorded change (falls back to the creator), the Last updated column's person. */
+  last_updated_by_id?: number | null;
 };
 
 /** One line of a board item's subtask checklist — see `BoardItemDto.checklist_total_count`. */

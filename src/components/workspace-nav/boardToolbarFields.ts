@@ -1,4 +1,4 @@
-import { format, parseISO, startOfWeek } from "date-fns";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
@@ -59,6 +59,13 @@ const FILTER_KIND_BY_COLUMN_TYPE: Partial<Record<BoardColumnDto["type"], BoardFi
   files: "text",
   mirror: "text",
   checklist: "text",
+  doc: "text",
+  world_clock: "text",
+  location: "text",
+  country: "text",
+  color_picker: "text",
+  hour: "text",
+  week: "date",
   // Formula results are computed while rendering, and Dependency/Connect
   // board hold item ids, so none of them is filterable yet.
 };
@@ -107,6 +114,7 @@ export const getValueDateRange = (
     return start && end ? { start, end } : null;
   }
   const day = toDay(value);
+  if (day && column.type === "week") return { start: day, end: format(addDays(parseISO(day), 6), "yyyy-MM-dd") };
   return day ? { start: day, end: day } : null;
 };
 
@@ -318,6 +326,7 @@ export function buildBoardSortOptions(sources: BoardToolbarFieldSources): BoardS
               .sort((a, b) => a.localeCompare(b))
               .join(", ") || null;
           case "date":
+          case "week":
           case "timeline": {
             const range = getValueDateRange(column, value);
             // Timed dates keep their time so two items on the same day still order correctly.

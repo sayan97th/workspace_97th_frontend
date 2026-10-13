@@ -31,6 +31,20 @@ import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
 import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
+import {
+  ColorPickerCell,
+  CountryCell,
+  CreationLogCell,
+  DocCell,
+  HourCell,
+  ItemNumberCell,
+  LastUpdatedCell,
+  LocationCell,
+  ProgressTrackingCell,
+  WeekCell,
+  WorldClockCell,
+  type ColumnCenterCellProps,
+} from "./ColumnCenterCells";
 
 /** People cell avatar stack, monday style: up to three 28px avatars, then a "+N" bubble. */
 const PEOPLE_CELL_MAX_AVATARS = 3;
@@ -96,6 +110,33 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const timer = setTimeout(() => setPressFeedback(null), 2600);
     return () => clearTimeout(timer);
   }, [press_feedback]);
+
+  // The Column Center types each own a small component (with its own hooks), see `ColumnCenterCells`.
+  const center_props: ColumnCenterCellProps = { node_id, column, value, node_name, state, actions, is_menu_open, openMenu };
+  switch (column.kind) {
+    case "country":
+      return <CountryCell {...center_props} />;
+    case "world_clock":
+      return <WorldClockCell {...center_props} />;
+    case "week":
+      return <WeekCell {...center_props} />;
+    case "hour":
+      return <HourCell {...center_props} />;
+    case "color_picker":
+      return <ColorPickerCell {...center_props} />;
+    case "location":
+      return <LocationCell {...center_props} />;
+    case "doc":
+      return <DocCell {...center_props} />;
+    case "creation_log":
+      return <CreationLogCell {...center_props} />;
+    case "last_updated":
+      return <LastUpdatedCell {...center_props} />;
+    case "item_number":
+      return <ItemNumberCell {...center_props} />;
+    case "progress_tracking":
+      return <ProgressTrackingCell {...center_props} values={values} />;
+  }
 
   if (column.kind === "text" || column.kind === "phone" || column.kind === "email") {
     // While the board is searched, a matching cell shows its text with the match highlighted

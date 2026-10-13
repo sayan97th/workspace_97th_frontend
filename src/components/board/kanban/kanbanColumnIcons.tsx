@@ -1,8 +1,19 @@
 import React from "react";
 import {
   AlignLeft,
+  BatteryMedium,
   Calendar,
+  CalendarDays,
   CalendarRange,
+  Clock,
+  FileText,
+  Flag,
+  Globe,
+  History,
+  ListOrdered,
+  MapPin,
+  Palette,
+  UserRoundPlus,
   ChevronDown,
   CircleUserRound,
   Copy,
@@ -58,6 +69,17 @@ const COLUMN_KIND_ICON: Record<BoardColumnKind, LucideIcon> = {
   mirror: Copy,
   checklist: ListChecks,
   button: MousePointerClick,
+  doc: FileText,
+  world_clock: Globe,
+  location: MapPin,
+  creation_log: UserRoundPlus,
+  last_updated: History,
+  item_number: ListOrdered,
+  week: CalendarDays,
+  country: Flag,
+  color_picker: Palette,
+  hour: Clock,
+  progress_tracking: BatteryMedium,
 };
 
 /** Icon for an item's own fields that are not columns (the group it sits in). */

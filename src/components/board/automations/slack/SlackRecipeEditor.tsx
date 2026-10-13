@@ -32,7 +32,7 @@ export type SlackRecipeEditorProps = {
 const MESSAGE_MAX_LENGTH = 1000;
 
 /** Computed columns never receive a written value, so they can never "change". */
-const READ_ONLY_KINDS: ColumnDef["kind"][] = ["formula", "mirror", "auto_number"];
+const READ_ONLY_KINDS: ColumnDef["kind"][] = ["formula", "mirror", "auto_number", "creation_log", "last_updated", "item_number", "progress_tracking"];
 
 type Recipient = { mode: "column" | "person" | "source"; id: string } | null;
 

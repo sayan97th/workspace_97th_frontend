@@ -1848,6 +1848,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.button) local_patch.button = patch.button;
       if (patch.dependency) local_patch.dependency = patch.dependency;
       if (patch.description !== undefined) local_patch.description = patch.description ?? undefined;
+      if (patch.hour_format) local_patch.hour_format = patch.hour_format;
       setState((s) => (Object.keys(local_patch).length === 0 ? s : { ...s, groups: applyColumnPatch(s.groups, group_key, scope, column_id, local_patch) }));
       config_ref.current.onUpdateColumnSettings?.(group_key, scope, column_id, patch);
     },

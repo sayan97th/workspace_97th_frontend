@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { PublicApiError } from "@/lib/public-api-client";
 import { boardShareService } from "@/services/board-share.service";
 import type { SharedViewColumnDto, SharedViewDto } from "@/types/board-sharing";
+import { countryFlag, countryName, docCellTitle, formatHour, formatWeekRange, isHexColor, timeInZone, timeZoneCity } from "@/components/board/table/columnValueFormats";
 
 type PageState = "loading" | "password" | "ready" | "unavailable";
 
@@ -89,6 +90,23 @@ const SharedCell: React.FC<{ column: SharedViewColumnDto; value: unknown; people
     }
     case "auto_number":
       return <span>#{String(value)}</span>;
+    case "country":
+      return typeof value === "string" ? <span className="truncate">{countryFlag(value)} {countryName(value)}</span> : null;
+    case "world_clock":
+      return typeof value === "string" ? <span className="truncate">{timeInZone(value)} {timeZoneCity(value)}</span> : null;
+    case "week":
+      return typeof value === "string" ? <span>{formatWeekRange(value)}</span> : null;
+    case "hour":
+      return typeof value === "string" ? <span>{formatHour(value)}</span> : null;
+    case "color_picker":
+      return isHexColor(value) ? (
+        <span className="flex items-center gap-1.5">
+          <span className="h-3.5 w-3.5 flex-none rounded-full" style={{ background: value }} aria-hidden="true" />
+          {value.toUpperCase()}
+        </span>
+      ) : null;
+    case "doc":
+      return <span className="truncate">{docCellTitle(value)}</span>;
     default:
       return <span className="truncate">{typeof value === "object" ? "" : String(value)}</span>;
   }

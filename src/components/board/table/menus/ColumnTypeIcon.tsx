@@ -27,7 +27,10 @@ function TextMark({ value, font_size, is_italic = false }: { value: string; font
  * spirit of monday.com's column type icons. The colored chip behind them
  * comes from the type's `accent` (see `COLUMN_TYPE_GALLERY`).
  */
-const GLYPHS: Record<ColumnKind, ReactNode> = {
+/** A kind, or a preset drawn with its own glyph (Priority is a Status column with priority labels). */
+export type ColumnGlyphId = ColumnKind | "priority";
+
+const GLYPHS: Record<ColumnGlyphId, ReactNode> = {
   status: (
     <>
       <rect x="3" y="3" width="10" height="10" rx="1.5" />
@@ -148,10 +151,89 @@ const GLYPHS: Record<ColumnKind, ReactNode> = {
       <path d="M7 6.5v3l2.5-1.5z" fill="currentColor" />
     </>
   ),
+  priority: (
+    <>
+      <path d="M8 2.75 13.25 12.5H2.75z" />
+      <path d="M5.4 9.5h5.2M6.7 6.6h2.6" />
+    </>
+  ),
+  doc: (
+    <>
+      <path d="M4.25 2.75h5l2.5 2.5v8h-7.5z" />
+      <path d="M6.25 8h3.5M6.25 10.5h3.5" />
+    </>
+  ),
+  world_clock: (
+    <>
+      <circle cx="8" cy="8" r="5.25" />
+      <path d="M2.75 8h10.5M8 2.75c-1.75 1.5-2.5 3.25-2.5 5.25s.75 3.75 2.5 5.25c1.75-1.5 2.5-3.25 2.5-5.25S9.75 4.25 8 2.75z" />
+    </>
+  ),
+  location: (
+    <>
+      <path d="M8 13.5s4-3.6 4-7a4 4 0 0 0-8 0c0 3.4 4 7 4 7z" />
+      <circle cx="8" cy="6.5" r="1.4" />
+    </>
+  ),
+  creation_log: (
+    <>
+      <circle cx="6.5" cy="5.75" r="2.25" />
+      <path d="M2.5 12.75c.45-2.1 2-3.4 4-3.4 1 0 1.9.3 2.6.85M11.75 8.75v4M9.75 10.75h4" />
+    </>
+  ),
+  last_updated: (
+    <>
+      <path d="M3.4 9.25A4.75 4.75 0 1 0 4.5 4.6" />
+      <path d="M3.25 2.75v2.5h2.5M8 5.75V8.5l1.75 1.25" />
+    </>
+  ),
+  item_number: (
+    <>
+      <path d="M3 3.75 4 3.25v3.5M3 6.75h2" />
+      <path d="M3 9.6c.3-.55 1.75-.6 1.75.3 0 .7-1.75 1.35-1.75 2.6h1.85" />
+      <path d="M7.5 5h5.5M7.5 11h5.5" />
+    </>
+  ),
+  week: (
+    <>
+      <rect x="3" y="3.75" width="10" height="9" rx="1.5" />
+      <path d="M3 6.75h10M5.75 2.5v2.25M10.25 2.5v2.25" />
+      <path d="M5.25 8.5l.8 2.75.95-2.25.95 2.25.8-2.75" strokeWidth="1.2" transform="translate(.5 0)" />
+    </>
+  ),
+  country: (
+    <>
+      <path d="M4 13.25V3" />
+      <path d="M4 3.5c2.75-1.4 4.75 1.4 8 0v5.75c-3.25 1.4-5.25-1.4-8 0" />
+    </>
+  ),
+  color_picker: (
+    <>
+      <path d="M8 2.75a5.25 5.25 0 0 0 0 10.5c.9 0 1.25-.6 1.25-1.15 0-.75-.6-1-.6-1.75 0-.6.5-1.1 1.1-1.1h1.25a2.25 2.25 0 0 0 2.25-2.25c0-2.35-2.35-4.25-5.25-4.25z" />
+      <circle cx="5.5" cy="7" r=".8" fill="currentColor" stroke="none" />
+      <circle cx="8" cy="5.25" r=".8" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="6.5" r=".8" fill="currentColor" stroke="none" />
+    </>
+  ),
+  hour: (
+    <>
+      <circle cx="8" cy="8" r="5.25" />
+      <path d="M8 5v3.25l2.25 1.25" />
+    </>
+  ),
+  progress_tracking: (
+    <>
+      <rect x="2.25" y="5" width="10.5" height="6" rx="1.5" />
+      <path d="M14 7v2" />
+      <path d="M4.5 8h4" strokeWidth="2.4" />
+    </>
+  ),
 };
 
 interface ColumnTypeIconProps {
   kind: ColumnKind;
+  /** Draws another glyph than the kind's own, for presets like Priority. */
+  glyph?: ColumnGlyphId;
   accent: string;
   /** Chip size in pixels, 20 by default like monday.com's pickers. */
   size?: number;
@@ -159,7 +241,7 @@ interface ColumnTypeIconProps {
 }
 
 /** Colored rounded square with the column kind's glyph, shared by every column type list. */
-export default function ColumnTypeIcon({ kind, accent, size = 20, className = "" }: ColumnTypeIconProps) {
+export default function ColumnTypeIcon({ kind, glyph, accent, size = 20, className = "" }: ColumnTypeIconProps) {
   return (
     <span
       aria-hidden="true"
@@ -176,7 +258,7 @@ export default function ColumnTypeIcon({ kind, accent, size = 20, className = ""
         strokeLinecap="round"
         strokeLinejoin="round"
       >
-        {GLYPHS[kind]}
+        {GLYPHS[glyph ?? kind]}
       </svg>
     </span>
   );

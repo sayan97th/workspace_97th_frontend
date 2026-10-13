@@ -1,5 +1,6 @@
 import type { ColumnKind, PersonDef, StatusDef, TagDef } from "./types";
 import type { BoardColumnKind } from "../columnTypes";
+import type { ColumnGlyphId } from "./menus/ColumnTypeIcon";
 
 export const GROUP_PALETTE = [
   "#4f6bed", "#2f9e78", "#a25ddc", "#e2b203", "#0086c0", "#e04455",
@@ -82,7 +83,19 @@ export interface ColumnTypeDef {
   accent: string;
   section: ColumnGallerySection;
   default_width: number;
+  /** Draws another glyph than the kind's own (Priority, a Status column with priority labels). */
+  glyph?: ColumnGlyphId;
+  /** Starts the new column with these labels instead of the kind's defaults (Priority). */
+  preset_options?: { label: string; color: string }[];
 }
+
+/** monday.com's Priority labels, most urgent first. */
+export const PRIORITY_PRESET_OPTIONS = [
+  { label: "Critical", color: "#333333" },
+  { label: "High", color: "#401694" },
+  { label: "Medium", color: "#5559df" },
+  { label: "Low", color: "#579bfc" },
+];
 
 /** Every column type a board can hold, in the gallery's display order (row by row, two per row). */
 export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
@@ -112,7 +125,30 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "dependency", label: "Dependency", description: "Link items that must finish before this one starts", accent: "#a25ddc", section: "More columns", default_width: 200 },
   { kind: "checklist", label: "Checklist", description: "A to do list inside the cell", accent: "#00c875", section: "More columns", default_width: 200 },
   { kind: "button", label: "Button", description: "Run an automation with one click", accent: "#579bfc", section: "More columns", default_width: 140 },
+  { kind: "status", label: "Priority", description: "Prioritize tasks and focus on what is most important", accent: "#ffcb00", section: "More columns", default_width: 140, glyph: "priority", preset_options: PRIORITY_PRESET_OPTIONS },
+  { kind: "doc", label: "Doc", description: "Document your work and increase collaboration", accent: "#5559df", section: "More columns", default_width: 170 },
+  { kind: "world_clock", label: "World clock", description: "Keep track of the time anywhere in the world", accent: "#00c875", section: "More columns", default_width: 160 },
+  { kind: "location", label: "Location", description: "Store an address and open it on a map", accent: "#f65f7c", section: "More columns", default_width: 200 },
+  { kind: "creation_log", label: "Creation log", description: "Add the item's creator and creation date automatically", accent: "#5559df", section: "More columns", default_width: 180 },
+  { kind: "last_updated", label: "Last updated", description: "Add the person that last updated the item and the date", accent: "#f65f7c", section: "More columns", default_width: 180 },
+  { kind: "item_number", label: "Auto number", description: "Number items according to their order in the group", accent: "#ffcb00", section: "More columns", default_width: 110 },
+  { kind: "progress_tracking", label: "Progress tracking", description: "Show progress by combining status columns in a battery", accent: "#a25ddc", section: "More columns", default_width: 180 },
+  { kind: "week", label: "Week", description: "Select the week on which each item should be completed", accent: "#ffcb00", section: "More columns", default_width: 170 },
+  { kind: "country", label: "Country", description: "Choose a country", accent: "#00c875", section: "More columns", default_width: 170 },
+  { kind: "color_picker", label: "Color picker", description: "Manage a design system using a color palette", accent: "#00a9ff", section: "More columns", default_width: 150 },
+  { kind: "hour", label: "Hour", description: "Add times to manage and schedule tasks, shifts and more", accent: "#ffcb00", section: "More columns", default_width: 120 },
 ];
+
+/**
+ * The config a column picked from a gallery starts with, when its entry is a
+ * preset (Priority is a Status column with priority labels). Looked up by kind
+ * and default label, which is what every add column call carries.
+ */
+export function presetConfigFor(kind: ColumnKind, label: string): { options: { id: string; label: string; color: string; is_active: boolean }[] } | undefined {
+  const preset = COLUMN_TYPE_GALLERY.find((type) => type.kind === kind && type.label === label)?.preset_options;
+  if (!preset) return undefined;
+  return { options: preset.map((option) => ({ id: crypto.randomUUID(), label: option.label, color: option.color, is_active: true })) };
+}
 
 /** The column menu's "Add column to the right" shortlist, in monday.com's order. The rest of the gallery is under "More columns". */
 export const QUICK_ADD_COLUMN_KINDS: ColumnKind[] = ["status", "text", "people", "timeline", "date", "tags", "number"];
@@ -177,6 +213,17 @@ export const TABLE_KIND_TO_ENGINE_KIND: Record<ColumnKind, BoardColumnKind> = {
   mirror: "mirror",
   checklist: "checklist",
   button: "button",
+  doc: "doc",
+  world_clock: "world_clock",
+  location: "location",
+  creation_log: "creation_log",
+  last_updated: "last_updated",
+  item_number: "item_number",
+  week: "week",
+  country: "country",
+  color_picker: "color_picker",
+  hour: "hour",
+  progress_tracking: "progress_tracking",
 };
 
 export const TEXT_FAMILY_KINDS: ColumnKind[] = ["text", "longtext", "phone", "email"];

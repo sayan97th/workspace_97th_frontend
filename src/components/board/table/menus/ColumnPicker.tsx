@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { COLUMN_TYPE_GALLERY, type ColumnTypeDef } from "../constants";
+import ColumnCenterModal from "./ColumnCenterModal";
 import ColumnTypeGallery from "./ColumnTypeGallery";
 import PopoverPanel from "./PopoverPanel";
 
@@ -14,8 +16,14 @@ interface ColumnPickerProps {
   inline?: boolean;
 }
 
-/** The table's "+" column gallery, anchored under the header button, see `ColumnTypeGallery`. */
+/**
+ * The table's "+" column gallery, anchored under the header button, see
+ * `ColumnTypeGallery`. Its "More columns" footer swaps the popover for the
+ * full Column Center dialog, which closes the picker once a column is added.
+ */
 export default function ColumnPicker({ query, onQueryChange, onPick, onClose, align = "right", inline = false }: ColumnPickerProps) {
+  const [is_center_open, setIsCenterOpen] = useState(false);
+
   const gallery = (
     <ColumnTypeGallery
       types={COLUMN_TYPE_GALLERY}
@@ -27,9 +35,11 @@ export default function ColumnPicker({ query, onQueryChange, onPick, onClose, al
       }}
       onClose={onClose}
       show_all={inline}
+      onOpenColumnCenter={inline ? undefined : () => setIsCenterOpen(true)}
     />
   );
   if (inline) return gallery;
+  if (is_center_open) return <ColumnCenterModal onAdd={(types) => types.forEach(onPick)} onClose={onClose} />;
   return (
     <PopoverPanel unstyled onClose={onClose} className={`top-full mt-1 ${align === "right" ? "right-0" : "left-0"}`}>
       {gallery}

@@ -7,7 +7,7 @@ import ColumnTypeIcon from "./ColumnTypeIcon";
 import "./column-type-gallery.css";
 
 /** What the gallery needs to draw one column type. Callers may carry extra fields, `onPick` hands the same object back. */
-export type ColumnTypeGalleryEntry = Pick<ColumnTypeDef, "kind" | "label" | "description" | "accent" | "section">;
+export type ColumnTypeGalleryEntry = Pick<ColumnTypeDef, "kind" | "label" | "description" | "accent" | "section" | "glyph">;
 
 interface ColumnTypeGalleryProps<T extends ColumnTypeGalleryEntry> {
   types: T[];
@@ -18,6 +18,8 @@ interface ColumnTypeGalleryProps<T extends ColumnTypeGalleryEntry> {
   onClose: () => void;
   /** Lists every section up front with no "More columns" footer, for the column menu's own "More columns" flyout. */
   show_all?: boolean;
+  /** When set, the "More columns" footer opens the Column Center instead of listing the rest in place. */
+  onOpenColumnCenter?: () => void;
 }
 
 /** Grid columns, used to move focus up and down a row with the arrow keys. */
@@ -40,6 +42,7 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
   onPick,
   onClose,
   show_all = false,
+  onOpenColumnCenter,
 }: ColumnTypeGalleryProps<T>) {
   const [is_expanded, setIsExpanded] = useState(false);
   const grid_ref = useRef<HTMLDivElement>(null);
@@ -156,7 +159,7 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
                       onClick={() => onPick(type)}
                       className="column-type-gallery__option"
                     >
-                      <ColumnTypeIcon kind={type.kind} accent={type.accent} />
+                      <ColumnTypeIcon kind={type.kind} glyph={type.glyph} accent={type.accent} />
                       <span className="column-type-gallery__label">{type.label}</span>
                     </button>
                   );
@@ -169,9 +172,15 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
 
       {!show_all && !is_searching && (
         <div className="column-type-gallery__footer">
-          <button type="button" aria-expanded={is_expanded} onClick={() => setIsExpanded((value) => !value)} className="column-type-gallery__more">
-            {is_expanded ? "Fewer columns" : "More columns"}
-          </button>
+          {onOpenColumnCenter ? (
+            <button type="button" onClick={onOpenColumnCenter} className="column-type-gallery__more">
+              More columns
+            </button>
+          ) : (
+            <button type="button" aria-expanded={is_expanded} onClick={() => setIsExpanded((value) => !value)} className="column-type-gallery__more">
+              {is_expanded ? "Fewer columns" : "More columns"}
+            </button>
+          )}
         </div>
       )}
     </div>

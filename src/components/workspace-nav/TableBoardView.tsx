@@ -1,5 +1,6 @@
 "use client";
 import { reorderByIds } from "@/components/board/cells/optionOrder";
+import { countryName, docCellTitle, formatHour, formatWeekRange, timeZoneCity } from "@/components/board/table/columnValueFormats";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -24,6 +25,7 @@ import {
   COLUMN_KIND_SWATCH,
   COLUMN_OPTION_PALETTE,
   TABLE_KIND_TO_ENGINE_KIND,
+  presetConfigFor,
   DependencyPickerList,
   GanttChart,
   KANBAN_DEFAULT_LANE_OPTIONS,
@@ -229,6 +231,17 @@ const TABLE_COLUMN_KIND: Partial<Record<BoardColumnDto["type"], TableColumnDef["
   mirror: "mirror",
   checklist: "checklist",
   button: "button",
+  doc: "doc",
+  world_clock: "world_clock",
+  location: "location",
+  creation_log: "creation_log",
+  last_updated: "last_updated",
+  item_number: "item_number",
+  week: "week",
+  country: "country",
+  color_picker: "color_picker",
+  hour: "hour",
+  progress_tracking: "progress_tracking",
 };
 
 /** Real per-column option → the Table view's own option shape (`id`/`label`/`color`), used for status/label/dropdown/tags cells. */
@@ -302,6 +315,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
     hide_summary: column.config?.hide_summary === true || undefined,
+    hour_format: column.type === "hour" ? column.config?.hour_format ?? "12" : undefined,
     reminder: column.config?.reminder,
     dependency:
       column.type === "dependency"
@@ -1078,8 +1092,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       if (column_id === ITEM_COLUMN_ID) return row.name;
       if (column_id === CHAT_COLUMN_ID) return String(row.comment_count);
       const column = columns_by_id[column_id];
+      // Computed columns hold no value, their text comes from the item itself.
+      if (column?.type === "creation_log") {
+        const name = row.created_by_id != null ? people_names_by_id[String(row.created_by_id)] ?? "" : "";
+        return `${name} ${formatDate(row.created_at ?? null)}`.trim();
+      }
+      if (column?.type === "last_updated") {
+        const person_id = row.last_updated_by_id ?? row.created_by_id;
+        const name = person_id != null ? people_names_by_id[String(person_id)] ?? "" : "";
+        return `${name} ${formatDate(row.last_updated_at ?? row.created_at ?? null)}`.trim();
+      }
       const value = row.values[column_id];
       if (value == null) return "";
+      if (column?.type === "doc") return docCellTitle(value);
+      if (column?.type === "country" && typeof value === "string") return countryName(value);
+      if (column?.type === "world_clock" && typeof value === "string") return timeZoneCity(value);
+      if (column?.type === "week" && typeof value === "string") return formatWeekRange(value);
+      if (column?.type === "hour" && typeof value === "string") return formatHour(value, column.config?.hour_format === "24");
       if (column?.type === "people" && Array.isArray(value)) {
         return value.map((id) => people_names_by_id[String(id)] ?? String(id)).join(" ");
       }
@@ -1859,8 +1888,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `TABLE_COLUMN_KIND`) bridges that, so `BoardTable`'s `onAddColumn` prop
   // can hand this straight to `handleAddColumn` without the Table package
   // ever needing to know the engine's own type vocabulary. ──
+  // A preset (Priority, a Status column with priority labels) brings its own starting labels.
   const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
-    handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item");
+    handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item", presetConfigFor(kind, label));
 
   // ── Column-header menu — "Duplicate column"/"Add column to the right" both
   // create a new column id, so (like `handleAddTableColumn` above) they await
@@ -1885,7 +1915,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return handleAddColumn(
       { kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width },
       scope === "sub" ? "subitem" : "item",
-      undefined,
+      presetConfigFor(kind, label),
       after ? after.position + 1 : undefined
     );
   };
@@ -2886,6 +2916,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     comment_count: item.comment_count,
     is_priority: item.is_priority,
     recurrence: item.recurrence,
+    created_by_id: item.created_by_id != null ? String(item.created_by_id) : null,
+    created_at: item.created_at ?? null,
+    last_updated_by_id: item.last_updated_by_id != null ? String(item.last_updated_by_id) : null,
+    last_updated_at: item.last_updated_at ?? null,
   });
   // While subitem filters apply, only the subitems that match stay under their parent.
   const adaptTableItem = (item: BoardItemDto): BoardTableItem => {
@@ -3354,13 +3388,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, hour_format, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
         if (validation !== undefined) config_patch.validation = validation;
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
         if (hide_summary !== undefined) config_patch.hide_summary = hide_summary;
+        if (hour_format !== undefined) config_patch.hour_format = hour_format;
         if (reminder !== undefined) config_patch.reminder = reminder;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;

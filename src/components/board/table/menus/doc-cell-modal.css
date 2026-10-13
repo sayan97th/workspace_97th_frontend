@@ -1,0 +1,141 @@
+/*
+ * A Doc cell opened as a dialog: a dimmed backdrop, a white 12px card with
+ * monday's doc header (icon, item name, close), the doc toolbar and a
+ * centered writing column. Colors come from the `--doc-*` tokens of
+ * `.doc-theme` (doc-editor.css), so dark mode follows the board Docs.
+ */
+
+.doc-cell-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  background: var(--doc-overlay);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .doc-cell-modal {
+    animation: doc-cell-modal-fade 140ms ease-out;
+  }
+
+  .doc-cell-modal__dialog {
+    animation: doc-cell-modal-rise 160ms ease-out;
+  }
+}
+
+@keyframes doc-cell-modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes doc-cell-modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.doc-cell-modal__dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(920px, 100%);
+  height: min(760px, 100%);
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--doc-page);
+  color: var(--doc-text);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.3);
+}
+
+.doc-cell-modal__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 12px 0 20px;
+  border-bottom: 1px solid var(--doc-border);
+}
+
+.doc-cell-modal__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: #5559df;
+  color: #ffffff;
+}
+
+.doc-cell-modal__context {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--doc-text-secondary);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-cell-modal__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--doc-text-secondary);
+  transition: background-color 70ms ease-in;
+}
+
+.doc-cell-modal__close:hover {
+  background: var(--doc-hover);
+  color: var(--doc-text);
+}
+
+.doc-cell-modal__toolbar {
+  flex: none;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--doc-border);
+}
+
+.doc-cell-modal__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 32px 56px 48px;
+  overflow-y: auto;
+}
+
+.doc-cell-modal__title {
+  display: block;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--doc-text);
+  font-family: var(--doc-font-heading);
+  font-size: 32px;
+  font-weight: 500;
+  line-height: 40px;
+  outline: none;
+}
+
+.doc-cell-modal__title::placeholder {
+  color: var(--doc-placeholder);
+}
+
+@media (max-width: 640px) {
+  .doc-cell-modal__body {
+    padding: 20px 12px 32px;
+  }
+
+  .doc-cell-modal__title {
+    font-size: 26px;
+  }
+}

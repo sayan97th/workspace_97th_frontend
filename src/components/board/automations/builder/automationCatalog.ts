@@ -332,7 +332,7 @@ export const ANY_CHANGE_ONLY_KINDS: ColumnKind[] = ["timeline", "files", "checkl
 export const NUMERIC_KINDS: ColumnKind[] = ["number", "rating", "progress"];
 
 /** Kinds that are calculated and never written. */
-export const READ_ONLY_KINDS: ColumnKind[] = ["formula", "mirror", "auto_number", "button"];
+export const READ_ONLY_KINDS: ColumnKind[] = ["formula", "mirror", "auto_number", "button", "creation_log", "last_updated", "item_number", "progress_tracking"];
 
 /**
  * The families a condition reads a field as: the board filter ones, and the ones only automations

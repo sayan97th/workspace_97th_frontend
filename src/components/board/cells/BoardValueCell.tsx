@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, LinkIcon } from "@/icons/board-icons";
 import type { BoardColumnKind } from "../columnTypes";
+import { COLUMN_CENTER_KINDS, formatColumnCenterValue } from "../table/columnValueFormats";
 import type { BoardCellFile } from "@/types/board-content";
 import StatusPill from "../StatusPill";
 import ProductTag, { OverflowBadge } from "../ProductTag";
@@ -246,6 +247,15 @@ const BoardValueCell: React.FC<BoardValueCellProps> = ({
       return <TextInputCell value={value} onCommit={onCommit} input_type="email" />;
     case "text":
     default:
+      // The Column Center kinds are edited with the table's own pickers, here they read as text.
+      if (COLUMN_CENTER_KINDS.includes(column.kind)) {
+        const text = formatColumnCenterValue(column.kind, value);
+        return (
+          <span className="flex h-full min-w-0 items-center truncate px-2 text-[14px] text-boardtree-text" title={text ?? "Shown in the Table view"}>
+            {text || <span className="text-boardtree-text-faint">{text === null ? "Shown in the Table view" : "Empty"}</span>}
+          </span>
+        );
+      }
       return <TextInputCell value={value} onCommit={onCommit} />;
   }
 };

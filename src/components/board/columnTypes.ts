@@ -32,7 +32,18 @@ export type BoardColumnKind =
   | "connect_board"
   | "mirror"
   | "checklist"
-  | "button";
+  | "button"
+  | "doc"
+  | "world_clock"
+  | "location"
+  | "creation_log"
+  | "last_updated"
+  | "item_number"
+  | "week"
+  | "country"
+  | "color_picker"
+  | "hour"
+  | "progress_tracking";
 
 /** Colour + glyph badge shown for each column kind across every picker (Add column, Sort, Group by, Hide…). */
 export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
@@ -62,6 +73,17 @@ export const COLUMN_KIND_SWATCH: Record<BoardColumnKind, BoardColumnSwatch> = {
   mirror: { accent_color: "#0086c0", glyph: "⧉" },
   checklist: { accent_color: "#00c875", glyph: "☑" },
   button: { accent_color: "#579bfc", glyph: "▶" },
+  doc: { accent_color: "#5559df", glyph: "Dc" },
+  world_clock: { accent_color: "#00c875", glyph: "◷" },
+  location: { accent_color: "#f65f7c", glyph: "⌖" },
+  creation_log: { accent_color: "#5559df", glyph: "Cl" },
+  last_updated: { accent_color: "#f65f7c", glyph: "Lu" },
+  item_number: { accent_color: "#ffcb00", glyph: "1.", glyph_text_color: "#3a2a00" },
+  week: { accent_color: "#ffcb00", glyph: "W", glyph_text_color: "#3a2a00" },
+  country: { accent_color: "#00c875", glyph: "⚑" },
+  color_picker: { accent_color: "#00a9ff", glyph: "◐" },
+  hour: { accent_color: "#ffcb00", glyph: "◔", glyph_text_color: "#3a2a00" },
+  progress_tracking: { accent_color: "#a25ddc", glyph: "▰" },
 };
 
 /** Which group of the Add-column menu a type belongs to (mirrors Monday's "Essentials"/"Super useful" sections). */
@@ -280,6 +302,105 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
     description: "A read-only sequential number assigned when an item is created",
     swatch: COLUMN_KIND_SWATCH.auto_number,
     default_width: 100,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "doc",
+    label: "Doc",
+    description: "Document your work and increase collaboration",
+    swatch: COLUMN_KIND_SWATCH.doc,
+    default_width: 170,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "world_clock",
+    label: "World clock",
+    description: "Keep track of the time anywhere in the world",
+    swatch: COLUMN_KIND_SWATCH.world_clock,
+    default_width: 160,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "location",
+    label: "Location",
+    description: "Store an address and open it on a map",
+    swatch: COLUMN_KIND_SWATCH.location,
+    default_width: 200,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "creation_log",
+    label: "Creation log",
+    description: "Add the item's creator and creation date automatically",
+    swatch: COLUMN_KIND_SWATCH.creation_log,
+    default_width: 180,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "last_updated",
+    label: "Last updated",
+    description: "Add the person that last updated the item and the date",
+    swatch: COLUMN_KIND_SWATCH.last_updated,
+    default_width: 180,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "item_number",
+    label: "Auto number",
+    description: "Number items according to their order in the group",
+    swatch: COLUMN_KIND_SWATCH.item_number,
+    default_width: 110,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "week",
+    label: "Week",
+    description: "Select the week on which each item should be completed",
+    swatch: COLUMN_KIND_SWATCH.week,
+    default_width: 170,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "country",
+    label: "Country",
+    description: "Choose a country",
+    swatch: COLUMN_KIND_SWATCH.country,
+    default_width: 170,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "color_picker",
+    label: "Color picker",
+    description: "Manage a design system using a color palette",
+    swatch: COLUMN_KIND_SWATCH.color_picker,
+    default_width: 150,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "hour",
+    label: "Hour",
+    description: "Add times to manage and schedule tasks, shifts and more",
+    swatch: COLUMN_KIND_SWATCH.hour,
+    default_width: 120,
+    section: "super_useful",
+    has_options: false,
+  },
+  {
+    kind: "progress_tracking",
+    label: "Progress tracking",
+    description: "Show progress by combining status columns in a battery",
+    swatch: COLUMN_KIND_SWATCH.progress_tracking,
+    default_width: 180,
     section: "super_useful",
     has_options: false,
   },

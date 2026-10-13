@@ -367,7 +367,7 @@ function SubmenuRow<K extends string>({ submenu_key, submenu, renderFlyout, disa
 
 /** The colored square monday.com shows next to each column type. */
 function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
-  return <ColumnTypeIcon kind={type.kind} accent={type.accent} />;
+  return <ColumnTypeIcon kind={type.kind} glyph={type.glyph} accent={type.accent} />;
 }
 
 const Divider = () => <div className="action-menu__divider" role="separator" />;

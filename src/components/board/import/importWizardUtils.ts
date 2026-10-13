@@ -45,6 +45,17 @@ export const IMPORT_TYPE_LABELS: Record<BoardColumnType, string> = {
   mirror: "Mirror",
   checklist: "Checklist",
   button: "Button",
+  doc: "Doc",
+  world_clock: "World clock",
+  location: "Location",
+  creation_log: "Creation log",
+  last_updated: "Last updated",
+  item_number: "Auto number",
+  week: "Week",
+  country: "Country",
+  color_picker: "Color picker",
+  hour: "Hour",
+  progress_tracking: "Progress tracking",
 };
 
 /**
@@ -69,7 +80,9 @@ export const IMPORT_TYPE_NOTES: Partial<Record<BoardColumnType, string>> = {
 };
 
 /** Column types whose value is computed by the board, so an import can never write into them. Mirrors `BoardColumn::READ_ONLY_TYPES`. */
-export const READ_ONLY_COLUMN_TYPES: BoardColumnType[] = ["formula", "mirror", "auto_number", "button"];
+export const READ_ONLY_COLUMN_TYPES: BoardColumnType[] = [
+  "formula", "mirror", "auto_number", "button", "creation_log", "last_updated", "item_number", "progress_tracking",
+];
 
 /**
  * True when `type` can hold (nearly) every value the source column has.
