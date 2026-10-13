@@ -674,13 +674,14 @@ html.dark {
 
 .update-card__header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
 
 .update-card__byline {
   display: flex;
-  min-width: 0;
+  min-width: 140px;
   flex: 1;
   flex-wrap: wrap;
   align-items: center;
@@ -704,6 +705,7 @@ html.dark {
 .update-card__tools {
   display: flex;
   flex: none;
+  margin-left: auto;
   align-items: center;
   gap: 2px;
 }
@@ -749,24 +751,28 @@ html.dark {
   margin-top: 12px;
 }
 
-.update-card__meta {
+/* Who has seen the update and how many times it was viewed, next to the header tools. */
+.update-card__seen-summary {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--bd-text-secondary);
+  gap: 10px;
+  padding: 0 4px;
 }
 
 .update-card__meta-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  font-size: 13px;
+  color: var(--bd-text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
-.update-card__seen {
-  margin-right: auto;
+.update-card__tools-divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--bd-border-strong);
 }
 
 /* Like, React, Reply and Seen, one full width row of equal buttons as in monday. */

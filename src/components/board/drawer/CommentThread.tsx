@@ -430,8 +430,22 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             <DeactivatedBadge is_deactivated={comment.author.is_deactivated} />
             <span className="update-card__time">{comment.posted_at}</span>
             {fresh_comment_ids.includes(comment.id) && <NewBadge />}
+            {comment.is_edited && (
+              <EditedMarker
+                onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id) : undefined}
+                edited_at={comment.edited_at}
+              />
+            )}
           </div>
           <div className="update-card__tools">
+            <div className="update-card__seen-summary">
+              <SeenByList seen_by={comment.seen_by} />
+              <span className="update-card__meta-item" title={`Viewed by ${comment.view_count}`} aria-label={`Viewed by ${comment.view_count}`}>
+                <ViewsIcon />
+                {comment.view_count}
+              </span>
+            </div>
+            <span className="update-card__tools-divider" aria-hidden="true" />
             {collaboration && (
               <button
                 type="button"
@@ -503,21 +517,6 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onToggle={(emoji) => onToggleReaction(comment.id, null, emoji)}
         />
 
-        <div className="update-card__meta">
-          <span className="update-card__seen">
-            <SeenByList seen_by={comment.seen_by} />
-          </span>
-          {comment.is_edited && (
-            <EditedMarker
-              onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id) : undefined}
-              edited_at={comment.edited_at}
-            />
-          )}
-          <span className="update-card__meta-item" title={`Viewed by ${comment.view_count}`}>
-            <ViewsIcon />
-            {comment.view_count}
-          </span>
-        </div>
       </div>
 
       <div className="update-card__actions">
