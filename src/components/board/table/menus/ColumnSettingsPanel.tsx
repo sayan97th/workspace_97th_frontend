@@ -6,34 +6,30 @@ import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../consta
 import type { ColumnKind, ColumnValidation } from "../types";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
 
+/*
+ * The small forms the column menu's Settings flyout opens to the side. Each one
+ * renders only its content: `ColumnMenu`'s flyout wrapper adds the card, the
+ * side placement and the `column-menu.css` look.
+ */
+
 interface ColumnSettingsPanelProps {
   width: number;
   hideable: boolean;
   pinnable: boolean;
-  can_edit_labels: boolean;
-  /** Drives which validation fields below are relevant — `min`/`max` for `number`, `pattern` for the text-family kinds. Undefined for the item-title/sub-title virtual columns, which skip validation entirely. */
-  kind?: ColumnKind;
-  validation?: ColumnValidation;
+  kind: ColumnKind;
   /** Number kind only: which aggregation the group summary footer shows for this column, see `summaryUtils.ts`. Undefined behaves as `"sum"`. */
   aggregation?: NumberAggregation;
-  /** Date kind only: due-date reminder settings, see `ColumnDef.reminder`. */
-  reminder?: { enabled: boolean; days_before: number };
   onWidthChange: (width: number) => void;
   onHideableChange: (value: boolean) => void;
   onPinnableChange: (value: boolean) => void;
-  onValidationChange?: (patch: Partial<ColumnValidation>) => void;
-  onAggregationChange?: (aggregation: NumberAggregation) => void;
-  onReminderChange?: (reminder: { enabled: boolean; days_before: number }) => void;
-  onEditLabels: () => void;
+  onAggregationChange: (aggregation: NumberAggregation) => void;
 }
 
-const ROW = "flex h-[34px] w-full items-center justify-between gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text";
-
+/** "Column options": width, whether people can hide or pin the column, and the Number summary's aggregation. */
 export default function ColumnSettingsPanel({
-  width, hideable, pinnable, can_edit_labels, kind, validation, aggregation, reminder, onWidthChange, onHideableChange, onPinnableChange, onValidationChange, onAggregationChange, onReminderChange, onEditLabels,
+  width, hideable, pinnable, kind, aggregation, onWidthChange, onHideableChange, onPinnableChange, onAggregationChange,
 }: ColumnSettingsPanelProps) {
   const [draft, setDraft] = useState(String(width));
-  const [pattern_draft, setPatternDraft] = useState(validation?.pattern ?? "");
 
   const commitWidth = () => {
     const parsed = Number(draft);
@@ -42,42 +38,43 @@ export default function ColumnSettingsPanel({
   };
 
   return (
-    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[10px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_16px_44px_rgba(30,34,55,0.22)] dark:shadow-[0_16px_44px_rgba(0,0,0,0.55)]">
-      <label className="flex items-center justify-between gap-2.5 px-1 pb-2 text-[13px] text-boardtree-text">
+    <div className="action-menu column-menu__form w-[264px]">
+      <label className="column-menu__field">
         <span>Width</span>
         <input
           type="number"
           min={MIN_COLUMN_WIDTH}
           max={MAX_COLUMN_WIDTH}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(event) => setDraft(event.target.value)}
           onBlur={commitWidth}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          onKeyDown={(event) => {
+            if (event.key === "Enter") (event.target as HTMLInputElement).blur();
           }}
-          className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+          className="column-menu__input column-menu__input--short"
         />
       </label>
+      <div className="column-menu__help">Between {MIN_COLUMN_WIDTH} and {MAX_COLUMN_WIDTH} pixels.</div>
 
-      <button type="button" onClick={() => onHideableChange(!hideable)} className={`${ROW} hover:bg-boardtree-hover`}>
-        <span>Hideable</span>
+      <div className="action-menu__divider" role="separator" />
+      <button type="button" role="menuitemcheckbox" aria-checked={hideable} onClick={() => onHideableChange(!hideable)} className="action-menu__item">
+        <span className="action-menu__label">Hideable</span>
         <ToggleSwitch is_on={hideable} size="sm" />
       </button>
-
-      <button type="button" onClick={() => onPinnableChange(!pinnable)} className={`${ROW} hover:bg-boardtree-hover`}>
-        <span>Pinnable</span>
+      <button type="button" role="menuitemcheckbox" aria-checked={pinnable} onClick={() => onPinnableChange(!pinnable)} className="action-menu__item">
+        <span className="action-menu__label">Pinnable</span>
         <ToggleSwitch is_on={pinnable} size="sm" />
       </button>
 
-      {onAggregationChange && kind === "number" && (
+      {kind === "number" && (
         <>
-          <div className="my-1 h-px bg-boardtree-border-soft" />
-          <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
+          <div className="action-menu__divider" role="separator" />
+          <label className="column-menu__field">
             <span>Group summary</span>
             <select
               value={aggregation ?? "sum"}
-              onChange={(e) => onAggregationChange(e.target.value as NumberAggregation)}
-              className="h-8 rounded-[6px] border border-boardtree-border bg-boardtree-surface px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+              onChange={(event) => onAggregationChange(event.target.value as NumberAggregation)}
+              className="column-menu__input"
             >
               {(Object.keys(NUMBER_AGGREGATION_LABELS) as NumberAggregation[]).map((option) => (
                 <option key={option} value={option}>{NUMBER_AGGREGATION_LABELS[option]}</option>
@@ -86,84 +83,147 @@ export default function ColumnSettingsPanel({
           </label>
         </>
       )}
+    </div>
+  );
+}
 
-      {onReminderChange && kind === "date" && (
+/** Whether "Set column validation" has anything to offer for this kind. */
+export const hasValidationRules = (kind: ColumnKind): boolean => kind === "number" || TEXT_FAMILY_KINDS.includes(kind);
+
+interface ColumnValidationPanelProps {
+  kind: ColumnKind;
+  validation?: ColumnValidation;
+  onChange: (patch: Partial<ColumnValidation>) => void;
+}
+
+/** "Set column validation": a Number column's min and max, or the pattern a text column's values must match. */
+export function ColumnValidationPanel({ kind, validation, onChange }: ColumnValidationPanelProps) {
+  const [pattern_draft, setPatternDraft] = useState(validation?.pattern ?? "");
+
+  return (
+    <div className="action-menu column-menu__form w-[264px]">
+      <div className="column-menu__label">Values in this column must</div>
+      {kind === "number" ? (
         <>
-          <div className="my-1 h-px bg-boardtree-border-soft" />
-          <button type="button" onClick={() => onReminderChange({ enabled: !reminder?.enabled, days_before: reminder?.days_before ?? 0 })} className={`${ROW} hover:bg-boardtree-hover`}>
-            <span>Due date reminder</span>
-            <ToggleSwitch is_on={!!reminder?.enabled} size="sm" />
-          </button>
-          {reminder?.enabled && (
-            <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
-              <span>Days before</span>
-              <input
-                type="number"
-                min={0}
-                max={365}
-                value={reminder.days_before}
-                onChange={(e) => onReminderChange({ enabled: true, days_before: Math.max(0, Number(e.target.value) || 0) })}
-                className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
-              />
-            </label>
-          )}
+          <label className="column-menu__field">
+            <span>Be at least</span>
+            <input
+              type="number"
+              value={validation?.min ?? ""}
+              placeholder="No min"
+              onChange={(event) => onChange({ min: event.target.value === "" ? undefined : Number(event.target.value) })}
+              className="column-menu__input column-menu__input--short"
+            />
+          </label>
+          <label className="column-menu__field">
+            <span>Be at most</span>
+            <input
+              type="number"
+              value={validation?.max ?? ""}
+              placeholder="No max"
+              onChange={(event) => onChange({ max: event.target.value === "" ? undefined : Number(event.target.value) })}
+              className="column-menu__input column-menu__input--short"
+            />
+          </label>
         </>
+      ) : (
+        <label className="column-menu__field column-menu__field--stacked">
+          <span>Match this pattern (regex)</span>
+          <input
+            value={pattern_draft}
+            onChange={(event) => setPatternDraft(event.target.value)}
+            onBlur={() => onChange({ pattern: pattern_draft.trim() || undefined })}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+            }}
+            placeholder="e.g. ^[A-Z]{2}[0-9]+$"
+            className="column-menu__input column-menu__input--mono"
+          />
+        </label>
       )}
+      <div className="column-menu__help">Values that break the rule are flagged in their cell.</div>
+    </div>
+  );
+}
 
-      {onValidationChange && kind && (
-        <>
-          <div className="my-1 h-px bg-boardtree-border-soft" />
-          <button type="button" onClick={() => onValidationChange({ required: !validation?.required })} className={`${ROW} hover:bg-boardtree-hover`}>
-            <span>Required</span>
-            <ToggleSwitch is_on={!!validation?.required} size="sm" />
-          </button>
+interface ReminderSettingsPanelProps {
+  reminder?: { enabled: boolean; days_before: number };
+  onChange: (reminder: { enabled: boolean; days_before: number }) => void;
+}
 
-          {kind === "number" && (
-            <>
-              <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
-                <span>Min value</span>
-                <input
-                  type="number"
-                  value={validation?.min ?? ""}
-                  onChange={(e) => onValidationChange({ min: e.target.value === "" ? undefined : Number(e.target.value) })}
-                  className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
-                />
-              </label>
-              <label className="flex items-center justify-between gap-2.5 px-1 py-1.5 text-[13px] text-boardtree-text">
-                <span>Max value</span>
-                <input
-                  type="number"
-                  value={validation?.max ?? ""}
-                  onChange={(e) => onValidationChange({ max: e.target.value === "" ? undefined : Number(e.target.value) })}
-                  className="h-8 w-20 rounded-[6px] border border-boardtree-border px-2 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
-                />
-              </label>
-            </>
-          )}
+/** A Date column's "Set due date reminder": notifies the item's people once the date is close. */
+export function ReminderSettingsPanel({ reminder, onChange }: ReminderSettingsPanelProps) {
+  const is_enabled = !!reminder?.enabled;
+  const days_before = reminder?.days_before ?? 0;
 
-          {TEXT_FAMILY_KINDS.includes(kind) && (
-            <label className="flex flex-col gap-1 px-1 py-1.5 text-[13px] text-boardtree-text">
-              <span>Match pattern (regex)</span>
-              <input
-                value={pattern_draft}
-                onChange={(e) => setPatternDraft(e.target.value)}
-                onBlur={() => onValidationChange({ pattern: pattern_draft.trim() || undefined })}
-                placeholder="e.g. ^[A-Z]{2}[0-9]+$"
-                className="h-8 w-full rounded-[6px] border border-boardtree-border px-2 font-mono text-[12px] text-boardtree-text outline-none focus:border-boardtree-accent"
-              />
-            </label>
-          )}
-        </>
+  return (
+    <div className="action-menu column-menu__form w-[264px]">
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={is_enabled}
+        onClick={() => onChange({ enabled: !is_enabled, days_before })}
+        className="action-menu__item"
+      >
+        <span className="action-menu__label">Due date reminder</span>
+        <ToggleSwitch is_on={is_enabled} size="sm" />
+      </button>
+      {is_enabled && (
+        <label className="column-menu__field">
+          <span>Days before</span>
+          <input
+            type="number"
+            min={0}
+            max={365}
+            value={days_before}
+            onChange={(event) => onChange({ enabled: true, days_before: Math.min(365, Math.max(0, Number(event.target.value) || 0)) })}
+            className="column-menu__input column-menu__input--short"
+          />
+        </label>
       )}
+      <div className="column-menu__help">Everyone assigned in a People column of the item gets notified.</div>
+    </div>
+  );
+}
 
-      {can_edit_labels && (
-        <>
-          <div className="my-1 h-px bg-boardtree-border-soft" />
-          <button type="button" onClick={onEditLabels} className={`${ROW} hover:bg-boardtree-hover`}>
-            <span>Edit labels</span>
-          </button>
-        </>
-      )}
+const BUTTON_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#323338", "#ff7575", "#037f4c"];
+
+interface ButtonSettingsPanelProps {
+  button?: { label: string; color: string };
+  fallback_label: string;
+  onSave: (button: { label: string; color: string }) => void;
+}
+
+/** A Button column's label and color. */
+export function ButtonSettingsPanel({ button, fallback_label, onSave }: ButtonSettingsPanelProps) {
+  const [label, setLabel] = useState(button?.label ?? fallback_label);
+  const [color, setColor] = useState(button?.color ?? BUTTON_COLORS[0]);
+
+  return (
+    <div className="action-menu column-menu__form w-[240px]">
+      <label className="column-menu__field column-menu__field--stacked">
+        <span className="column-menu__label px-0">Button text</span>
+        <input value={label} maxLength={40} onChange={(event) => setLabel(event.target.value)} className="column-menu__input" />
+      </label>
+      <div className="column-menu__label">Color</div>
+      <div role="radiogroup" aria-label="Button color" className="column-menu__swatches">
+        {BUTTON_COLORS.map((swatch) => (
+          <button
+            key={swatch}
+            type="button"
+            role="radio"
+            aria-checked={color === swatch}
+            aria-label={swatch}
+            title={swatch}
+            onClick={() => setColor(swatch)}
+            className="column-menu__swatch"
+            style={{ background: swatch }}
+          />
+        ))}
+      </div>
+      <button type="button" disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), color })} className="column-menu__primary">
+        Save button
+      </button>
     </div>
   );
 }

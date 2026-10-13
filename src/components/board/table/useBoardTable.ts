@@ -1771,7 +1771,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, []);
 
   const duplicateColumn = useCallback(
-    (group_key: string, scope: ColumnScope, column_id: string) => {
+    (group_key: string, scope: ColumnScope, column_id: string, with_values = false) => {
       setState((s) => {
         const list_key = columnListKey(scope);
         const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
@@ -1784,7 +1784,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
             const original = base.find((c) => c.id === column_id) ?? custom.find((c) => c.id === column_id);
             if (!original) return g;
             const copy: ColumnDef = { ...original, id: nextId("col"), title: `${original.title} (copy)` };
-            return { ...g, [list_key]: custom.concat(copy) };
+            if (!with_values) return { ...g, [list_key]: custom.concat(copy) };
+            const copyValue = <T extends BoardTableNode>(node: T): T =>
+              column_id in node.values ? { ...node, values: { ...node.values, [copy.id]: node.values[column_id] } } : node;
+            const items = g.items.map((item) => (scope === "main" ? copyValue(item) : { ...item, subs: item.subs.map(copyValue) }));
+            return { ...g, items, [list_key]: custom.concat(copy) };
           }),
           open_column_menu_key: null,
         };

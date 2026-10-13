@@ -80,6 +80,8 @@ export type BoardColumnConfig = {
   use_working_days?: boolean;
   /** Any column: the "Column description" shown in the header's info popover. */
   description?: string | null;
+  /** Any column: the column menu's "Hide column summary", see `ColumnDef.hide_summary` in `@/components/board/table/types`. */
+  hide_summary?: boolean;
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };

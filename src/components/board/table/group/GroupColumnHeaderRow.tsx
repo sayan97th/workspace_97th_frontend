@@ -117,7 +117,6 @@ export default function GroupColumnHeaderRow({
           onLeave={() => actions.setHoverHead(null)}
           onOpenMenu={() => actions.openColumnMenu(item_title_key)}
           onCloseMenu={actions.closeColumnMenu}
-          onRename={(title) => actions.renameItemTitle(group.key, "main", title)}
           onStartRename={() => actions.startColumnRename(item_title_key, group.key, "main", null, group.item_title)}
           onDraftChange={actions.updateColumnDraft}
           onCommitRename={actions.commitColumnRename}
@@ -138,7 +137,7 @@ export default function GroupColumnHeaderRow({
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
@@ -151,7 +150,6 @@ export default function GroupColumnHeaderRow({
             onLeave={() => actions.setHoverHead(null)}
             onOpenMenu={() => actions.openColumnMenu(scope_key_of(col.id))}
             onCloseMenu={actions.closeColumnMenu}
-            onRename={(title) => actions.renameColumn(group.key, "main", col.id, title)}
             onStartRename={() => actions.startColumnRename(scope_key_of(col.id), group.key, "main", col.id, col.title)}
             onDraftChange={actions.updateColumnDraft}
             onCommitRename={actions.commitColumnRename}
@@ -181,7 +179,7 @@ export default function GroupColumnHeaderRow({
             automation={column_automation ? { count: column_automation.counts[col.id] ?? 0, onOpen: () => column_automation.onOpen(col.id) } : undefined}
             is_restricted={col.is_restricted}
             onCollapseAll={actions.collapseAllGroups}
-            onDuplicate={() => actions.duplicateColumn(group.key, "main", col.id)}
+            onDuplicate={(with_values) => actions.duplicateColumn(group.key, "main", col.id, with_values)}
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "main", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "main", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "main", col.id)}

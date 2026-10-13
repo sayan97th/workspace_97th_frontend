@@ -65,6 +65,9 @@ function fmtAggregate(n: number): string {
 export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
   const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0 };
 
+  // The column menu's "Hide column summary" leaves the footer cell empty.
+  if (column.hide_summary) return base;
+
   if (column.kind === "timeline") {
     const { start_iso, end_iso } = widestRangeOf(items, column.id);
     return { ...base, is_timeline: true, range_label: start_iso ? fmtRange(start_iso, end_iso) : "", elapsed_ratio: rangeElapsedRatio(start_iso, end_iso) };

@@ -28,6 +28,14 @@ export const removeItemFromTree = (items: BoardItemDto[], item_id: number): Boar
     .filter((item) => item.id !== item_id)
     .map((item) => (item.children.length ? { ...item, children: removeItemFromTree(item.children, item_id) } : item));
 
+/** Copies every row's `from_column_id` cell into `to_column_id`, subitems included, after a "Column and cell values" duplicate. */
+export const copyColumnValuesInTree = (items: BoardItemDto[], from_column_id: string, to_column_id: string): BoardItemDto[] =>
+  items.map((item) => ({
+    ...item,
+    values: from_column_id in item.values ? { ...item.values, [to_column_id]: item.values[from_column_id] } : item.values,
+    children: item.children.length ? copyColumnValuesInTree(item.children, from_column_id, to_column_id) : item.children,
+  }));
+
 export const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
   for (const item of items) {
     if (item.id === item_id) return item;

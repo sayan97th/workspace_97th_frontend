@@ -1,20 +1,19 @@
 "use client";
 
 import { useRef, useState } from "react";
-import ColumnMenu from "../menus/ColumnMenu";
+import ColumnMenu, { type ColumnMenuColumn } from "../menus/ColumnMenu";
 import ColumnResizeHandle from "./ColumnResizeHandle";
 import ColumnInfoButton, { hasColumnInfo } from "./ColumnInfoButton";
 import ColumnDescriptionModal from "../menus/ColumnDescriptionModal";
 import EmojiInsertButton from "../../EmojiInsertButton";
-import type { ColumnDef, ColumnKind, ColumnLinkage, ColumnSettingsPatch, ColumnValidation, DependencyConfig, StatusDef } from "../types";
-import type { NumberAggregation } from "../summaryUtils";
+import type { ColumnKind, ColumnSettingsPatch } from "../types";
 
 interface ColumnHeaderCellProps {
   scoped_key: string;
   title: string;
   height: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"]; description?: string; linkage?: ColumnLinkage };
+  column?: ColumnMenuColumn;
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible?: boolean;
@@ -28,7 +27,6 @@ interface ColumnHeaderCellProps {
   onLeave: () => void;
   onOpenMenu: () => void;
   onCloseMenu: () => void;
-  onRename: (title: string) => void;
   /** Click on the title turns it into an editable input. */
   onStartRename: () => void;
   onDraftChange: (value: string) => void;
@@ -62,7 +60,8 @@ interface ColumnHeaderCellProps {
   /** Shows a lock next to the title, see `ColumnDef.is_restricted`. */
   is_restricted?: boolean;
   onCollapseAll: () => void;
-  onDuplicate: () => void;
+  /** `with_values` is the menu's "Column and cell values", false its "Column only". */
+  onDuplicate: (with_values: boolean) => void;
   /** Undefined for the item-title/sub-title virtual columns, which have no real column to copy onto another board. */
   onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight?: (kind: ColumnKind, label: string, default_width: number) => void;
@@ -82,7 +81,7 @@ interface ColumnHeaderCellProps {
 
 export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
-  onEnter, onLeave, onOpenMenu, onCloseMenu, onRename, onStartRename, onDraftChange, onCommitRename, onCancelRename,
+  onEnter, onLeave, onOpenMenu, onCloseMenu, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
   onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
@@ -189,7 +188,7 @@ export default function ColumnHeaderCell({
           can_delete={can_delete}
           sort_dir={sort_dir}
           is_group_by_eligible={!!is_group_by_eligible}
-          onRename={onRename}
+          onStartRename={onStartRename}
           onSort={onSort}
           onUpdateSettings={onUpdateSettings ?? (() => {})}
           onEditLabels={onEditLabels}

@@ -115,7 +115,8 @@ export interface BoardTableProps {
    * config-callback-inside-hook pattern `onRenameColumn`/`onDeleteColumn`/
    * `onUpdateColumnSettings`/`onChangeColumnKind` use (see `UseBoardTableConfig`).
    */
-  onDuplicateColumn?: (group_key: string, scope: ColumnScope, column_id: string) => Promise<void>;
+  /** `with_values` is the "Column and cell values" option, which also copies every cell. */
+  onDuplicateColumn?: (group_key: string, scope: ColumnScope, column_id: string, with_values: boolean) => Promise<void>;
   /**
    * Column-header menu's "Duplicate to another board" — copies the
    * column's structure onto a different board, never its cell values (that
@@ -363,9 +364,9 @@ export default function BoardTable({
   );
 
   const duplicateColumnReal = useCallback(
-    (group_key: string, scope: ColumnScope, column_id: string) => {
-      if (!onDuplicateColumn) return base_actions.duplicateColumn(group_key, scope, column_id);
-      void onDuplicateColumn(group_key, scope, column_id);
+    (group_key: string, scope: ColumnScope, column_id: string, with_values = false) => {
+      if (!onDuplicateColumn) return base_actions.duplicateColumn(group_key, scope, column_id, with_values);
+      void onDuplicateColumn(group_key, scope, column_id, with_values);
     },
     [onDuplicateColumn, base_actions]
   );

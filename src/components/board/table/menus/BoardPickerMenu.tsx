@@ -8,6 +8,8 @@ import PopoverPanel from "./PopoverPanel";
 interface BoardPickerMenuProps {
   onPick: (board_id: string) => void;
   onClose: () => void;
+  /** Renders the list in place, without its own anchored popover, for a flyout that already draws the card (the column menu). */
+  inline?: boolean;
 }
 
 /**
@@ -16,7 +18,7 @@ interface BoardPickerMenuProps {
  * `ConnectBoardBody`, which already do this same "search + pick a board" job
  * for a Connect-board column's own target picker.
  */
-export default function BoardPickerMenu({ onPick, onClose }: BoardPickerMenuProps) {
+export default function BoardPickerMenu({ onPick, onClose, inline = false }: BoardPickerMenuProps) {
   const [query, setQuery] = useState("");
   const [boards, setBoards] = useState<WorkspaceContentItem[]>([]);
   const [is_loading, setIsLoading] = useState(true);
@@ -39,8 +41,8 @@ export default function BoardPickerMenu({ onPick, onClose }: BoardPickerMenuProp
   const q = query.trim().toLowerCase();
   const filtered = boards.filter((board) => board.label.toLowerCase().includes(q));
 
-  return (
-    <PopoverPanel onClose={onClose} className="top-full left-0 w-[280px] p-3 pb-2.5">
+  const content = (
+    <>
       <input
         autoFocus
         value={query}
@@ -67,6 +69,12 @@ export default function BoardPickerMenu({ onPick, onClose }: BoardPickerMenuProp
         </div>
       )}
       {is_loading && <div className="px-1.5 pb-1.5 pt-1.5 text-[12.5px] text-boardtree-text-faint">Loading, please wait.</div>}
+    </>
+  );
+  if (inline) return <div className="w-[280px] p-3 pb-2.5">{content}</div>;
+  return (
+    <PopoverPanel onClose={onClose} className="top-full left-0 w-[280px] p-3 pb-2.5">
+      {content}
     </PopoverPanel>
   );
 }

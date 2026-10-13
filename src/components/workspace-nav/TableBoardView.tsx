@@ -113,6 +113,7 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
 import {
+  copyColumnValuesInTree,
   findItemInTree,
   insertItemBelowInTree,
   mapItemInTree,
@@ -300,6 +301,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     button: column.type === "button" ? { label: column.config?.button_label ?? column.label, color: column.config?.button_color ?? "#579bfc" } : undefined,
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
+    hide_summary: column.config?.hide_summary === true || undefined,
     reminder: column.config?.reminder,
     dependency:
       column.type === "dependency"
@@ -1864,9 +1866,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // create a new column id, so (like `handleAddTableColumn` above) they await
   // the real API call and let the resync effect off `table_config.initial_groups`
   // bring the new column in, rather than mutating `BoardTable`'s local state. ──
-  const handleDuplicateTableColumn = async (_group_key: string, _scope: TableColumnScope, column_id: string) => {
-    const created = await boardContentService.duplicateColumn(board_id, Number(column_id), false);
+  const handleDuplicateTableColumn = async (_group_key: string, _scope: TableColumnScope, column_id: string, with_values: boolean) => {
+    const created = await boardContentService.duplicateColumn(board_id, Number(column_id), with_values);
     setColumns((current) => insertColumnAtPosition(current, created));
+    // "Column and cell values": the API copied every cell server side, mirror that on the rows already loaded.
+    if (with_values) setItems((current) => copyColumnValuesInTree(current, column_id, String(created.id)));
   };
 
   const handleAddColumnRight = async (
@@ -3350,12 +3354,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
         if (validation !== undefined) config_patch.validation = validation;
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
+        if (hide_summary !== undefined) config_patch.hide_summary = hide_summary;
         if (reminder !== undefined) config_patch.reminder = reminder;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;

@@ -9,14 +9,16 @@ interface ColumnPickerProps {
   onPick: (type: ColumnTypeDef) => void;
   onClose: () => void;
   align?: "left" | "right";
+  /** Renders the gallery in place, without its own anchored popover, for a flyout that already draws the card (the column menu's "More columns"). */
+  inline?: boolean;
 }
 
 const SECTIONS: ColumnTypeDef["section"][] = ["Essentials", "Super useful"];
 
-export default function ColumnPicker({ query, onQueryChange, onPick, onClose, align = "right" }: ColumnPickerProps) {
+export default function ColumnPicker({ query, onQueryChange, onPick, onClose, align = "right", inline = false }: ColumnPickerProps) {
   const q = query.trim().toLowerCase();
-  return (
-    <PopoverPanel onClose={onClose} className={`top-full w-[360px] p-4 ${align === "right" ? "right-0" : "left-0"}`}>
+  const content = (
+    <>
       <div className="flex items-center gap-2.5">
         <div className="flex h-9 flex-1 items-center gap-2 rounded-[8px] border-[1.5px] border-boardtree-accent px-2.5">
           <svg viewBox="0 0 14 14" width="13" height="13" className="text-boardtree-text-muted"><circle cx="6" cy="6" r="4.2" fill="none" stroke="currentColor" strokeWidth="1.4" /><path d="M9.2 9.2 L12.4 12.4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg>
@@ -56,6 +58,12 @@ export default function ColumnPicker({ query, onQueryChange, onPick, onClose, al
           </div>
         );
       })}
+    </>
+  );
+  if (inline) return <div className="w-[360px] p-4">{content}</div>;
+  return (
+    <PopoverPanel onClose={onClose} className={`top-full w-[360px] p-4 ${align === "right" ? "right-0" : "left-0"}`}>
+      {content}
     </PopoverPanel>
   );
 }

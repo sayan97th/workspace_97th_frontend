@@ -1,23 +1,67 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
-import ColumnSettingsPanel from "./ColumnSettingsPanel";
+import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
 import BoardPickerMenu from "./BoardPickerMenu";
 import DependencySettingsPanel from "./DependencySettingsPanel";
-import type { ColumnTypeDef } from "../constants";
-import type { ColumnDef, ColumnKind, ColumnLinkage, ColumnSettingsPatch, ColumnValidation, DependencyConfig, StatusDef } from "../types";
-import type { NumberAggregation } from "../summaryUtils";
+import ToggleSwitch from "../../toolbar/ToggleSwitch";
+import { boardTreeFontClassName } from "@/components/board/board-tree-font";
+import {
+  BellIcon,
+  ChangeTypeIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  DeleteIcon,
+  DuplicateIcon,
+  EyeIcon,
+  EyeOffIcon,
+  FilterIcon,
+  LockIcon,
+  PencilIcon,
+  PlusIcon,
+  SaveAsTemplateIcon,
+  SortArrowsIcon,
+} from "@/icons/workspace-icons";
+import {
+  AutomateIcon,
+  BoardCopyIcon,
+  ButtonColumnIcon,
+  CollapseColumnIcon,
+  ColumnOptionsIcon,
+  CustomizeColumnIcon,
+  DependencyIcon,
+  DescriptionIcon,
+  ExtensionsIcon,
+  GroupByIcon,
+  RequiredIcon,
+  SettingsGearIcon,
+  ValidationIcon,
+} from "./column-menu-icons";
+import { CHANGE_TYPE_TARGETS, COLUMN_TYPE_GALLERY, QUICK_ADD_COLUMN_KINDS, type ColumnTypeDef } from "../constants";
+import type { ColumnDef, ColumnKind, ColumnSettingsPatch, ColumnValidation } from "../types";
+import "@/components/ui/dropdown/action-menu.css";
+import "./column-menu.css";
+
+/** What the menu needs to know about a real column. */
+export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
+  Partial<
+    Pick<
+      ColumnDef,
+      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary"
+    >
+  >;
 
 interface ColumnMenuProps {
   title: string;
-  /** Undefined for the item-title/sub-title virtual columns — renders the reduced menu (rename + sort + collapse only). */
-  column?: { id: string; kind: ColumnKind; width: number; options?: StatusDef[]; validation?: ColumnValidation; aggregation?: NumberAggregation; reminder?: { enabled: boolean; days_before: number }; button?: { label: string; color: string }; dependency?: DependencyConfig; dependency_date_columns?: ColumnDef["dependency_date_columns"]; description?: string; linkage?: ColumnLinkage };
+  /** Undefined for the item-title/sub-title virtual columns, which get the reduced menu (sort, collapse and rename only). */
+  column?: ColumnMenuColumn;
   can_delete: boolean;
   sort_dir: "asc" | "desc" | null;
   is_group_by_eligible: boolean;
-  onRename: (title: string) => void;
+  /** "Rename": turns the header title into its inline input. */
+  onStartRename: () => void;
   onSort: (direction: "asc" | "desc" | null) => void;
   onUpdateSettings: (patch: ColumnSettingsPatch) => void;
   onEditLabels?: () => void;
@@ -33,7 +77,8 @@ interface ColumnMenuProps {
   onRequestFilter: () => void;
   onRequestGroupBy: () => void;
   onCollapseAll: () => void;
-  onDuplicate: () => void;
+  /** `with_values` is "Column and cell values", false is "Column only". */
+  onDuplicate: (with_values: boolean) => void;
   /** Undefined for the item-title/sub-title virtual columns, which have no real column to copy onto another board. */
   onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight: (kind: ColumnKind, label: string, default_width: number) => void;
@@ -46,34 +91,12 @@ interface ColumnMenuProps {
   automation?: { count: number; onOpen: () => void };
 }
 
-const ROW_ITEM = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
-const ROW_DISABLED = "flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-text-faint cursor-default";
-
-type Sub = "settings" | "add" | "type" | "duplicate_to_board" | "button" | "dependency" | null;
-
-const BUTTON_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#323338", "#ff7575", "#037f4c"];
-
-/** A Button column's label and color, edited from its header menu. */
-function ButtonSettingsPanel({ button, fallback_label, onSave }: { button?: { label: string; color: string }; fallback_label: string; onSave: (button: { label: string; color: string }) => void }) {
-  const [label, setLabel] = useState(button?.label ?? fallback_label);
-  const [color, setColor] = useState(button?.color ?? BUTTON_COLORS[0]);
-  return (
-    <div className="absolute left-full top-[-6px] z-10 ml-1 w-[220px] rounded-[8px] border border-boardtree-border bg-boardtree-surface p-2.5 shadow-[0_8px_24px_rgba(30,34,55,0.18)]">
-      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Button text</div>
-      <input value={label} maxLength={40} onChange={(event) => setLabel(event.target.value)} aria-label="Button text" className="mb-2 h-8 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent" />
-      <div className="mb-1 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint">Color</div>
-      <div role="radiogroup" aria-label="Button color" className="mb-2.5 flex flex-wrap gap-1.5">
-        {BUTTON_COLORS.map((swatch) => (
-          <button key={swatch} type="button" role="radio" aria-checked={color === swatch} aria-label={swatch} onClick={() => setColor(swatch)} className={`h-6 w-6 rounded-full border-2 ${color === swatch ? "border-boardtree-text" : "border-transparent"}`} style={{ background: swatch }} />
-        ))}
-      </div>
-      <button type="button" disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), color })} className="h-8 w-full rounded-[6px] bg-boardtree-accent text-[12.5px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40">
-        Save button
-      </button>
-    </div>
-  );
-}
-
+const NOT_AVAILABLE_REASON = "Not available yet";
+/** Kinds whose group summary footer shows something, so "Hide column summary" has an effect. */
+const SUMMARY_KINDS: ColumnKind[] = ["status", "number", "timeline"];
+const VIEWPORT_MARGIN = 8;
+/** The flyout's top edge sits this far above its row, so its first row lines up with the row that opened it. */
+const FLYOUT_TOP_OFFSET = 8;
 /**
  * Rows sit directly on top of each other while their flyouts render off to the side,
  * so a diagonal mouse move toward a flyout briefly crosses a neighboring row's box.
@@ -82,303 +105,611 @@ function ButtonSettingsPanel({ button, fallback_label, onSave }: { button?: { la
  */
 const HOVER_INTENT_DELAY_MS = 250;
 
-export default function ColumnMenu({
-  title, column, can_delete, sort_dir, is_group_by_eligible,
-  onRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
-}: ColumnMenuProps) {
-  const [draft, setDraft] = useState(title);
-  const [sub, setSub] = useState<Sub>(null);
-  const [flyout_query, setFlyoutQuery] = useState("");
-  const close_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+const typeDefOf = (kind: ColumnKind): ColumnTypeDef | undefined => COLUMN_TYPE_GALLERY.find((type) => type.kind === kind);
 
-  const clearCloseTimeout = () => {
-    if (close_timeout_ref.current !== null) {
-      clearTimeout(close_timeout_ref.current);
-      close_timeout_ref.current = null;
-    }
+/**
+ * Which flyout of one menu level is open. Hover opens one right away when none
+ * is open, and switches or closes it after `HOVER_INTENT_DELAY_MS` when one is,
+ * so the cursor can cross a neighboring row on its way into the open flyout.
+ */
+function useSubmenu<K extends string>() {
+  const [open_key, setOpenKey] = useState<K | null>(null);
+  const timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearPending = () => {
+    if (timeout_ref.current === null) return;
+    clearTimeout(timeout_ref.current);
+    timeout_ref.current = null;
   };
 
-  useEffect(() => clearCloseTimeout, []);
+  useEffect(() => clearPending, []);
 
-  /** Opens (or closes) a submenu right away — used for explicit actions, not hover transitions. */
-  const openSub = (next: Sub) => {
-    clearCloseTimeout();
-    setSub(next);
-    setFlyoutQuery("");
+  const openNow = (next: K | null) => {
+    clearPending();
+    setOpenKey(next);
   };
 
-  /**
-   * Hover-driven submenu change (also used for leaving the whole menu — see the
-   * onMouseLeave below). If no flyout is currently open, switching is instant.
-   * If a flyout IS open, the switch/close is delayed so the user can cross the gap
-   * into it without it closing under the cursor; re-entering the still-open item
-   * (including its flyout, which bubbles the same enter) cancels the delay.
-   */
-  const requestSub = (next: Sub) => {
-    if (sub === next) {
-      clearCloseTimeout();
-      return;
-    }
-    if (sub === null) {
-      openSub(next);
-      return;
-    }
-    clearCloseTimeout();
-    close_timeout_ref.current = setTimeout(() => {
-      close_timeout_ref.current = null;
-      setSub(next);
-      setFlyoutQuery("");
+  const requestOpen = (next: K | null) => {
+    if (open_key === next) return clearPending();
+    if (open_key === null) return openNow(next);
+    clearPending();
+    timeout_ref.current = setTimeout(() => {
+      timeout_ref.current = null;
+      setOpenKey(next);
     }, HOVER_INTENT_DELAY_MS);
   };
 
-  const handlePickAddRight = (type: ColumnTypeDef) => { onAddColumnRight(type.kind, type.label, type.default_width); onClose(); };
-  const handlePickChangeType = (type: ColumnTypeDef) => { onChangeType(type.kind, type.default_width); onClose(); };
+  return { open_key, openNow, requestOpen };
+}
+
+const MENU_ITEM_SELECTOR = '[role^="menuitem"]:not([aria-disabled="true"])';
+
+/** The enabled rows of one menu level, leaving out the rows of flyouts nested inside it. */
+const levelRows = (list_el: HTMLElement): HTMLElement[] =>
+  [...list_el.querySelectorAll<HTMLElement>(MENU_ITEM_SELECTOR)].filter((row) => row.closest('[role="menu"]') === list_el);
+
+interface MenuListProps {
+  aria_label: string;
+  className?: string;
+  /** Focus the first row on mount, when the level was opened from the keyboard. */
+  focus_first?: boolean;
+  /** ArrowLeft inside a flyout hands focus back to the row that opened it. */
+  onExitLeft?: () => void;
+  /** Closes (after the hover delay) whatever flyout of this level is open once the cursor leaves it. */
+  onMouseLeave?: () => void;
+  children: ReactNode;
+}
+
+/** One menu level: the `action-menu` card plus arrow key, Home and End navigation between its own rows. */
+function MenuList({ aria_label, className = "", focus_first = false, onExitLeft, onMouseLeave, children }: MenuListProps) {
+  const list_ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const list_el = list_ref.current;
+    if (!list_el) return;
+    // The popover renders hidden on its first frame while it measures itself, and hidden elements can't take focus.
+    const frame = requestAnimationFrame(() => {
+      if (focus_first) levelRows(list_el)[0]?.focus();
+      else if (!onExitLeft) list_el.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focus_first, onExitLeft]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const list_el = list_ref.current;
+    if (!list_el || (event.target as HTMLElement).closest('[role="menu"]') !== list_el) return;
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      const rows = levelRows(list_el);
+      if (rows.length === 0) return;
+      event.preventDefault();
+      const current_index = rows.indexOf(document.activeElement as HTMLElement);
+      const next_index =
+        event.key === "Home" ? 0
+        : event.key === "End" ? rows.length - 1
+        : event.key === "ArrowDown" ? (current_index + 1) % rows.length
+        : current_index <= 0 ? rows.length - 1
+        : current_index - 1;
+      rows[next_index].focus();
+      return;
+    }
+    if (event.key === "ArrowLeft" && onExitLeft) {
+      event.preventDefault();
+      event.stopPropagation();
+      onExitLeft();
+    }
+  };
 
   return (
-    <PopoverPanel onClose={onClose} fit="shift" className="left-1/2 top-full w-[268px] -translate-x-1/2 p-2.5">
-      <input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => draft.trim() && onRename(draft.trim())}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-        }}
-        className="mb-2 h-8 w-full rounded-[6px] border border-boardtree-border px-2.5 text-[13px] text-boardtree-text outline-none focus:border-boardtree-accent"
+    <div ref={list_ref} role="menu" aria-label={aria_label} tabIndex={-1} onKeyDown={handleKeyDown} onMouseLeave={onMouseLeave} className={`action-menu ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Places a flyout next to its row: to the right when it fits in the window, to
+ * the left otherwise, and nudged up when it would run past the bottom edge.
+ * It stays a DOM child of the row, so clicks in it count as inside the menu.
+ */
+function Flyout({ children }: { children: ReactNode }) {
+  const flyout_ref = useRef<HTMLDivElement>(null);
+  const [placement, setPlacement] = useState<{ side: "left" | "right"; shift_y: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const flyout_el = flyout_ref.current;
+    const anchor_el = flyout_el?.parentElement;
+    if (!flyout_el || !anchor_el) return;
+
+    const measure = () => {
+      const anchor_rect = anchor_el.getBoundingClientRect();
+      const width = flyout_el.offsetWidth;
+      const height = flyout_el.offsetHeight;
+      const fits_right = anchor_rect.right + width <= window.innerWidth - VIEWPORT_MARGIN;
+      const fits_left = anchor_rect.left - width >= VIEWPORT_MARGIN;
+      // A nested flyout keeps going the way its parent went, so it never opens back over the menus behind it.
+      const parent_side = anchor_el.parentElement?.closest<HTMLElement>(".column-menu__flyout")?.dataset.side;
+      const side = parent_side === "left" ? (fits_left || !fits_right ? "left" : "right") : fits_right || !fits_left ? "right" : "left";
+      const natural_top = anchor_rect.top - FLYOUT_TOP_OFFSET;
+      const overflow_y = natural_top + height - (window.innerHeight - VIEWPORT_MARGIN);
+      const shift_y = overflow_y > 0 ? -Math.round(Math.min(overflow_y, Math.max(0, natural_top - VIEWPORT_MARGIN))) : 0;
+      setPlacement((current) => (current?.side === side && current.shift_y === shift_y ? current : { side, shift_y }));
+    };
+
+    measure();
+    const resize_observer = new ResizeObserver(measure);
+    resize_observer.observe(flyout_el);
+    window.addEventListener("resize", measure);
+    return () => {
+      resize_observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={flyout_ref}
+      className="column-menu__flyout"
+      data-side={placement?.side ?? "right"}
+      data-measured={placement !== null}
+      style={placement?.shift_y ? { transform: `translateY(${placement.shift_y}px)` } : undefined}
+    >
+      {children}
+    </div>
+  );
+}
+
+interface MenuRowProps {
+  label: ReactNode;
+  icon?: ReactNode;
+  onClick?: () => void;
+  /** Keeps the row visible but faded and inert, with `disabled_reason` as its tooltip. */
+  disabled?: boolean;
+  disabled_reason?: string;
+  danger?: boolean;
+  /** Content after the label: a badge, a keyboard hint, a count, a check or a switch. */
+  trailing?: ReactNode;
+  has_submenu?: boolean;
+  is_submenu_open?: boolean;
+  role?: "menuitem" | "menuitemcheckbox" | "menuitemradio";
+  is_checked?: boolean;
+  title?: string;
+  onMouseEnter?: () => void;
+  onArrowRight?: () => void;
+}
+
+const MenuRow = React.forwardRef<HTMLButtonElement, MenuRowProps>(function MenuRow(
+  { label, icon, onClick, disabled, disabled_reason, danger, trailing, has_submenu, is_submenu_open, role = "menuitem", is_checked, title, onMouseEnter, onArrowRight },
+  ref
+) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      role={role}
+      tabIndex={-1}
+      aria-checked={role === "menuitem" ? undefined : !!is_checked}
+      aria-disabled={disabled || undefined}
+      aria-haspopup={has_submenu ? "menu" : undefined}
+      aria-expanded={has_submenu ? !!is_submenu_open : undefined}
+      data-danger={danger || undefined}
+      data-submenu-open={is_submenu_open || undefined}
+      title={disabled ? disabled_reason : title}
+      className="action-menu__item"
+      onMouseEnter={onMouseEnter}
+      onKeyDown={(event) => {
+        if (event.key === "ArrowRight" && has_submenu && !disabled && onArrowRight) {
+          event.preventDefault();
+          event.stopPropagation();
+          onArrowRight();
+        }
+      }}
+      onClick={() => {
+        if (!disabled) onClick?.();
+      }}
+    >
+      {icon && (
+        <span className="action-menu__icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
+      <span className="action-menu__label">{label}</span>
+      {trailing}
+      {has_submenu && (
+        <span className="action-menu__chevron" aria-hidden="true">
+          <ChevronRightIcon size={14} />
+        </span>
+      )}
+    </button>
+  );
+});
+
+interface SubmenuRowProps<K extends string> extends Omit<MenuRowProps, "has_submenu" | "is_submenu_open" | "onMouseEnter" | "onArrowRight" | "onClick"> {
+  submenu_key: K;
+  submenu: ReturnType<typeof useSubmenu<K>>;
+  /** The flyout's content, usually a `MenuList` or one of the settings forms. */
+  renderFlyout: (focus_first: boolean, onExitLeft: () => void) => ReactNode;
+}
+
+/** A row that opens a side flyout on hover, click or ArrowRight. */
+function SubmenuRow<K extends string>({ submenu_key, submenu, renderFlyout, disabled, ...row_props }: SubmenuRowProps<K>) {
+  const row_ref = useRef<HTMLButtonElement>(null);
+  const [focus_first, setFocusFirst] = useState(false);
+  const is_open = submenu.open_key === submenu_key && !disabled;
+
+  const open = (from_keyboard: boolean) => {
+    setFocusFirst(from_keyboard);
+    submenu.openNow(submenu_key);
+  };
+
+  return (
+    <div className="column-menu__anchor" onMouseEnter={() => !disabled && submenu.requestOpen(submenu_key)}>
+      <MenuRow
+        {...row_props}
+        ref={row_ref}
+        disabled={disabled}
+        has_submenu
+        is_submenu_open={is_open}
+        onClick={() => (is_open ? submenu.openNow(null) : open(false))}
+        onArrowRight={() => open(true)}
       />
-      <div className="h-px bg-boardtree-border-soft" />
-      <div className="flex flex-col gap-0.5 pt-1.5" onMouseLeave={() => requestSub(null)}>
-        {column && (
-          <div className="relative" onMouseEnter={() => requestSub("settings")}>
-            <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "settings" ? "var(--color-boardtree-hover)" : "transparent" }}>
-              <span className="w-4 text-boardtree-text-muted">
-                <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="2.1" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M8 2.6 V4.2 M8 11.8 V13.4 M2.6 8 H4.2 M11.8 8 H13.4 M4.3 4.3 L5.4 5.4 M10.6 10.6 L11.7 11.7 M4.3 11.7 L5.4 10.6 M10.6 5.4 L11.7 4.3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
-              </span>
-              <span className="flex-1">Settings</span>
-              <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
-            </div>
-            {sub === "settings" && (
+      {is_open && (
+        <Flyout>
+          {renderFlyout(focus_first, () => {
+            submenu.openNow(null);
+            row_ref.current?.focus();
+          })}
+        </Flyout>
+      )}
+    </div>
+  );
+}
+
+/** The colored square monday.com shows next to each column type. */
+function ColumnTypeIcon({ type }: { type: ColumnTypeDef }) {
+  return (
+    <span className="column-menu__type-icon" style={{ background: type.accent }} aria-hidden="true">
+      {type.mark}
+    </span>
+  );
+}
+
+const Divider = () => <div className="action-menu__divider" role="separator" />;
+
+type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
+type SettingsSub = "button" | "dependency" | "reminder" | "validation" | "options";
+type NestedSub = "board" | "more";
+
+/**
+ * The column header's "..." menu, styled after monday.com's own column menu:
+ * Settings (with the column's own settings forms nested inside), Filter, Sort,
+ * Collapse, Group by, Duplicate, Add column to the right, Change column type,
+ * Rename and Delete, grouped by dividers. Rows open their flyouts on hover,
+ * click or ArrowRight, and every flyout flips to the left near the window edge.
+ */
+export default function ColumnMenu({
+  title, column, can_delete, sort_dir, is_group_by_eligible,
+  onStartRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
+}: ColumnMenuProps) {
+  const main_sub = useSubmenu<MainSub>();
+  const settings_sub = useSubmenu<SettingsSub>();
+  const nested_sub = useSubmenu<NestedSub>();
+  const [gallery_query, setGalleryQuery] = useState("");
+
+  // A nested flyout never outlives its parent, so reopening Settings starts with nothing expanded.
+  useEffect(() => {
+    settings_sub.openNow(null);
+    nested_sub.openNow(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [main_sub.open_key]);
+
+  /** Runs a row's action and closes the whole menu. */
+  const run = (action: () => void) => () => {
+    action();
+    onClose();
+  };
+
+  const kind_label = column ? typeDefOf(column.kind)?.label ?? "this" : "this";
+  const quick_add_types = QUICK_ADD_COLUMN_KINDS.map(typeDefOf).filter((type): type is ColumnTypeDef => !!type);
+  const change_type_targets = column ? (CHANGE_TYPE_TARGETS[column.kind] ?? []).map(typeDefOf).filter((type): type is ColumnTypeDef => !!type) : [];
+
+  /** "Customize ... column": whatever editor this kind has, a dialog or a nested form. */
+  const renderCustomizeRow = () => {
+    if (!column) return null;
+    const label = `Customize ${kind_label} column`;
+    const icon = <CustomizeColumnIcon />;
+    if (column.kind === "button") {
+      return (
+        <SubmenuRow
+          submenu_key="button"
+          submenu={settings_sub}
+          icon={<ButtonColumnIcon />}
+          label={label}
+          renderFlyout={() => <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
+        />
+      );
+    }
+    if (column.kind === "dependency") {
+      return (
+        <SubmenuRow
+          submenu_key="dependency"
+          submenu={settings_sub}
+          icon={<DependencyIcon />}
+          label={label}
+          renderFlyout={() => (
+            <DependencySettingsPanel dependency={column.dependency} date_columns={column.dependency_date_columns ?? []} onChange={(dependency) => onUpdateSettings({ dependency })} />
+          )}
+        />
+      );
+    }
+    const open_editor = onEditLabels ?? (column.kind === "formula" ? onEditFormula : column.kind === "mirror" ? onEditMirror : column.kind === "connect_board" ? onEditConnectBoard : undefined);
+    if (!open_editor) return null;
+    return <MenuRow icon={icon} label={label} onMouseEnter={() => settings_sub.requestOpen(null)} onClick={run(open_editor)} />;
+  };
+
+  const renderSettingsFlyout = (focus_first: boolean, onExitLeft: () => void) => {
+    if (!column) return null;
+    const validation = column.validation;
+    const is_required = !!validation?.required;
+    const is_summary_hidden = !!column.hide_summary;
+    const updateValidation = (patch: Partial<ColumnValidation>) => onUpdateSettings({ validation: { ...validation, ...patch } });
+    const restrict_reason = "Only board owners can restrict this column";
+
+    return (
+      <MenuList aria_label="Column settings" className="w-[272px]" focus_first={focus_first} onExitLeft={onExitLeft} onMouseLeave={() => settings_sub.requestOpen(null)}>
+          {renderCustomizeRow()}
+          {onEditDescription && (
+            <MenuRow
+              icon={<DescriptionIcon />}
+              label={has_description ? "Edit column description" : "Add column description"}
+              onMouseEnter={() => settings_sub.requestOpen(null)}
+              onClick={run(onEditDescription)}
+            />
+          )}
+          {column.kind === "date" && (
+            <SubmenuRow
+              submenu_key="reminder"
+              submenu={settings_sub}
+              icon={<BellIcon size={16} />}
+              label="Set due date reminder"
+              renderFlyout={() => <ReminderSettingsPanel reminder={column.reminder} onChange={(reminder) => onUpdateSettings({ reminder })} />}
+            />
+          )}
+
+          <Divider />
+          <MenuRow
+            role="menuitemcheckbox"
+            is_checked={is_required}
+            icon={<RequiredIcon />}
+            label="Set column as required"
+            title={is_required ? "New items need a value in this column" : undefined}
+            trailing={<ToggleSwitch is_on={is_required} size="sm" />}
+            onMouseEnter={() => settings_sub.requestOpen(null)}
+            onClick={() => updateValidation({ required: !is_required })}
+          />
+          {hasValidationRules(column.kind) && (
+            <SubmenuRow
+              submenu_key="validation"
+              submenu={settings_sub}
+              icon={<ValidationIcon />}
+              label="Set column validation"
+              trailing={<span className="column-menu__badge">New</span>}
+              renderFlyout={() => <ColumnValidationPanel kind={column.kind} validation={validation} onChange={updateValidation} />}
+            />
+          )}
+
+          <Divider />
+          <MenuRow
+            icon={<LockIcon size={16} />}
+            label="Restrict column editing"
+            disabled={!onRequestPermissions}
+            disabled_reason={restrict_reason}
+            onMouseEnter={() => settings_sub.requestOpen(null)}
+            onClick={onRequestPermissions ? run(onRequestPermissions) : undefined}
+          />
+          <MenuRow
+            icon={<EyeOffIcon size={16} />}
+            label="Restrict column view"
+            disabled={!onRequestPermissions}
+            disabled_reason={restrict_reason}
+            onMouseEnter={() => settings_sub.requestOpen(null)}
+            onClick={onRequestPermissions ? run(onRequestPermissions) : undefined}
+          />
+
+          <Divider />
+          {SUMMARY_KINDS.includes(column.kind) && (
+            <MenuRow
+              icon={is_summary_hidden ? <EyeIcon size={16} /> : <EyeOffIcon size={16} />}
+              label={is_summary_hidden ? "Show column summary" : "Hide column summary"}
+              onMouseEnter={() => settings_sub.requestOpen(null)}
+              onClick={run(() => onUpdateSettings({ hide_summary: !is_summary_hidden }))}
+            />
+          )}
+          <SubmenuRow
+            submenu_key="options"
+            submenu={settings_sub}
+            icon={<ColumnOptionsIcon />}
+            label="Column options"
+            renderFlyout={() => (
               <ColumnSettingsPanel
                 width={column.width}
                 hideable
                 pinnable
-                can_edit_labels={!!onEditLabels}
                 kind={column.kind}
-                validation={column.validation}
                 aggregation={column.aggregation}
-                reminder={column.reminder}
                 onWidthChange={(width) => onUpdateSettings({ width })}
                 onHideableChange={(value) => onUpdateSettings({ hideable: value })}
                 onPinnableChange={(value) => onUpdateSettings({ pinnable: value })}
-                onValidationChange={(patch) => onUpdateSettings({ validation: { ...column.validation, ...patch } })}
                 onAggregationChange={(aggregation) => onUpdateSettings({ aggregation })}
-                onReminderChange={(reminder) => onUpdateSettings({ reminder })}
-                onEditLabels={() => { onEditLabels?.(); onClose(); }}
               />
             )}
-          </div>
-        )}
+          />
+          <MenuRow
+            icon={<SaveAsTemplateIcon size={16} />}
+            label="Save column as a template"
+            disabled
+            disabled_reason={NOT_AVAILABLE_REASON}
+            onMouseEnter={() => settings_sub.requestOpen(null)}
+          />
+      </MenuList>
+    );
+  };
 
-        {column?.kind === "button" && (
-          <div className="relative" onMouseEnter={() => requestSub("button")}>
-            <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "button" ? "var(--color-boardtree-hover)" : "transparent" }}>
-              <span className="w-4 text-boardtree-text-muted">▶</span>
-              <span className="flex-1">Button settings</span>
-              <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
-            </div>
-            {sub === "button" && <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
-          </div>
-        )}
-        {column?.kind === "dependency" && (
-          <div className="relative" onMouseEnter={() => requestSub("dependency")}>
-            <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "dependency" ? "var(--color-boardtree-hover)" : "transparent" }}>
-              <span className="w-4 text-boardtree-text-muted">
-                <svg viewBox="0 0 16 16" width="14" height="14"><rect x="1.8" y="3" width="5" height="3.4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" /><rect x="9.2" y="9.6" width="5" height="3.4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.2" /><path d="M4.3 6.4 V11.3 H9.2 M7.8 9.9 L9.2 11.3 L7.8 12.7" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </span>
-              <span className="flex-1">Dependency settings</span>
-              <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
-            </div>
-            {sub === "dependency" && (
-              <DependencySettingsPanel
-                dependency={column.dependency}
-                date_columns={column.dependency_date_columns ?? []}
-                onChange={(dependency) => onUpdateSettings({ dependency })}
-              />
-            )}
-          </div>
-        )}
-        {column && automation && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { automation.onOpen(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">
-              <svg viewBox="0 0 16 16" width="14" height="14"><path d="M9.2 1.8 L3.6 9 H7.6 L6.8 14.2 L12.4 7 H8.4 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
-            </span>
-            <span className="flex-1">Automate</span>
-            {automation.count > 0 && <span className="rounded-full bg-boardtree-hover px-1.5 text-[11px] text-boardtree-text-secondary" title={`${automation.count} automation(s) use this column`}>{automation.count}</span>}
-          </button>
-        )}
+  const renderSortFlyout = (focus_first: boolean, onExitLeft: () => void) => (
+    <MenuList aria_label="Sort" className="w-[264px]" focus_first={focus_first} onExitLeft={onExitLeft}>
+      <MenuRow
+        role="menuitemradio"
+        is_checked={sort_dir === "asc"}
+        label="Sort ascending"
+        trailing={sort_dir === "asc" && <span className="column-menu__check"><CheckIcon size={14} /></span>}
+        onClick={() => onSort(sort_dir === "asc" ? null : "asc")}
+      />
+      <MenuRow
+        role="menuitemradio"
+        is_checked={sort_dir === "desc"}
+        label="Sort descending"
+        trailing={sort_dir === "desc" && <span className="column-menu__check"><CheckIcon size={14} /></span>}
+        onClick={() => onSort(sort_dir === "desc" ? null : "desc")}
+      />
+      {sort_dir && <MenuRow label="Remove sort" onClick={() => onSort(null)} />}
+      <Divider />
+      <MenuRow label="Add subsort" trailing={<span className="column-menu__hint">Ctrl+Click</span>} disabled disabled_reason={NOT_AVAILABLE_REASON} />
+      <MenuRow label="Save order of items" disabled disabled_reason={NOT_AVAILABLE_REASON} />
+    </MenuList>
+  );
 
-        {column?.kind === "formula" && onEditFormula && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditFormula(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">ƒ</span>
-            <span className="flex-1">Configure formula</span>
-          </button>
-        )}
-        {column?.kind === "connect_board" && onEditConnectBoard && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditConnectBoard(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">⛓</span>
-            <span className="flex-1">Boards settings</span>
-          </button>
-        )}
-        {column?.kind === "mirror" && onEditMirror && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditMirror(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">⧉</span>
-            <span className="flex-1">Configure mirror</span>
-          </button>
-        )}
-        {column && onEditDescription && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onEditDescription(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">
-              <svg viewBox="0 0 16 16" width="14" height="14" fill="none"><path d="M2.5 4 H13.5 M2.5 8 H13.5 M2.5 12 H9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-            </span>
-            <span className="flex-1">{has_description ? "Edit description" : "Add description"}</span>
-          </button>
-        )}
-
-        {column && (
-          <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onRequestFilter(); onClose(); }} className={ROW_ITEM}>
-            <span className="w-4 text-boardtree-text-muted">
-              <svg viewBox="0 0 16 16" width="14" height="14"><path d="M2.8 3.4 H13.2 L9.2 8.2 V12.2 L6.8 13.4 V8.2 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
-            </span>
-            <span className="flex-1">Filter</span>
-          </button>
-        )}
-
-        <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => onSort(sort_dir === "asc" ? null : "asc")} className={ROW_ITEM}>
-          <span className="w-4 text-boardtree-text-muted">↑</span>
-          <span className="flex-1">{sort_dir === "asc" ? "Remove ascending sort" : "Sort ascending"}</span>
-        </button>
-        <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => onSort(sort_dir === "desc" ? null : "desc")} className={ROW_ITEM}>
-          <span className="w-4 text-boardtree-text-muted">↓</span>
-          <span className="flex-1">{sort_dir === "desc" ? "Remove descending sort" : "Sort descending"}</span>
-        </button>
-
-        <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onCollapseAll(); onClose(); }} className={ROW_ITEM}>
-          <span className="w-4 text-boardtree-text-muted">
-            <svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 2.4 V13.6 M5.4 4.8 L8 2.2 L10.6 4.8 M5.4 11.2 L8 13.8 L10.6 11.2" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </span>
-          <span className="flex-1">Collapse all groups</span>
-        </button>
-
-        {column && (
-          is_group_by_eligible ? (
-            <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onRequestGroupBy(); onClose(); }} className={ROW_ITEM}>
-              <span className="w-4 text-boardtree-text-muted">
-                <svg viewBox="0 0 16 16" width="14" height="14"><rect x="2.4" y="2.4" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="8.8" y="2.4" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="2.4" y="8.8" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="8.8" y="8.8" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>
-              </span>
-              <span className="flex-1">Group by</span>
-            </button>
-          ) : (
-            <div className={ROW_DISABLED}>
-              <span className="w-4 opacity-70">
-                <svg viewBox="0 0 16 16" width="14" height="14"><rect x="2.4" y="2.4" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="8.8" y="2.4" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="2.4" y="8.8" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="8.8" y="8.8" width="4.8" height="4.8" rx="1" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>
-              </span>
-              <span className="flex-1">Group by</span>
-            </div>
-          )
-        )}
-
-        {column && (
+  const renderDuplicateFlyout = (focus_first: boolean, onExitLeft: () => void) => (
+    <MenuList aria_label="Duplicate column" className="w-[248px]" focus_first={focus_first} onExitLeft={onExitLeft} onMouseLeave={() => nested_sub.requestOpen(null)}>
+        <MenuRow label="Column only" onMouseEnter={() => nested_sub.requestOpen(null)} onClick={run(() => onDuplicate(false))} />
+        <MenuRow label="Column and cell values" onMouseEnter={() => nested_sub.requestOpen(null)} onClick={run(() => onDuplicate(true))} />
+        {onDuplicateToBoard && (
           <>
-            <div className="my-1 h-px bg-boardtree-border-soft" />
-
-            {onRequestPermissions && (
-              <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onRequestPermissions(); onClose(); }} className={ROW_ITEM}>
-                <span className="w-4 text-boardtree-text-muted">
-                  <svg viewBox="0 0 16 16" width="14" height="14"><rect x="3.2" y="7" width="9.6" height="6.8" rx="1.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M5.4 7 V5.2 a2.6 2.6 0 0 1 5.2 0 V7" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-                </span>
-                <span className="flex-1">Column permissions</span>
-              </button>
-            )}
-
-            <button type="button" onMouseEnter={() => requestSub(null)} onClick={() => { onDuplicate(); onClose(); }} className={ROW_ITEM}>
-              <span className="w-4 text-boardtree-text-muted">
-                <svg viewBox="0 0 16 16" width="14" height="14"><rect x="5.4" y="2.4" width="8.2" height="8.2" rx="1.3" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M10.6 13.6 H3.8 a1.4 1.4 0 0 1 -1.4 -1.4 V5.4" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-              </span>
-              <span className="flex-1">Duplicate column</span>
-            </button>
-
-            {onDuplicateToBoard && (
-              <div className="relative" onMouseEnter={() => requestSub("duplicate_to_board")}>
-                <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "duplicate_to_board" ? "var(--color-boardtree-hover)" : "transparent" }}>
-                  <span className="w-4 text-boardtree-text-muted">
-                    <svg viewBox="0 0 16 16" width="14" height="14"><rect x="2.6" y="4.6" width="7.2" height="7.2" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" /><rect x="6.6" y="1.2" width="7.2" height="7.2" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.3" /></svg>
-                  </span>
-                  <span className="flex-1">Duplicate to another board</span>
-                  <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
+            <Divider />
+            <SubmenuRow
+              submenu_key="board"
+              submenu={nested_sub}
+              icon={<BoardCopyIcon />}
+              label="Duplicate to another board"
+              renderFlyout={() => (
+                <div className="action-menu p-0">
+                  <BoardPickerMenu inline onPick={(target_board_id) => { onDuplicateToBoard(target_board_id); onClose(); }} onClose={() => nested_sub.openNow(null)} />
                 </div>
-                {sub === "duplicate_to_board" && (
-                  <div className="absolute left-full top-[-6px] z-10 ml-1">
-                    <BoardPickerMenu onPick={(target_board_id) => { onDuplicateToBoard(target_board_id); onClose(); }} onClose={() => openSub(null)} />
-                  </div>
+              )}
+            />
+          </>
+        )}
+    </MenuList>
+  );
+
+  const renderAddFlyout = (focus_first: boolean, onExitLeft: () => void) => (
+    <MenuList aria_label="Add column to the right" className="w-[264px]" focus_first={focus_first} onExitLeft={onExitLeft} onMouseLeave={() => nested_sub.requestOpen(null)}>
+        {quick_add_types.map((type) => (
+          <MenuRow
+            key={type.kind}
+            icon={<ColumnTypeIcon type={type} />}
+            label={type.label}
+            onMouseEnter={() => nested_sub.requestOpen(null)}
+            onClick={run(() => onAddColumnRight(type.kind, type.label, type.default_width))}
+          />
+        ))}
+        <Divider />
+        <SubmenuRow
+          submenu_key="more"
+          submenu={nested_sub}
+          label="More columns"
+          renderFlyout={() => (
+            <div className="action-menu column-menu__gallery p-0">
+              <ColumnPicker
+                inline
+                query={gallery_query}
+                onQueryChange={setGalleryQuery}
+                onPick={(type) => { onAddColumnRight(type.kind, type.label, type.default_width); onClose(); }}
+                onClose={() => nested_sub.openNow(null)}
+              />
+            </div>
+          )}
+        />
+    </MenuList>
+  );
+
+  const renderChangeTypeFlyout = (focus_first: boolean, onExitLeft: () => void) => (
+    <MenuList aria_label="Change column type" className="w-[264px]" focus_first={focus_first} onExitLeft={onExitLeft}>
+      <div className="column-menu__heading" aria-hidden="true">
+        Change <strong>{kind_label}</strong> column to:
+      </div>
+      {change_type_targets.length === 0 && <div className="column-menu__empty">This column type can&apos;t be changed.</div>}
+      {change_type_targets.map((type) => (
+        <MenuRow key={type.kind} icon={<ColumnTypeIcon type={type} />} label={type.label} onClick={run(() => onChangeType(type.kind, type.default_width))} />
+      ))}
+    </MenuList>
+  );
+
+  return (
+    <PopoverPanel onClose={onClose} fit="shift" unstyled className="left-1/2 top-full mt-1 w-[256px] -translate-x-1/2">
+      <div
+        className={`column-menu ${boardTreeFontClassName}`}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.stopPropagation();
+            onClose();
+          }
+        }}
+      >
+        <MenuList aria_label={`${title} column options`} onMouseLeave={() => main_sub.requestOpen(null)}>
+            {column && (
+              <>
+                <SubmenuRow submenu_key="settings" submenu={main_sub} icon={<SettingsGearIcon />} label="Settings" renderFlyout={renderSettingsFlyout} />
+                {automation && (
+                  <MenuRow
+                    icon={<AutomateIcon />}
+                    label="Automate"
+                    trailing={automation.count > 0 && <span className="column-menu__count" title={`${automation.count} automation(s) use this column`}>{automation.count}</span>}
+                    onMouseEnter={() => main_sub.requestOpen(null)}
+                    onClick={run(automation.onOpen)}
+                  />
                 )}
-              </div>
+                <Divider />
+                <MenuRow icon={<FilterIcon size={16} />} label="Filter" onMouseEnter={() => main_sub.requestOpen(null)} onClick={run(onRequestFilter)} />
+              </>
+            )}
+            <SubmenuRow submenu_key="sort" submenu={main_sub} icon={<SortArrowsIcon size={16} />} label="Sort" renderFlyout={renderSortFlyout} />
+            <MenuRow icon={<CollapseColumnIcon />} label="Collapse all groups" onMouseEnter={() => main_sub.requestOpen(null)} onClick={run(onCollapseAll)} />
+            {column && (
+              <MenuRow
+                icon={<GroupByIcon />}
+                label="Group by"
+                disabled={!is_group_by_eligible}
+                disabled_reason="Only Status and Label columns with labels can group the board"
+                onMouseEnter={() => main_sub.requestOpen(null)}
+                onClick={run(onRequestGroupBy)}
+              />
             )}
 
-            <div className="relative" onMouseEnter={() => requestSub("add")}>
-              <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "add" ? "var(--color-boardtree-hover)" : "transparent" }}>
-                <span className="w-4 text-boardtree-text-muted">
-                  <svg viewBox="0 0 16 16" width="14" height="14"><path d="M5.8 2.6 V13.4 M8.4 8 H13.6 M11 5.4 V10.6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-                </span>
-                <span className="flex-1">Add column to the right</span>
-                <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
-              </div>
-              {sub === "add" && (
-                <div className="absolute left-full top-[-6px] z-10 ml-1">
-                  <ColumnPicker query={flyout_query} onQueryChange={setFlyoutQuery} onPick={handlePickAddRight} onClose={() => openSub(null)} align="left" />
-                </div>
-              )}
-            </div>
+            {column && (
+              <>
+                <Divider />
+                <SubmenuRow submenu_key="duplicate" submenu={main_sub} icon={<DuplicateIcon size={16} />} label="Duplicate column" renderFlyout={renderDuplicateFlyout} />
+                <SubmenuRow submenu_key="add" submenu={main_sub} icon={<PlusIcon size={16} />} label="Add column to the right" renderFlyout={renderAddFlyout} />
+                <SubmenuRow submenu_key="type" submenu={main_sub} icon={<ChangeTypeIcon size={16} />} label="Change column type" renderFlyout={renderChangeTypeFlyout} />
 
-            <div className="relative" onMouseEnter={() => requestSub("type")}>
-              <div className={`${ROW_ITEM} cursor-pointer`} style={{ background: sub === "type" ? "var(--color-boardtree-hover)" : "transparent" }}>
-                <span className="w-4 text-boardtree-text-muted">
-                  <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 6.4 H10.6 M8.4 4.2 L10.6 6.4 L8.4 8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /><path d="M13 9.6 H5.4 M7.6 7.4 L5.4 9.6 L7.6 11.8" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </span>
-                <span className="flex-1">Change column type</span>
-                <span className="flex text-boardtree-text-faint"><svg viewBox="0 0 12 12" width="10" height="10"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg></span>
-              </div>
-              {sub === "type" && (
-                <div className="absolute left-full top-[-6px] z-10 ml-1">
-                  <ColumnPicker query={flyout_query} onQueryChange={setFlyoutQuery} onPick={handlePickChangeType} onClose={() => openSub(null)} align="left" />
-                </div>
-              )}
-            </div>
-          </>
-        )}
+                <Divider />
+                <MenuRow
+                  icon={<ExtensionsIcon />}
+                  label="Column extensions"
+                  has_submenu
+                  disabled
+                  disabled_reason="Coming soon"
+                  onMouseEnter={() => main_sub.requestOpen(null)}
+                />
+              </>
+            )}
 
-        <div className={ROW_DISABLED} title="Coming soon">
-          <span className="w-4 opacity-70">
-            <svg viewBox="0 0 16 16" width="14" height="14"><path d="M5.2 3 H8.2 V4.6 a1.4 1.4 0 0 0 2.8 0 V3 H13.8 V6 H12.2 a1.4 1.4 0 0 0 0 2.8 H13.8 V13 H10.8 V11.4 a1.4 1.4 0 0 0 -2.8 0 V13 H5.2 V10 H3.6 a1.4 1.4 0 0 1 0 -2.8 H5.2 Z" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></svg>
-          </span>
-          <span className="flex-1">Column extensions</span>
-        </div>
-
-        {column && can_delete && (
-          <>
-            <div className="my-1 h-px bg-boardtree-border-soft" />
-            <button
-              type="button"
-              onMouseEnter={() => requestSub(null)}
-              onClick={() => { onDelete(); onClose(); }}
-              className="flex h-[34px] w-full items-center gap-2.5 rounded-[6px] px-2 text-left text-[13px] text-boardtree-danger hover:bg-boardtree-danger-hover"
-            >
-              <span className="w-4 opacity-80">
-                <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.4 5 H12.6 M6.4 5 V3.2 H9.6 V5 M4.8 5 L5.4 13.2 H10.6 L11.2 5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </span>
-              <span className="flex-1">Delete column</span>
-            </button>
-          </>
-        )}
+            <Divider />
+            <MenuRow icon={<PencilIcon size={16} />} label="Rename" onMouseEnter={() => main_sub.requestOpen(null)} onClick={run(onStartRename)} />
+            {column && can_delete && (
+              <MenuRow icon={<DeleteIcon size={16} />} label="Delete" onMouseEnter={() => main_sub.requestOpen(null)} onClick={run(onDelete)} />
+            )}
+        </MenuList>
       </div>
     </PopoverPanel>
   );

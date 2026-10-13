@@ -54,7 +54,6 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
           onLeave={() => actions.setHoverHead(null)}
           onOpenMenu={() => actions.openColumnMenu(sub_title_key)}
           onCloseMenu={actions.closeColumnMenu}
-          onRename={(title) => actions.renameItemTitle(group.key, "sub", title)}
           onStartRename={() => actions.startColumnRename(sub_title_key, group.key, "sub", null, group.sub_title)}
           onDraftChange={actions.updateColumnDraft}
           onCommitRename={actions.commitColumnRename}
@@ -75,7 +74,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary }}
             can_delete={true}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
@@ -87,7 +86,6 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onLeave={() => actions.setHoverHead(null)}
             onOpenMenu={() => actions.openColumnMenu(scope_key_of(col.id))}
             onCloseMenu={actions.closeColumnMenu}
-            onRename={(title) => actions.renameColumn(group.key, "sub", col.id, title)}
             onStartRename={() => actions.startColumnRename(scope_key_of(col.id), group.key, "sub", col.id, col.title)}
             onDraftChange={actions.updateColumnDraft}
             onCommitRename={actions.commitColumnRename}
@@ -117,7 +115,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             automation={column_automation ? { count: column_automation.counts[col.id] ?? 0, onOpen: () => column_automation.onOpen(col.id) } : undefined}
             is_restricted={col.is_restricted}
             onCollapseAll={actions.collapseAllGroups}
-            onDuplicate={() => actions.duplicateColumn(group.key, "sub", col.id)}
+            onDuplicate={(with_values) => actions.duplicateColumn(group.key, "sub", col.id, with_values)}
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "sub", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "sub", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "sub", col.id)}

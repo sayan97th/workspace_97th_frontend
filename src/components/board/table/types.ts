@@ -78,6 +78,8 @@ export interface ColumnSettingsPatch {
   dependency?: DependencyConfig;
   /** Any column kind, see `ColumnDef.description`. Null removes it. */
   description?: string | null;
+  /** Any column kind, see `ColumnDef.hide_summary`. */
+  hide_summary?: boolean;
 }
 
 export interface MirrorConfig {
@@ -280,6 +282,8 @@ export interface ColumnDef {
   aggregation?: "sum" | "avg" | "min" | "max" | "count";
   /** Button kind only: the text on the button and its color. */
   button?: { label: string; color: string };
+  /** Any kind: the column menu's "Hide column summary", leaves this column's cell in the group summary footer empty. */
+  hide_summary?: boolean;
   /** Dependency kind only, see `DependencyConfig`. */
   dependency?: DependencyConfig;
   /** Dependency kind only: the Date and Timeline columns of the same table it can schedule, for its settings. */

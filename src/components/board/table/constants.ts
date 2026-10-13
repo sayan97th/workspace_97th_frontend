@@ -102,6 +102,34 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "button", label: "Button", mark: "▶", accent: "#579bfc", section: "Super useful", default_width: 140 },
 ];
 
+/** The column menu's "Add column to the right" shortlist, in monday.com's order. The rest of the gallery is under "More columns". */
+export const QUICK_ADD_COLUMN_KINDS: ColumnKind[] = ["status", "text", "people", "timeline", "date", "tags", "number"];
+
+/**
+ * The column menu's "Change column type": the kinds each kind can turn into
+ * while its cell values still make sense, the way monday.com only offers
+ * compatible types. A kind missing here (formula, mirror, button...) can't be changed.
+ */
+export const CHANGE_TYPE_TARGETS: Partial<Record<ColumnKind, ColumnKind[]>> = {
+  status: ["text", "longtext", "dropdown"],
+  label: ["status", "dropdown", "text", "longtext"],
+  dropdown: ["status", "label", "tags", "text", "longtext"],
+  text: ["longtext", "number", "email", "phone", "link", "status", "dropdown"],
+  longtext: ["text"],
+  number: ["text", "longtext", "rating", "progress"],
+  date: ["timeline", "text"],
+  timeline: ["date", "text"],
+  people: ["text"],
+  tags: ["dropdown", "text"],
+  email: ["text", "link"],
+  phone: ["text"],
+  link: ["text"],
+  rating: ["number", "text"],
+  progress: ["number"],
+  checkbox: ["text"],
+  vote: ["number"],
+};
+
 /**
  * This package's own `ColumnKind` → the generic board engine's `BoardColumnKind`
  * (`../columnTypes`, the vocabulary `boardContentService.createColumn` and the

@@ -1,0 +1,315 @@
+/*
+ * Column header menu, built on `action-menu.css` (the same card, 32px Figtree
+ * rows, dividers and `--action-menu-*` tokens every monday style menu uses).
+ * This file only adds what the column menu needs on top: side flyouts that
+ * flip to the left near the window edge, the "New" badge, keyboard hints,
+ * the column type chips and the small forms some flyouts hold.
+ */
+
+.column-menu {
+  --column-menu-badge-text: #0073ea;
+  --column-menu-badge-border: #0073ea;
+  --column-menu-field-border: #c3c6d4;
+  --column-menu-field-hover: #323338;
+  --column-menu-field-bg: #ffffff;
+  --column-menu-check: #0073ea;
+  --column-menu-primary: #0073ea;
+  --column-menu-primary-hover: #0060b9;
+
+  width: 256px;
+}
+
+html.dark .column-menu {
+  --column-menu-badge-text: #4d9cff;
+  --column-menu-badge-border: #4d9cff;
+  --column-menu-field-border: rgba(255, 255, 255, 0.18);
+  --column-menu-field-hover: rgba(255, 255, 255, 0.45);
+  --column-menu-field-bg: transparent;
+  --column-menu-check: #4d9cff;
+  --column-menu-primary: #0073ea;
+  --column-menu-primary-hover: #1f86ff;
+}
+
+/* A row that opens a flyout is the flyout's positioning box. */
+.column-menu__anchor {
+  position: relative;
+}
+
+/*
+ * The flyout sits right next to its row. The transparent padding on the inner
+ * side is a hover bridge, so a cursor moving toward the card never crosses a
+ * gap that would close it.
+ */
+.column-menu__flyout {
+  position: absolute;
+  top: -8px;
+  z-index: 10;
+}
+
+.column-menu__flyout[data-side="right"] {
+  left: 100%;
+  padding-left: 6px;
+}
+
+.column-menu__flyout[data-side="left"] {
+  right: 100%;
+  padding-right: 6px;
+}
+
+.column-menu__flyout[data-measured="false"] {
+  visibility: hidden;
+}
+
+/* Rows inside the column menu inherit the 32px action menu row, plus a few extras. */
+.column-menu .action-menu__item {
+  font-size: 14px;
+}
+
+.column-menu__badge {
+  flex: none;
+  padding: 0 4px;
+  border: 1px solid var(--column-menu-badge-border);
+  border-radius: 4px;
+  color: var(--column-menu-badge-text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.column-menu__hint {
+  flex: none;
+  margin-left: auto;
+  padding-left: 12px;
+  color: inherit;
+  font-size: 14px;
+}
+
+.column-menu__count {
+  flex: none;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--action-menu-hover);
+  color: var(--action-menu-chevron);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.column-menu__check {
+  display: flex;
+  flex: none;
+  margin-left: auto;
+  color: var(--column-menu-check);
+}
+
+/* "Change Status column to:" heading above the compatible types. */
+.column-menu__heading {
+  flex: none;
+  padding: 2px 8px 6px;
+  color: var(--action-menu-title);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.column-menu__heading strong {
+  color: var(--action-menu-text);
+  font-weight: 600;
+}
+
+.column-menu__empty {
+  padding: 6px 8px;
+  color: var(--action-menu-title);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: normal;
+}
+
+/* Colored square with the type's glyph, like monday.com's column type icons. */
+.column-menu__type-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Small forms shown in a flyout (Button settings, validation, column options...). */
+.column-menu__form {
+  gap: 4px;
+  white-space: normal;
+}
+
+.column-menu__label {
+  padding: 4px 8px 2px;
+  color: var(--action-menu-title);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+}
+
+.column-menu__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+  padding: 2px 8px;
+  color: var(--action-menu-text);
+  font-size: 14px;
+}
+
+.column-menu__field--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.column-menu__input {
+  height: 32px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid var(--column-menu-field-border);
+  border-radius: 4px;
+  background: var(--column-menu-field-bg);
+  color: var(--action-menu-text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 70ms ease-in;
+}
+
+.column-menu__input:hover {
+  border-color: var(--column-menu-field-hover);
+}
+
+.column-menu__input:focus {
+  border-color: var(--action-menu-focus);
+}
+
+.column-menu__input--short {
+  width: 84px;
+}
+
+.column-menu__input--mono {
+  font-family: var(--font-boardtree-mono-family, ui-monospace, monospace);
+  font-size: 12px;
+}
+
+.column-menu__help {
+  padding: 0 8px 4px;
+  color: var(--action-menu-title);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.column-menu__primary {
+  height: 32px;
+  margin: 4px 8px 2px;
+  border-radius: 4px;
+  background: var(--column-menu-primary);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 70ms ease-in;
+}
+
+.column-menu__primary:hover:not(:disabled) {
+  background: var(--column-menu-primary-hover);
+}
+
+.column-menu__primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.column-menu__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 2px 8px 6px;
+}
+
+.column-menu__swatch {
+  width: 24px;
+  height: 24px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--action-menu-surface);
+}
+
+.column-menu__swatch[aria-checked="true"] {
+  border-color: var(--action-menu-text);
+}
+
+.column-menu__radio {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: left;
+  transition: background-color 70ms ease-in;
+}
+
+.column-menu__radio:hover {
+  background: var(--action-menu-hover);
+}
+
+.column-menu__radio-dot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 1px solid var(--column-menu-field-border);
+  border-radius: 50%;
+}
+
+.column-menu__radio[aria-checked="true"] .column-menu__radio-dot {
+  border-color: var(--column-menu-check);
+}
+
+.column-menu__radio[aria-checked="true"] .column-menu__radio-dot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--column-menu-check);
+}
+
+.column-menu__radio-title {
+  display: block;
+  color: var(--action-menu-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.column-menu__radio-hint {
+  display: block;
+  color: var(--action-menu-title);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* The column type gallery ("More columns") laid out inside a flyout. */
+.column-menu__gallery {
+  width: 360px;
+  max-height: min(440px, calc(100vh - 32px));
+  overflow-y: auto;
+}
+
+/* Column type rows carry a 20px chip instead of a 16px outline icon. */
+.action-menu__icon:has(.column-menu__type-icon) {
+  width: 20px;
+  height: 20px;
+}
