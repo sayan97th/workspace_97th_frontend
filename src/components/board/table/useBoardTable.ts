@@ -2073,6 +2073,34 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   }, [nextId]);
 
   /**
+   * The Dropdown picker's "+ Create as a new label": appends the option like
+   * `addColumnOption` and then selects it on the cell. A real column waits for
+   * `onAddColumnOption` to confirm the option (its id comes back with it), the
+   * standalone demo appends locally and selects it right away.
+   */
+  const createColumnOptionOnCell = useCallback(
+    (node_id: string, column_id: string, option: { label: string; color: string }) => {
+      const label = option.label.trim();
+      if (!label) return;
+      const on_add_option = config_ref.current.onAddColumnOption;
+      if (on_add_option) {
+        void on_add_option(column_id, { label, color: option.color }).then((created) => {
+          const created_id = (created as { id?: unknown } | null)?.id;
+          if (typeof created_id === "string") toggleArrayValue(node_id, column_id, created_id);
+        });
+        return;
+      }
+      const new_option: StatusDef = { id: nextId("opt"), label, color: option.color };
+      setState((s) => ({
+        ...s,
+        groups: mapColumnInAllGroups(s.groups, column_id, (c) => ({ ...c, options: (c.options ?? []).concat(new_option) })),
+      }));
+      toggleArrayValue(node_id, column_id, new_option.id);
+    },
+    [nextId, toggleArrayValue]
+  );
+
+  /**
    * Renames one of a dropdown column's own existing options, in place —
    * `DropdownMenu`'s own inline "Edit labels" mode. Mirrors `renameColumn`'s
    * local-mutation-plus-callback pattern (unlike `addColumnOption`, this acts
@@ -2530,6 +2558,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setLabelDefColor,
       deleteLabelDef,
       addColumnOption,
+      createColumnOptionOnCell,
       renameColumnOption,
       recolorColumnOption,
       deleteColumnOption,
@@ -2576,7 +2605,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
-      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
+      deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
       setTagDefColor, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
@@ -2609,7 +2638,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
     "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
-    "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "renameColumnOption",
+    "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "addColumnOption", "createColumnOptionOnCell", "renameColumnOption",
     "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",
     "toggleStatusDefActive", "setStatusDefDescription", "reorderStatusDefs", "toggleColumnNotifyOnAssignment", "updateColumnFormula",
     "updateConnectSettings", "addMirrorColumn", "updateColumnMirror",

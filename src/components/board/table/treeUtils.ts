@@ -60,7 +60,7 @@ export function findNode(groups: BoardTableGroup[], node_id: string): BoardTable
   return null;
 }
 
-/** Every string value a column holds across the loaded items and subitems, e.g. the Status labels in use. */
+/** Every string value (or list entry) a column holds across the loaded items and subitems, e.g. the Status or Dropdown labels in use. */
 export function collectColumnValues(groups: BoardTableGroup[], column_id: string): Set<string> {
   const values = new Set<string>();
   for (const group of groups) {
@@ -68,6 +68,8 @@ export function collectColumnValues(groups: BoardTableGroup[], column_id: string
       for (const node of [item, ...item.subs]) {
         const value = node.values[column_id];
         if (typeof value === "string" && value !== "") values.add(value);
+        // Multi select kinds (Dropdown) store a list of option ids.
+        else if (Array.isArray(value)) value.forEach((entry) => typeof entry === "string" && entry !== "" && values.add(entry));
       }
     }
   }

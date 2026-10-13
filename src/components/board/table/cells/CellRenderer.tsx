@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors, timelineFillBackground } from "../colorUtils";
-import { DROPDOWN_OPTION_COLORS } from "../constants";
 import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
 import { collectColumnValues, dependencyCandidates, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
@@ -16,6 +15,7 @@ import DateMenu from "../menus/DateMenu";
 import TimelineMenu from "../menus/TimelineMenu";
 import ProgressMenu from "../menus/ProgressMenu";
 import DropdownMenu from "../menus/DropdownMenu";
+import DropdownCellChips from "./DropdownCellChips";
 import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
@@ -396,48 +396,38 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "dropdown") {
     // Never falls back to the shared `label_defs` palette (unlike `label`
-    // below) — every dropdown column owns its own, independent option list,
+    // below), every dropdown column owns its own, independent option list,
     // starting empty, so two dropdown columns never show/edit the same set.
     const defs = column.options ?? [];
     const selected = asArray(value);
-    // `overflow-hidden` stays on the button (below), not the wrapping div —
-    // there it would also clip `DropdownMenu`, which renders as that div's
+    const selected_labels = selected.map((entry) => findDef(defs, entry) ?? { id: entry, label: entry, color: "" });
+    // `overflow-hidden` stays on the chips (inside the button), not the wrapping
+    // div, where it would also clip `DropdownMenu`, which renders as that div's
     // other child and needs to overflow past the cell's edges.
     return (
-      <div className="relative flex min-w-0 flex-1 items-center gap-1.5 px-2.5">
-        {/* `h-full` keeps the button clickable when there are no chips yet —
-            without it, `items-center` on the wrapping div shrinks the button
-            to its (empty) content height, leaving nothing for a click to
-            actually hit. */}
-        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-          {selected.map((entry) => {
-            const def = findDef(defs, entry);
-            const label = def?.label ?? entry;
-            return (
-              // `min-w-0 truncate` (not `flex-none whitespace-nowrap`) so an
-              // abnormally long option value — e.g. a "tags"/"dropdown"
-              // column repurposed to hold free-form text — clips with an
-              // ellipsis instead of forcing the chip past its own width and
-              // bleeding into the next column.
-              <span key={entry} title={label} className="min-w-0 max-w-full truncate rounded-[4px] px-2 py-0.5 text-[11px] font-medium text-white" style={{ background: def?.color || "#9aa0b6" }}>
-                {label}
-              </span>
-            );
-          })}
+      <div className="relative flex min-w-0 flex-1 items-center px-2">
+        {/* `h-full` keeps the button clickable when there are no chips yet. */}
+        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
+          <DropdownCellChips labels={selected_labels} />
         </button>
         {is_menu_open && (
           <DropdownMenu
             options={defs}
             selected={selected}
             onToggle={(id) => actions.toggleArrayValue(node_id, column.id, id)}
-            onClear={() => actions.clearCellValue(node_id, column.id)}
+            onClear={() => actions.setCellValue(node_id, column.id, null)}
             onClose={actions.closeCellMenu}
-            onAddOption={(label) =>
-              actions.addColumnOption(column.id, { label, color: DROPDOWN_OPTION_COLORS[defs.length % DROPDOWN_OPTION_COLORS.length] })
-            }
-            onRenameOption={(id, label) => actions.renameColumnOption(column.id, id, label)}
-            onRecolorOption={(id, color) => actions.recolorColumnOption(column.id, id, color)}
-            onDeleteOption={(id) => actions.deleteColumnOption(column.id, id)}
+            onCreateAndSelect={(option) => actions.createColumnOptionOnCell(node_id, column.id, option)}
+            onAddOption={(option) => actions.addColumnOption(column.id, option)}
+            option_actions={{
+              onRename: (id, label) => actions.renameColumnOption(column.id, id, label),
+              onRecolor: (id, color) => actions.recolorColumnOption(column.id, id, color),
+              onDelete: (id) => actions.deleteColumnOption(column.id, id),
+              onToggleActive: (id) => actions.toggleColumnOptionActive(column.id, id),
+              onSetDescription: (id, description) => actions.setColumnOptionDescription(column.id, id, description),
+              onReorder: (ordered_ids) => actions.reorderColumnOptions(column.id, ordered_ids),
+            }}
+            used_option_ids={collectColumnValues(state.groups, column.id)}
           />
         )}
       </div>

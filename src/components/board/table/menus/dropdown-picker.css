@@ -1,0 +1,527 @@
+/*
+ * Dropdown column picker, styled after monday.com: a white card with an 8px
+ * radius, the selected labels as tinted chips on top, a "Create or find
+ * labels" search field, the list of labels still available, a "+ Create as a
+ * new label" button while the typed name is new, and a centered "Edit labels"
+ * footer. Edit mode keeps the chips and the search and turns each row into an
+ * editable field (drag handle, color swatch, click to rename, "...") closed by
+ * an "Apply" footer.
+ *
+ * Every color is a `--dropdown-picker-*` token declared on `.dropdown-picker`,
+ * so dark mode only swaps the tokens, never the rules below. The card is
+ * portaled to `document.body` (see `PopoverPanel`), outside the table's scoped
+ * palette, which is why it carries its own tokens. A chip's tint comes from
+ * its label color through `--dropdown-chip-color`.
+ */
+
+.dropdown-picker {
+  --dropdown-picker-surface: #ffffff;
+  --dropdown-picker-text: #323338;
+  --dropdown-picker-text-secondary: #676879;
+  --dropdown-picker-text-faint: #9699a6;
+  --dropdown-picker-border: #c3c6d4;
+  --dropdown-picker-border-hover: #323338;
+  --dropdown-picker-focus: #0073ea;
+  --dropdown-picker-hover: #dcdfec;
+  --dropdown-picker-active: #cce5ff;
+  --dropdown-picker-divider: #e7e9ef;
+  --dropdown-picker-chip-mix: 32%;
+  --dropdown-picker-chip-hover-mix: 48%;
+  --dropdown-picker-primary: #0073ea;
+  --dropdown-picker-primary-hover: #0060b9;
+  --dropdown-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  padding: 16px 16px 8px;
+  border-radius: 8px;
+  background: var(--dropdown-picker-surface);
+  box-shadow: var(--dropdown-picker-shadow);
+  color: var(--dropdown-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .dropdown-picker {
+  --dropdown-picker-surface: #0f1c1c;
+  --dropdown-picker-text: #e9eded;
+  --dropdown-picker-text-secondary: #b7c0c1;
+  --dropdown-picker-text-faint: #9aa4a5;
+  --dropdown-picker-border: rgba(255, 255, 255, 0.18);
+  --dropdown-picker-border-hover: rgba(255, 255, 255, 0.45);
+  --dropdown-picker-focus: #4d9cff;
+  --dropdown-picker-hover: rgba(255, 255, 255, 0.08);
+  --dropdown-picker-active: rgba(77, 156, 255, 0.2);
+  --dropdown-picker-divider: rgba(255, 255, 255, 0.12);
+  --dropdown-picker-chip-mix: 38%;
+  --dropdown-picker-chip-hover-mix: 52%;
+  --dropdown-picker-primary: #2f7de1;
+  --dropdown-picker-primary-hover: #4d9cff;
+  --dropdown-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dropdown-picker {
+    animation: dropdown-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes dropdown-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Only one area scrolls at a time: the list normally, the whole body when the panel is height capped. */
+.dropdown-picker__body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-capped] .dropdown-picker__body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Selected labels. */
+.dropdown-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.dropdown-picker__chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 2px 0 8px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dropdown-chip-color, #579bfc) var(--dropdown-picker-chip-mix), var(--dropdown-picker-surface));
+  color: var(--dropdown-picker-text);
+}
+
+.dropdown-picker__chip[data-inactive="true"] {
+  opacity: 0.55;
+}
+
+.dropdown-picker__chip-label {
+  overflow: hidden;
+  max-width: 200px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-picker__chip-remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  color: var(--dropdown-picker-text);
+}
+
+.dropdown-picker__chip-remove:hover {
+  background: color-mix(in srgb, var(--dropdown-chip-color, #579bfc) var(--dropdown-picker-chip-hover-mix), var(--dropdown-picker-surface));
+}
+
+.dropdown-picker__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--dropdown-picker-text-secondary);
+}
+
+.dropdown-picker__clear:hover {
+  background: var(--dropdown-picker-hover);
+  color: var(--dropdown-picker-text);
+}
+
+/* "Create or find labels". */
+.dropdown-picker__search {
+  flex: none;
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--dropdown-picker-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dropdown-picker-text);
+  font: inherit;
+  outline: none;
+  transition: border-color 120ms ease;
+}
+
+.dropdown-picker__search:hover {
+  border-color: var(--dropdown-picker-border-hover);
+}
+
+.dropdown-picker__search:focus {
+  border-color: var(--dropdown-picker-focus);
+}
+
+.dropdown-picker__search::placeholder {
+  color: var(--dropdown-picker-text-faint);
+}
+
+.dropdown-picker__list {
+  display: flex;
+  flex-direction: column;
+  max-height: 240px;
+  margin-top: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+[data-capped] .dropdown-picker__list {
+  max-height: none;
+  overflow: visible;
+}
+
+/* A label still available to pick, shown as the same tinted chip it becomes once picked. */
+.dropdown-picker__option {
+  display: flex;
+  flex: none;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px;
+  border-radius: 4px;
+  text-align: left;
+}
+
+.dropdown-picker__option:hover,
+.dropdown-picker__option[data-highlighted="true"] {
+  background: var(--dropdown-picker-hover);
+}
+
+.dropdown-picker__option .dropdown-picker__chip {
+  padding-right: 8px;
+}
+
+/* A label in edit mode: drag handle, color swatch, click to rename text and "...". */
+.dropdown-picker__field {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 4px 0 20px;
+  border-radius: 4px;
+  background: var(--dropdown-picker-surface);
+}
+
+.dropdown-picker__field:hover,
+.dropdown-picker__field[data-active="true"] {
+  background: var(--dropdown-picker-hover);
+}
+
+.dropdown-picker__field[data-dragging="true"] {
+  z-index: 2;
+  box-shadow: var(--dropdown-picker-shadow);
+}
+
+.dropdown-picker__field[data-inactive="true"] .dropdown-picker__field-label,
+.dropdown-picker__field[data-inactive="true"] .dropdown-picker__swatch {
+  opacity: 0.5;
+}
+
+.dropdown-picker__handle {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 24px;
+  color: var(--dropdown-picker-text-faint);
+  opacity: 0;
+  cursor: grab;
+  transform: translateY(-50%);
+  transition: opacity 70ms ease-in;
+}
+
+.dropdown-picker__field:hover .dropdown-picker__handle,
+.dropdown-picker__handle:focus-visible {
+  opacity: 1;
+}
+
+.dropdown-picker__handle:active {
+  cursor: grabbing;
+}
+
+.dropdown-picker__swatch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.dropdown-picker__field-label {
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--dropdown-picker-text);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-picker__field-label:hover {
+  border-color: var(--dropdown-picker-border);
+  background: var(--dropdown-picker-surface);
+}
+
+.dropdown-picker__field-input {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--dropdown-picker-focus);
+  border-radius: 4px;
+  background: var(--dropdown-picker-surface);
+  color: var(--dropdown-picker-text);
+  font: inherit;
+  outline: none;
+}
+
+.dropdown-picker__inactive-tag {
+  flex: none;
+  color: var(--dropdown-picker-text-faint);
+  font-size: 12px;
+}
+
+.dropdown-picker__more {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--dropdown-picker-text-secondary);
+}
+
+.dropdown-picker__more:hover,
+.dropdown-picker__field[data-active="true"] .dropdown-picker__more {
+  background: var(--dropdown-picker-active);
+  color: var(--dropdown-picker-focus);
+}
+
+.dropdown-picker__empty {
+  padding: 8px;
+  color: var(--dropdown-picker-text-faint);
+}
+
+/* "+ Create as a new label". */
+.dropdown-picker__create {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 36px;
+  margin-top: 12px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--dropdown-picker-primary);
+  color: #ffffff;
+  transition: background-color 120ms ease;
+}
+
+.dropdown-picker__create:hover {
+  background: var(--dropdown-picker-primary-hover);
+}
+
+.dropdown-picker__create-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Label description editor, opened from the "..." menu. */
+.dropdown-picker__description {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.dropdown-picker__description-title {
+  color: var(--dropdown-picker-text-secondary);
+  font-size: 13px;
+}
+
+.dropdown-picker__description-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--dropdown-picker-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dropdown-picker-text);
+  font: inherit;
+  outline: none;
+  resize: vertical;
+}
+
+.dropdown-picker__description-input:focus {
+  border-color: var(--dropdown-picker-focus);
+}
+
+.dropdown-picker__description-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dropdown-picker__button {
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 4px;
+  transition: background-color 120ms ease;
+}
+
+.dropdown-picker__button--secondary:hover {
+  background: var(--dropdown-picker-hover);
+}
+
+.dropdown-picker__button--primary {
+  background: var(--dropdown-picker-primary);
+  color: #ffffff;
+}
+
+.dropdown-picker__button--primary:hover {
+  background: var(--dropdown-picker-primary-hover);
+}
+
+/* "Edit labels" / "Apply". */
+.dropdown-picker__footer {
+  display: flex;
+  flex: none;
+  justify-content: center;
+  margin-top: 8px;
+}
+
+.dropdown-picker__footer-button {
+  min-width: 96px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 4px;
+  color: var(--dropdown-picker-text);
+  transition: background-color 120ms ease;
+}
+
+.dropdown-picker__footer-button:hover {
+  background: var(--dropdown-picker-hover);
+}
+
+.dropdown-picker__search:focus-visible,
+.dropdown-picker__option:focus-visible,
+.dropdown-picker__chip-remove:focus-visible,
+.dropdown-picker__clear:focus-visible,
+.dropdown-picker__field-label:focus-visible,
+.dropdown-picker__more:focus-visible,
+.dropdown-picker__create:focus-visible,
+.dropdown-picker__button:focus-visible,
+.dropdown-picker__footer-button:focus-visible {
+  outline: 2px solid var(--dropdown-picker-focus);
+  outline-offset: 1px;
+}
+
+/* Table cell: tinted chips that fit, then a dark "+N" badge for the rest, like monday.com. */
+.dropdown-cell {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.dropdown-cell__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 6px;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.dropdown-cell__chip {
+  overflow: hidden;
+  flex: none;
+  max-width: 100%;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dropdown-chip-color, #579bfc) 32%, var(--color-boardtree-surface, #ffffff));
+  color: var(--color-boardtree-text, #323338);
+  font-size: 13px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown-cell__chip--shrink {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.dropdown-cell__more {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: #323338;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+html.dark .dropdown-cell__more {
+  background: #e9eded;
+  color: #0f1c1c;
+}
