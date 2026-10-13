@@ -6,8 +6,8 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 /** Matches an `@Full Name` mention run — shared by every place a mention gets colored, live or read-only. */
 export const MENTION_PATTERN = /(@[A-Z][a-zA-Z]+(?: [A-Z][a-zA-Z]+)?)/g;
 
-/** The Slack-style mention color/weight, as Tailwind utility classes so every consumer renders identically. */
-export const MENTION_HIGHLIGHT_CLASS = "font-semibold text-[#7fb2ff]";
+/** The mention chip look (`rich-text.css`), one class so the live editor and every posted body render identically. */
+export const MENTION_HIGHLIGHT_CLASS = "rich-text-mention";
 
 const buildMentionDecorations = (doc: ProseMirrorNode): DecorationSet => {
   const decorations: Decoration[] = [];

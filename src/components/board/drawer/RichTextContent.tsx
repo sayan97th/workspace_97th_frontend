@@ -5,9 +5,10 @@ import DOMPurify from "dompurify";
 import { Marked } from "marked";
 import { PersonCardPopover, useHoverCardController, type HoverCardPerson } from "@/components/people/PersonHoverCard";
 import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
+import "./rich-text.css";
 
 export type RichTextContentProps = {
-  /** Markdown comment/update body, as typed into `RichTextComposer` and stored as-is by the API (see `BoardItemCommentController`/`BoardCommentController`, which no longer HTML-sanitize it — the body is plain Markdown text, not markup). */
+  /** Markdown comment/update body, as typed into `RichTextComposer` and stored as-is by the API (see `BoardItemCommentController`/`BoardCommentController`, which no longer HTML-sanitize it, the body is plain Markdown text, not markup). */
   html: string;
   className?: string;
   /** People that can be `@mentioned` here: hovering a mention that names one of them shows their profile card. */
@@ -19,16 +20,15 @@ const IMG_TAG_PATTERN = /<img[^>]*src="([^"]*)"[^>]*>/g;
 /** A link to another item of a board, as the composer's `#` picker writes it: `/boards/{board_id}/pulses/{item_id}`. */
 const ITEM_REFERENCE_LINK_PATTERN = /<a href="(\/boards\/\d+\/pulses\/\d+)"/g;
 
-/** The look of an item reference chip, kept as one string so Tailwind sees the classes. */
-const ITEM_REFERENCE_CLASS =
-  "rounded-md bg-[rgba(87,155,252,0.16)] px-1.5 py-px font-semibold text-[#7fb2ff] no-underline transition-colors hover:bg-[rgba(87,155,252,0.28)]";
+/** The item reference chip look, declared in `rich-text.css`. */
+const ITEM_REFERENCE_CLASS = "rich-text-item-ref";
 
 /** Marks item reference links as chips, so a click can open the item without reloading the page. */
 const markItemReferences = (html: string): string =>
   html.replace(ITEM_REFERENCE_LINK_PATTERN, (_match, href: string) => `<a data-item-ref="true" class="${ITEM_REFERENCE_CLASS}" href="${href}"`);
 
 /**
- * A `marked` instance with raw HTML tokens neutralized — any literal
+ * A `marked` instance with raw HTML tokens neutralized, any literal
  * `<tag>` a user types or pastes into the Markdown source is dropped
  * outright rather than passed through into the rendered HTML, so a comment
  * body can never inject markup regardless of render context (server or
@@ -55,12 +55,12 @@ const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverC
 };
 
 /**
- * Read-only renderer for a comment/update body — the rich text counterpart
+ * Read-only renderer for a comment/update body, the rich text counterpart
  * of the old `renderMentionText()` plain-text highlighter, used by
  * `CommentThread` and `UpdateFeedCard`. Parses the stored Markdown to HTML
  * (raw HTML tokens stripped by {@link markdown_renderer}) and re-sanitizes
  * with DOMPurify as defense in depth (skipped during SSR, where `window`
- * doesn't exist yet — the Markdown parse alone is already safe for that
+ * doesn't exist yet, the Markdown parse alone is already safe for that
  * first paint, and the client pass re-checks it right after hydration).
  * A `[#Item name](/boards/1/pulses/2)` link written by the composer's `#` picker
  * renders as a chip that opens that item through the router. When the body carries two or more inline images, they're pulled out of

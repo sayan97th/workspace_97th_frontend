@@ -333,7 +333,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
         </div>
 
         {/* Message body */}
-        <RichTextContent html={body} people={mentions} className="mt-3.5 text-[13.5px] leading-[1.6] text-shell-text-secondary" />
+        <RichTextContent html={body} people={mentions} className="mt-3.5" />
 
         {/* Item changes behind this update */}
         <FeedActivityTimeline entries={activity} total={activity_total} />

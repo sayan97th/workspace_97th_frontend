@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from "react";
+import "./rich-text.css";
 
 export type ComposerSuggestion = {
   id: string;
@@ -32,9 +33,9 @@ const ComposerSuggestionMenu: React.FC<ComposerSuggestionMenuProps> = ({ title, 
     <div
       role="listbox"
       aria-label={title}
-      className="absolute left-0 top-[52px] z-[5] max-h-[260px] w-[300px] overflow-auto rounded-xl border border-shell-border-strong bg-shell-panel p-[5px] shadow-[0_18px_44px_rgba(0,0,0,0.5)]"
+      className="rich-text-menu top-[52px] max-h-[280px] w-[300px]"
     >
-      <div className="px-[9px] pb-1 pt-1.5 text-[10.5px] font-bold uppercase tracking-wide text-shell-text-faint">{title}</div>
+      <div className="rich-text-menu__title">{title}</div>
       {items.map((item, index) => (
         <button
           key={item.id}
@@ -46,10 +47,12 @@ const ComposerSuggestionMenu: React.FC<ComposerSuggestionMenuProps> = ({ title, 
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => onPick(index)}
           onMouseEnter={() => onHover(index)}
-          className={`flex w-full flex-col rounded-lg px-[9px] py-1.5 text-left ${index === active_index ? "bg-shell-hover" : ""}`}
+          className="rich-text-menu__item"
         >
-          <span className="truncate text-[13px] font-medium text-shell-text">{item.label}</span>
-          {item.description && <span className="truncate text-[11.5px] text-shell-text-faint">{item.description}</span>}
+          <span className="min-w-0">
+            <span className="rich-text-menu__label">{item.label}</span>
+            {item.description && <span className="rich-text-menu__description">{item.description}</span>}
+          </span>
         </button>
       ))}
     </div>

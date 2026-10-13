@@ -222,6 +222,19 @@ export const InlineCodeIcon: React.FC<IconProps> = ({ className, size = 15 }) =>
   </svg>
 );
 
+export const CodeBlockIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <rect x="1.75" y="2.25" width="12.5" height="11.5" rx="2" stroke="currentColor" strokeWidth="1.3" />
+    <path
+      d="M6.3 6.2 L4.5 8 L6.3 9.8 M9.7 6.2 L11.5 8 L9.7 9.8"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 /** Slack's own "Aa" affordance for showing/hiding the formatting toolbar. */
 export const FormatToggleIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">

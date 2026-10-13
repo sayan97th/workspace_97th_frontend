@@ -71,9 +71,8 @@ const SavedRepliesMenu: React.FC<SavedRepliesMenuProps> = ({ draft, onInsert, ic
         aria-haspopup="dialog"
         aria-expanded={is_open}
         title="Saved replies"
-        className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-          is_open ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-        }`}
+        data-active={is_open ? "true" : undefined}
+        className="rich-text-tool"
       >
         <BookmarkIcon size={icon_size - 2} />
       </button>
@@ -121,12 +120,12 @@ const SavedRepliesMenu: React.FC<SavedRepliesMenuProps> = ({ draft, onInsert, ic
                 disabled={!has_draft}
                 placeholder={has_draft ? "Name this reply" : "Write a draft to save it"}
                 aria-label="Saved reply name"
-                className="min-w-0 flex-1 rounded-[8px] border border-shell-border bg-shell-panel-alt px-2.5 py-1.5 text-[12.5px] text-shell-text placeholder:text-shell-text-muted focus:border-[#00c875] focus:outline-none disabled:opacity-50"
+                className="min-w-0 flex-1 rounded-[8px] border border-shell-border bg-shell-panel-alt px-2.5 py-1.5 text-[12.5px] text-shell-text placeholder:text-shell-text-muted focus:border-brand-500 focus:outline-none disabled:opacity-50"
               />
               <button
                 type="submit"
                 disabled={!has_draft || title.trim() === "" || is_saving}
-                className="flex-none rounded-[8px] bg-[#00c875] px-3 py-1.5 text-[12px] font-bold text-[#04241a] transition-colors hover:bg-[#00e084] disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-none rounded-[8px] bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 Save
               </button>

@@ -51,9 +51,8 @@ const ComposerScheduleMenu: React.FC<ComposerScheduleMenuProps> = ({ value, onCh
         aria-haspopup="dialog"
         aria-expanded={is_open}
         title={value ? `Scheduled for ${formatScheduledTime(value)}` : "Schedule send"}
-        className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-          value || is_open ? "bg-shell-hover text-[#7fb2ff]" : "text-shell-text-muted"
-        }`}
+        data-active={value || is_open ? "true" : undefined}
+        className="rich-text-tool"
       >
         <ClockIcon size={icon_size} />
       </button>

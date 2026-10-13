@@ -9,7 +9,7 @@ export type InsertLinkModalProps = {
   initial_url: string;
   /** Prefilled from the current selection's text (or the existing link's label). */
   initial_text: string;
-  /** True when the toolbar's Link button was clicked with the cursor already inside a link — shows "Remove link" alongside Cancel/Insert. */
+  /** True when the toolbar's Link button was clicked with the cursor already inside a link, shows "Remove link" alongside Cancel/Insert. */
   is_editing_existing: boolean;
   onInsert: (url: string, text: string) => void;
   onRemove: () => void;
@@ -20,7 +20,7 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * "Insert link" dialog for `RichTextComposer`'s toolbar Link button —
+ * "Insert link" dialog for `RichTextComposer`'s toolbar Link button,
  * replaces the browser's own blocking, unstyled `window.prompt("Link URL")`.
  * Mirrors {@link "@/components/ui/modal/CopyLinkModal"}/`ConfirmActionModal`'s
  * chrome (backdrop, centered panel, header with a close button, footer with
@@ -98,82 +98,61 @@ const InsertLinkModal: React.FC<InsertLinkModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Insert link"
+      aria-label={is_editing_existing ? "Edit link" : "Insert link"}
       // See `ConfirmActionModal`'s own doc for why: exempts this dialog from
       // a parent popover's outside-click detection, in case the toolbar
       // that opened it is ever itself nested inside one.
       data-board-menu-flyout
       className="fixed inset-0 z-[420] flex items-center justify-center p-6"
     >
-      <div className="absolute inset-0 bg-[#060e0e]/[0.68] backdrop-blur-[2px]" onClick={onClose} aria-hidden="true" />
+      <div className="rich-text-dialog__backdrop" onClick={onClose} aria-hidden="true" />
 
-      <form
-        onSubmit={handleSubmit}
-        ref={panel_ref}
-        className="relative z-[421] w-[420px] max-w-full overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-2xl"
-      >
-        <div className="flex items-center justify-between border-b border-shell-border px-[22px] py-4">
-          <span className="text-base font-semibold tracking-[-0.01em]">Insert link</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-7 w-7 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-          >
+      <form onSubmit={handleSubmit} ref={panel_ref} className="rich-text-dialog">
+        <div className="rich-text-dialog__header">
+          <span className="font-heading text-dialog-title">{is_editing_existing ? "Edit link" : "Insert link"}</span>
+          <button type="button" onClick={onClose} aria-label="Close" className="rich-text-tool rich-text-tool--lg">
             <CloseIcon size={14} />
           </button>
         </div>
 
-        <div className="space-y-4 px-[22px] py-5">
+        <div className="rich-text-dialog__body">
           <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-shell-text">
-              Write or paste a link <span className="text-[#e2445c]">*</span>
+            <span className="rich-text-field__label">
+              Write or paste a link <span className="rich-text-field__required">*</span>
             </span>
             <input
               ref={url_input_ref}
               value={url}
               onChange={(event) => setUrl(event.target.value)}
               placeholder="www.example.com"
-              className="w-full rounded-lg border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13.5px] text-shell-text outline-none transition-colors focus:border-[#00c875]"
+              className="rich-text-input"
             />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-[13px] font-semibold text-shell-text">Text to display</span>
+            <span className="rich-text-field__label">Text to display</span>
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder="Example text"
-              className="w-full rounded-lg border border-shell-border-strong bg-shell-bg px-3.5 py-[11px] text-[13.5px] text-shell-text outline-none transition-colors focus:border-[#00c875]"
+              className="rich-text-input"
             />
           </label>
         </div>
 
-        <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[22px] py-4">
+        <div className="rich-text-dialog__footer">
           {is_editing_existing ? (
-            <button type="button" onClick={onRemove} className="text-[13px] font-semibold text-[#e2445c] hover:underline">
+            <button type="button" onClick={onRemove} className="rich-text-button rich-text-button--danger">
               Remove link
             </button>
           ) : (
             <span />
           )}
-          <div className="flex items-center gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
-            >
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={onClose} className="rich-text-button rich-text-button--ghost">
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={!can_insert}
-              className={`rounded-lg px-5 py-2.5 text-[13.5px] font-semibold transition-colors ${
-                can_insert
-                  ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
-                  : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
-              }`}
-            >
-              Insert
+            <button type="submit" disabled={!can_insert} className="rich-text-button rich-text-button--primary">
+              {is_editing_existing ? "Save" : "Insert"}
             </button>
           </div>
         </div>

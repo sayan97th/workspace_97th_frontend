@@ -9,6 +9,7 @@ import { Markdown } from "@tiptap/markdown";
 import {
   BoldIcon,
   BulletListIcon,
+  CodeBlockIcon,
   InlineCodeIcon,
   ItalicIcon,
   LinkFormatIcon,
@@ -20,6 +21,7 @@ import { inlineUploadService } from "@/services/inline-upload.service";
 import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
 import type { SlashCommandAction } from "./slashCommands";
+import "./rich-text.css";
 
 /** A `/command` or `#item` being typed right before the caret, reported so the parent can show its suggestion menu. */
 export type ComposerTrigger = { kind: "slash" | "reference"; query: string };
@@ -49,7 +51,7 @@ export type RichTextComposerRef = {
 };
 
 export type RichTextComposerProps = {
-  /** The body as Markdown — only pushed into the live editor when it differs and the editor isn't focused, so external resets (clearing after submit) never fight the user's own typing. */
+  /** The body as Markdown, only pushed into the live editor when it differs and the editor isn't focused, so external resets (clearing after submit) never fight the user's own typing. */
   value: string;
   onChange: (markdown: string) => void;
   /** Plain-text mirror of every keystroke, for the parent's `@mention` trigger detection. */
@@ -64,7 +66,7 @@ export type RichTextComposerProps = {
    * block-continuation behavior so those stay usable.
    */
   onEnterSubmit?: () => void;
-  /** When set, Escape fires this — `CommentEditForm`'s "Cancel". */
+  /** When set, Escape fires this, `CommentEditForm`'s "Cancel". */
   onEscape?: () => void;
   /** Fired as the caret moves or the text changes, with the `/command` or `#item` being typed there, or null when there is none. */
   onTriggerChange?: (trigger: ComposerTrigger | null) => void;
@@ -75,9 +77,9 @@ export type RichTextComposerProps = {
    */
   onSuggestionKeyDown?: (event: KeyboardEvent) => boolean;
   autoFocus?: boolean;
-  /** True when rendered inside `CommentComposer`'s own unified Slack-style box — drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Defaults to false for standalone use (`CommentEditForm`), which keeps its own self-contained bordered box. */
+  /** True when rendered inside `CommentComposer`'s own unified Slack-style box, drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Defaults to false for standalone use (`CommentEditForm`), which keeps its own self-contained bordered box. */
   embedded?: boolean;
-  /** Embedded mode only: whether the formatting toolbar row is shown — driven by `CommentComposer`'s "Aa" toggle. */
+  /** Embedded mode only: whether the formatting toolbar row is shown, driven by `CommentComposer`'s "Aa" toggle. */
   show_toolbar?: boolean;
 };
 
@@ -104,31 +106,38 @@ const deleteTriggerText = (current_editor: Editor): void => {
   current_editor.chain().focus().deleteRange({ from: from - match.text.length, to: from }).run();
 };
 
-const ToolbarButton: React.FC<{ label: string; active?: boolean; onClick: () => void; children: React.ReactNode }> = ({
-  label,
-  active,
-  onClick,
-  children,
-}) => (
+/** The label of the platform's command key, for the shortcut hints in the toolbar tooltips. */
+const getModKeyLabel = (): string =>
+  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl";
+
+const ToolbarButton: React.FC<{
+  label: string;
+  /** Keyboard chord shown after the label in the tooltip, e.g. "Ctrl+B". */
+  shortcut?: string;
+  active?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ label, shortcut, active, onClick, children }) => (
   <button
     type="button"
+    // Keeps the editor focused, so a click never drops the selection it formats.
     onMouseDown={(event) => event.preventDefault()}
     onClick={onClick}
     aria-label={label}
-    title={label}
-    className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
-      active ? "bg-shell-hover-strong text-shell-text" : "text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-    }`}
+    aria-pressed={active}
+    title={shortcut ? `${label} (${shortcut})` : label}
+    data-active={active ? "true" : undefined}
+    className="rich-text-tool"
   >
     {children}
   </button>
 );
 
-const ToolbarDivider: React.FC = () => <span className="mx-1 h-4 w-px flex-none bg-shell-border-strong" />;
+const ToolbarDivider: React.FC = () => <span className="rich-text-tool-divider" aria-hidden="true" />;
 
 /**
  * Tiptap-backed rich text editor used by `CommentComposer` in place of a
- * plain `<textarea>` — bold/italic/lists/links, plus uploading a
+ * plain `<textarea>`, bold/italic/lists/links, plus uploading a
  * pasted/dropped image straight into the body via `inlineUploadService`.
  * `@mention` autocomplete and emoji insertion stay owned by the parent
  * drawer hook (`mention_target`/`emoji_palette_target`), which drives this
@@ -161,6 +170,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // Read through refs, so the editor (created once) always calls the parent's latest callbacks.
     const trigger_change_ref = useRef(onTriggerChange);
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
+    // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
+    const open_link_modal_ref = useRef<() => void>(() => {});
     useEffect(() => {
       trigger_change_ref.current = onTriggerChange;
       suggestion_key_down_ref.current = onSuggestionKeyDown;
@@ -193,13 +204,17 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onBlur: () => trigger_change_ref.current?.(null),
       editorProps: {
         attributes: {
-          class: embedded
-            ? `shell-rich-text-editor ${min_height_class} w-full resize-none bg-transparent px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none`
-            : `shell-rich-text-editor ${min_height_class} w-full resize-none rounded-[11px] border border-shell-border-strong bg-shell-panel px-[13px] py-[9px] font-sans text-[13.5px] leading-relaxed text-shell-text outline-none transition-colors focus:border-[#00c875]`,
+          class: `shell-rich-text-editor ${min_height_class} w-full`,
         },
         handleKeyDown: (_view, event) => {
           if (suggestion_key_down_ref.current?.(event)) {
             event.preventDefault();
+            return true;
+          }
+          // Ctrl/Cmd+K opens the link dialog, the shortcut every other editor uses for it.
+          if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
+            event.preventDefault();
+            open_link_modal_ref.current();
             return true;
           }
           if (event.key !== "Enter") {
@@ -258,7 +273,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         const url = await inlineUploadService.uploadImage(file);
         editor?.chain().focus().setImage({ src: url }).run();
       } catch {
-        // Upload failed silently — the draft stays usable, the image just doesn't appear.
+        // Upload failed silently, the draft stays usable, the image just doesn't appear.
       }
     };
 
@@ -268,7 +283,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const [is_editing_existing_link, setIsEditingExistingLink] = useState(false);
 
     // Mirrors an external reset (e.g. the composer clearing after a
-    // successful submit) into the live document — skipped while focused so
+    // successful submit) into the live document, skipped while focused so
     // a live keystroke can never be clobbered by a stale `value` prop.
     useEffect(() => {
       if (!editor || editor.isFocused) return;
@@ -349,6 +364,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         blockquote: context.editor?.isActive("blockquote") ?? false,
         bullet_list: context.editor?.isActive("bulletList") ?? false,
         ordered_list: context.editor?.isActive("orderedList") ?? false,
+        code_block: context.editor?.isActive("codeBlock") ?? false,
         link: context.editor?.isActive("link") ?? false,
       }),
     });
@@ -357,7 +373,17 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
 
     const active_state =
       editor_state ??
-      { bold: false, italic: false, strike: false, code: false, blockquote: false, bullet_list: false, ordered_list: false, link: false };
+      {
+        bold: false,
+        italic: false,
+        strike: false,
+        code: false,
+        blockquote: false,
+        bullet_list: false,
+        ordered_list: false,
+        code_block: false,
+        link: false,
+      };
 
     // Opens `InsertLinkModal` prefilled from whatever's under the cursor: the
     // selected text (as the label) and, when the cursor already sits inside
@@ -394,23 +420,39 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       setIsLinkModalOpen(false);
     };
 
+    open_link_modal_ref.current = openLinkModal;
+    const mod_key = getModKeyLabel();
+
     const toolbar = (
-      <div className="flex items-center gap-0.5 px-[7px] py-[6px]">
-        <ToolbarButton label="Bold (Ctrl+B)" active={active_state.bold} onClick={() => editor.chain().focus().toggleBold().run()}>
+      <div className="rich-text-toolbar" role="toolbar" aria-label="Formatting">
+        <ToolbarButton
+          label="Bold"
+          shortcut={`${mod_key}+B`}
+          active={active_state.bold}
+          onClick={() => editor.chain().focus().toggleBold().run()}
+        >
           <BoldIcon size={15} />
         </ToolbarButton>
-        <ToolbarButton label="Italic (Ctrl+I)" active={active_state.italic} onClick={() => editor.chain().focus().toggleItalic().run()}>
+        <ToolbarButton
+          label="Italic"
+          shortcut={`${mod_key}+I`}
+          active={active_state.italic}
+          onClick={() => editor.chain().focus().toggleItalic().run()}
+        >
           <ItalicIcon size={15} />
         </ToolbarButton>
-        <ToolbarButton label="Strikethrough" active={active_state.strike} onClick={() => editor.chain().focus().toggleStrike().run()}>
+        <ToolbarButton
+          label="Strikethrough"
+          shortcut={`${mod_key}+Shift+S`}
+          active={active_state.strike}
+          onClick={() => editor.chain().focus().toggleStrike().run()}
+        >
           <StrikethroughIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton label="Link" active={active_state.link} onClick={openLinkModal}>
-          <LinkFormatIcon size={15} />
         </ToolbarButton>
         <ToolbarDivider />
         <ToolbarButton
           label="Bulleted list"
+          shortcut={`${mod_key}+Shift+8`}
           active={active_state.bullet_list}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
@@ -418,6 +460,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         </ToolbarButton>
         <ToolbarButton
           label="Numbered list"
+          shortcut={`${mod_key}+Shift+7`}
           active={active_state.ordered_list}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
@@ -425,13 +468,31 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         </ToolbarButton>
         <ToolbarButton
           label="Quote"
+          shortcut={`${mod_key}+Shift+B`}
           active={active_state.blockquote}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
           <QuoteIcon size={15} />
         </ToolbarButton>
-        <ToolbarButton label="Code" active={active_state.code} onClick={() => editor.chain().focus().toggleCode().run()}>
+        <ToolbarDivider />
+        <ToolbarButton
+          label="Inline code"
+          shortcut={`${mod_key}+E`}
+          active={active_state.code}
+          onClick={() => editor.chain().focus().toggleCode().run()}
+        >
           <InlineCodeIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton
+          label="Code block"
+          shortcut={`${mod_key}+Alt+C`}
+          active={active_state.code_block}
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+        >
+          <CodeBlockIcon size={15} />
+        </ToolbarButton>
+        <ToolbarButton label="Link" shortcut={`${mod_key}+K`} active={active_state.link} onClick={openLinkModal}>
+          <LinkFormatIcon size={15} />
         </ToolbarButton>
       </div>
     );
@@ -451,7 +512,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     if (embedded) {
       return (
         <div>
-          {show_toolbar && <div className="border-b border-shell-border">{toolbar}</div>}
+          {show_toolbar && toolbar}
           <EditorContent editor={editor} />
           {link_modal}
         </div>
@@ -459,8 +520,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     }
 
     return (
-      <div>
-        <div className="mb-1.5">{toolbar}</div>
+      <div className="rich-text-box">
+        {toolbar}
         <EditorContent editor={editor} />
         {link_modal}
       </div>

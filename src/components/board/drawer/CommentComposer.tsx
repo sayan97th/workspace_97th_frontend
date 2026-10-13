@@ -22,7 +22,7 @@ export type CommentComposerProps = {
   /** Identifies this composer among the drawer's shared mention/emoji palette state: "composer" for the top-level update box, or the parent comment id for a reply box. */
   target: DrawerComposerTarget;
   /**
-   * Shown beside the box when given — the per-reply box inside a thread
+   * Shown beside the box when given, the per-reply box inside a thread
    * uses this to stay visually aligned with the avatar column every posted
    * reply already has. Omitted by the top-level "write an update" composer,
    * which reclaims that width for the editor instead (who's typing there is
@@ -39,7 +39,7 @@ export type CommentComposerProps = {
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
   onPickMention: (option: MentionOption) => void;
-  /** All people who could be flagged via "Notify" — same roster as `mention_matches` draws from, unfiltered. */
+  /** All people who could be flagged via "Notify", same roster as `mention_matches` draws from, unfiltered. */
   mentionable_people?: BoardPersonOption[];
   notify_target?: DrawerComposerTarget | null;
   onToggleNotifyPicker?: (target: DrawerComposerTarget) => void;
@@ -123,7 +123,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const show_notify_picker = notify_target === target;
   const show_emoji_palette = emoji_palette_target === target;
   const can_notify = Boolean(onToggleNotifyPicker && onPickNotifyPerson);
-  // The "Aa" button toggles this directly — independent of `variant`, so it
+  // The "Aa" button toggles this directly, independent of `variant`, so it
   // actually does something for the always-visible "update" box too, not
   // just the reply box (which only shows the toggle once `has_draft`, same
   // as the rest of its action row).
@@ -216,7 +216,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
 
   // Unlike the `@mention` picker (which closes itself once the trigger text
   // no longer matches), the Notify picker is opened by an explicit button
-  // press and has no such natural close signal — dismiss it on any click
+  // press and has no such natural close signal, dismiss it on any click
   // outside its own trigger + dropdown instead.
   useEffect(() => {
     if (!show_notify_picker || !onCloseNotifyPicker) return;
@@ -232,7 +232,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
 
   return (
     // The top-level "write an update" composer omits `avatar_person` (who's
-    // typing there is implicit — it's always the current user — and the
+    // typing there is implicit, it's always the current user, and the
     // reclaimed width goes straight to the editor); each thread's reply box
     // still passes it, to stay aligned with the avatar column every posted
     // reply already has.
@@ -240,20 +240,17 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
       {avatar_person && <PersonAvatar person={avatar_person} size={is_update ? 34 : 27} className="mt-0.5" />}
       <div className={avatar_person ? "relative flex-1" : "relative"}>
         {notified_people.length > 0 && (
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <BellIcon size={12} className="text-shell-text-faint" />
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <BellIcon size={13} className="text-shell-text-faint" />
             {notified_people.map((person) => (
-              <span
-                key={person.id}
-                className="flex items-center gap-1 rounded-full bg-shell-hover-strong px-2 py-0.5 text-[11.5px] font-semibold text-shell-text-secondary"
-              >
+              <span key={person.id} className="rich-text-chip">
                 {person.name}
                 {onRemoveNotifyPerson && (
                   <button
                     type="button"
                     onClick={() => onRemoveNotifyPerson(person.id)}
                     aria-label={`Stop notifying ${person.name}`}
-                    className="text-shell-text-faint hover:text-shell-text"
+                    className="rich-text-chip__remove"
                   >
                     ×
                   </button>
@@ -264,15 +261,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
         )}
 
         {schedule_at && (
-          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="flex items-center gap-1.5 rounded-full bg-shell-hover-strong px-2.5 py-0.5 text-[11.5px] font-semibold text-[#7fb2ff]">
-              <ClockIcon size={11} />
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <span className="rich-text-chip rich-text-chip--accent">
+              <ClockIcon size={12} />
               Sends {formatScheduledTime(schedule_at)}
               <button
                 type="button"
                 onClick={() => onScheduleChange?.(null)}
                 aria-label="Send right away instead"
-                className="text-shell-text-faint hover:text-shell-text"
+                className="rich-text-chip__remove"
               >
                 ×
               </button>
@@ -280,11 +277,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
-        {/* One Slack-style bordered container: formatting toolbar, editor, then the action row — each separated by a hairline divider instead of the toolbar floating detached above its own boxed textarea. */}
-        <div
-          ref={editor_root_ref}
-          className="overflow-hidden rounded-xl border border-shell-border-strong bg-shell-panel transition-colors focus-within:border-[#00c875]"
-        >
+        {/* One bordered container: formatting toolbar, editor, then the action row, each separated by a hairline divider. */}
+        <div ref={editor_root_ref} className="rich-text-box">
           <RichTextComposer
             ref={rich_text_ref}
             embedded
@@ -303,17 +297,16 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           />
 
           {(is_update || has_draft) && (
-            <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[7px] py-[6px]">
-              <div className="flex items-center gap-0.5">
+            <div className="rich-text-actions">
+              <div className="rich-text-actions__group">
                 <button
                   type="button"
                   onClick={() => setToolbarHidden((hidden) => !hidden)}
                   aria-label={show_toolbar ? "Hide formatting options" : "Show formatting options"}
                   aria-pressed={show_toolbar}
                   title={show_toolbar ? "Hide formatting options" : "Show formatting options"}
-                  className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                    show_toolbar ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                  }`}
+                  data-active={show_toolbar ? "true" : undefined}
+                  className="rich-text-tool"
                 >
                   <FormatToggleIcon size={is_update ? 16 : 15} />
                 </button>
@@ -324,7 +317,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                       onClick={() => file_input_ref.current?.click()}
                       aria-label="Attach a file"
                       title="Attach a file"
-                      className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+                      className="rich-text-tool"
                     >
                       <AttachIcon />
                     </button>
@@ -347,7 +340,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                     onClick={() => onToggleEmojiPalette(target)}
                     aria-label="Add an emoji"
                     title="Add an emoji"
-                    className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+                    className="rich-text-tool"
                   >
                     <ReactSmileyIcon size={is_update ? 17 : 16} />
                   </button>
@@ -372,9 +365,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                       onClick={() => onToggleNotifyPicker?.(target)}
                       aria-label="Notify someone"
                       title="Notify someone without mentioning them"
-                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                        show_notify_picker ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                      }`}
+                      data-active={show_notify_picker ? "true" : undefined}
+                      className="rich-text-tool"
                     >
                       <BellIcon size={is_update ? 16 : 15} />
                     </button>
@@ -382,21 +374,17 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                 )}
                 {onScheduleChange && <ComposerScheduleMenu value={schedule_at} onChange={onScheduleChange} icon_size={is_update ? 16 : 15} />}
               </div>
-              <div className="flex items-center gap-2.5">
-                <span className="hidden text-xs text-shell-text-faint sm:inline">Shift + Enter for a new line</span>
+              <div className="flex items-center gap-3">
+                <span className="rich-text-hint max-sm:!hidden">
+                  <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
+                </span>
                 <button
                   type="button"
                   onClick={onSubmit}
                   disabled={!has_draft}
                   aria-label={effective_submit_label}
                   title={effective_submit_label}
-                  className={`flex items-center justify-center rounded-lg font-sans font-bold transition-colors ${
-                    is_update ? "h-[34px] w-[34px]" : "h-[30px] w-[30px]"
-                  } ${
-                    has_draft
-                      ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
-                      : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
-                  }`}
+                  className={`rich-text-send ${is_update ? "" : "rich-text-send--sm"}`}
                 >
                   <SendIcon size={is_update ? 16 : 15} />
                 </button>

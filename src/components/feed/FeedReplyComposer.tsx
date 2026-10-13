@@ -131,7 +131,7 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
       <PersonAvatar person={current_user} size={30} className="mt-0.5" />
 
       <div className="relative min-w-0 flex-1">
-        <div className="overflow-hidden rounded-xl border border-shell-border bg-shell-panel-alt transition-colors focus-within:border-brand-500">
+        <div className="rich-text-box">
           <RichTextComposer
             ref={rich_text_ref}
             embedded
@@ -145,17 +145,16 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
             onEnterSubmit={is_picker_open ? undefined : submit}
           />
 
-          <div className="flex items-center justify-between gap-2.5 border-t border-shell-border px-[7px] py-[5px]">
-            <div className="flex items-center gap-0.5">
+          <div className="rich-text-actions">
+            <div className="rich-text-actions__group">
               <button
                 type="button"
                 onClick={() => setIsToolbarVisible((visible) => !visible)}
                 aria-label={is_toolbar_visible ? "Hide formatting options" : "Show formatting options"}
                 aria-pressed={is_toolbar_visible}
                 title={is_toolbar_visible ? "Hide formatting options" : "Show formatting options"}
-                className={`flex h-[28px] w-[28px] items-center justify-center rounded-lg hover:bg-shell-hover hover:text-shell-text ${
-                  is_toolbar_visible ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-                }`}
+                data-active={is_toolbar_visible ? "true" : undefined}
+                className="rich-text-tool"
               >
                 <FormatToggleIcon size={15} />
               </button>
@@ -166,7 +165,7 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
                   onClick={() => setIsEmojiOpen((open) => !open)}
                   aria-label="Add an emoji"
                   title="Add an emoji"
-                  className="flex h-[28px] w-[28px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+                  className="rich-text-tool"
                 >
                   <ReactSmileyIcon size={16} />
                 </button>
@@ -187,9 +186,8 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
                 aria-label="Schedule this update for later"
                 aria-pressed={is_scheduling}
                 title="Schedule for later"
-                className={`flex h-[28px] w-[28px] items-center justify-center rounded-lg hover:bg-shell-hover ${
-                  is_scheduling ? "text-[#7fb2ff]" : "text-shell-text-muted hover:text-shell-text"
-                }`}
+                data-active={is_scheduling ? "true" : undefined}
+                className="rich-text-tool"
               >
                 <ClockIcon size={15} />
               </button>
@@ -201,11 +199,7 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
               disabled={!has_draft || is_scheduling}
               aria-label="Reply"
               title="Reply"
-              className={`flex h-[28px] w-[28px] items-center justify-center rounded-lg transition-colors ${
-                has_draft && !is_scheduling
-                  ? "bg-[#00c875] text-[#04241a] hover:bg-[#00e084]"
-                  : "cursor-not-allowed bg-shell-hover text-shell-text-faint"
-              }`}
+              className="rich-text-send rich-text-send--sm"
             >
               <SendIcon size={14} />
             </button>

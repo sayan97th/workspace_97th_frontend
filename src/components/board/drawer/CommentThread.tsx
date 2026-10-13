@@ -209,7 +209,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
         {is_editing ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <RichTextContent html={reply.body} people={people} className="mt-1 text-[13px] leading-[1.55] text-shell-text-secondary" />
+          <RichTextContent html={reply.body} people={people} className="mt-1" />
         )}
         <ReactionsRow
           reactions={reply.reactions}
@@ -502,7 +502,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         {editing_key === comment.id ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <RichTextContent html={comment.body} people={mentionable_people} className="mt-2.5 text-[13.5px] leading-relaxed text-shell-text-secondary" />
+          <RichTextContent html={comment.body} people={mentionable_people} className="mt-2.5" />
         )}
 
         {comment.attachments.length > 0 && (
