@@ -4,6 +4,7 @@ import type {
   BoardColumnDto,
   BoardGroupDto,
   BoardGroupsIndexDto,
+  BoardItemActivityPageDto,
   BoardItemChecklistItemDto,
   BoardItemDetailDto,
   BoardItemDto,
@@ -250,6 +251,11 @@ export const boardContentService = {
   /** GET /api/boards/{board_id}/items/{item_id} — resolves a pulse for the item detail drawer. */
   async getItem(board_id: number, item_id: number): Promise<BoardItemDetailDto> {
     return apiClient.get<BoardItemDetailDto>(`/api/boards/${board_id}/items/${item_id}`);
+  },
+
+  /** GET /api/boards/{board_id}/items/{item_id}/activity, the item card's Activity Log, newest first. */
+  async getItemActivity(board_id: number, item_id: number, page = 1): Promise<BoardItemActivityPageDto> {
+    return apiClient.get<BoardItemActivityPageDto>(`/api/boards/${board_id}/items/${item_id}/activity?page=${page}`);
   },
 
   /** POST /api/boards/{board_id}/items */

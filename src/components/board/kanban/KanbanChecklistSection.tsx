@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, CloseIcon, PlusIcon } from "@/icons/board-icons";
 import type { BoardItemChecklistItemDto } from "@/types/board-content";
 import InlineTitleEditor from "../InlineTitleEditor";
-import { KANBAN_COLORS } from "./kanbanDesign";
 
 export type KanbanChecklistSectionProps = {
   items: BoardItemChecklistItemDto[];
@@ -14,12 +13,8 @@ export type KanbanChecklistSectionProps = {
   onDelete: (checklist_item_id: number) => void;
 };
 
-type AddSubtaskInputProps = {
-  onSubmit: (label: string) => void;
-};
-
-/** Self-contained "Add subtask" input, mirroring `BoardKanban.tsx`'s `AddCardInput` — owns its own draft text and clears itself after a commit. */
-const AddSubtaskInput: React.FC<AddSubtaskInputProps> = ({ onSubmit }) => {
+/** Self-contained "Add subtask" input, owns its own draft text and clears itself after a commit so several subtasks can be typed in a row. */
+const AddSubtaskInput: React.FC<{ onSubmit: (label: string) => void }> = ({ onSubmit }) => {
   const [value, setValue] = useState("");
   const input_ref = useRef<HTMLInputElement>(null);
 
@@ -32,31 +27,37 @@ const AddSubtaskInput: React.FC<AddSubtaskInputProps> = ({ onSubmit }) => {
   };
 
   return (
-    <input
-      ref={input_ref}
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          commit();
-        }
-      }}
-      onBlur={commit}
-      placeholder="Add a subtask..."
-      className="w-full rounded-lg px-[11px] py-2 text-[13px] outline-none"
-      style={{ border: `1px solid ${KANBAN_COLORS.border_subtle}`, color: KANBAN_COLORS.text_secondary }}
-    />
+    <div className="kanban-item-modal__subtask-add">
+      <PlusIcon size={14} />
+      <input
+        ref={input_ref}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commit();
+          } else if (event.key === "Escape" && value) {
+            event.preventDefault();
+            setValue("");
+          }
+        }}
+        onBlur={commit}
+        placeholder="Add a subtask"
+        aria-label="Add a subtask"
+        className="kanban-item-modal__subtask-input"
+      />
+    </div>
   );
 };
 
 /**
- * The Kanban item drawer's "Subtasks" section — a literal reproduction of
- * `design/design_2/97 Workspace Menu.dc.html`'s checklist block (progress bar
- * + checkbox rows), backed by the real `board_item_checklist_items` API
- * (see `BoardItemChecklistItemController`). Rolls up into the Kanban card's
- * own "✓ done/total" badge via `BoardItemDto.checklist_total_count`/`checklist_done_count`,
- * which the caller (`TableBoardView`) keeps in sync on every mutation here.
+ * The Kanban item card's "Subtasks" section, an Asana style checklist with a
+ * progress bar, backed by the `board_item_checklist_items` API (see
+ * `BoardItemChecklistItemController`). Rolls up into the Kanban card's own
+ * "done/total" badge via `BoardItemDto.checklist_total_count` and
+ * `checklist_done_count`, which the caller keeps in sync on every mutation.
+ * Styled by `kanban-item-modal.css`.
  */
 const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, loading, onAdd, onToggle, onRename, onDelete }) => {
   const [editing_id, setEditingId] = useState<number | null>(null);
@@ -69,42 +70,46 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
   }, [items, editing_id]);
 
   return (
-    <div className="mb-5" style={{ borderTop: `1px solid ${KANBAN_COLORS.border_subtle}`, paddingTop: 16 }}>
-      <div className="mb-2.5 flex items-center justify-between">
-        <span className="text-[12.5px] font-bold" style={{ color: KANBAN_COLORS.text_disabled }}>
+    <section className="kanban-item-modal__section" aria-labelledby="kanban-item-subtasks-title">
+      <div className="kanban-item-modal__section-head">
+        <h3 id="kanban-item-subtasks-title" className="kanban-item-modal__section-title">
           Subtasks
-        </span>
+        </h3>
         {total_count > 0 && (
-          <span className="text-[12px] font-semibold" style={{ color: KANBAN_COLORS.text_placeholder }}>
-            {done_count}/{total_count}
+          <span className="kanban-item-modal__section-count">
+            {done_count} of {total_count} done
           </span>
         )}
       </div>
 
       {total_count > 0 && (
-        <div className="mb-2.5 h-[5px] overflow-hidden rounded-[3px]" style={{ background: "var(--color-shell-border-strong)" }}>
-          <div
-            className="h-full rounded-[3px] transition-[width]"
-            style={{ width: `${progress_pct}%`, background: KANBAN_COLORS.success }}
-          />
+        <div
+          className="kanban-item-modal__progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress_pct}
+          aria-label="Subtasks completed"
+        >
+          <div className="kanban-item-modal__progress-fill" style={{ width: `${progress_pct}%` }} />
         </div>
       )}
 
-      {!loading && (
-        <div className="mb-2.5 flex flex-col gap-0.5">
-          {items.map((item) => (
-            <div key={item.id} className="group flex items-center gap-2 py-[5px]">
+      <div className="kanban-item-modal__subtasks">
+        {loading ? (
+          <div className="kanban-item-modal__subtasks-loading">Loading subtasks...</div>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className="kanban-item-modal__subtask">
               <button
                 type="button"
                 onClick={() => onToggle(item.id)}
                 aria-label={item.is_done ? "Mark subtask incomplete" : "Mark subtask complete"}
-                className="flex h-3.5 w-3.5 flex-none items-center justify-center rounded-[4px] border-[1.6px] transition-colors"
-                style={{
-                  borderColor: item.is_done ? KANBAN_COLORS.success : KANBAN_COLORS.text_hairline,
-                  background: item.is_done ? KANBAN_COLORS.success : KANBAN_COLORS.card_bg,
-                }}
+                aria-pressed={item.is_done}
+                data-done={item.is_done || undefined}
+                className="kanban-item-modal__subtask-check"
               >
-                {item.is_done && <CheckIcon size={8} className="text-white" />}
+                <CheckIcon size={10} />
               </button>
 
               {editing_id === item.id ? (
@@ -115,18 +120,14 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
                     setEditingId(null);
                   }}
                   onCancel={() => setEditingId(null)}
-                  className="min-w-0 flex-1 text-[13px] font-medium"
-                  style={{ color: KANBAN_COLORS.text_secondary }}
+                  className="kanban-item-modal__subtask-input"
                   aria_label="Rename subtask"
                 />
               ) : (
                 <span
                   onClick={() => setEditingId(item.id)}
-                  className="min-w-0 flex-1 cursor-text truncate text-[13px] font-medium"
-                  style={{
-                    color: item.is_done ? KANBAN_COLORS.text_faded : KANBAN_COLORS.text_secondary,
-                    textDecoration: item.is_done ? "line-through" : "none",
-                  }}
+                  data-done={item.is_done || undefined}
+                  className="kanban-item-modal__subtask-label"
                   title="Click to rename"
                 >
                   {item.label}
@@ -138,28 +139,17 @@ const KanbanChecklistSection: React.FC<KanbanChecklistSectionProps> = ({ items, 
                 onClick={() => onDelete(item.id)}
                 aria-label="Delete subtask"
                 title="Delete subtask"
-                className="flex h-5 w-5 flex-none items-center justify-center rounded-[6px] opacity-0 transition-opacity hover:bg-shell-hover group-hover:opacity-100"
-                style={{ color: KANBAN_COLORS.text_faint }}
+                className="kanban-item-modal__subtask-delete"
               >
                 <CloseIcon size={10} />
               </button>
             </div>
-          ))}
-        </div>
-      )}
-
-      <AddSubtaskInputRow onAdd={onAdd} />
-    </div>
+          ))
+        )}
+        <AddSubtaskInput onSubmit={onAdd} />
+      </div>
+    </section>
   );
 };
-
-const AddSubtaskInputRow: React.FC<{ onAdd: (label: string) => void }> = ({ onAdd }) => (
-  <div className="flex items-center gap-1.5">
-    <span className="flex h-5 w-5 flex-none items-center justify-center" style={{ color: KANBAN_COLORS.text_placeholder }}>
-      <PlusIcon size={12} />
-    </span>
-    <AddSubtaskInput onSubmit={onAdd} />
-  </div>
-);
 
 export default KanbanChecklistSection;

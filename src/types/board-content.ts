@@ -208,6 +208,32 @@ export type BoardItemChecklistItemDto = {
   position: number;
 };
 
+/** One recorded change of a board item, for the item card's Activity Log tab (`GET /api/boards/{id}/items/{item_id}/activity`). */
+export type BoardItemActivityDto = {
+  id: number;
+  user: {
+    id: number;
+    full_name: string;
+    profile_photo_url: string | null;
+    is_deactivated?: boolean;
+  } | null;
+  /** Set when an automation made the change, the log then credits it instead of the user. */
+  automation: { id: number | null; name: string } | null;
+  /** Null for a change to the item's own fields, see `column_type` `item_name` and `item_group`. */
+  column_id: number | null;
+  column_label: string;
+  /** A column type, or `item_name` for a rename and `item_group` for a move to another group. */
+  column_type: string;
+  old_display: string | null;
+  new_display: string | null;
+  created_at: string;
+};
+
+export type BoardItemActivityPageDto = {
+  data: BoardItemActivityDto[];
+  meta: { current_page: number; last_page: number; total: number };
+};
+
 /** Extends {@link BoardItemDto} with the fields the pulse detail drawer shows. */
 export type BoardItemDetailDto = BoardItemDto & {
   created_at: string | null;

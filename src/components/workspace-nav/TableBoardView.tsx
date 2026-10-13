@@ -29,7 +29,8 @@ import {
   KANBAN_DEFAULT_LANE_OPTIONS,
   KanbanCardLabels,
   KanbanCardMembers,
-  KanbanItemDrawer,
+  KanbanItemModal,
+  type KanbanItemField,
   KanbanTaskCard,
   PersonAvatarStack,
   PresenceAvatarStack,
@@ -3913,15 +3914,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleAddColumn(dependency_type);
   };
 
-  // ── Kanban's own drawer — a literal reproduction of the mockup's single-panel
-  // task drawer (see `KanbanItemDrawer`), not the richer tabbed `BoardItemDrawer`
-  // every other view (Table/Calendar) keeps using. Every field still writes
-  // through the exact same real persistence (`handleUpdateCellValue`/
-  // `handleRenameItem`) as the card and the table cell it's mirrored from. ──
+  // ── Kanban's own item card (see `KanbanItemModal`), a centered monday
+  // style modal instead of the tabbed `BoardItemDrawer` every other view
+  // (Table/Calendar) keeps using. Every field still writes through the exact
+  // same persistence (`handleUpdateCellValue`/`handleRenameItem`) as the
+  // card and the table cell it is mirrored from. ──
   const kanban_open_row = active_view_type === "kanban" ? items.find((item) => String(item.id) === drawer.open_row_id) ?? null : null;
-  const kanban_open_row_member_ids = board_member_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_member_column.id)]) : [];
-  const kanban_open_row_label_ids = board_label_column && kanban_open_row ? asStringArray(kanban_open_row.values[String(board_label_column.id)]) : [];
   const kanban_open_row_detail = kanban_open_row ? item_detail_by_id[String(kanban_open_row.id)] : undefined;
+  // The columns the Kanban view relies on come first in a fixed order and stay on every card, every other column follows in board order.
+  const kanban_core_columns = [board_status_column, board_member_column, board_date_column, board_priority_column, board_label_column].filter(
+    (column): column is NonNullable<typeof column> => column != null
+  );
+  const kanban_item_fields: KanbanItemField[] = [
+    ...kanban_core_columns.map((column) => ({ column, is_removable: false })),
+    ...other_kanban_columns.map((column) => ({ column, is_removable: true })),
+  ].map(({ column, is_removable }) => ({
+    id: String(column.id),
+    label: column.label,
+    kind: column.type,
+    options: column.config?.options,
+    is_removable,
+  }));
+  // Previous and next card in the order the lanes show them, for the card's arrows.
+  const kanban_ordered_rows = kanban_lanes.flatMap((lane) => lane.rows);
+  const kanban_open_row_index = kanban_open_row ? kanban_ordered_rows.findIndex((row) => row.id === kanban_open_row.id) : -1;
+  const kanban_previous_row = kanban_open_row_index > 0 ? kanban_ordered_rows[kanban_open_row_index - 1] : null;
+  const kanban_next_row =
+    kanban_open_row_index >= 0 && kanban_open_row_index < kanban_ordered_rows.length - 1 ? kanban_ordered_rows[kanban_open_row_index + 1] : null;
 
   return (
     <BoardShell
@@ -4233,20 +4252,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       )}
 
       {active_view_type === "kanban" ? (
-        <KanbanItemDrawer<BoardItemDto>
+        <KanbanItemModal<BoardItemDto>
           drawer={{ ...drawer, close: handleDrawerClose }}
+          board_label={node.label}
           title={kanban_open_row?.name ?? ""}
-          onRenameTitle={(name) => kanban_open_row && handleRenameItem(kanban_open_row.id, name)}
+          onRenameTitle={(name) => kanban_open_row && void handleRenameItem(kanban_open_row.id, name)}
           is_done={board_done_column && kanban_open_row ? kanban_open_row.values[String(board_done_column.id)] === true : false}
-          created_by={
-            kanban_open_row_detail?.creator
-              ? {
-                  id: String(kanban_open_row_detail.creator.id),
-                  full_name: kanban_open_row_detail.creator.full_name,
-                  profile_photo_url: kanban_open_row_detail.creator.profile_photo_url,
-                }
-              : null
-          }
           onToggleDone={
             board_done_column && kanban_open_row
               ? () =>
@@ -4257,62 +4268,29 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   )
               : undefined
           }
-          people={
-            board_member_column
+          created_by={
+            kanban_open_row_detail?.creator
               ? {
-                  roster: roster_members,
-                  selected: roster_members.filter((member) => kanban_open_row_member_ids.includes(String(member.id))),
-                  onSave: (person_ids) => {
-                    if (!kanban_open_row) return;
-                    void handleUpdateCellValue(kanban_open_row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
-                  },
+                  id: String(kanban_open_row_detail.creator.id),
+                  full_name: kanban_open_row_detail.creator.full_name,
+                  profile_photo_url: kanban_open_row_detail.creator.profile_photo_url,
                 }
-              : undefined
+              : null
           }
-          due_date={
-            board_date_column
-              ? {
-                  value: kanban_open_row && typeof kanban_open_row.values[String(board_date_column.id)] === "string" ? (kanban_open_row.values[String(board_date_column.id)] as string) : null,
-                  onChange: (value) => kanban_open_row && void handleUpdateCellValue(kanban_open_row.id, String(board_date_column.id), value),
-                }
-              : undefined
-          }
-          priority={
-            board_priority_column
-              ? {
-                  options: board_priority_column.config?.options ?? [],
-                  selected_id: kanban_open_row && typeof kanban_open_row.values[String(board_priority_column.id)] === "string" ? (kanban_open_row.values[String(board_priority_column.id)] as string) : null,
-                  onSelect: (option_id) => kanban_open_row && void handleUpdateCellValue(kanban_open_row.id, String(board_priority_column.id), option_id),
-                  onCreateOption: (option) => handleAddColumnOption(String(board_priority_column.id), option),
-                  onEditOptions: makeOptionActions(String(board_priority_column.id)),
-                }
-              : undefined
-          }
-          project={
-            board_label_column
-              ? {
-                  options: board_label_column.config?.options ?? [],
-                  selected_ids: kanban_open_row_label_ids,
-                  onToggle: (option_id) => {
-                    if (!kanban_open_row) return;
-                    const next = kanban_open_row_label_ids.includes(option_id)
-                      ? kanban_open_row_label_ids.filter((id) => id !== option_id)
-                      : [...kanban_open_row_label_ids, option_id];
-                    void handleUpdateCellValue(kanban_open_row.id, String(board_label_column.id), next.length ? next : null);
-                  },
-                  onCreateOption: (option) => handleAddColumnOption(String(board_label_column.id), option),
-                }
-              : undefined
-          }
-          properties={
+          created_at={kanban_open_row_detail?.created_at ?? kanban_open_row?.created_at ?? null}
+          group={
             kanban_open_row
               ? {
-                  columns: other_kanban_columns.map((column) => ({
-                    id: String(column.id),
-                    label: column.label,
-                    kind: column.type,
-                    options: column.config?.options,
-                  })),
+                  options: groups.map((group) => ({ id: String(group.id), label: group.name, color: group.accent_color })),
+                  selected_id: String(kanban_open_row.group_id),
+                  onSelect: kanban_open_row.parent_id === null ? (group_id) => void drawer.moveItemToGroup(group_id) : undefined,
+                }
+              : undefined
+          }
+          fields={
+            kanban_open_row
+              ? {
+                  columns: kanban_item_fields,
                   people: roster_members,
                   getValue: (column_id) => kanban_open_row.values[column_id] ?? null,
                   onCommit: (column_id, value) => void handleUpdateCellValue(kanban_open_row.id, column_id, value),
@@ -4333,6 +4311,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
                   onRename: (checklist_item_id, label) =>
                     handleRenameChecklistItem(String(kanban_open_row.id), checklist_item_id, label),
                   onDelete: (checklist_item_id) => handleDeleteChecklistItem(String(kanban_open_row.id), checklist_item_id),
+                }
+              : undefined
+          }
+          navigation={
+            kanban_open_row_index >= 0
+              ? {
+                  index: kanban_open_row_index,
+                  total: kanban_ordered_rows.length,
+                  onPrevious: kanban_previous_row ? () => handleRowClick(kanban_previous_row) : undefined,
+                  onNext: kanban_next_row ? () => handleRowClick(kanban_next_row) : undefined,
                 }
               : undefined
           }
