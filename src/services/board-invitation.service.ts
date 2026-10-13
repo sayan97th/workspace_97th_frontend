@@ -2,6 +2,7 @@ import { apiClient, persistSession } from "@/lib/api-client";
 import type { AuthResponse } from "@/types/auth";
 import type {
   AcceptBoardInvitationPayload,
+  AddBoardCollaboratorsResult,
   BoardAccessEntry,
   BoardInvitationPreview,
   InviteBoardViewersResult,
@@ -27,6 +28,11 @@ export const boardInvitationService = {
       emails,
       message: message || undefined,
     });
+  },
+
+  /** POST /api/boards/{id}/collaborators, gives existing workspace members access right away (no email). */
+  async addCollaborators(board_id: number, user_ids: number[]): Promise<AddBoardCollaboratorsResult> {
+    return apiClient.post<AddBoardCollaboratorsResult>(`/api/boards/${board_id}/collaborators`, { user_ids });
   },
 
   /** DELETE /api/boards/{id}/invitations/{invitation_id} — revokes a still-pending invitation. */

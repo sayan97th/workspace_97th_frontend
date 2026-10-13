@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { CalendarPlus, Clock } from "lucide-react";
-import UserAvatar from "@/components/common/UserAvatar";
+import { Presentation } from "lucide-react";
 import type { BoardViewDto } from "@/types/board-content";
-import { DocEditorProvider, DocEditorSurface, DocToolbar, type DocMember, type DocUploadHandler } from "./editor";
+import { DocEditorProvider, DocEditorSurface, DocToolbar, useDocEditor, type DocMember, type DocUploadHandler } from "./editor";
+import { serializeDocContent } from "./editor/doc-content";
+import { DocMetaRow, DocTypeIcon } from "./DocHeaderParts";
+import DocPresentationMode from "./presentation/DocPresentationMode";
 import DocSaveIndicator from "./DocSaveIndicator";
 import { useDocAutosave } from "./useDocAutosave";
 
@@ -19,11 +21,47 @@ export type BoardDocViewProps = {
   editable?: boolean;
 };
 
-const formatDateTime = (value: string | null): string => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" });
+type DocTabPresentButtonProps = {
+  view: BoardViewDto;
+  updated_at: string | null;
+};
+
+/** The tab's "Presentation" button, inside the editor provider so it can snapshot the current body. */
+const DocTabPresentButton: React.FC<DocTabPresentButtonProps> = ({ view, updated_at }) => {
+  const { editor } = useDocEditor();
+  const [content, setContent] = useState<string | null>(null);
+  const [is_presenting, setIsPresenting] = useState(false);
+
+  return (
+    <>
+      <button
+        type="button"
+        className="doc-icon-button"
+        aria-label="Presentation"
+        title="Presentation"
+        onClick={() => {
+          setContent(editor ? serializeDocContent(editor.getJSON()) : view.doc_content);
+          setIsPresenting(true);
+        }}
+      >
+        <Presentation size={18} />
+      </button>
+      <DocPresentationMode
+        is_open={is_presenting}
+        onClose={() => setIsPresenting(false)}
+        content={content}
+        heading={
+          <>
+            <div className="doc-presentation-title-row">
+              <DocTypeIcon size={26} />
+              <h1 className="doc-presentation-title">{view.label}</h1>
+            </div>
+            <DocMetaRow creator={view.creator} created_at={view.created_at} updated_at={updated_at} className="mt-4 mb-10" />
+          </>
+        }
+      />
+    </>
+  );
 };
 
 /**
@@ -55,23 +93,17 @@ const BoardDocView: React.FC<BoardDocViewProps> = ({ view, onSaveDocContent, onU
         onUploadFile={onUploadFile}
       >
         <div className="sticky top-0 z-10">
-          <DocToolbar trailing={<DocSaveIndicator status={status} onRetry={flushSave} />} />
+          <DocToolbar
+            trailing={
+              <>
+                <DocSaveIndicator status={status} onRetry={flushSave} />
+                <DocTabPresentButton view={view} updated_at={updated_at} />
+              </>
+            }
+          />
         </div>
         <div className="mx-auto w-full max-w-[860px] px-6 pt-6 sm:px-16">
-          <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-[13.5px] text-[var(--doc-text-secondary)]">
-            <span className="flex items-center gap-2">
-              <UserAvatar user={view.creator} size={20} font_size={9} />
-              Creator <span className="font-semibold text-[var(--doc-text)]">{view.creator?.full_name ?? "Unknown"}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <CalendarPlus size={15} aria-hidden="true" />
-              Created <span className="font-semibold text-[var(--doc-text)]">{formatDateTime(view.created_at)}</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <Clock size={15} aria-hidden="true" />
-              Last updated <span className="font-semibold text-[var(--doc-text)]">{formatDateTime(updated_at)}</span>
-            </span>
-          </div>
+          <DocMetaRow creator={view.creator} created_at={view.created_at} updated_at={updated_at} className="mb-6" />
           <DocEditorSurface />
         </div>
       </DocEditorProvider>

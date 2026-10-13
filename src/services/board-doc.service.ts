@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/api-client";
-import type { BoardDocDto, DocUploadedFile } from "@/types/board-doc";
+import { publicApiRequest } from "@/lib/public-api-client";
+import type { BoardDocDto, DocUploadedFile, PublicDocDto } from "@/types/board-doc";
 
 /**
  * Talks to the Laravel API for the body of a Doc (a navigation leaf with
@@ -24,4 +25,19 @@ export const boardDocService = {
     form_data.append("file", file);
     return apiClient.postFormData<DocUploadedFile>(`/api/boards/${board_id}/doc/files`, form_data);
   },
+
+  /** PUT /api/boards/{board_id}/doc/public-link, the Share dialog's "Share public link" switch. */
+  async updatePublicLink(board_id: number, is_enabled: boolean): Promise<BoardDocDto> {
+    const response = await apiClient.put<{ doc: BoardDocDto }>(`/api/boards/${board_id}/doc/public-link`, { is_enabled });
+    return response.doc;
+  },
+
+  /** Public, no session: GET /api/public/docs/{token}, a doc opened through its public link. */
+  async openPublicDoc(token: string): Promise<PublicDocDto> {
+    return publicApiRequest<PublicDocDto>(`/api/public/docs/${encodeURIComponent(token)}`);
+  },
 };
+
+/** The absolute url a doc's public link opens at. */
+export const buildPublicDocUrl = (token: string): string =>
+  `${typeof window !== "undefined" ? window.location.origin : ""}/share/docs/${token}`;

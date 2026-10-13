@@ -1,42 +1,50 @@
 "use client";
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Archive,
-  CalendarPlus,
-  Clock,
   Copy,
   Download,
-  FileText,
   Link2,
   ListTree,
   Maximize2,
+  MessageCircle,
   Minimize2,
   MoreHorizontal,
+  Presentation,
   Printer,
   Star,
   Trash2,
   UserPlus,
 } from "lucide-react";
-import UserAvatar from "@/components/common/UserAvatar";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { useToast } from "@/components/ui/toast/ToastProvider";
-import BoardInviteModal from "@/components/board/BoardInviteModal";
+import { useBoardDiscussionDrawer } from "@/components/board/drawer";
 import PresenceAvatarStack from "@/components/board/PresenceAvatarStack";
+import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import type { WorkspaceViewProps } from "@/components/workspace-nav/TableBoardView";
+import { useAuth } from "@/context/AuthContext";
+import { useBranding } from "@/context/BrandingContext";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { getUserInitials } from "@/lib/user";
 import { buildPageTitle } from "@/lib/page-title";
 import { boardDocService } from "@/services/board-doc.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
 import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
-import type { BoardDocDto } from "@/types/board-doc";
+import type { BoardDocDto, BoardDocPublicLink } from "@/types/board-doc";
 import type { BoardAccessEntry } from "@/types/board-invitation";
-import { DocEditorProvider, DocEditorSurface, DocOutline, DocToolbar, useDocEditor, type DocMember } from "./editor";
+import type { BoardEditPermission, WorkspaceMember } from "@/types/workspace";
+import { DocEditorProvider, DocEditorSurface, DocOutline, DocToolbar, useDocEditor } from "./editor";
+import { serializeDocContent } from "./editor/doc-content";
+import DocCommentsPanel from "./comments/DocCommentsPanel";
+import { DocMetaRow, DocTypeIcon } from "./DocHeaderParts";
+import DocPresentationMode from "./presentation/DocPresentationMode";
 import DocSaveIndicator from "./DocSaveIndicator";
+import DocShareModal from "./share/DocShareModal";
 import { downloadMarkdown, printDoc } from "./doc-export";
 import { useDocAutosave, type DocSaveStatus } from "./useDocAutosave";
 
@@ -60,28 +68,19 @@ const writeFlag = (key: string, value: boolean) => {
   }
 };
 
-/** "Oct 12, 2026, 14:30", the way monday's doc header shows dates. */
-const formatDocDate = (value: string | null | undefined): string => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-  const time = date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  return `${day}, ${time}`;
-};
-
 /**
  * A Doc (a navigation leaf with `view_key = doc`): a Notion style document
  * page with monday's doc look. The toolbar runs across the top, the page
  * column holds the title (renamed in place), the favorite star, the
  * creator/created/updated row and the editor. The body autosaves to
- * `/api/boards/{id}/doc`.
+ * `/api/boards/{id}/doc`. The toolbar's right side opens the Comments panel,
+ * the Presentation mode and the "Invite to this doc" Share dialog.
  */
 const DocPageView: React.FC<WorkspaceViewProps> = ({ node }) => {
   const toast = useToast();
   const [doc, setDoc] = useState<BoardDocDto | null>(null);
   const [has_error, setHasError] = useState(false);
-  const [members, setMembers] = useState<DocMember[]>([]);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [access, setAccess] = useState<BoardAccessEntry[]>([]);
   const [label, setLabel] = useState(node.label);
 
@@ -162,8 +161,10 @@ const DocPageView: React.FC<WorkspaceViewProps> = ({ node }) => {
         <DocPageBody
           node={node}
           doc={doc}
+          onDocChange={setDoc}
           label={label}
           can_edit={can_edit}
+          members={members}
           access={access}
           onAccessChange={setAccess}
           onRename={handleRename}
@@ -180,8 +181,10 @@ export default DocPageView;
 type DocPageBodyProps = {
   node: WorkspaceViewProps["node"];
   doc: BoardDocDto;
+  onDocChange: (doc: BoardDocDto) => void;
   label: string;
   can_edit: boolean;
+  members: WorkspaceMember[];
   access: BoardAccessEntry[];
   onAccessChange: (access: BoardAccessEntry[]) => void;
   onRename: (label: string) => Promise<void>;
@@ -189,11 +192,64 @@ type DocPageBodyProps = {
   onRetrySave: () => void;
 };
 
-/** Everything inside the editor provider, so the actions can reach the editor (export, print). */
-const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, access, onAccessChange, onRename, save_status, onRetrySave }) => {
+/** Everything inside the editor provider, so the actions can reach the editor (export, print, presentation). */
+const DocPageBody: React.FC<DocPageBodyProps> = ({
+  node,
+  doc,
+  onDocChange,
+  label,
+  can_edit,
+  members,
+  access,
+  onAccessChange,
+  onRename,
+  save_status,
+  onRetrySave,
+}) => {
   const router = useRouter();
   const toast = useToast();
+  const { user } = useAuth();
+  const { branding } = useBranding();
   const { editor } = useDocEditor();
+  const [edit_permission, setEditPermission] = useState<BoardEditPermission>(node.edit_permission);
+  const [presentation_content, setPresentationContent] = useState<string | null>(null);
+  const [is_presenting, setIsPresenting] = useState(false);
+
+  const current_user: BoardPersonOption = useMemo(
+    () =>
+      user
+        ? { id: String(user.id), name: user.full_name, initials: getUserInitials(user), avatar_seed: 0, avatar_url: user.profile_photo_url ?? undefined }
+        : { id: "0", name: "You", initials: "Y", avatar_seed: 0 },
+    [user]
+  );
+  const mentionable_people: BoardPersonOption[] = useMemo(
+    () =>
+      members.map((member, index) => ({
+        id: String(member.id),
+        name: member.full_name,
+        initials: getUserInitials(member),
+        avatar_seed: index,
+        avatar_url: member.profile_photo_url ?? undefined,
+        is_deactivated: member.is_deactivated,
+      })),
+    [members]
+  );
+
+  // The doc's comments are its navigation item's own discussion thread.
+  const comments = useBoardDiscussionDrawer({
+    board_id: node.id,
+    current_user,
+    mentionable_people,
+    breadcrumb_label: `${node.workspace.name} · ${label}`,
+    initial_comment_count: node.comments_count,
+    initial_has_unseen_comments: node.has_unseen_comments,
+    can_edit: node.can_edit,
+  });
+
+  const startPresentation = () => {
+    setPresentationContent(editor ? serializeDocContent(editor.getJSON()) : doc.content);
+    setIsPresenting(true);
+  };
   const more_ref = useRef<HTMLButtonElement>(null);
   const [is_more_open, setIsMoreOpen] = useState(false);
   const [is_invite_open, setIsInviteOpen] = useState(false);
@@ -250,6 +306,13 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
       key: "view",
       items: [
         { key: "outline", label: is_outline_open ? "Hide outline" : "Show outline", icon: <ListTree size={ICON_SIZE} />, onClick: runMenuAction(toggleOutline) },
+        { key: "present", label: "Present", icon: <Presentation size={ICON_SIZE} />, onClick: runMenuAction(startPresentation) },
+        {
+          key: "comments",
+          label: comments.is_open ? "Hide comments" : "Show comments",
+          icon: <MessageCircle size={ICON_SIZE} />,
+          onClick: runMenuAction(comments.is_open ? comments.close : comments.open),
+        },
         {
           key: "full-width",
           label: is_full_width ? "Default width" : "Full width",
@@ -332,6 +395,24 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
   const trailing = (
     <>
       <DocSaveIndicator status={save_status} onRetry={onRetrySave} />
+      <button
+        type="button"
+        className={`doc-icon-button doc-comments-toggle${comments.is_open ? " is-active" : ""}`}
+        aria-label="Comments"
+        title="Comments"
+        aria-pressed={comments.is_open}
+        onClick={comments.is_open ? comments.close : comments.open}
+      >
+        <MessageCircle size={18} />
+        {comments.comment_count > 0 && (
+          <span className={`doc-comments-count${comments.has_unseen_comments ? " is-unseen" : ""}`}>
+            {comments.comment_count > 99 ? "99+" : comments.comment_count}
+          </span>
+        )}
+      </button>
+      <button type="button" className="doc-icon-button" aria-label="Presentation" title="Presentation" onClick={startPresentation}>
+        <Presentation size={18} />
+      </button>
       <PresenceAvatarStack board_id={node.id} />
       <div className="flex items-center rounded border border-[var(--doc-border-strong)]">
         <button type="button" className="doc-button rounded-r-none" onClick={() => setIsInviteOpen(true)}>
@@ -360,7 +441,7 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
     <>
       <DocToolbar trailing={trailing} />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <aside className={`doc-print-hidden flex flex-none flex-col items-start pt-6 pl-4 ${is_outline_open ? "border-r border-[var(--doc-border)]" : ""}`}>
           <button
             type="button"
@@ -378,7 +459,7 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
         <div className="min-w-0 flex-1 overflow-y-auto">
           <div className={`mx-auto w-full px-6 pt-10 sm:px-16 ${is_full_width ? "max-w-none" : "max-w-[860px]"}`}>
             <div className="flex items-center gap-3">
-              <FileText size={22} className="flex-none text-[var(--doc-text-secondary)]" aria-hidden="true" />
+              <DocTypeIcon board_type={node.board_type} />
               <DocTitle
                 label={label}
                 editable={can_edit}
@@ -397,24 +478,13 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
               </button>
             </div>
 
-            <div className="mt-4 mb-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] text-[var(--doc-text-secondary)]">
-              <span className="flex items-center gap-2">
-                <UserAvatar user={node.creator} size={22} font_size={9} />
-                Creator <span className="font-semibold text-[var(--doc-text)]">{node.creator?.full_name ?? "Unknown"}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <CalendarPlus size={16} aria-hidden="true" />
-                Created <span className="font-semibold text-[var(--doc-text)]">{formatDocDate(node.created_at)}</span>
-              </span>
-              <span className="flex items-center gap-2">
-                <Clock size={16} aria-hidden="true" />
-                Last updated <span className="font-semibold text-[var(--doc-text)]">{formatDocDate(doc.updated_at ?? node.created_at)}</span>
-              </span>
-            </div>
+            <DocMetaRow creator={node.creator} created_at={node.created_at} updated_at={doc.updated_at} className="mt-4 mb-8" />
 
             <DocEditorSurface />
           </div>
         </div>
+
+        <DocCommentsPanel drawer={comments} />
       </div>
 
       <ActionMenu
@@ -426,15 +496,45 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({ node, doc, label, can_edit, a
         width={240}
         align="end"
       />
-      <BoardInviteModal
+      <DocShareModal
         is_open={is_invite_open}
         onClose={() => setIsInviteOpen(false)}
         board_id={node.id}
-        board_label={label}
         board_type={node.board_type}
         workspace_name={node.workspace.name}
-        initial_access={access}
+        company_name={branding.company_name}
+        can_manage={node.can_manage}
+        members={members}
+        access={access}
         onAccessChange={onAccessChange}
+        edit_permission={edit_permission}
+        onEditPermissionChange={setEditPermission}
+        public_link={doc.public_link ?? { is_enabled: false, token: null }}
+        onPublicLinkChange={(public_link: BoardDocPublicLink) => onDocChange({ ...doc, public_link })}
+      />
+      <DocPresentationMode
+        is_open={is_presenting}
+        onClose={() => setIsPresenting(false)}
+        content={presentation_content}
+        heading={
+          <>
+            <div className="doc-presentation-title-row">
+              <DocTypeIcon board_type={node.board_type} size={26} />
+              <h1 className="doc-presentation-title">{label}</h1>
+              <button
+                type="button"
+                className={`doc-icon-button flex-none${is_favorite ? " text-[#ffcb00]" : ""}`}
+                aria-label={is_favorite ? "Remove from favorites" : "Add to favorites"}
+                title={is_favorite ? "Remove from favorites" : "Add to favorites"}
+                aria-pressed={is_favorite}
+                onClick={() => void toggleFavorite()}
+              >
+                <Star size={22} fill={is_favorite ? "#ffcb00" : "none"} stroke={is_favorite ? "#ffcb00" : "currentColor"} />
+              </button>
+            </div>
+            <DocMetaRow creator={node.creator} created_at={node.created_at} updated_at={doc.updated_at} className="mt-4 mb-10" />
+          </>
+        }
       />
       <ConfirmActionModal
         is_open={is_delete_open}

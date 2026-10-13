@@ -22,6 +22,8 @@ export type BoardAccessEntry = {
   full_name: string | null;
   email: string;
   profile_photo_url: string | null;
+  /** Shown under the name in the Share dialog, null for a pending invitation or when never set. */
+  job_title?: string | null;
   status: "accepted" | "pending";
   /** False for board owners, who can't be removed from this dialog. */
   removable: boolean;
@@ -38,6 +40,12 @@ export type InviteBoardViewersResult = {
   message: string;
   data: BoardAccessEntry[];
   skipped: SkippedBoardInvitation[];
+};
+
+/** Response for `POST /api/boards/{id}/collaborators`, only the people who did not have access yet. */
+export type AddBoardCollaboratorsResult = {
+  message: string;
+  data: BoardAccessEntry[];
 };
 
 /** The public preview shown on the accept-board-invitation page, from `GET /api/auth/board-invitations/{code}`. */
