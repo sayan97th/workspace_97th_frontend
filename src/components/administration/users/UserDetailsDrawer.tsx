@@ -2,8 +2,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { PersonAvatar } from "@/components/board";
+import BoardDrawerHeader from "@/components/board/drawer/BoardDrawerHeader";
 import SlideOverPanel from "@/components/board/drawer/SlideOverPanel";
-import { CloseIcon } from "@/icons/workspace-icons";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { adminSessionsService } from "@/services/administration/admin-sessions.service";
 import { adminUsersService } from "@/services/administration/admin-users.service";
@@ -180,19 +180,10 @@ const UserDetailsDrawer: React.FC<UserDetailsDrawerProps> = ({
     <SlideOverPanel
       is_open={user_id !== null}
       onClose={onClose}
-      panel_class_name="w-[480px] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
+      aria_label="User details"
+      panel_class_name="w-[min(480px,100vw)]"
     >
-      <div className="flex flex-none items-center justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
-        <h2 className="m-0 font-heading text-dialog-title">User details</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close user details"
-          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-        >
-          <CloseIcon size={16} />
-        </button>
-      </div>
+      <BoardDrawerHeader title="User details" onClose={onClose} close_label="Close user details" is_bordered />
 
       <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-[22px] py-5">
         {error ? (

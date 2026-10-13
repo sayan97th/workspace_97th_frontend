@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { mapAuthorToPerson } from "./drawer/commentMapping";
+import BoardDrawerHeader from "./drawer/BoardDrawerHeader";
 import SlideOverPanel from "./drawer/SlideOverPanel";
 import PersonAvatar from "./PersonAvatar";
-import { CloseIcon } from "@/icons/board-icons";
 import { ActivityLogIcon } from "@/icons/board-options-icons";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
 import { boardOptionsService } from "@/services/board-options.service";
@@ -54,44 +54,46 @@ const BoardActivityLogDrawer: React.FC<BoardActivityLogDrawerProps> = ({ board_i
     <SlideOverPanel
       is_open={is_open}
       onClose={onClose}
-      panel_class_name="w-[440px] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
+      aria_label="Activity log"
+      panel_class_name="w-[min(480px,100vw)]"
     >
-      <div className="flex flex-none items-center justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
-        <h2 className="m-0 flex items-center gap-2.5 font-heading text-dialog-title">
-          <ActivityLogIcon size={17} className="text-shell-text-muted" />
-          Activity log
-        </h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close activity log"
-          className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-        >
-          <CloseIcon size={16} />
-        </button>
-      </div>
+      <BoardDrawerHeader
+        title={
+          <span className="flex items-center gap-2.5">
+            <ActivityLogIcon size={18} className="text-[var(--bd-text-secondary)]" />
+            Activity log
+          </span>
+        }
+        onClose={onClose}
+        close_label="Close activity log"
+        is_bordered
+      />
 
-      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-5 py-4">
+      <div className="shell-scrollbar board-drawer__scroll !pt-3">
         {has_error && (
-          <p className="px-2 py-6 text-center text-[13px] text-shell-text-faint">
+          <div role="alert" className="board-drawer__error">
             We couldn&apos;t load the activity log. Please try again.
-          </p>
+          </div>
         )}
-        {!has_error && entries === null && (
-          <p className="px-2 py-6 text-center text-[13px] text-shell-text-faint">Loading…</p>
-        )}
+        {!has_error && entries === null && <div className="board-drawer__status-text">Loading...</div>}
         {!has_error && entries?.length === 0 && (
-          <p className="px-2 py-6 text-center text-[13px] text-shell-text-faint">No activity recorded yet.</p>
+          <div className="board-drawer__empty">
+            <span className="board-drawer__empty-icon">
+              <ActivityLogIcon size={24} />
+            </span>
+            <h3 className="board-drawer__empty-title">No activity recorded yet</h3>
+            <p className="board-drawer__empty-text">Renames, archives, restores and other board changes will show up here.</p>
+          </div>
         )}
         {entries?.map((entry) => (
-          <div key={entry.id} className="flex items-start gap-3 rounded-lg px-2 py-3 hover:bg-shell-hover">
+          <div key={entry.id} className="board-drawer__log-row">
             <PersonAvatar person={entry.user ? mapAuthorToPerson(entry.user) : UNKNOWN_ACTOR} size={32} />
             <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] leading-snug text-shell-text">
+              <p className="board-drawer__log-text">
                 <span className={`font-semibold ${getDeactivatedClass(entry.user?.is_deactivated)}`}>{entry.user?.full_name ?? "Someone"}</span>{" "}
                 {entry.description.charAt(0).toLowerCase() + entry.description.slice(1)}
               </p>
-              <p className="mt-0.5 text-[11.5px] text-shell-text-faint">{formatTimestamp(entry.created_at)}</p>
+              <p className="board-drawer__log-time">{formatTimestamp(entry.created_at)}</p>
             </div>
           </div>
         ))}

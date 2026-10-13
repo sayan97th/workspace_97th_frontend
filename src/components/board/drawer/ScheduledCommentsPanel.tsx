@@ -4,6 +4,7 @@ import { ClockIcon, ChevronDownIcon } from "@/icons/workspace-icons";
 import RichTextContent from "./RichTextContent";
 import { formatScheduledTime, toDateTimeLocalValue } from "./scheduleFormat";
 import type { DrawerScheduledComment } from "./types";
+import "./board-drawer.css";
 
 export type ScheduledCommentsPanelProps = {
   scheduled_comments: DrawerScheduledComment[];
@@ -12,8 +13,7 @@ export type ScheduledCommentsPanelProps = {
   onCancel: (comment_id: string) => Promise<void>;
 };
 
-const ACTION_CLASS =
-  "rounded-[7px] px-2 py-1 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-40";
+const ACTION_CLASS = "update-scheduled__action";
 
 /**
  * The viewer's own comments and replies waiting to be sent, as a collapsible
@@ -51,31 +51,31 @@ const ScheduledCommentsPanel: React.FC<ScheduledCommentsPanelProps> = ({ schedul
   };
 
   return (
-    <section aria-label="Scheduled updates" className="mt-3 rounded-[12px] border border-shell-border bg-shell-hover">
+    <section aria-label="Scheduled updates" className="update-scheduled">
       <button
         type="button"
         onClick={() => setIsExpanded((previous) => !previous)}
         aria-expanded={is_expanded}
-        className="flex w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] font-semibold text-shell-text-secondary"
+        className="update-scheduled__toggle"
       >
-        <ClockIcon size={14} className="text-[#7fb2ff]" />
+        <ClockIcon size={15} className="text-[var(--bd-link)]" />
         {scheduled_comments.length} scheduled {scheduled_comments.length === 1 ? "update" : "updates"}
         <ChevronDownIcon size={11} className={`ml-auto transition-transform ${is_expanded ? "rotate-180" : ""}`} />
       </button>
 
       {is_expanded && (
-        <ul className="flex flex-col divide-y divide-shell-border border-t border-shell-border">
+        <ul className="update-scheduled__list">
           {scheduled_comments.map((entry) => {
             const is_editing = editing_id === entry.id;
             const is_busy = busy_id === entry.id;
             return (
-              <li key={entry.id} className="px-3 py-2.5">
-                <div className="flex items-center gap-2 text-[11.5px] text-shell-text-faint">
-                  <span className="font-semibold text-[#7fb2ff]">Sends {formatScheduledTime(entry.scheduled_at)}</span>
-                  {entry.parent_id !== null && <span className="rounded-[5px] bg-shell-hover-strong px-[5px] py-px text-[9.5px] font-bold uppercase tracking-wide">Reply</span>}
+              <li key={entry.id} className="update-scheduled__item">
+                <div className="flex items-center gap-2 text-[12px] text-[var(--bd-text-faint)]">
+                  <span className="update-scheduled__when">Sends {formatScheduledTime(entry.scheduled_at)}</span>
+                  {entry.parent_id !== null && <span className="update-card__badge">Reply</span>}
                 </div>
                 <div className="mt-1 max-h-[72px] overflow-hidden">
-                  <RichTextContent html={entry.body} className="text-[12.5px] leading-[1.5] text-shell-text-secondary" />
+                  <RichTextContent html={entry.body} className="text-[13px] leading-[1.5] text-[var(--bd-text-secondary)]" />
                 </div>
 
                 {is_editing ? (
@@ -86,12 +86,12 @@ const ScheduledCommentsPanel: React.FC<ScheduledCommentsPanelProps> = ({ schedul
                       min={toDateTimeLocalValue(new Date())}
                       onChange={(event) => setEditValue(event.target.value)}
                       aria-label="New send time"
-                      className="rounded-[8px] border border-shell-border bg-shell-panel-alt px-2.5 py-1.5 text-[12.5px] text-shell-text focus:border-brand-500 focus:outline-none"
+                      className="update-scheduled__input"
                     />
                     <button
                       type="button"
                       onClick={() => saveReschedule(entry.id)}
-                      className="rounded-[8px] bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+                      className="board-drawer__button board-drawer__button--primary board-drawer__button--small"
                     >
                       Save
                     </button>
@@ -107,7 +107,7 @@ const ScheduledCommentsPanel: React.FC<ScheduledCommentsPanelProps> = ({ schedul
                     <button type="button" disabled={is_busy} onClick={() => startRescheduling(entry)} className={ACTION_CLASS}>
                       Reschedule
                     </button>
-                    <button type="button" disabled={is_busy} onClick={() => void runFor(entry.id, () => onCancel(entry.id))} className={`${ACTION_CLASS} hover:!text-[#e2445c]`}>
+                    <button type="button" disabled={is_busy} onClick={() => void runFor(entry.id, () => onCancel(entry.id))} className={ACTION_CLASS} data-tone="danger">
                       Cancel send
                     </button>
                   </div>

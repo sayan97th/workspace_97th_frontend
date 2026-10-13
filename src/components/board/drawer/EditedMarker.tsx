@@ -30,8 +30,8 @@ const EditedMarker: React.FC<EditedMarkerProps> = ({ onLoadRevisions, edited_at 
   const [is_open, setIsOpen] = useState(false);
   const [state, setState] = useState<LoadState>({ status: "idle" });
 
-  const label_class = "text-[11px] text-shell-text-faint";
-  if (!onLoadRevisions) return <span className={label_class}>(edited)</span>;
+  const label_class = "text-[13px] text-[var(--bd-text-secondary)]";
+  if (!onLoadRevisions) return <span className={label_class}>Edited</span>;
 
   const open = () => {
     setIsOpen(true);
@@ -52,7 +52,7 @@ const EditedMarker: React.FC<EditedMarkerProps> = ({ onLoadRevisions, edited_at 
         title={edited_at ? `Edited ${formatFullTime(edited_at)}. Show earlier versions` : "Show earlier versions"}
         className={`${label_class} underline decoration-dotted underline-offset-2 hover:text-shell-text-secondary`}
       >
-        (edited)
+        Edited
       </button>
       <BoardPopover anchor_el={trigger_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={360} align="start">
         <div className="p-3">

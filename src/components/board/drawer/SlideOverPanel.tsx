@@ -1,45 +1,44 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import "./board-drawer.css";
 
 export type SlideOverPanelProps = {
   is_open: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  /** Layout/appearance of the panel itself (width, background, border, shadow, …). */
-  panel_class_name: string;
-  /** Layout/appearance of the backdrop. Defaults to the shared board-drawer scrim. */
+  /** Extra classes for the panel, usually just its width. Surface, border, shadow and type come from `board-drawer.css`. */
+  panel_class_name?: string;
+  /** Extra classes for the backdrop. Defaults to the shared board drawer scrim. */
   overlay_class_name?: string;
+  /** Accessible name of the drawer dialog. */
+  aria_label?: string;
 };
 
-const TRANSITION_DURATION_MS = 200;
+const TRANSITION_DURATION_MS = 260;
 
 /**
- * Right-edge slide-over shell shared by every board item drawer
- * (`BoardItemDrawer`, `KanbanItemDrawer`, …future ones): fades the backdrop
- * in/out and slides the panel in/out from the right, instead of the panel
- * just popping in and vanishing instantly.
+ * Right edge slide over shell shared by every board drawer (`BoardItemDrawer`,
+ * `BoardDiscussionDrawer`, `BoardActivityLogDrawer`, `UserDetailsDrawer`):
+ * fades the backdrop in and out, slides the panel in and out from the right,
+ * and closes on Escape.
  *
  * Stays mounted for one extra `TRANSITION_DURATION_MS` after `is_open` flips
- * to `false` so the close has something to animate — callers should pair
+ * to `false` so the close has something to animate. Callers should pair
  * this with {@link useLatchWhileOpen} so the panel keeps showing its last
- * row's content while it slides away, instead of going blank mid-animation.
+ * row's content while it slides away, instead of going blank mid animation.
  */
-function SlideOverPanel({ is_open, onClose, children, panel_class_name, overlay_class_name }: SlideOverPanelProps) {
+function SlideOverPanel({ is_open, onClose, children, panel_class_name = "", overlay_class_name = "", aria_label }: SlideOverPanelProps) {
   const [is_mounted, setIsMounted] = useState(is_open);
   const [is_visible, setIsVisible] = useState(false);
+  const panel_ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (is_open) {
       setIsMounted(true);
-      // A single `requestAnimationFrame` isn't reliable here: React can
-      // still batch the `is_visible` flip into the very same frame as the
-      // `is_mounted` one, so the browser never actually paints the
-      // off-screen "translate-x-full" state and has nothing to transition
-      // from — the panel just snaps straight to its resting position. The
-      // standard fix is a *double* rAF: the first callback runs once this
-      // frame has been scheduled, and the browser paints in between it and
-      // the second callback, so `is_visible` only flips on the frame after
-      // the off-screen state was actually rendered.
+      // A single `requestAnimationFrame` isn't reliable here: React can batch
+      // the `is_visible` flip into the same frame as the `is_mounted` one, so
+      // the browser never paints the off screen state and has nothing to
+      // transition from. A double rAF lets the off screen frame paint first.
       let inner_raf_id = 0;
       const outer_raf_id = requestAnimationFrame(() => {
         inner_raf_id = requestAnimationFrame(() => setIsVisible(true));
@@ -54,20 +53,51 @@ function SlideOverPanel({ is_open, onClose, children, panel_class_name, overlay_
     return () => clearTimeout(timeout_id);
   }, [is_open]);
 
+  // Focus the panel once it is in, so Escape and Tab start inside it.
+  useEffect(() => {
+    if (is_visible) panel_ref.current?.focus({ preventScroll: true });
+  }, [is_visible]);
+
+  // Escape closes the drawer, unless something inside it already handled the
+  // key (an inline editor cancelling) or focus sits in another dialog on top of
+  // it. Popovers stop the key at `document`, so this window listener never sees theirs.
+  useEffect(() => {
+    if (!is_open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const panel_el = panel_ref.current;
+      const active_element = document.activeElement;
+      const is_inside_panel = !active_element || active_element === document.body || panel_el?.contains(active_element);
+      if (!is_inside_panel) return;
+      // First Escape leaves a focused field, the next one closes the drawer.
+      if (
+        active_element instanceof HTMLElement &&
+        active_element !== panel_el &&
+        active_element.matches("input, textarea, select, [contenteditable='true']")
+      ) {
+        active_element.blur();
+        panel_el?.focus({ preventScroll: true });
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [is_open, onClose]);
+
   if (!is_mounted) return null;
 
   return (
     <>
+      <div onClick={onClose} data-visible={is_visible || undefined} className={`board-drawer-backdrop ${overlay_class_name}`} />
       <div
-        onClick={onClose}
-        className={`fixed inset-0 z-[400] transition-opacity duration-200 ease-out ${
-          overlay_class_name ?? "bg-[rgba(4,12,12,0.42)]"
-        } ${is_visible ? "opacity-100" : "opacity-0"}`}
-      />
-      <div
-        className={`fixed bottom-0 right-0 top-0 z-[401] flex flex-col transition-transform duration-200 ease-out ${panel_class_name} ${
-          is_visible ? "translate-x-0" : "translate-x-full"
-        }`}
+        ref={panel_ref}
+        role="dialog"
+        aria-modal="true"
+        aria-label={aria_label}
+        tabIndex={-1}
+        data-visible={is_visible || undefined}
+        className={`board-drawer ${panel_class_name}`}
       >
         {children}
       </div>

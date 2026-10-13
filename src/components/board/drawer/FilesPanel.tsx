@@ -5,6 +5,7 @@ import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import FileGalleryDropzone from "../file-gallery/FileGalleryDropzone";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import type { BoardItemDrawerApi, DrawerAttachment } from "./types";
+import "./board-drawer.css";
 
 export type FilesPanelProps<TRow> = {
   drawer: BoardItemDrawerApi<TRow>;
@@ -28,18 +29,18 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
     <FileGalleryDropzone
       onDropFiles={drawer.postAttachments}
       disabled={drawer.is_uploading_files}
-      className="relative flex min-h-0 flex-1 flex-col"
+      className="board-drawer__panel relative"
     >
       {({ is_drag_active, open }) => (
         <>
           {drawer.files_upload_error && (
-            <div className="mx-5 mt-4 flex items-center gap-2 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
+            <div role="alert" className="board-drawer__error board-drawer__error--row">
               <span className="flex-1">{drawer.files_upload_error}</span>
               <button
                 type="button"
                 onClick={drawer.dismissFilesUploadError}
                 aria-label="Dismiss"
-                className="flex h-5 w-5 flex-none items-center justify-center rounded hover:bg-[rgba(226,68,92,0.2)]"
+                className="board-drawer__banner-close"
               >
                 <CloseIcon size={11} />
               </button>
@@ -47,19 +48,19 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
           )}
 
           {has_files ? (
-            <div className="shell-scrollbar min-h-0 flex-1 overflow-auto px-5 py-5">
-              <div className="mb-3.5 flex items-center justify-between">
-                <span className="text-[12.5px] font-bold text-shell-text-faint">
+            <div className="shell-scrollbar board-drawer__scroll !pt-5">
+              <div className="drawer-files__toolbar">
+                <span className="drawer-files__count">
                   {attachments.length} file{attachments.length === 1 ? "" : "s"}
                 </span>
                 <button
                   type="button"
                   onClick={open}
                   disabled={drawer.is_uploading_files}
-                  className="flex items-center gap-1.5 rounded-[7px] border border-shell-border-strong px-2.5 py-1.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover hover:text-shell-text disabled:opacity-60"
+                  className="board-drawer__button board-drawer__button--small"
                 >
                   <PlusIcon size={12} />
-                  {drawer.is_uploading_files ? "Uploading…" : "Add files"}
+                  {drawer.is_uploading_files ? "Uploading..." : "Add files"}
                 </button>
               </div>
               <div className="flex flex-wrap gap-2.5">
@@ -73,28 +74,32 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-5 py-6 text-center text-shell-text-faint">
-              <FilesTabIcon size={46} className="mb-3.5 text-shell-text-faint" />
-              <div className="text-[15px] font-bold text-shell-text-secondary">No files yet</div>
-              <div className="mt-1.5 max-w-[280px] text-[13px] leading-relaxed">
-                Drag and drop files anywhere on this panel, or browse to share the first one on {drawer.open_row_title}.
+            <div className="shell-scrollbar board-drawer__scroll">
+              <div className="board-drawer__empty">
+                <span className="board-drawer__empty-icon">
+                  <FilesTabIcon size={26} />
+                </span>
+                <h3 className="board-drawer__empty-title">No files yet</h3>
+                <p className="board-drawer__empty-text">
+                  Drag and drop files anywhere on this panel, or browse to share the first one on {drawer.open_row_title}.
+                </p>
+                <button
+                  type="button"
+                  onClick={open}
+                  disabled={drawer.is_uploading_files}
+                  className="board-drawer__button board-drawer__button--primary mt-2"
+                >
+                  <PlusIcon size={13} />
+                  {drawer.is_uploading_files ? "Uploading..." : "Browse files"}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={open}
-                disabled={drawer.is_uploading_files}
-                className="mt-4 flex items-center gap-1.5 rounded-[7px] border border-shell-border-strong px-3 py-1.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover hover:text-shell-text disabled:opacity-60"
-              >
-                <PlusIcon size={13} />
-                {drawer.is_uploading_files ? "Uploading…" : "Browse files"}
-              </button>
             </div>
           )}
 
           {is_drag_active && (
-            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-[#00c875] bg-shell-panel/90">
-              <FilesTabIcon size={32} className="text-[#00c875]" />
-              <p className="text-[14px] font-semibold text-shell-text">Drop files to upload</p>
+            <div className="drawer-files__drop">
+              <FilesTabIcon size={32} />
+              <p>Drop files to upload</p>
             </div>
           )}
 

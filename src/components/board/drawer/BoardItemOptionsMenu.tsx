@@ -103,7 +103,8 @@ function BoardItemOptionsMenu<TRow>({ drawer, onItemRemoved }: BoardItemOptionsM
         aria-label="Item options"
         aria-haspopup="menu"
         aria-expanded={is_menu_open}
-        className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+        title="Item options"
+        className="board-drawer__icon-button"
       >
         <MoreDotsIcon size={18} />
       </button>

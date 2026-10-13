@@ -4,6 +4,7 @@ import FilterMenu from "@/components/ui/filter-menu/FilterMenu";
 import { SearchIcon } from "@/icons/workspace-icons";
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-react";
 import { countActiveCommentFilters, type CommentFilters, type CommentSortOrder } from "./commentFilters";
+import "./board-drawer.css";
 
 export type CommentFilterBarProps = {
   filters: CommentFilters;
@@ -53,17 +54,17 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
   }, [search_text, filters.search, onChange]);
 
   return (
-    <div className="mt-3 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-[9px] border border-shell-border bg-shell-panel-alt px-2.5 py-[6px] text-shell-text-muted focus-within:border-[#00c875]">
-          <SearchIcon size={13} />
+    <div className="update-filter">
+      <div className="update-filter__row">
+        <div className="update-filter__search">
+          <SearchIcon size={15} />
           <input
             type="text"
             value={search_text}
             onChange={(event) => setSearchText(event.target.value)}
             placeholder="Search updates..."
             aria-label="Search updates"
-            className="w-full bg-transparent text-[12.5px] text-shell-text placeholder:text-shell-text-muted focus:outline-none"
+            className="update-filter__input"
           />
         </div>
         <FilterMenu
@@ -74,18 +75,14 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
           onSelect={(author_id) => onChange({ author_id })}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="update-filter__chips">
         {CHIPS.filter((chip) => chip.key !== "only_unresolved" || resolved_count > 0 || filters.only_unresolved).map((chip) => (
           <button
             key={chip.key}
             type="button"
             aria-pressed={filters[chip.key]}
             onClick={() => onChange({ [chip.key]: !filters[chip.key] })}
-            className={`rounded-full border px-2.5 py-0.5 text-[11.5px] font-semibold transition-colors ${
-              filters[chip.key]
-                ? "border-[#00c875] bg-[rgba(0,200,117,0.14)] text-[#00c875]"
-                : "border-shell-border text-shell-text-muted hover:text-shell-text"
-            }`}
+            className="update-filter__chip"
           >
             {chip.label}
             {chip.key === "only_unresolved" && resolved_count > 0 ? ` (${resolved_count})` : ""}
@@ -93,10 +90,10 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
         ))}
         {active_count > 0 && (
           <>
-            <span role="status" className="ml-1 text-[11.5px] text-shell-text-faint">
+            <span role="status" className="update-filter__summary">
               {visible_count} of {total_count} {total_count === 1 ? "update" : "updates"}
             </span>
-            <button type="button" onClick={onClear} className="text-[11.5px] font-semibold text-[#7fb2ff] hover:text-[#9cc4ff]">
+            <button type="button" onClick={onClear} className="board-drawer__link-button">
               Clear
             </button>
           </>
@@ -106,9 +103,9 @@ const CommentFilterBar: React.FC<CommentFilterBarProps> = ({ filters, onChange, 
           onClick={() => onSortChange(sort_order === "newest" ? "oldest" : "newest")}
           aria-label={sort_order === "newest" ? "Sorted newest first, switch to oldest first" : "Sorted oldest first, switch to newest first"}
           title={sort_order === "newest" ? "Newest first" : "Oldest first"}
-          className="ml-auto inline-flex items-center gap-1 rounded-full border border-shell-border px-2.5 py-0.5 text-[11.5px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
+          className="update-filter__chip update-filter__sort"
         >
-          {sort_order === "newest" ? <ArrowDownWideNarrow size={12} /> : <ArrowUpNarrowWide size={12} />}
+          {sort_order === "newest" ? <ArrowDownWideNarrow size={14} /> : <ArrowUpNarrowWide size={14} />}
           {sort_order === "newest" ? "Newest first" : "Oldest first"}
         </button>
       </div>

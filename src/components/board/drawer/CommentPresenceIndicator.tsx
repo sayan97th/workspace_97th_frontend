@@ -1,29 +1,26 @@
 "use client";
 import React from "react";
 import type { CommentPresenceUser } from "./useCommentPresence";
+import "./board-drawer.css";
 
 export type CommentPresenceIndicatorProps = {
   presence_users: CommentPresenceUser[];
   typing_names: string[];
 };
 
-/** Live "who's viewing" avatar stack + "X is typing…" line, shown under a thread's composer while the drawer's presence channel is joined. Renders nothing once both are empty. */
+/** Live "who's viewing" avatar stack + "X is typing..." line, shown under a thread's composer while the drawer's presence channel is joined. Renders nothing once both are empty. */
 const CommentPresenceIndicator: React.FC<CommentPresenceIndicatorProps> = ({ presence_users, typing_names }) => {
   if (presence_users.length === 0 && typing_names.length === 0) return null;
 
   return (
-    <div className="mt-2 flex items-center gap-2 text-[11.5px] text-shell-text-faint">
+    <div className="update-presence">
       {presence_users.length > 0 && (
-        <div className="flex items-center -space-x-1.5">
+        <div className="board-drawer__viewers">
           {presence_users.slice(0, 4).map((viewer) => (
-            <span
-              key={viewer.id}
-              title={viewer.name}
-              className="flex h-[18px] w-[18px] items-center justify-center overflow-hidden rounded-full bg-shell-hover-strong text-[8px] font-bold text-shell-text-secondary ring-2 ring-shell-panel"
-            >
+            <span key={viewer.id} title={viewer.name} className="board-drawer__viewer !h-5 !w-5 !text-[9px]">
               {viewer.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={viewer.avatar} alt={viewer.name} className="h-full w-full object-cover" />
+                <img src={viewer.avatar} alt={viewer.name} />
               ) : (
                 viewer.name.slice(0, 1).toUpperCase()
               )}

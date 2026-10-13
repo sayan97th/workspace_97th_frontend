@@ -1,35 +1,43 @@
 import React from "react";
+import { InfoBoxesTabIcon } from "@/icons/drawer-icons";
 import type { DrawerInfoBox } from "./types";
+import "./board-drawer.css";
 
 export type InfoBoxesPanelProps = {
   info_boxes: DrawerInfoBox[];
 };
 
-/** Read-only key/value summary cards (contract terms, key dates, products, ...) for the open item. */
+/** Read only key/value summary cards (contract terms, key dates, products, ...) for the open item. */
 const InfoBoxesPanel: React.FC<InfoBoxesPanelProps> = ({ info_boxes }) => {
   if (info_boxes.length === 0) {
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center px-5 py-6 text-[13px] text-shell-text-faint">
-        No info boxes yet.
+      <div className="shell-scrollbar board-drawer__scroll">
+        <div className="board-drawer__empty">
+          <span className="board-drawer__empty-icon">
+            <InfoBoxesTabIcon size={26} />
+          </span>
+          <h3 className="board-drawer__empty-title">No info boxes yet</h3>
+          <p className="board-drawer__empty-text">Key details about this item, like contract terms or key dates, will show up here.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="shell-scrollbar flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-5 py-4.5">
+    <div className="shell-scrollbar board-drawer__scroll flex flex-col gap-3.5 !pt-5">
       {info_boxes.map((box) => (
-        <div key={box.id} className="rounded-[13px] border border-shell-border bg-shell-panel-alt px-4 py-[15px]">
-          <div className="mb-2.5 flex items-center gap-2 text-[11.5px] font-bold tracking-[0.04em] text-shell-text-faint">
-            <span className="h-[7px] w-[7px] rounded-sm" style={{ background: box.accent_color }} />
+        <section key={box.id} className="drawer-info-box" aria-label={box.label}>
+          <h3 className="drawer-info-box__title">
+            <span className="drawer-info-box__swatch" style={{ background: box.accent_color }} aria-hidden="true" />
             {box.label}
-          </div>
+          </h3>
           {box.rows.map((row) => (
-            <div key={row.label} className="flex items-start gap-3 py-1.5 text-[13px]">
-              <span className="w-[120px] flex-none text-shell-text-muted">{row.label}</span>
-              <span className="flex-1 font-medium text-shell-text">{row.value}</span>
+            <div key={row.label} className="drawer-info-box__row">
+              <span className="drawer-info-box__label">{row.label}</span>
+              <span className="drawer-info-box__value">{row.value}</span>
             </div>
           ))}
-        </div>
+        </section>
       ))}
     </div>
   );

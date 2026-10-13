@@ -3,13 +3,14 @@ import React from "react";
 import { GitBranch, Zap } from "lucide-react";
 import { CloseIcon } from "@/icons/board-icons";
 import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
+import BoardDrawerHeader from "./BoardDrawerHeader";
 import BoardItemOptionsMenu from "./BoardItemOptionsMenu";
 import FilesPanel from "./FilesPanel";
 import InfoBoxesPanel from "./InfoBoxesPanel";
 import SlideOverPanel from "./SlideOverPanel";
 import UpdatesPanel from "./UpdatesPanel";
 import type { BoardItemDrawerApi, DrawerTabId } from "./types";
-import { useCommentPresence } from "./useCommentPresence";
+import { useCommentPresence, type CommentPresenceUser } from "./useCommentPresence";
 import { useLatchWhileOpen } from "./useLatchWhileOpen";
 
 export type BoardItemDrawerProps<TRow> = {
@@ -23,19 +24,47 @@ type TabDefinition = {
   count?: number;
 };
 
+/** How many viewer avatars the header shows before folding the rest into "+N". */
+const MAX_HEADER_VIEWERS = 3;
+
+/** Avatars of the people who have this item open right now, monday style, next to the "..." menu. */
+const HeaderViewers: React.FC<{ viewers: CommentPresenceUser[] }> = ({ viewers }) => {
+  if (viewers.length === 0) return null;
+  const overflow_count = viewers.length - MAX_HEADER_VIEWERS;
+  const names = viewers.map((viewer) => viewer.name).join(", ");
+
+  return (
+    <div className="board-drawer__viewers" title={`Viewing now: ${names}`} aria-label={`Viewing now: ${names}`}>
+      {viewers.slice(0, MAX_HEADER_VIEWERS).map((viewer) => (
+        <span key={viewer.id} className="board-drawer__viewer">
+          {viewer.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={viewer.avatar} alt="" />
+          ) : (
+            viewer.name.slice(0, 1).toUpperCase()
+          )}
+        </span>
+      ))}
+      {overflow_count > 0 && <span className="board-drawer__viewer">+{overflow_count}</span>}
+    </div>
+  );
+};
+
 /**
- * Slide-in item detail drawer: header (close button, title, "…" options menu) +
- * tab bar (Updates/Files/Info Boxes, plus Dependencies and Automations when given) driven entirely by
- * {@link useBoardItemDrawer}. Generic over the row type
- * so any board view — Client Hub today, others later — can reuse it as-is.
+ * Slide in item detail drawer, laid out like monday.com's item drawer: close
+ * button and Poppins item title, the board and group it sits in, who is
+ * viewing it and the "..." options menu, then the Updates, Files and Info
+ * Boxes tabs (plus Dependencies and Automations when given). Driven entirely
+ * by {@link useBoardItemDrawer} and generic over the row type, so any board
+ * view can reuse it as is.
  */
 function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   // Keeps showing the row that was open while `SlideOverPanel` slides the
-  // panel closed — `drawer.close()` clears `open_row` (and everything
-  // derived from it) synchronously, well before that exit animation ends.
+  // panel closed, `drawer.close()` clears `open_row` (and everything derived
+  // from it) synchronously, well before that exit animation ends.
   const content = useLatchWhileOpen(drawer, drawer.is_open);
 
-  // Only joined for a real, backend-persisted item (`board_id` set) — mock
+  // Only joined for a real, backend persisted item (`board_id` set). Mock
   // boards (Client Hub) have no matching `BoardItem` row for the presence
   // channel's auth callback to resolve. Bare name (no `presence-` prefix):
   // `Echo.join()` prepends that itself, matching `Broadcast::channel('presence-board-item.{id}', ...)`.
@@ -46,107 +75,83 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
   if (!drawer.is_open && !content.is_open) return null;
 
   const tabs: TabDefinition[] = [
-    { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={15} />, count: content.comments.length + content.activity_log.length },
-    { id: "files", label: "Files", icon: <FilesTabIcon size={15} />, count: content.all_attachments.length },
-    { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={15} /> },
-    ...(content.renderDependenciesTab ? [{ id: "dependencies" as const, label: "Dependencies", icon: <GitBranch size={15} /> }] : []),
-    ...(content.renderAutomationsTab ? [{ id: "automations" as const, label: "Automations", icon: <Zap size={15} /> }] : []),
+    { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={16} />, count: content.comments.length },
+    { id: "files", label: "Files", icon: <FilesTabIcon size={16} />, count: content.all_attachments.length },
+    { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={16} /> },
+    ...(content.renderDependenciesTab ? [{ id: "dependencies" as const, label: "Dependencies", icon: <GitBranch size={16} /> }] : []),
+    ...(content.renderAutomationsTab ? [{ id: "automations" as const, label: "Automations", icon: <Zap size={16} /> }] : []),
   ];
 
   return (
     <SlideOverPanel
       is_open={drawer.is_open}
       onClose={drawer.close}
-      panel_class_name="w-[clamp(520px,46vw,960px)] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
+      aria_label={content.open_row_title || "Item details"}
+      panel_class_name="w-[clamp(560px,48vw,880px)]"
     >
-      {/* Header: close button, item title, "…" options menu, same arrangement as monday.com's item drawer. */}
-      <div className="flex flex-none items-start gap-3 px-6 pb-3 pt-5">
-        <button
-          type="button"
-          onClick={drawer.close}
-          aria-label="Close item drawer"
-          className="mt-[3px] flex h-8 w-8 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-        >
-          <CloseIcon size={18} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex items-center gap-[7px] text-[12px] font-medium text-shell-text-faint">
-            <svg width="13" height="13" viewBox="0 0 16 16" className="flex-none" style={{ color: content.accent_color }}>
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="none" stroke="currentColor" strokeWidth="1.3" />
-              <line x1="2.5" y1="6.5" x2="13.5" y2="6.5" stroke="currentColor" strokeWidth="1.3" />
-            </svg>
-            <span className="truncate">{content.eyebrow_label}</span>
-          </div>
-          <h2
-            className="m-0 break-words text-[26px] font-normal leading-[1.25] text-shell-text"
-            style={{ textWrap: "pretty" }}
-          >
-            {content.open_row_title}
-          </h2>
-        </div>
-        <div className="mt-[3px] flex flex-none items-center">
-          <BoardItemOptionsMenu drawer={content} onItemRemoved={drawer.close} />
-        </div>
-      </div>
+      <BoardDrawerHeader
+        title={content.open_row_title}
+        title_size="page"
+        close_position="start"
+        close_label="Close item"
+        onClose={drawer.close}
+        eyebrow={
+          content.eyebrow_label ? (
+            <>
+              <span className="board-drawer__eyebrow-swatch" style={{ background: content.accent_color }} aria-hidden="true" />
+              <span className="board-drawer__eyebrow-text">{content.eyebrow_label}</span>
+            </>
+          ) : undefined
+        }
+        actions={
+          <>
+            <HeaderViewers viewers={presence.presence_users} />
+            {presence.presence_users.length > 0 && <span className="board-drawer__divider" aria-hidden="true" />}
+            <BoardItemOptionsMenu drawer={content} onItemRemoved={drawer.close} />
+          </>
+        }
+      />
 
       {content.item_action_feedback && (
-        <div
-          role="status"
-          className={`mx-6 mb-2 flex flex-none items-center justify-between gap-3 rounded-[10px] border px-3.5 py-2.5 text-[12.5px] font-semibold ${
-            content.item_action_feedback.tone === "success"
-              ? "border-[#00c875] bg-[rgba(0,200,117,0.12)] text-[#00c875]"
-              : "border-[#e2445c] bg-[rgba(226,68,92,0.12)] text-[#e2445c]"
-          }`}
-        >
-          <span>{content.item_action_feedback.message}</span>
-          <button
-            type="button"
-            onClick={drawer.dismissItemActionFeedback}
-            aria-label="Dismiss message"
-            className="flex h-5 w-5 flex-none items-center justify-center rounded-md hover:bg-shell-hover"
-          >
+        <div role="status" className="board-drawer__banner" data-tone={content.item_action_feedback.tone}>
+          <span className="board-drawer__banner-text">{content.item_action_feedback.message}</span>
+          <button type="button" onClick={drawer.dismissItemActionFeedback} aria-label="Dismiss message" className="board-drawer__banner-close">
             <CloseIcon size={12} />
           </button>
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex flex-none items-center gap-0.5 overflow-x-auto border-b border-shell-border px-5">
-        {tabs.map((tab) => {
-          const is_active = content.active_tab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => drawer.setActiveTab(tab.id)}
-              className={`relative flex flex-none items-center gap-[7px] whitespace-nowrap px-[13px] py-3 text-[14px] font-medium ${
-                is_active ? "text-shell-text" : "text-shell-text-muted"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.count !== undefined && (
-                <span className="rounded-[20px] bg-shell-hover-strong px-[7px] py-px text-[11px] font-bold text-shell-text-secondary">
-                  {tab.count}
-                </span>
-              )}
-              {is_active && (
-                <span
-                  className="absolute bottom-[-1px] left-2 right-2 h-[3px] rounded-t-[3px]"
-                  style={{ background: content.accent_color }}
-                />
-              )}
-            </button>
-          );
-        })}
+      <div className="board-drawer__tabs" role="tablist" aria-label="Item sections">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            id={`board-drawer-tab-${tab.id}`}
+            type="button"
+            role="tab"
+            aria-selected={content.active_tab === tab.id}
+            aria-controls="board-drawer-tabpanel"
+            onClick={() => drawer.setActiveTab(tab.id)}
+            className="board-drawer__tab"
+          >
+            {tab.icon}
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && <span className="board-drawer__tab-count">/ {tab.count}</span>}
+          </button>
+        ))}
       </div>
 
-      {/* Active tab body */}
-      {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} />}
-      {content.active_tab === "files" && <FilesPanel drawer={content} />}
-      {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
-      {content.active_tab === "dependencies" && content.open_row_id && content.renderDependenciesTab?.(content.open_row_id)}
-      {content.active_tab === "automations" && content.open_row_id && content.renderAutomationsTab?.(content.open_row_id)}
+      <div
+        id="board-drawer-tabpanel"
+        role="tabpanel"
+        aria-labelledby={`board-drawer-tab-${content.active_tab}`}
+        className="board-drawer__panel"
+      >
+        {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} show_viewers={false} />}
+        {content.active_tab === "files" && <FilesPanel drawer={content} />}
+        {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
+        {content.active_tab === "dependencies" && content.open_row_id && content.renderDependenciesTab?.(content.open_row_id)}
+        {content.active_tab === "automations" && content.open_row_id && content.renderAutomationsTab?.(content.open_row_id)}
+      </div>
     </SlideOverPanel>
   );
 }

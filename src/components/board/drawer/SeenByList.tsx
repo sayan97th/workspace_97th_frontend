@@ -45,10 +45,10 @@ const SeenByList: React.FC<SeenByListProps> = ({ seen_by }) => {
         className="flex items-center -space-x-1.5 rounded-full"
       >
         {seen_by.slice(0, MAX_STACKED_AVATARS).map((person) => (
-          <PersonAvatar key={person.id} person={person} size={19} className="ring-2 ring-shell-panel-alt" />
+          <PersonAvatar key={person.id} person={person} size={19} className="ring-2 ring-[var(--bd-card)]" />
         ))}
         {seen_by.length > MAX_STACKED_AVATARS && (
-          <span className="flex h-[19px] w-[19px] items-center justify-center rounded-full bg-shell-hover-strong text-[9px] font-bold text-shell-text-muted ring-2 ring-shell-panel-alt">
+          <span className="flex h-[19px] w-[19px] items-center justify-center rounded-full bg-shell-hover-strong text-[9px] font-bold text-shell-text-muted ring-2 ring-[var(--bd-card)]">
             +{seen_by.length - MAX_STACKED_AVATARS}
           </span>
         )}

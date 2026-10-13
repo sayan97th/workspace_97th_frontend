@@ -23,6 +23,7 @@ import ReactionPill from "./ReactionPill";
 import RichTextContent from "./RichTextContent";
 import SeenByList from "./SeenByList";
 import type { DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
+import "./board-drawer.css";
 
 export type CommentThreadProps = {
   comment: DrawerComment;
@@ -96,7 +97,7 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
   if (reactions.length === 0) return null;
 
   return (
-    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+    <div className="update-card__reactions">
       {reactions.map((reaction) => (
         <ReactionPill key={reaction.emoji} reaction={reaction} onToggle={() => onToggle(reaction.emoji)} />
       ))}
@@ -105,10 +106,9 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
         type="button"
         onClick={onToggleOpen}
         aria-label="Add another reaction"
+        aria-expanded={is_palette_open}
         title="Add another reaction"
-        className={`flex h-[26px] w-[26px] flex-none items-center justify-center rounded-full border border-dashed text-shell-text-faint transition-colors hover:border-solid hover:border-shell-border-strong hover:text-shell-text-secondary hover:bg-shell-hover ${
-          is_palette_open ? "border-solid border-shell-border-strong bg-shell-hover text-shell-text-secondary" : "border-shell-border"
-        }`}
+        className="update-card__add-reaction"
       >
         <ReactSmileyIcon size={13} />
       </button>
@@ -119,9 +119,7 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
 
 /** Small marker on an update that arrived live while the drawer was open. */
 const NewBadge: React.FC = () => (
-  <span className="rounded-[5px] bg-[rgba(0,200,117,0.16)] px-[5px] py-px text-[9.5px] font-bold uppercase tracking-wide text-[#00c875]">
-    New
-  </span>
+  <span className="update-card__badge">New</span>
 );
 
 type ReplyRowProps = {
@@ -180,23 +178,22 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   const is_palette_open = reaction_palette_id === reaction_palette_key;
 
   return (
-    <div
-      id={`comment-${reply.id}`}
-      className={`flex gap-2.5 py-3 pl-5 pr-4 transition-shadow ${is_highlighted ? "shadow-[inset_0_0_0_2px_#579bfc]" : ""}`}
-    >
+    <div id={`comment-${reply.id}`} className="update-card__reply" data-highlighted={is_highlighted || undefined}>
       <PersonHoverCard person={reply.author} className="flex-none">
-        <PersonAvatar person={reply.author} size={27} />
+        <PersonAvatar person={reply.author} size={30} />
       </PersonHoverCard>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <PersonHoverCard person={reply.author}>
-            <span className={`text-[12.5px] font-bold text-shell-text ${getDeactivatedClass(reply.author.is_deactivated)}`}>{reply.author.name}</span>
-          </PersonHoverCard>
-          <DeactivatedBadge is_deactivated={reply.author.is_deactivated} />
-          <span className="text-[11px] text-shell-text-faint">{reply.posted_at}</span>
-          {is_new && <NewBadge />}
-          {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
-          <span className="ml-auto">
+      <div className="update-card__reply-bubble">
+        <div className="update-card__reply-box">
+          <div className="flex items-center gap-2">
+            <div className="update-card__byline">
+              <PersonHoverCard person={reply.author}>
+                <span className={`update-card__author ${getDeactivatedClass(reply.author.is_deactivated)}`}>{reply.author.name}</span>
+              </PersonHoverCard>
+              <DeactivatedBadge is_deactivated={reply.author.is_deactivated} />
+              <span className="update-card__time">{reply.posted_at}</span>
+              {is_new && <NewBadge />}
+              {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
+            </div>
             <CommentOptionsMenu
               onEdit={reply.author.id === current_user_id ? onStartEditing : undefined}
               onDelete={reply.author.id === current_user_id ? onDelete : undefined}
@@ -204,51 +201,41 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
               kind="reply"
               confirm_delete={!has_undo}
             />
-          </span>
+          </div>
+          {is_editing ? (
+            <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+          ) : (
+            <RichTextContent html={reply.body} people={people} className="mt-1" />
+          )}
+          <ReactionsRow
+            reactions={reply.reactions}
+            is_palette_open={is_palette_open}
+            onToggleOpen={() => onToggleReactionPalette(reaction_palette_key)}
+            onClosePalette={onCloseReactionPalette}
+            onToggle={onToggleReaction}
+          />
         </div>
-        {is_editing ? (
-          <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
-        ) : (
-          <RichTextContent html={reply.body} people={people} className="mt-1" />
-        )}
-        <ReactionsRow
-          reactions={reply.reactions}
-          is_palette_open={is_palette_open}
-          onToggleOpen={() => onToggleReactionPalette(reaction_palette_key)}
-          onClosePalette={onCloseReactionPalette}
-          onToggle={onToggleReaction}
-        />
-        <div className="mt-[7px] flex items-center gap-3.5">
+        <div className="update-card__reply-actions">
           <button
             type="button"
             onClick={onLike}
-            className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
-            style={{ color: reply.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
+            aria-pressed={reply.liked_by_me}
+            data-active={reply.liked_by_me ? "liked" : undefined}
+            className="update-card__reply-action"
           >
-            <LikeIcon size={13} filled={reply.liked_by_me} />
+            <LikeIcon size={14} filled={reply.liked_by_me} />
             Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
           </button>
-          {onToggleBookmark && (
-            <button
-              type="button"
-              onClick={onToggleBookmark}
-              aria-pressed={reply.bookmarked_by_me ?? false}
-              className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold"
-              style={{ color: reply.bookmarked_by_me ? "#7fb2ff" : "var(--color-shell-text-muted)" }}
-            >
-              <BookmarkIcon size={13} filled={reply.bookmarked_by_me ?? false} />
-              {reply.bookmarked_by_me ? "Bookmarked" : "Bookmark"}
-            </button>
-          )}
           {reply.reactions.length === 0 && (
-            <span className="relative">
+            <>
               <button
                 ref={react_trigger_ref}
                 type="button"
                 onClick={() => onToggleReactionPalette(reaction_palette_key)}
-                className="inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
+                aria-expanded={is_palette_open}
+                className="update-card__reply-action"
               >
-                <ReactSmileyIcon size={13} />
+                <ReactSmileyIcon size={14} />
                 React
               </button>
               <EmojiPalette
@@ -258,7 +245,19 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
                 onPick={onToggleReaction}
                 mode="react"
               />
-            </span>
+            </>
+          )}
+          {onToggleBookmark && (
+            <button
+              type="button"
+              onClick={onToggleBookmark}
+              aria-pressed={reply.bookmarked_by_me ?? false}
+              data-active={reply.bookmarked_by_me ? "bookmarked" : undefined}
+              className="update-card__reply-action"
+            >
+              <BookmarkIcon size={14} filled={reply.bookmarked_by_me ?? false} />
+              {reply.bookmarked_by_me ? "Bookmarked" : "Bookmark"}
+            </button>
           )}
         </div>
       </div>
@@ -369,29 +368,26 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   if (is_resolved_folded) {
     const excerpt = markdownToPlainText(comment.body);
     return (
-      <div
-        id={`comment-${comment.id}`}
-        className="mt-4 flex items-center gap-2.5 rounded-[14px] border border-shell-border bg-shell-panel-alt px-4 py-3"
-      >
-        <CheckCircle2 size={17} className="flex-none text-[#00c875]" aria-hidden="true" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[12.5px] font-semibold text-shell-text-secondary">
+      <div id={`comment-${comment.id}`} className="update-card update-card--resolved">
+        <CheckCircle2 size={18} className="flex-none text-[var(--bd-success-strong)]" aria-hidden="true" />
+        <div className="update-card__resolved-text">
+          <div className="update-card__resolved-title">
             {comment.author.name}
             {excerpt ? `: ${excerpt.length > RESOLVED_EXCERPT_LENGTH ? `${excerpt.slice(0, RESOLVED_EXCERPT_LENGTH)}...` : excerpt}` : ""}
           </div>
-          <div className="text-[11.5px] text-shell-text-faint">
+          <div className="update-card__resolved-meta">
             Resolved{comment.resolved_by ? ` by ${comment.resolved_by.name}` : ""}
             {comment.replies.length > 0 ? ` · ${comment.replies.length} ${comment.replies.length === 1 ? "reply" : "replies"}` : ""}
           </div>
         </div>
-        <button type="button" onClick={() => setIsResolvedOpen(true)} className="flex-none text-[12px] font-semibold text-[#7fb2ff] hover:text-[#9cc4ff]">
+        <button type="button" onClick={() => setIsResolvedOpen(true)} className="board-drawer__link-button flex-none">
           Show thread
         </button>
         {can_resolve && collaboration && (
           <button
             type="button"
             onClick={() => collaboration.toggleResolved(comment.id)}
-            className="flex-none rounded-md border border-shell-border px-2 py-0.5 text-[12px] font-semibold text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
+            className="board-drawer__button board-drawer__button--small flex-none"
           >
             Reopen
           </button>
@@ -403,110 +399,96 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   return (
     <div
       id={`comment-${comment.id}`}
-      className={`mt-4 overflow-hidden rounded-[14px] border bg-shell-panel-alt transition-shadow ${
-        comment.pinned ? "border-[#f5a623]" : "border-shell-border"
-      } ${highlighted_id === comment.id ? "shadow-[0_0_0_2px_#579bfc]" : ""}`}
+      className="update-card"
+      data-pinned={comment.pinned || undefined}
+      data-highlighted={highlighted_id === comment.id || undefined}
     >
-      <div className="px-4 pb-[13px] pt-[15px]">
+      <div className="update-card__main">
         {comment.is_resolved && (
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#00c875]">
-            <CheckCircle2 size={12} aria-hidden="true" />
+          <div className="update-card__flag" data-tone="resolved">
+            <CheckCircle2 size={13} aria-hidden="true" />
             Resolved{comment.resolved_by ? ` by ${comment.resolved_by.name}` : ""}
-            <button
-              type="button"
-              onClick={() => setIsResolvedOpen(false)}
-              className="ml-auto text-[11px] font-semibold normal-case tracking-normal text-shell-text-muted hover:text-shell-text"
-            >
+            <button type="button" onClick={() => setIsResolvedOpen(false)} className="board-drawer__link-button ml-auto">
               Hide thread
             </button>
           </div>
         )}
         {comment.pinned && (
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#f5a623]">
-            <PinIcon size={11} />
-            Pinned
+          <div className="update-card__flag" data-tone="pinned">
+            <PinIcon size={12} />
+            Pinned to top
           </div>
         )}
-        <div className="flex items-center gap-2.5">
+        <div className="update-card__header">
           <PersonHoverCard person={comment.author} className="flex-none">
-            <PersonAvatar person={comment.author} size={32} />
+            <PersonAvatar person={comment.author} size={36} />
           </PersonHoverCard>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <PersonHoverCard person={comment.author}>
-                <span className={`text-[13.5px] font-bold text-shell-text ${getDeactivatedClass(comment.author.is_deactivated)}`}>{comment.author.name}</span>
-              </PersonHoverCard>
-              <DeactivatedBadge is_deactivated={comment.author.is_deactivated} />
-              {fresh_comment_ids.includes(comment.id) && <NewBadge />}
-              {comment.is_edited && (
-                <EditedMarker
-                  onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id) : undefined}
-                  edited_at={comment.edited_at}
-                />
-              )}
-            </div>
-            <div className="text-[11.5px] text-shell-text-faint">{comment.posted_at}</div>
+          <div className="update-card__byline">
+            <PersonHoverCard person={comment.author}>
+              <span className={`update-card__author ${getDeactivatedClass(comment.author.is_deactivated)}`}>{comment.author.name}</span>
+            </PersonHoverCard>
+            <DeactivatedBadge is_deactivated={comment.author.is_deactivated} />
+            <span className="update-card__time">{comment.posted_at}</span>
+            {fresh_comment_ids.includes(comment.id) && <NewBadge />}
           </div>
-          <span className="flex items-center gap-1.5 text-[11.5px] text-shell-text-faint">
-            <ViewsIcon />
-            {comment.view_count}
-          </span>
-          {collaboration && (
-            <button
-              type="button"
-              onClick={() => collaboration.toggleBookmark(comment.id)}
-              aria-label={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
-              aria-pressed={comment.bookmarked_by_me ?? false}
-              title={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
-              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
-              style={{ color: comment.bookmarked_by_me ? "#7fb2ff" : "var(--color-shell-text-muted)" }}
-            >
-              <BookmarkIcon size={13} filled={comment.bookmarked_by_me ?? false} />
-            </button>
-          )}
-          {can_resolve && collaboration && (
-            <button
-              type="button"
-              onClick={() => collaboration.toggleResolved(comment.id)}
-              aria-label={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
-              aria-pressed={comment.is_resolved ?? false}
-              title={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
-              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
-              style={{ color: comment.is_resolved ? "#00c875" : "var(--color-shell-text-muted)" }}
-            >
-              <CheckCircle2 size={14} />
-            </button>
-          )}
-          {can_pin && onTogglePin && (
-            <button
-              type="button"
-              onClick={() => onTogglePin(comment.id)}
-              aria-label={comment.pinned ? "Unpin update" : "Pin update"}
-              aria-pressed={comment.pinned}
-              title={comment.pinned ? "Unpin update" : "Pin update"}
-              className="flex h-6 w-6 items-center justify-center rounded-md hover:bg-shell-hover"
-              style={{ color: comment.pinned ? "#f5a623" : "var(--color-shell-text-muted)" }}
-            >
-              <PinIcon size={13} />
-            </button>
-          )}
-          <CommentOptionsMenu
-            onEdit={comment.author.id === current_user.id ? () => onStartEditing(comment.id) : undefined}
-            onDelete={comment.author.id === current_user.id ? () => onDeleteComment(comment.id) : undefined}
-            extra_items={buildExtraItems()}
-            kind="comment"
-            confirm_delete={collaboration === null}
-          />
+          <div className="update-card__tools">
+            {collaboration && (
+              <button
+                type="button"
+                onClick={() => collaboration.toggleBookmark(comment.id)}
+                aria-label={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
+                aria-pressed={comment.bookmarked_by_me ?? false}
+                title={comment.bookmarked_by_me ? "Remove bookmark" : "Bookmark update"}
+                data-tone={comment.bookmarked_by_me ? "bookmarked" : undefined}
+                className="update-card__tool"
+              >
+                <BookmarkIcon size={15} filled={comment.bookmarked_by_me ?? false} />
+              </button>
+            )}
+            {can_resolve && collaboration && (
+              <button
+                type="button"
+                onClick={() => collaboration.toggleResolved(comment.id)}
+                aria-label={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
+                aria-pressed={comment.is_resolved ?? false}
+                title={comment.is_resolved ? "Reopen thread" : "Resolve thread"}
+                data-tone={comment.is_resolved ? "resolved" : undefined}
+                className="update-card__tool"
+              >
+                <CheckCircle2 size={16} />
+              </button>
+            )}
+            {can_pin && onTogglePin && (
+              <button
+                type="button"
+                onClick={() => onTogglePin(comment.id)}
+                aria-label={comment.pinned ? "Unpin update" : "Pin to top"}
+                aria-pressed={comment.pinned}
+                title={comment.pinned ? "Unpin update" : "Pin to top"}
+                data-tone={comment.pinned ? "pinned" : undefined}
+                className="update-card__tool"
+              >
+                <PinIcon size={15} />
+              </button>
+            )}
+            <CommentOptionsMenu
+              onEdit={comment.author.id === current_user.id ? () => onStartEditing(comment.id) : undefined}
+              onDelete={comment.author.id === current_user.id ? () => onDeleteComment(comment.id) : undefined}
+              extra_items={buildExtraItems()}
+              kind="comment"
+              confirm_delete={collaboration === null}
+            />
+          </div>
         </div>
 
         {editing_key === comment.id ? (
           <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
         ) : (
-          <RichTextContent html={comment.body} people={mentionable_people} className="mt-2.5" />
+          <RichTextContent html={comment.body} people={mentionable_people} className="update-card__body" />
         )}
 
         {comment.attachments.length > 0 && (
-          <div className="mt-[11px] flex flex-wrap gap-2">
+          <div className="update-card__attachments">
             {comment.attachments.map((attachment) => (
               <CommentAttachmentChip key={attachment.id} attachment={attachment} />
             ))}
@@ -521,76 +503,80 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onToggle={(emoji) => onToggleReaction(comment.id, null, emoji)}
         />
 
-        <div className="mt-3 flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => onToggleLike(comment.id)}
-            className="flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{ color: comment.liked_by_me ? "#579bfc" : "var(--color-shell-text-muted)" }}
-          >
-            <LikeIcon filled={comment.liked_by_me} />
-            Like{comment.like_count > 0 ? ` · ${comment.like_count}` : ""}
-          </button>
-          {comment.reactions.length === 0 && (
-            <span className="relative">
-              <button
-                ref={react_trigger_ref}
-                type="button"
-                onClick={() => onToggleReactionPalette(comment.id)}
-                className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
-              >
-                <ReactSmileyIcon />
-                React
-              </button>
-              <EmojiPalette
-                anchor_el={react_trigger_ref.current}
-                is_open={is_palette_open}
-                onClose={onCloseReactionPalette}
-                onPick={(emoji) => onToggleReaction(comment.id, null, emoji)}
-                mode="react"
-              />
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={focusReplyComposer}
-            className="flex items-center gap-1.5 text-[12.5px] font-semibold text-shell-text-muted hover:text-shell-text-secondary"
-          >
-            <ReplyIcon />
-            Reply
-          </button>
-          <div className="ml-auto flex items-center gap-2.5">
+        <div className="update-card__meta">
+          <span className="update-card__seen">
             <SeenByList seen_by={comment.seen_by} />
-            <button
-              type="button"
-              onClick={() => onToggleSeen(comment.id)}
-              className="flex items-center gap-1.5 text-[12.5px] font-semibold"
-              style={{ color: comment.seen ? "#00c875" : "var(--color-shell-text-muted)" }}
-            >
-              <SeenIcon />
-              {comment.seen ? "Seen" : "Mark as seen"}
-            </button>
-          </div>
+          </span>
+          {comment.is_edited && (
+            <EditedMarker
+              onLoadRevisions={onLoadRevisions ? () => onLoadRevisions(comment.id) : undefined}
+              edited_at={comment.edited_at}
+            />
+          )}
+          <span className="update-card__meta-item" title={`Viewed by ${comment.view_count}`}>
+            <ViewsIcon />
+            {comment.view_count}
+          </span>
         </div>
       </div>
 
-      {comment.replies.length > 0 && (
-        <div className="border-t border-shell-border bg-shell-hover py-1">
-          {are_replies_folded && (
+      <div className="update-card__actions">
+        <button
+          type="button"
+          onClick={() => onToggleLike(comment.id)}
+          aria-pressed={comment.liked_by_me}
+          data-active={comment.liked_by_me ? "liked" : undefined}
+          className="update-card__action"
+        >
+          <LikeIcon filled={comment.liked_by_me} />
+          Like{comment.like_count > 0 ? ` · ${comment.like_count}` : ""}
+        </button>
+        {comment.reactions.length === 0 && (
+          <span className="update-card__action-wrap">
             <button
+              ref={react_trigger_ref}
               type="button"
-              onClick={() => setAreRepliesExpanded(true)}
-              className="w-full px-5 py-2 text-left text-[12px] font-semibold text-[#7fb2ff] hover:text-[#9cc4ff]"
+              onClick={() => onToggleReactionPalette(comment.id)}
+              aria-expanded={is_palette_open}
+              className="update-card__action"
             >
+              <ReactSmileyIcon />
+              React
+            </button>
+            <EmojiPalette
+              anchor_el={react_trigger_ref.current}
+              is_open={is_palette_open}
+              onClose={onCloseReactionPalette}
+              onPick={(emoji) => onToggleReaction(comment.id, null, emoji)}
+              mode="react"
+            />
+          </span>
+        )}
+        <button type="button" onClick={focusReplyComposer} className="update-card__action">
+          <ReplyIcon />
+          Reply
+        </button>
+        <button
+          type="button"
+          onClick={() => onToggleSeen(comment.id)}
+          aria-pressed={comment.seen}
+          data-active={comment.seen ? "seen" : undefined}
+          className="update-card__action"
+        >
+          <SeenIcon />
+          {comment.seen ? "Seen" : "Mark as seen"}
+        </button>
+      </div>
+
+      {comment.replies.length > 0 && (
+        <div className="update-card__replies">
+          {are_replies_folded && (
+            <button type="button" onClick={() => setAreRepliesExpanded(true)} className="update-card__replies-toggle">
               View {hidden_reply_count} earlier {hidden_reply_count === 1 ? "reply" : "replies"}
             </button>
           )}
           {is_collapsible && are_replies_expanded && (
-            <button
-              type="button"
-              onClick={() => setAreRepliesExpanded(false)}
-              className="w-full px-5 py-2 text-left text-[12px] font-semibold text-shell-text-muted hover:text-shell-text"
-            >
+            <button type="button" onClick={() => setAreRepliesExpanded(false)} className="update-card__replies-toggle">
               Show fewer replies
             </button>
           )}
@@ -624,7 +610,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         </div>
       )}
 
-      <div ref={reply_composer_ref} className="border-t border-shell-border py-3 pl-5 pr-4">
+      <div ref={reply_composer_ref} className="update-card__reply-composer">
         <CommentComposer
           target={comment.id}
           avatar_person={current_user}

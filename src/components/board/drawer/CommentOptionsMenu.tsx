@@ -21,7 +21,7 @@ export type CommentOptionsMenuProps = {
 };
 
 const TRIGGER_CLASS_NAME =
-  "flex h-6 w-6 flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text";
+  "update-card__tool flex-none";
 
 /**
  * "…" options menu for a comment or reply: Edit and Delete for its author, plus
@@ -38,7 +38,7 @@ const CommentOptionsMenu: React.FC<CommentOptionsMenuProps> = ({
   confirm_delete = true,
   class_name,
   style,
-  icon_size = 13,
+  icon_size = 15,
 }) => {
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const [is_confirm_open, setIsConfirmOpen] = useState(false);

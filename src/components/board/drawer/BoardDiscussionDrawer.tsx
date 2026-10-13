@@ -1,10 +1,10 @@
 "use client";
 import React, { useCallback, useMemo, useRef, useState } from "react";
-import { CloseIcon } from "@/icons/board-icons";
 import { UpdatesTabIcon } from "@/icons/drawer-icons";
 import { BellIcon, FolderPathIcon } from "@/icons/workspace-icons";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
+import BoardDrawerHeader from "./BoardDrawerHeader";
 import CommentFilterBar from "./CommentFilterBar";
 import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
@@ -82,42 +82,36 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
     <SlideOverPanel
       is_open={drawer.is_open}
       onClose={drawer.close}
-      panel_class_name="w-[520px] max-w-[94vw] border-l border-shell-border-strong bg-shell-panel text-shell-text shadow-[-24px_0_60px_rgba(0,0,0,0.5)]"
+      aria_label="Board discussion"
+      panel_class_name="w-[min(600px,100vw)]"
     >
-      {/* Header */}
-      <div className="flex flex-none items-start justify-between gap-3 border-b border-shell-border px-[22px] pb-4 pt-5">
-        <div className="min-w-0 flex-1">
-          <h2 className="m-0 font-heading text-dialog-title">Board Discussion</h2>
-          <div className="mt-[7px] flex items-center gap-[7px] text-[11.5px] font-semibold text-shell-text-faint">
-            <FolderPathIcon size={12} className="flex-none" />
-            <span className="truncate">{drawer.breadcrumb_label}</span>
-          </div>
-        </div>
-        <div className="flex flex-none items-center gap-1">
+      <BoardDrawerHeader
+        title="Board Discussion"
+        onClose={drawer.close}
+        close_label="Close board discussion"
+        is_bordered
+        eyebrow={
+          <>
+            <FolderPathIcon size={13} className="flex-none" />
+            <span className="board-drawer__eyebrow-text">{drawer.breadcrumb_label}</span>
+          </>
+        }
+        actions={
           <button
             type="button"
             onClick={drawer.toggleMute}
             aria-label={drawer.is_muted ? "Unmute this board's notifications" : "Mute this board's notifications"}
             aria-pressed={drawer.is_muted}
             title={drawer.is_muted ? "Unmute this board's notifications" : "Mute this board's notifications"}
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg hover:bg-shell-hover"
-            style={{ color: drawer.is_muted ? "#e2445c" : "var(--color-shell-text-muted)" }}
+            className="board-drawer__icon-button"
           >
-            <BellIcon size={16} />
+            <BellIcon size={17} />
           </button>
-          <button
-            type="button"
-            onClick={drawer.close}
-            aria-label="Close board discussion"
-            className="flex h-[30px] w-[30px] items-center justify-center rounded-lg text-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-          >
-            <CloseIcon size={16} />
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Composer */}
-      <div className="flex-none border-b border-shell-border px-5 pb-[15px] pt-4">
+      <div className="board-drawer__composer-area">
         <CommentComposer
           target="composer"
           value={drawer.composer_text}
@@ -170,15 +164,11 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
 
       {/* Discussion feed */}
       <CommentCollaborationProvider value={drawer.collaboration}>
-      <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+      <div ref={scroll_area_ref} className="shell-scrollbar board-drawer__scroll">
         {/* Live "N new updates" pill: sticks to the top edge, where the newest updates land once loaded. */}
         <div role="status" aria-live="polite" className="sticky top-1 z-[3] flex justify-center">
           {drawer.pending_update_count > 0 && (
-            <button
-              type="button"
-              onClick={showPendingUpdates}
-              className="mt-1 flex items-center gap-1.5 rounded-full bg-[#00c875] px-3.5 py-1.5 text-[12.5px] font-bold text-[#04241a] shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-[#00e084]"
-            >
+            <button type="button" onClick={showPendingUpdates} className="board-drawer__pill mt-1">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                 <path d="M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -188,22 +178,22 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
         </div>
 
         {drawer.comments_error && (
-          <div className="mt-3 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
+          <div role="alert" className="board-drawer__error">
             {drawer.comments_error}
           </div>
         )}
 
         {drawer.comments_loading && drawer.comments.length === 0 && (
-          <div className="mt-6 text-center text-[13px] text-shell-text-faint">Loading updates…</div>
+          <div className="board-drawer__status-text">Loading updates...</div>
         )}
 
         {!drawer.comments_loading && drawer.comments.length === 0 && !drawer.comments_error && (
-          <div className="mx-auto flex max-w-[340px] flex-col items-center gap-3 pt-16 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
+          <div className="board-drawer__empty">
+            <span className="board-drawer__empty-icon">
               <UpdatesTabIcon size={26} />
             </span>
-            <h3 className="font-outfit text-section-title text-shell-text">No discussion on this board yet</h3>
-            <p className="text-[13px] leading-relaxed text-shell-text-muted">
+            <h3 className="board-drawer__empty-title">No discussion on this board yet</h3>
+            <p className="board-drawer__empty-text">
               Be the first one to start a discussion with all board members. If you mention someone, or a specific
               team, they will be notified.
             </p>
@@ -211,7 +201,7 @@ const BoardDiscussionDrawer: React.FC<BoardDiscussionDrawerProps> = ({ drawer })
         )}
 
         {is_filtering && visible_comments.length === 0 && drawer.comments.length > 0 && (
-          <div className="mt-6 text-center text-[13px] text-shell-text-faint">No updates match these filters.</div>
+          <div className="board-drawer__status-text">No updates match these filters.</div>
         )}
 
         {sorted_comments.map((comment) => (

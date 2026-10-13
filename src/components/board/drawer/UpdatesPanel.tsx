@@ -1,5 +1,7 @@
 "use client";
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import { UpdatesTabIcon } from "@/icons/drawer-icons";
+import { PinIcon } from "@/icons/board-icons";
 import PersonAvatar from "../PersonAvatar";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
@@ -11,10 +13,13 @@ import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
 import type { BoardItemDrawerApi, DrawerActivityEntry, DrawerComment } from "./types";
 import { useCommentSortOrder } from "./useCommentSortOrder";
 import type { CommentPresenceUser } from "./useCommentPresence";
+import "./board-drawer.css";
 
 export type UpdatesPanelProps<TRow> = {
   drawer: BoardItemDrawerApi<TRow>;
   presence?: { presence_users: CommentPresenceUser[]; typing_names: string[]; whisperTyping: () => void };
+  /** False when the host already shows who is viewing (the item drawer header), so only the typing line remains here. */
+  show_viewers?: boolean;
 };
 
 /** Skips whispering "typing" on every single keystroke — one whisper per this interval is plenty for the indicator's purpose. */
@@ -32,7 +37,7 @@ function sortKeyOf(iso: string | undefined): number {
 }
 
 /** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...), which folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. A search and filter row narrows the threads (and hides the activity log, which has nothing to match) while any filter is on. */
-function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
+function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true }: UpdatesPanelProps<TRow>) {
   const last_whisper_at_ref = useRef(0);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState<CommentFilters>(default_comment_filters);
@@ -72,6 +77,9 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
 
   const pinned_comments = sortComments(visible_comments.filter((comment) => comment.pinned), sort_order);
   const unpinned_comments = visible_comments.filter((comment) => !comment.pinned);
+
+  const is_empty =
+    !drawer.comments_loading && !drawer.comments_error && drawer.comments.length === 0 && drawer.activity_log.length === 0;
 
   const feed: FeedEntry[] = [
     ...unpinned_comments.map((comment): FeedEntry => ({ kind: "comment", sort_key: sortKeyOf(comment.posted_at_iso), comment })),
@@ -121,14 +129,14 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex-none border-b border-shell-border px-5 pb-3.5 pt-4">
+    <div className="board-drawer__panel">
+      <div className="board-drawer__composer-area">
         <CommentComposer
           target="composer"
           value={drawer.composer_text}
           onChange={handleComposerChange}
           onSubmit={drawer.postComment}
-          placeholder="Write an update... use @ to mention a teammate"
+          placeholder="Write an update and mention others with @"
           submit_label="Update"
           variant="update"
           mention_target={drawer.mention_target}
@@ -160,7 +168,12 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
             onCancel={collaboration.cancelScheduledComment}
           />
         )}
-        {presence && <CommentPresenceIndicator presence_users={presence.presence_users} typing_names={presence.typing_names} />}
+        {presence && (
+          <CommentPresenceIndicator
+            presence_users={show_viewers ? presence.presence_users : []}
+            typing_names={presence.typing_names}
+          />
+        )}
         {drawer.comments.length > 0 && (
           <CommentFilterBar
             filters={filters}
@@ -177,40 +190,53 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
       </div>
 
       <CommentCollaborationProvider value={collaboration} enabled={is_api_backed}>
-      <div ref={scroll_area_ref} className="shell-scrollbar relative min-h-0 flex-1 overflow-auto px-5 pb-10 pt-1.5">
+      <div ref={scroll_area_ref} className="shell-scrollbar board-drawer__scroll">
         {drawer.comments_error && (
-          <div className="mt-3 rounded-[10px] border border-[#e2445c] bg-[rgba(226,68,92,0.12)] px-3.5 py-2.5 text-[12.5px] font-semibold text-[#e2445c]">
+          <div role="alert" className="board-drawer__error">
             {drawer.comments_error}
           </div>
         )}
 
-        {drawer.comments_loading && drawer.comments.length === 0 && (
-          <div className="mt-6 text-center text-[13px] text-shell-text-faint">Loading updates…</div>
+        {drawer.comments_loading && drawer.comments.length === 0 && <div className="board-drawer__status-text">Loading updates...</div>}
+
+        {is_empty && (
+          <div className="board-drawer__empty">
+            <span className="board-drawer__empty-icon">
+              <UpdatesTabIcon size={26} />
+            </span>
+            <h3 className="board-drawer__empty-title">No updates yet for this item</h3>
+            <p className="board-drawer__empty-text">
+              Be the first one to update about progress, mention someone or upload files to share with your team members.
+            </p>
+          </div>
         )}
 
         {is_filtering && visible_comments.length === 0 && drawer.comments.length > 0 && (
-          <div className="mt-6 text-center text-[13px] text-shell-text-faint">No updates match these filters.</div>
+          <div className="board-drawer__status-text">No updates match these filters.</div>
         )}
 
         {pinned_comments.length > 0 && (
           <div className="mb-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-shell-text-faint">Pinned</div>
+            <div className="board-drawer__section-label">
+              <PinIcon size={12} />
+              Pinned
+            </div>
             {pinned_comments.map(renderThread)}
           </div>
         )}
 
         {feed.map((entry) =>
           entry.kind === "activity" ? (
-            <div key={`activity-${entry.entry.id}`} className="flex items-center gap-2.5 py-2">
+            <div key={`activity-${entry.entry.id}`} className="board-drawer__activity">
               <PersonAvatar
                 person={entry.entry.actor}
-                size={20}
+                size={22}
                 style={{ boxShadow: `0 0 0 2px ${entry.entry.accent_color}` }}
               />
-              <div className="min-w-0 flex-1 truncate text-[12.5px] text-shell-text-faint">
-                <span className="font-semibold text-shell-text-secondary">{entry.entry.actor.name}</span> {entry.entry.verb}
+              <div className="board-drawer__activity-text">
+                <span className="board-drawer__activity-actor">{entry.entry.actor.name}</span> {entry.entry.verb}
               </div>
-              <div className="flex-none text-[11px] text-shell-text-faint">{entry.entry.occurred_at}</div>
+              <div className="board-drawer__activity-time">{entry.entry.occurred_at}</div>
             </div>
           ) : (
             renderThread(entry.comment)
@@ -220,11 +246,7 @@ function UpdatesPanel<TRow>({ drawer, presence }: UpdatesPanelProps<TRow>) {
         {/* Live "N new updates" pill: sticks to the bottom edge, where the newest updates land once loaded. */}
         <div role="status" aria-live="polite" className="sticky bottom-2 z-[3] mt-3 flex justify-center">
           {drawer.pending_update_count > 0 && (
-            <button
-              type="button"
-              onClick={showPendingUpdates}
-              className="flex items-center gap-1.5 rounded-full bg-[#00c875] px-3.5 py-1.5 text-[12.5px] font-bold text-[#04241a] shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-[#00e084]"
-            >
+            <button type="button" onClick={showPendingUpdates} className="board-drawer__pill">
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
                 <path d="M6 2v8m0 0L2.5 6.5M6 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
