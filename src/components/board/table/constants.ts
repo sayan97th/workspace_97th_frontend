@@ -119,7 +119,7 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "phone", label: "Phone", description: "Store a phone number", accent: "#66ccff", section: "More columns", default_width: 150 },
   { kind: "email", label: "Email", description: "Store an email address", accent: "#66ccff", section: "More columns", default_width: 190 },
   { kind: "rating", label: "Rating", description: "Rate items on a 5 star scale", accent: "#fdab3d", section: "More columns", default_width: 140 },
-  { kind: "vote", label: "Vote", description: "Let the team vote on items", accent: "#ff7575", section: "More columns", default_width: 110 },
+  { kind: "vote", label: "Vote", description: "Let the team vote on items", accent: "#ff7575", section: "More columns", default_width: 160 },
   { kind: "time_tracking", label: "Time Tracking", description: "Track time spent with a start and stop timer", accent: "#a25ddc", section: "More columns", default_width: 150 },
   { kind: "auto_number", label: "Item ID", description: "A read only number assigned when an item is created", accent: "#4eccc6", section: "More columns", default_width: 100 },
   { kind: "dependency", label: "Dependency", description: "Link items that must finish before this one starts", accent: "#a25ddc", section: "More columns", default_width: 200 },

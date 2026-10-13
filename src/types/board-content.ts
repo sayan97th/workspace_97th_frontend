@@ -84,6 +84,10 @@ export type BoardColumnConfig = {
   hide_summary?: boolean;
   /** Hour columns only: "12" (2:30 PM, the default) or "24" (14:30). */
   hour_format?: "12" | "24";
+  /** Rating columns only: how many icons the scale has (1 to 10, 5 when unset). */
+  rating_max?: number;
+  /** Rating columns only: the icon the scale is drawn with (a star when unset). */
+  rating_icon?: "star" | "heart" | "thumbs_up" | "smiley";
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };

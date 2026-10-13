@@ -1,3 +1,5 @@
+import type { RatingIcon } from "@/components/board/table/types";
+
 /** A board view's public "Share view" link, see `BoardViewShareLinkController` on the API. */
 export type BoardViewShareLinkDto = {
   token: string;
@@ -14,6 +16,9 @@ export type SharedViewColumnDto = {
   type: string;
   width: number;
   options: { id: string; label: string; color: string }[];
+  /** Rating columns only: the scale and icon, see `ColumnDef.rating_max` and `ColumnDef.rating_icon`. */
+  rating_max?: number | null;
+  rating_icon?: RatingIcon | null;
 };
 
 /** `POST /api/public/views/{token}`, the read only payload of a shared view. */

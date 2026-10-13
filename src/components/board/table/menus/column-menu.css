@@ -291,3 +291,74 @@ html.dark .column-menu {
   width: 20px;
   height: 20px;
 }
+
+/* Rating column settings: icon and scale choices, with a live preview. */
+.column-menu__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 2px 8px 8px;
+}
+
+.column-menu__choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid var(--action-menu-divider);
+  border-radius: 4px;
+  color: var(--action-menu-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 70ms ease-in, border-color 70ms ease-in;
+}
+
+.column-menu__choice:hover {
+  background: var(--action-menu-hover);
+}
+
+.column-menu__choice[aria-checked="true"] {
+  border-color: var(--action-menu-focus);
+  background: var(--action-menu-split-active);
+  color: var(--action-menu-text);
+  font-weight: 600;
+}
+
+.column-menu__choice--icon {
+  width: 36px;
+  height: 32px;
+  color: var(--action-menu-icon);
+}
+
+.column-menu__choice-glyph {
+  width: 18px;
+  height: 18px;
+}
+
+.column-menu__choice--icon.rating-cell--star .column-menu__choice-glyph { color: #fdab3d; }
+.column-menu__choice--icon.rating-cell--heart .column-menu__choice-glyph { color: #e2445c; }
+.column-menu__choice--icon.rating-cell--thumbs_up .column-menu__choice-glyph { color: #1f76c2; }
+.column-menu__choice--icon.rating-cell--smiley .column-menu__choice-glyph { color: #00c875; }
+
+.column-menu__rating-preview {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin: 2px 8px 4px;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--action-menu-hover);
+}
+
+.column-menu__rating-preview-glyph {
+  width: 16px;
+  height: 16px;
+  color: var(--action-menu-divider);
+}
+
+.rating-cell--star .column-menu__rating-preview-glyph.is-filled { color: #fdab3d; }
+.rating-cell--heart .column-menu__rating-preview-glyph.is-filled { color: #e2445c; }
+.rating-cell--thumbs_up .column-menu__rating-preview-glyph.is-filled { color: #1f76c2; }
+.rating-cell--smiley .column-menu__rating-preview-glyph.is-filled { color: #00c875; }

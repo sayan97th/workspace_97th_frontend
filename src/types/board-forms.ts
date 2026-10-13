@@ -71,6 +71,8 @@ export type PublicFormQuestion = {
   description: string | null;
   is_required: boolean;
   options: BoardFormOption[];
+  /** Rating questions only: the column's own scale. */
+  rating_max: number | null;
 };
 
 /** `GET /api/public/forms/{token}`. */

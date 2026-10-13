@@ -12,6 +12,7 @@ import type { CellValue, LinkedItemDetail, LinkedItemField, LinkedItemRef, Perso
 import type { BoardTableActions } from "../useBoardTable";
 import AvatarBadge from "./AvatarBadge";
 import StatusMenu from "./StatusMenu";
+import { RatingDisplay } from "../cells/VoteRatingCells";
 import "./linked-item-dialog.css";
 
 const GROUP_SWATCH = { accent_color: "#fdab3d", glyph: "●" };
@@ -433,10 +434,8 @@ function readOnlyValue(field: LinkedItemField, people: PersonDef[]): ReactNode {
         </a>
       ) : null;
     }
-    case "rating": {
-      const rating = Number(value) || 0;
-      return <span aria-label={`${rating} of 5`} style={{ color: "#fdab3d", letterSpacing: 2 }}>{"★".repeat(rating)}<span style={{ color: "#c3c6d4" }}>{"★".repeat(Math.max(0, 5 - rating))}</span></span>;
-    }
+    case "rating":
+      return <RatingDisplay value={value} rating_max={field.rating_max} icon={field.rating_icon} />;
     case "progress": {
       const percent = Math.max(0, Math.min(100, Number(value) || 0));
       return <span className="linked-item__value-text">{percent}%</span>;

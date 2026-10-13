@@ -1,4 +1,5 @@
 import type { ColumnDef, StatusDef, BoardTableItem } from "./types";
+import { ratingMaxOf, ratingValueOf, voterIdsOf } from "./cells/VoteRatingCells";
 import { findDef } from "./colorUtils";
 import { fmtRange, parseRangeValue, rangeElapsedRatio } from "./dateUtils";
 import { computeFormulaOutcome, isNumericFormula } from "./formulaUtils";
@@ -31,6 +32,11 @@ export interface ColumnSummary {
   range_label: string;
   /** The share of the widest range already gone by, see `rangeElapsedRatio`. */
   elapsed_ratio: number;
+  /** Vote columns: `sum_value` holds the group's total votes. */
+  is_vote: boolean;
+  /** Rating columns: `sum_value` holds the average of the rated items (unrated ones left out), and `rating_max` the column's scale. */
+  is_rating: boolean;
+  rating_max: number;
 }
 
 /** A Number cell's value, stored as text by the cell editor or as a JSON number by automations and imports. */
@@ -63,7 +69,7 @@ function fmtAggregate(n: number): string {
 
 /** Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row. */
 export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
-  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0 };
+  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0, is_vote: false, is_rating: false, rating_max: 0 };
 
   // The column menu's "Hide column summary" leaves the footer cell empty.
   if (column.hide_summary) return base;
@@ -71,6 +77,18 @@ export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, sta
   if (column.kind === "timeline") {
     const { start_iso, end_iso } = widestRangeOf(items, column.id);
     return { ...base, is_timeline: true, range_label: start_iso ? fmtRange(start_iso, end_iso) : "", elapsed_ratio: rangeElapsedRatio(start_iso, end_iso) };
+  }
+
+  if (column.kind === "vote") {
+    const total = items.reduce((acc, item) => acc + voterIdsOf(item.values[column.id]).length, 0);
+    return { ...base, is_vote: true, sum_value: String(total) };
+  }
+
+  if (column.kind === "rating") {
+    const rating_max = ratingMaxOf(column);
+    const ratings = items.map((item) => ratingValueOf(item.values[column.id], rating_max)).filter((rating) => rating > 0);
+    const average = ratings.length ? ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length : 0;
+    return { ...base, is_rating: true, sum_value: ratings.length ? String(Math.round(average * 10) / 10) : "", rating_max };
   }
 
   if (column.kind === "status") {

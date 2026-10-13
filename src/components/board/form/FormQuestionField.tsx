@@ -9,6 +9,8 @@ export type FormQuestionFieldQuestion = {
   description: string | null;
   is_required: boolean;
   options: BoardFormOption[];
+  /** Rating questions only: the column's own scale, 5 when unset. */
+  rating_max?: number | null;
 };
 
 export type FormQuestionFieldProps = {
@@ -133,9 +135,10 @@ const FormQuestionField: React.FC<FormQuestionFieldProps> = ({ question, value, 
 
       case "rating": {
         const rating = typeof value === "number" ? value : 0;
+        const rating_max = question.rating_max ?? 5;
         return (
-          <div className="flex gap-1" role="radiogroup" aria-labelledby={`${field_id}-label`}>
-            {[1, 2, 3, 4, 5].map((star) => (
+          <div className="flex flex-wrap gap-1" role="radiogroup" aria-labelledby={`${field_id}-label`}>
+            {Array.from({ length: rating_max }, (_, index) => index + 1).map((star) => (
               <button
                 key={star}
                 type="button"

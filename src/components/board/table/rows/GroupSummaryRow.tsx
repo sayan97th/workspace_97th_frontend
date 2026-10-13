@@ -3,6 +3,7 @@ import type { BoardTableGroup } from "../types";
 import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
+import { VoteRatingSummary } from "../cells/VoteRatingCells";
 
 interface GroupSummaryRowProps {
   group: BoardTableGroup;
@@ -58,6 +59,9 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
                   </div>
                   <div className="text-[11px] leading-[12px] text-boardtree-text-secondary">{NUMBER_AGGREGATION_LABELS[summary.aggregation]}</div>
                 </>
+              )}
+              {(summary.is_vote || summary.is_rating) && (
+                <VoteRatingSummary column={col} kind={summary.is_vote ? "vote" : "rating"} value={summary.sum_value} rating_max={summary.rating_max} />
               )}
               {summary.is_timeline && (
                 <span

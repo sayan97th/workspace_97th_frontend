@@ -1,0 +1,341 @@
+/*
+ * Vote and Rating table cells, monday style. Every color is a `--vote-*` or
+ * `--rating-*` token, so dark mode only swaps the tokens, never the rules.
+ * Text uses the app's own font (inherited), with tabular numbers for counts.
+ */
+
+.vote-cell,
+.rating-cell {
+  --vote-accent: #1f76c2;
+  --vote-accent-hover: #0060b9;
+  --vote-track: #cce5ff;
+  --vote-track-hover: #b8daff;
+  --vote-ring: #a9cff3;
+  --vote-count: #323338;
+  --rating-empty: #c5c7d0;
+  --rating-empty-hover: #a9abb8;
+  --rating-clear-bg: #e7e9ef;
+  --rating-clear-bg-hover: #d0d4e4;
+  --rating-clear-icon: #323338;
+  --rating-focus: #1f76c2;
+
+  display: flex;
+  flex: 1;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+  font: inherit;
+}
+
+html.dark .vote-cell,
+html.dark .rating-cell {
+  --vote-accent: #4c9bf0;
+  --vote-accent-hover: #6aaef5;
+  --vote-track: rgba(76, 155, 240, 0.22);
+  --vote-track-hover: rgba(76, 155, 240, 0.32);
+  --vote-ring: rgba(118, 178, 245, 0.55);
+  --vote-count: #e6e8f0;
+  --rating-empty: #4b4e69;
+  --rating-empty-hover: #676a88;
+  --rating-clear-bg: #3a3d55;
+  --rating-clear-bg-hover: #4b4e69;
+  --rating-clear-icon: #e6e8f0;
+  --rating-focus: #6aaef5;
+}
+
+/* Vote */
+
+.vote-cell {
+  gap: 8px;
+  padding: 0 12px 0 8px;
+}
+
+.vote-cell__button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--vote-ring);
+  border-radius: 50%;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.vote-cell__button:hover:not(:disabled) {
+  border-color: var(--vote-accent);
+  color: var(--vote-accent);
+}
+
+.vote-cell__button:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.vote-cell__button.is-voted {
+  border-color: var(--vote-accent);
+  background: var(--vote-accent);
+  color: #ffffff;
+}
+
+.vote-cell__button.is-voted:hover:not(:disabled) {
+  border-color: var(--vote-accent-hover);
+  background: var(--vote-accent-hover);
+  color: #ffffff;
+}
+
+.vote-cell__button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.vote-cell__button:focus-visible,
+.rating-cell__step:focus-visible,
+.rating-cell__clear:focus-visible {
+  outline: 2px solid var(--rating-focus);
+  outline-offset: 2px;
+}
+
+.vote-cell__meter {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  height: 24px;
+  cursor: default;
+}
+
+.vote-cell__bar {
+  position: relative;
+  flex: 1;
+  min-width: 24px;
+  height: 22px;
+  overflow: hidden;
+  background: var(--vote-track);
+  transition: background-color 120ms ease;
+}
+
+.vote-cell__meter:hover .vote-cell__bar {
+  background: var(--vote-track-hover);
+}
+
+.vote-cell__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--vote-accent);
+  transition: width 220ms ease;
+}
+
+.vote-cell__count {
+  flex: none;
+  min-width: 14px;
+  color: var(--vote-count);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: right;
+}
+
+.vote-cell__tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.vote-cell__tooltip-title {
+  font-weight: 600;
+}
+
+.vote-cell__tooltip-name {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* Rating */
+
+.rating-cell {
+  position: relative;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 28px;
+}
+
+/* Icons shrink to fit the column (down to 6px on a 10 icon scale), so they never spill into the next cell. */
+.rating-cell__scale {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rating-cell__step {
+  display: flex;
+  flex: 0 1 20px;
+  align-items: center;
+  justify-content: center;
+  min-width: 6px;
+  height: 22px;
+  padding: 0;
+  border-radius: 3px;
+  color: var(--rating-empty);
+  cursor: pointer;
+  transition: color 90ms ease, transform 120ms ease;
+}
+
+.rating-cell__glyph {
+  width: 100%;
+  max-width: 18px;
+  height: auto;
+}
+
+.rating-cell:not(.is-read-only) .rating-cell__scale:hover .rating-cell__step:not(.is-filled) {
+  color: var(--rating-empty-hover);
+}
+
+.rating-cell__step:hover:not(:disabled) {
+  transform: scale(1.15);
+}
+
+.rating-cell__step:disabled {
+  cursor: default;
+}
+
+/* Each icon keeps its own filled color, like monday's Rating column. */
+.rating-cell--star .rating-cell__step.is-filled {
+  color: #fdab3d;
+}
+
+.rating-cell--heart .rating-cell__step.is-filled {
+  color: #e2445c;
+}
+
+.rating-cell--thumbs_up .rating-cell__step.is-filled {
+  color: #1f76c2;
+}
+
+.rating-cell--smiley .rating-cell__step.is-filled {
+  color: #00c875;
+}
+
+.rating-cell__step.is-preview {
+  opacity: 0.55;
+}
+
+.rating-cell__clear {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--rating-clear-bg);
+  color: var(--rating-clear-icon);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 70ms ease-in, background-color 70ms ease-in;
+}
+
+.rating-cell:hover .rating-cell__clear,
+.rating-cell__clear:focus-visible {
+  opacity: 1;
+}
+
+.rating-cell__clear:hover {
+  background: var(--rating-clear-bg-hover);
+}
+
+/* Group summary footer */
+
+.vote-rating-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-boardtree-text);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+
+.vote-rating-summary.is-compact {
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.vote-rating-summary__caption {
+  color: var(--color-boardtree-text-secondary);
+  font-size: 13px;
+}
+
+.vote-rating-summary.is-compact .vote-rating-summary__caption {
+  font-size: 11px;
+}
+
+.vote-rating-summary__value {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.vote-rating-summary__glyph {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: #fdab3d;
+}
+
+.vote-rating-summary.is-compact .vote-rating-summary__glyph {
+  width: 13px;
+  height: 13px;
+}
+
+.vote-rating-summary.rating-cell--heart .vote-rating-summary__glyph {
+  color: #e2445c;
+}
+
+.vote-rating-summary.rating-cell--thumbs_up .vote-rating-summary__glyph {
+  color: #1f76c2;
+}
+
+.vote-rating-summary.rating-cell--smiley .vote-rating-summary__glyph {
+  color: #00c875;
+}
+
+/* Read only rating (shared views, linked item cards) */
+
+.rating-display {
+  --rating-empty: #c5c7d0;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  vertical-align: middle;
+}
+
+html.dark .rating-display {
+  --rating-empty: #4b4e69;
+}
+
+.rating-display__glyph {
+  flex: none;
+  width: var(--rating-display-size, 14px);
+  height: var(--rating-display-size, 14px);
+  color: var(--rating-empty);
+}
+
+.rating-display.rating-cell--star .rating-display__glyph.is-filled { color: #fdab3d; }
+.rating-display.rating-cell--heart .rating-display__glyph.is-filled { color: #e2445c; }
+.rating-display.rating-cell--thumbs_up .rating-display__glyph.is-filled { color: #1f76c2; }
+.rating-display.rating-cell--smiley .rating-display__glyph.is-filled { color: #00c875; }

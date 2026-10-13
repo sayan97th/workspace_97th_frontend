@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import BoardPopover from "./toolbar/BoardPopover";
 import type { CellValue, ColumnDef, ColumnKind, PersonDef } from "./table/types";
 import { encodeRangeValue } from "./table/dateUtils";
+import { RatingDisplay, ratingIconOf, ratingMaxOf } from "./table/cells/VoteRatingCells";
 
 export type BulkEditColumnPopoverProps = {
   anchor_el: HTMLElement | null;
@@ -116,19 +117,7 @@ function BulkValueInput({ column, people, onSave }: { column: ColumnDef; people:
     );
   }
 
-  if (column.kind === "rating") {
-    return (
-      <div className="flex items-center justify-center gap-1 py-2">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button key={n} type="button" onClick={() => onSave(n)} title={`${n} star${n > 1 ? "s" : ""}`} className="flex h-6 w-6 items-center justify-center">
-            <svg viewBox="0 0 16 16" width="16" height="16">
-              <path d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z" fill="#fdab3d" />
-            </svg>
-          </button>
-        ))}
-      </div>
-    );
-  }
+  if (column.kind === "rating") return <BulkRatingPicker column={column} onSave={onSave} />;
 
   if (column.kind === "checkbox") {
     return (
@@ -217,5 +206,30 @@ function SaveButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
     <button type="button" disabled={disabled} onClick={onClick} className="flex h-8 w-full items-center justify-center rounded-[6px] bg-boardtree-accent text-[13px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40">
       Apply to selection
     </button>
+  );
+}
+
+/** Picks the rating to set on every selected row, previewing the value under the pointer with the column's own icons, or clears it. */
+function BulkRatingPicker({ column, onSave }: { column: ColumnDef; onSave: (value: CellValue) => void }) {
+  const rating_max = ratingMaxOf(column);
+  const [hover_value, setHoverValue] = useState(0);
+  return (
+    <div className="flex flex-col gap-1 py-1">
+      <div className="flex items-center justify-center" onMouseLeave={() => setHoverValue(0)}>
+        {Array.from({ length: rating_max }, (_, index) => index + 1).map((step) => (
+          <button
+            key={step}
+            type="button"
+            onMouseEnter={() => setHoverValue(step)}
+            onClick={() => onSave(step)}
+            aria-label={`Set ${step} of ${rating_max}`}
+            className="flex h-7 items-center justify-center px-0.5"
+          >
+            <RatingDisplay value={step <= hover_value ? 1 : 0} rating_max={1} icon={ratingIconOf(column)} size={18} />
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={() => onSave(0)} className={ROW}>Clear rating</button>
+    </div>
   );
 }

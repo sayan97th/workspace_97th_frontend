@@ -27,6 +27,7 @@ import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import CellHyperlink from "./CellHyperlink";
 import ConnectItemsCell from "./ConnectItemsCell";
 import MirrorCell from "./MirrorCell";
+import { RatingCell, VoteCell } from "./VoteRatingCells";
 import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
@@ -67,7 +68,7 @@ interface CellRendererProps {
 function asString(v: CellValue): string {
   return typeof v === "string" ? v : "";
 }
-/** Narrows to `string[]` for the array-valued kinds (people/dropdown/tags/vote) — `CellValue`'s other array member, `CellFile[]`, only ever reaches a `files` column's own branch, which reads it separately. */
+/** Narrows to `string[]` for the array-valued kinds (people/dropdown/tags). `CellValue`'s other array member, `CellFile[]`, only ever reaches a `files` column's own branch, which reads it separately. */
 function asArray(v: CellValue): string[] {
   return Array.isArray(v) ? (v as string[]) : [];
 }
@@ -564,55 +565,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     );
   }
 
-  if (column.kind === "rating") {
-    const rating = typeof value === "number" ? value : 0;
-    return (
-      <div className="flex h-full w-full items-center justify-center gap-0.5 px-2">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            type="button"
-            onClick={() => actions.setCellValue(node_id, column.id, rating === n ? 0 : n)}
-            className="flex h-4 w-4 items-center justify-center"
-          >
-            <svg viewBox="0 0 16 16" width="14" height="14">
-              <path
-                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
-                fill={n <= rating ? "#fdab3d" : "none"}
-                stroke={n <= rating ? "none" : "var(--color-boardtree-text-faint)"}
-                strokeWidth={n <= rating ? undefined : "1.2"}
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        ))}
-      </div>
-    );
-  }
+  if (column.kind === "rating") return <RatingCell node_id={node_id} column={column} value={value} state={state} actions={actions} />;
 
-  if (column.kind === "vote") {
-    const voter_ids = asArray(value);
-    const has_voted = !!state.current_user_id && voter_ids.includes(state.current_user_id);
-    return (
-      <button
-        type="button"
-        disabled={!state.current_user_id}
-        onClick={() => state.current_user_id && actions.toggleArrayValue(node_id, column.id, state.current_user_id)}
-        title={state.current_user_id ? undefined : "Sign in to vote"}
-        className="flex h-full w-full items-center justify-center gap-1.5 disabled:opacity-50"
-      >
-        <svg viewBox="0 0 16 16" width="14" height="14">
-          <path
-            d="M8 13.4 C8 13.4 2 9.6 2 5.7 A3 3 0 0 1 8 4.6 A3 3 0 0 1 14 5.7 C14 9.6 8 13.4 8 13.4 Z"
-            fill={has_voted ? "#e2445c" : "none"}
-            stroke={has_voted ? "none" : "var(--color-boardtree-text-faint)"}
-            strokeWidth={has_voted ? undefined : "1.3"}
-          />
-        </svg>
-        <span className="font-mono text-[11.5px] text-boardtree-text-secondary">{voter_ids.length}</span>
-      </button>
-    );
-  }
+  if (column.kind === "vote") return <VoteCell node_id={node_id} column={column} value={value} state={state} actions={actions} />;
 
   if (column.kind === "link") {
     const link = value && typeof value === "object" && !Array.isArray(value) && "url" in value ? (value as LinkValue) : null;

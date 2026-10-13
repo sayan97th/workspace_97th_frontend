@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { PublicApiError } from "@/lib/public-api-client";
 import { boardShareService } from "@/services/board-share.service";
 import type { SharedViewColumnDto, SharedViewDto } from "@/types/board-sharing";
+import { RatingDisplay } from "@/components/board/table/cells/VoteRatingCells";
 import { countryFlag, countryName, docCellTitle, formatHour, formatWeekRange, isHexColor, timeInZone, timeZoneCity } from "@/components/board/table/columnValueFormats";
 
 type PageState = "loading" | "password" | "ready" | "unavailable";
@@ -62,14 +63,14 @@ const SharedCell: React.FC<{ column: SharedViewColumnDto; value: unknown; people
     }
     case "checkbox":
       return value === true ? <span className="font-bold text-[#00c875]" aria-label="Checked">✓</span> : null;
-    case "rating": {
-      const rating = Number(value) || 0;
-      return <span className="text-[#fdab3d]" aria-label={`${rating} of 5`}>{"★".repeat(rating)}<span className="text-shell-border-strong">{"★".repeat(Math.max(0, 5 - rating))}</span></span>;
-    }
+    case "rating":
+      return <RatingDisplay value={value} rating_max={column.rating_max ?? undefined} icon={column.rating_icon ?? undefined} />;
     case "progress":
       return <span>{Number(value) || 0}%</span>;
-    case "vote":
-      return <span>{Array.isArray(value) ? value.length : 0} votes</span>;
+    case "vote": {
+      const votes = Array.isArray(value) ? value.length : 0;
+      return <span className="tabular-nums">{votes} {votes === 1 ? "vote" : "votes"}</span>;
+    }
     case "link": {
       const link = typeof value === "object" && value !== null ? (value as { url?: string; text?: string }) : { url: String(value) };
       return link.url && isSafeUrl(link.url) ? (

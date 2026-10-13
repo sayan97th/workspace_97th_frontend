@@ -137,7 +137,7 @@ export default function GroupColumnHeaderRow({
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}

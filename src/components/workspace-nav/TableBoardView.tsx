@@ -316,6 +316,8 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     aggregation: column.config?.aggregation,
     hide_summary: column.config?.hide_summary === true || undefined,
     hour_format: column.type === "hour" ? column.config?.hour_format ?? "12" : undefined,
+    rating_max: column.type === "rating" ? column.config?.rating_max : undefined,
+    rating_icon: column.type === "rating" ? column.config?.rating_icon : undefined,
     reminder: column.config?.reminder,
     dependency:
       column.type === "dependency"
@@ -2343,6 +2345,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       options: (column.config?.options ?? []).map((option) => ({ id: option.id, label: option.label, color: option.color, is_active: option.is_active })),
       value: (item.values[String(column.id)] ?? null) as LinkedItemField["value"],
       linked_items: connect_names.get(column.id),
+      rating_max: column.config?.rating_max,
+      rating_icon: column.config?.rating_icon,
     }));
 
     return {
@@ -3388,7 +3392,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, hour_format, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
@@ -3396,6 +3400,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         if (aggregation !== undefined) config_patch.aggregation = aggregation;
         if (hide_summary !== undefined) config_patch.hide_summary = hide_summary;
         if (hour_format !== undefined) config_patch.hour_format = hour_format;
+        if (rating_max !== undefined) config_patch.rating_max = rating_max;
+        if (rating_icon !== undefined) config_patch.rating_icon = rating_icon;
         if (reminder !== undefined) config_patch.reminder = reminder;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;

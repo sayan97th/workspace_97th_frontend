@@ -5,6 +5,7 @@ import type { BoardTableGroup } from "../types";
 import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
+import { VoteRatingSummary } from "../cells/VoteRatingCells";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
 import { groupDragHandleClassName, useGroupDragHandle } from "../group/groupDragHandle";
@@ -95,6 +96,10 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
                   </>
                 )}
 
+                {(summary.is_vote || summary.is_rating) && (
+                  <VoteRatingSummary column={col} kind={summary.is_vote ? "vote" : "rating"} value={summary.sum_value} rating_max={summary.rating_max} is_compact />
+                )}
+
                 {summary.is_timeline && (
                   <span
                     className="flex h-[18px] w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-caption text-white"
@@ -108,7 +113,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
                   </span>
                 )}
 
-                {!summary.is_status && !summary.is_number && !summary.is_timeline && (
+                {!summary.is_status && !summary.is_number && !summary.is_timeline && !summary.is_vote && !summary.is_rating && (
                   <div className="text-[12px] text-boardtree-text-faint">–</div>
                 )}
               </div>

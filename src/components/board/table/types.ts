@@ -93,6 +93,10 @@ export interface ColumnSettingsPatch {
   hide_summary?: boolean;
   /** Hour columns only, see `ColumnDef.hour_format`. */
   hour_format?: HourFormat;
+  /** Rating columns only, see `ColumnDef.rating_max`. */
+  rating_max?: number;
+  /** Rating columns only, see `ColumnDef.rating_icon`. */
+  rating_icon?: RatingIcon;
 }
 
 /** An Hour column's display, "2:30 PM" or "14:30". */
@@ -206,6 +210,9 @@ export interface LinkedItemField {
   value: CellValue;
   /** Connect boards fields only: the names and group colors of the items it links. */
   linked_items?: { name: string; color: string | null }[];
+  /** Rating fields only, see `ColumnDef.rating_max` and `ColumnDef.rating_icon`. */
+  rating_max?: number;
+  rating_icon?: RatingIcon;
 }
 
 /**
@@ -308,7 +315,14 @@ export interface ColumnDef {
   reminder?: { enabled: boolean; days_before: number };
   /** Hour columns only, see `HourFormat`. Unset reads as 12 hour. */
   hour_format?: HourFormat;
+  /** Rating columns only: how many icons the scale has (1 to 10). Unset reads as 5. */
+  rating_max?: number;
+  /** Rating columns only: the icon the scale is drawn with. Unset reads as a star. */
+  rating_icon?: RatingIcon;
 }
+
+/** The icons a Rating column can draw its scale with, see `ColumnDef.rating_icon`. */
+export type RatingIcon = "star" | "heart" | "thumbs_up" | "smiley";
 
 /**
  * How a Dependency column moves the dates it schedules, mirroring monday.com: `strict` keeps each

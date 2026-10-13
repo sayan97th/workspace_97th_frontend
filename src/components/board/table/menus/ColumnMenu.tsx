@@ -4,7 +4,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } f
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnTypeIcon from "./ColumnTypeIcon";
-import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
+import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, RatingSettingsPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
+import { ratingIconOf, ratingMaxOf } from "../cells/VoteRatingCells";
 import BoardPickerMenu from "./BoardPickerMenu";
 import DependencySettingsPanel from "./DependencySettingsPanel";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
@@ -50,7 +51,7 @@ export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
   Partial<
     Pick<
       ColumnDef,
-      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary"
+      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon"
     >
   >;
 
@@ -94,7 +95,7 @@ interface ColumnMenuProps {
 
 const NOT_AVAILABLE_REASON = "Not available yet";
 /** Kinds whose group summary footer shows something, so "Hide column summary" has an effect. */
-const SUMMARY_KINDS: ColumnKind[] = ["status", "number", "timeline"];
+const SUMMARY_KINDS: ColumnKind[] = ["status", "number", "timeline", "vote", "rating"];
 const VIEWPORT_MARGIN = 8;
 /** The flyout's top edge sits this far above its row, so its first row lines up with the row that opened it. */
 const FLYOUT_TOP_OFFSET = 8;
@@ -373,7 +374,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "dependency" | "reminder" | "validation" | "options";
+type SettingsSub = "button" | "dependency" | "rating" | "reminder" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -423,6 +424,17 @@ export default function ColumnMenu({
           icon={<ButtonColumnIcon />}
           label={label}
           renderFlyout={() => <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
+        />
+      );
+    }
+    if (column.kind === "rating") {
+      return (
+        <SubmenuRow
+          submenu_key="rating"
+          submenu={settings_sub}
+          icon={icon}
+          label={label}
+          renderFlyout={() => <RatingSettingsPanel rating_max={ratingMaxOf(column)} rating_icon={ratingIconOf(column)} onChange={(patch) => onUpdateSettings(patch)} />}
         />
       );
     }

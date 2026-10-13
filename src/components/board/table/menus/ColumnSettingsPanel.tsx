@@ -3,7 +3,8 @@
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../constants";
-import type { ColumnKind, ColumnValidation } from "../types";
+import type { ColumnKind, ColumnValidation, RatingIcon } from "../types";
+import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
 
 /*
@@ -224,6 +225,63 @@ export function ButtonSettingsPanel({ button, fallback_label, onSave }: ButtonSe
       <button type="button" disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), color })} className="column-menu__primary">
         Save button
       </button>
+    </div>
+  );
+}
+
+const RATING_ICONS: RatingIcon[] = ["star", "heart", "thumbs_up", "smiley"];
+
+interface RatingSettingsPanelProps {
+  rating_max: number;
+  rating_icon: RatingIcon;
+  onChange: (patch: { rating_max?: number; rating_icon?: RatingIcon }) => void;
+}
+
+/** A Rating column's scale (how many icons) and the icon it is drawn with, saved as soon as one is picked. */
+export function RatingSettingsPanel({ rating_max, rating_icon, onChange }: RatingSettingsPanelProps) {
+  return (
+    <div className={`action-menu column-menu__form rating-cell--${rating_icon} w-[264px]`}>
+      <div className="column-menu__label">Icon</div>
+      <div role="radiogroup" aria-label="Rating icon" className="column-menu__choices">
+        {RATING_ICONS.map((icon) => (
+          <button
+            key={icon}
+            type="button"
+            role="radio"
+            aria-checked={rating_icon === icon}
+            aria-label={RATING_ICON_LABELS[icon]}
+            title={RATING_ICON_LABELS[icon]}
+            onClick={() => onChange({ rating_icon: icon })}
+            className={`column-menu__choice column-menu__choice--icon rating-cell--${icon}`}
+          >
+            <RatingGlyph icon={icon} className="column-menu__choice-glyph" />
+          </button>
+        ))}
+      </div>
+
+      <div className="column-menu__label">Scale</div>
+      <div role="radiogroup" aria-label="Rating scale" className="column-menu__choices">
+        {Array.from({ length: RATING_MAX_LIMIT }, (_, index) => index + 1).map((max) => (
+          <button
+            key={max}
+            type="button"
+            role="radio"
+            aria-checked={rating_max === max}
+            aria-label={`${max} ${max === 1 ? "icon" : "icons"}`}
+            onClick={() => onChange({ rating_max: max })}
+            className="column-menu__choice"
+          >
+            {max}
+          </button>
+        ))}
+      </div>
+
+      <div className="column-menu__rating-preview" aria-hidden="true">
+        {Array.from({ length: rating_max }, (_, index) => (
+          <RatingGlyph key={index} icon={rating_icon} className={`column-menu__rating-preview-glyph${index < Math.ceil(rating_max / 2) ? " is-filled" : ""}`} />
+        ))}
+      </div>
+      <div className="column-menu__help">Ratings above a smaller scale are capped when they are shown.</div>
     </div>
   );
 }
