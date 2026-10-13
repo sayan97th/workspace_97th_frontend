@@ -1,0 +1,108 @@
+/*
+ * The Files cell menu, on top of the shared `.action-menu` card. Like
+ * monday.com, the row under the pointer (or picked with the arrow keys) is
+ * filled with the primary blue and its text and icon turn white.
+ */
+
+.files-menu {
+  --files-menu-active-bg: #0073ea;
+  --files-menu-active-text: #ffffff;
+  --files-menu-entry-text: #323338;
+  --files-menu-entry-muted: #676879;
+  --files-menu-entry-hover: #f0f1f5;
+  --files-menu-error-bg: rgba(226, 68, 92, 0.12);
+  --files-menu-error-text: #d83a52;
+
+  width: 290px;
+}
+
+html.dark .files-menu {
+  --files-menu-active-bg: #2f7bea;
+  --files-menu-entry-text: #e9eded;
+  --files-menu-entry-muted: #9aa4a5;
+  --files-menu-entry-hover: rgba(255, 255, 255, 0.06);
+  --files-menu-error-bg: rgba(240, 100, 122, 0.16);
+  --files-menu-error-text: #f0647a;
+}
+
+.files-menu .action-menu__item[data-active="true"]:not([aria-disabled="true"]) {
+  background: var(--files-menu-active-bg);
+  color: var(--files-menu-active-text);
+}
+
+.files-menu .action-menu__item[data-active="true"]:not([aria-disabled="true"]) .action-menu__icon {
+  color: var(--files-menu-active-text);
+}
+
+/* Hover is drawn by `data-active`, so the shared grey hover must not fight it. */
+.files-menu .action-menu__item:hover:not([data-active="true"]) {
+  background: transparent;
+}
+
+.files-menu__entries {
+  max-height: 208px;
+  overflow-y: auto;
+}
+
+.files-menu__entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--files-menu-entry-text);
+  font-size: 13px;
+}
+
+.files-menu__entry:hover {
+  background: var(--files-menu-entry-hover);
+}
+
+.files-menu__entry-icon,
+.files-menu__entry-meta {
+  flex: none;
+  color: var(--files-menu-entry-muted);
+}
+
+.files-menu__entry-meta {
+  font-size: 11px;
+}
+
+.files-menu__entry-name {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-menu__entry-name:hover {
+  text-decoration: underline;
+}
+
+.files-menu__entry-remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  color: var(--files-menu-entry-muted);
+}
+
+.files-menu__entry-remove:hover {
+  background: var(--action-menu-hover);
+  color: var(--files-menu-entry-text);
+}
+
+.files-menu__error {
+  margin: 0 4px 6px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--files-menu-error-bg);
+  color: var(--files-menu-error-text);
+  font-size: 12px;
+  line-height: 16px;
+}

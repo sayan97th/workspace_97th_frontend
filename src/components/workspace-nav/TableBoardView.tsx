@@ -3078,8 +3078,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       current_user_id: user ? String(user.id) : undefined,
       onUploadCellFiles: (node_id, column_id, files) =>
         boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
-      onAddCellFileLink: (node_id, column_id, url, text) =>
-        boardItemCellFilesService.addCellFileLink(board_id, Number(node_id), Number(column_id), url, text),
+      onAddCellFileLink: (node_id, column_id, url, text, source) =>
+        boardItemCellFilesService.addCellFileLink(board_id, Number(node_id), Number(column_id), url, text, source),
+      onAddCellFileDoc: (node_id, column_id) => boardItemCellFilesService.addCellFileDoc(board_id, Number(node_id), Number(column_id)),
       onDeleteCellFile: (node_id, column_id, file_id) =>
         boardItemCellFilesService.deleteCellFile(board_id, Number(node_id), Number(column_id), file_id),
       initial_collapsed_groups: collapsed_group_map,

@@ -187,13 +187,20 @@ export interface TimeTrackingValue {
 }
 
 /** One file in a `files`-type column's cell — the cell's value is an array of these, mirroring `BoardItemAttachment` but scoped to one column instead of the whole item. */
-/** `file` is an upload kept in storage, `link` an external URL added through "From Link". Entries saved before links existed have no `kind` and are uploads. */
-export type CellFileKind = "file" | "link";
+/** `file` is an upload kept in storage, `link` an external URL added through "From Link" or a cloud provider option, `doc` a Doc created from the cell. Entries saved before links existed have no `kind` and are uploads. */
+export type CellFileKind = "file" | "link" | "doc";
+
+/** Which Files menu option added a link. Links saved before providers existed have none and count as "link". */
+export type CellFileSource = "link" | "google_drive" | "dropbox" | "box" | "onedrive";
 
 export interface CellFile {
   id: string;
   kind?: CellFileKind;
-  /** For a link, its display text (or the URL itself when none was given). */
+  /** Links only. */
+  source?: CellFileSource;
+  /** Docs only, the Doc's navigation item id. */
+  doc_id?: number;
+  /** For a link, its display text (or the URL itself when none was given). For a Doc, its name. */
   file_name: string;
   url: string;
   mime_type: string;

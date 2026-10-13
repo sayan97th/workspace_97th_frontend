@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   ActiveCell,
   CellFile,
+  CellFileSource,
   CellValue,
   ColumnDef,
   ColumnKind,
@@ -195,7 +196,9 @@ export interface UseBoardTableConfig {
   /** A `files`-type cell's per-chip delete "×" — resolves with the cell's updated file list, same contract as `onUploadCellFiles`. */
   onDeleteCellFile?: (node_id: string, column_id: string, file_id: string) => Promise<CellFile[]>;
   /** A `files`-type cell's "From Link" dialog, resolves with the cell's updated file list, same contract as `onUploadCellFiles`. Rejects with the API's validation error so the dialog can show it. */
-  onAddCellFileLink?: (node_id: string, column_id: string, url: string, text: string) => Promise<CellFile[]>;
+  onAddCellFileLink?: (node_id: string, column_id: string, url: string, text: string, source: CellFileSource) => Promise<CellFile[]>;
+  /** A `files`-type cell's "Doc" option, creates a new Doc and resolves with the cell's updated file list, same contract as `onUploadCellFiles`. */
+  onAddCellFileDoc?: (node_id: string, column_id: string) => Promise<CellFile[]>;
   /**
    * Row star / row menu's "Mark as priority" toggle for a single item or
    * subitem — the per-row counterpart of `onToggleGroupPriority`, persisted
@@ -1013,14 +1016,26 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [setCellValueLocal]
   );
 
-  /** Files cell's "From Link" dialog. Errors propagate to the caller, which keeps the dialog open to show them. */
+  /** Files cell's "From Link" dialog and its cloud provider variants. Errors propagate to the caller, which keeps the dialog open to show them. */
   const addCellFileLink = useCallback(
-    async (node_id: string, column_id: string, url: string, text: string) => {
-      const updated = await config_ref.current.onAddCellFileLink?.(node_id, column_id, url, text);
+    async (node_id: string, column_id: string, url: string, text: string, source: CellFileSource = "link") => {
+      const updated = await config_ref.current.onAddCellFileLink?.(node_id, column_id, url, text, source);
       if (updated) setCellValueLocal(node_id, column_id, updated);
     },
     [setCellValueLocal]
   );
+
+  /** Files cell's "Doc" option. Errors propagate to the caller, which shows them in the menu. */
+  const addCellFileDoc = useCallback(
+    async (node_id: string, column_id: string) => {
+      const updated = await config_ref.current.onAddCellFileDoc?.(node_id, column_id);
+      if (updated) setCellValueLocal(node_id, column_id, updated);
+    },
+    [setCellValueLocal]
+  );
+
+  /** Whether the viewer may change this cell, so a cell can hide edit only affordances (the hover "×"). The guard below narrows it. */
+  const canEditCell = useCallback((_node_id: string, _column_id: string): boolean => true, []);
 
   /** Files cell's per-chip delete "×". */
   const deleteCellFile = useCallback(
@@ -2330,6 +2345,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       uploadCellFiles,
       setDependencyLinks,
       addCellFileLink,
+      addCellFileDoc,
+      canEditCell,
       deleteCellFile,
       setActiveCell,
       clearActiveCell,
@@ -2453,7 +2470,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [
       toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
-      clearCellValue, uploadCellFiles, addCellFileLink, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
+      clearCellValue, uploadCellFiles, addCellFileLink, addCellFileDoc, canEditCell, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
@@ -2545,6 +2562,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("clearCellValue", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("uploadCellFiles", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("addCellFileLink", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("addCellFileDoc", (node_id, column_id) => isCellEditable(node_id, column_id));
+    guarded.canEditCell = isCellEditable;
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
     // Pressing a button changes no value, the API only asks that the viewer may work on the item.
     wrap("pressButton", (node_id) => canEditNode?.(node_id) ?? true);

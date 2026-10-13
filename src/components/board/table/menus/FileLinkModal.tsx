@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useEffectEvent, useId, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { FILE_SOURCES, isHostAllowed, ProviderBadge } from "./fileSources";
+import type { CellFileSource } from "../types";
 
 interface FileLinkModalProps {
+  /** Which menu option opened it. A cloud provider only accepts links hosted by that provider. Defaults to "link". */
+  source?: CellFileSource;
   /** Persists the link. Rejecting keeps the dialog open and shows the error, resolving closes it. */
   onSave: (url: string, text: string) => Promise<void>;
   onClose: () => void;
@@ -42,10 +46,13 @@ function extractErrorMessage(error: unknown): string {
 /**
  * A Files cell's "From Link" dialog: any external URL (a PDF, Adobe, Miro or
  * Figma file, ...) plus optional display text, added to the cell next to its
- * uploaded files. Portaled to `document.body` so it sits above the table's
- * sticky columns and popovers, the same reason `PopoverPanel` portals.
+ * uploaded files. The cloud provider options (Google Drive, Dropbox, Box,
+ * OneDrive & SharePoint) reuse it with their own title, hint and host check.
+ * Portaled to `document.body` so it sits above the table's sticky columns
+ * and popovers, the same reason `PopoverPanel` portals.
  */
-export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
+export default function FileLinkModal({ source = "link", onSave, onClose }: FileLinkModalProps) {
+  const source_config = FILE_SOURCES[source];
   const [draft_url, setDraftUrl] = useState("");
   const [draft_text, setDraftText] = useState("");
   const [error_message, setErrorMessage] = useState<string | null>(null);
@@ -56,13 +63,16 @@ export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
 
   const can_save = draft_url.trim().length > 0 && !is_saving;
 
+  // Subscribed once: the table re-renders on the same Escape press, and a listener swapped
+  // mid dispatch would never see the event, so the latest props are read through an effect event.
+  const handleEscape = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key === "Escape" && !is_saving) onClose();
+  });
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !is_saving) onClose();
-    };
+    const handleKeyDown = (event: KeyboardEvent) => handleEscape(event);
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [is_saving, onClose]);
+  }, []);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -71,6 +81,10 @@ export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
     const url = normalizeUrl(draft_url);
     if (!isValidUrl(url)) {
       setErrorMessage("Enter a valid http or https link.");
+      return;
+    }
+    if (!isHostAllowed(url, source)) {
+      setErrorMessage(`Paste a link from ${source_config.provider_name}.`);
       return;
     }
 
@@ -114,13 +128,19 @@ export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
         </button>
 
         <h2 id={title_id} className="text-center text-boardtree-text font-heading text-dialog-title">
-          Upload file from link
+          {source_config.dialog_title}
         </h2>
 
-        <LinkIllustration />
+        {source === "link" ? (
+          <LinkIllustration />
+        ) : (
+          <div className="my-7 flex justify-center">
+            <ProviderBadge source={source} />
+          </div>
+        )}
 
         <label htmlFor={url_input_id} className="mb-1.5 block text-[14px] text-boardtree-text">
-          Paste any type of link
+          {source_config.url_label}
         </label>
         <input
           id={url_input_id}
@@ -133,7 +153,7 @@ export default function FileLinkModal({ onSave, onClose }: FileLinkModalProps) {
             setDraftUrl(e.target.value);
             if (error_message) setErrorMessage(null);
           }}
-          placeholder="e.g. pdf, adobe, miro, figma.."
+          placeholder={source_config.url_placeholder}
           aria-invalid={error_message !== null}
           className={`w-full rounded-[6px] border bg-boardtree-surface px-3 py-2 text-[14px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent ${
             error_message ? "border-boardtree-danger" : "border-boardtree-border"

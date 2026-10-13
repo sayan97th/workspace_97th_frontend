@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CellFile, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
+import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import { contrastFg, findDef, pillColors, timelineFillBackground } from "../colorUtils";
 import { DROPDOWN_OPTION_COLORS } from "../constants";
@@ -21,6 +21,8 @@ import TagsMenu from "../menus/TagsMenu";
 import LinkMenu from "../menus/LinkMenu";
 import FilesMenu from "../menus/FilesMenu";
 import FileLinkModal from "../menus/FileLinkModal";
+import WebcamCaptureModal from "../menus/WebcamCaptureModal";
+import CellHyperlink from "./CellHyperlink";
 import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
@@ -69,12 +71,15 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     return () => clearInterval(id);
   }, [running_since]);
 
-  // Files cell's own "Upload" in-flight state, so the popover can disable its
-  // button and show a "Uploading…" label while a request is pending, plus the
-  // last failed upload's message and whether the "From Link" dialog is open.
+  // Files cell's own "Upload" and "Doc" in-flight state, so the popover can
+  // disable its options and show a progress label while a request is pending,
+  // plus the last failure's message, which link dialog is open (by source) and
+  // whether the webcam dialog is open.
   const [is_uploading, setIsUploading] = useState(false);
+  const [is_creating_doc, setIsCreatingDoc] = useState(false);
   const [upload_error, setUploadError] = useState<string | null>(null);
-  const [is_file_link_modal_open, setIsFileLinkModalOpen] = useState(false);
+  const [file_link_source, setFileLinkSource] = useState<CellFileSource | null>(null);
+  const [is_webcam_open, setIsWebcamOpen] = useState(false);
 
   // Text cell: whether it was clicked out of its search highlighted display into the input.
   const [is_text_editing, setIsTextEditing] = useState(false);
@@ -543,29 +548,23 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "link") {
     const link = value && typeof value === "object" && !Array.isArray(value) && "url" in value ? (value as LinkValue) : null;
+    const can_edit = actions.canEditCell(node_id, column.id);
     return (
-      <div className="relative flex flex-1 items-center gap-1.5 px-2.5">
-        <button type="button" onClick={openMenu} className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
+      <div className="cell-link-host">
+        <button type="button" onClick={openMenu} aria-label={link?.url ? "Edit link" : "Add link"} className="cell-link-host__hit-area" />
+        <div className="cell-link-host__content">
           {link?.url ? (
-            <span className="min-w-0 truncate text-board-cell font-medium text-boardtree-accent underline">{link.text || link.url}</span>
+            <CellHyperlink
+              href={link.url}
+              label={link.text || link.url}
+              tooltip={link.url}
+              onRemove={can_edit ? () => actions.clearCellValue(node_id, column.id) : undefined}
+              remove_label="Remove link"
+            />
           ) : (
-            <span className="text-board-cell text-boardtree-text-faint">Add link</span>
+            can_edit && <AddGlyph />
           )}
-        </button>
-        {link?.url && (
-          <a
-            href={link.url}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            title="Open link"
-            className="flex-none text-boardtree-text-faint hover:text-boardtree-accent"
-          >
-            <svg viewBox="0 0 14 14" width="12" height="12">
-              <path d="M5.5 8.5 L11 3 M7 3 H11 V7 M9.5 3 H3.5 V11 H10.5 V7.5" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </a>
-        )}
+        </div>
         {is_menu_open && (
           <LinkMenu
             url={link?.url ?? ""}
@@ -581,33 +580,66 @@ export default function CellRenderer({ node_id, column, values, node_name, state
 
   if (column.kind === "files") {
     const files = Array.isArray(value) && value.every((f) => typeof f === "object" && f !== null) ? (value as CellFile[]) : [];
+    const can_edit = actions.canEditCell(node_id, column.id);
+    const first_file = files[0];
+    const reportFailure = (fallback: string) => (error: { errors?: Record<string, string[]>; message?: string }) => {
+      const first_field_error = error?.errors ? Object.values(error.errors).flat()[0] : undefined;
+      setUploadError(first_field_error ?? error?.message ?? fallback);
+    };
     return (
-      <div className="relative flex h-full w-full items-center justify-center px-2">
-        <button type="button" onClick={openMenu} className="flex items-center gap-1.5 text-boardtree-text-faint hover:text-boardtree-accent">
-          <svg viewBox="0 0 14 14" width="13" height="13">
-            <path d="M9.5 2.5 L3.8 8.2 a2 2 0 0 0 2.8 2.8 L12 5.6 a3.2 3.2 0 0 0 -4.5 -4.5 L2.3 6.3" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {files.length > 0 && <span className="font-mono text-[11px]">{files.length}</span>}
-        </button>
+      <div className="cell-link-host">
+        <button type="button" onClick={openMenu} aria-label={files.length > 0 ? "Manage files" : "Add file"} className="cell-link-host__hit-area" />
+        <div className="cell-link-host__content">
+          {first_file ? (
+            <>
+              <CellHyperlink
+                href={first_file.url}
+                label={first_file.file_name}
+                // Links show their URL like monday, uploads and Docs their full name (a storage URL means nothing to people).
+                tooltip={first_file.kind === "link" ? first_file.url : first_file.file_name}
+                onRemove={can_edit ? () => void actions.deleteCellFile(node_id, column.id, first_file.id) : undefined}
+                remove_label={`Remove ${first_file.file_name}`}
+              />
+              {files.length > 1 && (
+                <button type="button" onClick={openMenu} className="cell-link-host__count" aria-label={`Show all ${files.length} files`}>
+                  +{files.length - 1}
+                </button>
+              )}
+            </>
+          ) : (
+            can_edit && <AddGlyph />
+          )}
+        </div>
         {is_menu_open && (
           <FilesMenu
             files={files}
             is_uploading={is_uploading}
+            is_creating_doc={is_creating_doc}
             upload_error={upload_error}
+            can_edit={can_edit}
             onUpload={(picked) => {
               setIsUploading(true);
               setUploadError(null);
               // `Promise.resolve`: the read only guard returns undefined instead of a promise.
               Promise.resolve(actions.uploadCellFiles(node_id, column.id, picked))
-                .catch((error: { errors?: Record<string, string[]>; message?: string }) => {
-                  const first_field_error = error?.errors ? Object.values(error.errors).flat()[0] : undefined;
-                  setUploadError(first_field_error ?? error?.message ?? "The file could not be uploaded.");
-                })
+                .catch(reportFailure("The file could not be uploaded."))
                 .finally(() => setIsUploading(false));
             }}
-            onAddLink={() => {
+            onOpenWebcam={() => {
               actions.closeCellMenu();
-              setIsFileLinkModalOpen(true);
+              setIsWebcamOpen(true);
+            }}
+            onCreateDoc={() => {
+              setIsCreatingDoc(true);
+              setUploadError(null);
+              Promise.resolve(actions.addCellFileDoc(node_id, column.id))
+                .then(() => actions.closeCellMenu())
+                .catch(reportFailure("The doc could not be created."))
+                .finally(() => setIsCreatingDoc(false));
+            }}
+            onAddLink={(source) => {
+              actions.closeCellMenu();
+              setFileLinkSource(source);
             }}
             onDelete={(file_id) => void actions.deleteCellFile(node_id, column.id, file_id)}
             onClose={() => {
@@ -616,12 +648,21 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             }}
           />
         )}
-        {is_file_link_modal_open && (
+        {file_link_source && (
           <FileLinkModal
+            source={file_link_source}
             onSave={async (url, text) => {
-              await actions.addCellFileLink(node_id, column.id, url, text);
+              await actions.addCellFileLink(node_id, column.id, url, text, file_link_source);
             }}
-            onClose={() => setIsFileLinkModalOpen(false)}
+            onClose={() => setFileLinkSource(null)}
+          />
+        )}
+        {is_webcam_open && (
+          <WebcamCaptureModal
+            onUpload={async (photo) => {
+              await actions.uploadCellFiles(node_id, column.id, [photo]);
+            }}
+            onClose={() => setIsWebcamOpen(false)}
           />
         )}
       </div>
@@ -911,4 +952,15 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   return null;
+}
+
+/** An empty Link or Files cell's hover "+", see `.cell-link-host__add`. */
+function AddGlyph() {
+  return (
+    <span className="cell-link-host__add" aria-hidden="true">
+      <svg viewBox="0 0 16 16" width="14" height="14" fill="none">
+        <path d="M8 3 V13 M3 8 H13" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      </svg>
+    </span>
+  );
 }

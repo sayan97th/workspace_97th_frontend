@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, LinkIcon } from "@/icons/board-icons";
 import type { BoardColumnKind } from "../columnTypes";
+import type { BoardCellFile } from "@/types/board-content";
 import StatusPill from "../StatusPill";
 import ProductTag, { OverflowBadge } from "../ProductTag";
 import PersonAvatarStack from "../PersonAvatarStack";
@@ -27,7 +28,7 @@ export type BoardCellLinkValue = { url: string; text: string };
 export type BoardCellTimeTrackingValue = { seconds: number; running_since: string | null };
 
 /** One file or external link in a `files`-type column's cell, see the Table kit's own `CellFile`. */
-export type BoardCellFileValue = { id: string; kind?: "file" | "link"; file_name: string; url: string; mime_type: string; size_bytes: number };
+export type BoardCellFileValue = BoardCellFile;
 
 /**
  * A cell value, shaped per the owning column's kind. `link`/`time_tracking`/

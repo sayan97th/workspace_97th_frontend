@@ -1,0 +1,191 @@
+/*
+ * Hyperlink cells (Link and Files columns), styled after monday.com: the
+ * value reads as blue link text that truncates with an ellipsis, gets an
+ * underline on hover, shows its full URL in a dark tooltip, and offers a
+ * small grey "×" to remove it. Every color is a `--cell-link-*` token, so dark
+ * mode only swaps the tokens, never the rules below.
+ */
+
+.cell-link-host {
+  --cell-link-color: #1f76c2;
+  --cell-link-color-hover: #0060b9;
+  --cell-link-remove-bg: #e7e9ef;
+  --cell-link-remove-bg-hover: #d0d4e4;
+  --cell-link-remove-icon: #323338;
+  --cell-link-add: #676879;
+  --cell-link-count-bg: #e7e9ef;
+  --cell-link-count-text: #323338;
+}
+
+html.dark .cell-link-host {
+  --cell-link-color: #69a7ef;
+  --cell-link-color-hover: #8fbdf4;
+  --cell-link-remove-bg: rgba(255, 255, 255, 0.12);
+  --cell-link-remove-bg-hover: rgba(255, 255, 255, 0.2);
+  --cell-link-remove-icon: #e9eded;
+  --cell-link-add: #9aa4a5;
+  --cell-link-count-bg: rgba(255, 255, 255, 0.12);
+  --cell-link-count-text: #e9eded;
+}
+
+/* The whole cell opens its menu, the link text and buttons sit above that hit area. */
+.cell-link-host {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+}
+
+.cell-link-host__hit-area {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.cell-link-host__content {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  pointer-events: none;
+}
+
+.cell-link-host__content > * {
+  pointer-events: auto;
+}
+
+/* One link: text plus its hover "×". */
+.cell-link {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 2px;
+}
+
+.cell-link__anchor {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--cell-link-color);
+  font-size: 14px;
+  line-height: 20px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-link__anchor:hover,
+.cell-link__anchor:focus-visible {
+  color: var(--cell-link-color-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cell-link__anchor:focus-visible {
+  outline: none;
+}
+
+.cell-link__remove {
+  display: none;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--cell-link-remove-bg);
+  color: var(--cell-link-remove-icon);
+}
+
+.cell-link__remove:hover {
+  background: var(--cell-link-remove-bg-hover);
+}
+
+.cell-link-host:hover .cell-link__remove,
+.cell-link__remove:focus-visible {
+  display: flex;
+}
+
+/* "+2" when a Files cell holds more than one entry. */
+.cell-link-host__count {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--cell-link-count-bg);
+  color: var(--cell-link-count-text);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* An empty cell shows a faint "+" on hover, like monday's add affordance. */
+.cell-link-host__add {
+  margin: 0 auto;
+  color: var(--cell-link-add);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.cell-link-host:hover .cell-link-host__add {
+  opacity: 1;
+}
+
+/* Full URL bubble, portaled to the body so the cell's overflow never clips it. */
+.cell-link-tooltip {
+  --cell-link-tooltip-bg: #323338;
+  --cell-link-tooltip-text: #ffffff;
+
+  position: fixed;
+  z-index: 1200;
+  max-width: 260px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: var(--cell-link-tooltip-bg);
+  color: var(--cell-link-tooltip-text);
+  font-size: 14px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+html.dark .cell-link-tooltip {
+  --cell-link-tooltip-bg: #3a3d55;
+  --cell-link-tooltip-text: #f5f6f8;
+}
+
+.cell-link-tooltip__arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--cell-link-tooltip-bg);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.cell-link-tooltip[data-side="top"] .cell-link-tooltip__arrow {
+  bottom: -4px;
+}
+
+.cell-link-tooltip[data-side="bottom"] .cell-link-tooltip__arrow {
+  top: -4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cell-link-tooltip {
+    animation: cell-link-tooltip-enter 120ms ease-out;
+  }
+}
+
+@keyframes cell-link-tooltip-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
