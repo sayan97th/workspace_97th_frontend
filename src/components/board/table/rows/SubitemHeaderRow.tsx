@@ -128,8 +128,21 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
         ))}
 
         <div className="relative flex h-9 items-center justify-center">
-          <button type="button" onClick={() => actions.openPicker(picker_key)} hidden={!state.can_edit_structure || state.read_only} className="flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent">
-            <svg viewBox="0 0 14 14" width="14" height="14"><path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
+          {/* Marked as part of the gallery, so a click on it toggles the open gallery closed instead of closing and reopening it. */}
+          <button
+            type="button"
+            data-board-menu-flyout
+            aria-label={state.open_picker_key === picker_key ? "Close column types" : "Add column"}
+            aria-expanded={state.open_picker_key === picker_key}
+            onClick={() => actions.openPicker(picker_key)}
+            hidden={!state.can_edit_structure || state.read_only}
+            className={`flex h-[26px] w-[26px] items-center justify-center rounded-[5px] hover:bg-boardtree-hover hover:text-boardtree-accent ${
+              state.open_picker_key === picker_key ? "bg-boardtree-accent-surface text-boardtree-accent" : "text-boardtree-text-muted"
+            }`}
+          >
+            <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" className={`transition-transform duration-150 ${state.open_picker_key === picker_key ? "rotate-45" : ""}`}>
+              <path d="M7 2.6 V11.4 M2.6 7 H11.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
           </button>
           {state.open_picker_key === picker_key && (
             <ColumnPicker

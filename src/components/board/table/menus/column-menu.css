@@ -124,21 +124,6 @@ html.dark .column-menu {
   white-space: normal;
 }
 
-/* Colored square with the type's glyph, like monday.com's column type icons. */
-.column-menu__type-icon {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 4px;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-}
-
 /* Small forms shown in a flyout (Button settings, validation, column options...). */
 .column-menu__form {
   gap: 4px;
@@ -301,15 +286,8 @@ html.dark .column-menu {
   line-height: 16px;
 }
 
-/* The column type gallery ("More columns") laid out inside a flyout. */
-.column-menu__gallery {
-  width: 360px;
-  max-height: min(440px, calc(100vh - 32px));
-  overflow-y: auto;
-}
-
 /* Column type rows carry a 20px chip instead of a 16px outline icon. */
-.action-menu__icon:has(.column-menu__type-icon) {
+.action-menu__icon:has(.column-type-icon) {
   width: 20px;
   height: 20px;
 }

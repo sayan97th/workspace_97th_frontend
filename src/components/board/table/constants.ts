@@ -64,42 +64,54 @@ export const DROPDOWN_OPTION_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c
 
 export const DEFAULT_DROPDOWN_OPTIONS = ["Design", "Engineering", "Marketing", "Legal"];
 
+/**
+ * Where a type sits in the "+" column gallery: the first two sections are always
+ * shown, like monday.com's picker, and "More columns" holds the rest of the
+ * catalog behind the gallery's footer button (and in search results).
+ */
+export type ColumnGallerySection = "Essentials" | "Super useful" | "More columns";
+
+export const COLUMN_GALLERY_SECTIONS: ColumnGallerySection[] = ["Essentials", "Super useful", "More columns"];
+
 export interface ColumnTypeDef {
   kind: ColumnKind;
   label: string;
-  mark: string;
+  /** One line summary, matched by the gallery's "Search or describe your column" box. */
+  description: string;
+  /** Background of the type's icon chip (see `ColumnTypeIcon`). */
   accent: string;
-  section: "Essentials" | "Super useful";
+  section: ColumnGallerySection;
   default_width: number;
 }
 
+/** Every column type a board can hold, in the gallery's display order (row by row, two per row). */
 export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
-  { kind: "status", label: "Status", mark: "≡", accent: "#12c46b", section: "Essentials", default_width: 156 },
-  { kind: "dropdown", label: "Dropdown", mark: "▾", accent: "#2f9e78", section: "Essentials", default_width: 180 },
-  { kind: "text", label: "Text", mark: "T", accent: "#e8b23a", section: "Essentials", default_width: 200 },
-  { kind: "date", label: "Date", mark: "31", accent: "#7b52c9", section: "Essentials", default_width: 150 },
-  { kind: "label", label: "Label", mark: "◇", accent: "#5b3fbd", section: "Essentials", default_width: 132 },
-  { kind: "progress", label: "Progress", mark: "%", accent: "#4f6bed", section: "Essentials", default_width: 156 },
-  { kind: "timeline", label: "Timeline", mark: "▭", accent: "#4f6bed", section: "Essentials", default_width: 196 },
-  { kind: "people", label: "People", mark: "◎", accent: "#4f6bed", section: "Essentials", default_width: 132 },
-  { kind: "number", label: "Numbers", mark: "#", accent: "#f2a53c", section: "Essentials", default_width: 120 },
-  { kind: "longtext", label: "Long text", mark: "¶", accent: "#e8b23a", section: "Essentials", default_width: 240 },
-  { kind: "phone", label: "Phone", mark: "☎", accent: "#f2a53c", section: "Super useful", default_width: 150 },
-  { kind: "email", label: "Email", mark: "@", accent: "#f2662a", section: "Super useful", default_width: 190 },
-  { kind: "tags", label: "Tags", mark: "#", accent: "#12c46b", section: "Super useful", default_width: 180 },
-  { kind: "checkbox", label: "Checkbox", mark: "✓", accent: "#12c46b", section: "Super useful", default_width: 110 },
-  { kind: "rating", label: "Rating", mark: "★", accent: "#fdab3d", section: "Super useful", default_width: 140 },
-  { kind: "vote", label: "Vote", mark: "♥", accent: "#e2445c", section: "Super useful", default_width: 110 },
-  { kind: "link", label: "Link", mark: "🔗", accent: "#0086c0", section: "Super useful", default_width: 200 },
-  { kind: "files", label: "Files", mark: "📎", accent: "#7f5347", section: "Super useful", default_width: 150 },
-  { kind: "time_tracking", label: "Time Tracking", mark: "⏱", accent: "#4f6bed", section: "Super useful", default_width: 150 },
-  { kind: "auto_number", label: "Item ID", mark: "#", accent: "#5b6180", section: "Super useful", default_width: 100 },
-  { kind: "dependency", label: "Dependency", mark: "→", accent: "#7f5347", section: "Super useful", default_width: 200 },
-  { kind: "formula", label: "Formula", mark: "ƒ", accent: "#9d50dd", section: "Super useful", default_width: 150 },
-  { kind: "connect_board", label: "Connect boards", mark: "⛓", accent: "#7f5347", section: "Super useful", default_width: 200 },
-  { kind: "mirror", label: "Mirror", mark: "⧉", accent: "#0086c0", section: "Super useful", default_width: 160 },
-  { kind: "checklist", label: "Checklist", mark: "☑", accent: "#00c875", section: "Super useful", default_width: 200 },
-  { kind: "button", label: "Button", mark: "▶", accent: "#579bfc", section: "Super useful", default_width: 140 },
+  { kind: "status", label: "Status", description: "Track progress with color coded labels", accent: "#00c875", section: "Essentials", default_width: 156 },
+  { kind: "dropdown", label: "Dropdown", description: "Pick one or more labels from a list", accent: "#00c875", section: "Essentials", default_width: 180 },
+  { kind: "text", label: "Text", description: "Free form text", accent: "#ffcb00", section: "Essentials", default_width: 200 },
+  { kind: "date", label: "Date", description: "Pick a calendar date and an optional time", accent: "#a25ddc", section: "Essentials", default_width: 150 },
+  { kind: "people", label: "People", description: "Assign owners and teammates", accent: "#66ccff", section: "Essentials", default_width: 132 },
+  { kind: "number", label: "Numbers", description: "Store numeric values, budgets or amounts", accent: "#ffcb00", section: "Essentials", default_width: 120 },
+  { kind: "files", label: "Files", description: "Attach files, images and documents", accent: "#ff7575", section: "Super useful", default_width: 150 },
+  { kind: "timeline", label: "Timeline", description: "A start and end date, drives the Gantt view", accent: "#a25ddc", section: "Super useful", default_width: 196 },
+  { kind: "tags", label: "Tags", description: "Hashtag keywords shared across boards", accent: "#fdab3d", section: "Super useful", default_width: 180 },
+  { kind: "checkbox", label: "Checkbox", description: "A simple done or not done toggle", accent: "#fdab3d", section: "Super useful", default_width: 110 },
+  { kind: "connect_board", label: "Connect boards", description: "Link items from other boards", accent: "#ff7575", section: "Super useful", default_width: 200 },
+  { kind: "formula", label: "Formula", description: "Calculate values from other columns", accent: "#4eccc6", section: "Super useful", default_width: 150 },
+  { kind: "link", label: "Link", description: "A clickable URL with its own display text", accent: "#66ccff", section: "Super useful", default_width: 200 },
+  { kind: "mirror", label: "Mirror", description: "Show a column from connected items", accent: "#4eccc6", section: "Super useful", default_width: 160 },
+  { kind: "label", label: "Label", description: "A single outline badge from a color coded list", accent: "#579bfc", section: "More columns", default_width: 132 },
+  { kind: "progress", label: "Progress", description: "A manually set 0 to 100% value", accent: "#00c875", section: "More columns", default_width: 156 },
+  { kind: "longtext", label: "Long text", description: "A multi line note", accent: "#ffcb00", section: "More columns", default_width: 240 },
+  { kind: "phone", label: "Phone", description: "Store a phone number", accent: "#66ccff", section: "More columns", default_width: 150 },
+  { kind: "email", label: "Email", description: "Store an email address", accent: "#66ccff", section: "More columns", default_width: 190 },
+  { kind: "rating", label: "Rating", description: "Rate items on a 5 star scale", accent: "#fdab3d", section: "More columns", default_width: 140 },
+  { kind: "vote", label: "Vote", description: "Let the team vote on items", accent: "#ff7575", section: "More columns", default_width: 110 },
+  { kind: "time_tracking", label: "Time Tracking", description: "Track time spent with a start and stop timer", accent: "#a25ddc", section: "More columns", default_width: 150 },
+  { kind: "auto_number", label: "Item ID", description: "A read only number assigned when an item is created", accent: "#4eccc6", section: "More columns", default_width: 100 },
+  { kind: "dependency", label: "Dependency", description: "Link items that must finish before this one starts", accent: "#a25ddc", section: "More columns", default_width: 200 },
+  { kind: "checklist", label: "Checklist", description: "A to do list inside the cell", accent: "#00c875", section: "More columns", default_width: 200 },
+  { kind: "button", label: "Button", description: "Run an automation with one click", accent: "#579bfc", section: "More columns", default_width: 140 },
 ];
 
 /** The column menu's "Add column to the right" shortlist, in monday.com's order. The rest of the gallery is under "More columns". */

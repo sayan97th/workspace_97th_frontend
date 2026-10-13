@@ -3,6 +3,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
+import ColumnTypeIcon from "./ColumnTypeIcon";
 import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
 import BoardPickerMenu from "./BoardPickerMenu";
 import DependencySettingsPanel from "./DependencySettingsPanel";
@@ -365,12 +366,8 @@ function SubmenuRow<K extends string>({ submenu_key, submenu, renderFlyout, disa
 }
 
 /** The colored square monday.com shows next to each column type. */
-function ColumnTypeIcon({ type }: { type: ColumnTypeDef }) {
-  return (
-    <span className="column-menu__type-icon" style={{ background: type.accent }} aria-hidden="true">
-      {type.mark}
-    </span>
-  );
+function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
+  return <ColumnTypeIcon kind={type.kind} accent={type.accent} />;
 }
 
 const Divider = () => <div className="action-menu__divider" role="separator" />;
@@ -606,7 +603,7 @@ export default function ColumnMenu({
         {quick_add_types.map((type) => (
           <MenuRow
             key={type.kind}
-            icon={<ColumnTypeIcon type={type} />}
+            icon={<ColumnTypeChip type={type} />}
             label={type.label}
             onMouseEnter={() => nested_sub.requestOpen(null)}
             onClick={run(() => onAddColumnRight(type.kind, type.label, type.default_width))}
@@ -618,15 +615,13 @@ export default function ColumnMenu({
           submenu={nested_sub}
           label="More columns"
           renderFlyout={() => (
-            <div className="action-menu column-menu__gallery p-0">
-              <ColumnPicker
-                inline
-                query={gallery_query}
-                onQueryChange={setGalleryQuery}
-                onPick={(type) => { onAddColumnRight(type.kind, type.label, type.default_width); onClose(); }}
-                onClose={() => nested_sub.openNow(null)}
-              />
-            </div>
+            <ColumnPicker
+              inline
+              query={gallery_query}
+              onQueryChange={setGalleryQuery}
+              onPick={(type) => { onAddColumnRight(type.kind, type.label, type.default_width); onClose(); }}
+              onClose={() => nested_sub.openNow(null)}
+            />
           )}
         />
     </MenuList>
@@ -639,7 +634,7 @@ export default function ColumnMenu({
       </div>
       {change_type_targets.length === 0 && <div className="column-menu__empty">This column type can&apos;t be changed.</div>}
       {change_type_targets.map((type) => (
-        <MenuRow key={type.kind} icon={<ColumnTypeIcon type={type} />} label={type.label} onClick={run(() => onChangeType(type.kind, type.default_width))} />
+        <MenuRow key={type.kind} icon={<ColumnTypeChip type={type} />} label={type.label} onClick={run(() => onChangeType(type.kind, type.default_width))} />
       ))}
     </MenuList>
   );

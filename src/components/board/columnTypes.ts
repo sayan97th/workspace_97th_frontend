@@ -151,7 +151,7 @@ export const ADDABLE_COLUMN_TYPES: AddableColumnType[] = [
   {
     kind: "timeline",
     label: "Timeline",
-    description: "A start and end date — drives the Gantt view",
+    description: "A start and end date, drives the Gantt view",
     swatch: COLUMN_KIND_SWATCH.timeline,
     default_width: 190,
     section: "essentials",
