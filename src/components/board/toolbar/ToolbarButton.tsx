@@ -15,12 +15,14 @@ export type ToolbarButtonProps = {
   is_pressed?: boolean;
   /** Native tooltip, for toggles whose effect the label alone doesn't spell out. */
   title?: string;
+  /** Left half of a split button (e.g. Filter and its saved filters chevron): only the left corners are rounded. */
+  is_split?: boolean;
   onClick: () => void;
 };
 
 /** Shared toolbar button for Person/Filter/Sort/Hide/Group by/"...". `forwardRef` so callers can anchor a popover to it. */
 const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
-  ({ label, Icon, is_open, has_selection, badge_count, variant = "neutral", aria_label, is_pressed, title, onClick }, ref) => {
+  ({ label, Icon, is_open, has_selection, badge_count, variant = "neutral", aria_label, is_pressed, title, is_split = false, onClick }, ref) => {
     const is_active = is_open || has_selection;
     const active_class =
       variant === "accent"
@@ -35,7 +37,7 @@ const ToolbarButton = forwardRef<HTMLButtonElement, ToolbarButtonProps>(
         aria-label={aria_label ?? label}
         aria-pressed={is_pressed}
         title={title}
-        className={`flex h-8 items-center gap-1.5 rounded-[4px] px-2 text-board-nav transition-colors ${
+        className={`flex h-8 items-center gap-1.5 ${is_split ? "rounded-l-[4px]" : "rounded-[4px]"} px-2 text-board-nav transition-colors ${
           is_active ? active_class : "text-boardtree-text hover:bg-boardtree-hover-strong"
         }`}
       >

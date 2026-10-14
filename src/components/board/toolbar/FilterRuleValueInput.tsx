@@ -4,6 +4,7 @@ import { BOARD_FILTER_DATE_PRESETS, BOARD_FILTER_ME_VALUE, isValuelessOperator }
 import FilterOptionPicker from "./FilterOptionPicker";
 import InlineFieldMenu from "./InlineFieldMenu";
 import type { BoardAdvancedFilterRow, BoardFilterField, BoardPersonOption, BoardQuickFilterFacetOption } from "./types";
+import "./field-menu.css";
 
 export type FilterRuleValueInputProps<TRow> = {
   field: BoardFilterField<TRow> | undefined;
@@ -13,11 +14,8 @@ export type FilterRuleValueInputProps<TRow> = {
   onChange: (patch: Partial<BoardAdvancedFilterRow>) => void;
 };
 
-const input_class =
-  "h-[38px] min-w-0 flex-1 rounded-lg border border-boardtree-border bg-boardtree-hover px-3 text-[13.5px] text-boardtree-text transition-colors placeholder:text-boardtree-text-faint hover:border-boardtree-text-faint focus:border-boardtree-accent focus:outline-none";
-
-/** Native date inputs follow the page's color scheme, so the calendar popup matches the dark theme too. */
-const date_input_class = `${input_class} dark:[color-scheme:dark]`;
+/** See `field-menu.css`, which also gives native date inputs the dark color scheme in dark mode. */
+const input_class = "field-input";
 
 const EXACT_DATE_OPTION_ID = "exact";
 const DATE_VALUE_OPTIONS = [...BOARD_FILTER_DATE_PRESETS, { id: EXACT_DATE_OPTION_ID, label: "Exact date" }];
@@ -26,7 +24,7 @@ const EXACT_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 /** Placeholder shown where a value would go, for conditions that take none or before a column is picked. */
 function DisabledValue({ label }: { label: string }) {
   return (
-    <div className="flex h-[38px] min-w-0 flex-1 items-center rounded-lg border border-boardtree-border-soft px-3 text-[13.5px] text-boardtree-text-faint opacity-60">
+    <div className="field-input field-input--placeholder" aria-disabled>
       {label}
     </div>
   );
@@ -41,7 +39,7 @@ function DateValueInput({ value, onChange }: { value: string; onChange: (value: 
   const selected_label = DATE_VALUE_OPTIONS.find((option) => option.id === selected_id)?.label;
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
+    <div className="field-input-range">
       <InlineFieldMenu
         width={is_exact ? 132 : undefined}
         className="flex-none"
@@ -60,9 +58,9 @@ function DateValueInput({ value, onChange }: { value: string; onChange: (value: 
         }}
         renderValue={() =>
           selected_label ? (
-            <span className="truncate text-[13.5px] text-boardtree-text">{selected_label}</span>
+            <span className="field-menu__label">{selected_label}</span>
           ) : (
-            <span className="truncate text-[13.5px] text-boardtree-text-faint">Choose date</span>
+            <span className="field-menu__placeholder">Choose date</span>
           )
         }
         renderOption={(option) => <span>{option.label}</span>}
@@ -72,7 +70,7 @@ function DateValueInput({ value, onChange }: { value: string; onChange: (value: 
           type="date"
           value={EXACT_DATE_PATTERN.test(value) ? value : ""}
           onChange={(event) => onChange(event.target.value)}
-          className={date_input_class}
+          className={input_class}
         />
       )}
     </div>
@@ -127,9 +125,9 @@ function FilterRuleValueInput<TRow>({ field, rule, persons, current_person_id, o
     case "number":
       if (rule.condition === "between") {
         return (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
+          <div className="field-input-range">
             <input type="number" value={values[0] ?? ""} onChange={(event) => setBound(0, event.target.value)} placeholder="From" className={input_class} />
-            <span className="flex-none text-[13px] text-boardtree-text-muted">and</span>
+            <span className="field-input-range__joiner">and</span>
             <input type="number" value={values[1] ?? ""} onChange={(event) => setBound(1, event.target.value)} placeholder="To" className={input_class} />
           </div>
         );
@@ -146,10 +144,10 @@ function FilterRuleValueInput<TRow>({ field, rule, persons, current_person_id, o
     case "date":
       if (rule.condition === "between") {
         return (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <input type="date" value={values[0] ?? ""} onChange={(event) => setBound(0, event.target.value)} className={date_input_class} />
-            <span className="flex-none text-[13px] text-boardtree-text-muted">and</span>
-            <input type="date" value={values[1] ?? ""} onChange={(event) => setBound(1, event.target.value)} className={date_input_class} />
+          <div className="field-input-range">
+            <input type="date" value={values[0] ?? ""} onChange={(event) => setBound(0, event.target.value)} className={input_class} />
+            <span className="field-input-range__joiner">and</span>
+            <input type="date" value={values[1] ?? ""} onChange={(event) => setBound(1, event.target.value)} className={input_class} />
           </div>
         );
       }

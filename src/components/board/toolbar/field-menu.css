@@ -1,0 +1,471 @@
+/*
+ * Shared field controls for the board toolbar panels (Filter, Sort, Group by,
+ * Conditional coloring) and the Chart settings, styled after monday.com: a
+ * 36px white field with a 4px radius and a #c3c6d4 border, 14px Figtree, a
+ * floating white list with an 8px radius, light blue selected rows and value
+ * chips with their own remove button.
+ *
+ * - `.field-menu`: `InlineFieldMenu` (single pick) and `FilterOptionPicker`
+ *   (multi pick with checkboxes and chips).
+ * - `.field-input`: free text, number and date inputs placed next to them,
+ *   plus the disabled "No value needed" placeholder.
+ *
+ * Every color is a `--field-menu-*` token, so dark mode only swaps tokens.
+ * The panels are portaled to `document.body`, outside the board's scoped
+ * palette, which is why the controls carry their own tokens.
+ */
+.field-menu,
+.field-input,
+.field-input-range {
+  --field-menu-surface: #ffffff;
+  --field-menu-text: #323338;
+  --field-menu-text-secondary: #676879;
+  --field-menu-text-faint: #9699a6;
+  --field-menu-border: #c3c6d4;
+  --field-menu-border-hover: #323338;
+  --field-menu-border-soft: #e7e9ef;
+  --field-menu-focus: #0073ea;
+  --field-menu-hover: #dcdfec;
+  --field-menu-selected: #cce5ff;
+  --field-menu-chip: #cce5ff;
+  --field-menu-chip-hover: #aed4fc;
+  --field-menu-check: #0073ea;
+  --field-menu-scroll-thumb: #c3c6d4;
+  --field-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+}
+
+html.dark .field-menu,
+html.dark .field-input,
+html.dark .field-input-range {
+  --field-menu-surface: #0f1c1c;
+  --field-menu-text: #e9eded;
+  --field-menu-text-secondary: #b7c0c1;
+  --field-menu-text-faint: #8a9496;
+  --field-menu-border: rgba(255, 255, 255, 0.18);
+  --field-menu-border-hover: rgba(255, 255, 255, 0.45);
+  --field-menu-border-soft: rgba(255, 255, 255, 0.1);
+  --field-menu-focus: #4d9cff;
+  --field-menu-hover: rgba(255, 255, 255, 0.08);
+  --field-menu-selected: rgba(77, 156, 255, 0.2);
+  --field-menu-chip: rgba(77, 156, 255, 0.24);
+  --field-menu-chip-hover: rgba(77, 156, 255, 0.36);
+  --field-menu-check: #4d9cff;
+  --field-menu-scroll-thumb: rgba(255, 255, 255, 0.2);
+  --field-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.field-menu {
+  position: relative;
+  min-width: 0;
+}
+
+/* Trigger. A div with role="button" in FilterOptionPicker, so its chips can hold their own remove button. */
+.field-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 8px 0 12px;
+  border: 1px solid var(--field-menu-border);
+  border-radius: 4px;
+  background: var(--field-menu-surface);
+  color: var(--field-menu-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.field-menu__trigger:hover {
+  border-color: var(--field-menu-border-hover);
+}
+
+.field-menu__trigger[aria-expanded="true"],
+.field-menu__trigger:focus-visible,
+.field-menu__trigger:has(:focus-visible) {
+  border-color: var(--field-menu-focus);
+  outline: none;
+}
+
+/* InlineFieldMenu: the trigger is a frame around the open button and, when clearable, an "x". */
+.field-menu__trigger--split {
+  padding: 0;
+  cursor: default;
+}
+
+.field-menu__trigger-button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  min-width: 0;
+  padding: 0 8px 0 12px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+}
+
+.field-menu__trigger-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding-right: 8px;
+}
+
+.field-menu__chevron-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.field-menu__value {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.field-menu__label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-menu__placeholder {
+  overflow: hidden;
+  color: var(--field-menu-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-menu__chevron {
+  display: flex;
+  flex: none;
+  color: var(--field-menu-text-secondary);
+  transition: transform 150ms ease;
+}
+
+.field-menu__trigger[aria-expanded="true"] .field-menu__chevron {
+  transform: rotate(180deg);
+}
+
+/* Small "x" inside a trigger, e.g. clearing the picked column of a filter rule. */
+.field-menu__clear {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--field-menu-text-secondary);
+  cursor: pointer;
+}
+
+.field-menu__clear:hover {
+  background: var(--field-menu-hover);
+  color: var(--field-menu-text);
+}
+
+/* Picked values inside the multi pick trigger. */
+.field-menu__chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 160px;
+  height: 24px;
+  padding: 0 4px 0 8px;
+  border-radius: 4px;
+  background: var(--field-menu-chip);
+  color: var(--field-menu-text);
+  font-size: 14px;
+}
+
+.field-menu__chip-remove {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--field-menu-text-secondary);
+  cursor: pointer;
+}
+
+.field-menu__chip-remove:hover {
+  background: var(--field-menu-chip-hover);
+  color: var(--field-menu-text);
+}
+
+.field-menu__more {
+  flex: none;
+  color: var(--field-menu-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Floating list. */
+.field-menu__popup {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 210;
+  width: 100%;
+  min-width: 220px;
+  padding: 8px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: var(--field-menu-surface);
+  box-shadow: var(--field-menu-shadow);
+  color: var(--field-menu-text);
+  font-size: 14px;
+  line-height: 20px;
+  scrollbar-color: var(--field-menu-scroll-thumb) transparent;
+  scrollbar-width: thin;
+}
+
+html.dark .field-menu__popup {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .field-menu__popup {
+    animation: field-menu-enter 120ms ease-out;
+  }
+}
+
+@keyframes field-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.field-menu__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.field-menu__search-icon {
+  position: absolute;
+  left: 9px;
+  display: flex;
+  color: var(--field-menu-text-secondary);
+  pointer-events: none;
+}
+
+.field-menu__search-input {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px 0 30px;
+  border: 1px solid var(--field-menu-border);
+  border-radius: 4px;
+  background: var(--field-menu-surface);
+  color: var(--field-menu-text);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 120ms ease;
+}
+
+.field-menu__search-input::placeholder {
+  color: var(--field-menu-text-secondary);
+}
+
+.field-menu__search-input:hover {
+  border-color: var(--field-menu-border-hover);
+}
+
+.field-menu__search-input:focus {
+  border-color: var(--field-menu-focus);
+  outline: none;
+}
+
+.field-menu__heading {
+  padding: 4px 8px;
+  color: var(--field-menu-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.field-menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.field-menu__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--field-menu-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.field-menu__option:hover {
+  background: var(--field-menu-hover);
+}
+
+.field-menu__option[aria-selected="true"] {
+  background: var(--field-menu-selected);
+}
+
+.field-menu__tag {
+  flex: none;
+  color: var(--field-menu-text-faint);
+  font-size: 12px;
+}
+
+.field-menu__empty {
+  padding: 8px;
+  color: var(--field-menu-text-secondary);
+}
+
+.field-menu__checkbox {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--field-menu-border);
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.field-menu__checkbox[data-checked="true"] {
+  border-color: var(--field-menu-check);
+  background: var(--field-menu-check);
+}
+
+.field-menu__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.field-menu__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--field-menu-border-soft);
+}
+
+.field-menu__link-button {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--field-menu-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.field-menu__link-button:hover {
+  background: var(--field-menu-hover);
+}
+
+/* Free text, number and date inputs. */
+.field-input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--field-menu-border);
+  border-radius: 4px;
+  background: var(--field-menu-surface);
+  color: var(--field-menu-text);
+  font-size: 14px;
+  transition: border-color 120ms ease;
+}
+
+.field-input::placeholder {
+  color: var(--field-menu-text-secondary);
+}
+
+.field-input:hover {
+  border-color: var(--field-menu-border-hover);
+}
+
+.field-input:focus {
+  border-color: var(--field-menu-focus);
+  outline: none;
+}
+
+.field-input:disabled {
+  border-color: var(--field-menu-border-soft);
+  color: var(--field-menu-text-faint);
+  cursor: not-allowed;
+}
+
+/* Native date pickers follow the page's color scheme. */
+html.dark .field-input[type="date"] {
+  color-scheme: dark;
+}
+
+/* Where a value would go, for conditions that take none or before a column is picked. */
+.field-input--placeholder {
+  display: flex;
+  align-items: center;
+  border-color: var(--field-menu-border-soft);
+  color: var(--field-menu-text-faint);
+  cursor: default;
+}
+
+.field-input--placeholder:hover {
+  border-color: var(--field-menu-border-soft);
+}
+
+.field-input-range {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.field-input-range__joiner {
+  flex: none;
+  color: var(--field-menu-text-secondary);
+  font-size: 14px;
+}

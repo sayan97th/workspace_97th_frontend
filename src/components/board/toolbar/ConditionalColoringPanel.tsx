@@ -131,7 +131,7 @@ function ConditionalColoringPanel<TRow>({ toolbar, view_actions }: ConditionalCo
                   toolbar.updateConditionalColorRule(rule.id, { value: event.target.value })
                 }
                 placeholder="Value"
-                className="h-[38px] w-[170px] flex-none rounded-lg border border-boardtree-border bg-boardtree-hover px-3 text-[13.5px] font-medium text-boardtree-text outline-none transition-colors placeholder:text-boardtree-text-faint hover:border-boardtree-text-faint focus:outline-none disabled:opacity-40"
+                className="field-input w-[170px] flex-none"
               />
 
               <button

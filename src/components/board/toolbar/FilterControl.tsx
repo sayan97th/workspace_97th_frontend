@@ -2,11 +2,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FilterIcon } from "@/icons/board-icons";
 import { buildActiveFilterChips, isNarrowingChip } from "./activeFilterSummary";
-import type { BoardToolbarApi } from "./types";
+import SavedFiltersMenu from "./SavedFiltersMenu";
+import type { BoardSavedFilterActions, BoardToolbarApi } from "./types";
 import ToolbarButton from "./ToolbarButton";
 
 export type FilterControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  /** When given, the button gets monday's split chevron, which opens the viewer's saved filters. */
+  saved_filter_actions?: BoardSavedFilterActions;
 };
 
 /** Lines listed in the hover summary before it says "and N more". */
@@ -18,7 +21,7 @@ const SUMMARY_DELAY_MS = 350;
  * Button only. The (wide) Filter panel itself is rendered by BoardToolbar via a `BoardPopover` anchored to the whole toolbar row instead of this button, since it spans the full row's width.
  * Hovering it while filters apply shows what they are and how many items they leave, without opening the panel.
  */
-function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
+function FilterControl<TRow>({ toolbar, saved_filter_actions }: FilterControlProps<TRow>) {
   const is_open = toolbar.active_panel === "filter";
   const [is_hovered, setIsHovered] = useState(false);
   const hover_timeout_ref = useRef<number | null>(null);
@@ -32,6 +35,7 @@ function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
     .map((chip) => chip.label);
   const shown_lines = lines.slice(0, MAX_SUMMARY_LINES);
   const is_summary_shown = is_hovered && !is_open && lines.length > 0;
+  const has_filters = toolbar.active_filter_count > 0;
 
   const handleMouseEnter = () => {
     hover_timeout_ref.current = window.setTimeout(() => setIsHovered(true), SUMMARY_DELAY_MS);
@@ -42,36 +46,42 @@ function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
   };
 
   return (
-    <span className="relative flex" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-      <ToolbarButton
-        label="Filter"
-        Icon={FilterIcon}
-        is_open={is_open}
-        has_selection={toolbar.active_filter_count > 0}
-        variant="accent"
-        badge_count={toolbar.active_filter_count || undefined}
-        onClick={() => {
-          setIsHovered(false);
-          toolbar.togglePanel("filter");
-        }}
-      />
+    <span className="relative flex">
+      <span className="flex" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+        <ToolbarButton
+          label="Filter"
+          Icon={FilterIcon}
+          is_open={is_open}
+          has_selection={has_filters}
+          variant="accent"
+          badge_count={toolbar.active_filter_count || undefined}
+          is_split={!!saved_filter_actions}
+          onClick={() => {
+            setIsHovered(false);
+            toolbar.togglePanel("filter");
+          }}
+        />
+      </span>
+      {saved_filter_actions && (
+        <SavedFiltersMenu toolbar={toolbar} actions={saved_filter_actions} is_highlighted={is_open || has_filters} />
+      )}
       {is_summary_shown && (
         <div
           role="tooltip"
-          className="absolute left-0 top-[calc(100%+6px)] z-[220] w-[300px] rounded-[9px] border border-boardtree-border bg-boardtree-surface px-3.5 py-3 shadow-2xl shadow-black/40"
+          className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-[220] w-[300px] rounded-[4px] bg-[#323338] px-3 py-2.5 font-[family-name:var(--font-figtree)] text-white shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:bg-[#1e2a2b]"
         >
-          <p className="pb-1.5 text-[12px] font-semibold text-boardtree-text-muted">
+          <p className="pb-1 text-[13px] font-medium">
             Showing {toolbar.visible_row_count} of {toolbar.total_row_count} items
           </p>
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-0.5">
             {shown_lines.map((line, index) => (
-              <li key={`${line}-${index}`} className="truncate text-[12.5px] text-boardtree-text" title={line}>
+              <li key={`${line}-${index}`} className="truncate text-[13px] text-white/85">
                 {line}
               </li>
             ))}
           </ul>
           {lines.length > shown_lines.length && (
-            <p className="pt-1.5 text-[12px] text-boardtree-text-faint">and {lines.length - shown_lines.length} more</p>
+            <p className="pt-1 text-[12px] text-white/60">and {lines.length - shown_lines.length} more</p>
           )}
         </div>
       )}

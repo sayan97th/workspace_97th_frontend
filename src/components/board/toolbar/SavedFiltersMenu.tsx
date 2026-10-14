@@ -1,12 +1,15 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, CloseIcon, EditPencilIcon } from "@/icons/board-icons";
-import { BookmarkIcon, ChevronDownIcon, DeleteIcon } from "@/icons/workspace-icons";
+import { ChevronDownIcon, DeleteIcon } from "@/icons/workspace-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import type { BoardSavedFilter, BoardSavedFilterActions, BoardToolbarApi } from "./types";
 
 export type SavedFiltersMenuProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   actions: BoardSavedFilterActions;
+  /** Paints the chevron like the Filter half next to it while the panel is open or filters apply. */
+  is_highlighted: boolean;
 };
 
 const MAX_NAME_LENGTH = 80;
@@ -16,12 +19,13 @@ const hasSavableFilters = <TRow,>(toolbar: BoardToolbarApi<TRow>) =>
   toolbar.active_filter_count > 0 || toolbar.selected_person_ids.length > 0 || toolbar.selected_team_ids.length > 0;
 
 /**
- * "Saved filters" dropdown in the Filter panel header: the viewer's own named
- * filters for this board, private to them and separate from the shared views.
+ * "Saved filters" dropdown behind the Filter button's split chevron, as on
+ * monday: the viewer's own named filters for this board, private to them and
+ * separate from the shared views.
  * Clicking one replaces the current filters (the search box is kept), and the
  * current filters can be saved under a new name, renamed or deleted.
  */
-function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow>) {
+function SavedFiltersMenu<TRow>({ toolbar, actions, is_highlighted }: SavedFiltersMenuProps<TRow>) {
   const [is_open, setIsOpen] = useState(false);
   const [new_name, setNewName] = useState("");
   const [editing_id, setEditingId] = useState<number | null>(null);
@@ -92,29 +96,38 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
 
   const can_save = hasSavableFilters(toolbar);
 
+  const is_active = is_open || is_highlighted;
+
   return (
-    <div ref={container_ref} className="relative flex-none">
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13.5px] font-semibold text-boardtree-text-secondary hover:bg-boardtree-hover hover:text-boardtree-text"
-      >
-        <BookmarkIcon size={14} />
-        Saved filters
-        {actions.saved_filters.length > 0 && (
-          <span className="text-[12px] font-medium text-boardtree-text-faint">{actions.saved_filters.length}</span>
-        )}
-        <ChevronDownIcon size={10} className={`transition-transform ${is_open ? "rotate-180" : ""}`} />
-      </button>
+    <div ref={container_ref} className="relative flex flex-none">
+      <Tooltip content="Saved filters">
+        <button
+          type="button"
+          onClick={() => {
+            // The Filter panel floats right below the toolbar and would cover this menu, so opening one closes the other.
+            if (!is_open && toolbar.active_panel === "filter") toolbar.closePanel();
+            setIsOpen((current) => !current);
+          }}
+          aria-label="Saved filters"
+          aria-haspopup="menu"
+          aria-expanded={is_open}
+          className={`flex h-8 w-6 items-center justify-center rounded-r-[4px] border-l border-boardtree-surface text-boardtree-text transition-colors ${
+            is_active ? "bg-boardtree-accent-surface" : "hover:bg-boardtree-hover-strong"
+          }`}
+        >
+          <ChevronDownIcon size={11} className={`transition-transform ${is_open ? "rotate-180" : ""}`} />
+        </button>
+      </Tooltip>
 
       {is_open && (
-        <div className="absolute right-0 top-[calc(100%+4px)] z-[210] w-[300px] rounded-[9px] border border-boardtree-border bg-boardtree-surface p-1.5 shadow-2xl shadow-black/50">
-          <p className="px-2 pb-1.5 pt-1 text-[11.5px] font-semibold tracking-wide text-boardtree-text-faint">
-            Only you can see your saved filters
-          </p>
+        <div className="absolute left-0 top-[calc(100%+6px)] z-[230] w-[300px] rounded-lg bg-boardtree-surface p-2 font-[family-name:var(--font-figtree)] text-[14px] text-boardtree-text shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 dark:shadow-[0_6px_20px_rgba(0,0,0,0.55)]">
+          <div className="px-2 pb-2 pt-1">
+            <p className="text-[16px] font-medium leading-[22px] text-boardtree-text">Saved filters</p>
+            <p className="text-[13px] text-boardtree-text-muted">Only you can see your saved filters</p>
+          </div>
 
           {actions.saved_filters.length === 0 ? (
-            <p className="px-2 pb-2 text-[13px] text-boardtree-text-muted">No saved filters yet.</p>
+            <p className="px-2 pb-2 text-[14px] text-boardtree-text-muted">No saved filters yet.</p>
           ) : (
             <div className="shell-scrollbar max-h-[240px] overflow-y-auto">
               {actions.saved_filters.map((saved_filter) =>
@@ -132,13 +145,13 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
                           setEditingId(null);
                         }
                       }}
-                      className="h-8 min-w-0 flex-1 rounded-md border border-boardtree-accent bg-boardtree-hover px-2 text-[13px] text-boardtree-text focus:outline-none"
+                      className="h-8 min-w-0 flex-1 rounded-[4px] border border-boardtree-accent bg-boardtree-surface px-2 text-[14px] text-boardtree-text focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => saveRename(saved_filter.id)}
                       aria-label="Save name"
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-boardtree-accent hover:bg-boardtree-hover"
+                      className="flex h-7 w-7 items-center justify-center rounded-[4px] text-boardtree-accent hover:bg-boardtree-hover-strong"
                     >
                       <CheckIcon size={12} />
                     </button>
@@ -146,17 +159,17 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
                       type="button"
                       onClick={() => setEditingId(null)}
                       aria-label="Cancel rename"
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-boardtree-text-faint hover:bg-boardtree-hover"
+                      className="flex h-7 w-7 items-center justify-center rounded-[4px] text-boardtree-text-muted hover:bg-boardtree-hover-strong"
                     >
                       <CloseIcon size={11} />
                     </button>
                   </div>
                 ) : (
-                  <div key={saved_filter.id} className="group flex items-center rounded-md hover:bg-boardtree-hover">
+                  <div key={saved_filter.id} className="group flex min-h-9 items-center rounded-[4px] hover:bg-boardtree-hover-strong">
                     <button
                       type="button"
                       onClick={() => applySavedFilter(saved_filter)}
-                      className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-[13.5px] text-boardtree-text"
+                      className="min-w-0 flex-1 truncate px-2 py-2 text-left text-[14px] text-boardtree-text"
                       title={`Apply "${saved_filter.name}"`}
                     >
                       {saved_filter.name}
@@ -169,7 +182,7 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
                           setEditingName(saved_filter.name);
                         }}
                         aria-label={`Rename ${saved_filter.name}`}
-                        className="flex h-6 w-6 items-center justify-center rounded text-boardtree-text-faint hover:text-boardtree-text"
+                        className="flex h-6 w-6 items-center justify-center rounded-[4px] text-boardtree-text-muted hover:text-boardtree-text"
                       >
                         <EditPencilIcon size={12} />
                       </button>
@@ -177,7 +190,7 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
                         type="button"
                         onClick={() => void run(() => actions.deleteSavedFilter(saved_filter.id))}
                         aria-label={`Delete ${saved_filter.name}`}
-                        className="flex h-6 w-6 items-center justify-center rounded text-boardtree-text-faint hover:text-[#e2445c]"
+                        className="flex h-6 w-6 items-center justify-center rounded-[4px] text-boardtree-text-muted hover:text-boardtree-danger"
                       >
                         <DeleteIcon size={13} />
                       </button>
@@ -188,7 +201,7 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
             </div>
           )}
 
-          <div className="mt-1.5 border-t border-boardtree-border-soft px-1 pt-2">
+          <div className="mt-2 border-t border-boardtree-border-soft px-1 pt-2">
             <div className="flex items-center gap-1.5">
               <input
                 value={new_name}
@@ -199,18 +212,18 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
                   if (event.key === "Enter") saveCurrent();
                 }}
                 placeholder={can_save ? "Name these filters" : "Add filters to save them"}
-                className="h-8 min-w-0 flex-1 rounded-md border border-boardtree-border bg-boardtree-hover px-2 text-[13px] text-boardtree-text placeholder:text-boardtree-text-faint focus:border-boardtree-accent focus:outline-none disabled:opacity-60"
+                className="h-8 min-w-0 flex-1 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface px-2 text-[14px] text-boardtree-text placeholder:text-boardtree-text-muted hover:border-boardtree-text focus:border-boardtree-accent focus:outline-none disabled:opacity-60"
               />
               <button
                 type="button"
                 disabled={!can_save || !new_name.trim() || pending}
                 onClick={saveCurrent}
-                className="flex h-8 flex-none items-center rounded-md bg-boardtree-accent px-3 text-[13px] font-semibold text-white hover:bg-boardtree-accent-hover disabled:opacity-50"
+                className="flex h-8 flex-none items-center rounded-[4px] bg-boardtree-accent px-3 text-[14px] text-white hover:bg-boardtree-accent-hover disabled:opacity-50"
               >
                 Save
               </button>
             </div>
-            {error && <p className="px-1 pt-1.5 text-[12px] text-[#e2445c]">{error}</p>}
+            {error && <p className="px-1 pt-1.5 text-[13px] text-boardtree-danger">{error}</p>}
           </div>
         </div>
       )}

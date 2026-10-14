@@ -4,6 +4,7 @@ import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type D
 import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CloseIcon, PlusIcon } from "@/icons/board-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import FilterRuleRow from "./FilterRuleRow";
 import InlineFieldMenu from "./InlineFieldMenu";
 import type { BoardFilterJoinOperator, BoardToolbarApi } from "./types";
@@ -34,23 +35,23 @@ function JoinPrefix({
   onChange: (operator: BoardFilterJoinOperator) => void;
 }) {
   if (index === 0) {
-    return <span className="text-[13.5px] font-semibold text-boardtree-text-secondary">Where</span>;
+    return <span className="filter-rule__where">Where</span>;
   }
   if (index === 1) {
     return (
       <InlineFieldMenu
-        width={74}
+        width={82}
         className="flex-none"
         options={JOIN_OPTIONS}
         getOptionId={(option) => option.id}
         isSelected={(option) => option.id === operator}
         onSelect={(option) => onChange(option.id)}
-        renderValue={() => <span className="text-[13.5px] font-semibold text-boardtree-text-secondary">{joinLabel(operator)}</span>}
+        renderValue={() => <span className="field-menu__label">{joinLabel(operator)}</span>}
         renderOption={(option) => <span>{option.label}</span>}
       />
     );
   }
-  return <span className="pl-3 text-[13.5px] font-semibold text-boardtree-text-muted">{joinLabel(operator)}</span>;
+  return <span className="filter-rule__join-echo">{joinLabel(operator)}</span>;
 }
 
 /** A vertical drag and drop list of rules. Each level (top level, each group) reorders on its own. */
@@ -76,7 +77,7 @@ function SortableRuleList({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={rule_ids} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2.5">{children}</div>
+        <div className="filter-panel__rules">{children}</div>
       </SortableContext>
     </DndContext>
   );
@@ -86,14 +87,12 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
   const top_level_count = toolbar.advanced_filter_rows.length + toolbar.advanced_filter_groups.length;
 
   return (
-    <div className="px-5 pb-4 pt-0.5">
+    <div className="filter-panel__advanced">
       {top_level_count === 0 && (
-        <p className="pb-3 text-[13px] text-boardtree-text-muted">
-          Build conditions on any column. Each column type offers its own conditions and values.
-        </p>
+        <p className="filter-panel__intro">Build conditions on any column. Each column type offers its own conditions and values.</p>
       )}
 
-      <div className="flex flex-col gap-2.5">
+      <div className="filter-panel__rules">
         <SortableRuleList rule_ids={toolbar.advanced_filter_rows.map((rule) => rule.id)} onMove={toolbar.moveAdvancedFilterRow}>
           {toolbar.advanced_filter_rows.map((rule, index) => (
             <FilterRuleRow
@@ -109,27 +108,29 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
         </SortableRuleList>
 
         {toolbar.advanced_filter_groups.map((group, group_index) => (
-          <div key={group.id} className="flex items-start gap-2.5">
+          <div key={group.id} className="filter-group">
             {/* Lines the group's prefix up with the rules' own, which start after a drag handle. */}
-            <span className="w-[14px] flex-none" />
-            <div className="flex w-[74px] flex-none items-center pt-3">
+            <span className="filter-group__spacer" />
+            <div className="filter-group__prefix">
               <JoinPrefix
                 index={toolbar.advanced_filter_rows.length + group_index}
                 operator={toolbar.advanced_filter_operator}
                 onChange={toolbar.setAdvancedFilterOperator}
               />
             </div>
-            <div className="min-w-0 flex-1 rounded-lg border border-boardtree-border bg-boardtree-hover/40 px-3 pb-3 pt-2.5">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-[12.5px] font-semibold text-boardtree-text-muted">Condition group</span>
-                <button
-                  type="button"
-                  onClick={() => toolbar.removeAdvancedFilterGroup(group.id)}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-text"
-                  aria-label="Remove condition group"
-                >
-                  <CloseIcon size={11} />
-                </button>
+            <div className="filter-group__card">
+              <div className="filter-group__head">
+                <span>Condition group</span>
+                <Tooltip content="Remove group">
+                  <button
+                    type="button"
+                    onClick={() => toolbar.removeAdvancedFilterGroup(group.id)}
+                    className="filter-panel__icon-button"
+                    aria-label="Remove condition group"
+                  >
+                    <CloseIcon size={11} />
+                  </button>
+                </Tooltip>
               </div>
               <SortableRuleList
                 rule_ids={group.rules.map((rule) => rule.id)}
@@ -156,7 +157,7 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
               <button
                 type="button"
                 onClick={() => toolbar.addAdvancedFilterGroupRule(group.id)}
-                className="mt-2.5 flex items-center gap-1.5 text-[13px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
+                className="filter-panel__add-button filter-group__add"
               >
                 <PlusIcon size={11} />
                 New filter in group
@@ -166,21 +167,13 @@ function FilterPanelAdvanced<TRow>({ toolbar }: FilterPanelAdvancedProps<TRow>) 
         ))}
       </div>
 
-      <div className="mt-3 flex items-center gap-5">
-        <button
-          type="button"
-          onClick={toolbar.addAdvancedFilterRow}
-          className="flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
-        >
-          <PlusIcon size={12} />
+      <div className="filter-panel__add-row">
+        <button type="button" onClick={toolbar.addAdvancedFilterRow} className="filter-panel__add-button">
+          <PlusIcon size={11} />
           New filter
         </button>
-        <button
-          type="button"
-          onClick={toolbar.addAdvancedFilterGroup}
-          className="flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
-        >
-          <PlusIcon size={12} />
+        <button type="button" onClick={toolbar.addAdvancedFilterGroup} className="filter-panel__add-button">
+          <PlusIcon size={11} />
           New group
         </button>
       </div>

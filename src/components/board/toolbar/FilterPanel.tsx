@@ -1,103 +1,108 @@
 import React from "react";
-import { InfoIcon } from "@/icons/workspace-icons";
-import type { BoardSavedFilterActions, BoardToolbarApi, BoardToolbarViewActions } from "./types";
+import { HelpIcon } from "@/icons/workspace-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import FilterPanelQuick from "./FilterPanelQuick";
 import FilterPanelAdvanced from "./FilterPanelAdvanced";
-import SavedFiltersMenu from "./SavedFiltersMenu";
 import SaveViewButtons from "./SaveViewButtons";
 import ToggleSwitch from "./ToggleSwitch";
+import "./field-menu.css";
+import "./filter-panel.css";
 
 export type FilterPanelProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   view_actions?: BoardToolbarViewActions;
-  saved_filter_actions?: BoardSavedFilterActions;
 };
+
+/** "Showing all of 5 items" while nothing narrows the board, "Showing 4 of 5 items" otherwise, as on monday. */
+const showingLabel = (visible_count: number, total_count: number) =>
+  visible_count === total_count ? `Showing all of ${total_count} items` : `Showing ${visible_count} of ${total_count} items`;
 
 /**
  * Floating panel rendered by BoardToolbar inside a `BoardPopover`, anchored below the button row and spanning its width.
- * No `overflow-hidden` on the container: the column, condition and value pickers are absolutely positioned menus that
- * float past the panel's own edges.
+ * Styled by `filter-panel.css` (panel) and `field-menu.css` (Advanced filters fields). No `overflow: hidden` on the
+ * container: the column, condition and value pickers are absolutely positioned menus that float past the panel's own
+ * edges. Saved filters live in the Filter button's split chevron (see `FilterControl`).
  */
-function FilterPanel<TRow>({ toolbar, view_actions, saved_filter_actions }: FilterPanelProps<TRow>) {
+function FilterPanel<TRow>({ toolbar, view_actions }: FilterPanelProps<TRow>) {
   const is_quick = toolbar.filter_mode === "quick";
   const has_filters = toolbar.active_filter_count > 0 || toolbar.advanced_filter_rows.length > 0 || toolbar.advanced_filter_groups.length > 0;
   const has_quick_picks = Object.values(toolbar.quick_filter_selections)
     .concat(Object.values(toolbar.quick_filter_exclusions))
     .some((ids) => ids.length > 0);
+  const has_advanced_rules = toolbar.advanced_filter_rows.length + toolbar.advanced_filter_groups.length > 0;
 
   return (
-    <div className="rounded-xl border border-boardtree-border bg-boardtree-surface shadow-2xl shadow-black/40">
-      <div className="flex flex-wrap items-center gap-3 px-5 pb-3.5 pt-4">
-        <span className="text-[16px] font-bold text-boardtree-text">
-          {is_quick ? "Quick filters" : "Advanced filters"}
-        </span>
-        <span className="text-[13.5px] text-boardtree-text-muted">
-          Showing {toolbar.visible_row_count} of {toolbar.total_row_count} items
-        </span>
-        <span className="flex flex-none items-center text-boardtree-text-faint" title="Filters narrow the items shown in this board">
-          <InfoIcon size={15} />
-        </span>
-        <div className="flex-1" />
-        {has_filters && (
-          <button
-            type="button"
-            onClick={toolbar.clearAllFilters}
-            className="text-[13.5px] font-medium text-boardtree-text-muted hover:text-boardtree-text"
-          >
+    <div className="filter-panel" role="dialog" aria-label={is_quick ? "Quick filters" : "Advanced filters"}>
+      <div className="filter-panel__header">
+        <h2 className="filter-panel__title">{is_quick ? "Quick filters" : "Advanced filters"}</h2>
+        <span className="filter-panel__count">{showingLabel(toolbar.visible_row_count, toolbar.total_row_count)}</span>
+        <Tooltip
+          placement="bottom"
+          content="Filters narrow the items shown on this board. Save them to the view to share them with everyone."
+        >
+          <span className="filter-panel__help" tabIndex={0} aria-label="About filters">
+            <HelpIcon size={16} />
+          </span>
+        </Tooltip>
+
+        <div className="filter-panel__header-actions">
+          {view_actions?.has_personal_state && view_actions.resetToView && (
+            <Tooltip placement="bottom" content="Drop your remembered changes and show the view as saved">
+              <button type="button" onClick={view_actions.resetToView} className="filter-panel__text-button">
+                Reset to view
+              </button>
+            </Tooltip>
+          )}
+          <button type="button" disabled={!has_filters} onClick={toolbar.clearAllFilters} className="filter-panel__text-button">
             Clear all
           </button>
-        )}
-        {view_actions?.has_personal_state && view_actions.resetToView && (
-          <button
-            type="button"
-            onClick={view_actions.resetToView}
-            title="Drop your remembered changes and show the view as saved"
-            className="text-[13.5px] font-medium text-boardtree-text-muted hover:text-boardtree-text"
-          >
-            Reset to view
-          </button>
-        )}
-        {saved_filter_actions && <SavedFiltersMenu toolbar={toolbar} actions={saved_filter_actions} />}
-        <SaveViewButtons view_actions={view_actions} />
+          <SaveViewButtons view_actions={view_actions} appearance="panel" is_save_as_new_disabled={!has_filters} />
+        </div>
       </div>
 
       {is_quick ? <FilterPanelQuick toolbar={toolbar} /> : <FilterPanelAdvanced toolbar={toolbar} />}
 
-      <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-2 rounded-b-xl border-t border-boardtree-border-soft bg-boardtree-hover px-5 py-3">
+      <div className="filter-panel__footer">
         {toolbar.has_subitem_fields && (
-          <button
-            type="button"
-            onClick={() => toolbar.setIncludeSubitems(!toolbar.include_subitems)}
-            aria-pressed={toolbar.include_subitems}
-            title="Filter by subitem columns too. An item shows when one of its subitems matches, with only the matching subitems under it."
-            className="mr-auto flex items-center gap-2 text-[13px] font-medium text-boardtree-text-secondary hover:text-boardtree-text"
+          <Tooltip
+            className="filter-panel__subitems-slot"
+            content="Filter by subitem columns too. An item shows when one of its subitems matches, with only the matching subitems under it."
           >
-            <ToggleSwitch is_on={toolbar.include_subitems} size="sm" />
-            Filter subitems
-          </button>
+            <button
+              type="button"
+              onClick={() => toolbar.setIncludeSubitems(!toolbar.include_subitems)}
+              aria-pressed={toolbar.include_subitems}
+              className="filter-panel__text-button"
+            >
+              <ToggleSwitch is_on={toolbar.include_subitems} size="sm" />
+              Filter subitems
+            </button>
+          </Tooltip>
         )}
-        {is_quick && toolbar.advanced_filter_rows.length + toolbar.advanced_filter_groups.length > 0 && (
-          <span className="text-[12.5px] text-boardtree-text-muted">Advanced filters are also applied</span>
-        )}
+        {is_quick && has_advanced_rules && <span className="filter-panel__footer-note">Advanced filters are also applied</span>}
         {is_quick && has_quick_picks && (
-          <button
-            type="button"
-            disabled={!toolbar.can_convert_quick_filters}
-            onClick={toolbar.convertQuickFiltersToAdvanced}
-            title={
+          <Tooltip
+            content={
               toolbar.can_convert_quick_filters
                 ? "Turn these picks into Advanced filter rules you can edit"
                 : "Set the Advanced filters top level to And first"
             }
-            className="text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Convert to advanced filters
-          </button>
+            <button
+              type="button"
+              disabled={!toolbar.can_convert_quick_filters}
+              onClick={toolbar.convertQuickFiltersToAdvanced}
+              className="filter-panel__text-button filter-panel__convert-button"
+            >
+              Convert to advanced filters
+            </button>
+          </Tooltip>
         )}
         <button
           type="button"
           onClick={() => toolbar.setFilterMode(is_quick ? "advanced" : "quick")}
-          className="text-[13.5px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
+          className="filter-panel__text-button"
         >
           Switch to {is_quick ? "advanced" : "quick"} filters
         </button>

@@ -89,7 +89,7 @@ function BoardToolbar<TRow>({
 
         <SearchControl toolbar={toolbar} />
         <PersonControl toolbar={toolbar} view_actions={view_actions} />
-        <FilterControl toolbar={toolbar} />
+        <FilterControl toolbar={toolbar} saved_filter_actions={saved_filter_actions} />
         <StarredFilterControl toolbar={toolbar} />
         <SortControl toolbar={toolbar} view_actions={view_actions} />
         <HideColumnsControl toolbar={toolbar} />
@@ -114,7 +114,7 @@ function BoardToolbar<TRow>({
           align="start"
           unstyled
         >
-          {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} saved_filter_actions={saved_filter_actions} />}
+          {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} />}
           {is_color_open && <ConditionalColoringPanel toolbar={toolbar} view_actions={view_actions} />}
         </BoardPopover>
       </div>

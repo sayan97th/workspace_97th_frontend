@@ -1,9 +1,10 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { CheckIcon } from "@/icons/board-icons";
-import { ChevronDownIcon } from "@/icons/workspace-icons";
+import { CheckIcon, CloseIcon } from "@/icons/board-icons";
+import { ChevronDownIcon, SearchIcon } from "@/icons/workspace-icons";
 import PersonAvatar from "../PersonAvatar";
 import type { BoardPersonOption, BoardQuickFilterFacetOption } from "./types";
+import "./field-menu.css";
 
 export type FilterOptionPickerProps = {
   options: BoardQuickFilterFacetOption[];
@@ -19,16 +20,17 @@ function OptionGlyph({ option, persons }: { option: BoardQuickFilterFacetOption;
   const person = option.person_id ? persons.find((p) => p.id === option.person_id) : undefined;
   if (person) return <PersonAvatar person={person} size={18} />;
   if (option.dot_color) {
-    return <span className="h-2.5 w-2.5 flex-none rounded-full" style={{ background: option.dot_color }} />;
+    return <span className="field-menu__dot" style={{ background: option.dot_color }} />;
   }
   return null;
 }
 
 /**
  * Multi-select value picker for Option, People and Group filter rules: a
- * trigger showing the picked values as chips, and a searchable checklist that
- * stays open while several values are toggled (unlike {@link InlineFieldMenu},
- * which closes on the first pick).
+ * trigger showing the picked values as light blue chips (each with its own
+ * remove "x", like monday), and a searchable checklist that stays open while
+ * several values are toggled (unlike {@link InlineFieldMenu}, which closes on
+ * the first pick).
  */
 function FilterOptionPicker({ options, selected_ids, onChange, persons, placeholder = "Value" }: FilterOptionPickerProps) {
   const [is_open, setIsOpen] = useState(false);
@@ -68,83 +70,94 @@ function FilterOptionPicker({ options, selected_ids, onChange, persons, placehol
   const toggle = (id: string) =>
     onChange(selected_ids.includes(id) ? selected_ids.filter((existing) => existing !== id) : [...selected_ids, id]);
 
+  const toggleOpen = () => setIsOpen((current) => !current);
+
   return (
-    <div ref={container_ref} className="relative min-w-0 flex-1">
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className={`flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border bg-boardtree-hover px-2.5 text-[13.5px] transition-colors ${
-          is_open ? "border-boardtree-accent" : "border-boardtree-border hover:border-boardtree-text-faint"
-        }`}
+    <div ref={container_ref} className="field-menu flex-1">
+      {/* A div, not a button, so each chip can hold its own remove button. */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-haspopup="listbox"
+        aria-expanded={is_open}
+        onClick={toggleOpen}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleOpen();
+          }
+        }}
+        className="field-menu__trigger"
       >
-        <span className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
-          {selected_options.length === 0 && <span className="truncate text-boardtree-text-faint">{placeholder}</span>}
+        <span className="field-menu__value">
+          {selected_options.length === 0 && <span className="field-menu__placeholder">{placeholder}</span>}
           {selected_options.slice(0, MAX_TRIGGER_CHIPS).map((option) => (
-            <span
-              key={option.id}
-              className="flex h-6 min-w-0 max-w-[140px] flex-none items-center gap-1.5 rounded-md bg-boardtree-hover-strong px-1.5 text-[12.5px] font-medium text-boardtree-text"
-            >
+            <span key={option.id} className="field-menu__chip">
               <OptionGlyph option={option} persons={persons} />
-              <span className="truncate">{option.label}</span>
+              <span className="field-menu__label">{option.label}</span>
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  toggle(option.id);
+                }}
+                aria-label={`Remove ${option.label}`}
+                className="field-menu__chip-remove"
+              >
+                <CloseIcon size={9} />
+              </button>
             </span>
           ))}
           {selected_options.length > MAX_TRIGGER_CHIPS && (
-            <span className="flex-none text-[12.5px] font-semibold text-boardtree-text-muted">
-              +{selected_options.length - MAX_TRIGGER_CHIPS}
-            </span>
+            <span className="field-menu__more">+{selected_options.length - MAX_TRIGGER_CHIPS}</span>
           )}
         </span>
-        <ChevronDownIcon
-          size={11}
-          className={`flex-none text-boardtree-text-muted transition-transform ${is_open ? "rotate-180" : ""}`}
-        />
-      </button>
+        <span className="field-menu__chevron">
+          <ChevronDownIcon size={11} />
+        </span>
+      </div>
 
       {is_open && (
-        <div className="absolute left-0 top-[calc(100%+5px)] z-[210] w-full min-w-[240px] rounded-[9px] border border-boardtree-border bg-boardtree-surface p-1.5 shadow-2xl shadow-black/50">
-          <input
-            type="text"
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search"
-            className="mb-1 h-8 w-full rounded-md border border-boardtree-border bg-boardtree-hover px-2.5 text-[13px] text-boardtree-text placeholder:text-boardtree-text-faint focus:border-boardtree-accent focus:outline-none"
-          />
-          <div className="shell-scrollbar max-h-[240px] overflow-y-auto">
-            {visible_options.length === 0 && (
-              <div className="px-2 py-2 text-[13px] text-boardtree-text-muted">No values match</div>
-            )}
+        <div className="field-menu__popup" role="listbox" aria-multiselectable style={{ minWidth: 240 }}>
+          <div className="field-menu__search">
+            <span className="field-menu__search-icon">
+              <SearchIcon size={14} />
+            </span>
+            <input
+              type="text"
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search"
+              className="field-menu__search-input"
+            />
+          </div>
+          <div className="field-menu__list" style={{ maxHeight: 240, overflowY: "auto" }}>
+            {visible_options.length === 0 && <div className="field-menu__empty">No values match</div>}
             {visible_options.map((option) => {
               const is_selected = selected_ids.includes(option.id);
               return (
                 <button
                   key={option.id}
                   type="button"
+                  role="option"
+                  aria-selected={is_selected}
                   onClick={() => toggle(option.id)}
-                  className={`flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-[13.5px] text-boardtree-text hover:bg-boardtree-hover ${
-                    is_selected ? "bg-boardtree-accent/[0.12]" : ""
-                  }`}
+                  className="field-menu__option"
                 >
-                  <span
-                    className={`flex h-4 w-4 flex-none items-center justify-center rounded border ${
-                      is_selected ? "border-boardtree-accent bg-boardtree-accent" : "border-boardtree-border"
-                    }`}
-                  >
-                    {is_selected && <CheckIcon size={10} className="text-white" />}
+                  <span className="field-menu__checkbox" data-checked={is_selected}>
+                    {is_selected && <CheckIcon size={10} />}
                   </span>
                   <OptionGlyph option={option} persons={persons} />
-                  <span className="min-w-0 flex-1 truncate">{option.label}</span>
+                  <span className="field-menu__label flex-1">{option.label}</span>
                 </button>
               );
             })}
           </div>
           {selected_ids.length > 0 && (
-            <div className="mt-1 flex justify-end border-t border-boardtree-border-soft px-1 pt-1.5">
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className="text-[12.5px] font-medium text-boardtree-text-muted hover:text-boardtree-text"
-              >
+            <div className="field-menu__footer">
+              <button type="button" onClick={() => onChange([])} className="field-menu__link-button">
                 Clear selection
               </button>
             </div>

@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { ChevronDownIcon } from "@/icons/workspace-icons";
+import { CloseIcon } from "@/icons/board-icons";
+import { ChevronDownIcon, SearchIcon } from "@/icons/workspace-icons";
+import "./field-menu.css";
 
 export type InlineFieldMenuProps<TOption> = {
   options: TOption[];
@@ -21,13 +23,17 @@ export type InlineFieldMenuProps<TOption> = {
   search_placeholder?: string;
   /** Rendered when the search matches nothing. */
   empty_label?: string;
+  /** Shows a small "x" in the trigger that clears the current pick, e.g. a filter rule's column. */
+  onClear?: () => void;
+  clear_label?: string;
 };
 
 /**
  * Reusable inline "column-picker" style dropdown: a bordered trigger button
  * that opens a floating option list absolutely positioned beneath it. Used by
- * every Sort-row field (column / direction / and-or) so the same interaction
- * and styling can be reused by Group-by or any future board panel.
+ * the Filter, Sort, Group by and Conditional coloring rows and the Chart
+ * settings, so every board panel shares the same monday style field (see
+ * `field-menu.css`).
  */
 function InlineFieldMenu<TOption>({
   options,
@@ -43,6 +49,8 @@ function InlineFieldMenu<TOption>({
   getSearchText,
   search_placeholder = "Search",
   empty_label = "No results",
+  onClear,
+  clear_label = "Clear",
 }: InlineFieldMenuProps<TOption>) {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -87,61 +95,75 @@ function InlineFieldMenu<TOption>({
   }, [is_open]);
 
   return (
-    <div ref={container_ref} className={`relative min-w-0 ${className}`} style={width ? { width } : { flex: 1 }}>
-      <button
-        type="button"
-        onClick={() => (is_open ? closeMenu() : setIsOpen(true))}
-        className={`flex h-[38px] w-full items-center justify-between gap-2 rounded-lg border bg-boardtree-hover px-3 text-[13.5px] transition-colors ${
-          is_open ? "border-boardtree-accent" : "border-boardtree-border hover:border-boardtree-text-faint"
-        }`}
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-[9px] overflow-hidden">{renderValue()}</span>
-        <ChevronDownIcon
-          size={11}
-          className={`flex-none text-boardtree-text-muted transition-transform ${is_open ? "rotate-180" : ""}`}
-        />
-      </button>
+    <div ref={container_ref} className={`field-menu ${className}`} style={width ? { width } : { flex: 1 }}>
+      <div className="field-menu__trigger field-menu__trigger--split" aria-expanded={is_open}>
+        <button
+          type="button"
+          onClick={() => (is_open ? closeMenu() : setIsOpen(true))}
+          aria-haspopup="listbox"
+          aria-expanded={is_open}
+          className="field-menu__trigger-button"
+        >
+          <span className="field-menu__value">{renderValue()}</span>
+          {!onClear && (
+            <span className="field-menu__chevron">
+              <ChevronDownIcon size={11} />
+            </span>
+          )}
+        </button>
+        {onClear && (
+          <span className="field-menu__trigger-end">
+            <button type="button" onClick={onClear} aria-label={clear_label} title={clear_label} className="field-menu__clear">
+              <CloseIcon size={10} />
+            </button>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              onClick={() => (is_open ? closeMenu() : setIsOpen(true))}
+              className="field-menu__chevron field-menu__chevron-button"
+            >
+              <ChevronDownIcon size={11} />
+            </button>
+          </span>
+        )}
+      </div>
 
       {is_open && (
-        <div
-          className="absolute left-0 top-[calc(100%+5px)] z-[210] w-full min-w-[220px] overflow-y-auto rounded-[9px] border border-boardtree-border bg-boardtree-surface p-1.5 shadow-2xl shadow-black/50"
-          style={{ maxHeight: menu_max_height }}
-        >
+        <div className="field-menu__popup" role="listbox" style={{ maxHeight: menu_max_height }}>
           {getSearchText && (
-            <input
-              type="text"
-              autoFocus
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={search_placeholder}
-              className="mb-1 h-8 w-full rounded-md border border-boardtree-border bg-boardtree-hover px-2.5 text-[13px] text-boardtree-text placeholder:text-boardtree-text-faint focus:border-boardtree-accent focus:outline-none"
-            />
-          )}
-          {menu_heading && (
-            <div className="px-2 pb-1 pt-1 text-[11.5px] font-semibold tracking-wide text-boardtree-text-faint">
-              {menu_heading}
+            <div className="field-menu__search">
+              <span className="field-menu__search-icon">
+                <SearchIcon size={14} />
+              </span>
+              <input
+                type="text"
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder={search_placeholder}
+                className="field-menu__search-input"
+              />
             </div>
           )}
-          {visible_options.length === 0 && (
-            <div className="px-2 py-2 text-[13px] text-boardtree-text-muted">{empty_label}</div>
-          )}
-          {visible_options.map((option) => {
-            const selected = isSelected(option);
-            return (
+          {menu_heading && <div className="field-menu__heading">{menu_heading}</div>}
+          {visible_options.length === 0 && <div className="field-menu__empty">{empty_label}</div>}
+          <div className="field-menu__list">
+            {visible_options.map((option) => (
               <div
                 key={getOptionId(option)}
+                role="option"
+                aria-selected={isSelected(option)}
                 onClick={() => {
                   onSelect(option);
                   closeMenu();
                 }}
-                className={`flex cursor-pointer items-center gap-[10px] rounded-md px-2 py-2 text-[13.5px] font-medium text-boardtree-text hover:bg-boardtree-hover ${
-                  selected ? "bg-boardtree-accent/[0.16]" : ""
-                }`}
+                className="field-menu__option"
               >
                 {renderOption(option)}
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
     </div>
