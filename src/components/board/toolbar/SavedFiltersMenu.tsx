@@ -1,15 +1,12 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { CheckIcon, CloseIcon, EditPencilIcon } from "@/icons/board-icons";
-import { ChevronDownIcon, DeleteIcon } from "@/icons/workspace-icons";
-import Tooltip from "@/components/ui/tooltip/Tooltip";
+import { BookmarkIcon, ChevronDownIcon, DeleteIcon } from "@/icons/workspace-icons";
 import type { BoardSavedFilter, BoardSavedFilterActions, BoardToolbarApi } from "./types";
 
 export type SavedFiltersMenuProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   actions: BoardSavedFilterActions;
-  /** Paints the chevron like the Filter half next to it while the panel is open or filters apply. */
-  is_highlighted: boolean;
 };
 
 const MAX_NAME_LENGTH = 80;
@@ -19,13 +16,13 @@ const hasSavableFilters = <TRow,>(toolbar: BoardToolbarApi<TRow>) =>
   toolbar.active_filter_count > 0 || toolbar.selected_person_ids.length > 0 || toolbar.selected_team_ids.length > 0;
 
 /**
- * "Saved filters" dropdown behind the Filter button's split chevron, as on
- * monday: the viewer's own named filters for this board, private to them and
- * separate from the shared views.
+ * "Saved filters" menu in the Filter panel footer, opening upward: the
+ * viewer's own named filters for this board, private to them and separate
+ * from the shared views.
  * Clicking one replaces the current filters (the search box is kept), and the
  * current filters can be saved under a new name, renamed or deleted.
  */
-function SavedFiltersMenu<TRow>({ toolbar, actions, is_highlighted }: SavedFiltersMenuProps<TRow>) {
+function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow>) {
   const [is_open, setIsOpen] = useState(false);
   const [new_name, setNewName] = useState("");
   const [editing_id, setEditingId] = useState<number | null>(null);
@@ -96,31 +93,23 @@ function SavedFiltersMenu<TRow>({ toolbar, actions, is_highlighted }: SavedFilte
 
   const can_save = hasSavableFilters(toolbar);
 
-  const is_active = is_open || is_highlighted;
-
   return (
-    <div ref={container_ref} className="relative flex flex-none">
-      <Tooltip content="Saved filters">
-        <button
-          type="button"
-          onClick={() => {
-            // The Filter panel floats right below the toolbar and would cover this menu, so opening one closes the other.
-            if (!is_open && toolbar.active_panel === "filter") toolbar.closePanel();
-            setIsOpen((current) => !current);
-          }}
-          aria-label="Saved filters"
-          aria-haspopup="menu"
-          aria-expanded={is_open}
-          className={`flex h-8 w-6 items-center justify-center rounded-r-[4px] border-l border-boardtree-surface text-boardtree-text transition-colors ${
-            is_active ? "bg-boardtree-accent-surface" : "hover:bg-boardtree-hover-strong"
-          }`}
-        >
-          <ChevronDownIcon size={11} className={`transition-transform ${is_open ? "rotate-180" : ""}`} />
-        </button>
-      </Tooltip>
+    <div ref={container_ref} className="filter-panel__saved relative flex flex-none">
+      <button
+        type="button"
+        onClick={() => setIsOpen((current) => !current)}
+        aria-haspopup="menu"
+        aria-expanded={is_open}
+        className="filter-panel__text-button"
+      >
+        <BookmarkIcon size={14} />
+        Saved filters
+        {actions.saved_filters.length > 0 && <span className="filter-panel__footer-note">{actions.saved_filters.length}</span>}
+        <ChevronDownIcon size={10} className={`transition-transform ${is_open ? "" : "rotate-180"}`} />
+      </button>
 
       {is_open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-[230] w-[300px] rounded-lg bg-boardtree-surface p-2 font-[family-name:var(--font-figtree)] text-[14px] text-boardtree-text shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 dark:shadow-[0_6px_20px_rgba(0,0,0,0.55)]">
+        <div className="absolute bottom-[calc(100%+6px)] left-0 z-[230] w-[300px] rounded-lg bg-boardtree-surface p-2 font-[family-name:var(--font-figtree)] text-[14px] text-boardtree-text shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 dark:shadow-[0_6px_20px_rgba(0,0,0,0.55)]">
           <div className="px-2 pb-2 pt-1">
             <p className="text-[16px] font-medium leading-[22px] text-boardtree-text">Saved filters</p>
             <p className="text-[13px] text-boardtree-text-muted">Only you can see your saved filters</p>

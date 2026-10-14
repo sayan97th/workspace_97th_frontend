@@ -1,9 +1,10 @@
 import React from "react";
 import { HelpIcon } from "@/icons/workspace-icons";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
-import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
+import type { BoardSavedFilterActions, BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import FilterPanelQuick from "./FilterPanelQuick";
 import FilterPanelAdvanced from "./FilterPanelAdvanced";
+import SavedFiltersMenu from "./SavedFiltersMenu";
 import SaveViewButtons from "./SaveViewButtons";
 import ToggleSwitch from "./ToggleSwitch";
 import "./field-menu.css";
@@ -12,6 +13,7 @@ import "./filter-panel.css";
 export type FilterPanelProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   view_actions?: BoardToolbarViewActions;
+  saved_filter_actions?: BoardSavedFilterActions;
 };
 
 /** "Showing all of 5 items" while nothing narrows the board, "Showing 4 of 5 items" otherwise, as on monday. */
@@ -22,9 +24,9 @@ const showingLabel = (visible_count: number, total_count: number) =>
  * Floating panel rendered by BoardToolbar inside a `BoardPopover`, anchored below the button row and spanning its width.
  * Styled by `filter-panel.css` (panel) and `field-menu.css` (Advanced filters fields). No `overflow: hidden` on the
  * container: the column, condition and value pickers are absolutely positioned menus that float past the panel's own
- * edges. Saved filters live in the Filter button's split chevron (see `FilterControl`).
+ * edges. The viewer's saved filters open from the footer.
  */
-function FilterPanel<TRow>({ toolbar, view_actions }: FilterPanelProps<TRow>) {
+function FilterPanel<TRow>({ toolbar, view_actions, saved_filter_actions }: FilterPanelProps<TRow>) {
   const is_quick = toolbar.filter_mode === "quick";
   const has_filters = toolbar.active_filter_count > 0 || toolbar.advanced_filter_rows.length > 0 || toolbar.advanced_filter_groups.length > 0;
   const has_quick_picks = Object.values(toolbar.quick_filter_selections)
@@ -64,6 +66,7 @@ function FilterPanel<TRow>({ toolbar, view_actions }: FilterPanelProps<TRow>) {
       {is_quick ? <FilterPanelQuick toolbar={toolbar} /> : <FilterPanelAdvanced toolbar={toolbar} />}
 
       <div className="filter-panel__footer">
+        {saved_filter_actions && <SavedFiltersMenu toolbar={toolbar} actions={saved_filter_actions} />}
         {toolbar.has_subitem_fields && (
           <Tooltip
             className="filter-panel__subitems-slot"

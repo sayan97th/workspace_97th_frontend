@@ -858,3 +858,17 @@ html.dark .filter-panel__menu {
 .filter-panel__convert-button {
   color: var(--filter-panel-primary);
 }
+
+/* Saved filters sits first in the footer, pushing the rest to the right (or sharing the left side with Filter subitems). */
+.filter-panel__saved {
+  margin-right: auto;
+  margin-left: -8px;
+}
+
+.filter-panel__saved:has(+ .filter-panel__subitems-slot) {
+  margin-right: 0;
+}
+
+.filter-panel__saved + .filter-panel__subitems-slot {
+  margin-left: 0;
+}

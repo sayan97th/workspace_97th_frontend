@@ -1,15 +1,14 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 import { FilterIcon } from "@/icons/board-icons";
+import { ChevronDownIcon } from "@/icons/workspace-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { buildActiveFilterChips, isNarrowingChip } from "./activeFilterSummary";
-import SavedFiltersMenu from "./SavedFiltersMenu";
-import type { BoardSavedFilterActions, BoardToolbarApi } from "./types";
+import type { BoardToolbarApi } from "./types";
 import ToolbarButton from "./ToolbarButton";
 
 export type FilterControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
-  /** When given, the button gets monday's split chevron, which opens the viewer's saved filters. */
-  saved_filter_actions?: BoardSavedFilterActions;
 };
 
 /** Lines listed in the hover summary before it says "and N more". */
@@ -20,8 +19,10 @@ const SUMMARY_DELAY_MS = 350;
 /**
  * Button only. The (wide) Filter panel itself is rendered by BoardToolbar via a `BoardPopover` anchored to the whole toolbar row instead of this button, since it spans the full row's width.
  * Hovering it while filters apply shows what they are and how many items they leave, without opening the panel.
+ * Like monday, it is a split button: the button opens Quick filters and the chevron opens Advanced filters.
+ * Clicking the half whose mode is already showing closes the panel; the other half switches the mode in place.
  */
-function FilterControl<TRow>({ toolbar, saved_filter_actions }: FilterControlProps<TRow>) {
+function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
   const is_open = toolbar.active_panel === "filter";
   const [is_hovered, setIsHovered] = useState(false);
   const hover_timeout_ref = useRef<number | null>(null);
@@ -36,6 +37,17 @@ function FilterControl<TRow>({ toolbar, saved_filter_actions }: FilterControlPro
   const shown_lines = lines.slice(0, MAX_SUMMARY_LINES);
   const is_summary_shown = is_hovered && !is_open && lines.length > 0;
   const has_filters = toolbar.active_filter_count > 0;
+  const is_advanced_open = is_open && toolbar.filter_mode === "advanced";
+
+  const openFilterMode = (mode: "quick" | "advanced") => {
+    setIsHovered(false);
+    if (is_open && toolbar.filter_mode === mode) {
+      toolbar.closePanel();
+      return;
+    }
+    toolbar.setFilterMode(mode);
+    toolbar.openPanel("filter");
+  };
 
   const handleMouseEnter = () => {
     hover_timeout_ref.current = window.setTimeout(() => setIsHovered(true), SUMMARY_DELAY_MS);
@@ -47,6 +59,7 @@ function FilterControl<TRow>({ toolbar, saved_filter_actions }: FilterControlPro
 
   return (
     <span className="relative flex">
+      <Tooltip content="Filter board by anything" className="flex">
       <span className="flex" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
         <ToolbarButton
           label="Filter"
@@ -55,16 +68,24 @@ function FilterControl<TRow>({ toolbar, saved_filter_actions }: FilterControlPro
           has_selection={has_filters}
           variant="accent"
           badge_count={toolbar.active_filter_count || undefined}
-          is_split={!!saved_filter_actions}
-          onClick={() => {
-            setIsHovered(false);
-            toolbar.togglePanel("filter");
-          }}
+          is_split
+          onClick={() => openFilterMode("quick")}
         />
       </span>
-      {saved_filter_actions && (
-        <SavedFiltersMenu toolbar={toolbar} actions={saved_filter_actions} is_highlighted={is_open || has_filters} />
-      )}
+      </Tooltip>
+      <Tooltip content="Advanced filters" className="flex">
+        <button
+          type="button"
+          onClick={() => openFilterMode("advanced")}
+          aria-label="Open advanced filters"
+          aria-expanded={is_advanced_open}
+          className={`flex h-8 w-6 items-center justify-center rounded-r-[4px] border-l border-boardtree-surface text-boardtree-text transition-colors ${
+            is_open || has_filters ? "bg-boardtree-accent-surface" : "hover:bg-boardtree-hover-strong"
+          }`}
+        >
+          <ChevronDownIcon size={11} />
+        </button>
+      </Tooltip>
       {is_summary_shown && (
         <div
           role="tooltip"
