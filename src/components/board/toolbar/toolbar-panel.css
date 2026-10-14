@@ -323,3 +323,81 @@ html.dark .toolbar-panel-tooltip {
   padding-top: 4px;
   padding-bottom: 4px;
 }
+
+/* Group by panel: the column and order pickers side by side, "Show empty groups" and a "Give feedback" footer. */
+.toolbar-panel__group-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-panel__group-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-panel__group-order {
+  display: flex;
+  flex: none;
+  width: 236px;
+}
+
+.toolbar-panel__group-order-placeholder {
+  gap: 8px;
+}
+
+.toolbar-panel__group-toggle {
+  width: auto;
+  margin: 8px 0 16px -8px;
+  color: var(--filter-panel-text);
+}
+
+.toolbar-panel__group-toggle:disabled {
+  color: var(--filter-panel-text-disabled);
+  cursor: default;
+}
+
+.toolbar-panel__group-toggle:disabled:hover {
+  background: transparent;
+}
+
+.toolbar-panel__group-toggle:disabled .filter-panel__checkbox {
+  border-color: var(--filter-panel-divider);
+}
+
+.toolbar-panel__footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--filter-panel-text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.toolbar-panel__footer-link:hover {
+  background: var(--filter-panel-hover);
+}
+
+.toolbar-panel__footer-link:focus-visible {
+  outline: 2px solid var(--filter-panel-primary);
+  outline-offset: -2px;
+}
+
+@media (max-width: 600px) {
+  .toolbar-panel__group-fields {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toolbar-panel__group-order {
+    width: 100%;
+  }
+}

@@ -100,7 +100,7 @@ export function buildActiveFilterChips<TRow>(toolbar: BoardToolbarApi<TRow>): Ac
       chips.push({
         id: "group-by",
         kind: "group_by",
-        label: `Grouped ${option.label.replace(/^By /, "by ")}`,
+        label: `Grouped by ${option.label}`,
         onRemove: () => toolbar.setGroupByOptionId(BOARD_DEFAULT_GROUP_BY_ID),
       });
     }

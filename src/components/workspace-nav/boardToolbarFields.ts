@@ -390,10 +390,12 @@ const formatDateBucketLabel = (key: string, bucket: DateBucket): string => {
 /**
  * Group-by options: the board's own groups ("Default tables"), then one or
  * more per column type. Dates offer day, week and month buckets (ids such as
- * `12:month`), multi-value columns group by their exact combination.
+ * `12:month`), multi-value columns group by their exact combination, text and
+ * number columns group by their exact value. Labels are plain column names,
+ * as in monday's "Group items by" column list.
  */
 export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): BoardGroupByOption<BoardItemDto>[] {
-  const { item_columns, tags, people_names_by_id } = sources;
+  const { item_columns, tags, people_names_by_id, getColumnText } = sources;
   const options: BoardGroupByOption<BoardItemDto>[] = [{ id: BOARD_DEFAULT_GROUP_BY_ID, label: "Default tables" }];
 
   for (const column of item_columns) {
@@ -411,7 +413,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
         const empty_label = column.type === "status" ? "No status" : "No value";
         options.push({
           id: column_id,
-          label: `By ${column.label}`,
+          label: column.label,
           swatch,
           getGroupKey: (row) => {
             const ids = getValueIds(column, row.values[column_id]).filter((id) => lookup.has(id));
@@ -422,6 +424,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
             key === BOARD_EMPTY_GROUP_KEY ? empty_label : key.split("|").map((id) => lookup.get(id)?.label ?? id).join(", "),
           getGroupColor: (key) => lookup.get(key.split("|")[0])?.color ?? "#c4c4c4",
           getGroupSortValue: (key) => lookup.get(key.split("|")[0])?.position ?? Number.MAX_SAFE_INTEGER,
+          order_kind: "labels",
         });
         break;
       }
@@ -429,7 +432,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
       case "vote":
         options.push({
           id: column_id,
-          label: `By ${column.label}`,
+          label: column.label,
           swatch,
           getGroupKey: (row) => {
             const ids = getValueIds(column, row.values[column_id]).sort();
@@ -444,7 +447,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
       case "checkbox":
         options.push({
           id: column_id,
-          label: `By ${column.label}`,
+          label: column.label,
           swatch,
           getGroupKey: (row) => (isValueChecked(row.values[column_id]) ? "checked" : "unchecked"),
           getGroupLabel: (key) => (key === "checked" ? "Checked" : "Unchecked"),
@@ -455,7 +458,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
       case "rating":
         options.push({
           id: column_id,
-          label: `By ${column.label}`,
+          label: column.label,
           swatch,
           getGroupKey: (row) => {
             const number = getValueNumber(column, row.values[column_id]);
@@ -466,13 +469,50 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
           getGroupSortValue: (key) => -Number(key),
         });
         break;
+      case "number":
+      case "progress":
+        options.push({
+          id: column_id,
+          label: column.label,
+          swatch,
+          getGroupKey: (row) => {
+            const number = getValueNumber(column, row.values[column_id]);
+            return number === null ? BOARD_EMPTY_GROUP_KEY : String(number);
+          },
+          getGroupLabel: (key) => (key === BOARD_EMPTY_GROUP_KEY ? "No value" : column.type === "progress" ? `${key}%` : key),
+          getGroupColor: () => "#fdab3d",
+          getGroupSortValue: (key) => Number(key),
+        });
+        break;
+      case "text":
+      case "email":
+      case "phone":
+      case "link":
+      case "country":
+      case "location":
+        options.push({
+          id: column_id,
+          label: column.label,
+          swatch,
+          // Prefixed, so a cell that literally reads "none" never lands in the empty group.
+          getGroupKey: (row) => {
+            const text = getColumnText(row, column_id).trim();
+            return text ? `text:${text}` : BOARD_EMPTY_GROUP_KEY;
+          },
+          getGroupLabel: (key) => (key === BOARD_EMPTY_GROUP_KEY ? "No value" : key.slice(5)),
+          getGroupColor: () => "#579bfc",
+          getGroupSortValue: (key) => key.slice(5).toLowerCase(),
+          order_kind: "text",
+        });
+        break;
       case "date":
+      case "week":
       case "timeline": {
         const buckets: DateBucket[] = column.type === "date" ? ["day", "week", "month"] : ["week", "month"];
         for (const bucket of buckets) {
           options.push({
             id: `${column_id}:${bucket}`,
-            label: `By ${column.label} (${DATE_BUCKET_LABELS[bucket]})`,
+            label: `${column.label} by ${DATE_BUCKET_LABELS[bucket]}`,
             swatch,
             getGroupKey: (row) => {
               const range = getValueDateRange(column, row.values[column_id]);
@@ -491,7 +531,7 @@ export function buildBoardGroupByOptions(sources: BoardToolbarFieldSources): Boa
 
   options.push({
     id: BOARD_FILTER_CREATED_BY_FIELD_ID,
-    label: "By Created by",
+    label: "Created by",
     swatch: COLUMN_KIND_SWATCH.people,
     getGroupKey: (row) => (row.created_by_id != null ? String(row.created_by_id) : BOARD_EMPTY_GROUP_KEY),
     getGroupLabel: (key) => (key === BOARD_EMPTY_GROUP_KEY ? "Unknown author" : people_names_by_id[key] ?? key),

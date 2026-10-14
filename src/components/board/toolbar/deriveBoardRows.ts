@@ -11,7 +11,7 @@ import {
   type BoardFilterField,
   type BoardFilterJoinOperator,
   type BoardQuickFilterFacet,
-  type BoardSortDirection,
+  type BoardGroupOrder,
   type BoardSortRule,
   type BoardToolbarConfig,
 } from "./types";
@@ -33,7 +33,7 @@ export type BoardDerivationState = {
   sort_rules: BoardSortRule[];
   hidden_column_ids: string[];
   group_by_option_id: string;
-  group_order_direction: BoardSortDirection;
+  group_order_direction: BoardGroupOrder;
   show_empty_groups: boolean;
   conditional_color_rules: BoardConditionalColorRule[];
 };
@@ -274,10 +274,15 @@ export function deriveBoardRows<TRow>(
       : Array.from(buckets.keys());
 
     // The empty bucket ("No status", "No date", ...) always renders last,
-    // whichever the direction, just like empty cells in a sort.
-    const direction_multiplier = state.group_order_direction === "asc" ? 1 : -1;
-    const getSortValue = (key: string) =>
-      key === BOARD_EMPTY_GROUP_KEY ? null : option?.getGroupSortValue?.(key) ?? key;
+    // whichever the direction, just like empty cells in a sort. "A to Z"
+    // orders by the group name people see instead of the column's own order.
+    const is_alphabetical = state.group_order_direction === "alpha_asc" || state.group_order_direction === "alpha_desc";
+    const direction_multiplier = state.group_order_direction === "asc" || state.group_order_direction === "alpha_asc" ? 1 : -1;
+    const getSortValue = (key: string): string | number | null => {
+      if (key === BOARD_EMPTY_GROUP_KEY) return null;
+      if (is_alphabetical) return (option?.getGroupLabel?.(key) ?? key).toLowerCase();
+      return option?.getGroupSortValue?.(key) ?? key;
+    };
     keys.sort((a, b) => compareNullableValues(getSortValue(a), getSortValue(b), direction_multiplier));
 
     groups = keys.map((key) => ({

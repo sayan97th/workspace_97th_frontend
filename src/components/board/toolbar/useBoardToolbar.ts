@@ -16,6 +16,7 @@ import {
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
   type BoardFilterJoinOperator,
+  type BoardGroupOrder,
   type BoardSortDirection,
   type BoardSortRule,
   type BoardToolbarApi,
@@ -115,7 +116,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const [pinned_column_ids, setPinnedColumnIds] = useState<string[]>([]);
 
   const [group_by_option_id, setGroupByOptionId] = useState(BOARD_DEFAULT_GROUP_BY_ID);
-  const [group_order_direction, setGroupOrderDirection] = useState<BoardSortDirection>("asc");
+  const [group_order_direction, setGroupOrderDirection] = useState<BoardGroupOrder>("asc");
   const [show_empty_groups, setShowEmptyGroups] = useState(false);
 
   const [row_height, setRowHeight] = useState<BoardRowHeight>("single");

@@ -35,6 +35,8 @@ export type BoardToolbarProps<TRow> = {
   saved_filter_actions?: BoardSavedFilterActions;
   /** Wires the "..." menu's export of the visible items. Omit to hide it. */
   export_options?: BoardToolbarExportOptions;
+  /** Wires the Group by panel's "Give feedback" link. Omit to hide it. */
+  onSubmitFeedback?: (message: string) => Promise<void>;
 };
 
 /** Board toolbar: the accent "New item" split button plus the filter/sort/group controls. */
@@ -45,6 +47,7 @@ function BoardToolbar<TRow>({
   view_actions,
   saved_filter_actions,
   export_options,
+  onSubmitFeedback,
 }: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
   const is_color_open = toolbar.active_panel === "color";
@@ -93,7 +96,7 @@ function BoardToolbar<TRow>({
         <StarredFilterControl toolbar={toolbar} />
         <SortControl toolbar={toolbar} view_actions={view_actions} />
         <HideColumnsControl toolbar={toolbar} view_actions={view_actions} />
-        <GroupByControl toolbar={toolbar} view_actions={view_actions} />
+        <GroupByControl toolbar={toolbar} view_actions={view_actions} onSubmitFeedback={onSubmitFeedback} />
         <OverflowControl toolbar={toolbar} export_options={export_options} />
 
         <div className="flex-1" />

@@ -4448,6 +4448,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             view_actions={toolbar_view_actions}
             saved_filter_actions={saved_filter_actions}
             export_options={export_options}
+            onSubmitFeedback={(message) => boardOptionsService.submitFeedback(message, board_id)}
           />
         )
       }

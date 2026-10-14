@@ -18,6 +18,12 @@ export type BoardPersonOption = {
 
 export type BoardSortDirection = "asc" | "desc";
 
+/**
+ * How Group by orders its groups: "asc"/"desc" follow the column's natural order (a Status column's label order,
+ * dates oldest first, numbers smallest first), "alpha_asc"/"alpha_desc" sort the group names A to Z or Z to A.
+ */
+export type BoardGroupOrder = "asc" | "desc" | "alpha_asc" | "alpha_desc";
+
 export type BoardSortOption<TRow> = {
   id: string;
   label: string;
@@ -47,6 +53,11 @@ export type BoardGroupByOption<TRow> = {
   getGroupSortValue?: (key: string) => string | number;
   /** Column badge shown next to the option in the Group-by column picker. Omit for the "default" option. */
   swatch?: BoardColumnSwatch;
+  /**
+   * Which orders the Group by panel offers: "labels" adds "Order of labels" and its reverse, "values" (the default)
+   * adds "Ascending" and "Descending", "text" only offers A to Z and Z to A since its natural order already is alphabetical.
+   */
+  order_kind?: "labels" | "values" | "text";
 };
 
 /** Group key a Group-by option returns for a row with no value; always rendered as the last bucket. */
@@ -447,8 +458,8 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
 
   group_by_option_id: string;
   setGroupByOptionId: (id: string) => void;
-  group_order_direction: BoardSortDirection;
-  setGroupOrderDirection: (direction: BoardSortDirection) => void;
+  group_order_direction: BoardGroupOrder;
+  setGroupOrderDirection: (direction: BoardGroupOrder) => void;
   show_empty_groups: boolean;
   setShowEmptyGroups: (value: boolean) => void;
 

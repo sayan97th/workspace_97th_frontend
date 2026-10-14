@@ -341,6 +341,20 @@ export const SortDescendingIcon: React.FC<IconProps> = ({ className, size = 15 }
   </svg>
 );
 
+/** Thin up arrow, the "Order of labels" and "A to Z" rows of the Group by order menu. */
+export const ArrowUpIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 13V3M8 3L4.5 6.5M8 3l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Thin down arrow, the "Reverse order of labels" and "Z to A" rows of the Group by order menu. */
+export const ArrowDownIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M8 3v10M8 13l-3.5-3.5M8 13l3.5-3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** Picture frame with a mountain glyph — used for image-related affordances (e.g. inserting an image into a doc-type board view). */
 export const ImageIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
