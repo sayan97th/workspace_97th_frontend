@@ -112,8 +112,17 @@ html.dark .calendar-new-item-backdrop {
   display: grid;
   grid-template-columns: minmax(0, 155px) minmax(0, 300px);
   gap: 12px 0;
-  overflow-y: auto;
   padding: 28px 60px 24px;
+}
+
+/*
+ * The field menus (PopoverPanel) stay inside the nearest scrolling box, so the
+ * fields only scroll when the window is too short for them to fit.
+ */
+@media (max-height: 600px) {
+  .calendar-new-item__fields {
+    overflow-y: auto;
+  }
 }
 
 .calendar-new-item__label {
@@ -223,6 +232,49 @@ html.dark .calendar-new-item-backdrop {
   border-radius: 50%;
 }
 
+/* A field whose menu is open reads like monday.com's: white with a blue border. Status blocks keep their color. */
+.calendar-new-item__value:not([data-bleed]):has([aria-expanded="true"]),
+.calendar-new-item__group-value[aria-expanded="true"] {
+  background: var(--cni-surface);
+  box-shadow: inset 0 0 0 1px var(--cni-accent);
+}
+
+.calendar-new-item__value:not(.calendar-new-item__group-value) > .calendar-new-item__date {
+  padding: 0;
+}
+
+.calendar-new-item__status,
+.calendar-new-item__date {
+  position: relative;
+  display: flex;
+}
+
+.calendar-new-item__status-trigger,
+.calendar-new-item__date-trigger {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.calendar-new-item__status-trigger {
+  background: var(--cni-empty-status);
+  color: #ffffff;
+  transition: filter 0.1s ease;
+}
+
+.calendar-new-item__status-trigger:hover {
+  filter: brightness(0.95);
+}
+
+.calendar-new-item__date-trigger {
+  color: var(--cni-text);
+}
+
 .calendar-new-item__footer {
   display: flex;
   justify-content: flex-end;
@@ -276,4 +328,150 @@ html.dark .calendar-new-item-backdrop {
   .calendar-new-item {
     animation: none;
   }
+}
+
+/* ── Field menus, portaled to <body> outside the dialog ── */
+
+/* The shared Status grid under a caret that points at the field, like monday.com's. */
+.calendar-new-item-status-menu {
+  --cni-caret: #ffffff;
+  position: relative;
+  /* Padding, not margin, so PopoverPanel counts the caret's room when it flips the menu above the field. */
+  padding-top: 10px;
+}
+
+.calendar-new-item-status-menu[data-placement="top"] {
+  padding-top: 0;
+  padding-bottom: 10px;
+}
+
+html.dark .calendar-new-item-status-menu {
+  --cni-caret: #0f1c1c;
+}
+
+.calendar-new-item-status-menu::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  background: var(--cni-caret);
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: -2px -2px 3px rgba(0, 0, 0, 0.06);
+}
+
+.calendar-new-item-status-menu[data-placement="top"]::before {
+  top: auto;
+  bottom: 4px;
+  box-shadow: 2px 2px 3px rgba(0, 0, 0, 0.08);
+}
+
+.calendar-new-item-menu {
+  --cni-menu-surface: #ffffff;
+  --cni-menu-text: #323338;
+  --cni-menu-text-faint: #676879;
+  --cni-menu-border: #c3c6d4;
+  --cni-menu-hover: #dcdfec;
+  --cni-menu-selected: #cce5ff;
+  --cni-menu-accent: #0073ea;
+  --cni-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--cni-menu-surface);
+  box-shadow: var(--cni-menu-shadow);
+  color: var(--cni-menu-text);
+  font-size: 14px;
+}
+
+html.dark .calendar-new-item-menu {
+  --cni-menu-surface: var(--color-shell-panel);
+  --cni-menu-text: var(--color-shell-text);
+  --cni-menu-text-faint: var(--color-shell-text-secondary);
+  --cni-menu-border: var(--color-shell-border);
+  --cni-menu-hover: var(--color-shell-hover);
+  --cni-menu-selected: color-mix(in srgb, #0073ea 35%, transparent);
+  --cni-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+.calendar-new-item-group-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 8px 6px;
+}
+
+.calendar-new-item-group-menu__search {
+  display: flex;
+  height: 32px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--cni-menu-border);
+  border-radius: 4px;
+  color: var(--cni-menu-text-faint);
+  transition: border-color 0.1s ease;
+}
+
+.calendar-new-item-group-menu__search:hover {
+  border-color: var(--cni-menu-text);
+}
+
+.calendar-new-item-group-menu__search:focus-within {
+  border-color: var(--cni-menu-accent);
+}
+
+.calendar-new-item-group-menu__search input {
+  min-width: 0;
+  flex: 1;
+  background: transparent;
+  color: var(--cni-menu-text);
+  outline: none;
+}
+
+.calendar-new-item-group-menu__search input::placeholder {
+  color: var(--cni-menu-text-faint);
+}
+
+.calendar-new-item-group-menu__list {
+  display: flex;
+  max-height: 168px;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+}
+
+.calendar-new-item-group-menu__option {
+  display: flex;
+  min-height: 32px;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--cni-menu-text);
+}
+
+.calendar-new-item-group-menu__option[data-highlighted] {
+  background: var(--cni-menu-hover);
+}
+
+.calendar-new-item-group-menu__option[aria-selected="true"] {
+  background: var(--cni-menu-selected);
+}
+
+.calendar-new-item-group-menu__swatch {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.calendar-new-item-group-menu__empty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--cni-menu-text-faint);
 }

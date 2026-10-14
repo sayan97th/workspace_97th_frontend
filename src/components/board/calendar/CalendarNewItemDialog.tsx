@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import BoardValueCell, {
   type BoardCellOption,
@@ -11,12 +10,11 @@ import BoardValueCell, {
   type BoardOptionActions,
 } from "../cells/BoardValueCell";
 import KanbanPeopleField from "../kanban/KanbanPeopleField";
+import { NewItemDateField, NewItemGroupField, NewItemStatusField } from "./CalendarNewItemFields";
 import ColumnTypeIcon from "../table/menus/ColumnTypeIcon";
 import { COLUMN_TYPE_GALLERY } from "../table/constants";
 import type { ColumnKind, PersonDef } from "../table/types";
 import type { BoardColumnKind } from "../columnTypes";
-import { CheckIcon } from "@/icons/board-icons";
-import "@/components/ui/dropdown/action-menu.css";
 import "./calendar-new-item-dialog.css";
 
 /** One column the dialog lets the viewer fill in before the item exists. */
@@ -107,7 +105,6 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
   const [group_id, setGroupId] = useState<number | null>(initial_group_id);
   const [values, setValues] = useState<Record<string, BoardCellValue>>(initial_values);
   const [is_saving, setIsSaving] = useState(false);
-  const [group_anchor_el, setGroupAnchorEl] = useState<HTMLElement | null>(null);
   const name_ref = useRef<HTMLInputElement | null>(null);
   const is_open = draft_key !== null;
 
@@ -124,7 +121,7 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft_key]);
 
-  // Pickers opened from a field stop their own Escape at the document, so this only fires when none is open.
+  // Every field menu stops its own Escape at the document, so this only fires when none is open.
   useEffect(() => {
     if (!is_open) return;
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -135,8 +132,6 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
   }, [is_open, is_saving, onClose]);
 
   if (!is_open || typeof document === "undefined") return null;
-
-  const selected_group = groups.find((group) => group.id === group_id) ?? null;
 
   const setValue = (column_id: string, value: BoardCellValue) =>
     setValues((current) => ({ ...current, [column_id]: value }));
@@ -198,40 +193,7 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
               </span>
               <span className="calendar-new-item__label-text">Group</span>
             </div>
-            <button
-              type="button"
-              className="calendar-new-item__value calendar-new-item__group-value"
-              onClick={(event) => setGroupAnchorEl(event.currentTarget)}
-              aria-haspopup="listbox"
-              aria-expanded={group_anchor_el !== null}
-            >
-              <span className="calendar-new-item__group-dot" style={{ background: selected_group?.color ?? "#c4c4c4" }} />
-              <span className="truncate">{selected_group?.label ?? "Choose a group"}</span>
-            </button>
-            <BoardPopover anchor_el={group_anchor_el} is_open={group_anchor_el !== null} onClose={() => setGroupAnchorEl(null)} align="start" width={300} unstyled>
-              <div className="action-menu" role="listbox" aria-label="Group">
-                <div className="action-menu__title">Choose a group</div>
-                {groups.map((group) => (
-                  <button
-                    key={group.id}
-                    type="button"
-                    role="option"
-                    aria-selected={group.id === group_id}
-                    className="action-menu__item"
-                    onClick={() => {
-                      setGroupId(group.id);
-                      setGroupAnchorEl(null);
-                    }}
-                  >
-                    <span className="action-menu__icon">
-                      <span className="calendar-new-item__group-dot" style={{ background: group.color }} />
-                    </span>
-                    <span className="action-menu__label">{group.label}</span>
-                    {group.id === group_id && <CheckIcon size={12} />}
-                  </button>
-                ))}
-              </div>
-            </BoardPopover>
+            <NewItemGroupField groups={groups} selected_id={group_id} onSelect={setGroupId} />
 
             {fields.map((field) => {
               const is_bleed = BLEED_KINDS.has(field.kind) && field.pill_style !== "outline";
@@ -267,6 +229,21 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
                         onSave={(person_ids) => setValue(field.id, person_ids.length ? person_ids : null)}
                         notify_on_assignment={people_picker.getNotifyOnAssignment(field.id)}
                         onToggleNotifyOnAssignment={() => people_picker.onToggleNotifyOnAssignment(field.id)}
+                      />
+                    ) : field.kind === "status" && field.pill_style !== "outline" ? (
+                      <NewItemStatusField
+                        label={field.label}
+                        options={field.options ?? []}
+                        value={typeof values[field.id] === "string" ? (values[field.id] as string) : null}
+                        onChange={(value) => setValue(field.id, value)}
+                        option_actions={onEditOptions?.(field.id)}
+                        onCreateOption={onAddOption ? (option) => onAddOption(field.id, option) : undefined}
+                      />
+                    ) : field.kind === "date" ? (
+                      <NewItemDateField
+                        label={field.label}
+                        value={typeof values[field.id] === "string" ? (values[field.id] as string) : null}
+                        onChange={(value) => setValue(field.id, value)}
                       />
                     ) : (
                       <BoardValueCell
