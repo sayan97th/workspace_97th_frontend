@@ -93,14 +93,19 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
       setIsOpen(false);
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key !== "Escape") return;
+      // Keep the Escape here so the enclosing panel (Conditional coloring, Edit Labels) stays open.
+      event.stopPropagation();
+      setIsOpen(false);
+      button_ref.current?.focus();
     };
 
     document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
+    // Capture phase, so this runs before BoardPopover's own document-level Escape handler.
+    document.addEventListener("keydown", handleKeyDown, true);
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [is_open]);
 

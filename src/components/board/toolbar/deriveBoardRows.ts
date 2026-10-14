@@ -3,6 +3,7 @@ import { BOARD_FILTER_BLANK_OPTION_ID, buildAdvancedFilterMatcher, countActiveAd
 import {
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
+  BOARD_VALUELESS_CONDITIONS,
   type BoardAdvancedFilterCondition,
   type BoardAdvancedFilterGroup,
   type BoardAdvancedFilterRow,
@@ -67,14 +68,26 @@ export const evaluateCondition = (
   switch (condition) {
     case "equals":
       return haystack === needle;
+    case "not_equals":
+      return haystack !== needle;
     case "contains":
       return needle === "" || haystack.includes(needle);
+    case "not_contains":
+      return needle === "" || !haystack.includes(needle);
     case "is_empty":
       return haystack === "";
     case "is_not_empty":
       return haystack !== "";
   }
 };
+
+/**
+ * A coloring rule paints only once it names a column, a condition and, unless the condition needs none, a value.
+ * A half built rule ("Is" with no value yet) would otherwise paint every empty cell while the user is still typing.
+ */
+export const isConditionalColorRuleComplete = (rule: BoardConditionalColorRule): boolean =>
+  Boolean(rule.column_id && rule.condition) &&
+  (BOARD_VALUELESS_CONDITIONS.has(rule.condition!) || (rule.value ?? "").trim() !== "");
 
 const compareValues = (a: string | number, b: string | number): number => {
   if (typeof a === "number" && typeof b === "number") return a - b;
@@ -334,9 +347,7 @@ export function deriveBoardRows<TRow>(
       0
     );
 
-  const active_color_rules = state.conditional_color_rules.filter(
-    (rule) => rule.column_id && rule.condition
-  );
+  const active_color_rules = state.conditional_color_rules.filter(isConditionalColorRuleComplete);
   const row_colors: Record<string, string> = {};
   const cell_colors: Record<string, Record<string, string>> = {};
   if (active_color_rules.length) {

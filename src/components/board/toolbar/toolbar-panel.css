@@ -476,18 +476,54 @@ html.dark .toolbar-panel-tooltip {
   color: var(--filter-panel-text);
 }
 
-.toolbar-panel__color-column {
-  flex: 1 1 190px;
-  min-width: 0;
+/*
+ * The fields keep the fixed widths `ConditionalColoringPanel` passes inline, so a row never shifts while it is being
+ * filled in, and shrink together when the toolbar is narrow. The remove "x" sits right after the value, like monday's.
+ */
+.toolbar-panel--color .filter-rule__fields {
+  flex: 0 1 auto;
 }
 
-.toolbar-panel__color-condition {
-  flex: 0 0 150px;
+.toolbar-panel--color .toolbar-panel__color-scope,
+.toolbar-panel--color .toolbar-panel__color-column,
+.toolbar-panel--color .toolbar-panel__color-condition,
+.toolbar-panel--color .toolbar-panel__color-value {
+  flex: 0 1 auto;
+  min-width: 96px;
 }
 
-.toolbar-panel__color-value {
-  flex: 1 1 190px;
-  min-width: 0;
+.toolbar-panel--color .toolbar-panel__color-scope {
+  flex: none;
+}
+
+/* "Value" before a column is picked, or "No value needed": a disabled dropdown rather than an empty box. */
+.toolbar-panel__color-placeholder {
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+  border-color: var(--field-menu-border);
+  color: var(--field-menu-text-secondary);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.toolbar-panel__color-placeholder:hover {
+  border-color: var(--field-menu-border);
+}
+
+.toolbar-panel__color-placeholder svg {
+  flex: none;
+}
+
+/* Holds the remove "x" place on the draft row, so its fields line up with the rules below. */
+.toolbar-panel__color-remove-spacer {
+  flex: none;
+  width: 32px;
+}
+
+.toolbar-panel--color .filter-rule[data-draft] .filter-rule__handle {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .toolbar-panel__value-dot {
@@ -503,14 +539,14 @@ html.dark .toolbar-panel-tooltip {
   }
 
   .toolbar-panel--color .filter-rule__fields {
-    flex-basis: 100%;
+    flex: 1 1 100%;
     flex-wrap: wrap;
     padding-left: 18px;
   }
 
-  .toolbar-panel__color-column,
-  .toolbar-panel__color-condition,
-  .toolbar-panel__color-value {
+  .toolbar-panel--color .toolbar-panel__color-column,
+  .toolbar-panel--color .toolbar-panel__color-condition,
+  .toolbar-panel--color .toolbar-panel__color-value {
     flex: 1 1 100%;
   }
 }

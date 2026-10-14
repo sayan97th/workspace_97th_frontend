@@ -13,6 +13,7 @@ import ActionMenu, { type ActionMenuItem, type ActionMenuSection } from "@/compo
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import type { BoardHeaderHeight, BoardRowHeight } from "../types";
 import type { BoardToolbarApi, BoardToolbarExportOptions, BoardToolbarViewActions } from "./types";
+import { isConditionalColorRuleComplete } from "./deriveBoardRows";
 import { exportVisibleRows, type BoardExportFormat } from "./exportBoardRows";
 import PinColumnsControl from "./PinColumnsControl";
 import ToolbarButton from "./ToolbarButton";
@@ -47,7 +48,7 @@ function OverflowControl<TRow>({ toolbar, export_options, view_actions }: Overfl
   const is_pin_open = toolbar.active_panel === "pin";
   const is_color_open = toolbar.active_panel === "color";
   const pin_count = toolbar.pinned_column_ids.length;
-  const color_rule_count = toolbar.conditional_color_rules.length;
+  const color_rule_count = toolbar.conditional_color_rules.filter(isConditionalColorRuleComplete).length;
 
   const runExport = async (export_format: BoardExportFormat) => {
     if (!export_options?.is_ready || exporting_format) return;

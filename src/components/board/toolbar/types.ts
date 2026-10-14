@@ -157,15 +157,20 @@ export type BoardFilterOperator =
   | "is_empty"
   | "is_not_empty";
 
-/** The four text conditions Conditional coloring still uses. Also valid filter operators, so views saved before typed conditions keep working. */
-export type BoardAdvancedFilterCondition = "equals" | "contains" | "is_empty" | "is_not_empty";
+/** The text conditions Conditional coloring uses. Also valid filter operators, so views saved before typed conditions keep working. */
+export type BoardAdvancedFilterCondition = "equals" | "not_equals" | "contains" | "not_contains" | "is_empty" | "is_not_empty";
 
 export const BOARD_ADVANCED_FILTER_CONDITIONS: { id: BoardAdvancedFilterCondition; label: string }[] = [
   { id: "equals", label: "Is" },
+  { id: "not_equals", label: "Is not" },
   { id: "contains", label: "Contains" },
+  { id: "not_contains", label: "Does not contain" },
   { id: "is_empty", label: "Is empty" },
   { id: "is_not_empty", label: "Is not empty" },
 ];
+
+/** Conditions that never compare against a value, so a rule using one is complete without it. */
+export const BOARD_VALUELESS_CONDITIONS: ReadonlySet<BoardAdvancedFilterCondition> = new Set(["is_empty", "is_not_empty"]);
 
 export type BoardFilterJoinOperator = "and" | "or";
 
@@ -491,7 +496,8 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
   setHeaderHeight: (height: BoardHeaderHeight) => void;
 
   conditional_color_rules: BoardConditionalColorRule[];
-  addConditionalColorRule: () => void;
+  /** Appends a rule. `initial` overrides its starting fields, e.g. when the panel's empty draft row is first edited. */
+  addConditionalColorRule: (initial?: Partial<Omit<BoardConditionalColorRule, "id">>) => void;
   removeConditionalColorRule: (id: string) => void;
   /** Moves the rule `active_id` to where `over_id` sits (the Conditional coloring panel's drag and drop). Order matters, the first match wins. */
   moveConditionalColorRule: (active_id: string, over_id: string) => void;

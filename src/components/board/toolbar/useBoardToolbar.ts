@@ -353,16 +353,17 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       config.columns.filter((column) => column.hideable !== false).map((column) => column.id)
     );
 
-  const addConditionalColorRule = () =>
+  const addConditionalColorRule = (initial: Partial<Omit<BoardConditionalColorRule, "id">> = {}) =>
     setConditionalColorRules((current) => [
       ...current,
       {
-        id: createId(),
         color: BOARD_CONDITIONAL_COLORING_DEFAULTS[current.length % BOARD_CONDITIONAL_COLORING_DEFAULTS.length],
-        scope: "row",
+        scope: "cell",
         column_id: null,
         condition: null,
         value: "",
+        ...initial,
+        id: createId(),
       },
     ]);
   const removeConditionalColorRule = (id: string) =>
