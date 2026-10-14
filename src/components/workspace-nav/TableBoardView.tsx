@@ -101,6 +101,7 @@ import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/fo
 import { DEPENDENCY_MODE_OPTIONS } from "@/components/board/table/menus/DependencySetupDialog";
 import { computeFormulaValue, legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
 import type { CellValue, FormulaSourceColumn } from "@/components/board/table/types";
+import type { ButtonPressOutcome } from "@/components/board/table/useBoardTable";
 import {
   CalendarViewIcon,
   GanttViewIcon,
@@ -2384,7 +2385,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // A Button cell's press runs the automations watching it on the server, then the item (and its
   // parent, which "set the parent's column" writes) is read again so their cells show the result.
   const handlePressButton = useCallback(
-    async (node_id: string, column_id: string): Promise<string> => {
+    async (node_id: string, column_id: string): Promise<ButtonPressOutcome> => {
       try {
         const result = await boardAutomationService.pressButton(board_id, Number(node_id), Number(column_id));
         const pressed = await boardContentService.getItem(board_id, Number(node_id));
@@ -2394,9 +2395,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           if (parent) next = mapItemInTree(next, parent.id, (item) => ({ ...item, name: parent.name, values: parent.values }));
           return next;
         });
-        return result.is_board_paused ? "Automations on this board are paused." : result.message;
+        if (result.is_board_paused) return { message: "Automations on this board are paused.", needs_set_up: false };
+        return { message: result.message, needs_set_up: result.automations_run === 0 };
       } catch (failure) {
-        return apiErrorMessage(failure, "The button could not run its automations.");
+        return { message: apiErrorMessage(failure, "The button could not run its automations."), needs_set_up: false };
       }
     },
     [board_id]
@@ -2928,8 +2930,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return { table_base_columns: [...pinned, ...rest], table_pinned_count: pinned.length };
   }, [item_columns, item_column_label, toolbar.hidden_column_ids, toolbar.pinned_column_ids, set_up_button_key]);
   const table_sub_base_columns = useMemo(
-    () => attachDependencyDateColumns(attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem")),
-    [subitem_columns]
+    () =>
+      attachButtonSetUp(
+        attachDependencyDateColumns(attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem")),
+        set_up_button_key === null ? null : new Set(set_up_button_key.split(","))
+      ),
+    [subitem_columns, set_up_button_key]
   );
 
   const adaptTableNode = (item: BoardItemDto): BoardTableNode => ({

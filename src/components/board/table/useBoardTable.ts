@@ -141,6 +141,9 @@ function mapColumnInAllGroups(groups: BoardTableGroup[], column_id: string, upda
  * row locally under its real id, so no local-id-to-real-id reconciliation is
  * ever needed.
  */
+/** What a Button cell press reports back, see `UseBoardTableConfig.onPressButton`. */
+export type ButtonPressOutcome = { message: string; needs_set_up: boolean };
+
 export interface UseBoardTableConfig {
   initial_groups?: BoardTableGroup[];
   people?: PersonDef[];
@@ -200,10 +203,10 @@ export interface UseBoardTableConfig {
   board_ref?: { board_id: string; board_name: string; view_id: string | null };
   /**
    * A `button`-type cell's press: stores nothing, it only runs the automations watching that
-   * button. Resolves with a short message for the cell to flash. Omitted (the standalone demo),
-   * the button does nothing.
+   * button. Resolves with a short message for the cell to flash, and whether no automation listens
+   * to the button yet (the cell then offers "Set up"). Omitted (the standalone demo), the button does nothing.
    */
-  onPressButton?: (node_id: string, column_id: string) => Promise<string>;
+  onPressButton?: (node_id: string, column_id: string) => Promise<ButtonPressOutcome>;
   /** A Button cell's "Set up", opens the Button automation builder for that column. Omitted, the cell only explains what the button needs. */
   onSetUpButton?: (column_id: string) => void;
   /** The signed-in viewer's own id — a `vote`-type cell toggles this id in/out of its value array, and highlights itself when the viewer has already voted. Undefined for the standalone demo, which has no signed-in viewer. */
@@ -2373,9 +2376,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const setTagQuery = useCallback((value: string) => setState((s) => ({ ...s, tag_query: value })), []);
 
   /** A Button cell's press, see `UseBoardTableConfig.onPressButton`. Resolves with what to flash on the button. */
-  const pressButton = useCallback(async (node_id: string, column_id: string): Promise<string> => {
+  const pressButton = useCallback(async (node_id: string, column_id: string): Promise<ButtonPressOutcome> => {
     const on_press = config_ref.current.onPressButton;
-    if (!on_press) return "Buttons work once the board is saved.";
+    if (!on_press) return { message: "Buttons work once the board is saved.", needs_set_up: false };
     return on_press(node_id, column_id);
   }, []);
 

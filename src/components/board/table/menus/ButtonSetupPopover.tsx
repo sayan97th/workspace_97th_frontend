@@ -12,7 +12,11 @@ interface ButtonSetupPopoverProps {
 
 const SAMPLE_ITEMS = ["New blog post", "Design new icons", "Web redesign"];
 
-/** The illustration of monday's popover: three items whose buttons set a date, one being clicked. */
+/**
+ * The illustration of monday's popover: three items with a button each, and a cursor that moves
+ * from one button to the next, pressing it while its "Set date" tooltip shows. Still under
+ * reduced motion, with the cursor on the first button.
+ */
 function ButtonColumnIllustration() {
   return (
     <div className="button-setup__art" aria-hidden="true">
@@ -30,19 +34,15 @@ function ButtonColumnIllustration() {
               </span>
             </div>
             <div className="button-setup__cell">
-              <span className="button-setup__pill" />
-              {index === 1 && (
-                <>
-                  <span className="button-setup__tooltip">
-                    <CalendarDays size={12} strokeWidth={1.8} />
-                    Set date
-                  </span>
-                  <MousePointer2 className="button-setup__cursor" size={26} strokeWidth={1.4} />
-                </>
-              )}
+              <span className="button-setup__pill" style={{ animationDelay: `${index * 2}s` }} />
             </div>
           </div>
         ))}
+        <span className="button-setup__tooltip">
+          <CalendarDays size={12} strokeWidth={1.8} />
+          Set date
+        </span>
+        <MousePointer2 className="button-setup__cursor" size={26} strokeWidth={1.4} />
       </div>
     </div>
   );

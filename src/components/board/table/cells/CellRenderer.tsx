@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
-import type { BoardTableActions, BoardTableState } from "../useBoardTable";
+import type { BoardTableActions, BoardTableState, ButtonPressOutcome } from "../useBoardTable";
 import { contrastFg, findDef, timelineFillBackground } from "../colorUtils";
 import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
 import { collectColumnValues, findNode } from "../treeUtils";
@@ -800,7 +800,10 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const label = column.button?.label?.trim() || "Click me";
     const color = column.button?.color ?? "#579bfc";
     // monday's flow: until an automation watches the button, a click explains it and offers "Set up".
+    // `is_set_up` is unknown while the board's automations load, or on a board without them, so the
+    // press then asks the server and opens the same popover when nothing listened.
     const needs_set_up = column.button?.is_set_up === false;
+    const can_offer_set_up = column.button?.is_set_up !== true;
     const press = async () => {
       if (needs_set_up) {
         openMenu();
@@ -809,8 +812,11 @@ export default function CellRenderer({ node_id, column, values, node_name, state
       if (is_pressing) return;
       setIsPressing(true);
       try {
-        const result = actions.pressButton(node_id, column.id) as Promise<string> | undefined;
-        setPressFeedback(result ? await result : "You cannot press this button.");
+        const result = actions.pressButton(node_id, column.id) as Promise<ButtonPressOutcome> | undefined;
+        const outcome = result ? await result : null;
+        if (!outcome) setPressFeedback("You cannot press this button.");
+        else if (outcome.needs_set_up && can_offer_set_up) openMenu();
+        else setPressFeedback(outcome.message);
       } catch {
         setPressFeedback("The button could not run its automations.");
       } finally {
@@ -823,8 +829,8 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           type="button"
           onClick={() => void press()}
           disabled={is_pressing}
-          aria-haspopup={needs_set_up ? "dialog" : undefined}
-          aria-expanded={needs_set_up ? is_menu_open : undefined}
+          aria-haspopup={can_offer_set_up ? "dialog" : undefined}
+          aria-expanded={can_offer_set_up ? is_menu_open : undefined}
           title={press_feedback ?? (needs_set_up ? "Set up what this button does" : `Run the automations of "${label}"`)}
           className="h-7 max-w-full truncate rounded-[4px] px-2.5 text-[14px] leading-7 transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
           style={{ background: color, color: contrastFg(color) }}
@@ -836,7 +842,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             {press_feedback}
           </div>
         )}
-        {needs_set_up && is_menu_open && (
+        {can_offer_set_up && is_menu_open && (
           <ButtonSetupPopover onSetUp={actions.canSetUpButtons() ? () => actions.setUpButton(column.id) : undefined} onClose={actions.closeCellMenu} />
         )}
       </div>

@@ -152,11 +152,20 @@ html.dark .button-setup {
   background: var(--button-setup-pill);
 }
 
-/* The tooltip a hovered button shows, part of the illustration. */
+/*
+ * The cursor visits the three buttons in a 6s loop, 47px apart (a 37px row plus the 10px gap).
+ * Each pill darkens while it is pressed, and the tooltip follows the cursor, showing only while
+ * it rests on a button.
+ */
+.button-setup__pill {
+  animation: button-setup-press 6s ease-in-out infinite;
+}
+
 .button-setup__tooltip {
   position: absolute;
-  top: 50%;
-  left: 14px;
+  top: 18px;
+  right: 6px;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -168,16 +177,52 @@ html.dark .button-setup {
   color: var(--button-setup-tooltip-text);
   font-size: 12.5px;
   white-space: nowrap;
+  opacity: 0;
   transform: translateY(-50%);
+  animation: button-setup-tooltip 6s ease-in-out infinite;
 }
 
 .button-setup__cursor {
   position: absolute;
-  right: 4px;
-  bottom: -14px;
+  top: 22px;
+  right: 10px;
   color: var(--button-setup-cursor);
   fill: var(--button-setup-cursor);
+  z-index: 2;
   stroke: var(--button-setup-card);
+  animation: button-setup-cursor 6s ease-in-out infinite;
+}
+
+@keyframes button-setup-cursor {
+  0%, 26% { transform: translateY(0); }
+  33%, 59% { transform: translateY(47px); }
+  66%, 92% { transform: translateY(94px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes button-setup-tooltip {
+  0%, 4% { opacity: 0; transform: translateY(-50%); }
+  8%, 24% { opacity: 1; transform: translateY(-50%); }
+  27%, 37% { opacity: 0; transform: translateY(calc(-50% + 47px)); }
+  41%, 57% { opacity: 1; transform: translateY(calc(-50% + 47px)); }
+  60%, 70% { opacity: 0; transform: translateY(calc(-50% + 94px)); }
+  74%, 90% { opacity: 1; transform: translateY(calc(-50% + 94px)); }
+  93%, 100% { opacity: 0; transform: translateY(calc(-50% + 94px)); }
+}
+
+/* Each pill's own 2s turn is set by an inline animation delay. */
+@keyframes button-setup-press {
+  0%, 6% { filter: none; }
+  9%, 14% { filter: brightness(0.82); }
+  18%, 100% { filter: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button-setup__pill,
+  .button-setup__tooltip,
+  .button-setup__cursor {
+    animation: none;
+  }
 }
 
 /* ── Text and action ──────────────────────────────────────────────────────── */
