@@ -5,11 +5,9 @@ import { Building2, Check, ChevronDown, Crown, Link2, Lock, Mail, Share2, Users,
 import UserAvatar from "@/components/common/UserAvatar";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { boardDocService, buildPublicDocUrl } from "@/services/board-doc.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { peopleService } from "@/services/people.service";
-import type { BoardDocPublicLink } from "@/types/board-doc";
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import "../doc-page.css";
@@ -44,8 +42,15 @@ export type DocShareModalProps = {
   onAccessChange: (access: BoardAccessEntry[]) => void;
   edit_permission: BoardEditPermission;
   onEditPermissionChange: (edit_permission: BoardEditPermission) => void;
-  public_link: BoardDocPublicLink;
-  onPublicLinkChange: (public_link: BoardDocPublicLink) => void;
+  /** The read only public link: whether it is on and the url it opens at. */
+  public_link: DocSharePublicLink;
+  /** Turns the public link on or off. Rejects when the change fails, the dialog reports it. */
+  onTogglePublicLink: (is_enabled: boolean) => Promise<void>;
+};
+
+export type DocSharePublicLink = {
+  is_enabled: boolean;
+  url: string | null;
 };
 
 const findabilityNotice = (board_type: BoardType, workspace_name: string): { icon: React.ReactNode; text: string } => {
@@ -75,7 +80,7 @@ const DocShareModal: React.FC<DocShareModalProps> = ({
   edit_permission,
   onEditPermissionChange,
   public_link,
-  onPublicLinkChange,
+  onTogglePublicLink,
 }) => {
   const toast = useToast();
   const title_id = useId();
@@ -235,8 +240,7 @@ const DocShareModal: React.FC<DocShareModalProps> = ({
   const togglePublicLink = async () => {
     setIsSavingLink(true);
     try {
-      const doc = await boardDocService.updatePublicLink(board_id, !public_link.is_enabled);
-      onPublicLinkChange(doc.public_link);
+      await onTogglePublicLink(!public_link.is_enabled);
     } catch (error) {
       toast.error(getApiErrorMessage(error, "We couldn't update the public link."));
     } finally {
@@ -245,9 +249,9 @@ const DocShareModal: React.FC<DocShareModalProps> = ({
   };
 
   const copyPublicLink = async () => {
-    if (!public_link.token) return;
+    if (!public_link.url) return;
     try {
-      await navigator.clipboard.writeText(buildPublicDocUrl(public_link.token));
+      await navigator.clipboard.writeText(public_link.url);
       toast.success("Public link copied");
     } catch {
       toast.error("We couldn't copy the link.");
@@ -476,9 +480,9 @@ const DocShareModal: React.FC<DocShareModalProps> = ({
             </button>
           </div>
 
-          {public_link.is_enabled && public_link.token && (
+          {public_link.is_enabled && public_link.url && (
             <div className="doc-share-link-row">
-              <input readOnly value={buildPublicDocUrl(public_link.token)} aria-label="Public link" className="doc-share-link-input" onFocus={(event) => event.target.select()} />
+              <input readOnly value={public_link.url} aria-label="Public link" className="doc-share-link-input" onFocus={(event) => event.target.select()} />
               <button type="button" className="doc-share-copy" onClick={() => void copyPublicLink()}>
                 <Link2 size={16} />
                 Copy link

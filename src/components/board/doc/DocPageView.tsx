@@ -30,12 +30,12 @@ import { useBranding } from "@/context/BrandingContext";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { getUserInitials } from "@/lib/user";
 import { buildPageTitle } from "@/lib/page-title";
-import { boardDocService } from "@/services/board-doc.service";
+import { boardDocService, buildPublicDocUrl } from "@/services/board-doc.service";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
 import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
-import type { BoardDocDto, BoardDocPublicLink } from "@/types/board-doc";
+import type { BoardDocDto } from "@/types/board-doc";
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardEditPermission, WorkspaceMember } from "@/types/workspace";
 import { DocEditorProvider, DocEditorSurface, DocOutline, DocToolbar, useDocEditor } from "./editor";
@@ -492,8 +492,14 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({
         onAccessChange={onAccessChange}
         edit_permission={edit_permission}
         onEditPermissionChange={setEditPermission}
-        public_link={doc.public_link ?? { is_enabled: false, token: null }}
-        onPublicLinkChange={(public_link: BoardDocPublicLink) => onDocChange({ ...doc, public_link })}
+        public_link={{
+          is_enabled: doc.public_link?.is_enabled ?? false,
+          url: doc.public_link?.token ? buildPublicDocUrl(doc.public_link.token) : null,
+        }}
+        onTogglePublicLink={async (is_enabled) => {
+          const saved = await boardDocService.updatePublicLink(node.id, is_enabled);
+          onDocChange({ ...doc, public_link: saved.public_link });
+        }}
       />
       <DocPresentationMode
         is_open={is_presenting}

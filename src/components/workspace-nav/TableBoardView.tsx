@@ -4624,6 +4624,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           board_id={board_id}
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
           onRenameView={node.can_edit_structure ? (label) => view_tabs.renameView(active_doc_view.id, label) : undefined}
+          comments={discussion_drawer}
+          share={{
+            board_type,
+            workspace_name: node.workspace.name,
+            can_manage: node.can_manage,
+            members: workspace_members,
+            access,
+            onAccessChange,
+            edit_permission: board_edit_permission,
+            onEditPermissionChange: (edit_permission) => setBoardEditPermission(edit_permission),
+          }}
           is_header_collapsed={is_doc_header_collapsed}
           onToggleHeaderCollapsed={() => setIsDocHeaderCollapsed((current) => !current)}
           onUploadFile={(file) => boardDocService.uploadFile(board_id, file)}
@@ -4723,7 +4734,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
       )}
 
-      <BoardDiscussionDrawer drawer={discussion_drawer} />
+      {/* A Doc tab shows the board's discussion as its inline Comments panel instead. */}
+      {!(active_view_type === "doc" && active_doc_view) && <BoardDiscussionDrawer drawer={discussion_drawer} />}
 
       <IntegrationsModal
         is_open={is_integrations_modal_open}

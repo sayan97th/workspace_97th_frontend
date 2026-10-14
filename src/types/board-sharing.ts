@@ -31,4 +31,13 @@ export type SharedViewDto = {
   /** Display names for everyone a People column references, keyed by user id. */
   people: Record<string, { name: string }>;
   is_truncated: boolean;
+  /** A shared Doc tab's body and creator row (its columns, groups and items are empty). Absent for item views. */
+  doc?: SharedViewDocDto | null;
+};
+
+export type SharedViewDocDto = {
+  content: string | null;
+  creator: { full_name: string; profile_photo_url: string | null } | null;
+  created_at: string | null;
+  updated_at: string | null;
 };

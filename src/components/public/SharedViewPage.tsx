@@ -4,6 +4,7 @@ import type { PublicApiError } from "@/lib/public-api-client";
 import { boardShareService } from "@/services/board-share.service";
 import type { SharedViewColumnDto, SharedViewDto } from "@/types/board-sharing";
 import { RatingDisplay } from "@/components/board/table/cells/VoteRatingCells";
+import SharedDocReader from "./SharedDocReader";
 import { countryFlag, countryName, docCellTitle, formatHour, formatWeekRange, isHexColor, timeInZone, timeZoneCity } from "@/components/board/table/columnValueFormats";
 
 type PageState = "loading" | "password" | "ready" | "unavailable";
@@ -115,8 +116,8 @@ const SharedCell: React.FC<{ column: SharedViewColumnDto; value: unknown; people
 
 /**
  * A board view opened from its public "Share view" link: every group as a
- * read only table, with a search box. Asks for the password first when the
- * link has one.
+ * read only table, with a search box, or a Doc tab as a read only doc. Asks
+ * for the password first when the link has one.
  */
 const SharedViewPage: React.FC<{ token: string }> = ({ token }) => {
   const [view, setView] = useState<SharedViewDto | null>(null);
@@ -236,6 +237,11 @@ const SharedViewPage: React.FC<{ token: string }> = ({ token }) => {
         </form>
       </main>
     );
+  }
+
+  // A shared Doc tab reads like a shared doc.
+  if (view.view.view_type === "doc" && view.doc) {
+    return <SharedDocReader doc={{ label: view.view.label, ...view.doc }} />;
   }
 
   return (
