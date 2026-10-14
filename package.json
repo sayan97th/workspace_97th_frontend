@@ -53,6 +53,7 @@
     "emoji-picker-react": "^4.19.1",
     "exceljs": "^4.4.0",
     "flatpickr": "^4.6.13",
+    "html-to-image": "^1.11.11",
     "laravel-echo": "^2.4.0",
     "lowlight": "^3.3.0",
     "lucide-react": "^1.23.0",

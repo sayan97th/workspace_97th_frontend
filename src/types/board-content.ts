@@ -12,6 +12,7 @@
  */
 import type {
   BoardCalendarConfig,
+  BoardGanttConfig,
   BoardChartConfig,
   BoardColumnKind,
   BoardConditionalColorRule,
@@ -309,6 +310,8 @@ export type BoardViewDto = {
   chart_config: BoardChartConfig | null;
   /** Date columns, coloring, group filter and week start for a `calendar`-type view (see `BoardCalendar`), null/unused for every other kind. */
   calendar_config?: BoardCalendarConfig | null;
+  /** Bar source, coloring, group filter, view toggles and baseline for a `gantt`-type view (see `GanttChart`), null/unused for every other kind. */
+  gantt_config?: BoardGanttConfig | null;
   /** A single emoji carried by the tab; null renders the view type's icon. */
   emoji: string | null;
   /** Short explanation of what the tab is for, shown in its hover card and the "Manage views" panel. */
@@ -580,6 +583,8 @@ export type SaveBoardViewPayload = {
   chart_config?: BoardChartConfig | null;
   /** Saved whenever a `calendar`-type view's settings or filter change. */
   calendar_config?: BoardCalendarConfig | null;
+  /** Saved whenever a `gantt`-type view's settings, filter or baseline change. */
+  gantt_config?: BoardGanttConfig | null;
 };
 
 /** One table (group) of a board an item can be moved into, see {@link BoardItemMoveTargetDto}. */

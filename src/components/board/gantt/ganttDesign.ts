@@ -1,42 +1,33 @@
 /**
- * Gantt's own design tokens — same adaptive `--color-shell-*` custom
- * properties every other board view resolves through (see `KANBAN_COLORS`
- * in `../kanban/kanbanDesign.ts`), so the timeline repaints for dark mode
- * along with the rest of the shell. Bar colors are the one exception: they
- * come from a row's actual status option / group accent color, which is
- * already theme-agnostic (chosen to hold contrast in both themes), matching
- * how `BoardTable`/`BoardKanban` treat those same colors.
+ * Gantt sizes, measured from monday.com's Gantt. Colors live as scoped
+ * `--gantt-*` tokens in `board-gantt.css`, so the chart repaints for dark
+ * mode with the rest of the shell. Bar colors are the one exception: they
+ * come from a row's group, status option or the critical path color, which
+ * already hold contrast in both themes.
  */
-export const GANTT_COLORS = {
-  panel_bg: "var(--color-shell-bg)",
-  header_bg: "var(--color-shell-panel-alt)",
-  border: "var(--color-shell-border)",
-  border_strong: "var(--color-shell-border-strong)",
-  text: "var(--color-shell-text)",
-  text_muted: "var(--color-shell-text-secondary)",
-  text_faint: "var(--color-shell-text-muted)",
-  hover: "var(--color-shell-hover)",
-  grid_line: "var(--color-shell-border)",
-  grid_line_strong: "var(--color-shell-border-strong)",
-  today_line: "var(--color-brand-500)",
-  row_selected: "color-mix(in srgb, var(--color-shell-panel-alt) 78%, var(--color-success-500) 22%)",
-  /** Dependency arrow stroke — a neutral that reads clearly against both a bar's own color and the grid, mirroring monday.com's own gray connector lines. */
-  dependency_arrow: "var(--color-shell-text-faint)",
-} as const;
 
-/** Fixed left panel (item name + date range) width, in px. */
-export const GANTT_LABEL_WIDTH = 280;
-/** Every row (item) height, in px — Gantt doesn't offer the row-height presets Table does. */
-export const GANTT_ROW_HEIGHT = 44;
-/** Group header row height, in px. */
-export const GANTT_GROUP_HEADER_HEIGHT = 40;
+/** Default width of the item list beside the timeline, in px. */
+export const GANTT_PANEL_WIDTH = 416;
+/** Narrowest and widest the item list can be dragged to, in px. */
+export const GANTT_PANEL_MIN_WIDTH = 240;
+export const GANTT_PANEL_MAX_WIDTH = 640;
+/** Item row height, in px. */
+export const GANTT_ROW_HEIGHT = 36;
+/** Group row height, it also holds the group summary line, in px. */
+export const GANTT_GROUP_HEADER_HEIGHT = 48;
+/** Height of each header band (months above weeks), in px. */
+export const GANTT_HEADER_ROW_HEIGHT = 33;
 /** Bar height within a row, in px. */
-export const GANTT_BAR_HEIGHT = 26;
-/** Milestone diamond side length, in px. */
-export const GANTT_MILESTONE_SIZE = 16;
-/** Header rows (major + minor) height, in px. */
-export const GANTT_HEADER_ROW_HEIGHT = 30;
+export const GANTT_BAR_HEIGHT = 20;
+/** Baseline bar height, drawn under the live bar, in px. */
+export const GANTT_BASELINE_HEIGHT = 6;
 /** Width of a bar's edge drag handle, in px. */
 export const GANTT_HANDLE_WIDTH = 7;
+/** Narrowest a bar is drawn, so one day bars stay visible at the Years scale, in px. */
+export const GANTT_MIN_BAR_WIDTH = 6;
 /** Minimum pointer movement, in px, before a bar press counts as a drag rather than a click. */
 export const GANTT_DRAG_THRESHOLD = 4;
+/** Space left free under the chart when it fills the window, in px. */
+export const GANTT_BOTTOM_GAP = 24;
+/** The chart never gets shorter than this, in px. */
+export const GANTT_MIN_HEIGHT = 480;

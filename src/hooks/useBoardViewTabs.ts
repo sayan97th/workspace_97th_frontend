@@ -5,6 +5,7 @@ import {
   getBoardViewTypeOption,
   type BoardAdvancedFilterGroup,
   type BoardCalendarConfig,
+  type BoardGanttConfig,
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
   type BoardFilterJoinOperator,
@@ -224,6 +225,8 @@ export type UseBoardViewTabsApi = {
   updateDocContent: (id: number, doc_content: string) => Promise<void>;
   /** Saves a Calendar view's settings, applied right away and restored if the save fails. */
   updateCalendarConfig: (id: number, calendar_config: BoardCalendarConfig) => Promise<void>;
+  /** Saves a Gantt view's settings and baseline, applied right away and restored if the save fails. */
+  updateGanttConfig: (id: number, gantt_config: BoardGanttConfig) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
   saveActiveView: () => Promise<void>;
   /** "Save as new view": copies the active tab (columns, groups, items) into a new tab holding the toolbar's live state, then opens it. */
@@ -534,6 +537,18 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     }
   };
 
+  /** Applies a Gantt view's new settings right away, then saves them, restoring the previous settings if the save fails. */
+  const updateGanttConfig = async (id: number, gantt_config: BoardGanttConfig) => {
+    const previous_config = views.find((v) => v.id === id)?.gantt_config ?? null;
+    setViews((current) => current.map((v) => (v.id === id ? { ...v, gantt_config } : v)));
+    try {
+      await patchView(id, { gantt_config });
+    } catch (error) {
+      setViews((current) => current.map((v) => (v.id === id ? { ...v, gantt_config: previous_config } : v)));
+      throw error;
+    }
+  };
+
   const deleteView = async (id: number) => {
     await boardContentService.deleteView(board_id, id);
     // Side effects (setActiveViewId, onViewActivated's router navigation) are
@@ -645,6 +660,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     changeViewEmoji,
     updateDocContent,
     updateCalendarConfig,
+    updateGanttConfig,
     deleteView,
     saveActiveView,
     saveAsNewView,

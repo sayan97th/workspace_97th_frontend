@@ -17,7 +17,6 @@ import {
   BoardInviteModal,
   BoardItemDrawer,
   BoardKanban,
-  BoardPopover,
   BoardShell,
   BoardTable,
   BoardToolbar,
@@ -26,8 +25,12 @@ import {
   COLUMN_OPTION_PALETTE,
   TABLE_KIND_TO_ENGINE_KIND,
   presetConfigFor,
-  DependencyPickerList,
+  DEFAULT_GANTT_BAR_COLOR,
   GanttChart,
+  type BoardGanttColorBy,
+  type BoardGanttConfig,
+  type GanttLegendItem,
+  type GanttRange,
   KANBAN_DEFAULT_LANE_OPTIONS,
   KanbanCardLabels,
   KanbanCardMembers,
@@ -37,7 +40,6 @@ import {
   PersonAvatarStack,
   PresenceAvatarStack,
   SelectionActionBar,
-  parseIsoDate,
   toIsoDate,
   useBoardDiscussionDrawer,
   useBoardItemDrawer,
@@ -49,7 +51,6 @@ import {
   type BoardCalendarColorBy,
   type BoardCalendarConfig,
   type BoardCalendarEntry,
-  type BoardCalendarRange,
   CalendarNewItemDialog,
   type CalendarNewItemField,
   type CalendarNewItemPayload,
@@ -757,14 +758,6 @@ type TableBoardBodyProps = {
 };
 
 /**
- * The Gantt view's left-panel row content: name + timeline range, plus a
- * compact "link" trigger for the row's Dependency cell. A real component
- * (not a plain function returning JSX, like every other view's row
- * renderer) purely so it can hold its own popover-open/search state —
- * neither Table's grid nor the item drawer render inside a Gantt tab, so
- * this is the *only* place a Gantt tab can actually author dependencies.
- */
-/**
  * Column kinds the Calendar's New Item dialog lets the viewer fill in, the
  * ones a person types or picks. Computed and linked kinds (formula, mirror,
  * auto number, connect boards, files...) are left out, as in monday.com.
@@ -791,57 +784,6 @@ const CALENDAR_NEW_ITEM_KINDS = new Set<BoardColumnDto["type"]>([
 /** Stable row accessors for the Calendar view, so its event list only rebuilds when the rows change. */
 const getCalendarRowId = (row: BoardItemDto): string => String(row.id);
 const getCalendarRowTitle = (row: BoardItemDto): string => row.name;
-
-const GanttRowLabel: React.FC<{
-  row: BoardItemDto;
-  range: BoardCalendarRange | null;
-  dependency_ids: string[];
-  dependency_candidates: BoardCellItemOption[];
-  onCommitDependencies: (value: string[] | null) => void;
-  formatDate: (value: string) => string;
-}> = ({ row, range, dependency_ids, dependency_candidates, onCommitDependencies, formatDate }) => {
-  const [anchor_el, setAnchorEl] = useState<HTMLElement | null>(null);
-
-  const toggle = (item_id: string) => {
-    const next = dependency_ids.includes(item_id)
-      ? dependency_ids.filter((id) => id !== item_id)
-      : [...dependency_ids, item_id];
-    onCommitDependencies(next.length ? next : null);
-  };
-
-  return (
-    <div className="flex min-w-0 flex-1 items-center gap-1.5">
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
-        <span className="truncate text-[13px] font-medium text-shell-text">{row.name}</span>
-        {range && (
-          <span className="truncate text-[11px] text-shell-text-muted">
-            {formatDate(range.start)}
-            {range.end && range.end !== range.start ? ` → ${formatDate(range.end)}` : ""}
-          </span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          setAnchorEl(event.currentTarget);
-        }}
-        title="Dependencies"
-        className={`flex flex-none items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10.5px] font-semibold transition-colors ${
-          dependency_ids.length > 0
-            ? "border-brand-500/40 bg-brand-500/10 text-brand-500"
-            : "border-shell-border text-shell-text-faint hover:bg-shell-hover"
-        }`}
-      >
-        <LinkIcon size={10} />
-        {dependency_ids.length > 0 && dependency_ids.length}
-      </button>
-      <BoardPopover anchor_el={anchor_el} is_open={anchor_el !== null} onClose={() => setAnchorEl(null)} align="start" width={260}>
-        <DependencyPickerList items={dependency_candidates} selected_ids={dependency_ids} onToggle={toggle} />
-      </BoardPopover>
-    </div>
-  );
-};
 
 /**
  * Mounted only once the board's columns/groups/items/views have all loaded,
@@ -1038,14 +980,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const board_done_column = item_columns.find((c) => c.type === "checkbox") ?? null;
   const date_columns = useMemo(() => item_columns.filter((c) => c.type === "date"), [item_columns]);
   const board_date_column = date_columns[0] ?? null;
-  // The Gantt view's bars are driven by a `timeline` column instead — one
-  // column storing a `{start, end}` range together, mirroring monday.com's
-  // own Timeline column (a plain `date` column, by contrast, is a single
-  // point in time — fine for Calendar, but a Gantt bar needs both ends from
-  // one place so a drag/resize is one atomic write, not two column writes
-  // that can race). The board's first `dependency` column drives the Gantt
-  // view's arrows and Finish-to-Start auto-reschedule.
-  const board_timeline_column = item_columns.find((c) => c.type === "timeline") ?? null;
+  // The board's first `dependency` column drives the Gantt view's arrows,
+  // critical path and Finish to Start auto reschedule.
   const board_dependency_column = item_columns.find((c) => c.type === "dependency") ?? null;
 
   // Every column beyond the six special slots above — rendered as generic
@@ -4085,14 +4021,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [calendar_active_source_ids, calendar_date_sources]
   );
 
-  /** Color of a Gantt bar, the row's first Status column option, falling back to a neutral swatch blue. */
-  const getDateRowColor = (row: BoardItemDto): string => {
-    if (!board_status_column) return COLUMN_KIND_SWATCH.date.accent_color;
-    const value = row.values[String(board_status_column.id)];
-    const option = (board_status_column.config?.options ?? []).find((o) => o.id === value);
-    return option?.color ?? "#c4c4c4";
-  };
-
   // Memoized so the calendar's event list and event component keep their identity between unrelated renders.
   const getCalendarRowColor = useCallback(
     (row: BoardItemDto): string => {
@@ -4189,81 +4117,138 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleAddColumn(date_type);
   };
 
-  // ── Gantt ── bars are driven by the board's first `timeline` column (one
-  // `{start, end}` value, not two separate Date columns — see
-  // `board_timeline_column`'s own comment for why) and arrows/auto-reschedule
-  // by its first `dependency` column. A row's position *is* its timeline
-  // value, so dragging a bar is one atomic cell edit; a cascade reschedule
-  // (see `GanttChart`'s `computeCascade`) is just more of the same edit
-  // applied to whichever successor rows it pushed forward. ──
-  /**
-   * `Mar 4`, short label for the Gantt left panel. Goes through
-   * `parseIsoDate` (local-component construction from the raw digits)
-   * rather than `new Date(value)` directly — a bare `YYYY-MM-DD` string
-   * parses as UTC midnight per the ISO 8601 spec, which `toLocaleDateString`
-   * then renders as the *previous* day in any timezone behind UTC.
-   */
-  const formatGanttDate = (value: string): string => {
-    const date = parseIsoDate(value);
-    return !date ? value : date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  };
+  // ── Gantt ── like monday.com's Gantt view, bars come from a Timeline column
+  // (or a Date column, one day bars) picked in the view's settings, colored by
+  // group by default, with arrows from the board's first Dependency column. A
+  // bar's position is its cell value, so dragging it is one cell edit and a
+  // cascade reschedule (see `GanttChart`'s `computeCascade`) is more of the
+  // same edit applied to the successors it pushed forward. ──
+  const gantt_config: BoardGanttConfig = view_tabs.active_view?.gantt_config ?? {};
+  const gantt_source =
+    calendar_date_sources.find((source) => source.id === gantt_config.date_column_id) ??
+    calendar_date_sources.find((source) => source.kind === "timeline") ??
+    calendar_date_sources[0] ??
+    null;
+  const gantt_color_by: BoardGanttColorBy =
+    gantt_config.color_by === "none" || gantt_config.color_by === "group"
+      ? gantt_config.color_by
+      : calendar_color_sources.some((source) => source.id === gantt_config.color_by)
+        ? (gantt_config.color_by as string)
+        : "group";
+  const can_edit_gantt_settings = can_edit_calendar_settings;
 
-  const getGanttRowRange = (row: BoardItemDto): BoardCalendarRange | null => {
-    if (!board_timeline_column) return null;
-    const raw = row.values[String(board_timeline_column.id)];
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
-    // `board_timeline_column` guarantees this is really a `BoardTimelineValue`
-    // — the plain `typeof === "object"` check above can't itself distinguish
-    // it from a Link/Time-tracking column's own object-shaped value.
-    const range = raw as BoardTimelineValue;
-    if (!range.start) return null;
-    return { start: range.start, end: range.end ?? null };
-  };
+  // The funnel hides whole groups, the board toolbar's own filters already ran on `toolbar.groups`.
+  const gantt_groups = useMemo(() => {
+    const hidden_group_ids = new Set(gantt_config.hidden_group_ids ?? []);
+    if (hidden_group_ids.size === 0) return toolbar.groups;
+    return toolbar.groups
+      .map((group) => ({ ...group, rows: group.rows.filter((row) => !hidden_group_ids.has(row.group_id)) }))
+      .filter((group) => group.rows.length > 0 || !hidden_group_ids.has(Number(group.id)));
+  }, [toolbar.groups, gantt_config.hidden_group_ids]);
 
-  const getGanttDependencyIds = (row: BoardItemDto): string[] => {
-    if (!board_dependency_column) return [];
-    return asStringArray(row.values[String(board_dependency_column.id)]);
-  };
-
-  const renderGanttRowLabel = (row: BoardItemDto): React.ReactNode => (
-    <GanttRowLabel
-      row={row}
-      range={getGanttRowRange(row)}
-      dependency_ids={getGanttDependencyIds(row)}
-      dependency_candidates={board_dependency_column ? getDependencyCandidates(row, board_dependency_column.id) : []}
-      onCommitDependencies={(value) =>
-        board_dependency_column && handleUpdateCellValue(row.id, String(board_dependency_column.id), value)
-      }
-      formatDate={formatGanttDate}
-    />
+  const getGanttRowRange = useCallback(
+    (row: BoardItemDto): GanttRange | null => {
+      if (!gantt_source) return null;
+      const raw = row.values[gantt_source.id];
+      if (!raw) return null;
+      if (gantt_source.kind === "date") return typeof raw === "string" ? { start: raw.slice(0, 10), end: null } : null;
+      if (typeof raw !== "object" || Array.isArray(raw)) return null;
+      // A Timeline source guarantees the object is a `BoardTimelineValue`.
+      const range = raw as BoardTimelineValue;
+      return range.start ? { start: range.start, end: range.end ?? null } : null;
+    },
+    [gantt_source]
   );
 
-  const handleMoveGanttRange = (row_id: string, new_start: string, new_end: string) => {
-    if (!board_timeline_column) return;
-    void handleUpdateCellValue(Number(row_id), String(board_timeline_column.id), { start: new_start, end: new_end });
+  const getGanttRowColor = useCallback(
+    (row: BoardItemDto): string => {
+      if (gantt_color_by === "none") return DEFAULT_GANTT_BAR_COLOR;
+      if (gantt_color_by === "group") return groups.find((group) => group.id === row.group_id)?.accent_color ?? DEFAULT_GANTT_BAR_COLOR;
+      const status_column = item_columns.find((c) => String(c.id) === gantt_color_by);
+      const option = (status_column?.config?.options ?? []).find((o) => o.id === row.values[gantt_color_by]);
+      return option?.color ?? "#c4c4c4";
+    },
+    [gantt_color_by, groups, item_columns]
+  );
+
+  /** The legend under the chart: the groups shown (alphabetically, like monday.com), or the status labels in use. */
+  const gantt_legend_items: GanttLegendItem[] = useMemo(() => {
+    if (gantt_color_by === "none") return [];
+    if (gantt_color_by === "group") {
+      const shown_group_ids = new Set(gantt_groups.flatMap((group) => group.rows.map((row) => row.group_id)));
+      return groups
+        .filter((group) => shown_group_ids.has(group.id))
+        .map((group) => ({ key: String(group.id), label: group.name, color: group.accent_color }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    }
+    const status_column = item_columns.find((c) => String(c.id) === gantt_color_by);
+    const used_option_ids = new Set(gantt_groups.flatMap((group) => group.rows.map((row) => row.values[gantt_color_by])));
+    return (status_column?.config?.options ?? [])
+      .filter((option) => used_option_ids.has(option.id))
+      .map((option) => ({ key: option.id, label: option.label || "Blank", color: option.color }));
+  }, [gantt_color_by, gantt_groups, groups, item_columns]);
+
+  const gantt_group_options = useMemo(
+    () => groups.map((group) => ({ id: group.id, label: group.name, color: group.accent_color })),
+    [groups]
+  );
+
+  const getGanttDependencyIds = useCallback(
+    (row: BoardItemDto): string[] => (board_dependency_column ? asStringArray(row.values[String(board_dependency_column.id)]) : []),
+    [board_dependency_column]
+  );
+
+  /** Writes a bar's new dates to the source column, a Date column keeps the time it already had. */
+  const writeGanttRange = (row_id: string, new_start: string, new_end: string) => {
+    if (!gantt_source) return;
+    if (gantt_source.kind === "timeline") {
+      void handleUpdateCellValue(Number(row_id), gantt_source.id, { start: new_start, end: new_end });
+      return;
+    }
+    const row = findItemInTree(items, Number(row_id));
+    const previous = row?.values[gantt_source.id];
+    const time_suffix = typeof previous === "string" && previous.length > 10 ? previous.slice(10) : "";
+    void handleUpdateCellValue(Number(row_id), gantt_source.id, `${new_start}${time_suffix}`);
   };
 
-  // A Dependency column scheduling this same Timeline moves the successors on
+  // A Dependency column scheduling this same column moves the successors on
   // the server (and returns them), so the chart must not push them a second time.
   const is_gantt_scheduled_by_server =
     !!board_dependency_column &&
-    !!board_timeline_column &&
-    board_dependency_column.config?.date_column_id === board_timeline_column.id &&
+    !!gantt_source &&
+    String(board_dependency_column.config?.date_column_id ?? "") === gantt_source.id &&
     (board_dependency_column.config?.dependency_mode ?? "none") !== "none";
 
-  /** Batch-writes the successor rows a drag/resize pushed forward to keep every Finish-to-Start dependency satisfied — see `GanttChart`'s `onCascadeReschedule`. */
+  /** Batch writes the successor rows a drag pushed forward to keep every Finish to Start dependency satisfied. */
   const handleGanttCascadeReschedule = (updates: { row_id: string; start: string; end: string }[]) => {
-    if (!board_timeline_column) return;
-    for (const update of updates) {
-      void handleUpdateCellValue(Number(update.row_id), String(board_timeline_column.id), {
-        start: update.start,
-        end: update.end,
-      });
-    }
+    for (const update of updates) writeGanttRange(update.row_id, update.start, update.end);
+  };
+
+  const handleChangeGanttDependencies = (row_id: string, predecessor_ids: string[] | null) => {
+    if (!board_dependency_column) return;
+    void handleUpdateCellValue(Number(row_id), String(board_dependency_column.id), predecessor_ids);
+  };
+
+  /** The row menu's "Delete item", optimistic like the table's own row menu. */
+  const handleDeleteGanttRow = (row_id: string) => {
+    const previous_items = items;
+    setItems((current) => removeItemFromTree(current, Number(row_id)));
+    void boardContentService.deleteItem(board_id, Number(row_id)).catch((error) => {
+      setItems(previous_items);
+      toast.error(getApiErrorMessage(error, "Couldn't delete the item. Please try again."));
+    });
+  };
+
+  const handleChangeGanttConfig = (next: BoardGanttConfig) => {
+    const view_id = view_tabs.active_view_id;
+    if (view_id == null) return;
+    view_tabs.updateGanttConfig(view_id, next).catch((error) => {
+      toast.error(getApiErrorMessage(error, "Couldn't save the Gantt settings. Please try again."));
+    });
   };
 
   /**
-   * A brand-new Gantt tab has no Timeline column yet — offer to add one
+   * A brand-new Gantt tab has no Timeline column yet, so offer to add one
    * instead of showing an empty chart, mirroring `handleStartKanbanBoard`.
    */
   const handleStartGanttBoard = () => {
@@ -4272,7 +4257,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleAddColumn(timeline_type);
   };
 
-  /** A Gantt tab with no Dependency column yet can't draw arrows — offers one instead of leaving that permanently unreachable from the Gantt tab itself. */
+  /** Offered by the Gantt settings when the board has no Dependency column to draw arrows from. */
   const handleAddGanttDependencyColumn = () => {
     const dependency_type = ADDABLE_COLUMN_TYPES.find((type) => type.kind === "dependency");
     if (!dependency_type) return;
@@ -4579,35 +4564,36 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           </div>
         )
       ) : active_view_type === "gantt" ? (
-        board_timeline_column ? (
-          <>
-            {!board_dependency_column && (
-              <div className="mb-3 flex items-center gap-2 rounded-[8px] border border-shell-border bg-shell-panel-alt px-3 py-2 text-[12.5px] text-shell-text-muted">
-                No arrows yet — add a Dependency column to link items and auto-reschedule what follows them.
-                <button
-                  type="button"
-                  onClick={handleAddGanttDependencyColumn}
-                  className="font-semibold text-brand-500 hover:underline"
-                >
-                  Add Dependency column
-                </button>
-              </div>
-            )}
-            <GanttChart<BoardItemDto>
-              groups={toolbar.groups}
-              getRowId={(row) => String(row.id)}
-              getRowRange={getGanttRowRange}
-              getRowColor={getDateRowColor}
-              renderRowLabel={renderGanttRowLabel}
-              getBarLabel={(row) => row.name}
-              onRowClick={handleRowClick}
-              selectedRowId={drawer.open_row_id}
-              onDateChange={handleMoveGanttRange}
-              resizable
-              getDependencyIds={board_dependency_column ? getGanttDependencyIds : undefined}
-              onCascadeReschedule={board_dependency_column && !is_gantt_scheduled_by_server ? handleGanttCascadeReschedule : undefined}
-            />
-          </>
+        gantt_source ? (
+          <GanttChart<BoardItemDto>
+            title={view_tabs.active_view?.label ?? "Gantt"}
+            groups={gantt_groups}
+            getRowId={getCalendarRowId}
+            getRowName={getCalendarRowTitle}
+            getRowRange={getGanttRowRange}
+            getRowColor={getGanttRowColor}
+            legend_items={gantt_legend_items}
+            onRowClick={handleRowClick}
+            selectedRowId={drawer.open_row_id}
+            onDateChange={node.can_edit ? writeGanttRange : undefined}
+            onRemoveDates={node.can_edit ? (row_id) => void handleUpdateCellValue(Number(row_id), gantt_source.id, null) : undefined}
+            onDeleteRow={node.can_edit ? handleDeleteGanttRow : undefined}
+            resizable={gantt_source.kind === "timeline"}
+            getDependencyIds={board_dependency_column ? getGanttDependencyIds : undefined}
+            getDependencyCandidates={board_dependency_column ? (row) => getDependencyCandidates(row, board_dependency_column.id) : undefined}
+            onChangeDependencies={board_dependency_column && node.can_edit ? handleChangeGanttDependencies : undefined}
+            onCascadeReschedule={board_dependency_column && node.can_edit && !is_gantt_scheduled_by_server ? handleGanttCascadeReschedule : undefined}
+            config={gantt_config}
+            onConfigChange={can_edit_gantt_settings ? handleChangeGanttConfig : undefined}
+            date_sources={calendar_date_sources}
+            active_source_id={gantt_source.id}
+            color_sources={calendar_color_sources}
+            active_color_by={gantt_color_by}
+            group_options={gantt_group_options}
+            onAddDependencyColumn={node.can_edit_structure ?? node.can_edit ? handleAddGanttDependencyColumn : undefined}
+            current_user_name={current_user.name}
+            storage_key={`${board_id}:${view_tabs.active_view_id ?? "primary"}`}
+          />
         ) : (
           <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
@@ -4615,7 +4601,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </span>
             <h2 className="text-lg font-semibold text-shell-text">Set up your Gantt view</h2>
             <p className="text-[13.5px] text-shell-text-muted">
-              Gantt bars come from a Timeline column — add one to place items on the timeline.
+              Gantt bars come from a Timeline or Date column. Add a Timeline column to start placing items on the timeline.
             </p>
             <button
               type="button"
