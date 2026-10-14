@@ -21,6 +21,8 @@ import type { BoardFilterState, BoardViewDto, BoardViewPersonalStateDto, SaveBoa
 
 /** How long the toolbar has to stay unchanged before the viewer's changes are remembered on the server. */
 const PERSONAL_STATE_SAVE_DELAY_MS = 1000;
+/** How long the toolbar has to settle before its changes are written to the active view. */
+const VIEW_AUTO_SAVE_DELAY_MS = 800;
 
 /**
  * A saved `filter_state` blob's `quick_filter_selections` may come back as `[]`
@@ -194,6 +196,15 @@ export type UseBoardViewTabsConfig = {
   /** The viewer's remembered, unsaved toolbar changes per view id (see {@link BoardViewPersonalStateDto}). */
   initial_personal_states?: Record<string, BoardViewPersonalStateDto>;
   toolbar: BoardViewSyncToolbar;
+  /**
+   * Whether the viewer may write to the board's views. When true, filter, sort,
+   * hidden column and group by changes are saved to the active view on their own
+   * (no "Save changes" button), except on a locked view, which keeps the
+   * per viewer "Remember my filters" state instead.
+   */
+  can_auto_save_view?: boolean;
+  /** Called when an automatic view save fails, e.g. to show a toast. */
+  onAutoSaveError?: (error: unknown) => void;
   /** Called right after a tab becomes active — e.g. to push `/boards/{id}/views/{id}`. Most boards don't have view-scoped URLs, so this is optional. */
   onViewActivated?: (view: BoardViewDto) => void;
 };
@@ -208,6 +219,8 @@ export type UseBoardViewTabsApi = {
   has_personal_order: boolean;
   /** Whether the toolbar's live state has diverged from the active view's saved state. */
   is_dirty: boolean;
+  /** Whether toolbar changes are written to the active view automatically (see `can_auto_save_view`). */
+  is_auto_saving_view: boolean;
   /** Whether the active view's saved state has finished replaying onto the toolbar (the dirty check is only meaningful after that). */
   is_view_applied: boolean;
   /** The toolbar's live filter slice, as a view saves it. */
@@ -267,6 +280,8 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     initial_default_view_id,
     initial_personal_states,
     toolbar,
+    can_auto_save_view = false,
+    onAutoSaveError,
     onViewActivated,
   } = config;
 
@@ -366,10 +381,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   // the saved blob's ids even when the rule itself is unchanged, so it's stripped
   // before comparing (otherwise every view with a saved rule would always read
   // as dirty, even right after loading it).
-  const is_dirty =
-    is_view_applied &&
-    active_view !== null &&
-    stableStringify({
+  const live_view_json = stableStringify({
       filter_state: comparableFilterState(normalizeFilterState(current_filter_state)),
       sort_state: withoutIds(toolbar.sort_rules),
       hidden_column_ids: toolbar.hidden_column_ids,
@@ -377,7 +389,11 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       row_height: toolbar.row_height,
       conditional_color_rules: withoutIds(toolbar.conditional_color_rules),
       group_by_option_id: toolbar.group_by_option_id,
-    }) !==
+    });
+  const is_dirty =
+    is_view_applied &&
+    active_view !== null &&
+    live_view_json !==
       stableStringify({
         filter_state: comparableFilterState(normalizeFilterState(active_view.filter_state)),
         sort_state: withoutIds(active_view.sort_state ?? []),
@@ -419,10 +435,14 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   const personal_snapshot_ref = useRef(personal_snapshot);
   personal_snapshot_ref.current = personal_snapshot;
 
+  const is_auto_saving_view = can_auto_save_view && active_view !== null && !active_view.is_locked;
+
   useEffect(() => {
     if (!is_view_applied || active_view_id === null || active_view_json === null) return;
     const view_key = String(active_view_id);
     const matches_view = personal_json === active_view_json;
+    // While changes go straight to the view, only forget leftover remembered changes, never store new ones.
+    if (is_auto_saving_view && !matches_view) return;
     if (matches_view ? stored_personal_json === null : personal_json === stored_personal_json) return;
 
     const timeout = window.setTimeout(() => {
@@ -436,7 +456,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       boardContentService.savePersonalViewState(board_id, active_view_id, snapshot).catch(() => {});
     }, PERSONAL_STATE_SAVE_DELAY_MS);
     return () => window.clearTimeout(timeout);
-  }, [is_view_applied, active_view_id, active_view_json, personal_json, stored_personal_json, board_id]);
+  }, [is_view_applied, active_view_id, active_view_json, personal_json, stored_personal_json, board_id, is_auto_saving_view]);
 
   const resetToView = () => {
     if (!active_view) return;
@@ -461,6 +481,31 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     const saved = await boardContentService.saveView(board_id, active_view.id, buildSavedState());
     setViews((current) => current.map((v) => (v.id === saved.id ? saved : v)));
   };
+
+  // ── Automatic view save: replaces the old "Save changes to" button. Saved once the
+  // toolbar settles, so a burst of clicks becomes one request; a change made while
+  // a save is in flight leaves the view dirty and schedules the next one.
+  const save_active_view_ref = useRef(saveActiveView);
+  save_active_view_ref.current = saveActiveView;
+  const on_auto_save_error_ref = useRef(onAutoSaveError);
+  on_auto_save_error_ref.current = onAutoSaveError;
+
+  useEffect(() => {
+    if (!is_auto_saving_view || !is_dirty || active_view_id === null) return;
+    const view_key = String(active_view_id);
+    const timeout = window.setTimeout(() => {
+      save_active_view_ref
+        .current()
+        .then(() => {
+          // The view now holds these changes, so remembered ones from before are stale.
+          if (!personal_states_ref.current[view_key]) return;
+          setPersonalStates(({ [view_key]: _removed, ...rest }) => rest);
+          boardContentService.deletePersonalViewState(board_id, active_view_id).catch(() => {});
+        })
+        .catch((error) => on_auto_save_error_ref.current?.(error));
+    }, VIEW_AUTO_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timeout);
+  }, [is_auto_saving_view, is_dirty, live_view_json, active_view_id, board_id]);
 
   const saveAsNewView = async (): Promise<BoardViewDto | null> => {
     if (!active_view) return null;
@@ -491,7 +536,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     is_default: default_view_id === null ? v.is_primary : default_view_id === v.id,
     // Only the active tab can be compared against the live toolbar; any other
     // tab is unsaved when the viewer left remembered changes on it.
-    has_unsaved_changes: v.id === active_view_id ? is_dirty : Boolean(personal_states[String(v.id)]),
+    has_unsaved_changes: v.id === active_view_id ? is_dirty && !is_auto_saving_view : Boolean(personal_states[String(v.id)]),
   }));
 
   const selectView = (id: number | string) => {
@@ -650,6 +695,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     tabs,
     has_personal_order: personal_order !== null && personal_order.length > 0,
     is_dirty,
+    is_auto_saving_view,
     is_view_applied,
     current_filter_state,
     has_personal_state: stored_personal !== null,

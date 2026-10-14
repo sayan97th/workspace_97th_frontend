@@ -1294,6 +1294,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     initial_default_view_id,
     initial_personal_states,
     toolbar,
+    can_auto_save_view: node.can_edit,
+    onAutoSaveError: (error) => toast.error(getApiErrorMessage(error, "Couldn't save your filters to this view. Please try again.")),
     onViewActivated: (view) => router.push(buildViewUrl(view)),
   });
 
@@ -1979,8 +1981,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     has_personal_state: view_tabs.has_personal_state,
     resetToView: view_tabs.resetToView,
     can_save: node.can_edit && view_tabs.active_view !== null,
-    // A locked tab keeps its saved filters, so only "Save as new view" is offered there.
-    is_dirty: view_tabs.is_dirty && !view_tabs.active_view?.is_locked,
+    // Changes save to the view on their own, and a locked tab keeps its saved filters,
+    // so "Save to this view" never shows; "Save as new view" is still offered.
+    is_dirty: false,
     active_view_label: view_tabs.active_view?.label ?? null,
     saveToActiveView: async () => {
       try {
@@ -4466,18 +4469,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         ) : undefined
       }
     >
-      {view_tabs.is_dirty && active_view_type !== "doc" && (
-        <div className="mb-3 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={view_tabs.saveActiveView}
-            className="rounded-[7px] bg-brand-500 px-2.5 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-          >
-            Save changes to &ldquo;{view_tabs.active_view?.label}&rdquo;
-          </button>
-        </div>
-      )}
-
       {/* A Doc tab's own header (creator/created/updated) already anchors it — the
           parent-path breadcrumb above the item-grid views would just be noise here. */}
       {active_view_type !== "doc" && breadcrumb.length > 1 && (
