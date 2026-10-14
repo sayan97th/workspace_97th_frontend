@@ -11,6 +11,7 @@
  * translation.
  */
 import type {
+  BoardCalendarConfig,
   BoardChartConfig,
   BoardColumnKind,
   BoardConditionalColorRule,
@@ -306,6 +307,8 @@ export type BoardViewDto = {
   doc_content: string | null;
   /** Chart type/data source/grouping for a `chart`-type view (see `BoardChartView`) — null/unused for every other kind. */
   chart_config: BoardChartConfig | null;
+  /** Date columns, coloring, group filter and week start for a `calendar`-type view (see `BoardCalendar`), null/unused for every other kind. */
+  calendar_config?: BoardCalendarConfig | null;
   /** A single emoji carried by the tab; null renders the view type's icon. */
   emoji: string | null;
   /** Short explanation of what the tab is for, shown in its hover card and the "Manage views" panel. */
@@ -575,6 +578,8 @@ export type SaveBoardViewPayload = {
   doc_content?: string | null;
   /** Chart type/data source/grouping, saved whenever a `chart`-type view's config panel changes. */
   chart_config?: BoardChartConfig | null;
+  /** Saved whenever a `calendar`-type view's settings or filter change. */
+  calendar_config?: BoardCalendarConfig | null;
 };
 
 /** One table (group) of a board an item can be moved into, see {@link BoardItemMoveTargetDto}. */

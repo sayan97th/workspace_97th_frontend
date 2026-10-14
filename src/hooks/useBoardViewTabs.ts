@@ -4,6 +4,7 @@ import {
   BOARD_DEFAULT_GROUP_BY_ID,
   getBoardViewTypeOption,
   type BoardAdvancedFilterGroup,
+  type BoardCalendarConfig,
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
   type BoardFilterJoinOperator,
@@ -221,6 +222,8 @@ export type UseBoardViewTabsApi = {
   changeViewEmoji: (id: number, emoji: string | null) => Promise<void>;
   /** Saves a `doc`-type view's markdown — the Doc tab's autosave calls this directly (not `saveActiveView`, which is the filter/sort "save this view" action). */
   updateDocContent: (id: number, doc_content: string) => Promise<void>;
+  /** Saves a Calendar view's settings, applied right away and restored if the save fails. */
+  updateCalendarConfig: (id: number, calendar_config: BoardCalendarConfig) => Promise<void>;
   deleteView: (id: number) => Promise<void>;
   saveActiveView: () => Promise<void>;
   /** "Save as new view": copies the active tab (columns, groups, items) into a new tab holding the toolbar's live state, then opens it. */
@@ -519,6 +522,18 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
   const changeViewEmoji = (id: number, emoji: string | null) => patchView(id, { emoji });
   const updateDocContent = (id: number, doc_content: string) => patchView(id, { doc_content });
 
+  /** Applies a Calendar view's new settings right away, then saves them, restoring the previous settings if the save fails. */
+  const updateCalendarConfig = async (id: number, calendar_config: BoardCalendarConfig) => {
+    const previous_config = views.find((v) => v.id === id)?.calendar_config ?? null;
+    setViews((current) => current.map((v) => (v.id === id ? { ...v, calendar_config } : v)));
+    try {
+      await patchView(id, { calendar_config });
+    } catch (error) {
+      setViews((current) => current.map((v) => (v.id === id ? { ...v, calendar_config: previous_config } : v)));
+      throw error;
+    }
+  };
+
   const deleteView = async (id: number) => {
     await boardContentService.deleteView(board_id, id);
     // Side effects (setActiveViewId, onViewActivated's router navigation) are
@@ -629,6 +644,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     renameView,
     changeViewEmoji,
     updateDocContent,
+    updateCalendarConfig,
     deleteView,
     saveActiveView,
     saveAsNewView,

@@ -1,195 +1,799 @@
 /*
- * Repoints react-big-calendar's own (hardcoded-hex) stylesheet at the
- * workspace shell's design tokens (--color-shell-*, --color-brand-*, defined
- * in src/app/globals.css) so the calendar reads as a native shell surface
- * instead of a themed-in third-party widget. react-big-calendar has no
- * CSS-variable theming layer of its own, so every rule below targets its
- * `.rbc-*` class names directly. Both light and dark values come from the
- * shell tokens, which already flip under `.dark` on <html>, so no separate
- * dark branch is needed here.
+ * monday.com style Calendar view.
+ *
+ * Scoped `--cal-*` tokens live on `.board-calendar`, on
+ * `.board-calendar-popover` (the filter, settings, mode and "+ Add"
+ * popovers portal to <body>, outside the calendar) and on the "+N more"
+ * popup, which react-big-calendar also portals to <body> and which is
+ * recognized by the calendar events inside it. Light values follow
+ * monday.com's palette, the dark set reads the shell tokens from globals.css.
+ * react-big-calendar has no theming layer of its own, so its `.rbc-*`
+ * classes are restyled directly under `.board-calendar`.
  */
-.board-calendar .rbc-calendar {
-  font-family: inherit;
-  color: var(--color-shell-text);
+.board-calendar,
+.board-calendar-popover,
+.rbc-overlay:has(.board-calendar-event) {
+  --cal-surface: #ffffff;
+  --cal-text: #323338;
+  --cal-text-secondary: #676879;
+  --cal-text-faint: #9699a6;
+  --cal-border: #c3c6d4;
+  --cal-grid: #d0d4e4;
+  --cal-hover: #dcdfec;
+  --cal-cell-hover: #ececef;
+  --cal-off-range: #ffffff;
+  --cal-accent: #0073ea;
+  --cal-accent-hover: #0060b9;
+  --cal-accent-text: #ffffff;
+  --cal-selected: #cce5ff;
+  --cal-chevron-active: #e6e9ef;
+  --cal-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  --cal-now: #e2445c;
 }
 
-.board-calendar .rbc-month-view,
-.board-calendar .rbc-time-view,
-.board-calendar .rbc-agenda-view {
-  border: 1px solid var(--color-shell-border);
-  border-radius: 12px;
+html.dark .board-calendar,
+html.dark .board-calendar-popover,
+html.dark .rbc-overlay:has(.board-calendar-event) {
+  --cal-surface: var(--color-shell-panel);
+  --cal-text: var(--color-shell-text);
+  --cal-text-secondary: var(--color-shell-text-secondary);
+  --cal-text-faint: var(--color-shell-text-faint);
+  --cal-border: var(--color-shell-border-strong, var(--color-shell-border));
+  --cal-grid: var(--color-shell-border);
+  --cal-hover: var(--color-shell-hover);
+  --cal-cell-hover: var(--color-shell-hover);
+  --cal-off-range: var(--color-shell-panel);
+  --cal-accent: #0073ea;
+  --cal-accent-hover: #1f87f5;
+  --cal-selected: color-mix(in srgb, #0073ea 35%, transparent);
+  --cal-chevron-active: var(--color-shell-hover);
+  --cal-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Card and header ── */
+
+.board-calendar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   overflow: hidden;
-  background: var(--color-shell-panel);
+  border: 1px solid var(--cal-border);
+  border-radius: 8px;
+  background: var(--cal-surface);
+  color: var(--cal-text);
 }
 
-.board-calendar .rbc-month-row,
-.board-calendar .rbc-month-header,
-.board-calendar .rbc-day-bg,
-.board-calendar .rbc-header,
-.board-calendar .rbc-time-header,
-.board-calendar .rbc-time-content,
-.board-calendar .rbc-time-header-content,
-.board-calendar .rbc-timeslot-group,
-.board-calendar .rbc-agenda-view table.rbc-agenda-table,
-.board-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr > td,
-.board-calendar .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
-  border-color: var(--color-shell-border) !important;
+.board-calendar__header {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 48px;
+  padding: 7px 16px 7px 6px;
+  border-bottom: 1px solid var(--cal-grid);
 }
 
-.board-calendar .rbc-off-range-bg {
-  background: var(--color-shell-panel-alt);
+.board-calendar__header-start,
+.board-calendar__header-end {
+  display: flex;
+  min-width: 0;
+  align-items: center;
 }
 
-.board-calendar .rbc-off-range {
-  color: var(--color-shell-text-faint);
+.board-calendar__header-start {
+  gap: 6px;
 }
 
-.board-calendar .rbc-today {
-  background: color-mix(in srgb, var(--color-brand-500) 8%, transparent);
+.board-calendar__header-end {
+  gap: 8px;
 }
 
-.board-calendar .rbc-header {
-  padding: 8px 4px;
-  font-size: 11.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--color-shell-text-muted);
+.board-calendar__grip {
+  display: inline-flex;
+  width: 16px;
+  justify-content: center;
+  color: var(--cal-text-secondary);
 }
 
-.board-calendar .rbc-header + .rbc-header {
-  border-left-color: var(--color-shell-border);
+.board-calendar__title {
+  overflow: hidden;
+  max-width: 320px;
+  margin: 0 4px 0 0;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 24px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--cal-text);
 }
 
-.board-calendar .rbc-date-cell {
-  padding: 5px 8px 0 0;
-  font-size: 12.5px;
-  color: var(--color-shell-text-secondary);
-}
-
-.board-calendar .rbc-date-cell.rbc-now .rbc-button-link {
+.board-calendar__button,
+.board-calendar__icon-button,
+.board-calendar__select {
   display: inline-flex;
   align-items: center;
+  height: 32px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--cal-text);
+  transition: background-color 0.1s ease, border-color 0.1s ease, color 0.1s ease;
+}
+
+.board-calendar__button {
   justify-content: center;
-  height: 20px;
-  min-width: 20px;
-  padding: 0 4px;
-  border-radius: 6px;
-  background: var(--color-brand-500);
-  color: var(--color-white);
-  font-weight: 700;
-}
-
-.board-calendar .rbc-button-link {
-  color: inherit;
-}
-
-/* Event chrome is fully reset — CalendarEvent (rendered via `components.event`)
-   owns its own pill styling, mirroring how BoardKanban's card shell owns no
-   padding of its own. */
-.board-calendar .rbc-event,
-.board-calendar .rbc-background-event {
+  padding: 0 8px;
+  border: 1px solid var(--cal-border);
   background: transparent;
-  border: none;
-  padding: 0;
-  margin: 1px 4px;
-  box-shadow: none;
 }
 
-.board-calendar .rbc-event:focus,
-.board-calendar .rbc-event.rbc-selected {
+.board-calendar__button:hover {
+  background: var(--cal-hover);
+}
+
+.board-calendar__button--ghost {
+  border-color: transparent;
+}
+
+.board-calendar__button--primary {
+  padding: 0 12px;
+  border-color: var(--cal-accent);
+  background: var(--cal-accent);
+  color: var(--cal-accent-text);
+}
+
+.board-calendar__button--primary:hover {
+  border-color: var(--cal-accent-hover);
+  background: var(--cal-accent-hover);
+}
+
+.board-calendar__button--primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.board-calendar__icon-button {
+  justify-content: center;
+  width: 32px;
+  color: var(--cal-text);
+}
+
+.board-calendar__icon-button:hover {
+  background: var(--cal-hover);
+}
+
+.board-calendar__filter-button {
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar__filter-button[data-active] {
+  background: var(--cal-selected);
+  color: var(--cal-accent);
+}
+
+.board-calendar__arrows {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.board-calendar__range {
+  min-width: 128px;
+  margin: 0 8px;
+  font-size: 16px;
+  line-height: 22px;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--cal-text);
+}
+
+.board-calendar__select {
+  justify-content: space-between;
+  gap: 8px;
+  width: 96px;
+  padding: 0 4px 0 15px;
+  border: 1px solid var(--cal-border);
   background: transparent;
+}
+
+.board-calendar__select:hover {
+  border-color: var(--cal-text);
+}
+
+.board-calendar__select[data-open] {
+  border-color: var(--cal-accent);
+}
+
+.board-calendar__select-chevron {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--cal-text);
+  transition: transform 0.15s ease, background-color 0.1s ease;
+}
+
+.board-calendar__select[data-open] .board-calendar__select-chevron {
+  background: var(--cal-chevron-active);
+  transform: rotate(180deg);
+}
+
+/* ── Popovers (mode menu, filter, settings, "+ Add") ── */
+
+.board-calendar-popover {
+  border-radius: 8px;
+  background: var(--cal-surface);
+  box-shadow: var(--cal-shadow);
+  color: var(--cal-text);
+  font-size: 14px;
+}
+
+.board-calendar__mode-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.board-calendar__mode-option {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--cal-text);
   outline: none;
 }
 
-.board-calendar .rbc-event-content {
-  overflow: visible;
+.board-calendar__mode-option:hover,
+.board-calendar__mode-option:focus-visible {
+  background: var(--cal-hover);
+}
+
+.board-calendar__mode-option[aria-selected="true"] {
+  background: var(--cal-selected);
+}
+
+.board-calendar-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.board-calendar-panel--settings {
+  gap: 4px;
+}
+
+.board-calendar-panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+}
+
+.board-calendar-panel__hint,
+.board-calendar-panel__empty {
+  margin: 0;
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar-panel__link {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cal-accent);
+}
+
+.board-calendar-panel__link:hover {
+  text-decoration: underline;
+}
+
+.board-calendar-panel__section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 10px;
+}
+
+.board-calendar-panel__section + .board-calendar-panel__section {
+  margin-top: 6px;
+  border-top: 1px solid var(--cal-grid);
+}
+
+.board-calendar-panel__section-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar-panel__list {
+  display: flex;
+  max-height: 220px;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.board-calendar-panel__row {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.board-calendar-panel__row:hover {
+  background: var(--cal-hover);
+}
+
+.board-calendar-panel__row[data-disabled] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.board-calendar-panel__row[data-disabled]:hover {
+  background: transparent;
+}
+
+.board-calendar-panel__check {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  accent-color: var(--cal-accent);
+  cursor: inherit;
+}
+
+.board-calendar-panel__swatch {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+}
+
+.board-calendar-panel__label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.board-calendar-panel__meta {
+  flex: none;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar-panel__segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+  border: 1px solid var(--cal-border);
+  border-radius: 4px;
+}
+
+.board-calendar-panel__segment {
+  height: 32px;
+  color: var(--cal-text);
+}
+
+.board-calendar-panel__segment + .board-calendar-panel__segment {
+  border-left: 1px solid var(--cal-border);
+}
+
+.board-calendar-panel__segment:hover:not(:disabled) {
+  background: var(--cal-hover);
+}
+
+.board-calendar-panel__segment[aria-checked="true"] {
+  background: var(--cal-selected);
+}
+
+.board-calendar-panel__segment:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.board-calendar-add {
+  gap: 12px;
+}
+
+.board-calendar-add__input {
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--cal-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--cal-text);
+  outline: none;
+}
+
+.board-calendar-add__input:hover {
+  border-color: var(--cal-text);
+}
+
+.board-calendar-add__input:focus {
+  border-color: var(--cal-accent);
+}
+
+.board-calendar-add__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* A fixed 1px point under the cursor, the anchor of the Week/Day "+ Add" composer. */
+.board-calendar__slot-anchor {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+/* ── react-big-calendar grid ── */
+
+.board-calendar__body {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+}
+
+.board-calendar .rbc-calendar {
+  height: 100%;
+  font-family: inherit;
+  color: var(--cal-text);
+}
+
+.board-calendar .rbc-month-view,
+.board-calendar .rbc-time-view {
+  border: none;
+  background: var(--cal-surface);
+}
+
+.board-calendar .rbc-month-row,
+.board-calendar .rbc-month-row + .rbc-month-row,
+.board-calendar .rbc-day-bg + .rbc-day-bg,
+.board-calendar .rbc-header,
+.board-calendar .rbc-header + .rbc-header,
+.board-calendar .rbc-time-header,
+.board-calendar .rbc-time-header-content,
+.board-calendar .rbc-time-content,
+.board-calendar .rbc-time-content > * + * > *,
+.board-calendar .rbc-timeslot-group,
+.board-calendar .rbc-day-slot .rbc-time-slot,
+.board-calendar .rbc-time-header.rbc-overflowing,
+.board-calendar .rbc-time-view .rbc-row,
+.board-calendar .rbc-allday-cell .rbc-day-bg + .rbc-day-bg {
+  border-color: var(--cal-grid);
+}
+
+.board-calendar .rbc-day-slot .rbc-time-slot {
+  border-top-color: color-mix(in srgb, var(--cal-grid) 45%, transparent);
+}
+
+.board-calendar .rbc-header {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--cal-grid);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--cal-text);
+}
+
+.board-calendar .rbc-month-header .rbc-header {
+  border-bottom: none;
+}
+
+.board-calendar .rbc-month-header {
+  border-bottom: 1px solid var(--cal-grid);
+}
+
+.board-calendar .rbc-off-range-bg {
+  background: var(--cal-off-range);
+}
+
+.board-calendar .rbc-off-range {
+  color: inherit;
+}
+
+.board-calendar .rbc-today {
+  background: transparent;
+}
+
+.board-calendar .rbc-date-cell {
+  padding: 6px 6px 2px 0;
+  text-align: right;
+}
+
+.board-calendar__day-number {
+  display: inline-flex;
+  min-width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar__day-number[data-today] {
+  background: var(--cal-accent);
+  color: var(--cal-accent-text);
+}
+
+.board-calendar__grid-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.board-calendar .rbc-time-view .rbc-header {
+  min-height: 40px;
+}
+
+/*
+ * Month cells: the rows of day numbers and events float over the cell
+ * backgrounds, so they let the pointer through (events excepted) and the
+ * background underneath can show its hover tint and "+ Add".
+ */
+.board-calendar .rbc-month-view .rbc-row-content {
+  pointer-events: none;
+}
+
+.board-calendar .rbc-month-view .rbc-event,
+.board-calendar .rbc-month-view .rbc-show-more {
+  pointer-events: auto;
+}
+
+.board-calendar__day-cell {
+  position: relative;
+  transition: background-color 0.1s ease;
+}
+
+.board-calendar__day-cell:hover,
+.board-calendar__day-cell--active {
+  background: var(--cal-cell-hover);
+}
+
+.board-calendar__add-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  color: var(--cal-text);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.1s ease, background-color 0.1s ease;
+}
+
+.board-calendar__day-cell--busy .board-calendar__add-button {
+  top: auto;
+  bottom: 4px;
+  transform: translateX(-50%);
+}
+
+.board-calendar__day-cell:hover .board-calendar__add-button,
+.board-calendar__day-cell--active .board-calendar__add-button,
+.board-calendar__add-button:focus-visible {
+  opacity: 1;
+}
+
+.board-calendar__add-button:hover {
+  background: var(--cal-hover);
+}
+
+/* Week/Day time grid. */
+.board-calendar .rbc-time-view {
+  overflow: hidden;
+}
+
+.board-calendar .rbc-time-header-gutter,
+.board-calendar .rbc-time-gutter {
+  border-color: var(--cal-grid);
+}
+
+.board-calendar .rbc-time-gutter .rbc-timeslot-group {
+  border-bottom: none;
+}
+
+.board-calendar .rbc-label {
+  padding: 0 8px;
+  font-size: 12px;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar .rbc-time-gutter .rbc-label {
+  position: relative;
+  top: -8px;
+}
+
+.board-calendar .rbc-allday-cell {
+  min-height: 28px;
+}
+
+.board-calendar .rbc-day-slot .rbc-events-container {
+  margin-right: 6px;
+}
+
+.board-calendar .rbc-current-time-indicator {
+  height: 2px;
+  background-color: var(--cal-now);
+}
+
+.board-calendar .rbc-slot-selection,
+.board-calendar .rbc-selected-cell {
+  background: color-mix(in srgb, var(--cal-accent) 14%, transparent);
+  color: var(--cal-text);
+}
+
+.board-calendar .rbc-time-content {
+  border-top-width: 1px;
+}
+
+/* ── Events ── */
+
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .rbc-event,
+.board-calendar .rbc-day-slot .rbc-background-event {
+  min-height: 22px;
+  margin: 1px 6px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 4px;
+  background: var(--event-color, var(--cal-accent));
+  box-shadow: none;
+  color: #ffffff;
+  font-size: 13px;
+  line-height: 22px;
+  outline: none;
+  transition: filter 0.1s ease;
 }
 
 .board-calendar .rbc-row-segment {
   padding: 0;
 }
 
-.board-calendar .rbc-show-more {
-  background: transparent;
-  color: var(--color-brand-500);
-  font-weight: 600;
-  font-size: 11.5px;
-  padding: 1px 4px;
+.board-calendar .rbc-row-segment .rbc-event {
+  width: auto;
 }
 
-.board-calendar .rbc-show-more:hover {
-  color: var(--color-brand-600);
+.board-calendar .rbc-day-slot .rbc-event {
+  margin: 0;
+  padding: 2px 6px;
+  border: 1px solid var(--cal-surface);
+  align-items: flex-start;
 }
 
-.board-calendar .rbc-overlay {
-  background: var(--color-shell-panel);
-  border: 1px solid var(--color-shell-border);
-  border-radius: 10px;
-  box-shadow: var(--shadow-theme-lg);
-  padding: 10px;
+.board-calendar .rbc-day-slot .rbc-event-label {
+  display: none;
 }
 
-.board-calendar .rbc-overlay-header {
-  color: var(--color-shell-text);
-  border-bottom-color: var(--color-shell-border);
-  font-weight: 600;
-  padding-bottom: 6px;
-  margin-bottom: 6px;
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .rbc-event:hover {
+  filter: brightness(0.92);
 }
 
-.board-calendar .rbc-agenda-date-cell,
-.board-calendar .rbc-agenda-time-cell {
-  color: var(--color-shell-text-secondary);
-  font-size: 12.5px;
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .rbc-event:focus-visible {
+  outline: 2px solid var(--cal-accent);
+  outline-offset: 1px;
+}
+
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .rbc-event.rbc-selected {
+  background: var(--event-color, var(--cal-accent));
+}
+
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .board-calendar__event--selected {
+  box-shadow: 0 0 0 2px var(--cal-surface), 0 0 0 4px var(--cal-accent);
+}
+
+:is(.board-calendar, .rbc-overlay:has(.board-calendar-event)) .rbc-event-content {
+  overflow: hidden;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-.board-calendar .rbc-agenda-view table.rbc-agenda-table thead > tr > th {
-  color: var(--color-shell-text-muted);
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  padding: 8px 10px;
-}
-
-.board-calendar .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
-  padding: 8px 10px;
-}
-
-.board-calendar .rbc-selected-cell {
-  background: color-mix(in srgb, var(--color-brand-500) 10%, transparent);
-}
-
-.board-calendar .rbc-current-time-indicator {
-  background-color: var(--color-brand-500);
-}
-
-/* The pill a calendar event renders as — accent-colored via the inline
-   `--event-color` custom property CalendarEventContent sets per row (its
-   status column color, mirroring Kanban's lane accent). */
 .board-calendar-event {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
-  border-radius: 6px;
-  border-left: 3px solid var(--event-color, var(--color-brand-500));
-  background: color-mix(in srgb, var(--event-color, var(--color-brand-500)) 14%, var(--color-shell-panel));
-  padding: 2px 6px;
-  cursor: pointer;
-  transition: filter 0.12s ease;
+  gap: 6px;
 }
 
-.board-calendar-event:hover {
-  filter: brightness(0.97);
+.board-calendar-event__time {
+  flex: none;
+  font-weight: 600;
 }
 
-.dark .board-calendar-event:hover {
-  filter: brightness(1.18);
+.board-calendar-event__content {
+  min-width: 0;
+  flex: 1;
 }
 
-.board-calendar-event--selected {
-  outline: 2px solid var(--color-brand-500);
-  outline-offset: 1px;
+.board-calendar .rbc-addons-dnd .rbc-addons-dnd-resize-ew-anchor .rbc-addons-dnd-resize-ew-icon {
+  border-color: rgba(255, 255, 255, 0.85);
+}
+
+.board-calendar .rbc-addons-dnd-drag-preview {
+  box-shadow: var(--cal-shadow);
+}
+
+.board-calendar .rbc-addons-dnd-dragged-event {
+  opacity: 0.45;
+}
+
+.board-calendar .rbc-show-more {
+  margin: 0 6px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  color: var(--cal-text-secondary);
+}
+
+.board-calendar .rbc-show-more:hover {
+  background: var(--cal-hover);
+  color: var(--cal-text);
+}
+
+/* "+N more" popup, portaled to <body> by react-big-calendar. */
+.rbc-overlay:has(.board-calendar-event) {
+  z-index: 1000;
+  min-width: 220px;
+  padding: 8px 0 6px;
+  border: none;
+  border-radius: 8px;
+  background: var(--cal-surface);
+  box-shadow: var(--cal-shadow);
+  color: var(--cal-text);
+}
+
+.rbc-overlay:has(.board-calendar-event) .rbc-overlay-header {
+  margin: 0 0 6px;
+  padding: 2px 14px 8px;
+  border-bottom: 1px solid var(--cal-grid);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--cal-text);
+}
+
+.rbc-overlay:has(.board-calendar-event) > * + * {
+  margin-top: 2px;
+}
+
+.rbc-overlay:has(.board-calendar-event) .rbc-event {
+  margin: 2px 10px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-calendar *,
+  .board-calendar-popover * {
+    transition: none !important;
+  }
 }

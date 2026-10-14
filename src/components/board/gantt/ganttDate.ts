@@ -30,7 +30,7 @@ export const GANTT_SCALES: GanttScaleOption[] = [
 export const getGanttScale = (id: GanttScale): GanttScaleOption =>
   GANTT_SCALES.find((scale) => scale.id === id) ?? GANTT_SCALES[1];
 
-/** Parses a `YYYY-MM-DD` (or full ISO timestamp) column value into a local-midnight `Date` — local, not UTC, components so a bar lands on the day a viewer actually expects regardless of timezone. Mirrors `BoardCalendar`'s own `parseIsoDate`. */
+/** Parses a `YYYY-MM-DD` (or full ISO timestamp) column value into a local-midnight `Date`, local (not UTC) components so a bar lands on the day a viewer actually expects regardless of timezone. */
 export const parseIsoDate = (value: string): Date | null => {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
   if (!match) return null;
@@ -39,7 +39,7 @@ export const parseIsoDate = (value: string): Date | null => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-/** Inverse of {@link parseIsoDate} — formats a `Date` back to `YYYY-MM-DD` in local time. */
+/** Inverse of {@link parseIsoDate}, formats a `Date` back to `YYYY-MM-DD` in local time. Also used by the Calendar view. */
 export const toIsoDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

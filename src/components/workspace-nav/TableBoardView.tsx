@@ -45,6 +45,10 @@ import {
   isRuleComplete,
   useBoardToolbar,
   type AddableColumnType,
+  DEFAULT_EVENT_COLOR,
+  type BoardCalendarColorBy,
+  type BoardCalendarConfig,
+  type BoardCalendarEntry,
   type BoardCalendarRange,
   type BoardCellItemOption,
   type BoardCellOption,
@@ -757,6 +761,10 @@ type TableBoardBodyProps = {
  * neither Table's grid nor the item drawer render inside a Gantt tab, so
  * this is the *only* place a Gantt tab can actually author dependencies.
  */
+/** Stable row accessors for the Calendar view, so its event list only rebuilds when the rows change. */
+const getCalendarRowId = (row: BoardItemDto): string => String(row.id);
+const getCalendarRowTitle = (row: BoardItemDto): string => row.name;
+
 const GanttRowLabel: React.FC<{
   row: BoardItemDto;
   range: BoardCalendarRange | null;
@@ -1003,7 +1011,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const board_done_column = item_columns.find((c) => c.type === "checkbox") ?? null;
   const date_columns = useMemo(() => item_columns.filter((c) => c.type === "date"), [item_columns]);
   const board_date_column = date_columns[0] ?? null;
-  const board_date_end_column = date_columns[1] ?? null;
   // The Gantt view's bars are driven by a `timeline` column instead — one
   // column storing a `{start, end}` range together, mirroring monday.com's
   // own Timeline column (a plain `date` column, by contrast, is a single
@@ -2800,9 +2807,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   };
 
   // `board_status_column`/`board_label_column`/`board_member_column`/
-  // `board_priority_column`/`board_done_column`/`board_date_column`/
-  // `board_date_end_column` are declared earlier in this component (right
-  // after `columns_by_id`) — see the comment there.
+  // `board_priority_column`/`board_done_column`/`board_date_column` are
+  // declared earlier in this component (right after `columns_by_id`), see the
+  // comment there.
   // A freshly-loaded board (no active view yet) opens on the Table ("Main
   // table") view, mirroring monday.com's own default.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
@@ -3998,19 +4005,60 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     board_done_column,
   ]);
 
-  // ── Calendar ── positioned by the board's first Date column (an optional
-  // second Date column becomes the range's end); a card's day *is* its value
-  // in that column, so dragging an event onto a new day is an ordinary cell
+  // ── Calendar ── like monday.com's Calendar view, every Date and Timeline
+  // column can place items (the view's settings pick which ones). An event's
+  // day *is* its value in that column, so dragging it is an ordinary cell
   // edit, same as Kanban's lane drag. ──
-  const getCalendarRowRange = (row: BoardItemDto): BoardCalendarRange | null => {
-    if (!board_date_column) return null;
-    const start = row.values[String(board_date_column.id)];
-    if (typeof start !== "string" || !start) return null;
-    const end = board_date_end_column ? row.values[String(board_date_end_column.id)] : null;
-    return { start, end: typeof end === "string" && end ? end : null };
-  };
+  const calendar_config: BoardCalendarConfig = view_tabs.active_view?.calendar_config ?? {};
+  const calendar_date_sources = useMemo(
+    () =>
+      item_columns
+        .filter((c) => c.type === "date" || c.type === "timeline")
+        .map((c) => ({ id: String(c.id), label: c.label, kind: c.type === "timeline" ? ("timeline" as const) : ("date" as const) })),
+    [item_columns]
+  );
+  // Saved ids of columns deleted since (or remapped by a duplicate) are dropped, falling back to every column.
+  const calendar_active_source_ids = useMemo(() => {
+    const saved_ids = calendar_config.date_column_ids ?? null;
+    const kept_ids = saved_ids ? calendar_date_sources.filter((source) => saved_ids.includes(source.id)).map((source) => source.id) : [];
+    return kept_ids.length > 0 ? kept_ids : calendar_date_sources.map((source) => source.id);
+  }, [calendar_config.date_column_ids, calendar_date_sources]);
+  const calendar_color_sources = useMemo(
+    () => item_columns.filter((c) => c.type === "status").map((c) => ({ id: String(c.id), label: c.label })),
+    [item_columns]
+  );
+  const calendar_color_by: BoardCalendarColorBy =
+    calendar_config.color_by === "group" || calendar_config.color_by === "none"
+      ? calendar_config.color_by
+      : calendar_color_sources.some((source) => source.id === calendar_config.color_by)
+        ? (calendar_config.color_by as string)
+        : (calendar_color_sources[0]?.id ?? "none");
+  const calendar_groups = useMemo(
+    () => groups.map((group) => ({ id: group.id, label: group.name, color: group.accent_color })),
+    [groups]
+  );
+  const calendar_rows = useMemo(() => {
+    const hidden_group_ids = new Set(calendar_config.hidden_group_ids ?? []);
+    return hidden_group_ids.size === 0 ? filtered_rows : filtered_rows.filter((row) => !hidden_group_ids.has(row.group_id));
+  }, [filtered_rows, calendar_config.hidden_group_ids]);
+  const can_edit_calendar_settings = node.can_edit && view_tabs.active_view !== null && !view_tabs.active_view.is_locked;
 
-  /** Color shared by Calendar events and Gantt bars — the row's first Status column option, falling back to a neutral swatch blue. */
+  const getCalendarRowEntries = useCallback(
+    (row: BoardItemDto): BoardCalendarEntry[] =>
+      calendar_active_source_ids.flatMap((source_id): BoardCalendarEntry[] => {
+        const source = calendar_date_sources.find((candidate) => candidate.id === source_id);
+        const raw = row.values[source_id];
+        if (!source || !raw) return [];
+        if (source.kind === "date") return typeof raw === "string" ? [{ source_id, kind: "date", value: raw }] : [];
+        if (typeof raw !== "object" || Array.isArray(raw)) return [];
+        // A Timeline source guarantees the object is a `BoardTimelineValue`.
+        const range = raw as BoardTimelineValue;
+        return range.start ? [{ source_id, kind: "timeline", start: range.start, end: range.end ?? null }] : [];
+      }),
+    [calendar_active_source_ids, calendar_date_sources]
+  );
+
+  /** Color of a Gantt bar, the row's first Status column option, falling back to a neutral swatch blue. */
   const getDateRowColor = (row: BoardItemDto): string => {
     if (!board_status_column) return COLUMN_KIND_SWATCH.date.accent_color;
     const value = row.values[String(board_status_column.id)];
@@ -4018,42 +4066,70 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     return option?.color ?? "#c4c4c4";
   };
 
-  const renderCalendarEvent = (row: BoardItemDto): React.ReactNode => {
-    const member_ids = board_member_column ? asStringArray(row.values[String(board_member_column.id)]) : [];
-    const members = board_member_column
-      ? roster_members.filter((member) => member_ids.includes(String(member.id)))
-      : [];
+  // Memoized so the calendar's event list and event component keep their identity between unrelated renders.
+  const getCalendarRowColor = useCallback(
+    (row: BoardItemDto): string => {
+      if (calendar_color_by === "none") return DEFAULT_EVENT_COLOR;
+      if (calendar_color_by === "group") return groups.find((group) => group.id === row.group_id)?.accent_color ?? DEFAULT_EVENT_COLOR;
+      const status_column = item_columns.find((c) => String(c.id) === calendar_color_by);
+      if (!status_column) return DEFAULT_EVENT_COLOR;
+      const option = (status_column.config?.options ?? []).find((o) => o.id === row.values[String(status_column.id)]);
+      return option?.color ?? "#c4c4c4";
+    },
+    [calendar_color_by, groups, item_columns]
+  );
 
-    return (
-      <div className="flex min-w-0 items-center gap-1.5">
-        <span className="min-w-0 flex-1 truncate text-[11.5px] font-semibold text-shell-text">{row.name}</span>
-        {members.length > 0 && <PersonAvatarStack people={members} size={16} max_visible={3} />}
-      </div>
-    );
+  const calendar_shows_people = calendar_config.show_people !== false;
+  const renderCalendarEvent = useCallback(
+    (row: BoardItemDto): React.ReactNode => {
+      const member_ids = board_member_column && calendar_shows_people ? asStringArray(row.values[String(board_member_column.id)]) : [];
+      const members = member_ids.length > 0 ? roster_members.filter((member) => member_ids.includes(String(member.id))) : [];
+
+      return (
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="min-w-0 flex-1 truncate">{row.name}</span>
+          {members.length > 0 && <PersonAvatarStack people={members} size={16} max_visible={3} />}
+        </div>
+      );
+    },
+    [board_member_column, calendar_shows_people, roster_members]
+  );
+
+  const handleChangeCalendarEntry = (row_id: string, source_id: string, value: string | BoardTimelineValue) => {
+    void handleUpdateCellValue(Number(row_id), source_id, value);
   };
 
-  const handleMoveCalendarEvent = (row_id: string, new_start: string, new_end: string) => {
-    if (!board_date_column) return;
-    void handleUpdateCellValue(Number(row_id), String(board_date_column.id), new_start);
-    if (board_date_end_column) {
-      void handleUpdateCellValue(Number(row_id), String(board_date_end_column.id), new_end);
+  /** "+ Add" on a calendar day: creates the item in the first group the calendar shows, dated by the first shown column. */
+  const handleAddCalendarItem = async (date: string, name: string) => {
+    const source = calendar_date_sources.find((candidate) => candidate.id === calendar_active_source_ids[0]);
+    if (!source) return;
+    const hidden_group_ids = new Set(calendar_config.hidden_group_ids ?? []);
+    const target_group = groups.find((group) => !hidden_group_ids.has(group.id)) ?? (await ensureBoardGroup());
+    if (!target_group) return;
+    const day = date.slice(0, 10);
+    try {
+      const created = await boardContentService.createItem(board_id, {
+        name,
+        group_id: target_group.id,
+        values: { [source.id]: source.kind === "timeline" ? { start: day, end: day } : date },
+      });
+      setItems((current) => [...current, created]);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't add the item. Please try again."));
+      throw error;
     }
   };
 
-  const handleAddCalendarEvent = async (date: string) => {
-    const target_group = await ensureBoardGroup();
-    if (!target_group || !board_date_column) return;
-    const created = await boardContentService.createItem(board_id, {
-      name: "New item",
-      group_id: target_group.id,
-      values: { [String(board_date_column.id)]: date },
+  const handleChangeCalendarConfig = (next: BoardCalendarConfig) => {
+    const view_id = view_tabs.active_view_id;
+    if (view_id == null) return;
+    view_tabs.updateCalendarConfig(view_id, next).catch((error) => {
+      toast.error(getApiErrorMessage(error, "Couldn't save the calendar settings. Please try again."));
     });
-    setItems((current) => [...current, created]);
-    handleRowClick(created);
   };
 
   /**
-   * A brand-new Calendar tab has no Date column yet — offer to add one
+   * A brand-new Calendar tab has no Date column yet, so offer to add one
    * instead of showing an empty grid, mirroring `handleStartKanbanBoard`.
    */
   const handleStartCalendarBoard = () => {
@@ -4390,18 +4466,27 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           </div>
         )
       ) : active_view_type === "calendar" ? (
-        board_date_column ? (
+        calendar_date_sources.length > 0 ? (
           <BoardCalendar<BoardItemDto>
-            rows={filtered_rows}
-            getRowId={(row) => String(row.id)}
-            getRowRange={getCalendarRowRange}
-            getRowColor={getDateRowColor}
+            title={view_tabs.active_view?.label ?? "Calendar"}
+            rows={calendar_rows}
+            getRowId={getCalendarRowId}
+            getRowTitle={getCalendarRowTitle}
+            getRowEntries={getCalendarRowEntries}
+            getRowColor={getCalendarRowColor}
             renderEvent={renderCalendarEvent}
             onSelectEvent={handleRowClick}
             selectedRowId={drawer.open_row_id}
-            onMoveEvent={handleMoveCalendarEvent}
-            resizable={Boolean(board_date_end_column)}
-            onAddEvent={handleAddCalendarEvent}
+            onChangeEntry={node.can_edit ? handleChangeCalendarEntry : undefined}
+            onAddItem={node.can_edit ? handleAddCalendarItem : undefined}
+            config={calendar_config}
+            onConfigChange={can_edit_calendar_settings ? handleChangeCalendarConfig : undefined}
+            date_sources={calendar_date_sources}
+            active_source_ids={calendar_active_source_ids}
+            color_sources={calendar_color_sources}
+            active_color_by={calendar_color_by}
+            groups={calendar_groups}
+            storage_key={`${board_id}:${view_tabs.active_view_id ?? "primary"}`}
           />
         ) : (
           <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
@@ -4410,7 +4495,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             </span>
             <h2 className="text-lg font-semibold text-shell-text">Set up your Calendar</h2>
             <p className="text-[13.5px] text-shell-text-muted">
-              Calendar events come from a Date column — add one to place items on the calendar.
+              Items land on the calendar through a Date or Timeline column. Add one to start placing items.
             </p>
             <button
               type="button"
