@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import type { BoardRowHeight } from "../types";
+import type { BoardHeaderHeight, BoardRowHeight } from "../types";
 import {
   buildPersonIdsReader,
   buildRowMatcher,
@@ -10,7 +10,7 @@ import {
 } from "./deriveBoardRows";
 import { buildQuickFilterFacets, buildRulesFromQuickFacet, getDefaultOperator, getTodayIso, isSubitemField } from "./filterEngine";
 import {
-  BOARD_CONDITIONAL_COLOR_PALETTE,
+  BOARD_CONDITIONAL_COLORING_DEFAULTS,
   BOARD_DEFAULT_GROUP_BY_ID,
   type BoardAdvancedFilterGroup,
   type BoardAdvancedFilterRow,
@@ -120,6 +120,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const [show_empty_groups, setShowEmptyGroups] = useState(false);
 
   const [row_height, setRowHeight] = useState<BoardRowHeight>("single");
+  const [header_height, setHeaderHeight] = useState<BoardHeaderHeight>("single");
 
   const [conditional_color_rules, setConditionalColorRules] = useState<BoardConditionalColorRule[]>([]);
 
@@ -357,7 +358,7 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
       ...current,
       {
         id: createId(),
-        color: BOARD_CONDITIONAL_COLOR_PALETTE[current.length % BOARD_CONDITIONAL_COLOR_PALETTE.length],
+        color: BOARD_CONDITIONAL_COLORING_DEFAULTS[current.length % BOARD_CONDITIONAL_COLORING_DEFAULTS.length],
         scope: "row",
         column_id: null,
         condition: null,
@@ -370,6 +371,16 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
     setConditionalColorRules((current) =>
       current.map((rule) => (rule.id === id ? { ...rule, ...patch } : rule))
     );
+  const moveConditionalColorRule = (active_id: string, over_id: string) =>
+    setConditionalColorRules((current) => {
+      const from_index = current.findIndex((rule) => rule.id === active_id);
+      const to_index = current.findIndex((rule) => rule.id === over_id);
+      if (from_index === -1 || to_index === -1 || from_index === to_index) return current;
+      const next = [...current];
+      const [moved] = next.splice(from_index, 1);
+      next.splice(to_index, 0, moved);
+      return next;
+    });
   const clearConditionalColorRules = () => setConditionalColorRules([]);
 
   const togglePinnedColumn = (id: string) =>
@@ -656,10 +667,13 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
 
     row_height,
     setRowHeight,
+    header_height,
+    setHeaderHeight,
 
     conditional_color_rules,
     addConditionalColorRule,
     removeConditionalColorRule,
+    moveConditionalColorRule,
     updateConditionalColorRule,
     clearConditionalColorRules,
 

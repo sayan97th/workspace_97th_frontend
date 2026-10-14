@@ -4,6 +4,10 @@ import type { ColumnDef } from "./types";
 export const ROW_HEIGHT_PX = { single: 36, double: 60, triple: 84, quad: 108 } as const;
 /** Row height (px) per "Item height" preset — subitem rows, which start a touch shorter than item rows at every tier (mirrors the single-height 36px/34px split). */
 export const SUB_ROW_HEIGHT_PX = { single: 34, double: 56, triple: 78, quad: 100 } as const;
+/** Column header row height (px) per "Header height" preset. Taller presets let a long title wrap onto 2 or 3 lines. */
+export const HEADER_HEIGHT_PX = { single: 36, double: 54, triple: 72 } as const;
+/** How many lines a column title may wrap onto per "Header height" preset. */
+export const HEADER_TITLE_LINES = { single: 1, double: 2, triple: 3 } as const;
 
 /** Pixel widths of the main grid's leading (non-column) cells, see `mainGridTemplate`'s own `36px`/`56px` literals. */
 export const MAIN_LEADING_WIDTHS = { checkbox: 36, comment: 56 } as const;

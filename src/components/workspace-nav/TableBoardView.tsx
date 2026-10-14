@@ -1957,6 +1957,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     board_name: view_tabs.active_view && !view_tabs.active_view.is_primary ? `${board_label} ${view_tabs.active_view.label}` : board_label,
     is_ready: is_all_items_loaded,
     onPrepare: loadAllRemainingGroups,
+    onExportError: (message) => toast.showToast({ variant: "error", title: "Export failed", description: message }),
   };
 
   // ── Title pill: how many items the active filters leave, even while the chips bar is collapsed ──
@@ -3306,6 +3307,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // toolbar (`OverflowControl`/`ConditionalColoringPanel`) — `BoardTable`
       // only reads them to render, it never mutates them back.
       row_height: toolbar.row_height,
+      header_height: toolbar.header_height,
       row_colors: toolbar.row_colors,
       cell_colors: toolbar.cell_colors,
       // Same read-only pattern: "Choose columns to pin" (`PinColumnsControl`)
@@ -3497,6 +3499,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       view_tabs.active_view_id,
       node.workspace.slug,
       toolbar.row_height,
+      toolbar.header_height,
       toolbar.row_colors,
       toolbar.cell_colors,
       active_search_match_grid,

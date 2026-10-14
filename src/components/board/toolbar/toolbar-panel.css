@@ -401,3 +401,173 @@ html.dark .toolbar-panel-tooltip {
     width: 100%;
   }
 }
+
+/* Pin columns panel ("..." menu): the compact card with the checkbox at the end of each row, like monday. */
+.toolbar-panel__section-title--inset {
+  padding: 0 24px 6px;
+}
+
+.toolbar-panel__check-end {
+  margin-left: auto;
+}
+
+.toolbar-panel--pin .toolbar-panel__list {
+  padding-bottom: 12px;
+}
+
+/* The item name is always pinned: filled light blue, its box checked and locked. */
+.toolbar-panel__check-row[data-locked="true"],
+.toolbar-panel__check-row[data-locked="true"]:hover {
+  background: var(--filter-panel-selected);
+  cursor: default;
+}
+
+.toolbar-panel .filter-panel__checkbox[data-checked="locked"] {
+  border-color: var(--filter-panel-text-disabled);
+  background: var(--filter-panel-text-disabled);
+}
+
+.toolbar-panel__footer--pin {
+  padding: 8px 16px;
+}
+
+/* Conditional coloring panel: color swatch, scope, "When", then column, condition and value fields. */
+.toolbar-panel--color .filter-rule__handle {
+  opacity: 1;
+}
+
+.toolbar-panel__color-swatch {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: box-shadow 120ms ease;
+}
+
+/* The paint drop only shows on hover or while the grid is open, like monday's swatch. */
+.toolbar-panel__color-swatch svg {
+  opacity: 0;
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
+  transition: opacity 120ms ease;
+}
+
+.toolbar-panel__color-swatch:hover svg,
+.toolbar-panel__color-swatch[data-open="true"] svg,
+.toolbar-panel__color-swatch:focus-visible svg {
+  opacity: 1;
+}
+
+.toolbar-panel__color-swatch[data-open="true"] {
+  box-shadow: 0 0 0 2px var(--filter-panel-surface), 0 0 0 3px var(--filter-panel-primary);
+}
+
+.toolbar-panel__color-swatch:focus-visible {
+  outline: 2px solid var(--filter-panel-primary);
+  outline-offset: 2px;
+}
+
+.toolbar-panel__color-when {
+  flex: none;
+  padding: 0 4px;
+  color: var(--filter-panel-text);
+}
+
+.toolbar-panel__color-column {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.toolbar-panel__color-condition {
+  flex: 0 0 150px;
+}
+
+.toolbar-panel__color-value {
+  flex: 1 1 190px;
+  min-width: 0;
+}
+
+.toolbar-panel__value-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+@media (max-width: 760px) {
+  .toolbar-panel--color .toolbar-panel__color-rule {
+    flex-wrap: wrap;
+  }
+
+  .toolbar-panel--color .filter-rule__fields {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    padding-left: 18px;
+  }
+
+  .toolbar-panel__color-column,
+  .toolbar-panel__color-condition,
+  .toolbar-panel__color-value {
+    flex: 1 1 100%;
+  }
+}
+
+/*
+ * Conditional coloring color grid (`ColorSwatchPicker appearance="panel"`): 5 columns of 24px swatches on a
+ * white card. It is portaled to `document.body`, outside `.filter-panel`, so it carries its own tokens.
+ */
+.toolbar-color-grid {
+  --toolbar-color-grid-surface: #ffffff;
+  --toolbar-color-grid-ring: #323338;
+  --toolbar-color-grid-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  position: fixed;
+  z-index: 1001;
+  display: grid;
+  grid-template-columns: repeat(5, 24px);
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--toolbar-color-grid-surface);
+  box-shadow: var(--toolbar-color-grid-shadow);
+}
+
+html.dark .toolbar-color-grid {
+  --toolbar-color-grid-surface: #0f1c1c;
+  --toolbar-color-grid-ring: #e9eded;
+  --toolbar-color-grid-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .toolbar-color-grid {
+    animation: filter-panel-enter 120ms ease-out;
+  }
+}
+
+.toolbar-color-grid__swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+.toolbar-color-grid__swatch:hover {
+  transform: scale(1.12);
+}
+
+.toolbar-color-grid__swatch[aria-selected="true"] {
+  box-shadow: 0 0 0 2px var(--toolbar-color-grid-surface), 0 0 0 4px var(--toolbar-color-grid-ring);
+}
+
+.toolbar-color-grid__swatch:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: 2px;
+}

@@ -2,7 +2,7 @@
 
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
-import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
+import { HEADER_HEIGHT_PX, HEADER_TITLE_LINES, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
 import { statusColumnsOf } from "../progressTracking";
@@ -47,6 +47,9 @@ export default function GroupColumnHeaderRow({
   const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   const HEADER_BG = "var(--color-boardtree-surface)";
+  // "Header height" from the toolbar's "..." menu: taller rows let long titles wrap.
+  const header_px = HEADER_HEIGHT_PX[state.header_height];
+  const title_lines = HEADER_TITLE_LINES[state.header_height];
   const progress_status_columns = statusColumnsOf(group.base_columns.concat(group.custom_columns)).map(({ id, title }) => ({ id, title }));
   const is_all_selected = group.items.length > 0 && group.items.every((item) => state.selected_map[item.id]);
   // When the caller supplies `onRequestColumnSort`, the toolbar's own
@@ -86,7 +89,7 @@ export default function GroupColumnHeaderRow({
       <div className="w-[5px] flex-none rounded-tl-[4px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-y border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: header_px, position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
           <button
             type="button"
             onClick={() => actions.toggleGroupSelection(group.key)}
@@ -107,7 +110,8 @@ export default function GroupColumnHeaderRow({
         <ColumnHeaderCell
           scoped_key={item_title_key}
           title={group.item_title}
-          height={36}
+          height={header_px}
+          title_lines={title_lines}
           can_delete={false}
           sticky={{ left: sticky_offsets[1], background: HEADER_BG }}
           sort_dir={sortDirFor("__name")}
@@ -138,7 +142,8 @@ export default function GroupColumnHeaderRow({
             key={col.id}
             scoped_key={scope_key_of(col.id)}
             title={col.title}
-            height={36}
+            height={header_px}
+          title_lines={title_lines}
             column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
@@ -194,7 +199,7 @@ export default function GroupColumnHeaderRow({
           />
         ))}
 
-        <div className="relative flex h-9 items-center justify-center">
+        <div className="relative flex items-center justify-center" style={{ height: header_px }}>
           {/* Marked as part of the gallery, so a click on it toggles the open gallery closed instead of closing and reopening it. */}
           <button
             type="button"
@@ -220,7 +225,7 @@ export default function GroupColumnHeaderRow({
             />
           )}
         </div>
-        <div className="h-9" />
+        <div style={{ height: header_px }} />
       </div>
     </div>
   );

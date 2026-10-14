@@ -12,11 +12,18 @@ export type ColorSwatchPickerProps = {
   trigger_class_name?: string;
   /** Glyph drawn on top of the trigger's color, e.g. a paint bucket. */
   icon?: React.ReactNode;
+  /** Colors offered in the grid. Defaults to {@link BOARD_CONDITIONAL_COLOR_PALETTE}. */
+  palette?: string[];
+  /**
+   * "panel" draws the grid with the monday toolbar panel look (5 columns of 24px swatches, see
+   * `toolbar-panel.css`), used by Conditional coloring. "default" keeps the original 6 column grid.
+   */
+  appearance?: "default" | "panel";
 };
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
-const GRID_WIDTH = 222;
+const GRID_WIDTH = { default: 222, panel: 184 } as const;
 
 /**
  * Small square swatch button that opens a 6-column color grid. The grid
@@ -29,7 +36,16 @@ const GRID_WIDTH = 222;
  * and dismiss itself (same convention as `MenuFlyout`). Used by Conditional
  * coloring's per-rule color picker and Edit Labels' per-label recolor swatch.
  */
-const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, size = 30, trigger_class_name, icon }) => {
+const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
+  color,
+  onSelect,
+  size = 30,
+  trigger_class_name,
+  icon,
+  palette = BOARD_CONDITIONAL_COLOR_PALETTE,
+  appearance = "default",
+}) => {
+  const grid_width = GRID_WIDTH[appearance];
   const [is_open, setIsOpen] = useState(false);
   const button_ref = useRef<HTMLButtonElement>(null);
   const grid_ref = useRef<HTMLDivElement>(null);
@@ -52,7 +68,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, 
       }
 
       let left = anchor_rect.left;
-      left = Math.min(left, window.innerWidth - GRID_WIDTH - VIEWPORT_MARGIN);
+      left = Math.min(left, window.innerWidth - grid_width - VIEWPORT_MARGIN);
       left = Math.max(left, VIEWPORT_MARGIN);
 
       setPosition({ top, left });
@@ -65,7 +81,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, 
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [is_open]);
+  }, [is_open, grid_width]);
 
   useLayoutEffect(() => {
     if (!is_open) return;
@@ -95,6 +111,8 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, 
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         aria-label="Choose color"
+        aria-expanded={is_open}
+        data-open={is_open || undefined}
         className={
           trigger_class_name ??
           `flex-none rounded-[7px] border transition-colors ${
@@ -112,31 +130,40 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({ color, onSelect, 
           <div
             ref={grid_ref}
             data-board-menu-flyout
-            className="fixed z-[1001] grid grid-cols-6 gap-2 rounded-xl border border-boardtree-border bg-boardtree-surface p-3 shadow-2xl shadow-black/50"
+            role="listbox"
+            aria-label="Colors"
+            className={
+              appearance === "panel"
+                ? "toolbar-color-grid"
+                : "fixed z-[1001] grid grid-cols-6 gap-2 rounded-xl border border-boardtree-border bg-boardtree-surface p-3 shadow-2xl shadow-black/50"
+            }
             style={{
-              width: GRID_WIDTH,
+              width: grid_width,
               top: position?.top ?? -9999,
               left: position?.left ?? -9999,
               visibility: position ? "visible" : "hidden",
             }}
           >
-            {BOARD_CONDITIONAL_COLOR_PALETTE.map((hex) => {
+            {palette.map((hex) => {
               const is_selected = hex.toLowerCase() === color.toLowerCase();
               return (
                 <button
                   key={hex}
                   type="button"
+                  role="option"
+                  aria-selected={is_selected}
                   aria-label={`Color ${hex}`}
                   onClick={() => {
                     onSelect(hex);
                     setIsOpen(false);
                   }}
-                  className="h-[26px] w-[26px] rounded-md"
+                  className={appearance === "panel" ? "toolbar-color-grid__swatch" : "h-[26px] w-[26px] rounded-md"}
                   style={{
                     background: hex,
-                    boxShadow: is_selected
-                      ? "0 0 0 2px var(--color-boardtree-surface), 0 0 0 4px var(--color-boardtree-text)"
-                      : "none",
+                    boxShadow:
+                      appearance === "panel" || !is_selected
+                        ? undefined
+                        : "0 0 0 2px var(--color-boardtree-surface), 0 0 0 4px var(--color-boardtree-text)",
                   }}
                 />
               );

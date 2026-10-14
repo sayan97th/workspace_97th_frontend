@@ -9,6 +9,7 @@ import {
   type BoardAdvancedFilterRow,
   type BoardConditionalColorRule,
   type BoardFilterJoinOperator,
+  type BoardHeaderHeight,
   type BoardRowHeight,
   type BoardSortRule,
   type BoardToolbarFilterState,
@@ -167,6 +168,7 @@ export type BoardViewSyncToolbar = {
   hidden_column_ids: string[];
   pinned_column_ids: string[];
   row_height: BoardRowHeight;
+  header_height: BoardHeaderHeight;
   group_by_option_id: string;
 
   applyFilterState: (filter_state: BoardToolbarFilterState) => void;
@@ -176,6 +178,7 @@ export type BoardViewSyncToolbar = {
   unpinAllColumns: () => void;
   togglePinnedColumn: (id: string) => void;
   setRowHeight: (height: BoardRowHeight) => void;
+  setHeaderHeight: (height: BoardHeaderHeight) => void;
   clearConditionalColorRules: () => void;
   addConditionalColorRule: () => void;
   updateConditionalColorRule: (id: string, patch: Partial<BoardConditionalColorRule>) => void;
@@ -329,6 +332,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     t.unpinAllColumns();
     (view.pinned_column_ids ?? []).forEach((id) => t.togglePinnedColumn(id));
     t.setRowHeight(view.row_height);
+    t.setHeaderHeight(view.header_height ?? "single");
     t.clearConditionalColorRules();
     (view.conditional_color_rules ?? []).forEach(() => t.addConditionalColorRule());
 
@@ -387,6 +391,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
       hidden_column_ids: toolbar.hidden_column_ids,
       pinned_column_ids: toolbar.pinned_column_ids,
       row_height: toolbar.row_height,
+      header_height: toolbar.header_height,
       conditional_color_rules: withoutIds(toolbar.conditional_color_rules),
       group_by_option_id: toolbar.group_by_option_id,
     });
@@ -400,6 +405,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
         hidden_column_ids: active_view.hidden_column_ids ?? [],
         pinned_column_ids: active_view.pinned_column_ids ?? [],
         row_height: active_view.row_height,
+        header_height: active_view.header_height ?? "single",
         conditional_color_rules: withoutIds(withDefaultValues(active_view.conditional_color_rules ?? [])),
         group_by_option_id: active_view.group_by_option_id ?? BOARD_DEFAULT_GROUP_BY_ID,
       });
@@ -473,6 +479,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     pinned_column_ids: toolbar.pinned_column_ids,
     conditional_color_rules: toolbar.conditional_color_rules,
     row_height: toolbar.row_height,
+    header_height: toolbar.header_height,
     group_by_option_id: toolbar.group_by_option_id,
   });
 

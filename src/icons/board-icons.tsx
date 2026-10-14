@@ -296,6 +296,19 @@ export const ItemHeightIcon: React.FC<IconProps> = ({ className, size = 16 }) =>
   </svg>
 );
 
+/** Up and down arrow glyph for the "Header height" overflow-menu entry. */
+export const HeaderHeightIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M8 2.2v11.6 M8 2.2 5.6 4.6 M8 2.2 10.4 4.6 M8 13.8 5.6 11.4 M8 13.8 10.4 11.4"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 /** Ruler + `lines` text-bar glyph identifying a row-height preset (Single/Double/Triple) in the Item height submenu. */
 export const RowHeightIcon: React.FC<IconProps & { lines?: 1 | 2 | 3 | 4 }> = ({ className, size = 16, lines = 1 }) => {
   const bar_ys = lines === 1 ? [8] : lines === 2 ? [5.5, 10.5] : lines === 3 ? [4, 8, 12] : [3, 6.3, 9.7, 13];

@@ -1,76 +1,91 @@
 "use client";
 import React from "react";
-import { PinIcon } from "@/icons/board-icons";
-import type { BoardToolbarApi } from "./types";
+import { CheckIcon } from "@/icons/board-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import BoardPopover from "./BoardPopover";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
-import ToggleSwitch from "./ToggleSwitch";
+import SaveViewButtons from "./SaveViewButtons";
+import "./filter-panel.css";
+import "./toolbar-panel.css";
 
 export type PinColumnsControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
   /** Anchor element the popover floats under. Shares the host's "..." overflow button. */
   anchor_el: HTMLElement | null;
   is_open: boolean;
+  view_actions?: BoardToolbarViewActions;
 };
 
 /**
- * "Choose columns to pin" popover: lets a board freeze columns to the left edge
- * of the table so they stay visible while scrolling horizontally. Reusable
- * across any board built on {@link useBoardToolbar} — the caller only needs to
- * supply an anchor element (e.g. the toolbar's overflow button).
+ * monday style "Choose columns to pin" panel: an "Item columns" list with one checkbox row per column, the item
+ * name first (always pinned, so its box is checked and locked), and a "Save as new view" footer. Pinned columns
+ * stay fixed on the left while the table scrolls sideways. Shares the Hide panel's compact card (see
+ * `toolbar-panel.css`), so long boards scroll inside the list instead of growing past the window.
  */
-function PinColumnsControl<TRow>({ toolbar, anchor_el, is_open }: PinColumnsControlProps<TRow>) {
+function PinColumnsControl<TRow>({ toolbar, anchor_el, is_open, view_actions }: PinColumnsControlProps<TRow>) {
+  // Columns that are never pinnable but have a title (the item name) always stay frozen, so they show locked.
+  const locked_columns = toolbar.columns.filter((column) => column.pinnable === false && (column.full_label ?? column.label));
   const pinnable_columns = toolbar.columns.filter((column) => column.pinnable !== false);
   const pin_count = toolbar.pinned_column_ids.length;
-  const has_pins = pin_count > 0;
 
   return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={toolbar.closePanel} width={320}>
-      <div className="flex items-center gap-2.5 px-[18px] pb-1.5 pt-[15px]">
-        <span className="flex flex-none text-[#00c875]">
-          <PinIcon size={16} />
-        </span>
-        <span className="text-[15px] font-bold text-boardtree-text">Choose columns to pin</span>
-      </div>
-      <div className="px-[18px] pb-2.5 text-xs leading-relaxed text-boardtree-text-muted">
-        Pinned columns stay fixed on the left while you scroll the table sideways.
-      </div>
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={toolbar.closePanel} width={300} unstyled>
+      <div className="filter-panel toolbar-panel toolbar-panel--compact toolbar-panel--pin" role="dialog" aria-label="Choose columns to pin">
+        <div className="filter-panel__header">
+          <h2 className="filter-panel__title">Choose columns to pin</h2>
+        </div>
 
-      <div className="shell-scrollbar max-h-[320px] overflow-y-auto px-2 pb-2">
-        {pinnable_columns.map((column) => {
-          const is_pinned = toolbar.pinned_column_ids.includes(column.id);
-          return (
-            <button
-              key={column.id}
-              type="button"
-              onClick={() => toolbar.togglePinnedColumn(column.id)}
-              className={`flex h-[42px] w-full items-center gap-[11px] rounded-lg px-2.5 transition-colors ${
-                is_pinned ? "bg-[#00c875]/[0.08]" : "hover:bg-boardtree-hover"
-              }`}
-            >
-              {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={23} />}
-              <span className="min-w-0 flex-1 truncate text-left text-[13.5px] font-medium text-boardtree-text">
-                {column.full_label ?? column.label ?? column.id}
-              </span>
-              <ToggleSwitch is_on={is_pinned} />
+        <p className="toolbar-panel__section-title toolbar-panel__section-title--inset">Item columns</p>
+        <div className="toolbar-panel__list filter-panel__scroll">
+          {locked_columns.map((column) => {
+            const label = column.full_label ?? column.label ?? column.id;
+            return (
+              <Tooltip key={column.id} content="The item name is always pinned" placement="right" className="flex w-full">
+                <div className="toolbar-panel__check-row" data-locked="true" aria-disabled="true">
+                  {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={20} />}
+                  <span className="toolbar-panel__check-label">{label}</span>
+                  <span className="filter-panel__checkbox toolbar-panel__check-end" data-checked="locked" aria-hidden>
+                    <CheckIcon size={10} />
+                  </span>
+                </div>
+              </Tooltip>
+            );
+          })}
+          {pinnable_columns.length === 0 && <div className="toolbar-panel__empty">No other columns to pin</div>}
+          {pinnable_columns.map((column) => {
+            const is_pinned = toolbar.pinned_column_ids.includes(column.id);
+            const label = column.full_label ?? column.label ?? column.id;
+            return (
+              <button
+                key={column.id}
+                type="button"
+                role="checkbox"
+                aria-checked={is_pinned}
+                onClick={() => toolbar.togglePinnedColumn(column.id)}
+                className="toolbar-panel__check-row"
+                title={label}
+              >
+                {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={20} />}
+                <span className="toolbar-panel__check-label">{label}</span>
+                <span className="filter-panel__checkbox toolbar-panel__check-end" data-checked={is_pinned} aria-hidden>
+                  {is_pinned && <CheckIcon size={10} />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="toolbar-panel__footer toolbar-panel__footer--pin">
+          {pin_count > 0 ? (
+            <button type="button" onClick={toolbar.unpinAllColumns} className="filter-panel__text-button">
+              Unpin all ({pin_count})
             </button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-between border-t border-boardtree-border-soft bg-boardtree-hover px-[18px] py-[11px]">
-        <span className="text-[12.5px] font-semibold text-boardtree-text-muted">
-          {pin_count === 1 ? "1 pinned" : `${pin_count} pinned`}
-        </span>
-        {has_pins && (
-          <button
-            type="button"
-            onClick={toolbar.unpinAllColumns}
-            className="text-[13px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
-          >
-            Unpin all
-          </button>
-        )}
+          ) : (
+            <span className="toolbar-panel__footer-note">No columns pinned</span>
+          )}
+          <SaveViewButtons view_actions={view_actions} appearance="panel" is_save_as_new_disabled={pin_count === 0} />
+        </div>
       </div>
     </BoardPopover>
   );

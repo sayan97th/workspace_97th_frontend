@@ -16,6 +16,7 @@ import type {
   BoardChartConfig,
   BoardColumnKind,
   BoardConditionalColorRule,
+  BoardHeaderHeight,
   BoardRowHeight,
   BoardSortRule,
   BoardToolbarFilterState,
@@ -329,6 +330,8 @@ export type BoardViewDto = {
   hidden_column_ids: string[] | null;
   pinned_column_ids: string[] | null;
   row_height: BoardRowHeight;
+  /** Missing on views saved before the "Header height" setting existed, read as `"single"`. */
+  header_height?: BoardHeaderHeight;
   conditional_color_rules: BoardConditionalColorRule[] | null;
   created_at: string | null;
   updated_at: string | null;
@@ -559,6 +562,7 @@ export type DuplicateBoardViewPayload = {
   hidden_column_ids?: string[] | null;
   pinned_column_ids?: string[] | null;
   row_height?: BoardRowHeight;
+  header_height?: BoardHeaderHeight;
   conditional_color_rules?: BoardConditionalColorRule[] | null;
 };
 
@@ -576,6 +580,7 @@ export type SaveBoardViewPayload = {
   hidden_column_ids?: string[] | null;
   pinned_column_ids?: string[] | null;
   row_height?: BoardRowHeight;
+  header_height?: BoardHeaderHeight;
   conditional_color_rules?: BoardConditionalColorRule[] | null;
   /** Markdown source, saved by a `doc`-type view's autosave. */
   doc_content?: string | null;

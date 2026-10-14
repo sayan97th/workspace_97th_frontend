@@ -181,3 +181,25 @@ html.dark .action-menu {
   background: var(--action-menu-split-active);
   color: var(--action-menu-text);
 }
+
+/* Short muted text at the end of a row, e.g. a count. */
+.action-menu__meta {
+  flex: none;
+  margin-left: auto;
+  color: var(--action-menu-title);
+  font-size: 13px;
+}
+
+/* The current choice of a pick one submenu (Item height, Header height) uses monday's light blue fill. */
+.action-menu__item[data-selected="true"],
+.action-menu__item[data-selected="true"]:hover {
+  background: var(--action-menu-split-active);
+}
+
+/*
+ * Selectable menus (the board toolbar's "..." menu): the row whose submenu is
+ * open is filled light blue too, like monday's own toolbar menu.
+ */
+.action-menu--selectable .action-menu__item[data-submenu-open="true"] {
+  background: var(--action-menu-split-active);
+}

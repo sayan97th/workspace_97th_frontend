@@ -28,6 +28,10 @@ export type ActionMenuItem = {
    * opens the submenu. Hover and ArrowRight open the submenu as usual.
    */
   split?: boolean;
+  /** Marks the row as the current choice, e.g. the active "Item height" preset, with monday's light blue fill. */
+  is_selected?: boolean;
+  /** Short muted text at the end of the row, e.g. how many columns are pinned. */
+  meta?: string;
 };
 
 /** One group of rows. Groups are split by a thin divider, the way monday.com groups its menus. */
@@ -48,9 +52,13 @@ export type ActionMenuProps = {
   width?: number;
   submenu_width?: number;
   align?: "start" | "end";
+  /** Which side submenus open on. Defaults to "right"; flips on its own when there is no room. */
+  submenu_side?: "left" | "right";
+  /** Extra class on every menu level, for a caller specific look (e.g. `action-menu--selectable`). */
+  class_name?: string;
 };
 
-const MENU_ITEM_SELECTOR = '[role="menuitem"]:not([aria-disabled="true"])';
+const MENU_ITEM_SELECTOR = ':is([role="menuitem"], [role="menuitemradio"]):not([aria-disabled="true"])';
 
 /** Moves focus between the enabled rows of one menu list with the arrow, Home and End keys. */
 const moveFocus = (list_el: HTMLElement, key: string): boolean => {
@@ -87,6 +95,8 @@ type ActionMenuLevelProps = {
   /** What takes focus on mount: the list itself (so arrow keys work), its first enabled row, or nothing (submenus opened on hover). */
   initial_focus?: "list" | "first_item" | "none";
   submenu_width: number;
+  submenu_side: "left" | "right";
+  class_name?: string;
   /** ArrowLeft inside a submenu hands focus back to the row that opened it. */
   onExitLeft?: () => void;
   onSelect: (item: ActionMenuItem) => void;
@@ -102,6 +112,8 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
   title,
   initial_focus = "list",
   submenu_width,
+  submenu_side,
+  class_name,
   onExitLeft,
   onSelect,
 }) => {
@@ -154,11 +166,13 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
           item_refs.current[item.key] = el;
         }}
         type="button"
-        role="menuitem"
+        role={item.is_selected === undefined ? "menuitem" : "menuitemradio"}
         tabIndex={-1}
         aria-disabled={item.disabled || undefined}
         aria-haspopup={has_submenu ? "menu" : undefined}
         aria-expanded={has_submenu ? is_submenu_open : undefined}
+        aria-checked={item.is_selected === undefined ? undefined : item.is_selected}
+        data-selected={item.is_selected || undefined}
         data-danger={item.danger || undefined}
         data-submenu-open={is_submenu_open || undefined}
         data-split={is_split || undefined}
@@ -191,6 +205,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
           </span>
         )}
         <span className="action-menu__label">{item.label}</span>
+        {item.meta && <span className="action-menu__meta">{item.meta}</span>}
         {has_submenu && (
           <span className="action-menu__chevron" data-split-toggle={is_split || undefined} aria-hidden="true">
             <ChevronRightIcon size={14} />
@@ -208,7 +223,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
         aria-label={aria_label}
         tabIndex={-1}
         onKeyDown={handleKeyDown}
-        className={`action-menu ${boardTreeFontClassName}`}
+        className={`action-menu ${boardTreeFontClassName} ${class_name ?? ""}`}
       >
         {title && (
           <div className="action-menu__title" aria-hidden="true">
@@ -228,7 +243,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
           anchor_el={item_refs.current[open_submenu_item.key] ?? null}
           is_open
           onClose={closeSubmenu}
-          side="right"
+          side={submenu_side}
           width={submenu_width}
           unstyled
         >
@@ -238,6 +253,8 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
             aria_label={open_submenu_item.label}
             initial_focus={open_submenu?.focus_first ? "first_item" : "none"}
             submenu_width={submenu_width}
+            submenu_side={submenu_side}
+            class_name={class_name}
             onSelect={onSelect}
             onExitLeft={() => {
               const parent_row = item_refs.current[open_submenu_item.key];
@@ -269,6 +286,8 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   width = 256,
   submenu_width = 220,
   align = "start",
+  submenu_side = "right",
+  class_name,
 }) => {
   const selectItem = (item: ActionMenuItem) => {
     onClose();
@@ -283,6 +302,8 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
         aria_label={aria_label}
         title={title}
         submenu_width={submenu_width}
+        submenu_side={submenu_side}
+        class_name={class_name}
         onSelect={selectItem}
       />
     </BoardPopover>

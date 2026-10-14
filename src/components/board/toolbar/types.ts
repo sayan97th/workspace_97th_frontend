@@ -1,4 +1,4 @@
-import type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardRowHeight } from "../types";
+import type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardHeaderHeight, BoardRowHeight } from "../types";
 
 export type { BoardColumnSwatch };
 
@@ -221,6 +221,8 @@ export type BoardToolbarExportOptions = {
   is_ready: boolean;
   /** Starts loading whatever rows are still missing. Called when the "..." menu opens. */
   onPrepare: () => void;
+  /** Reports a failed export, e.g. with a toast, since the menu has already closed by then. */
+  onExportError?: (message: string) => void;
 };
 
 /** A personal, named filter the viewer saved for this board. Private to them and independent from the shared views. */
@@ -284,6 +286,26 @@ export const BOARD_CONDITIONAL_COLOR_PALETTE: string[] = [
   "#66ccff", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d",
   "#ffcb00", "#333333", "#808080", "#c4c4c4", "#66cccc", "#4eccc6",
   "#bb3354", "#401694", "#0f5d97", "#225091", "#175a63", "#563e3e",
+];
+
+/**
+ * monday's Conditional coloring palette: soft tones that keep cell text readable, 5 per row in the picker.
+ * Older rules may still hold a color from {@link BOARD_CONDITIONAL_COLOR_PALETTE}, which keeps rendering as saved.
+ */
+export const BOARD_CONDITIONAL_COLORING_PALETTE: string[] = [
+  "#80bea4", "#7fe2b9", "#cce891", "#e3d99f", "#ffe47f",
+  "#fed49d", "#ffd5d5", "#ffb9b9", "#efa0ac", "#ff89c3",
+  "#ffabe0", "#fccff8", "#baa4e7", "#bd9cc3", "#9f8ac8",
+  "#a9abee", "#8fa6c7", "#aaccfd", "#7fc1de", "#a5e4e1",
+  "#b1e4ff", "#b2cfdd", "#cbd5dd", "#e0e0e0", "#bebebe",
+  "#989898", "#bea8a2", "#ebb9d6", "#d5c9bb", "#ddbfb6",
+  "#94baf2", "#8aabb0", "#ddd3fc", "#d3def4", "#cdcbdb",
+  "#aa9e9e",
+];
+
+/** Colors a new Conditional coloring rule starts with, in order, so neighbouring rules are easy to tell apart. */
+export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = [
+  "#8fa6c7", "#baa4e7", "#7fe2b9", "#ffe47f", "#ffb9b9", "#7fc1de", "#fed49d", "#ff89c3",
 ];
 
 /** One "paint this row/cell when a column matches a condition" rule, evaluated top to bottom. */
@@ -465,10 +487,14 @@ export type BoardToolbarApi<TRow> = BoardToolbarConfig<TRow> & {
 
   row_height: BoardRowHeight;
   setRowHeight: (height: BoardRowHeight) => void;
+  header_height: BoardHeaderHeight;
+  setHeaderHeight: (height: BoardHeaderHeight) => void;
 
   conditional_color_rules: BoardConditionalColorRule[];
   addConditionalColorRule: () => void;
   removeConditionalColorRule: (id: string) => void;
+  /** Moves the rule `active_id` to where `over_id` sits (the Conditional coloring panel's drag and drop). Order matters, the first match wins. */
+  moveConditionalColorRule: (active_id: string, over_id: string) => void;
   updateConditionalColorRule: (id: string, patch: Partial<BoardConditionalColorRule>) => void;
   clearConditionalColorRules: () => void;
 

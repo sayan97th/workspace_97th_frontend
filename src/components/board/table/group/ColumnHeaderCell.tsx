@@ -23,6 +23,8 @@ interface ColumnHeaderCellProps {
   scoped_key: string;
   title: string;
   height: number;
+  /** Lines the title may wrap onto ("Header height" preset). Defaults to 1, a single truncated line. */
+  title_lines?: number;
   /** Undefined for the item-title/sub-title virtual columns — those get the reduced menu (rename + sort + collapse only). */
   column?: ColumnMenuColumn;
   can_delete: boolean;
@@ -93,7 +95,7 @@ interface ColumnHeaderCellProps {
 }
 
 export default function ColumnHeaderCell({
-  title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
+  title, height, title_lines = 1, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency,
   onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
@@ -171,7 +173,10 @@ export default function ColumnHeaderCell({
           type="button"
           onClick={onStartRename}
           title="Click to rename"
-          className="max-w-full truncate rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text hover:bg-boardtree-hover"
+          className={`max-w-full rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text hover:bg-boardtree-hover ${
+            title_lines > 1 ? "overflow-hidden whitespace-normal break-words text-center" : "truncate"
+          }`}
+          style={title_lines > 1 ? { display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: title_lines } : undefined}
         >
           {title}
         </button>

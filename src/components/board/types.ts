@@ -55,3 +55,6 @@ export type BoardGroup<TRow> = {
 
 /** Row height presets toggled from the toolbar's overflow menu ("Item height" submenu). */
 export type BoardRowHeight = "single" | "double" | "triple" | "quad";
+
+/** Column header height presets from the toolbar's "..." menu ("Header height" submenu). Taller headers wrap long titles. */
+export type BoardHeaderHeight = "single" | "double" | "triple";

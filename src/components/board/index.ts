@@ -46,7 +46,7 @@ export { default as ChangeBoardTypeModal } from "./ChangeBoardTypeModal";
 export type { ChangeBoardTypeModalProps } from "./ChangeBoardTypeModal";
 export { default as BoardInviteModal } from "./BoardInviteModal";
 export type { BoardInviteModalProps } from "./BoardInviteModal";
-export type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardRowHeight } from "./types";
+export type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardHeaderHeight, BoardRowHeight } from "./types";
 export { default as useBoardToolbar } from "./toolbar/useBoardToolbar";
 export { default as BoardPopover } from "./toolbar/BoardPopover";
 export type { BoardPopoverProps } from "./toolbar/BoardPopover";

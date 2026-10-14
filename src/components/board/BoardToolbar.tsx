@@ -1,5 +1,6 @@
 "use client";
 import React, { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { CollapseTableIcon } from "@/icons/board-icons";
 import type {
@@ -20,6 +21,7 @@ import OverflowControl from "./toolbar/OverflowControl";
 import ConditionalColoringPanel from "./toolbar/ConditionalColoringPanel";
 import BoardPopover from "./toolbar/BoardPopover";
 import ActiveFiltersBar from "./toolbar/ActiveFiltersBar";
+import GiveFeedbackModal from "./GiveFeedbackModal";
 
 /** The inline panel's width matches the toolbar row's own width, capped at this value. */
 const INLINE_PANEL_MAX_WIDTH = 900;
@@ -55,6 +57,7 @@ function BoardToolbar<TRow>({
 
   const toolbar_row_ref = useRef<HTMLDivElement>(null);
   const [inline_panel_width, setInlinePanelWidth] = useState(INLINE_PANEL_MAX_WIDTH);
+  const [is_color_feedback_open, setIsColorFeedbackOpen] = useState(false);
 
   // Tracks the toolbar row's own width so the Filter/Conditional coloring panel keeps
   // spanning it (capped at INLINE_PANEL_MAX_WIDTH) now that BoardPopover portals it to
@@ -97,7 +100,7 @@ function BoardToolbar<TRow>({
         <SortControl toolbar={toolbar} view_actions={view_actions} />
         <HideColumnsControl toolbar={toolbar} view_actions={view_actions} />
         <GroupByControl toolbar={toolbar} view_actions={view_actions} onSubmitFeedback={onSubmitFeedback} />
-        <OverflowControl toolbar={toolbar} export_options={export_options} />
+        <OverflowControl toolbar={toolbar} export_options={export_options} view_actions={view_actions} />
 
         <div className="flex-1" />
 
@@ -118,10 +121,36 @@ function BoardToolbar<TRow>({
           unstyled
         >
           {is_filter_open && <FilterPanel toolbar={toolbar} view_actions={view_actions} saved_filter_actions={saved_filter_actions} />}
-          {is_color_open && <ConditionalColoringPanel toolbar={toolbar} view_actions={view_actions} />}
+          {is_color_open && (
+            <ConditionalColoringPanel
+              toolbar={toolbar}
+              view_actions={view_actions}
+              onRequestFeedback={
+                onSubmitFeedback
+                  ? () => {
+                      toolbar.closePanel();
+                      setIsColorFeedbackOpen(true);
+                    }
+                  : undefined
+              }
+            />
+          )}
         </BoardPopover>
       </div>
       <ActiveFiltersBar toolbar={toolbar} view_actions={view_actions} />
+
+      {is_color_feedback_open &&
+        onSubmitFeedback &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <GiveFeedbackModal
+            is_open
+            description="Tell us what is working, what is not, or what you would like to see when coloring items."
+            onSubmit={(message) => onSubmitFeedback(`[Conditional coloring] ${message}`)}
+            onClose={() => setIsColorFeedbackOpen(false)}
+          />,
+          document.body
+        )}
     </div>
   );
 }

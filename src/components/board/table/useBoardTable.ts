@@ -429,6 +429,8 @@ export interface UseBoardTableConfig {
    * the default `"single"` height.
    */
   row_height?: "single" | "double" | "triple" | "quad";
+  /** Column header height preset from the toolbar's "Header height" control, read-only here like `row_height`. Defaults to `"single"`. */
+  header_height?: "single" | "double" | "triple";
   /** Row-id → color, from the toolbar's Conditional coloring rules scoped to "row" — see `row_height`'s own doc comment for the same read-only, toolbar-owned pattern. */
   row_colors?: Record<string, string>;
   /** Row-id → column-id → color, from the toolbar's Conditional coloring rules scoped to "cell". */
@@ -547,6 +549,8 @@ export interface BoardTableState {
   sub_column_width: number | null;
   /** Row density preset — see `UseBoardTableConfig.row_height`'s own doc comment. */
   row_height: "single" | "double" | "triple" | "quad";
+  /** Column header height preset — see `UseBoardTableConfig.header_height`'s own doc comment. */
+  header_height: "single" | "double" | "triple";
   /** Row-id → color — see `UseBoardTableConfig.row_colors`'s own doc comment. */
   row_colors: Record<string, string>;
   /** Row-id → column-id → color — see `UseBoardTableConfig.cell_colors`'s own doc comment. */
@@ -647,6 +651,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     item_column_width: config.initial_item_column_width ?? null,
     sub_column_width: config.initial_sub_column_width ?? null,
     row_height: config.row_height ?? "single",
+    header_height: config.header_height ?? "single",
     row_colors: config.row_colors ?? {},
     cell_colors: config.cell_colors ?? {},
     pinned_column_count: config.pinned_column_count ?? 0,
@@ -762,6 +767,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   useEffect(() => {
     if (config.row_height) setState((s) => ({ ...s, row_height: config.row_height! }));
   }, [config.row_height]);
+
+  useEffect(() => {
+    if (config.header_height) setState((s) => ({ ...s, header_height: config.header_height! }));
+  }, [config.header_height]);
 
   useEffect(() => {
     if (config.row_colors) setState((s) => ({ ...s, row_colors: config.row_colors! }));
