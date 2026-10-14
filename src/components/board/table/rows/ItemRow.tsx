@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import { getConvertBlockedReason } from "../menus/rowMenuRules";
 import TreeBar from "./TreeBar";
+import { conditionalColorFill } from "../colorUtils";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
@@ -33,7 +34,11 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const row_color = state.row_colors[item.id];
   const row_bg = is_selected
     ? "var(--color-boardtree-selected)"
-    : (row_color ?? (is_hovered ? "var(--color-boardtree-hover)" : "var(--color-boardtree-surface)"));
+    : row_color
+      ? conditionalColorFill(row_color, is_hovered)
+      : is_hovered
+        ? "var(--color-boardtree-hover)"
+        : "var(--color-boardtree-surface)";
   const has_subs = item.subs.length > 0;
   const is_active_match = state.active_search_match?.node_id === item.id;
   const is_active_name_match = is_active_match && state.active_search_match?.column_id === "__name";
@@ -300,6 +305,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           const is_pinned = col_index < pinned_columns.length;
           const is_invalid = !is_active && !is_fill_target && isValueInvalid(col, item.values[col.id]);
           const is_search_match = is_active_match && state.active_search_match?.column_id === col.id;
+          const cell_color = state.cell_colors[item.id]?.[col.id];
+          // A solid Status cell paints its own label color edge to edge, which would hide a plain background, so a
+          // Cell rule on it draws a frame in the rule's color instead.
+          const is_self_filled = col.kind === "status";
           return (
             <div
               key={col.id}
@@ -310,7 +319,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{
                 height: row_h,
-                background: state.cell_colors[item.id]?.[col.id] ?? (is_pinned ? row_bg : undefined),
+                background: cell_color && !is_self_filled ? conditionalColorFill(cell_color, is_hovered) : is_pinned ? row_bg : undefined,
                 position: is_pinned ? "sticky" : undefined,
                 left: is_pinned ? sticky_offsets[3 + col_index] : undefined,
                 // `outline` (not `box-shadow`) so the ring still shows on top
@@ -336,6 +345,9 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               }}
             >
               <CellRenderer node_id={item.id} column={col} values={item.values} node_name={item.name} state={state} actions={actions} group_color={group.color} />
+              {cell_color && is_self_filled && (
+                <div aria-hidden className="pointer-events-none absolute inset-0" style={{ boxShadow: `inset 0 0 0 3px ${cell_color}` }} />
+              )}
               {is_active && (
                 <div
                   data-fill-handle="true"

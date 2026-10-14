@@ -10,16 +10,22 @@ import { ChevronDownIcon, HelpIcon } from "@/icons/workspace-icons";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import {
   BOARD_ADVANCED_FILTER_CONDITIONS,
+  BOARD_CONDITIONAL_COLOR_DONE_VALUE,
   BOARD_CONDITIONAL_COLOR_SCOPES,
   BOARD_CONDITIONAL_COLORING_DEFAULTS,
   BOARD_CONDITIONAL_COLORING_PALETTE,
   BOARD_VALUELESS_CONDITIONS,
+  type BoardAdvancedFilterCondition,
   type BoardConditionalColorRule,
+  type BoardQuickFilterFacetOption,
   type BoardToolbarApi,
   type BoardToolbarViewActions,
 } from "./types";
 import ColorSwatchPicker from "./ColorSwatchPicker";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
+import FilterOptionPicker from "./FilterOptionPicker";
+import { BOARD_FILTER_BLANK_OPTION_ID } from "./filterEngine";
+import { isDoneStatusLabel } from "../table/progressTracking";
 import { isConditionalColorRuleComplete } from "./deriveBoardRows";
 import InlineFieldMenu from "./InlineFieldMenu";
 import SaveViewButtons from "./SaveViewButtons";
@@ -44,6 +50,12 @@ const FIELD_WIDTH = { scope: 96, column: 200, condition: 164, value: 220 } as co
 /** Tallest the Column and Value lists may grow. Both also shrink to the room left in the window and scroll past that. */
 const COLUMN_MENU_MAX_HEIGHT = 640;
 const VALUE_MENU_MAX_HEIGHT = 480;
+
+/** Conditions that compare free text, so they always take a text value, even on a column with labels. */
+const TEXT_CONDITIONS: ReadonlySet<BoardAdvancedFilterCondition> = new Set(["contains", "not_contains"]);
+
+/** monday's multi color drop for "All done labels", drawn as the option's dot. */
+const DONE_LABELS_DOT = "conic-gradient(#00c875 0deg 120deg, #9cd326 120deg 240deg, #037f4c 240deg 360deg)";
 
 /** The local id of the empty row shown while no rule exists yet. */
 const DRAFT_RULE_ID = "draft";
@@ -92,41 +104,33 @@ function ColorRuleRow<TRow>({ toolbar, rule, onUpdate, onRemove }: ColorRuleRowP
   const field = toolbar.filter_fields.find((candidate) => candidate.id === rule.column_id && candidate.scope !== "subitem");
   const value_options = field?.options ?? [];
   const is_valueless = rule.condition !== null && BOARD_VALUELESS_CONDITIONS.has(rule.condition);
+  const is_text_condition = rule.condition !== null && TEXT_CONDITIONS.has(rule.condition);
+  // Like monday: "All done labels" first when the column has a done label, then every label, then Blank.
+  const has_done_label = value_options.some((option) => isDoneStatusLabel(option.label));
+  const picker_options: BoardQuickFilterFacetOption[] = [
+    ...(has_done_label ? [{ id: BOARD_CONDITIONAL_COLOR_DONE_VALUE, label: "All done labels", dot_color: DONE_LABELS_DOT }] : []),
+    ...value_options,
+    { id: BOARD_FILTER_BLANK_OPTION_ID, label: "Blank", dot_color: "#c4c4c4" },
+  ];
+  // Rules saved before multi select hold one label in `value`, shown here as its picked option.
+  const legacy_option = rule.value ? value_options.find((option) => option.label.toLowerCase() === rule.value.trim().toLowerCase()) : undefined;
+  const selected_value_ids = rule.values?.length ? rule.values : legacy_option ? [legacy_option.id] : [];
   const update = onUpdate;
 
   const renderValue = () => {
     if (!selected_column) return <ValuePlaceholder label="Value" />;
     if (is_valueless) return <ValuePlaceholder label="No value needed" />;
-    if (value_options.length > 0) {
-      const selected_option = value_options.find((option) => option.label.toLowerCase() === rule.value.trim().toLowerCase());
+    if (value_options.length > 0 && !is_text_condition) {
       return (
-        <InlineFieldMenu
+        <FilterOptionPicker
           width={FIELD_WIDTH.value}
           className="toolbar-panel__color-value"
-          menu_max_height={VALUE_MENU_MAX_HEIGHT}
-          options={value_options}
-          getOptionId={(option) => option.id}
-          getSearchText={(option) => option.label}
-          search_placeholder="Search values"
-          empty_label="No values found"
-          isSelected={(option) => option.id === selected_option?.id}
-          onSelect={(option) => update({ value: option.label, condition: rule.condition ?? "equals" })}
-          renderValue={() =>
-            rule.value ? (
-              <>
-                {selected_option?.dot_color && <span className="toolbar-panel__value-dot" style={{ background: selected_option.dot_color }} />}
-                <span className="field-menu__label">{rule.value}</span>
-              </>
-            ) : (
-              <span className="field-menu__placeholder">Value</span>
-            )
-          }
-          renderOption={(option) => (
-            <>
-              {option.dot_color && <span className="toolbar-panel__value-dot" style={{ background: option.dot_color }} />}
-              <span className="field-menu__label">{option.label || "(Empty)"}</span>
-            </>
-          )}
+          appearance="highlight"
+          list_max_height={VALUE_MENU_MAX_HEIGHT}
+          options={picker_options}
+          selected_ids={selected_value_ids}
+          persons={toolbar.persons}
+          onChange={(ids) => update({ values: ids, value: "", condition: rule.condition ?? "equals" })}
         />
       );
     }
@@ -205,8 +209,10 @@ function ColorRuleRow<TRow>({ toolbar, rule, onUpdate, onRemove }: ColorRuleRowP
           onSelect={(column) => {
             if (column.id === rule.column_id) return;
             // Labels from another column mean nothing here, so the value starts over.
-            update({ column_id: column.id, condition: rule.condition ?? "equals", value: "" });
+            update({ column_id: column.id, condition: rule.condition ?? "equals", value: "", values: [] });
           }}
+          onClear={selected_column ? () => update({ column_id: null, condition: null, value: "", values: [] }) : undefined}
+          clear_label="Clear column"
           renderValue={() =>
             selected_column ? (
               <>
@@ -233,7 +239,13 @@ function ColorRuleRow<TRow>({ toolbar, rule, onUpdate, onRemove }: ColorRuleRowP
           isSelected={(option) => option.id === rule.condition}
           onSelect={(option) =>
             // A value means nothing to "Is empty" and "Is not empty", so it is dropped instead of lingering hidden.
-            update(BOARD_VALUELESS_CONDITIONS.has(option.id) ? { condition: option.id, value: "" } : { condition: option.id })
+            update(
+              BOARD_VALUELESS_CONDITIONS.has(option.id)
+                ? { condition: option.id, value: "", values: [] }
+                : TEXT_CONDITIONS.has(option.id)
+                  ? { condition: option.id, values: [] }
+                  : { condition: option.id }
+            )
           }
           renderValue={() =>
             selected_condition ? (

@@ -1,6 +1,8 @@
 import type { BoardColumn, BoardGroup } from "../types";
+import { isDoneStatusLabel } from "../table/progressTracking";
 import { BOARD_FILTER_BLANK_OPTION_ID, buildAdvancedFilterMatcher, countActiveAdvancedRules, hasSubitemRules } from "./filterEngine";
 import {
+  BOARD_CONDITIONAL_COLOR_DONE_VALUE,
   BOARD_DEFAULT_GROUP_BY_ID,
   BOARD_EMPTY_GROUP_KEY,
   BOARD_VALUELESS_CONDITIONS,
@@ -81,13 +83,53 @@ export const evaluateCondition = (
   }
 };
 
+/** Conditions that compare against picked labels (`values`) when the column has labels. */
+const isLabelCondition = (condition: BoardAdvancedFilterCondition | null): boolean =>
+  condition === "equals" || condition === "not_equals";
+
 /**
- * A coloring rule paints only once it names a column, a condition and, unless the condition needs none, a value.
- * A half built rule ("Is" with no value yet) would otherwise paint every empty cell while the user is still typing.
+ * A coloring rule paints only once it names a column, a condition and, unless the condition needs none, a value
+ * (picked labels for "Is"/"Is not", text otherwise). A half built rule ("Is" with no value yet) would otherwise
+ * paint every empty cell while the user is still choosing.
  */
-export const isConditionalColorRuleComplete = (rule: BoardConditionalColorRule): boolean =>
-  Boolean(rule.column_id && rule.condition) &&
-  (BOARD_VALUELESS_CONDITIONS.has(rule.condition!) || (rule.value ?? "").trim() !== "");
+export const isConditionalColorRuleComplete = (rule: BoardConditionalColorRule): boolean => {
+  if (!rule.column_id || !rule.condition) return false;
+  if (BOARD_VALUELESS_CONDITIONS.has(rule.condition)) return true;
+  if (isLabelCondition(rule.condition) && (rule.values?.length ?? 0) > 0) return true;
+  return (rule.value ?? "").trim() !== "";
+};
+
+/**
+ * Whether one row matches one complete coloring rule. "Is"/"Is not" with picked labels compare the cell's option ids
+ * (so a Dropdown or People cell holding several values matches any of them), with `__blank__` standing for an empty
+ * cell and "All done labels" for any label that reads as done. Everything else compares the cell's display text.
+ */
+export function matchesConditionalColorRule<TRow>(
+  rule: BoardConditionalColorRule,
+  text: string,
+  field: BoardFilterField<TRow> | undefined,
+  row: TRow
+): boolean {
+  const picked_ids = rule.values ?? [];
+  if (!isLabelCondition(rule.condition) || picked_ids.length === 0) {
+    return evaluateCondition(text, rule.condition!, rule.value);
+  }
+
+  const row_ids = field?.getOptionIds?.(row) ?? [];
+  const labels_by_id = new Map((field?.options ?? []).map((option) => [option.id, option.label]));
+  const is_blank = row_ids.length === 0 && (text ?? "").trim() === "";
+  const holds_any = picked_ids.some((picked_id) => {
+    if (picked_id === BOARD_FILTER_BLANK_OPTION_ID) return is_blank;
+    if (picked_id === BOARD_CONDITIONAL_COLOR_DONE_VALUE) {
+      return row_ids.length > 0 ? row_ids.some((id) => isDoneStatusLabel(labels_by_id.get(id))) : isDoneStatusLabel(text);
+    }
+    if (row_ids.length > 0) return row_ids.includes(picked_id);
+    // A field without option ids still matches by the picked label's text.
+    const label = labels_by_id.get(picked_id);
+    return label !== undefined && label.trim().toLowerCase() === (text ?? "").trim().toLowerCase();
+  });
+  return rule.condition === "equals" ? holds_any : !holds_any;
+}
 
 const compareValues = (a: string | number, b: string | number): number => {
   if (typeof a === "number" && typeof b === "number") return a - b;
@@ -357,10 +399,12 @@ export function deriveBoardRows<TRow>(
       let row_cell_colors: Record<string, string> | undefined;
 
       for (const rule of active_color_rules) {
-        const matches = evaluateCondition(
-          config.getColumnText(row, rule.column_id!),
-          rule.condition!,
-          rule.value
+        const field = inputs.fields_by_id.get(rule.column_id!);
+        const matches = matchesConditionalColorRule(
+          rule,
+          (config.getDisplayText ?? config.getExportText ?? config.getColumnText)(row, rule.column_id!),
+          field?.scope === "subitem" ? undefined : field,
+          row
         );
         if (!matches) continue;
 

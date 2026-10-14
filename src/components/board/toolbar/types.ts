@@ -313,6 +313,9 @@ export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = [
   "#8fa6c7", "#baa4e7", "#7fe2b9", "#ffe47f", "#ffb9b9", "#7fc1de", "#fed49d", "#ff89c3",
 ];
 
+/** Conditional coloring's "All done labels" value: matches any Status label that reads as done. */
+export const BOARD_CONDITIONAL_COLOR_DONE_VALUE = "__done__";
+
 /** One "paint this row/cell when a column matches a condition" rule, evaluated top to bottom. */
 export type BoardConditionalColorRule = {
   id: string;
@@ -320,7 +323,14 @@ export type BoardConditionalColorRule = {
   scope: BoardConditionalColorScope;
   column_id: string | null;
   condition: BoardAdvancedFilterCondition | null;
+  /** Free text for "Contains" and for columns without labels. Rules saved before `values` existed hold a label here. */
   value: string;
+  /**
+   * Picked option ids for "Is" and "Is not" on a column with labels (Status, Dropdown, People and the like), plus
+   * `__blank__` for an empty cell and {@link BOARD_CONDITIONAL_COLOR_DONE_VALUE}. The rule matches when the cell holds
+   * any of them ("Is") or none of them ("Is not").
+   */
+  values?: string[];
 };
 
 export type BoardFilterMode = "quick" | "advanced";
@@ -357,6 +367,11 @@ export type BoardToolbarConfig<TRow> = {
   recent_search_storage_key?: string;
   /** A cell's text in an export. Defaults to `getColumnText`, override it for values computed while rendering (formulas). */
   getExportText?: (row: TRow, column_id: string) => string;
+  /**
+   * A cell's text as the table shows it (labels instead of option ids, "Aug 6, 2026" instead of `2026-08-06`), which
+   * Conditional coloring's text conditions compare against. Defaults to `getExportText`, then `getColumnText`.
+   */
+  getDisplayText?: (row: TRow, column_id: string) => string;
 };
 
 /** Full live state + actions + derived render output returned by {@link useBoardToolbar}. */

@@ -2,6 +2,7 @@
 import { reorderByIds } from "@/components/board/cells/optionOrder";
 import { countryName, docCellTitle, formatHour, formatWeekRange, timeZoneCity } from "@/components/board/table/columnValueFormats";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { format, parseISO } from "date-fns";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   ADDABLE_COLUMN_TYPES,
@@ -1239,6 +1240,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     },
     [formula_defs_by_id, columns_by_id, export_option_labels, getColumnText]
   );
+  // What a cell reads on screen, for Conditional coloring's text conditions: dates as "Aug 6, 2026", the rest as exported.
+  const getDisplayText = useCallback(
+    (row: BoardItemDto, column_id: string) => {
+      const column = columns_by_id[column_id];
+      if (column?.type === "date" || column?.type === "timeline") {
+        const range = getValueDateRange(column, row.values[column_id]);
+        if (!range) return "";
+        const toLabel = (iso: string) => {
+          const date = parseISO(iso);
+          return Number.isNaN(date.getTime()) ? iso : format(date, "MMM d, yyyy");
+        };
+        return range.start === range.end ? toLabel(range.start) : `${toLabel(range.start)} - ${toLabel(range.end)}`;
+      }
+      return getExportText(row, column_id);
+    },
+    [columns_by_id, getExportText]
+  );
 
   const toolbar_config: BoardToolbarConfig<BoardItemDto> = useMemo(
     () => ({
@@ -1260,6 +1278,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       can_search_updates: true,
       recent_search_storage_key: `board_recent_searches_${board_id}`,
       getExportText,
+      getDisplayText,
     }),
     [
       board_columns,
@@ -1277,6 +1296,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       update_match_row_ids,
       board_id,
       getExportText,
+      getDisplayText,
     ]
   );
 

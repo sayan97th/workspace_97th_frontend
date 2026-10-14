@@ -12,6 +12,13 @@ export type FilterOptionPickerProps = {
   onChange: (ids: string[]) => void;
   persons: BoardPersonOption[];
   placeholder?: string;
+  /** Trigger width. Defaults to filling its flex parent. */
+  width?: number;
+  className?: string;
+  /** Tallest the option list may grow before it scrolls. Defaults to 240. */
+  list_max_height?: number;
+  /** "highlight" drops the checkboxes and marks picked values with the selected fill only, like monday's Conditional coloring. */
+  appearance?: "checklist" | "highlight";
 };
 
 const MAX_TRIGGER_CHIPS = 2;
@@ -32,7 +39,17 @@ function OptionGlyph({ option, persons }: { option: BoardQuickFilterFacetOption;
  * several values are toggled (unlike {@link InlineFieldMenu}, which closes on
  * the first pick).
  */
-function FilterOptionPicker({ options, selected_ids, onChange, persons, placeholder = "Value" }: FilterOptionPickerProps) {
+function FilterOptionPicker({
+  options,
+  selected_ids,
+  onChange,
+  persons,
+  placeholder = "Value",
+  width,
+  className = "flex-1",
+  list_max_height = 240,
+  appearance = "checklist",
+}: FilterOptionPickerProps) {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const container_ref = useRef<HTMLDivElement>(null);
@@ -73,7 +90,7 @@ function FilterOptionPicker({ options, selected_ids, onChange, persons, placehol
   const toggleOpen = () => setIsOpen((current) => !current);
 
   return (
-    <div ref={container_ref} className="field-menu flex-1">
+    <div ref={container_ref} className={`field-menu ${className}`} style={width ? { width } : undefined}>
       {/* A div, not a button, so each chip can hold its own remove button. */}
       <div
         role="button"
@@ -133,7 +150,7 @@ function FilterOptionPicker({ options, selected_ids, onChange, persons, placehol
               className="field-menu__search-input"
             />
           </div>
-          <div className="field-menu__list" style={{ maxHeight: 240, overflowY: "auto" }}>
+          <div className="field-menu__list" style={{ maxHeight: list_max_height, overflowY: "auto" }}>
             {visible_options.length === 0 && <div className="field-menu__empty">No values match</div>}
             {visible_options.map((option) => {
               const is_selected = selected_ids.includes(option.id);
@@ -146,9 +163,11 @@ function FilterOptionPicker({ options, selected_ids, onChange, persons, placehol
                   onClick={() => toggle(option.id)}
                   className="field-menu__option"
                 >
-                  <span className="field-menu__checkbox" data-checked={is_selected}>
-                    {is_selected && <CheckIcon size={10} />}
-                  </span>
+                  {appearance === "checklist" && (
+                    <span className="field-menu__checkbox" data-checked={is_selected}>
+                      {is_selected && <CheckIcon size={10} />}
+                    </span>
+                  )}
                   <OptionGlyph option={option} persons={persons} />
                   <span className="field-menu__label flex-1">{option.label}</span>
                 </button>

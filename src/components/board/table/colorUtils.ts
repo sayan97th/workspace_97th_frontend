@@ -47,3 +47,12 @@ export function timelineFillBackground(color: string, elapsed_ratio: number): st
   const elapsed_percent = `${Math.round(elapsed_ratio * 1000) / 10}%`;
   return `linear-gradient(to right, ${color} ${elapsed_percent}, var(--color-boardtree-timeline-rest) ${elapsed_percent})`;
 }
+
+/**
+ * Background for a row or cell painted by Conditional coloring: the rule's color mixed into the board surface, like
+ * monday's soft fills, so cell text stays readable and dark mode gets a dimmed tone instead of a bright block.
+ * Hovering strengthens the tint a little, as an unpainted row darkens on hover.
+ */
+export function conditionalColorFill(color: string, is_hovered = false): string {
+  return `color-mix(in srgb, ${color} ${is_hovered ? 60 : 45}%, var(--color-boardtree-surface))`;
+}
