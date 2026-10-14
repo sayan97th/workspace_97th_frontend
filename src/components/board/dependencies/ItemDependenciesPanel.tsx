@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import DependencyLinkRow, { describeLag, type DependencyMenuLink } from "@/components/board/table/menus/DependencyLinkRow";
-import { DEPENDENCY_MODE_OPTIONS } from "@/components/board/table/menus/DependencySettingsPanel";
+import { DEPENDENCY_MODE_OPTIONS } from "@/components/board/table/menus/DependencySetupDialog";
 import type { DependencyLinkInput, DependencyLinkType, DependencyMode } from "@/components/board/table/types";
 
 /** An item scheduled from the open one: its name, date and how far after (or before) the open item it sits. */

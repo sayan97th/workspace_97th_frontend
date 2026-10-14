@@ -8,7 +8,6 @@ import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, Progre
 import type { ProgressStatusColumn } from "../progressTracking";
 import { ratingIconOf, ratingMaxOf } from "../cells/VoteRatingCells";
 import BoardPickerMenu from "./BoardPickerMenu";
-import DependencySettingsPanel from "./DependencySettingsPanel";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { boardTreeFontClassName } from "@/components/board/board-tree-font";
 import {
@@ -77,6 +76,8 @@ interface ColumnMenuProps {
   onEditMirror?: () => void;
   /** Connect-board columns only: opens the linked-board settings modal. */
   onEditConnectBoard?: () => void;
+  /** Dependency columns only: opens "Set up dependencies between items". */
+  onEditDependency?: () => void;
   /** Opens the "Column description" dialog. Omitted for the item-title/sub-title virtual columns. */
   onEditDescription?: () => void;
   has_description?: boolean;
@@ -378,7 +379,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "dependency" | "progress" | "rating" | "reminder" | "validation" | "options";
+type SettingsSub = "button" | "progress" | "rating" | "reminder" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -390,7 +391,7 @@ type NestedSub = "board" | "more";
  */
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
-  onStartRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
+  onStartRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
   onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
 }: ColumnMenuProps) {
   const main_sub = useSubmenu<MainSub>();
@@ -463,17 +464,8 @@ export default function ColumnMenu({
       );
     }
     if (column.kind === "dependency") {
-      return (
-        <SubmenuRow
-          submenu_key="dependency"
-          submenu={settings_sub}
-          icon={<DependencyIcon />}
-          label={label}
-          renderFlyout={() => (
-            <DependencySettingsPanel dependency={column.dependency} date_columns={column.dependency_date_columns ?? []} onChange={(dependency) => onUpdateSettings({ dependency })} />
-          )}
-        />
-      );
+      if (!onEditDependency) return null;
+      return <MenuRow icon={<DependencyIcon />} label={label} onMouseEnter={() => settings_sub.requestOpen(null)} onClick={run(onEditDependency)} />;
     }
     const open_editor = onEditLabels ?? (column.kind === "formula" ? onEditFormula : column.kind === "mirror" ? onEditMirror : column.kind === "connect_board" ? onEditConnectBoard : undefined);
     if (!open_editor) return null;

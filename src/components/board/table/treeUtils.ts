@@ -264,3 +264,35 @@ export function reorderWithinList<T extends { id: string }>(list: T[], dragged_i
   next.splice(to, 0, moved);
   return next;
 }
+
+/** One section of the Dependency picker: a group (or, for a subitem column, a parent item) and its rows. */
+export interface DependencyPickerSection {
+  key: string;
+  title: string;
+  color: string;
+  items: { id: string; name: string }[];
+}
+
+/**
+ * The Dependency picker's list, monday.com style: the rows `node_id` may depend on (see
+ * `dependencyCandidates`) plus the ones it already depends on, kept in board order under their
+ * group, each section in its group color. A subitem column lists the other subitems under their
+ * parent item instead. Empty sections are left out.
+ */
+export function dependencyPickerSections(groups: BoardTableGroup[], node_id: string, column_id: string, linked_ids: string[]): DependencyPickerSection[] {
+  const allowed = new Set([...dependencyCandidates(groups, node_id, column_id).map((candidate) => candidate.id), ...linked_ids]);
+  allowed.delete(node_id);
+  const is_subitem_row = !groups.some((group) => group.items.some((item) => item.id === node_id));
+  const pick = (nodes: BoardTableNode[]) => nodes.filter((node) => allowed.has(node.id)).map((node) => ({ id: node.id, name: node.name }));
+
+  const sections: DependencyPickerSection[] = [];
+  for (const group of groups) {
+    if (!is_subitem_row) {
+      sections.push({ key: group.key, title: group.title, color: group.color, items: pick(group.items) });
+      continue;
+    }
+    for (const item of group.items) sections.push({ key: `${group.key}:${item.id}`, title: item.name, color: group.color, items: pick(item.subs) });
+  }
+  return sections.filter((section) => section.items.length > 0);
+}
+

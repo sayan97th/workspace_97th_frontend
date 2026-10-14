@@ -98,6 +98,7 @@ import {
   type BoardToolbarFieldSources,
 } from "./boardToolbarFields";
 import { NAME_COLUMN_ID, isFormulaSourceKind } from "@/components/board/table/formula/formulaEngine";
+import { DEPENDENCY_MODE_OPTIONS } from "@/components/board/table/menus/DependencySetupDialog";
 import { computeFormulaValue, legacyFormulaToExpression } from "@/components/board/table/formulaUtils";
 import type { CellValue, FormulaSourceColumn } from "@/components/board/table/types";
 import {
@@ -2286,17 +2287,23 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [board_id]
   );
 
+  // This board's rows, for naming the items a Dependency field links when the card shows one of them.
+  const card_items_ref = useRef(items);
+  card_items_ref.current = items;
+
   // The linked item card: the connected item, its board's item columns (in the tab holding it)
-  // and, for its own Connect boards fields, the names of the items they link.
+  // and, for its own Connect boards fields, the names of the items they link. An item of this
+  // board (opened from the Dependency picker) also lists its Dependency fields.
   const handleFetchLinkedItem = useCallback(async (ref: LinkedItemRef): Promise<LinkedItemDetail> => {
     const linked_board_id = Number(ref.board_id);
+    const is_own_board = linked_board_id === board_id;
     const view_id = ref.view_id ? Number(ref.view_id) : null;
     const [item, linked_columns] = await Promise.all([
       boardContentService.getItem(linked_board_id, Number(ref.item_id)),
       boardContentService.getColumns(linked_board_id, view_id),
     ]);
     const card_columns = linked_columns
-      .filter((column) => column.scope === "item" && !LINKED_ITEM_CARD_EXCLUDED_TYPES.has(column.type))
+      .filter((column) => column.scope === "item" && (!LINKED_ITEM_CARD_EXCLUDED_TYPES.has(column.type) || (is_own_board && column.type === "dependency")))
       .sort((a, b) => a.position - b.position);
 
     const connect_names = new Map<number, { name: string; color: string | null }[]>();
@@ -2311,14 +2318,25 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         })
     );
 
+    const dependencyNames = (value: unknown): { name: string; color: string | null }[] =>
+      (Array.isArray(value) ? value : []).flatMap((id) => {
+        const linked = findItemInTree(card_items_ref.current, Number(id));
+        return linked ? [{ name: linked.name, color: null }] : [];
+      });
+
     const fields: LinkedItemField[] = card_columns.map((column) => ({
       id: String(column.id),
       label: column.label,
       type: column.type,
-      description: column.config?.description?.trim() || null,
+      description:
+        column.config?.description?.trim() ||
+        (column.type === "dependency" ? DEPENDENCY_MODE_OPTIONS.find((option) => option.mode === (column.config?.dependency_mode ?? "none"))?.hint ?? null : null),
       options: (column.config?.options ?? []).map((option) => ({ id: option.id, label: option.label, color: option.color, is_active: option.is_active })),
       value: (item.values[String(column.id)] ?? null) as LinkedItemField["value"],
-      linked_items: connect_names.get(column.id),
+      linked_items:
+        column.type === "dependency"
+          ? dependencyNames(item.values[String(column.id)])
+          : connect_names.get(column.id),
       rating_max: column.config?.rating_max,
       rating_icon: column.config?.rating_icon,
     }));
@@ -2333,7 +2351,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       group: { name: item.group.name, color: item.group.accent_color },
       fields,
     };
-  }, []);
+  }, [board_id]);
 
   const handleCreateConnectItem = useCallback(async (linked_board_id: string, group_id: string, name: string): Promise<ConnectItemOption> => {
     const created = await boardContentService.createItem(Number(linked_board_id), { name, group_id: Number(group_id) });
@@ -3229,6 +3247,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         return handleAddColumn({ kind: "mirror", label: "Mirror", default_width: 160 }, connect_column.scope, { source_column_id: connect_column.id }, connect_column.position + 1);
       },
       onCreateConnectItem: handleCreateConnectItem,
+      // Declared further down with the other table row handlers, so it is only read once called.
+      onCreateNamedItem: (group_key, parent_id, name) => handleCreateNamedTableItem(group_key, parent_id, name),
+      onSubmitFeedback: (message) => boardOptionsService.submitFeedback(message, board_id),
+      board_ref: { board_id: String(board_id), board_name: board_label, view_id: view_tabs.active_view_id != null ? String(view_tabs.active_view_id) : null },
       onPressButton: handlePressButton,
       initial_item_column_width: item_column_width,
       // Like `item_column_label`, the item-title column isn't a real `board_columns`
@@ -3451,11 +3473,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       table_pinned_count,
       user,
       requestGroupItems,
+      board_label,
     ]
   );
 
   const handleCreateTableItem = async (group_key: string): Promise<string> => {
     const created = await boardContentService.createItem(board_id, { name: "New item", group_id: Number(group_key) });
+    setItems((current) => [...current, created]);
+    return String(created.id);
+  };
+
+  // The Dependency picker's "Type to find or create item": the typed name, next to the row it is picked from.
+  const handleCreateNamedTableItem = async (group_key: string, parent_id: string | null, name: string): Promise<string> => {
+    if (parent_id) {
+      const created = await boardContentService.createItem(board_id, { name, parent_id: Number(parent_id) });
+      setItems((current) => mapItemInTree(current, Number(parent_id), (item) => ({ ...item, children: [...item.children, created] })));
+      return String(created.id);
+    }
+    const created = await boardContentService.createItem(board_id, { name, group_id: Number(group_key) });
     setItems((current) => [...current, created]);
     return String(created.id);
   };

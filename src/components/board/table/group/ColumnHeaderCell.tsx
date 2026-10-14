@@ -7,6 +7,17 @@ import ColumnInfoButton, { hasColumnInfo } from "./ColumnInfoButton";
 import ColumnDescriptionModal from "../menus/ColumnDescriptionModal";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import type { ColumnKind, ColumnSettingsPatch } from "../types";
+import { DEPENDENCY_MODE_OPTIONS } from "../menus/DependencySetupDialog";
+
+/** What a Dependency column's (i) says: its mode and the column it schedules. */
+function describeDependencySetup(column: ColumnMenuColumn): string {
+  const mode = column.dependency?.mode ?? "none";
+  const mode_label = DEPENDENCY_MODE_OPTIONS.find((option) => option.mode === mode)?.label ?? "No action";
+  const date_column = column.dependency_date_columns?.find((candidate) => candidate.id === column.dependency?.date_column_id);
+  if (!date_column) return `${mode_label} mode. No Date or Timeline column is picked yet, so the links do not move any date.`;
+  const days = column.dependency?.use_working_days ? " Days between items count working days only." : "";
+  return `${mode_label} mode, scheduling the "${date_column.title}" column.${days}`;
+}
 
 interface ColumnHeaderCellProps {
   scoped_key: string;
@@ -51,6 +62,8 @@ interface ColumnHeaderCellProps {
   onEditMirror?: () => void;
   /** Connect-board columns only: opens the linked-board settings modal. */
   onEditConnectBoard?: () => void;
+  /** Dependency columns only: opens "Set up dependencies between items". */
+  onEditDependency?: () => void;
   onRequestFilter?: () => void;
   onRequestGroupBy?: () => void;
   /** See `ColumnMenu`'s `onRequestPermissions`. */
@@ -82,7 +95,7 @@ interface ColumnHeaderCellProps {
 export default function ColumnHeaderCell({
   title, height, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onStartRename, onDraftChange, onCommitRename, onCancelRename,
-  onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard,
+  onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency,
   onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
   is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
@@ -93,6 +106,7 @@ export default function ColumnHeaderCell({
   // pick's own text update lands and commit the rename out from under it.
   const is_emoji_palette_open_ref = useRef(false);
   const [is_description_open, setIsDescriptionOpen] = useState(false);
+  const dependency_summary = column?.kind === "dependency" ? describeDependencySetup(column) : undefined;
   return (
     <div
       onMouseEnter={onEnter}
@@ -162,8 +176,8 @@ export default function ColumnHeaderCell({
           {title}
         </button>
       )}
-      {column && !is_editing && hasColumnInfo(column.linkage, column.description) && (
-        <ColumnInfoButton title={title} linkage={column.linkage} description={column.description} />
+      {column && !is_editing && hasColumnInfo(column.linkage, column.description, dependency_summary) && (
+        <ColumnInfoButton title={title} linkage={column.linkage} description={column.description} dependency_summary={dependency_summary} />
       )}
       {is_restricted && (
         <span className="flex flex-none text-boardtree-text-faint" title="This column has restricted permissions" aria-label="Restricted column">
@@ -195,6 +209,7 @@ export default function ColumnHeaderCell({
           onEditFormula={onEditFormula}
           onEditMirror={onEditMirror}
           onEditConnectBoard={onEditConnectBoard}
+          onEditDependency={onEditDependency}
           has_description={Boolean(column?.description)}
           onEditDescription={column && onUpdateSettings ? () => setIsDescriptionOpen(true) : undefined}
           onRequestFilter={onRequestFilter ?? (() => {})}

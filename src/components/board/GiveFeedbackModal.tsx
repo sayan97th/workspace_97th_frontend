@@ -4,6 +4,8 @@ import { CloseIcon } from "@/icons/workspace-icons";
 
 export type GiveFeedbackModalProps = {
   is_open: boolean;
+  /** The prompt above the text box. Defaults to asking about the board. */
+  description?: string;
   onSubmit: (message: string) => Promise<void>;
   onClose: () => void;
 };
@@ -14,7 +16,7 @@ export type GiveFeedbackModalProps = {
  * (one textarea, no category/severity picker) since it's meant as a quick
  * "here's a thought" channel, not a bug-report/support-ticket flow.
  */
-const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({ is_open, onSubmit, onClose }) => {
+const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({ is_open, description = "Tell us what's working, what isn't, or what you'd like to see on this board.", onSubmit, onClose }) => {
   const [message, setMessage] = useState("");
   const [is_submitting, setIsSubmitting] = useState(false);
   const [is_sent, setIsSent] = useState(false);
@@ -70,12 +72,12 @@ const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({ is_open, onSubmit
         <div className="px-[22px] py-5">
           {is_sent ? (
             <p className="text-[13.5px] leading-relaxed text-shell-text-secondary">
-              Thanks for letting us know — your feedback has been sent.
+              Thanks for letting us know, your feedback has been sent.
             </p>
           ) : (
             <>
               <p className="mb-3 text-[13px] leading-relaxed text-shell-text-muted">
-                Tell us what&apos;s working, what isn&apos;t, or what you&apos;d like to see on this board.
+                {description}
               </p>
               <textarea
                 autoFocus

@@ -14,6 +14,7 @@ import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
 import ConfigEditorModal from "./menus/ConfigEditorModal";
+import DependencySetupDialog, { type DependencyDateColumn } from "./menus/DependencySetupDialog";
 import LinkedItemDialog from "./menus/LinkedItemDialog";
 import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEditorModal";
 import CellFilterContextMenu, { type CellFilterContextMenuTarget } from "./menus/CellFilterContextMenu";
@@ -22,6 +23,8 @@ import "./table-board.css";
 
 /** How many rows the Formula dialog collects to preview against, before it trims to what fits on screen. */
 const FORMULA_PREVIEW_SCAN_LIMIT = 20;
+/** Width of the Timeline column "Set up dependencies between items" can create, the same as the "+" gallery's. */
+const TIMELINE_COLUMN_WIDTH = 196;
 
 export interface BoardTableProps {
   board_title?: string;
@@ -344,7 +347,7 @@ export default function BoardTable({
   // leaving the viewer to discover the column header's own "..." menu.
   const openConfigEditorForKind = useCallback(
     (kind: ColumnKind, column_id: string | void) => {
-      if (!column_id || (kind !== "formula" && kind !== "connect_board" && kind !== "mirror")) return;
+      if (!column_id || (kind !== "formula" && kind !== "connect_board" && kind !== "mirror" && kind !== "dependency")) return;
       base_actions.openConfigEditor(kind, column_id);
     },
     [base_actions]
@@ -464,6 +467,25 @@ export default function BoardTable({
     if (!column_id) return undefined;
     return all_columns.find((c) => c.id === column_id);
   }, [all_columns, state.config_editor]);
+
+  /** Where the column being configured lives (its first group and scope), for saving its settings and adding a column next to it. */
+  const config_editor_location: { group_key: string; scope: ColumnScope } | null = useMemo(() => {
+    const column_id = state.config_editor?.column_id;
+    if (!column_id) return null;
+    for (const group of state.groups) {
+      if ([...group.base_columns, ...group.custom_columns].some((c) => c.id === column_id)) return { group_key: group.key, scope: "main" };
+      if ([...group.sub_base_columns, ...group.sub_custom_columns].some((c) => c.id === column_id)) return { group_key: group.key, scope: "sub" };
+    }
+    return null;
+  }, [state.groups, state.config_editor?.column_id]);
+
+  /** "Set up dependencies between items": "+ Create New Column" adds a Timeline right after the Dependency column. */
+  const createDependencyDateColumn = useCallback(async (): Promise<DependencyDateColumn | null> => {
+    const column_id = state.config_editor?.column_id;
+    if (!onAddColumnRight || !config_editor_location || !column_id) return null;
+    const created_id = await onAddColumnRight(config_editor_location.group_key, config_editor_location.scope, column_id, "timeline", "Timeline", TIMELINE_COLUMN_WIDTH);
+    return created_id ? { id: created_id, title: "Timeline", kind: "timeline" } : null;
+  }, [onAddColumnRight, config_editor_location, state.config_editor?.column_id]);
 
   /** The rows the Formula dialog previews its result on: the first items (or subitems, for a subitem-scope column) across the groups. */
   const formula_preview_rows: FormulaPreviewRow[] = useMemo(() => {
@@ -602,6 +624,16 @@ export default function BoardTable({
       {state.config_editor && config_editor_column &&
         (state.config_editor.kind === "formula" ? (
           <FormulaEditorModal column={config_editor_column} preview_rows={formula_preview_rows} actions={actions} onClose={actions.closeConfigEditor} />
+        ) : state.config_editor.kind === "dependency" ? (
+          <DependencySetupDialog
+            column={config_editor_column}
+            can_create_column={Boolean(onAddColumnRight && config_editor_location) && state.can_edit_structure && !state.read_only}
+            onCreateColumn={createDependencyDateColumn}
+            onSave={(dependency) => {
+              if (config_editor_location) actions.updateColumnSettings(config_editor_location.group_key, config_editor_location.scope, config_editor_column.id, { dependency });
+            }}
+            onClose={actions.closeConfigEditor}
+          />
         ) : (
           <ConfigEditorModal
             kind={state.config_editor.kind}

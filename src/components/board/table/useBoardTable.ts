@@ -56,6 +56,8 @@ import {
 } from "./treeUtils";
 
 export type ColumnScope = "main" | "sub";
+/** The column setup dialogs `openConfigEditor` opens, see `BoardTableState.config_editor`. */
+export type ConfigEditorKind = "formula" | "mirror" | "connect_board" | "dependency";
 
 /**
  * In-flight column-header drag — the column-reorder analogue of `DragState`
@@ -186,6 +188,16 @@ export interface UseBoardTableConfig {
   onAddMirrorColumn?: (connect_column_id: string) => Promise<string | undefined>;
   /** The Connect boards picker's "+ Add item": creates `name` in `group_id` of the connected board and resolves with it. */
   onCreateConnectItem?: (board_id: string, group_id: string, name: string) => Promise<ConnectItemOption>;
+  /**
+   * The Dependency picker's "Type to find or create item": creates `name` as a new item of
+   * `group_key` (as a subitem of `parent_id` when set) on this board and resolves with its id.
+   * Omitted, the picker only finds items.
+   */
+  onCreateNamedItem?: (group_key: string, parent_id: string | null, name: string) => Promise<string>;
+  /** The Dependency picker's "Give feedback": sends the note about the column. Omitted, the button is hidden. */
+  onSubmitFeedback?: (message: string) => Promise<void>;
+  /** This board, so one of its own items can be opened in the item card (the Dependency picker's "Open item page"). */
+  board_ref?: { board_id: string; board_name: string; view_id: string | null };
   /**
    * A `button`-type cell's press: stores nothing, it only runs the automations watching that
    * button. Resolves with a short message for the cell to flash. Omitted (the standalone demo),
@@ -509,7 +521,7 @@ export interface BoardTableState {
    * `onEditMirror`/`onEditConnectBoard`) — mirrors `label_editor_kind`'s own
    * "which modal, for which column" shape. Null closes every such modal.
    */
-  config_editor: { kind: "formula" | "mirror" | "connect_board"; column_id: string } | null;
+  config_editor: { kind: ConfigEditorKind; column_id: string } | null;
   tag_editor_open: boolean;
   /**
    * Every Connect boards column's connected boards, keyed by column id and filled by
@@ -548,6 +560,12 @@ export interface BoardTableState {
   can_create_items: boolean;
   /** See `UseBoardTableConfig.can_reorder_groups`. Turns dragging group headers off when false. */
   can_reorder_groups: boolean;
+  /** Whether `UseBoardTableConfig.onSubmitFeedback` is set, which shows the Dependency picker's "Give feedback". */
+  can_give_feedback: boolean;
+  /** Whether `UseBoardTableConfig.board_ref` is set, so this board's own items can open in the item card. */
+  can_open_board_items: boolean;
+  /** Whether `UseBoardTableConfig.onCreateNamedItem` is set, so the Dependency picker can create items. */
+  can_create_named_items: boolean;
   /** The cell focused for Excel-style keyboard navigation/copy-paste — see `ActiveCell`'s own doc comment. */
   active_cell: ActiveCell | null;
   /** The last cell copied via `copyActiveCell` (Ctrl/Cmd+C) — `null` once nothing has been copied yet this session. */
@@ -633,6 +651,9 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     can_edit_structure: config.can_edit_structure ?? true,
     can_create_items: config.can_create_items ?? true,
     can_reorder_groups: config.can_reorder_groups ?? true,
+    can_give_feedback: Boolean(config.onSubmitFeedback),
+    can_open_board_items: Boolean(config.board_ref),
+    can_create_named_items: Boolean(config.onCreateNamedItem),
     active_cell: null,
     clipboard_cell: null,
     fill_drag: null,
@@ -1003,6 +1024,31 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       applyDependencyLinks(node_id, column_id, links);
     },
     [applyDependencyLinks, pushHistory]
+  );
+
+  /**
+   * Dependency picker's "Type to find or create item": creates `name` next to the row (in its
+   * group, or under the same parent item for a subitem) and links the cell to it. Resolves with
+   * the new row's id, or null when the board cannot create items here.
+   */
+  const createDependencyItem = useCallback(
+    async (node_id: string, column_id: string, name: string): Promise<string | null> => {
+      const on_create = config_ref.current.onCreateNamedItem;
+      const location = locateNode(state_ref.current.groups, node_id);
+      if (!on_create || !location) return null;
+      const parent_id = location.kind === "sub" ? location.item_id : null;
+      const created_id = await on_create(location.group_key, parent_id, name);
+      setState((s) => {
+        if (findNode(s.groups, created_id)) return s;
+        const row = { id: created_id, name, values: {} };
+        return { ...s, groups: parent_id ? insertSubIntoItem(s.groups, parent_id, row) : insertItemIntoGroup(s.groups, location.group_key, { ...row, subs: [] }) };
+      });
+      const current = findNode(state_ref.current.groups, node_id)?.values[column_id];
+      const current_ids = Array.isArray(current) ? (current as string[]) : [];
+      setDependencyLinks(node_id, column_id, [...current_ids.map((id) => ({ predecessor_id: id })), { predecessor_id: created_id }]);
+      return created_id;
+    },
+    [setDependencyLinks]
   );
 
   /** Files cell's "Upload" button. */
@@ -2000,9 +2046,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   );
   const closeLabelEditor = useCallback(() => setState((s) => ({ ...s, label_editor_kind: null, label_editor_column_id: null })), []);
 
-  /** Opens the Formula/Mirror/Connect-board settings modal for a column, see `BoardTableState.config_editor`'s own doc comment. */
+  /** Opens the Formula/Mirror/Connect-board/Dependency settings modal for a column, see `BoardTableState.config_editor`'s own doc comment. */
   const openConfigEditor = useCallback(
-    (kind: "formula" | "mirror" | "connect_board", column_id: string) =>
+    (kind: ConfigEditorKind, column_id: string) =>
       setState((s) => ({ ...s, config_editor: { kind, column_id }, ...closeAllMenus })),
     []
   );
@@ -2424,6 +2470,15 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   /** Opens a connected item's card, closing any cell menu it was opened from. */
   const openLinkedItem = useCallback((ref: LinkedItemRef) => setState((s) => ({ ...s, linked_item: ref, ...closeAllMenus })), []);
   const closeLinkedItem = useCallback(() => setState((s) => ({ ...s, linked_item: null })), []);
+  /** Opens one of this board's own items in the same card (the Dependency picker's "Open item page"). */
+  const openBoardItem = useCallback((item_id: string) => {
+    const board_ref = config_ref.current.board_ref;
+    if (board_ref) setState((s) => ({ ...s, linked_item: { ...board_ref, item_id }, ...closeAllMenus }));
+  }, []);
+  /** The Dependency picker's "Give feedback". */
+  const submitFeedback = useCallback(async (message: string) => {
+    await config_ref.current.onSubmitFeedback?.(message);
+  }, []);
   const fetchLinkedItem = useCallback(async (ref: LinkedItemRef): Promise<LinkedItemDetail | null> => {
     const on_fetch = config_ref.current.onFetchLinkedItem;
     return on_fetch ? on_fetch(ref) : null;
@@ -2633,6 +2688,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addMirrorColumn,
       setLinkedItemValue,
       openLinkedItem,
+      openBoardItem,
+      submitFeedback,
+      createDependencyItem,
       closeLinkedItem,
       fetchLinkedItem,
       deleteLinkedItem,
@@ -2657,7 +2715,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2675,7 +2733,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
-    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards", "openLinkedItem", "closeLinkedItem", "fetchLinkedItem",
+    "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards", "openLinkedItem", "openBoardItem", "submitFeedback", "closeLinkedItem", "fetchLinkedItem",
     "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
@@ -2743,6 +2801,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("addCellFileDoc", (node_id, column_id) => isCellEditable(node_id, column_id));
     guarded.canEditCell = isCellEditable;
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("setDependencyLinks", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("createDependencyItem", (node_id, column_id) => can_create_items && isCellEditable(node_id, column_id));
     // Pressing a button changes no value, the API only asks that the viewer may work on the item.
     wrap("pressButton", (node_id) => canEditNode?.(node_id) ?? true);
     wrap("startFillDrag", (node_id, column_id) => isCellEditable(node_id, column_id));

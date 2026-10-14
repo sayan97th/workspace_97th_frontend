@@ -16,20 +16,22 @@ interface ColumnInfoButtonProps {
   title: string;
   linkage?: ColumnLinkage;
   description?: string;
+  /** Dependency columns only: how its links move dates, see `ColumnHeaderCell`. */
+  dependency_summary?: string;
 }
 
 /** Whether a column has anything for the header's (i) to show. */
-export function hasColumnInfo(linkage: ColumnLinkage | undefined, description: string | undefined): boolean {
-  return Boolean(description) || Boolean(linkage && (linkage.mirrored_column || linkage.boards.length > 0 || linkage.hidden_board_count > 0));
+export function hasColumnInfo(linkage: ColumnLinkage | undefined, description: string | undefined, dependency_summary?: string): boolean {
+  return Boolean(description) || Boolean(dependency_summary) || Boolean(linkage && (linkage.mirrored_column || linkage.boards.length > 0 || linkage.hidden_board_count > 0));
 }
 
 /**
  * The (i) next to a column title, monday.com style. Hovering (or focusing) it opens a card with
  * the column's "Linkage" (what a Mirror mirrors and from which board, the boards a Connect
- * boards column shows items from) and its "Column description". The card stays open while the
- * pointer is over it, so its board links can be clicked.
+ * boards column shows items from), a Dependency column's mode and its "Column description".
+ * The card stays open while the pointer is over it, so its board links can be clicked.
  */
-export default function ColumnInfoButton({ title, linkage, description }: ColumnInfoButtonProps) {
+export default function ColumnInfoButton({ title, linkage, description, dependency_summary }: ColumnInfoButtonProps) {
   const trigger_ref = useRef<HTMLButtonElement>(null);
   const timer_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [anchor_rect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -96,7 +98,7 @@ export default function ColumnInfoButton({ title, linkage, description }: Column
       {anchor_rect &&
         typeof document !== "undefined" &&
         createPortal(
-          <ColumnInfoCard anchor_rect={anchor_rect} linkage={linkage} description={description} onEnter={clearTimer} onLeave={scheduleClose} onNavigate={closeNow} />,
+          <ColumnInfoCard anchor_rect={anchor_rect} linkage={linkage} description={description} dependency_summary={dependency_summary} onEnter={clearTimer} onLeave={scheduleClose} onNavigate={closeNow} />,
           document.body
         )}
     </>
@@ -107,13 +109,14 @@ interface ColumnInfoCardProps {
   anchor_rect: DOMRect;
   linkage?: ColumnLinkage;
   description?: string;
+  dependency_summary?: string;
   onEnter: () => void;
   onLeave: () => void;
   onNavigate: () => void;
 }
 
 /** The card itself, below the (i) (above when there is no room), kept inside the window. */
-function ColumnInfoCard({ anchor_rect, linkage, description, onEnter, onLeave, onNavigate }: ColumnInfoCardProps) {
+function ColumnInfoCard({ anchor_rect, linkage, description, dependency_summary, onEnter, onLeave, onNavigate }: ColumnInfoCardProps) {
   const card_ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -169,6 +172,13 @@ function ColumnInfoCard({ anchor_rect, linkage, description, onEnter, onLeave, o
               )}
             </div>
           </div>
+        </div>
+      )}
+      {dependency_summary && (
+        <div className="column-info__section">
+          <LinkageIcon />
+          <div className="column-info__label">Dependencies</div>
+          <div className="column-info__text">{dependency_summary}</div>
         </div>
       )}
       {description && (

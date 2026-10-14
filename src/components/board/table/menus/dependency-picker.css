@@ -1,0 +1,447 @@
+/*
+ * Dependency cell picker ("Choose dependencies"), styled after monday.com: a
+ * white 8px card with the title, a "Beta" badge and "Give feedback" on top, a
+ * "Type to find or create item" field, then the items listed by group. Each
+ * group name is drawn in its color and each item is a half width bordered card
+ * with the group color as a left bar. A hovered card turns gray and shows the
+ * "Open item page" button, a selected card turns light blue with a divider and
+ * a check on its right.
+ *
+ * Every color is a `--dependency-picker-*` token declared on the card, so dark
+ * mode only swaps the tokens. The card is portaled to `document.body` (see
+ * `PopoverPanel`), outside the table's scoped palette, which is why it carries
+ * its own tokens. A section's color comes through `--dependency-picker-group-color`.
+ */
+
+.dependency-picker {
+  --dependency-picker-surface: #ffffff;
+  --dependency-picker-text: #323338;
+  --dependency-picker-text-secondary: #676879;
+  --dependency-picker-text-faint: #9699a6;
+  --dependency-picker-border: #c3c6d4;
+  --dependency-picker-border-hover: #323338;
+  --dependency-picker-focus: #0073ea;
+  --dependency-picker-primary: #0073ea;
+  --dependency-picker-hover: #dcdfec;
+  --dependency-picker-card-hover: #cfd2e3;
+  --dependency-picker-selected: #cce5ff;
+  --dependency-picker-selected-hover: #aed4fc;
+  --dependency-picker-selected-divider: rgba(50, 51, 56, 0.25);
+  --dependency-picker-icon-hover: rgba(50, 51, 56, 0.1);
+  --dependency-picker-notice: #fff4e5;
+  --dependency-picker-notice-text: #7a4a00;
+  --dependency-picker-error: #d83a52;
+  --dependency-picker-divider: #e7e9ef;
+  --dependency-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  width: 420px;
+  max-width: calc(100vw - 16px);
+  max-height: min(520px, calc(100vh - 16px));
+  padding: 16px 0 12px;
+  border-radius: 8px;
+  background: var(--dependency-picker-surface);
+  box-shadow: var(--dependency-picker-shadow);
+  color: var(--dependency-picker-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+html.dark .dependency-picker {
+  --dependency-picker-surface: #0f1c1c;
+  --dependency-picker-text: #e9eded;
+  --dependency-picker-text-secondary: #b7c0c1;
+  --dependency-picker-text-faint: #9aa4a5;
+  --dependency-picker-border: rgba(255, 255, 255, 0.2);
+  --dependency-picker-border-hover: rgba(255, 255, 255, 0.5);
+  --dependency-picker-focus: #4d9cff;
+  --dependency-picker-primary: #4d9cff;
+  --dependency-picker-hover: rgba(255, 255, 255, 0.08);
+  --dependency-picker-card-hover: rgba(255, 255, 255, 0.12);
+  --dependency-picker-selected: rgba(77, 156, 255, 0.26);
+  --dependency-picker-selected-hover: rgba(77, 156, 255, 0.38);
+  --dependency-picker-selected-divider: rgba(255, 255, 255, 0.25);
+  --dependency-picker-icon-hover: rgba(255, 255, 255, 0.12);
+  --dependency-picker-notice: rgba(253, 171, 61, 0.14);
+  --dependency-picker-notice-text: #fdd49a;
+  --dependency-picker-error: #ff7575;
+  --dependency-picker-divider: rgba(255, 255, 255, 0.12);
+  --dependency-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .dependency-picker {
+    animation: dependency-picker-enter 120ms ease-out;
+  }
+}
+
+@keyframes dependency-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Header: title, "Beta", "Give feedback" ── */
+
+.dependency-picker__header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px;
+}
+
+.dependency-picker__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-picker__badge {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--dependency-picker-primary);
+  border-radius: 4px;
+  color: var(--dependency-picker-primary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dependency-picker__feedback {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: auto;
+  margin-right: -8px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--dependency-picker-text);
+  font-size: 14px;
+  transition: background-color 100ms ease;
+}
+
+.dependency-picker__feedback:hover {
+  background: var(--dependency-picker-hover);
+}
+
+.dependency-picker__back {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: -8px;
+  border-radius: 4px;
+  color: var(--dependency-picker-text-secondary);
+}
+
+.dependency-picker__back:hover {
+  background: var(--dependency-picker-hover);
+  color: var(--dependency-picker-text);
+}
+
+.dependency-picker__feedback:focus-visible,
+.dependency-picker__back:focus-visible,
+.dependency-picker__open:focus-visible,
+.dependency-picker__create:focus-visible,
+.dependency-picker__footer-button:focus-visible {
+  outline: 2px solid var(--dependency-picker-focus);
+  outline-offset: -2px;
+}
+
+/* ── "Type to find or create item" ── */
+
+.dependency-picker__search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  margin: 12px 24px 8px;
+  padding: 0 8px;
+  border: 1px solid var(--dependency-picker-border);
+  border-radius: 4px;
+  color: var(--dependency-picker-text-secondary);
+  cursor: text;
+  transition: border-color 100ms ease;
+}
+
+.dependency-picker__search:hover {
+  border-color: var(--dependency-picker-border-hover);
+}
+
+.dependency-picker__search:focus-within {
+  border-color: var(--dependency-picker-focus);
+}
+
+.dependency-picker__search-input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--dependency-picker-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.dependency-picker__search-input::placeholder {
+  color: var(--dependency-picker-text-faint);
+}
+
+/* ── Items by group ── */
+
+.dependency-picker__list {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 24px 4px;
+  overflow-y: auto;
+}
+
+.dependency-picker__section + .dependency-picker__section {
+  margin-top: 8px;
+}
+
+.dependency-picker__group-title {
+  overflow: hidden;
+  padding: 4px 0;
+  color: var(--dependency-picker-group-color, var(--dependency-picker-primary));
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-picker__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: min(100%, 204px);
+  height: 40px;
+  margin-top: 8px;
+  padding: 0 8px 0 15px;
+  border: 1px solid var(--dependency-picker-border);
+  border-radius: 4px;
+  background: var(--dependency-picker-surface);
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background-color 100ms ease,
+    border-color 100ms ease;
+}
+
+.dependency-picker__group-title + .dependency-picker__card {
+  margin-top: 4px;
+}
+
+/* The group color bar, flush with the card's left edge. */
+.dependency-picker__card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  left: -1px;
+  width: 6px;
+  border-radius: 4px 0 0 4px;
+  background: var(--dependency-picker-group-color, var(--dependency-picker-primary));
+}
+
+.dependency-picker__card:hover,
+.dependency-picker__card[data-active] {
+  border-color: transparent;
+  background: var(--dependency-picker-card-hover);
+}
+
+.dependency-picker__card[aria-selected="true"] {
+  border-color: transparent;
+  background: var(--dependency-picker-selected);
+}
+
+.dependency-picker__card[aria-selected="true"]:hover,
+.dependency-picker__card[aria-selected="true"][data-active] {
+  background: var(--dependency-picker-selected-hover);
+}
+
+.dependency-picker__card[data-active] {
+  outline: 2px solid var(--dependency-picker-focus);
+  outline-offset: -2px;
+}
+
+.dependency-picker__card[data-readonly] {
+  cursor: default;
+}
+
+.dependency-picker__card-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Open item page": hidden until the card is hovered or focused. */
+.dependency-picker__open {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--dependency-picker-text);
+  opacity: 0;
+  transition:
+    opacity 100ms ease,
+    background-color 100ms ease;
+}
+
+.dependency-picker__card:hover .dependency-picker__open,
+.dependency-picker__card[data-active] .dependency-picker__open,
+.dependency-picker__open:focus-visible {
+  opacity: 1;
+}
+
+.dependency-picker__open:hover {
+  background: var(--dependency-picker-icon-hover);
+}
+
+/* The selected card's "| ✓" on its right. */
+.dependency-picker__check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 20px;
+  border-left: 1px solid var(--dependency-picker-selected-divider);
+  color: var(--dependency-picker-text);
+}
+
+/* ── "Create" row, error, empty state ── */
+
+.dependency-picker__create {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin-top: 8px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--dependency-picker-text);
+  font-size: 14px;
+  text-align: left;
+}
+
+.dependency-picker__create:hover,
+.dependency-picker__create[data-active] {
+  background: var(--dependency-picker-hover);
+}
+
+.dependency-picker__create:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.dependency-picker__create-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-picker__error {
+  margin: 4px 0 8px;
+  color: var(--dependency-picker-error);
+  font-size: 13px;
+}
+
+.dependency-picker__empty {
+  padding: 8px 0;
+  color: var(--dependency-picker-text-faint);
+  font-size: 13px;
+}
+
+/* ── Footer: "Days between items" ── */
+
+.dependency-picker__footer {
+  flex: none;
+  margin-top: 8px;
+  padding: 8px 16px 0;
+  border-top: 1px solid var(--dependency-picker-divider);
+}
+
+.dependency-picker__footer-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--dependency-picker-text-secondary);
+  font-size: 14px;
+}
+
+.dependency-picker__footer-button:hover {
+  background: var(--dependency-picker-hover);
+  color: var(--dependency-picker-text);
+}
+
+.dependency-picker__footer-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--dependency-picker-hover);
+  color: var(--dependency-picker-text);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* ── "Days between items" view ── */
+
+.dependency-picker__hint {
+  margin: 4px 24px 8px;
+  color: var(--dependency-picker-text-secondary);
+  font-size: 13px;
+}
+
+.dependency-picker__notice {
+  margin: 0 24px 8px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--dependency-picker-notice);
+  color: var(--dependency-picker-notice-text);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.dependency-picker__schedule {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 0 24px 4px;
+  overflow-y: auto;
+}

@@ -175,6 +175,7 @@ export default function GroupColumnHeaderRow({
             onEditFormula={col.kind === "formula" ? () => actions.openConfigEditor("formula", col.id) : undefined}
             onEditMirror={col.kind === "mirror" ? () => actions.openConfigEditor("mirror", col.id) : undefined}
             onEditConnectBoard={col.kind === "connect_board" ? () => actions.openConfigEditor("connect_board", col.id) : undefined}
+            onEditDependency={col.kind === "dependency" ? () => actions.openConfigEditor("dependency", col.id) : undefined}
             onRequestFilter={() => onRequestColumnFilter?.(col.id)}
             onRequestGroupBy={() => onRequestGroupByColumn?.(col.id)}
             onRequestPermissions={onRequestColumnPermissions ? () => onRequestColumnPermissions(col.id) : undefined}

@@ -413,6 +413,20 @@ function readOnlyValue(field: LinkedItemField, people: PersonDef[]): ReactNode {
         </>
       );
     }
+    case "dependency": {
+      const linked = field.linked_items ?? [];
+      if (linked.length === 0) return null;
+      return (
+        <>
+          {linked.slice(0, 2).map((item, index) => (
+            <span key={`${item.name}-${index}`} className="linked-item__dependency-chip" title={item.name}>
+              {item.name}
+            </span>
+          ))}
+          {linked.length > 2 && <span className="linked-item__count">+{linked.length - 2}</span>}
+        </>
+      );
+    }
     case "dropdown": {
       const labels = ids.map((id) => field.options.find((option) => option.id === id)?.label).filter(Boolean);
       return <span className="linked-item__value-text" style={{ padding: 0 }}>{labels.join(", ")}</span>;

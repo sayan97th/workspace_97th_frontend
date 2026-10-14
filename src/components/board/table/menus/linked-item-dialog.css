@@ -291,6 +291,25 @@ button.linked-item__pill:hover {
   background: var(--linked-item-chip-color, #579bfc);
 }
 
+/* A Dependency field's items, the light blue chips of the table cell. */
+.linked-item__dependency-chip {
+  min-width: 0;
+  max-width: 45%;
+  margin: 0 4px;
+  padding: 2px 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #cce5ff;
+  color: #323338;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.dark .linked-item__dependency-chip {
+  background: rgba(77, 156, 255, 0.26);
+  color: #e9eded;
+}
+
 .linked-item__chip > span {
   overflow: hidden;
   text-overflow: ellipsis;

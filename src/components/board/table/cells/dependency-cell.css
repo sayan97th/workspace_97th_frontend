@@ -1,0 +1,222 @@
+/*
+ * Dependency cell, styled after monday.com: each item the row depends on is a
+ * light blue chip with its name truncated with an ellipsis (name and lag in
+ * the shared dark tooltip). Two chips show, the rest collapse into a dark
+ * "+N" bubble, and a grey "+" appears on hover to add more. While the picker
+ * is open the cell grows into a card (`.dependency-cell-card`, laid over the
+ * cell by `PopoverPanel`) with a blue outline, a "+" and every chip with its
+ * remove button, wrapping onto as many lines as it needs.
+ *
+ * Every color is a `--dependency-cell-*` token declared on both the cell and
+ * the card (the card is portaled to `document.body`), so dark mode only swaps
+ * the tokens, never the rules below.
+ */
+
+.dependency-cell,
+.dependency-cell-card {
+  --dependency-cell-chip-bg: #cce5ff;
+  --dependency-cell-chip-bg-hover: #aed4fc;
+  --dependency-cell-chip-text: #323338;
+  --dependency-cell-remove-hover: rgba(50, 51, 56, 0.12);
+  --dependency-cell-count-bg: #323338;
+  --dependency-cell-count-text: #ffffff;
+  --dependency-cell-add: #676879;
+  --dependency-cell-add-hover-bg: #dcdfec;
+  --dependency-cell-card-bg: #ffffff;
+  --dependency-cell-card-border: #0073ea;
+}
+
+html.dark .dependency-cell,
+html.dark .dependency-cell-card {
+  --dependency-cell-chip-bg: rgba(77, 156, 255, 0.26);
+  --dependency-cell-chip-bg-hover: rgba(77, 156, 255, 0.38);
+  --dependency-cell-chip-text: #e9eded;
+  --dependency-cell-remove-hover: rgba(255, 255, 255, 0.16);
+  --dependency-cell-count-bg: #e9eded;
+  --dependency-cell-count-text: #1c2525;
+  --dependency-cell-add: #9aa4a5;
+  --dependency-cell-add-hover-bg: rgba(255, 255, 255, 0.1);
+  --dependency-cell-card-bg: #0f1c1c;
+  --dependency-cell-card-border: #4d9cff;
+}
+
+.dependency-cell {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  align-items: center;
+}
+
+/* The whole cell opens the picker, the chips and buttons sit above that hit area. */
+.dependency-cell__hit-area {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
+.dependency-cell__hit-area:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: -2px;
+}
+
+.dependency-cell__content {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  pointer-events: none;
+}
+
+.dependency-cell__content > * {
+  pointer-events: auto;
+}
+
+/* Hover "+" left of the chips, monday's "add more" affordance. */
+.dependency-cell__add {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 20px;
+  overflow: hidden;
+  border-radius: 4px;
+  color: var(--dependency-cell-add);
+  opacity: 0;
+  transition:
+    width 120ms ease-out,
+    opacity 120ms ease-out;
+}
+
+.dependency-cell:hover .dependency-cell__add,
+.dependency-cell__add:focus-visible {
+  width: 20px;
+  opacity: 1;
+}
+
+.dependency-cell__add:hover {
+  background: var(--dependency-cell-add-hover-bg);
+}
+
+/* One item the row depends on. */
+.dependency-cell__chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--dependency-cell-chip-bg);
+  color: var(--dependency-cell-chip-text);
+  font-size: 14px;
+  line-height: 20px;
+  transition: background-color 120ms ease-out;
+}
+
+.dependency-cell__chip--button:hover,
+.dependency-cell__chip--button:focus-visible {
+  background: var(--dependency-cell-chip-bg-hover);
+  outline: none;
+}
+
+.dependency-cell__chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dependency-cell__chip-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
+  border-radius: 3px;
+  color: var(--dependency-cell-chip-text);
+}
+
+.dependency-cell__chip-remove:hover,
+.dependency-cell__chip-remove:focus-visible {
+  background: var(--dependency-cell-remove-hover);
+  outline: none;
+}
+
+/* "+N" bubble for the chips that did not fit. */
+.dependency-cell__count {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  background: var(--dependency-cell-count-bg);
+  color: var(--dependency-cell-count-text);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.2px;
+  line-height: 1;
+}
+
+.dependency-cell__count:focus-visible {
+  outline: 2px solid #0073ea;
+  outline-offset: 1px;
+}
+
+.dependency-cell__count-names {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+/* An empty cell shows a faint centered "+" on hover. */
+.dependency-cell__empty-add {
+  margin: 0 auto;
+  color: var(--dependency-cell-add);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+.dependency-cell:hover .dependency-cell__empty-add {
+  opacity: 1;
+}
+
+/* The open cell, grown over the rows below into a card listing every chip. */
+.dependency-cell-card {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-content: center;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 5px 8px;
+  border: 1px solid var(--dependency-cell-card-border);
+  background: var(--dependency-cell-card-bg);
+  color: var(--dependency-cell-chip-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.dependency-cell-card__plus {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 24px;
+  color: var(--dependency-cell-chip-text);
+}
