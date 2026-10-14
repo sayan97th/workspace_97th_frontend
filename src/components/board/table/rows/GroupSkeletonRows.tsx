@@ -3,6 +3,7 @@
 import type { ColumnDef } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import TreeBar from "./TreeBar";
+import { columnMoveKey } from "../columnMove";
 
 interface GroupSkeletonRowsProps {
   name_col_width: number;
@@ -49,6 +50,7 @@ export default function GroupSkeletonRows({ name_col_width, min_width, base_colu
               return (
                 <div
                   key={col.id}
+                  data-column-move={columnMoveKey("main", col.id)}
                   className="flex items-center justify-center border-r border-boardtree-grid px-2"
                   style={{
                     height: row_h,

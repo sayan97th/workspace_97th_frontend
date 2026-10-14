@@ -1,0 +1,130 @@
+// Column drag reorder look for the table board, driven by `ColumnMoveAnimator`.
+//
+// Cells opt in with `data-column-move="<scope>:<column id>"` (see
+// `columnMoveKey`). The animator then sets:
+//   data-column-move-phase="invert|play"  while a cell slides to its new slot
+//   data-column-move-lifted               on the dragged column's cells
+//   data-column-move-settle               on the dropped column for a moment
+
+$slide-duration: 260ms;
+// Fast start and a long soft landing, close to monday's header shuffle.
+$slide-easing: cubic-bezier(0.2, 0.9, 0.3, 1);
+$settle-duration: 520ms;
+// Keep in sync with `GHOST_PADDING` in `columnMove.ts`.
+$ghost-padding: 12px;
+$ghost-radius: 6px;
+
+$accent: var(--color-boardtree-accent);
+
+@mixin column-overlay {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.column-move-root {
+  // A plain wrapper for measuring, it must not add a box to the layout.
+  display: contents;
+
+  --column-move-duration: #{$slide-duration};
+  --column-move-easing: #{$slide-easing};
+  --column-move-lifted-fill: color-mix(in srgb, #{$accent} 9%, transparent);
+  --column-move-lifted-edge: color-mix(in srgb, #{$accent} 55%, transparent);
+  --column-move-settle-fill: color-mix(in srgb, #{$accent} 18%, transparent);
+
+  [data-column-move-phase="invert"] {
+    transition: none;
+  }
+
+  [data-column-move-phase="play"] {
+    // Cells are transparent over the row, so two columns crossing paths would
+    // show both contents at once. A solid fill keeps each column a block.
+    background-color: var(--color-boardtree-surface);
+    transition: transform var(--column-move-duration) var(--column-move-easing);
+    will-change: transform;
+  }
+
+  // The dragged column's own slot: a tinted lane with faded content, so the
+  // eye reads where the column will drop while the ghost follows the pointer.
+  [data-column-move-lifted] {
+    position: relative;
+    z-index: 2;
+
+    > * {
+      opacity: 0.32;
+      transition: opacity 120ms ease-out;
+    }
+
+    &::after {
+      @include column-overlay;
+      background: var(--column-move-lifted-fill);
+      box-shadow:
+        inset 1px 0 0 var(--column-move-lifted-edge),
+        inset -1px 0 0 var(--column-move-lifted-edge);
+    }
+  }
+
+  [data-column-move-settle] {
+    position: relative;
+
+    &::after {
+      @include column-overlay;
+      animation: column-move-settle $settle-duration ease-out forwards;
+    }
+  }
+}
+
+@keyframes column-move-settle {
+  from {
+    background: var(--column-move-settle-fill);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+// Drag image built by `setColumnDragImage`. The padding keeps the shadow
+// inside the snapshot the browser takes, which would otherwise clip it.
+.column-move-ghost {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: $ghost-padding;
+  pointer-events: none;
+
+  &__card {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 0 10px;
+    border: 1px solid $accent;
+    border-radius: $ghost-radius;
+    background: var(--color-boardtree-surface);
+    box-shadow:
+      0 6px 16px rgba(30, 34, 55, 0.18),
+      0 1px 3px rgba(30, 34, 55, 0.12);
+  }
+
+  &__label {
+    overflow: hidden;
+    color: var(--color-boardtree-text);
+    font-size: 14px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .column-move-root {
+    --column-move-duration: 0ms;
+
+    [data-column-move-settle]::after {
+      animation: none;
+    }
+  }
+}

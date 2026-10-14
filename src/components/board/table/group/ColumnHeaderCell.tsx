@@ -8,6 +8,8 @@ import ColumnDescriptionModal from "../menus/ColumnDescriptionModal";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import type { ColumnKind, ColumnSettingsPatch } from "../types";
 import { DEPENDENCY_MODE_OPTIONS } from "../menus/DependencySetupDialog";
+import { columnDragSide, setColumnDragImage } from "../columnMove";
+import type { ColumnDragSide } from "../useBoardTable";
 
 /** What a Dependency column's (i) says: its mode and the column it schedules. */
 function describeDependencySetup(column: ColumnMenuColumn): string {
@@ -85,10 +87,11 @@ interface ColumnHeaderCellProps {
   className?: string;
   /** Whether this cell can be picked up and dragged to reorder columns — omitted for the item-title/sub-title virtual columns, which stay pinned first. */
   is_draggable?: boolean;
-  /** Whether this cell is the one currently being dragged — fades it, mirroring `ItemRow`/`SubitemRow`'s own drag opacity. */
-  is_dragging?: boolean;
+  /** `columnMoveKey` of this column, so `ColumnMoveAnimator` slides this header with its cells. Omitted for the virtual title columns, which never move. */
+  move_key?: string;
   onColumnDragStart?: () => void;
-  onColumnDragOver?: () => void;
+  /** `drag_side` is the half of this header the pointer is over, see `onColumnDragOver`'s midpoint rule. */
+  onColumnDragOver?: (drag_side: ColumnDragSide) => void;
   onColumnDragEnd?: () => void;
   /** Freezes this header cell in place (the Item/Subitem title cell, or a pinned column) while the row scrolls horizontally, see `layoutUtils.mainStickyOffsets`. Omitted for every other header cell. */
   sticky?: { left: number; background: string };
@@ -99,7 +102,7 @@ export default function ColumnHeaderCell({
   onEnter, onLeave, onOpenMenu, onCloseMenu, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency,
   onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, className,
-  is_draggable, is_dragging, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
+  is_draggable, move_key, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
   const title_input_ref = useRef<HTMLInputElement>(null);
@@ -113,14 +116,15 @@ export default function ColumnHeaderCell({
     <div
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
-      draggable={is_draggable}
-      onDragStart={is_draggable ? onColumnDragStart : undefined}
-      onDragOver={is_draggable ? (e) => { e.preventDefault(); onColumnDragOver?.(); } : undefined}
+      data-column-move={move_key}
+      draggable={is_draggable && !is_editing}
+      onDragStart={is_draggable ? (e) => { setColumnDragImage(e, title); onColumnDragStart?.(); } : undefined}
+      onDragOver={is_draggable ? (e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; onColumnDragOver?.(columnDragSide(e)); } : undefined}
+      onDrop={is_draggable ? (e) => e.preventDefault() : undefined}
       onDragEnd={is_draggable ? onColumnDragEnd : undefined}
       className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-grid ${className || ""}`}
       style={{
         height,
-        opacity: is_dragging ? 0.45 : 1,
         ...(sticky ? { position: "sticky" as const, left: sticky.left, zIndex: 16, background: sticky.background } : {}),
       }}
     >

@@ -10,6 +10,8 @@ import TableHeader from "./toolbar/TableHeader";
 import TableToolbar from "./toolbar/TableToolbar";
 import GroupSection from "./group/GroupSection";
 import SortableGroupList from "./group/SortableGroupList";
+import ColumnMoveAnimator from "./ColumnMoveAnimator";
+import { columnMoveKey, columnOrderKey } from "./columnMove";
 import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
@@ -503,8 +505,11 @@ export default function BoardTable({
     return rows;
   }, [state.groups, state.config_editor?.kind, config_editor_column]);
 
+  const column_order_key = useMemo(() => columnOrderKey(state.groups), [state.groups]);
+  const dragging_column_key = state.column_drag ? columnMoveKey(state.column_drag.scope, state.column_drag.column_id) : null;
+
   const grid = (
-    <>
+    <ColumnMoveAnimator order_key={column_order_key} dragging_key={dragging_column_key}>
       {!embedded && <div className="h-[26px]" />}
       <SortableGroupList
         state={state}
@@ -546,7 +551,7 @@ export default function BoardTable({
           Add new group
         </button>
       )}
-    </>
+    </ColumnMoveAnimator>
   );
 
   const modals = (

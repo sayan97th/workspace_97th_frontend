@@ -5,6 +5,7 @@ import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
 import { VoteRatingSummary } from "../cells/VoteRatingCells";
 import { ProgressTrackingSummary } from "../cells/ProgressTrackingCells";
+import { columnMoveKey } from "../columnMove";
 
 interface GroupSummaryRowProps {
   group: BoardTableGroup;
@@ -37,6 +38,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
           return (
             <div
               key={col.id}
+              data-column-move={columnMoveKey("main", col.id)}
               className="flex h-9 min-w-0 flex-col items-center justify-center border-r border-boardtree-grid bg-boardtree-surface px-2"
               style={{
                 borderTop: "1px solid var(--color-boardtree-grid)",

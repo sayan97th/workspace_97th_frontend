@@ -11,6 +11,7 @@ import TreeHook from "./TreeHook";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
+import { columnMoveKey } from "../columnMove";
 
 interface SubitemRowProps {
   sub: BoardTableNode;
@@ -217,6 +218,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           return (
             <div
               key={col.id}
+              data-column-move={columnMoveKey("sub", col.id)}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-grid"
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{

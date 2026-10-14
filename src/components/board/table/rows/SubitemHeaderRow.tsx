@@ -7,6 +7,7 @@ import ColumnHeaderCell from "../group/ColumnHeaderCell";
 import ColumnPicker from "../menus/ColumnPicker";
 import TreeBar from "./TreeBar";
 import { statusColumnsOf } from "../progressTracking";
+import { columnMoveKey } from "../columnMove";
 
 interface SubitemHeaderRowProps {
   item: BoardTableItem;
@@ -123,9 +124,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "sub", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "sub", col.id)}
             is_draggable
-            is_dragging={state.column_drag?.column_id === col.id}
+            move_key={columnMoveKey("sub", col.id)}
             onColumnDragStart={() => actions.onColumnDragStart(group.key, "sub", col.id)}
-            onColumnDragOver={() => actions.onColumnDragOver(col.id)}
+            onColumnDragOver={(drag_side) => actions.onColumnDragOver(col.id, drag_side)}
             onColumnDragEnd={actions.onColumnDragEnd}
           />
         ))}

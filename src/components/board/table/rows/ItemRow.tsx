@@ -12,6 +12,7 @@ import { conditionalColorFill } from "../colorUtils";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
+import { columnMoveKey } from "../columnMove";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
 interface ItemRowProps {
@@ -312,6 +313,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           return (
             <div
               key={col.id}
+              data-column-move={columnMoveKey("main", col.id)}
               data-filter-cell="true"
               data-item-id={item.id}
               data-column-id={col.id}

@@ -10,6 +10,7 @@ import { VoteRatingSummary } from "../cells/VoteRatingCells";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
 import { groupDragHandleClassName, useGroupDragHandle } from "../group/groupDragHandle";
+import { columnMoveKey } from "../columnMove";
 
 interface CollapsedGroupSummaryRowProps {
   group: BoardTableGroup;
@@ -75,6 +76,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
             return (
               <div
                 key={col.id}
+                data-column-move={columnMoveKey("main", col.id)}
                 className="flex min-w-0 flex-col items-center justify-center gap-1 border-l border-boardtree-grid px-2.5"
                 style={{ height: ROW_HEIGHT }}
               >

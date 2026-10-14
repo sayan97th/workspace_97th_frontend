@@ -66,6 +66,9 @@ export type ConfigEditorKind = "formula" | "mirror" | "connect_board" | "depende
  * `onColumnDragEnd` can tell whether the drop actually changed anything
  * before reporting a `ReorderColumnsPayload`.
  */
+/** Which half of the hovered column header the pointer is over during a column drag. */
+export type ColumnDragSide = "before" | "after";
+
 export interface ColumnDragState {
   column_id: string;
   group_key: string;
@@ -1976,11 +1979,23 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * one shared array in `TableBoardView`. A group missing either column
    * (the mock demo's per-group `custom_columns` can differ) is left alone.
    */
-  const onColumnDragOver = useCallback((over_column_id: string) => {
+  const onColumnDragOver = useCallback((over_column_id: string, drag_side?: ColumnDragSide) => {
     setState((s) => {
       const drag = s.column_drag;
       if (!drag || drag.column_id === over_column_id) return s;
       const { scope } = drag;
+      if (drag_side) {
+        // Only swap once the pointer crosses the target's midpoint, in the
+        // direction the column travels. Swapping on first contact would hand
+        // the slot back and forth while the neighbors are still sliding.
+        const drag_group = findGroup(s.groups, drag.group_key);
+        const order = drag_group ? mergedColumnsOf(drag_group, scope).map((c) => c.id) : [];
+        const from_index = order.indexOf(drag.column_id);
+        const over_index = order.indexOf(over_column_id);
+        if (from_index < 0 || over_index < 0) return s;
+        if (over_index > from_index && drag_side !== "after") return s;
+        if (over_index < from_index && drag_side !== "before") return s;
+      }
       const base_key = scope === "main" ? "base_columns" : "sub_base_columns";
       const list_key = columnListKey(scope);
       return {

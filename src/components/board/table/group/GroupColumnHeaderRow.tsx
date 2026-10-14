@@ -6,6 +6,7 @@ import { HEADER_HEIGHT_PX, HEADER_TITLE_LINES, mainGridTemplate, mainStickyOffse
 import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
 import { statusColumnsOf } from "../progressTracking";
+import { columnMoveKey } from "../columnMove";
 
 interface GroupColumnHeaderRowProps {
   group: BoardTableGroup;
@@ -192,9 +193,9 @@ export default function GroupColumnHeaderRow({
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "main", col.id, kind, width)}
             onDelete={() => actions.deleteColumn(group.key, "main", col.id)}
             is_draggable
-            is_dragging={state.column_drag?.column_id === col.id}
+            move_key={columnMoveKey("main", col.id)}
             onColumnDragStart={() => actions.onColumnDragStart(group.key, "main", col.id)}
-            onColumnDragOver={() => actions.onColumnDragOver(col.id)}
+            onColumnDragOver={(drag_side) => actions.onColumnDragOver(col.id, drag_side)}
             onColumnDragEnd={actions.onColumnDragEnd}
           />
         ))}
