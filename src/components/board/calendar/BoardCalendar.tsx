@@ -17,7 +17,6 @@ import "react-big-calendar/lib/css/react-big-calendar.css";
 import "react-big-calendar/lib/addons/dragAndDrop/styles.css";
 import "./board-calendar.css";
 import CalendarToolbar from "./CalendarToolbar";
-import CalendarAddItemPopover from "./CalendarAddItemPopover";
 import {
   CalendarFilterPanel,
   CalendarSettingsPanel,
@@ -69,11 +68,11 @@ const CalendarCellContext = createContext<{
   active_date: string | null;
   /** `YYYY-MM-DD` days holding at least one event, their "+ Add" moves to the bottom so it doesn't sit under the first event. */
   busy_dates: Set<string>;
-  openComposer: (date: string, anchor_el: HTMLElement) => void;
+  requestAdd: (date: string) => void;
 }>({
   active_date: null,
   busy_dates: new Set(),
-  openComposer: () => {},
+  requestAdd: () => {},
 });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -147,8 +146,10 @@ export type BoardCalendarProps<TRow> = {
   selectedRowId?: string | null;
   /** An event was dragged (or a Timeline event resized). `value` is the new Date (`YYYY-MM-DD[THH:mm]`) or Timeline value. Omit to make events fixed. */
   onChangeEntry?: (row_id: string, source_id: string, value: string | { start: string; end: string }) => void;
-  /** A day's "+ Add" (or a Week/Day time slot) was used to create an item. Omit to hide "+ Add". */
-  onAddItem?: (date: string, name: string) => Promise<void> | void;
+  /** A day's "+ Add" (or a Week/Day time slot) was clicked, with `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`. The caller opens its New Item dialog. Omit to hide "+ Add". */
+  onAddItem?: (date: string) => void;
+  /** The day a New Item dialog is open for, kept highlighted like a hovered cell. */
+  pending_add_date?: string | null;
   config: BoardCalendarConfig;
   /** Omit while the view's settings can't be changed (locked, or no edit rights). */
   onConfigChange?: (next: BoardCalendarConfig) => void;
@@ -181,6 +182,7 @@ function BoardCalendar<TRow>({
   selectedRowId = null,
   onChangeEntry,
   onAddItem,
+  pending_add_date = null,
   config,
   onConfigChange,
   date_sources,
@@ -194,10 +196,13 @@ function BoardCalendar<TRow>({
   const [date, setDate] = useState(() => new Date());
   const [mode, setMode] = useState<BoardCalendarMode>("month");
   const [calendar_height, setCalendarHeight] = useState(640);
-  const [composer, setComposer] = useState<{ date: string; anchor_el: HTMLElement } | null>(null);
   const [settings_anchor_el, setSettingsAnchorEl] = useState<HTMLElement | null>(null);
   const root_ref = useRef<HTMLDivElement | null>(null);
-  const slot_anchor_ref = useRef<HTMLSpanElement | null>(null);
+  // Read through a ref so the month cells (see `DateCellWrapper`) keep their identity while the caller's handler changes.
+  const on_add_item_ref = useRef(onAddItem);
+  useEffect(() => {
+    on_add_item_ref.current = onAddItem;
+  });
 
   // Read after mount so the server render and the first client render agree.
   useEffect(() => {
@@ -279,7 +284,7 @@ function BoardCalendar<TRow>({
     setDate((current) => (mode === "month" ? addMonths(current, step) : mode === "week" ? addWeeks(current, step) : addDays(current, step)));
   };
 
-  const openComposerAt = useCallback((value: string, anchor_el: HTMLElement) => setComposer({ date: value, anchor_el }), []);
+  const requestAdd = useCallback((value: string) => on_add_item_ref.current?.(value), []);
 
   const EventContent = useMemo(() => {
     const Content: React.FC<EventProps<CalendarEventItem>> = ({ event }) => {
@@ -318,12 +323,12 @@ function BoardCalendar<TRow>({
     return Header;
   }, []);
 
-  const composer_date = composer?.date ?? null;
+  const active_add_date = pending_add_date ? pending_add_date.slice(0, 10) : null;
   const can_add = Boolean(onAddItem);
 
   // A month cell's background, which shows "+ Add" while hovered. Its identity
   // only follows the mode: a new component type would remount every cell, and
-  // the open composer's anchor (the "+ Add" button) with it.
+  // and flicker the hover state under the pointer.
   const DateCellWrapper = useMemo(() => {
     const Wrapper: React.FC<DateCellWrapperProps> = ({ value, children }) => {
       const cell_context = useContext(CalendarCellContext);
@@ -345,7 +350,7 @@ function BoardCalendar<TRow>({
           onMouseDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             event.stopPropagation();
-            cell_context.openComposer(iso_date, event.currentTarget);
+            cell_context.requestAdd(iso_date);
           }}
         >
           + Add
@@ -365,8 +370,8 @@ function BoardCalendar<TRow>({
   }, [events]);
 
   const cell_context_value = useMemo(
-    () => ({ active_date: composer_date, busy_dates, openComposer: openComposerAt }),
-    [composer_date, busy_dates, openComposerAt]
+    () => ({ active_date: active_add_date, busy_dates, requestAdd }),
+    [active_add_date, busy_dates, requestAdd]
   );
 
   const eventPropGetter = useCallback(
@@ -393,17 +398,11 @@ function BoardCalendar<TRow>({
   };
 
   const handleSelectSlot = (slot_info: SlotInfo) => {
-    const anchor_el = slot_anchor_ref.current;
-    if (!onAddItem || !anchor_el) return;
+    if (!onAddItem) return;
     const start = new Date(slot_info.start);
     const end = new Date(slot_info.end);
     const is_all_day = start.getHours() === 0 && start.getMinutes() === 0 && end.getTime() - start.getTime() >= DAY_MS;
-    const box = slot_info.box ?? (slot_info.bounds ? { clientX: slot_info.bounds.left, clientY: slot_info.bounds.top } : null);
-    if (box) {
-      anchor_el.style.left = `${box.clientX}px`;
-      anchor_el.style.top = `${box.clientY}px`;
-    }
-    openComposerAt(is_all_day ? toIsoDate(start) : toIsoDateTime(start), anchor_el);
+    onAddItem(is_all_day ? toIsoDate(start) : toIsoDateTime(start));
   };
 
   const handleSelectEvent = (event: CalendarEventItem) => {
@@ -491,15 +490,6 @@ function BoardCalendar<TRow>({
         </CalendarCellContext.Provider>
       </div>
 
-      <span ref={slot_anchor_ref} className="board-calendar__slot-anchor" aria-hidden />
-      <CalendarAddItemPopover
-        anchor_el={composer?.anchor_el ?? null}
-        date={composer_date}
-        onClose={() => setComposer(null)}
-        onSubmit={async (value, name) => {
-          await onAddItem?.(value, name);
-        }}
-      />
       <BoardPopover anchor_el={settings_anchor_el} is_open={settings_anchor_el !== null} onClose={() => setSettingsAnchorEl(null)} width={300} unstyled>
         <CalendarSettingsPanel
           config={config}

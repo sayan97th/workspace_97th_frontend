@@ -2,7 +2,7 @@
  * monday.com style Calendar view.
  *
  * Scoped `--cal-*` tokens live on `.board-calendar`, on
- * `.board-calendar-popover` (the filter, settings, mode and "+ Add"
+ * `.board-calendar-popover` (the filter, settings and mode
  * popovers portal to <body>, outside the calendar) and on the "+N more"
  * popup, which react-big-calendar also portals to <body> and which is
  * recognized by the calendar events inside it. Light values follow
@@ -133,27 +133,6 @@ html.dark .rbc-overlay:has(.board-calendar-event) {
   background: var(--cal-hover);
 }
 
-.board-calendar__button--ghost {
-  border-color: transparent;
-}
-
-.board-calendar__button--primary {
-  padding: 0 12px;
-  border-color: var(--cal-accent);
-  background: var(--cal-accent);
-  color: var(--cal-accent-text);
-}
-
-.board-calendar__button--primary:hover {
-  border-color: var(--cal-accent-hover);
-  background: var(--cal-accent-hover);
-}
-
-.board-calendar__button--primary:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
 .board-calendar__icon-button {
   justify-content: center;
   width: 32px;
@@ -223,7 +202,7 @@ html.dark .rbc-overlay:has(.board-calendar-event) {
   transform: rotate(180deg);
 }
 
-/* ── Popovers (mode menu, filter, settings, "+ Add") ── */
+/* ── Popovers (mode menu, filter, settings) ── */
 
 .board-calendar-popover {
   border-radius: 8px;
@@ -410,42 +389,6 @@ html.dark .rbc-overlay:has(.board-calendar-event) {
 .board-calendar-panel__segment:disabled {
   cursor: default;
   opacity: 0.6;
-}
-
-.board-calendar-add {
-  gap: 12px;
-}
-
-.board-calendar-add__input {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--cal-border);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--cal-text);
-  outline: none;
-}
-
-.board-calendar-add__input:hover {
-  border-color: var(--cal-text);
-}
-
-.board-calendar-add__input:focus {
-  border-color: var(--cal-accent);
-}
-
-.board-calendar-add__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* A fixed 1px point under the cursor, the anchor of the Week/Day "+ Add" composer. */
-.board-calendar__slot-anchor {
-  position: fixed;
-  width: 1px;
-  height: 1px;
-  pointer-events: none;
 }
 
 /* ── react-big-calendar grid ── */

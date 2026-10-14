@@ -50,6 +50,9 @@ import {
   type BoardCalendarConfig,
   type BoardCalendarEntry,
   type BoardCalendarRange,
+  CalendarNewItemDialog,
+  type CalendarNewItemField,
+  type CalendarNewItemPayload,
   type BoardCellItemOption,
   type BoardCellOption,
   type BoardColumn,
@@ -761,6 +764,30 @@ type TableBoardBodyProps = {
  * neither Table's grid nor the item drawer render inside a Gantt tab, so
  * this is the *only* place a Gantt tab can actually author dependencies.
  */
+/**
+ * Column kinds the Calendar's New Item dialog lets the viewer fill in, the
+ * ones a person types or picks. Computed and linked kinds (formula, mirror,
+ * auto number, connect boards, files...) are left out, as in monday.com.
+ */
+const CALENDAR_NEW_ITEM_KINDS = new Set<BoardColumnDto["type"]>([
+  "status",
+  "label",
+  "people",
+  "date",
+  "timeline",
+  "dropdown",
+  "text",
+  "long_text",
+  "number",
+  "checkbox",
+  "rating",
+  "phone",
+  "email",
+  "link",
+  "country",
+  "week",
+]);
+
 /** Stable row accessors for the Calendar view, so its event list only rebuilds when the rows change. */
 const getCalendarRowId = (row: BoardItemDto): string => String(row.id);
 const getCalendarRowTitle = (row: BoardItemDto): string => row.name;
@@ -4099,23 +4126,47 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     void handleUpdateCellValue(Number(row_id), source_id, value);
   };
 
-  /** "+ Add" on a calendar day: creates the item in the first group the calendar shows, dated by the first shown column. */
-  const handleAddCalendarItem = async (date: string, name: string) => {
-    const source = calendar_date_sources.find((candidate) => candidate.id === calendar_active_source_ids[0]);
-    if (!source) return;
-    const hidden_group_ids = new Set(calendar_config.hidden_group_ids ?? []);
-    const target_group = groups.find((group) => !hidden_group_ids.has(group.id)) ?? (await ensureBoardGroup());
-    if (!target_group) return;
-    const day = date.slice(0, 10);
+  // ── Calendar "+ Add" ── opens monday's New Item dialog with the clicked
+  // day prefilled in the first column the calendar shows; nothing is saved
+  // until "Create Task". ──
+  const [calendar_new_item, setCalendarNewItem] = useState<{ key: string; date: string } | null>(null);
+  const calendar_new_item_fields: CalendarNewItemField[] = useMemo(
+    () =>
+      item_columns
+        .filter((c) => CALENDAR_NEW_ITEM_KINDS.has(c.type))
+        .map((c) => ({
+          id: String(c.id),
+          label: c.label,
+          kind: c.type,
+          icon_kind: TABLE_COLUMN_KIND[c.type] ?? null,
+          options: c.config?.options,
+          description: c.config?.description ?? null,
+        })),
+    [item_columns]
+  );
+  const calendar_new_item_source = calendar_date_sources.find((candidate) => candidate.id === calendar_active_source_ids[0]) ?? null;
+  const calendar_new_item_values: Record<string, BoardItemValue> = {};
+  if (calendar_new_item && calendar_new_item_source) {
+    const day = calendar_new_item.date.slice(0, 10);
+    calendar_new_item_values[calendar_new_item_source.id] =
+      calendar_new_item_source.kind === "timeline" ? { start: day, end: day } : calendar_new_item.date;
+  }
+  const calendar_new_item_group_id = groups.find((group) => !(calendar_config.hidden_group_ids ?? []).includes(group.id))?.id ?? groups[0]?.id ?? null;
+
+  const closeCalendarNewItem = useCallback(() => setCalendarNewItem(null), []);
+
+  const handleRequestCalendarItem = async (date: string) => {
+    // The dialog needs a group to pick, a Calendar tab that never opened its table gets one silently.
+    if (groups.length === 0 && !(await ensureBoardGroup())) return;
+    setCalendarNewItem({ key: `${date}:${Date.now()}`, date });
+  };
+
+  const handleCreateCalendarItem = async ({ name, group_id, values }: CalendarNewItemPayload) => {
     try {
-      const created = await boardContentService.createItem(board_id, {
-        name,
-        group_id: target_group.id,
-        values: { [source.id]: source.kind === "timeline" ? { start: day, end: day } : date },
-      });
+      const created = await boardContentService.createItem(board_id, { name, group_id, values: values as Record<string, BoardItemValue> });
       setItems((current) => [...current, created]);
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Couldn't add the item. Please try again."));
+      toast.error(getApiErrorMessage(error, "Couldn't create the item. Please try again."));
       throw error;
     }
   };
@@ -4467,27 +4518,47 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         )
       ) : active_view_type === "calendar" ? (
         calendar_date_sources.length > 0 ? (
-          <BoardCalendar<BoardItemDto>
-            title={view_tabs.active_view?.label ?? "Calendar"}
-            rows={calendar_rows}
-            getRowId={getCalendarRowId}
-            getRowTitle={getCalendarRowTitle}
-            getRowEntries={getCalendarRowEntries}
-            getRowColor={getCalendarRowColor}
-            renderEvent={renderCalendarEvent}
-            onSelectEvent={handleRowClick}
-            selectedRowId={drawer.open_row_id}
-            onChangeEntry={node.can_edit ? handleChangeCalendarEntry : undefined}
-            onAddItem={node.can_edit ? handleAddCalendarItem : undefined}
-            config={calendar_config}
-            onConfigChange={can_edit_calendar_settings ? handleChangeCalendarConfig : undefined}
-            date_sources={calendar_date_sources}
-            active_source_ids={calendar_active_source_ids}
-            color_sources={calendar_color_sources}
-            active_color_by={calendar_color_by}
-            groups={calendar_groups}
-            storage_key={`${board_id}:${view_tabs.active_view_id ?? "primary"}`}
-          />
+          <>
+            <BoardCalendar<BoardItemDto>
+              title={view_tabs.active_view?.label ?? "Calendar"}
+              rows={calendar_rows}
+              getRowId={getCalendarRowId}
+              getRowTitle={getCalendarRowTitle}
+              getRowEntries={getCalendarRowEntries}
+              getRowColor={getCalendarRowColor}
+              renderEvent={renderCalendarEvent}
+              onSelectEvent={handleRowClick}
+              selectedRowId={drawer.open_row_id}
+              onChangeEntry={node.can_edit ? handleChangeCalendarEntry : undefined}
+              onAddItem={node.can_edit ? (date) => void handleRequestCalendarItem(date) : undefined}
+              pending_add_date={calendar_new_item?.date ?? null}
+              config={calendar_config}
+              onConfigChange={can_edit_calendar_settings ? handleChangeCalendarConfig : undefined}
+              date_sources={calendar_date_sources}
+              active_source_ids={calendar_active_source_ids}
+              color_sources={calendar_color_sources}
+              active_color_by={calendar_color_by}
+              groups={calendar_groups}
+              storage_key={`${board_id}:${view_tabs.active_view_id ?? "primary"}`}
+            />
+            <CalendarNewItemDialog
+              draft_key={calendar_new_item?.key ?? null}
+              groups={calendar_groups}
+              initial_group_id={calendar_new_item_group_id}
+              fields={calendar_new_item_fields}
+              initial_values={calendar_new_item_values}
+              people={roster_members}
+              people_picker={{
+                people: table_people,
+                getNotifyOnAssignment: (column_id) => columns_by_id[column_id]?.config?.notify_on_assignment ?? true,
+                onToggleNotifyOnAssignment: (column_id) => void handleToggleColumnNotifyOnAssignment(column_id),
+              }}
+              onAddOption={(column_id, option) => handleAddColumnOption(column_id, option)}
+              onEditOptions={(column_id) => makeOptionActions(column_id)}
+              onClose={closeCalendarNewItem}
+              onCreate={handleCreateCalendarItem}
+            />
+          </>
         ) : (
           <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-24 text-center">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-shell-hover text-shell-text-muted">
