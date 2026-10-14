@@ -5,13 +5,17 @@ import { restrictToParentElement, restrictToVerticalAxis } from "@dnd-kit/modifi
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CloseIcon, DragHandleIcon, PlusIcon, SortAscendingIcon, SortDescendingIcon, SortIcon } from "@/icons/board-icons";
-import { InfoIcon } from "@/icons/workspace-icons";
+import { HelpIcon } from "@/icons/workspace-icons";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
 import type { BoardSortDirection, BoardSortJoinOperator, BoardSortRule, BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import BoardPopover from "./BoardPopover";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
 import InlineFieldMenu from "./InlineFieldMenu";
 import SaveViewButtons from "./SaveViewButtons";
 import ToolbarButton from "./ToolbarButton";
+import "./field-menu.css";
+import "./filter-panel.css";
+import "./toolbar-panel.css";
 
 export type SortControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
@@ -43,7 +47,8 @@ function SortRuleRow<TRow>({ toolbar, rule, index }: SortRuleRowProps<TRow>) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex items-center gap-2 rounded-lg ${isDragging ? "relative z-10 bg-boardtree-surface shadow-lg shadow-black/30" : ""}`}
+      className="filter-rule"
+      data-dragging={isDragging}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <button
@@ -52,57 +57,60 @@ function SortRuleRow<TRow>({ toolbar, rule, index }: SortRuleRowProps<TRow>) {
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
-        className="flex flex-none cursor-grab touch-none text-boardtree-text-faint hover:text-boardtree-text active:cursor-grabbing"
+        title="Drag to reorder"
+        className="filter-rule__handle"
       >
         <DragHandleIcon />
       </button>
 
       {index > 0 && (
         <InlineFieldMenu
-          width={92}
+          width={84}
           className="flex-none"
           options={JOIN_OPERATOR_OPTIONS}
           getOptionId={(option) => option.id}
           isSelected={(option) => option.id === rule.join_operator}
           onSelect={(option) => toolbar.updateSortRule(rule.id, { join_operator: option.id })}
           renderValue={() => (
-            <span className="truncate text-[13.5px] font-medium text-boardtree-text-secondary">
-              {JOIN_OPERATOR_OPTIONS.find((option) => option.id === rule.join_operator)?.label}
-            </span>
+            <span className="field-menu__label">{JOIN_OPERATOR_OPTIONS.find((option) => option.id === rule.join_operator)?.label}</span>
           )}
           renderOption={(option) => <span>{option.label}</span>}
         />
       )}
 
       <InlineFieldMenu
+        className="toolbar-panel__sort-column"
         menu_heading="Item columns"
-        menu_max_height={308}
+        menu_max_height={640}
         options={toolbar.sort_options}
         getOptionId={(option) => option.id}
         getSearchText={(option) => option.label}
         search_placeholder="Search columns"
+        empty_label="No columns found"
         isSelected={(option) => option.id === rule.sort_option_id}
         onSelect={(option) => toolbar.updateSortRule(rule.id, { sort_option_id: option.id })}
+        onClear={selected_option ? () => toolbar.updateSortRule(rule.id, { sort_option_id: null }) : undefined}
+        clear_label="Clear column"
         renderValue={() =>
           selected_option ? (
             <>
-              {selected_option.swatch && <ColumnSwatchBadge swatch={selected_option.swatch} />}
-              <span className="truncate text-[13.5px] text-boardtree-text">{selected_option.label}</span>
+              {selected_option.swatch && <ColumnSwatchBadge swatch={selected_option.swatch} size={20} />}
+              <span className="field-menu__label">{selected_option.label}</span>
             </>
           ) : (
-            <span className="truncate text-[13.5px] text-boardtree-text-muted">Choose column</span>
+            <span className="field-menu__placeholder">Choose column</span>
           )
         }
         renderOption={(option) => (
           <>
-            {option.swatch && <ColumnSwatchBadge swatch={option.swatch} size={22} />}
-            <span>{option.label}</span>
+            {option.swatch && <ColumnSwatchBadge swatch={option.swatch} size={20} />}
+            <span className="field-menu__label">{option.label}</span>
           </>
         )}
       />
 
       <InlineFieldMenu
-        width={188}
+        width={200}
         className="flex-none"
         options={DIRECTION_OPTIONS}
         getOptionId={(option) => option.id}
@@ -110,30 +118,32 @@ function SortRuleRow<TRow>({ toolbar, rule, index }: SortRuleRowProps<TRow>) {
         onSelect={(option) => toolbar.updateSortRule(rule.id, { direction: option.id })}
         renderValue={() => (
           <>
-            <selected_direction.Icon size={15} className="flex-none text-boardtree-text-muted" />
-            <span className="truncate text-[13.5px] text-boardtree-text-secondary">{selected_direction.label}</span>
+            <selected_direction.Icon size={15} className="flex-none" />
+            <span className="field-menu__label">{selected_direction.label}</span>
           </>
         )}
         renderOption={(option) => (
           <>
-            <option.Icon size={15} className="flex-none text-boardtree-text-muted" />
+            <option.Icon size={15} className="flex-none" />
             <span>{option.label}</span>
           </>
         )}
       />
 
-      <button
-        type="button"
-        onClick={() => toolbar.removeSortRule(rule.id)}
-        className="flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-text"
-        aria-label="Remove sort"
-      >
-        <CloseIcon size={13} />
-      </button>
+      <Tooltip content="Remove sort">
+        <button type="button" onClick={() => toolbar.removeSortRule(rule.id)} className="filter-panel__icon-button" aria-label="Remove sort">
+          <CloseIcon size={13} />
+        </button>
+      </Tooltip>
     </div>
   );
 }
 
+/**
+ * Sort button and its monday style panel: "Sort by" with a help tooltip, one row per rule (drag handle, column,
+ * direction, remove) and "+ New sort". Styled by `filter-panel.css` and `toolbar-panel.css`; no `overflow: hidden`
+ * on the card, so the column list can float past its bottom edge.
+ */
 function SortControl<TRow>({ toolbar, view_actions }: SortControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const is_open = toolbar.active_panel === "sort";
@@ -147,61 +157,64 @@ function SortControl<TRow>({ toolbar, view_actions }: SortControlProps<TRow>) {
 
   return (
     <>
-      <ToolbarButton
-        ref={button_ref}
-        label="Sort"
-        Icon={SortIcon}
-        is_open={is_open}
-        has_selection={active_rule_count > 0}
-        badge_count={active_rule_count || undefined}
-        onClick={() => toolbar.togglePanel("sort")}
-      />
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={toolbar.closePanel} width={620}>
-        <div className="flex items-center gap-[9px] px-5 pb-3 pt-4">
-          <span className="text-[16px] font-bold text-boardtree-text">Sort by</span>
-          <span className="flex items-center text-boardtree-text-faint" title="Rules apply top to bottom as tie-breakers. Empty cells always go last.">
-            <InfoIcon size={15} />
-          </span>
-          <div className="flex-1" />
-          <SaveViewButtons view_actions={view_actions} />
-        </div>
+      <Tooltip content="Sort by any column" className="flex">
+        <ToolbarButton
+          ref={button_ref}
+          label="Sort"
+          Icon={SortIcon}
+          is_open={is_open}
+          has_selection={active_rule_count > 0}
+          variant="accent"
+          badge_count={active_rule_count || undefined}
+          onClick={() => toolbar.togglePanel("sort")}
+        />
+      </Tooltip>
+      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={toolbar.closePanel} width={640} unstyled>
+        <div className="filter-panel toolbar-panel" role="dialog" aria-label="Sort by">
+          <div className="filter-panel__header">
+            <h2 className="filter-panel__title">Sort by</h2>
+            <Tooltip placement="bottom" content="Rules apply top to bottom as tie breakers. Empty cells always go last.">
+              <span className="filter-panel__help" tabIndex={0} aria-label="About sorting">
+                <HelpIcon size={16} />
+              </span>
+            </Tooltip>
+            <div className="filter-panel__header-actions">
+              <button
+                type="button"
+                disabled={toolbar.sort_rules.length === 0}
+                onClick={toolbar.clearSort}
+                className="filter-panel__text-button"
+              >
+                Clear all
+              </button>
+              <SaveViewButtons view_actions={view_actions} appearance="panel" is_save_as_new_disabled={active_rule_count === 0} />
+            </div>
+          </div>
 
-        <div className="flex flex-col gap-2.5 px-5 pb-1 pt-0.5">
-          {toolbar.sort_rules.length === 0 && (
-            <p className="pb-2 text-[13px] text-boardtree-text-muted">No sort applied.</p>
-          )}
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={toolbar.sort_rules.map((rule) => rule.id)} strategy={verticalListSortingStrategy}>
-              {toolbar.sort_rules.map((rule, index) => (
-                <SortRuleRow key={rule.id} toolbar={toolbar} rule={rule} index={index} />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
-
-        <div className="flex items-center gap-[22px] px-5 pb-[18px] pt-3">
-          <button
-            type="button"
-            onClick={toolbar.addSortRule}
-            className="flex items-center gap-1.5 text-[13.5px] font-semibold text-boardtree-accent hover:text-boardtree-accent-hover"
-          >
-            <PlusIcon size={14} />
-            New sort
-          </button>
-          {toolbar.sort_rules.length > 0 && (
-            <button
-              type="button"
-              onClick={toolbar.clearSort}
-              className="text-[13.5px] font-medium text-boardtree-text-muted hover:text-boardtree-text"
+          <div className="toolbar-panel__body">
+            {toolbar.sort_rules.length === 0 && <p className="toolbar-panel__hint">No sort applied. Add one to order the items in every group.</p>}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+              onDragEnd={handleDragEnd}
             >
-              Clear all
-            </button>
-          )}
+              <SortableContext items={toolbar.sort_rules.map((rule) => rule.id)} strategy={verticalListSortingStrategy}>
+                <div className="filter-panel__rules">
+                  {toolbar.sort_rules.map((rule, index) => (
+                    <SortRuleRow key={rule.id} toolbar={toolbar} rule={rule} index={index} />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+
+            <div className="toolbar-panel__add-row">
+              <button type="button" onClick={toolbar.addSortRule} className="filter-panel__add-button">
+                <PlusIcon size={14} />
+                New sort
+              </button>
+            </div>
+          </div>
         </div>
       </BoardPopover>
     </>

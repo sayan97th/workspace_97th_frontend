@@ -92,7 +92,7 @@ function BoardToolbar<TRow>({
         <FilterControl toolbar={toolbar} />
         <StarredFilterControl toolbar={toolbar} />
         <SortControl toolbar={toolbar} view_actions={view_actions} />
-        <HideColumnsControl toolbar={toolbar} />
+        <HideColumnsControl toolbar={toolbar} view_actions={view_actions} />
         <GroupByControl toolbar={toolbar} view_actions={view_actions} />
         <OverflowControl toolbar={toolbar} export_options={export_options} />
 

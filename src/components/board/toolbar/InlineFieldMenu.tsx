@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CloseIcon } from "@/icons/board-icons";
 import { ChevronDownIcon, SearchIcon } from "@/icons/workspace-icons";
 import "./field-menu.css";
@@ -17,6 +17,7 @@ export type InlineFieldMenuProps<TOption> = {
   /** Trigger width. Defaults to filling its flex parent. */
   width?: number;
   className?: string;
+  /** Tallest the list may grow. It also shrinks to the room left in the window, and opens upward when there is more room above. */
   menu_max_height?: number;
   /** Shows a search box above the options, matched against `getSearchText` (case insensitive). */
   getSearchText?: (option: TOption) => string;
@@ -27,6 +28,11 @@ export type InlineFieldMenuProps<TOption> = {
   onClear?: () => void;
   clear_label?: string;
 };
+
+type MenuPlacement = { side: "top" | "bottom"; max_height: number };
+
+const MENU_VIEWPORT_MARGIN = 12;
+const MENU_MIN_HEIGHT = 220;
 
 /**
  * Reusable inline "column-picker" style dropdown: a bordered trigger button
@@ -45,7 +51,7 @@ function InlineFieldMenu<TOption>({
   menu_heading,
   width,
   className = "",
-  menu_max_height = 280,
+  menu_max_height = 360,
   getSearchText,
   search_placeholder = "Search",
   empty_label = "No results",
@@ -54,6 +60,7 @@ function InlineFieldMenu<TOption>({
 }: InlineFieldMenuProps<TOption>) {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [placement, setPlacement] = useState<MenuPlacement>({ side: "bottom", max_height: menu_max_height });
   const container_ref = useRef<HTMLDivElement>(null);
 
   const trimmed_query = query.trim().toLowerCase();
@@ -66,6 +73,27 @@ function InlineFieldMenu<TOption>({
     setIsOpen(false);
     setQuery("");
   };
+
+  // Fits the list in the window, so every option can be scrolled to instead of being cut off by the window edge.
+  useLayoutEffect(() => {
+    if (!is_open) return;
+    const updatePlacement = () => {
+      const rect = container_ref.current?.getBoundingClientRect();
+      if (!rect) return;
+      const space_below = window.innerHeight - rect.bottom - MENU_VIEWPORT_MARGIN;
+      const space_above = rect.top - MENU_VIEWPORT_MARGIN;
+      const side = space_below < Math.min(menu_max_height, MENU_MIN_HEIGHT) && space_above > space_below ? "top" : "bottom";
+      const max_height = Math.max(MENU_MIN_HEIGHT / 2, Math.min(menu_max_height, side === "top" ? space_above : space_below));
+      setPlacement((current) => (current.side === side && current.max_height === max_height ? current : { side, max_height }));
+    };
+    updatePlacement();
+    window.addEventListener("resize", updatePlacement);
+    window.addEventListener("scroll", updatePlacement, true);
+    return () => {
+      window.removeEventListener("resize", updatePlacement);
+      window.removeEventListener("scroll", updatePlacement, true);
+    };
+  }, [is_open, menu_max_height]);
 
   useEffect(() => {
     if (!is_open) return;
@@ -130,7 +158,7 @@ function InlineFieldMenu<TOption>({
       </div>
 
       {is_open && (
-        <div className="field-menu__popup" role="listbox" style={{ maxHeight: menu_max_height }}>
+        <div className="field-menu__popup" role="listbox" data-side={placement.side} style={{ maxHeight: placement.max_height }}>
           {getSearchText && (
             <div className="field-menu__search">
               <span className="field-menu__search-icon">

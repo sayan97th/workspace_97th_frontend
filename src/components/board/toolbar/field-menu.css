@@ -250,6 +250,21 @@ html.dark .field-menu__popup {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Opens upward when the window has more room above the trigger (see `InlineFieldMenu`). */
+.field-menu__popup[data-side="top"] {
+  top: auto;
+  bottom: calc(100% + 4px);
+}
+
+.field-menu__popup::-webkit-scrollbar {
+  width: 6px;
+}
+
+.field-menu__popup::-webkit-scrollbar-thumb {
+  border-radius: 6px;
+  background: var(--field-menu-scroll-thumb);
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .field-menu__popup {
     animation: field-menu-enter 120ms ease-out;
@@ -267,16 +282,22 @@ html.dark .field-menu__popup {
   }
 }
 
+/* The search box stays pinned while a long option list scrolls under it. */
 .field-menu__search {
-  position: relative;
+  position: sticky;
+  top: -8px;
+  z-index: 1;
   display: flex;
   align-items: center;
-  margin-bottom: 6px;
+  margin: -8px -8px 6px;
+  padding: 8px 8px 0;
+  background: var(--field-menu-surface);
 }
 
 .field-menu__search-icon {
   position: absolute;
-  left: 9px;
+  left: 17px;
+  top: 17px;
   display: flex;
   color: var(--field-menu-text-secondary);
   pointer-events: none;

@@ -1,0 +1,325 @@
+/*
+ * Person, Sort and Hide toolbar panels, styled after monday.com. Each panel is
+ * a `.filter-panel.toolbar-panel` card, so it shares the Filter panel's
+ * tokens, Figtree text, 16px header, help tooltip and buttons (see
+ * `filter-panel.css`) and its rule rows (`.filter-rule`). This file only adds
+ * what those three panels need on top: a full width search, checkbox rows for
+ * the column list, pill toggles and the people grid.
+ *
+ * Colors are `--filter-panel-*` tokens, so dark mode needs no rules here.
+ */
+.toolbar-panel {
+  max-height: inherit;
+}
+
+.toolbar-panel__body {
+  padding: 0 24px;
+}
+
+.toolbar-panel__hint {
+  margin: 0 0 4px;
+  color: var(--filter-panel-text-secondary);
+}
+
+/* Sort rules keep their drag handle visible, like monday's Sort panel. */
+.toolbar-panel .filter-rule__handle {
+  opacity: 1;
+}
+
+.toolbar-panel__sort-column {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-panel__add-row {
+  display: flex;
+  align-items: center;
+  margin: 12px 0 0 -8px;
+  padding-bottom: 20px;
+}
+
+/* Full width search box (Hide and Person panels). */
+.toolbar-panel__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin: 0 24px 12px;
+  padding: 0 10px;
+  border: 1px solid var(--filter-panel-border);
+  border-radius: 4px;
+  background: var(--filter-panel-surface);
+  color: var(--filter-panel-text-secondary);
+  transition: border-color 120ms ease;
+}
+
+.toolbar-panel__search:hover {
+  border-color: var(--filter-panel-border-hover);
+}
+
+.toolbar-panel__search:focus-within {
+  border-color: var(--filter-panel-primary);
+}
+
+.toolbar-panel__search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--filter-panel-text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.toolbar-panel__search input::placeholder {
+  color: var(--filter-panel-text-secondary);
+}
+
+/* Scrollable list. Grows with the window so long boards show as many rows as fit. */
+.toolbar-panel__list {
+  max-height: min(600px, calc(100vh - 260px));
+  min-height: 120px;
+  padding: 0 16px 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Hide panel checkbox rows. Depth 1 nests a column under "Item columns". */
+.toolbar-panel__check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--filter-panel-text);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.toolbar-panel__check-row:hover {
+  background: var(--filter-panel-hover);
+}
+
+.toolbar-panel__check-row:focus-visible {
+  outline: 2px solid var(--filter-panel-primary);
+  outline-offset: -2px;
+}
+
+.toolbar-panel__check-row[data-depth="1"] {
+  padding-left: 32px;
+}
+
+.toolbar-panel__check-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-panel__check-label[data-strong="true"] {
+  font-weight: 600;
+}
+
+.toolbar-panel__check-label[data-muted="true"] {
+  color: var(--filter-panel-text-secondary);
+}
+
+.toolbar-panel__check-meta {
+  flex: none;
+  color: var(--filter-panel-text-secondary);
+  font-size: 13px;
+}
+
+/* Partly checked master rows show a dash, like monday. */
+.toolbar-panel .filter-panel__checkbox[data-checked="partial"] {
+  border-color: var(--filter-panel-primary);
+  background: var(--filter-panel-primary);
+}
+
+.toolbar-panel__checkbox-dash {
+  width: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.toolbar-panel__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: var(--filter-panel-text-secondary);
+  text-align: center;
+}
+
+.toolbar-panel__empty svg {
+  color: var(--filter-panel-text-faint);
+}
+
+/* Person panel. */
+.toolbar-panel__section-title {
+  margin: 0;
+  padding: 4px 8px 8px;
+  color: var(--filter-panel-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.toolbar-panel__pills {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 12px;
+}
+
+/* "Look in" pills sit outside the scrolling list, so they line up with the header. */
+.toolbar-panel__pills[data-inset="true"] {
+  padding: 0 24px 12px;
+}
+
+.toolbar-panel__pills-label {
+  margin-right: 2px;
+  color: var(--filter-panel-text-secondary);
+  font-size: 13px;
+}
+
+.toolbar-panel__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 180px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--filter-panel-border);
+  border-radius: 14px;
+  background: transparent;
+  color: var(--filter-panel-text);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+}
+
+.toolbar-panel__pill:hover {
+  border-color: var(--filter-panel-border-hover);
+}
+
+.toolbar-panel__pill[aria-pressed="true"] {
+  border-color: var(--filter-panel-primary);
+  background: var(--filter-panel-selected);
+}
+
+.toolbar-panel__pill-label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+}
+
+.toolbar-panel__pill-count {
+  color: var(--filter-panel-text-secondary);
+  font-size: 12px;
+}
+
+.toolbar-panel__people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 6px;
+  padding: 2px 4px 4px;
+}
+
+.toolbar-panel__person {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 48px;
+}
+
+.toolbar-panel__person-count {
+  color: var(--filter-panel-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.toolbar-panel__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px 8px 24px;
+  border-top: 1px solid var(--filter-panel-divider);
+}
+
+.toolbar-panel__footer-note {
+  color: var(--filter-panel-text-secondary);
+  font-size: 13px;
+}
+
+/* Hover name bubble for avatars (see `SelectablePersonAvatar`), portaled so the scrolling list never clips it. */
+.toolbar-panel-tooltip {
+  position: fixed;
+  z-index: 1100;
+  max-width: 220px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #323338;
+  color: #ffffff;
+  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+}
+
+.toolbar-panel-tooltip::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  background: inherit;
+  content: "";
+  transform: rotate(45deg);
+}
+
+html.dark .toolbar-panel-tooltip {
+  background: #e9eded;
+  color: #0f1c1c;
+}
+
+/* Compact panel (Hide columns), sized like monday's Display columns: 32px rows and a short list that scrolls. */
+.toolbar-panel--compact .filter-panel__header {
+  padding: 20px 24px 12px;
+}
+
+.toolbar-panel--compact .toolbar-panel__search {
+  height: 32px;
+}
+
+.toolbar-panel--compact .toolbar-panel__list {
+  max-height: min(252px, calc(100vh - 220px));
+  min-height: 0;
+  padding-bottom: 8px;
+}
+
+.toolbar-panel--compact .toolbar-panel__check-row {
+  min-height: 32px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}

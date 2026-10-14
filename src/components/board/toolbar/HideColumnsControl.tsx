@@ -1,15 +1,20 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { CloseIcon, HideIcon } from "@/icons/board-icons";
+import { CheckIcon, CloseIcon, HideIcon } from "@/icons/board-icons";
 import { SearchIcon } from "@/icons/workspace-icons";
-import type { BoardToolbarApi } from "./types";
+import Tooltip from "@/components/ui/tooltip/Tooltip";
+import type { BoardToolbarApi, BoardToolbarViewActions } from "./types";
 import BoardPopover from "./BoardPopover";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
+import SaveViewButtons from "./SaveViewButtons";
 import ToolbarButton from "./ToolbarButton";
-import ToolbarCheckbox, { type ToolbarCheckboxState } from "./ToolbarCheckbox";
+import type { ToolbarCheckboxState } from "./ToolbarCheckbox";
+import "./filter-panel.css";
+import "./toolbar-panel.css";
 
 export type HideColumnsControlProps<TRow> = {
   toolbar: BoardToolbarApi<TRow>;
+  view_actions?: BoardToolbarViewActions;
 };
 
 /** Derives the tri-state checkbox for a master row from how many of `ids` are currently hidden. */
@@ -20,19 +25,33 @@ const getMasterState = (ids: string[], hidden_column_ids: string[]): ToolbarChec
   return "partial";
 };
 
-function HideColumnsControl<TRow>({ toolbar }: HideColumnsControlProps<TRow>) {
+/** monday style checkbox drawn with the Filter panel tokens: blue when checked, a dash when partly checked. */
+const PanelCheckbox: React.FC<{ state: ToolbarCheckboxState }> = ({ state }) => (
+  <span className="filter-panel__checkbox" data-checked={state === "checked" ? "true" : state === "partial" ? "partial" : "false"} aria-hidden>
+    {state === "checked" && <CheckIcon size={10} />}
+    {state === "partial" && <span className="toolbar-panel__checkbox-dash" />}
+  </span>
+);
+
+/**
+ * Hide button and its monday style "Display columns" panel: a search box, an "All columns" master row with the
+ * selected count, an "Item columns" group and one checkbox row per column. The list grows with the window (see
+ * `toolbar-panel.css`), so long boards show as many columns as fit before scrolling.
+ */
+function HideColumnsControl<TRow>({ toolbar, view_actions }: HideColumnsControlProps<TRow>) {
   const button_ref = useRef<HTMLButtonElement>(null);
   const [query, setQuery] = useState("");
   const is_open = toolbar.active_panel === "hide";
 
   const hideable_columns = toolbar.columns.filter((column) => column.hideable !== false);
   const hideable_ids = hideable_columns.map((column) => column.id);
-  const has_query = query.trim().length > 0;
+  const trimmed_query = query.trim();
   const filtered_columns = hideable_columns.filter((column) =>
-    (column.full_label ?? column.label ?? column.id).toLowerCase().includes(query.trim().toLowerCase())
+    (column.full_label ?? column.label ?? column.id).toLowerCase().includes(trimmed_query.toLowerCase())
   );
 
-  const visible_count = hideable_ids.length - toolbar.hidden_column_ids.length;
+  const hidden_count = hideable_ids.filter((id) => toolbar.hidden_column_ids.includes(id)).length;
+  const visible_count = hideable_ids.length - hidden_count;
   const master_state = getMasterState(hideable_ids, toolbar.hidden_column_ids);
 
   const onToggleAll = () => {
@@ -40,120 +59,98 @@ function HideColumnsControl<TRow>({ toolbar }: HideColumnsControlProps<TRow>) {
     else toolbar.hideAllColumns();
   };
 
+  const handleClose = () => {
+    toolbar.closePanel();
+    setQuery("");
+  };
+
   return (
     <>
-      <ToolbarButton
-        ref={button_ref}
-        label="Hide"
-        Icon={HideIcon}
-        is_open={is_open}
-        has_selection={toolbar.hidden_column_ids.length > 0}
-        badge_count={toolbar.hidden_column_ids.length || undefined}
-        onClick={() => toolbar.togglePanel("hide")}
-      />
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={toolbar.closePanel} width={320}>
-        <div className="flex items-center gap-[9px] px-5 pb-3 pt-4">
-          <span className="text-[16px] font-bold text-boardtree-text">Display columns</span>
-          <div className="flex-1" />
-          <div className="flex h-8 flex-none cursor-default items-center gap-[7px] rounded-lg border border-boardtree-border px-3.5 text-[13px] font-semibold text-boardtree-text-faint">
-            Save as new view
+      <Tooltip content="Hidden columns" className="flex">
+        <ToolbarButton
+          ref={button_ref}
+          label="Hide"
+          Icon={HideIcon}
+          is_open={is_open}
+          has_selection={toolbar.hidden_column_ids.length > 0}
+          variant="accent"
+          badge_count={toolbar.hidden_column_ids.length || undefined}
+          onClick={() => toolbar.togglePanel("hide")}
+        />
+      </Tooltip>
+      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={handleClose} width={340} unstyled>
+        <div className="filter-panel toolbar-panel toolbar-panel--compact" role="dialog" aria-label="Display columns">
+          <div className="filter-panel__header">
+            <h2 className="filter-panel__title">Display columns</h2>
+            <div className="filter-panel__header-actions">
+              <SaveViewButtons view_actions={view_actions} appearance="panel" is_save_as_new_disabled={hidden_count === 0} />
+            </div>
           </div>
-        </div>
 
-        <div className="px-5 pb-3">
-          <div className="flex h-9 items-center gap-[9px] rounded-lg border border-boardtree-border-soft bg-boardtree-hover-strong px-3">
-            <span className="flex flex-none text-boardtree-text-faint">
-              <SearchIcon size={14} />
-            </span>
+          <label className="toolbar-panel__search">
+            <SearchIcon size={15} />
             <input
               type="text"
+              autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Find columns to show/hide"
-              className="min-w-0 flex-1 bg-transparent text-[13.5px] text-boardtree-text placeholder:text-boardtree-text-muted focus:outline-none"
+              aria-label="Find columns to show or hide"
             />
-            {has_query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="flex flex-none items-center justify-center text-boardtree-text-faint hover:text-boardtree-text"
-                aria-label="Clear search"
-              >
+            {trimmed_query && (
+              <button type="button" onClick={() => setQuery("")} className="filter-panel__search-clear" aria-label="Clear search">
                 <CloseIcon size={11} />
               </button>
             )}
-          </div>
-        </div>
+          </label>
 
-        <div className="max-h-[320px] overflow-y-auto px-3 pb-3">
-          {has_query && filtered_columns.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-              <span className="text-boardtree-text-faint">
+          <div className="toolbar-panel__list filter-panel__scroll">
+            {trimmed_query && filtered_columns.length === 0 ? (
+              <div className="toolbar-panel__empty">
                 <SearchIcon size={22} />
-              </span>
-              <span className="text-[13px] text-boardtree-text-muted">No columns match &ldquo;{query}&rdquo;</span>
-            </div>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={onToggleAll}
-                className="flex w-full items-center gap-[11px] rounded-lg px-2.5 py-2 hover:bg-boardtree-hover"
-              >
-                <ToolbarCheckbox state={master_state} />
-                <span className="text-[13.5px] font-semibold text-boardtree-text">All columns</span>
-                <span className="ml-auto flex-none text-[12.5px] font-medium text-boardtree-text-faint">
-                  {visible_count}/{hideable_ids.length} shown
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onToggleAll}
-                className="mt-0.5 flex w-full items-center gap-[11px] rounded-lg px-2.5 py-2 hover:bg-boardtree-hover"
-              >
-                <ToolbarCheckbox state={master_state} />
-                <span className="text-[13px] font-semibold text-boardtree-text-secondary">Item columns</span>
-              </button>
-
-              <div className="mt-0.5">
+                <span>No columns match &ldquo;{trimmed_query}&rdquo;</span>
+              </div>
+            ) : (
+              <>
+                {!trimmed_query && (
+                  <>
+                    <button type="button" onClick={onToggleAll} className="toolbar-panel__check-row" data-depth="0" aria-pressed={master_state === "checked"}>
+                      <PanelCheckbox state={master_state} />
+                      <span className="toolbar-panel__check-label" data-strong="true">
+                        All columns
+                      </span>
+                      <span className="toolbar-panel__check-meta">{visible_count} selected</span>
+                    </button>
+                    <button type="button" onClick={onToggleAll} className="toolbar-panel__check-row" data-depth="0" aria-pressed={master_state === "checked"}>
+                      <PanelCheckbox state={master_state} />
+                      <span className="toolbar-panel__check-label" data-muted="true">
+                        Item columns
+                      </span>
+                    </button>
+                  </>
+                )}
                 {filtered_columns.map((column) => {
                   const is_checked = !toolbar.hidden_column_ids.includes(column.id);
+                  const label = column.full_label ?? column.label ?? column.id;
                   return (
                     <button
                       key={column.id}
                       type="button"
                       onClick={() => toolbar.toggleColumnHidden(column.id)}
-                      className="flex w-full items-center gap-[11px] rounded-lg py-2 pl-8 pr-2.5 hover:bg-boardtree-hover"
+                      className="toolbar-panel__check-row"
+                      data-depth={trimmed_query ? "0" : "1"}
+                      aria-pressed={is_checked}
+                      title={label}
                     >
-                      <ToolbarCheckbox state={is_checked ? "checked" : "unchecked"} />
-                      {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={22} />}
-                      <span className="truncate text-[13.5px] font-medium text-boardtree-text">
-                        {column.full_label ?? column.label ?? column.id}
-                      </span>
+                      <PanelCheckbox state={is_checked ? "checked" : "unchecked"} />
+                      {column.swatch && <ColumnSwatchBadge swatch={column.swatch} size={20} />}
+                      <span className="toolbar-panel__check-label">{label}</span>
                     </button>
                   );
                 })}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between border-t border-boardtree-border-soft bg-boardtree-hover px-5 py-3">
-          <button
-            type="button"
-            onClick={toolbar.showAllColumns}
-            className="text-[13px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
-          >
-            Show all
-          </button>
-          <button
-            type="button"
-            onClick={toolbar.hideAllColumns}
-            className="text-[13px] font-semibold text-boardtree-text-secondary hover:text-boardtree-text"
-          >
-            Hide all
-          </button>
+              </>
+            )}
+          </div>
         </div>
       </BoardPopover>
     </>
