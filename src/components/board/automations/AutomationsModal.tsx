@@ -18,6 +18,7 @@ import { boardContentService } from "@/services/board-content.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import ManageView from "../integrations/manage/ManageView";
 import AutomationBuilder, { type AutomationBuilderSaveMeta } from "./builder/AutomationBuilder";
+import ButtonAutomationBuilder from "./builder/ButtonAutomationBuilder";
 import TemplateGallery from "./builder/TemplateGallery";
 import type { AutomationBoardTarget, AutomationBuilderContext, AutomationColumn, NamedOption } from "./builder/automationCatalog";
 import { draftFromAutomation, draftFromDefinition, emptyDraft, type AutomationDraft } from "./builder/builderDraft";
@@ -65,7 +66,11 @@ export type AutomationsModalProps = {
 };
 
 type Mode = "create" | "manage";
-type Screen = { kind: "gallery" } | { kind: "builder"; draft: AutomationDraft; editing_id: number | null; key: number; notice?: string | null };
+type Screen =
+  | { kind: "gallery" }
+  | { kind: "builder"; draft: AutomationDraft; editing_id: number | null; key: number; notice?: string | null }
+  /** The Button column's own full screen builder, see `ButtonAutomationBuilder`. Back returns to the center. */
+  | { kind: "button"; draft: AutomationDraft; key: number };
 
 /**
  * The board header's "Automate" button, modelled on monday's automation center: a Create tab with
@@ -93,7 +98,7 @@ export default function AutomationsModal(props: AutomationsModalProps) {
 /** Split from the shell so boards, templates and Slack are only fetched once the dialog is open. */
 function AutomationCenter(props: AutomationsModalProps) {
   const { board_id, view_id, board_label, return_path, automations, columns, groups, people, onClose, edit_automation_id, create_for_column_id, forms = [], test_items = [] } = props;
-  const { hasAnyRole } = useAuth();
+  const { hasAnyRole, user } = useAuth();
   const is_account_admin = hasAnyRole("super_admin", "admin");
   const slack = useSlackIntegration();
   const slack_options = useSlackAutomationOptions(true);
@@ -165,8 +170,9 @@ function AutomationCenter(props: AutomationsModalProps) {
       slack_team_name: slack_options.status?.workspace?.team_name ?? null,
       teams,
       forms,
+      viewer_id: user?.id != null ? String(user.id) : null,
     }),
-    [board_id, columns, groups, people, board_targets, slack_options.channels, slack_options.status, teams, forms]
+    [board_id, columns, groups, people, board_targets, slack_options.channels, slack_options.status, teams, forms, user?.id]
   );
 
   const openBuilder = (draft: AutomationDraft, editing_id: number | null = null, notice: string | null = null) => {
@@ -180,7 +186,11 @@ function AutomationCenter(props: AutomationsModalProps) {
   if (create_for_column_id && create_for_column_id !== handled_column_id) {
     setHandledColumnId(create_for_column_id);
     const column = columns.find((entry) => entry.id === create_for_column_id);
-    if (column) {
+    if (column?.kind === "button") {
+      // A Button column gets monday's own builder on top of the center, Back lands on the center.
+      setMode(automations.length > 0 ? "manage" : "create");
+      setScreen({ kind: "button", draft: draftForColumn(column.id, context), key: Date.now() });
+    } else if (column) {
       setMode("create");
       setScreen({ kind: "builder", draft: draftForColumn(column.id, context), editing_id: null, key: Date.now(), notice: `Starting from the ${column.title} column. Pick what should happen, or change the trigger.` });
     }
@@ -376,6 +386,27 @@ function AutomationCenter(props: AutomationsModalProps) {
           </div>
         )}
       </div>
+
+      {screen.kind === "button" && (
+        <div className="fixed inset-0 z-[320] bg-[rgba(30,34,55,0.35)] p-1.5" onClick={(event) => event.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Button automation" className="h-full overflow-hidden rounded-[10px] shadow-[0_24px_60px_rgba(30,34,55,0.30)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.6)]">
+            <ButtonAutomationBuilder
+              key={screen.key}
+              context={context}
+              initial_draft={screen.draft}
+              is_loading_boards={is_loading_boards}
+              is_saving={is_saving}
+              save_error={save_error}
+              onBack={() => {
+                setSaveError(null);
+                setScreen({ kind: "gallery" });
+              }}
+              onClose={onClose}
+              onSave={(definition, meta) => void save(definition, meta, null)}
+            />
+          </div>
+        </div>
+      )}
 
       {connected_recipe && (
         <ConnectedAppFlow

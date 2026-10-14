@@ -204,6 +204,8 @@ export interface UseBoardTableConfig {
    * the button does nothing.
    */
   onPressButton?: (node_id: string, column_id: string) => Promise<string>;
+  /** A Button cell's "Set up", opens the Button automation builder for that column. Omitted, the cell only explains what the button needs. */
+  onSetUpButton?: (column_id: string) => void;
   /** The signed-in viewer's own id — a `vote`-type cell toggles this id in/out of its value array, and highlights itself when the viewer has already voted. Undefined for the standalone demo, which has no signed-in viewer. */
   current_user_id?: string;
   onRenameNode?: (node_id: string, name: string) => void;
@@ -2377,6 +2379,15 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     return on_press(node_id, column_id);
   }, []);
 
+  /** A not yet set up Button cell's "Set up", see `UseBoardTableConfig.onSetUpButton`. */
+  const setUpButton = useCallback((column_id: string) => {
+    setState((s) => ({ ...s, open_cell_menu_key: null }));
+    config_ref.current.onSetUpButton?.(column_id);
+  }, []);
+
+  /** Whether "Set up" can be offered, the viewer may create automations here. */
+  const canSetUpButtons = useCallback(() => Boolean(config_ref.current.onSetUpButton), []);
+
   /**
    * Loads a Connect boards column's connected boards into `connect_options`, once per column
    * no matter how many of its cells ask. `refresh` fetches again (the picker does on open, so
@@ -2695,6 +2706,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       fetchLinkedItem,
       deleteLinkedItem,
       pressButton,
+      setUpButton,
+      canSetUpButtons,
       closeAllOverlays,
       copyRowLink,
       openComments,
@@ -2715,7 +2728,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 

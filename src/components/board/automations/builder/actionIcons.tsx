@@ -116,3 +116,9 @@ export function ActionIcon({ id, size = 20 }: { id: ActionPickerId; size?: numbe
     </span>
   );
 }
+
+/** The same icon without its colored square, for monday's plain action menu, see `buttonFlowCatalog`. */
+export function ActionOutlineIcon({ id, size = 16 }: { id: ActionPickerId; size?: number }) {
+  const { icon: Icon } = ACTION_ICONS[id];
+  return <Icon size={size} strokeWidth={1.7} className="flex-none text-boardtree-text-secondary" aria-hidden="true" />;
+}

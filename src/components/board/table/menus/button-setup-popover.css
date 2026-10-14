@@ -1,0 +1,223 @@
+/*
+ * The Button column's "Button column settings" popover, styled after monday.com's: a white
+ * card with an 8px radius, a small title on top, an illustration of three items whose buttons
+ * set a date (one being clicked, with its "Set date" tooltip), then "Button column", a line of
+ * text and a blue "Set up" button, all centered.
+ *
+ * Every color is a `--button-setup-*` token declared on `.button-setup`, so dark mode only swaps
+ * the tokens. The card is portaled to `document.body` (see `PopoverPanel`), outside the table's
+ * scoped palette, which is why it carries its own tokens.
+ */
+
+.button-setup {
+  --button-setup-surface: #ffffff;
+  --button-setup-text: #323338;
+  --button-setup-text-secondary: #676879;
+  --button-setup-primary: #0073ea;
+  --button-setup-primary-hover: #0060b9;
+  --button-setup-halo: #dcecfc;
+  --button-setup-card: #ffffff;
+  --button-setup-card-border: #e6e9ef;
+  --button-setup-item-text: #5a5f8a;
+  --button-setup-item-accent: #00c875;
+  --button-setup-bubble: #0086ff;
+  --button-setup-pill: #a25ddc;
+  --button-setup-tooltip: #ffffff;
+  --button-setup-tooltip-text: #676879;
+  --button-setup-cursor: #323338;
+  --button-setup-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 400px;
+  max-width: calc(100vw - 24px);
+  padding: 16px 16px 24px;
+  border-radius: 8px;
+  background: var(--button-setup-surface);
+  box-shadow: var(--button-setup-shadow);
+  color: var(--button-setup-text);
+}
+
+html.dark .button-setup {
+  --button-setup-surface: #0f1c1c;
+  --button-setup-text: #e9eded;
+  --button-setup-text-secondary: #b7c0c1;
+  --button-setup-primary: #4d9cff;
+  --button-setup-primary-hover: #73b2ff;
+  --button-setup-halo: rgba(77, 156, 255, 0.16);
+  --button-setup-card: #182727;
+  --button-setup-card-border: rgba(255, 255, 255, 0.1);
+  --button-setup-item-text: #c4c9e6;
+  --button-setup-tooltip: #223333;
+  --button-setup-tooltip-text: #d5dada;
+  --button-setup-cursor: #e9eded;
+  --button-setup-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.button-setup__title {
+  align-self: flex-start;
+  font-size: 15px;
+  line-height: 22px;
+}
+
+/* ── Illustration ─────────────────────────────────────────────────────────── */
+
+.button-setup__art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 230px;
+  margin: 8px 0 12px;
+}
+
+.button-setup__halo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 210px;
+  height: 210px;
+  border-radius: 50%;
+  background: var(--button-setup-halo);
+  transform: translate(-50%, -50%);
+}
+
+.button-setup__rows {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.button-setup__row {
+  display: flex;
+  gap: 8px;
+}
+
+.button-setup__item,
+.button-setup__cell {
+  display: flex;
+  align-items: center;
+  height: 37px;
+  border: 1px solid var(--button-setup-card-border);
+  border-radius: 3px;
+  background: var(--button-setup-card);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.button-setup__item {
+  justify-content: space-between;
+  width: 226px;
+  padding: 0 8px 0 10px;
+  border-left: 3px solid var(--button-setup-item-accent);
+}
+
+.button-setup__item-name {
+  color: var(--button-setup-item-text);
+  font-size: 16px;
+  white-space: nowrap;
+}
+
+.button-setup__bubble {
+  position: relative;
+  display: flex;
+  color: var(--button-setup-bubble);
+}
+
+.button-setup__bubble-dot {
+  position: absolute;
+  right: -1px;
+  bottom: 1px;
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--button-setup-card);
+  border-radius: 50%;
+  background: var(--button-setup-bubble);
+}
+
+.button-setup__cell {
+  position: relative;
+  justify-content: center;
+  width: 90px;
+}
+
+.button-setup__pill {
+  width: 62px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--button-setup-pill);
+}
+
+/* The tooltip a hovered button shows, part of the illustration. */
+.button-setup__tooltip {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 13px;
+  background: var(--button-setup-tooltip);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+  color: var(--button-setup-tooltip-text);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.button-setup__cursor {
+  position: absolute;
+  right: 4px;
+  bottom: -14px;
+  color: var(--button-setup-cursor);
+  fill: var(--button-setup-cursor);
+  stroke: var(--button-setup-card);
+}
+
+/* ── Text and action ──────────────────────────────────────────────────────── */
+
+.button-setup__heading {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.button-setup__text {
+  max-width: 330px;
+  margin: 6px 0 16px;
+  color: var(--button-setup-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.button-setup__note {
+  margin: 0;
+  color: var(--button-setup-text-secondary);
+  font-size: 13px;
+}
+
+.button-setup__action {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 4px;
+  background: var(--button-setup-primary);
+  color: #ffffff;
+  font-size: 15px;
+  transition: background-color 0.1s ease;
+}
+
+.button-setup__action:hover {
+  background: var(--button-setup-primary-hover);
+}
+
+.button-setup__action:focus-visible {
+  outline: 2px solid var(--button-setup-primary);
+  outline-offset: 2px;
+}

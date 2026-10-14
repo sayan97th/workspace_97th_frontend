@@ -306,7 +306,8 @@ export interface ColumnDef {
   /** Number kind only: which aggregation the group summary row's footer shows for this column. Undefined behaves as `"sum"` (existing behavior). See `summaryUtils.ts`'s `summaryForColumn`. */
   aggregation?: "sum" | "avg" | "min" | "max" | "count";
   /** Button kind only: the text on the button and its color. */
-  button?: { label: string; color: string };
+  /** `is_set_up` is false while no automation watches the button, its cell then offers "Set up" instead of a press. */
+  button?: { label: string; color: string; is_set_up?: boolean };
   /** Any kind: the column menu's "Hide column summary", leaves this column's cell in the group summary footer empty. */
   hide_summary?: boolean;
   /** Dependency kind only, see `DependencyConfig`. */

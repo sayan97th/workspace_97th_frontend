@@ -24,11 +24,15 @@ export type TokenProps = {
   disabled?: boolean;
   /** Points at something that was deleted, drawn in red until it is chosen again. */
   is_invalid?: boolean;
+  /** "link" draws monday's blue call to action words, such as the Button builder's "Then do this". */
+  tone?: "default" | "link";
+  /** Opens the popover on mount, for a row the user just added. */
+  default_open?: boolean;
 };
 
 /** One underlined, clickable word of the sentence. Opens its editor in a popover right under it. */
-export function Token({ label, is_placeholder = false, children, popover_width = 300, aria_label, disabled = false, is_invalid = false }: TokenProps) {
-  const [is_open, setIsOpen] = useState(false);
+export function Token({ label, is_placeholder = false, children, popover_width = 300, aria_label, disabled = false, is_invalid = false, tone = "default", default_open = false }: TokenProps) {
+  const [is_open, setIsOpen] = useState(default_open);
   const ref = useOutsideClick<HTMLSpanElement>(is_open, () => setIsOpen(false));
   const close = () => setIsOpen(false);
 
@@ -44,6 +48,8 @@ export function Token({ label, is_placeholder = false, children, popover_width =
         className={`border-b-2 leading-[1.15] transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
           is_open
             ? "border-boardtree-accent text-boardtree-accent"
+            : tone === "link"
+              ? "border-boardtree-text text-boardtree-accent hover:text-boardtree-accent-hover"
             : is_invalid
               ? "border-dashed border-boardtree-danger text-boardtree-danger hover:border-boardtree-accent hover:text-boardtree-accent"
               : is_placeholder
@@ -81,6 +87,8 @@ export type PickerEntry<T extends string> = {
   color?: string;
   /** Anything else before the label, an icon or an avatar. */
   leading?: React.ReactNode;
+  /** Shown but not pickable, `hint` says why. */
+  disabled?: boolean;
 };
 
 export type PickerListProps<T extends string> = {
@@ -103,7 +111,7 @@ export function PickerList<T extends string>({ sections, selected, onPick, place
   const visible = sections
     .map((section) => ({ ...section, entries: section.entries.filter((entry) => `${entry.label} ${entry.hint ?? ""}`.toLowerCase().includes(text)) }))
     .filter((section) => section.entries.length > 0);
-  const first = visible[0]?.entries[0];
+  const first = visible.flatMap((section) => section.entries).find((entry) => !entry.disabled);
 
   return (
     <div>
@@ -138,13 +146,16 @@ export function PickerList<T extends string>({ sections, selected, onPick, place
                   key={entry.id}
                   type="button"
                   onClick={() => onPick(entry.id)}
+                  disabled={entry.disabled}
+                  title={entry.disabled ? entry.hint : undefined}
                   aria-pressed={is_selected}
-                  className={`flex min-h-8 w-full items-center gap-2.5 rounded-[6px] px-2 py-1 text-left text-[13px] ${is_selected ? "bg-boardtree-accent-surface text-boardtree-accent" : "text-boardtree-text hover:bg-boardtree-hover"}`}
+                  className={`flex min-h-8 w-full items-center gap-2.5 rounded-[6px] px-2 py-1 text-left text-[13px] disabled:cursor-not-allowed disabled:opacity-45 ${is_selected ? "bg-boardtree-accent-surface text-boardtree-accent" : "text-boardtree-text hover:bg-boardtree-hover disabled:hover:bg-transparent"}`}
                 >
                   {entry.leading}
                   {entry.color && <span className="h-3.5 w-3.5 flex-none rounded-[3px]" style={{ background: entry.color }} />}
                   <span className="min-w-0 flex-1 truncate">{entry.label || "(blank)"}</span>
-                  {entry.hint && <span className="flex-none text-[11.5px] text-boardtree-text-faint">{entry.hint}</span>}
+                  {/* A disabled entry gives its reason as the tooltip, so its label is never cut short. */}
+                  {entry.hint && !entry.disabled && <span className="flex-none text-[11.5px] text-boardtree-text-faint">{entry.hint}</span>}
                 </button>
               );
             })}

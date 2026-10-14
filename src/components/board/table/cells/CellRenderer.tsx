@@ -8,6 +8,7 @@ import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, pa
 import { collectColumnValues, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
+import ButtonSetupPopover from "../menus/ButtonSetupPopover";
 import StatusMenu from "../menus/StatusMenu";
 import LabelMenu, { LabelPill } from "../menus/LabelMenu";
 import PeopleMenu from "../menus/PeopleMenu";
@@ -796,9 +797,15 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   }
 
   if (column.kind === "button") {
-    const label = column.button?.label?.trim() || column.title;
+    const label = column.button?.label?.trim() || "Click me";
     const color = column.button?.color ?? "#579bfc";
+    // monday's flow: until an automation watches the button, a click explains it and offers "Set up".
+    const needs_set_up = column.button?.is_set_up === false;
     const press = async () => {
+      if (needs_set_up) {
+        openMenu();
+        return;
+      }
       if (is_pressing) return;
       setIsPressing(true);
       try {
@@ -816,8 +823,10 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           type="button"
           onClick={() => void press()}
           disabled={is_pressing}
-          title={press_feedback ?? `Press to run the automations of "${label}"`}
-          className="h-[26px] max-w-full truncate rounded-[4px] px-3 text-board-cell font-medium shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
+          aria-haspopup={needs_set_up ? "dialog" : undefined}
+          aria-expanded={needs_set_up ? is_menu_open : undefined}
+          title={press_feedback ?? (needs_set_up ? "Set up what this button does" : `Run the automations of "${label}"`)}
+          className="h-7 max-w-full truncate rounded-[4px] px-2.5 text-[14px] leading-7 transition-[filter,opacity] hover:brightness-95 active:brightness-90 disabled:opacity-60"
           style={{ background: color, color: contrastFg(color) }}
         >
           {is_pressing ? "Running..." : press_feedback ? "Done" : label}
@@ -826,6 +835,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
           <div role="status" className="pointer-events-none absolute left-1/2 top-full z-30 mt-1 w-max max-w-[240px] -translate-x-1/2 rounded-[6px] bg-boardtree-text px-2 py-1 text-[11.5px] text-boardtree-surface shadow-lg">
             {press_feedback}
           </div>
+        )}
+        {needs_set_up && is_menu_open && (
+          <ButtonSetupPopover onSetUp={actions.canSetUpButtons() ? () => actions.setUpButton(column.id) : undefined} onClose={actions.closeCellMenu} />
         )}
       </div>
     );

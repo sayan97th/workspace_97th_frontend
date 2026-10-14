@@ -305,6 +305,10 @@ const COLUMN_ACTION_TYPES: BoardAutomationActionType[] = [
 /** Action types that also read another column, `source_column_id` is required. */
 const SOURCE_COLUMN_ACTION_TYPES: BoardAutomationActionType[] = ["set_date_from_column", "ensure_date_after", "copy_column_value"];
 
+/** Whether a notify or communication action names anyone: people, teams, a run source or a People column. */
+export const hasRecipient = (params: BoardAutomationActionParams): boolean =>
+  Boolean(params.notify_user_id || params.notify_user_ids?.length || params.notify_team_ids?.length || params.notify_from_people_column_id || params.recipient_source);
+
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function actionProblem(action: ActionDraft, index: number, context: AutomationBuilderContext, branch: "then" | "else" = "then"): string | null {
@@ -343,10 +347,10 @@ function actionProblem(action: ActionDraft, index: number, context: AutomationBu
       return params.amount ? null : `Set a number other than zero for ${where}.`;
     case "notify_person":
     case "slack_notify_person":
-      return params.notify_user_id || params.notify_from_people_column_id || params.recipient_source ? null : `Choose who ${where} reaches.`;
+      return hasRecipient(params) ? null : `Choose who ${where} reaches.`;
     case "send_email":
       if ((params.email_addresses ?? []).some((address) => !EMAIL_PATTERN.test(address))) return `Fix the email addresses of ${where}.`;
-      return params.notify_user_id || params.notify_from_people_column_id || params.recipient_source || params.email_column_id || params.email_addresses?.length ? null : `Choose who ${where} reaches.`;
+      return hasRecipient(params) || params.email_column_id || params.email_addresses?.length ? null : `Choose who ${where} reaches.`;
     case "wait":
       return params.amount && params.amount > 0 ? null : `Set how long ${where} waits.`;
     case "shift_dependents":

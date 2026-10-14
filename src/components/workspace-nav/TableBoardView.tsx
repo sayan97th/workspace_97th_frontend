@@ -320,7 +320,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
     ...(column.type === "connect_board" ? toConnectSettings(column) : {}),
     linkage: column.linkage ? toColumnLinkage(column.linkage) : undefined,
     description: column.config?.description?.trim() || undefined,
-    button: column.type === "button" ? { label: column.config?.button_label ?? column.label, color: column.config?.button_color ?? "#579bfc" } : undefined,
+    button: column.type === "button" ? { label: column.config?.button_label || "Click me", color: column.config?.button_color ?? "#579bfc" } : undefined,
     validation: column.config?.validation,
     aggregation: column.config?.aggregation,
     hide_summary: column.config?.hide_summary === true || undefined,
@@ -348,6 +348,12 @@ const attachDependencyDateColumns = (defs: TableColumnDef[]): TableColumnDef[] =
   if (!defs.some((def) => def.kind === "dependency")) return defs;
   const date_columns = defs.filter((def) => def.kind === "date" || def.kind === "timeline").map(({ id, title, kind }) => ({ id, title, kind }));
   return defs.map((def) => (def.kind === "dependency" ? { ...def, dependency_date_columns: date_columns } : def));
+};
+
+/** Marks each Button column set up or not, so a cell without automations offers "Set up". `null` while unknown. */
+const attachButtonSetUp = (defs: TableColumnDef[], set_up_ids: Set<string> | null): TableColumnDef[] => {
+  if (!set_up_ids) return defs;
+  return defs.map((def) => (def.kind === "button" && def.button ? { ...def, button: { ...def.button, is_set_up: set_up_ids.has(def.id) } } : def));
 };
 
 /**
@@ -887,6 +893,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // refetches whenever the active tab changes, mirroring `handleUpdateColumnFormula`'s
   // neighbors' own `board_id`/`view_tabs.active_view_id`-keyed fetches. ──
   const [automations, setAutomations] = useState<BoardAutomationDto[]>([]);
+  // The tab whose automations `automations` holds, Button cells only offer "Set up" once they are known.
+  const [automations_view_id, setAutomationsViewId] = useState<number | null | undefined>(undefined);
   const [is_automations_modal_open, setIsAutomationsModalOpen] = useState(false);
   // Set when another dialog asks the Automations center to open one automation in the builder.
   const [automation_edit_id, setAutomationEditId] = useState<number | null>(null);
@@ -1318,7 +1326,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     let cancelled = false;
     boardAutomationService
       .getAutomations(board_id, view_tabs.active_view_id)
-      .then((data) => { if (!cancelled) setAutomations(data); })
+      .then((data) => {
+        if (cancelled) return;
+        setAutomations(data);
+        setAutomationsViewId(view_tabs.active_view_id);
+      })
       .catch(() => {});
     return () => {
       cancelled = true;
@@ -2888,8 +2900,22 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // (`ItemRow`, `GroupColumnHeaderRow`, `layoutUtils.mainGridTemplate`, ...)
   // renders columns by iterating this array in order with no pin-specific
   // logic of its own, so reordering here is all pinning needs.
+  // Button columns some automation watches, null until this tab's automations are loaded.
+  const set_up_button_key = useMemo(() => {
+    if (automations_view_id !== view_tabs.active_view_id) return null;
+    return automations
+      .filter((automation) => automation.trigger_type === "button_clicked" && automation.trigger_column_id != null)
+      .map((automation) => String(automation.trigger_column_id))
+      .sort()
+      .join(",");
+  }, [automations, automations_view_id, view_tabs.active_view_id]);
+
   const { table_base_columns, table_pinned_count } = useMemo(() => {
-    const all = attachDependencyDateColumns(attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label));
+    const set_up_button_ids = set_up_button_key === null ? null : new Set(set_up_button_key.split(","));
+    const all = attachButtonSetUp(
+      attachDependencyDateColumns(attachFormulaSources(item_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), item_column_label)),
+      set_up_button_ids
+    );
     const visible = all.filter((c) => !toolbar.hidden_column_ids.includes(c.id));
     const pinned = visible.filter((c) => toolbar.pinned_column_ids.includes(c.id));
     const rest = visible.filter((c) => !toolbar.pinned_column_ids.includes(c.id));
@@ -2900,7 +2926,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // set — the first column of `rest` — since every row/header downstream
     // just slices the leading `pinned_column_count` columns off this array.
     return { table_base_columns: [...pinned, ...rest], table_pinned_count: pinned.length };
-  }, [item_columns, item_column_label, toolbar.hidden_column_ids, toolbar.pinned_column_ids]);
+  }, [item_columns, item_column_label, toolbar.hidden_column_ids, toolbar.pinned_column_ids, set_up_button_key]);
   const table_sub_base_columns = useMemo(
     () => attachDependencyDateColumns(attachFormulaSources(subitem_columns.map(toTableColumnDef).filter((c): c is TableColumnDef => c !== null), "Subitem")),
     [subitem_columns]
@@ -3252,6 +3278,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onSubmitFeedback: (message) => boardOptionsService.submitFeedback(message, board_id),
       board_ref: { board_id: String(board_id), board_name: board_label, view_id: view_tabs.active_view_id != null ? String(view_tabs.active_view_id) : null },
       onPressButton: handlePressButton,
+      // A Button cell's "Set up" opens monday's Button builder on top of the Automations center.
+      onSetUpButton: node.can_edit && active_view_type === "table" ? (column_id: string) => openAutomationCenter(undefined, column_id) : undefined,
       initial_item_column_width: item_column_width,
       // Like `item_column_label`, the item-title column isn't a real `board_columns`
       // row, so its resized width persists on the board itself (`item_column_width`)

@@ -236,6 +236,10 @@ export type BoardAutomationActionParams = {
   target_board_id?: number | null;
   /** Notify and communication actions: a fixed recipient. */
   notify_user_id?: number;
+  /** Notify and communication actions: more fixed recipients, everyone the action names is reached together. */
+  notify_user_ids?: number[];
+  /** Notify and communication actions: every member of these account teams. */
+  notify_team_ids?: number[];
   /** Notify and communication actions: whoever a people column currently holds on the item. */
   notify_from_people_column_id?: number;
   /** Column actions: which column to write. */

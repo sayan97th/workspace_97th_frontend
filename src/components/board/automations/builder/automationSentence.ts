@@ -126,10 +126,13 @@ export function dynamicLabel(context: AutomationBuilderContext, dynamic: BoardAu
 
 /** Who a notify or communication action reaches, email addresses included for "send an email". */
 export function recipientLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
-  const parts: string[] = [];
-  if (params.notify_user_id) parts.push(personLabel(context, params.notify_user_id));
-  else if (params.recipient_source) parts.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
-  else if (params.notify_from_people_column_id) parts.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  const recipients: string[] = [];
+  const person_ids = [...new Set([params.notify_user_id, ...(params.notify_user_ids ?? [])].filter((id): id is number => Boolean(id)))];
+  for (const id of person_ids) recipients.push(context.viewer_id && String(id) === context.viewer_id ? "Me" : personLabel(context, id));
+  for (const id of params.notify_team_ids ?? []) recipients.push(context.teams?.find((team) => team.id === id)?.name ?? "a team");
+  if (params.recipient_source) recipients.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
+  if (params.notify_from_people_column_id) recipients.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  const parts: string[] = recipients.length > 2 ? [`${recipients.slice(0, 2).join(", ")} +${recipients.length - 2}`] : recipients;
   if (params.email_column_id) parts.push(`the address in ${columnLabel(context, params.email_column_id)}`);
   const addresses = params.email_addresses ?? [];
   if (addresses.length === 1) parts.push(addresses[0]);

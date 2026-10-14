@@ -11,12 +11,10 @@ import {
   LIST_SOURCE_KINDS,
   NUMERIC_KINDS,
   READ_ONLY_KINDS,
-  RECIPIENT_SOURCE_LABELS,
   SETTABLE_KINDS,
   TRIGGER_MESSAGE_TOKENS,
   actionSections,
   dynamicFamilyOfKind,
-  recipientSourcesFor,
   type ActionPickerId,
   type AutomationBuilderContext,
 } from "./automationCatalog";
@@ -40,8 +38,10 @@ import { ActionIcon } from "./actionIcons";
 import ActionRowBulk, { BULK_ACTION_IDS } from "./ActionRowBulk";
 import ActionRowCollaboration, { COLLABORATION_ACTION_IDS } from "./ActionRowCollaboration";
 import ActionRowExtras, { EXTRA_ACTION_IDS, EmailRecipientEditor } from "./ActionRowExtras";
+import RecipientPicker from "./RecipientPicker";
+import { actionFromButtonEntry, buttonActionSections, buttonEntryIdOf } from "./buttonFlowCatalog";
 import ActionRowPosition, { POSITION_ACTION_IDS } from "./ActionRowPosition";
-import { actionFromPicker, type ActionDraft } from "./builderDraft";
+import { actionFromPicker, hasRecipient, type ActionDraft } from "./builderDraft";
 import { PickerList, PopoverFooter, POPOVER_INPUT, POPOVER_LABEL, Segmented, Token, WorkingDaysToggle, type PickerEntry } from "./builderUi";
 import { DynamicValueEditor, FixedOrDynamic } from "./dynamicValues";
 import { ColumnPicker, ColumnValueEditor, GroupPicker, MessageEditor, PersonPicker } from "./valueEditors";
@@ -64,6 +64,8 @@ export type ActionRowProps = {
   /** The automation's trigger, for the tokens and people only it knows (the mentioned person, the update text). */
   trigger_type?: BoardAutomationTriggerType | null;
   onChange: (next: ActionDraft) => void;
+  /** "button" swaps the verb's menu for the Button builder's monday style one, see `buttonFlowCatalog`. */
+  action_menu?: "default" | "button";
 };
 
 const Words = ({ children }: { children: React.ReactNode }) => <span className="text-boardtree-text">{children}</span>;
@@ -71,7 +73,27 @@ const Words = ({ children }: { children: React.ReactNode }) => <span className="
 const truncate = (text: string, length = 28): string => (text.length > length ? `${text.slice(0, length - 1).trimEnd()}...` : text);
 
 /** The verb of the sentence. Picking another entry swaps the whole action. */
-function ActionSwitch({ label, action, context, only_itemless, onChange, is_placeholder = false }: Pick<ActionRowProps, "action" | "context" | "only_itemless" | "onChange"> & { label: string; is_placeholder?: boolean }) {
+function ActionSwitch({ label, action, context, only_itemless, onChange, is_placeholder = false, action_menu = "default" }: Pick<ActionRowProps, "action" | "context" | "only_itemless" | "onChange" | "action_menu"> & { label: string; is_placeholder?: boolean }) {
+  if (action_menu === "button") {
+    return (
+      <Token label={label} is_placeholder={is_placeholder} aria_label="Choose an action" popover_width={330}>
+        {(close) => (
+          <PickerList
+            sections={buttonActionSections(context.is_slack_connected)}
+            selected={buttonEntryIdOf(action)}
+            onPick={(entry_id) => {
+              const next = actionFromButtonEntry(entry_id, context, action.key);
+              if (next) onChange(next);
+              close();
+            }}
+            placeholder="Search"
+            max_height={300}
+          />
+        )}
+      </Token>
+    );
+  }
+
   const sections = actionSections({ only_itemless, is_slack_connected: context.is_slack_connected }).map((section) => ({
     title: section.title,
     entries: section.entries.map((entry): PickerEntry<ActionPickerId> => ({ ...entry, leading: <ActionIcon id={entry.id} /> })),
@@ -92,50 +114,6 @@ function ActionSwitch({ label, action, context, only_itemless, onChange, is_plac
         />
       )}
     </Token>
-  );
-}
-
-/** Picker ids of the recipient sources, kept apart from people ids. */
-const SOURCE_PREFIX = "__source_";
-
-/**
- * Who a notify, email or Slack action reaches: a person, someone known only on the run (the person
- * who made the change, the item creator, the automation owner, the mentioned person, the item's
- * subscribers), or whoever a people column holds on the item.
- */
-function RecipientEditor({ params, context, has_trigger_item, trigger_type, onApply }: { params: BoardAutomationActionParams; context: AutomationBuilderContext; has_trigger_item: boolean; trigger_type?: BoardAutomationTriggerType | null; onApply: (patch: BoardAutomationActionParams) => void }) {
-  const [mode, setMode] = useState<"person" | "column">(params.notify_from_people_column_id && has_trigger_item ? "column" : "person");
-  const sources = recipientSourcesFor(trigger_type, has_trigger_item);
-  return (
-    <>
-      {has_trigger_item && (
-        <div className="mb-2">
-          <Segmented label="Who" options={[{ id: "person", label: "A person" }, { id: "column", label: "People column" }]} value={mode} onChange={setMode} />
-        </div>
-      )}
-      {mode === "person" ? (
-        <PersonPicker
-          context={context}
-          selected={params.recipient_source ? `${SOURCE_PREFIX}${params.recipient_source}` : params.notify_user_id ? String(params.notify_user_id) : null}
-          extra_entries={sources.map((source) => ({ id: `${SOURCE_PREFIX}${source}`, label: RECIPIENT_SOURCE_LABELS[source] }))}
-          onPick={(id) =>
-            onApply(
-              id.startsWith(SOURCE_PREFIX)
-                ? { recipient_source: id.slice(SOURCE_PREFIX.length) as BoardAutomationActionParams["recipient_source"], notify_user_id: undefined, notify_from_people_column_id: undefined }
-                : { notify_user_id: Number(id), notify_from_people_column_id: undefined, recipient_source: null }
-            )
-          }
-        />
-      ) : (
-        <ColumnPicker
-          context={context}
-          kinds={["people"]}
-          selected={params.notify_from_people_column_id ? String(params.notify_from_people_column_id) : null}
-          onPick={(id) => onApply({ notify_from_people_column_id: Number(id), notify_user_id: undefined, recipient_source: null })}
-          empty_text="Add a People column to this table first."
-        />
-      )}
-    </>
   );
 }
 
@@ -374,10 +352,10 @@ function LinkCreatedItemToken({ context, params, onPatch }: { context: Automatio
 }
 
 /** One "Then ..." sentence. Each action type lays out its own tokens. */
-export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, trigger_type = null, onChange }: ActionRowProps) {
+export default function ActionRow({ action, context, only_itemless, scopes, has_trigger_item, is_loading_boards, lead, is_webhook = false, trigger_type = null, onChange, action_menu = "default" }: ActionRowProps) {
   const params = action.params;
   const patch = (next: BoardAutomationActionParams) => onChange({ ...action, params: { ...params, ...next } });
-  const switchProps = { action, context, only_itemless, onChange };
+  const switchProps = { action, context, only_itemless, onChange, action_menu };
   const target_column = findColumn(context, params.target_column_id);
 
   if (!action.type || !action.picker_id) {
@@ -542,8 +520,8 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
   };
 
   const recipientToken = (
-    <Token label={recipientLabel(context, params)} is_placeholder={!params.notify_user_id && !params.notify_from_people_column_id && !params.recipient_source} aria_label="Who to reach">
-      {(close) => <RecipientEditor params={params} context={context} has_trigger_item={has_trigger_item} trigger_type={trigger_type} onApply={(next) => { patch(next); close(); }} />}
+    <Token label={recipientLabel(context, params)} is_placeholder={!hasRecipient(params)} aria_label="Who to reach" popover_width={300}>
+      {(close) => <RecipientPicker params={params} context={context} has_trigger_item={has_trigger_item} trigger_type={trigger_type} onChange={patch} onClose={close} />}
     </Token>
   );
 
@@ -773,7 +751,7 @@ export default function ActionRow({ action, context, only_itemless, scopes, has_
     case "notify_person":
       return <><Words>{lead} </Words><ActionSwitch {...switchProps} label="notify" /> {recipientToken} <Words>with </Words>{messageToken()}</>;
     case "send_email": {
-      const has_recipient = Boolean(params.notify_user_id || params.notify_from_people_column_id || params.recipient_source || params.email_column_id || params.email_addresses?.length);
+      const has_recipient = hasRecipient(params) || Boolean(params.email_column_id || params.email_addresses?.length);
       return (
         <>
           <Words>{lead} </Words><ActionSwitch {...switchProps} label="send an email" /> <Words>to </Words>

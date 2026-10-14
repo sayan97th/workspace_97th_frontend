@@ -428,7 +428,7 @@ export default function ColumnMenu({
           submenu={settings_sub}
           icon={<ButtonColumnIcon />}
           label={label}
-          renderFlyout={() => <ButtonSettingsPanel button={column.button} fallback_label={title} onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
+          renderFlyout={() => <ButtonSettingsPanel button={column.button} fallback_label="Click me" onSave={(button) => { onUpdateSettings({ button }); onClose(); }} />}
         />
       );
     }

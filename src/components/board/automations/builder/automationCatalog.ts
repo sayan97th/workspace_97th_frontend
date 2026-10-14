@@ -34,6 +34,8 @@ export type AutomationBuilderContext = {
   teams?: { id: number; name: string; member_count: number }[];
   /** This board's form views, for the "form is submitted" trigger. */
   forms?: NamedOption[];
+  /** The signed in member, shown as "Me" in recipient pickers and sentences. */
+  viewer_id?: string | null;
 };
 
 export type PickerSection<T extends string> = { title: string; entries: { id: T; label: string; hint?: string }[] };
