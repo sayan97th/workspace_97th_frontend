@@ -17,26 +17,35 @@ export type BoardShellProps = {
   selectionBar?: React.ReactNode;
   /** The board table (or any scrollable board body). */
   children: React.ReactNode;
+  /**
+   * Hides the board title row, keeping only the view tabs (the Doc tab's
+   * "Collapse header" toggle).
+   */
+  is_header_collapsed?: boolean;
+  /**
+   * The body fills the space under the tabs edge to edge, with no padding
+   * and no scroll of its own, for views that lay out their own toolbar and
+   * scroll area (the Doc tab).
+   */
+  fill_body?: boolean;
 };
 
 /**
  * Full board layout shell: dark surface, fixed header/tabs/toolbar and a single
  * scrollable body region. Reused by every board view (Client Hub and beyond).
  */
-const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectionBar, children }) => (
+const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectionBar, children, is_header_collapsed = false, fill_body = false }) => (
   <div className="relative flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
     {/* `board-chrome-theme` repaints the title row, tabs and toolbar with the monday palette (see `monday-palette.css`). */}
     <div className="board-chrome-theme flex-none">
-      <div className="px-6 pt-4">
-        <BoardHeader {...header} />
-        <div className="mt-2">
+      <div className={is_header_collapsed ? "px-6 pt-2" : "px-6 pt-4"}>
+        {!is_header_collapsed && <BoardHeader {...header} />}
+        <div className={is_header_collapsed ? undefined : "mt-2"}>
           <BoardViewTabs {...tabs} />
         </div>
       </div>
 
-      <div className="px-6 py-3">
-        {toolbar}
-      </div>
+      {(toolbar || !fill_body) && <div className="px-6 py-3">{toolbar}</div>}
     </div>
 
     {/*
@@ -49,9 +58,13 @@ const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectio
       position, horizontally for the frozen columns and vertically for the
       header row.
     */}
-    <div className="shell-scrollbar min-h-0 flex-1 overflow-auto pb-20">
-      <div className="px-6 pt-0.5">{children}</div>
-    </div>
+    {fill_body ? (
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+    ) : (
+      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto pb-20">
+        <div className="px-6 pt-0.5">{children}</div>
+      </div>
+    )}
 
     {selectionBar && (
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-6">

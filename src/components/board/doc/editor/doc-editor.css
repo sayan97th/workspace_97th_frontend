@@ -1074,7 +1074,7 @@ html.dark .doc-media-uploading {
   }
 }
 
-/* ── "/" and "@" menus (Notion's look) ───────────────────────────────────── */
+/* ── "/" and "@" menus (monday's look) ───────────────────────────────────── */
 
 .doc-suggestion {
   position: fixed;
@@ -1082,7 +1082,7 @@ html.dark .doc-media-uploading {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--doc-surface);
   box-shadow: var(--doc-shadow);
 }
@@ -1101,8 +1101,8 @@ html.dark .doc-media-uploading {
 }
 
 .doc-menu-section-label {
-  padding: 6px 8px 6px;
-  font-size: 12px;
+  padding: 8px 8px 6px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--doc-text-secondary);
 }
@@ -1121,7 +1121,7 @@ html.dark .doc-media-uploading {
 }
 
 .doc-menu-row[data-selected="true"] {
-  background: var(--doc-hover-soft);
+  background: var(--doc-hover);
 }
 
 .doc-menu-row-icon {
@@ -1141,6 +1141,21 @@ html.dark .doc-media-uploading {
   color: var(--doc-text-faint);
 }
 
+/* The markdown shortcut chip on a "/" row ("#", "##", ...). */
+.doc-menu-row-key {
+  flex: none;
+  min-width: 18px;
+  padding: 1px 4px;
+  border: 1px solid var(--doc-border);
+  border-radius: 4px;
+  background: var(--doc-panel-alt);
+  color: var(--doc-text-secondary);
+  font-family: var(--doc-font);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
 .doc-menu-empty {
   padding: 10px 8px;
   font-size: 14px;
@@ -1158,8 +1173,25 @@ html.dark .doc-media-uploading {
   font-size: 14px;
 }
 
-.doc-menu-footer:hover {
+.doc-menu-footer:hover,
+.doc-menu-footer[data-selected="true"] {
   background: var(--doc-hover-soft);
+}
+
+/* "More options" under the short "/" list. */
+.doc-menu-footer.is-centered {
+  justify-content: center;
+  margin: 0 6px;
+  width: auto;
+  padding: 12px 8px;
+  border-radius: 0 0 4px 4px;
+}
+
+/* The typed "/" with monday's "Type to search list" hint while the query is empty. */
+.doc-slash-trigger.is-empty::after {
+  content: attr(data-decoration-content);
+  color: var(--doc-text-faint);
+  pointer-events: none;
 }
 
 /* ── Bubble menus ────────────────────────────────────────────────────────── */

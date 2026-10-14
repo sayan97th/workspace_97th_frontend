@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Archive,
@@ -41,32 +41,15 @@ import type { BoardEditPermission, WorkspaceMember } from "@/types/workspace";
 import { DocEditorProvider, DocEditorSurface, DocOutline, DocToolbar, useDocEditor } from "./editor";
 import { serializeDocContent } from "./editor/doc-content";
 import DocCommentsPanel from "./comments/DocCommentsPanel";
-import { DocMetaRow, DocTypeIcon } from "./DocHeaderParts";
+import { DocMetaRow, DocTitle, DocTypeIcon } from "./DocHeaderParts";
 import DocPresentationMode from "./presentation/DocPresentationMode";
 import DocSaveIndicator from "./DocSaveIndicator";
 import DocShareModal from "./share/DocShareModal";
 import { downloadMarkdown, printDoc } from "./doc-export";
 import { useDocAutosave, type DocSaveStatus } from "./useDocAutosave";
+import { DOC_FULL_WIDTH_STORAGE_KEY, DOC_OUTLINE_STORAGE_KEY, readDocFlag, writeDocFlag } from "./doc-view-flags";
 
-const FULL_WIDTH_STORAGE_KEY = "doc-page:full-width";
-const OUTLINE_STORAGE_KEY = "doc-page:outline-open";
 const ICON_SIZE = 16;
-
-const readFlag = (key: string): boolean => {
-  try {
-    return window.localStorage.getItem(key) === "1";
-  } catch {
-    return false;
-  }
-};
-
-const writeFlag = (key: string, value: boolean) => {
-  try {
-    window.localStorage.setItem(key, value ? "1" : "0");
-  } catch {
-    // Only a per viewer convenience, nothing to do when storage is blocked.
-  }
-};
 
 /**
  * A Doc (a navigation leaf with `view_key = doc`): a Notion style document
@@ -259,20 +242,20 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({
   const [is_outline_open, setIsOutlineOpen] = useState(false);
 
   useEffect(() => {
-    setIsFullWidth(readFlag(FULL_WIDTH_STORAGE_KEY));
-    setIsOutlineOpen(readFlag(OUTLINE_STORAGE_KEY));
+    setIsFullWidth(readDocFlag(DOC_FULL_WIDTH_STORAGE_KEY));
+    setIsOutlineOpen(readDocFlag(DOC_OUTLINE_STORAGE_KEY));
   }, []);
 
   const toggleFullWidth = () => {
     setIsFullWidth((current) => {
-      writeFlag(FULL_WIDTH_STORAGE_KEY, !current);
+      writeDocFlag(DOC_FULL_WIDTH_STORAGE_KEY, !current);
       return !current;
     });
   };
 
   const toggleOutline = () => {
     setIsOutlineOpen((current) => {
-      writeFlag(OUTLINE_STORAGE_KEY, !current);
+      writeDocFlag(DOC_OUTLINE_STORAGE_KEY, !current);
       return !current;
     });
   };
@@ -550,60 +533,5 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({
         }}
       />
     </>
-  );
-};
-
-type DocTitleProps = {
-  label: string;
-  editable: boolean;
-  onRename: (label: string) => Promise<void>;
-  /** Enter leaves the title and moves the caret into the doc, like Notion. */
-  onEnter: () => void;
-};
-
-/** The doc's big title, renamed in place. Escape reverts, an empty title keeps the old name. */
-const DocTitle: React.FC<DocTitleProps> = ({ label, editable, onRename, onEnter }) => {
-  const title_ref = useRef<HTMLHeadingElement>(null);
-
-  // The heading's text lives in the DOM (React renders no children into it, so typing never
-  // conflicts with a render). Outside renames are written back only while it isn't focused.
-  useLayoutEffect(() => {
-    const element = title_ref.current;
-    if (element && document.activeElement !== element) element.textContent = label;
-  }, [label]);
-
-  const commit = () => {
-    const element = title_ref.current;
-    if (!element) return;
-    const next_label = (element.textContent ?? "").replace(/\s+/g, " ").trim();
-    if (!next_label) {
-      element.textContent = label;
-      return;
-    }
-    if (next_label !== label) void onRename(next_label);
-  };
-
-  return (
-    <h1
-      ref={title_ref}
-      contentEditable={editable ? "plaintext-only" : false}
-      spellCheck={false}
-      role={editable ? "textbox" : undefined}
-      aria-label="Doc title"
-      className="min-w-0 rounded px-1 font-[family-name:var(--doc-font-heading)] text-[32px] leading-tight font-bold break-words text-[var(--doc-text)] outline-none hover:bg-[var(--doc-hover-soft)] focus:bg-transparent"
-      onBlur={commit}
-      onKeyDown={(event) => {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          title_ref.current?.blur();
-          onEnter();
-        }
-        if (event.key === "Escape") {
-          event.preventDefault();
-          if (title_ref.current) title_ref.current.textContent = label;
-          title_ref.current?.blur();
-        }
-      }}
-    />
   );
 };

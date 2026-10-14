@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useLayoutEffect, useRef } from "react";
 import { Clock, FileLock2, FileText, Loader } from "lucide-react";
 import UserAvatar from "@/components/common/UserAvatar";
 import type { BoardType } from "@/types/workspace";
@@ -45,3 +45,60 @@ export const DocMetaRow: React.FC<DocMetaRowProps> = ({ creator, created_at, upd
     </span>
   </div>
 );
+
+type DocTitleProps = {
+  label: string;
+  editable: boolean;
+  onRename: (label: string) => Promise<void>;
+  /** Enter leaves the title and moves the caret into the doc, like Notion. */
+  onEnter: () => void;
+  /** Accessible name of the editable heading. */
+  aria_label?: string;
+};
+
+/** The doc's big title (a Doc page or a board Doc tab), renamed in place. Escape reverts, an empty title keeps the old name. */
+export const DocTitle: React.FC<DocTitleProps> = ({ label, editable, onRename, onEnter, aria_label = "Doc title" }) => {
+  const title_ref = useRef<HTMLHeadingElement>(null);
+
+  // The heading's text lives in the DOM (React renders no children into it, so typing never
+  // conflicts with a render). Outside renames are written back only while it isn't focused.
+  useLayoutEffect(() => {
+    const element = title_ref.current;
+    if (element && document.activeElement !== element) element.textContent = label;
+  }, [label]);
+
+  const commit = () => {
+    const element = title_ref.current;
+    if (!element) return;
+    const next_label = (element.textContent ?? "").replace(/\s+/g, " ").trim();
+    if (!next_label) {
+      element.textContent = label;
+      return;
+    }
+    if (next_label !== label) void onRename(next_label);
+  };
+
+  return (
+    <h1
+      ref={title_ref}
+      contentEditable={editable ? "plaintext-only" : false}
+      spellCheck={false}
+      role={editable ? "textbox" : undefined}
+      aria-label={aria_label}
+      className="min-w-0 rounded px-1 font-[family-name:var(--doc-font-heading)] text-[32px] leading-tight font-bold break-words text-[var(--doc-text)] outline-none hover:bg-[var(--doc-hover-soft)] focus:bg-transparent"
+      onBlur={commit}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          title_ref.current?.blur();
+          onEnter();
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          if (title_ref.current) title_ref.current.textContent = label;
+          title_ref.current?.blur();
+        }
+      }}
+    />
+  );
+};

@@ -8,7 +8,7 @@ export type PresenceAvatarStackProps = {
   board_id: number;
 };
 
-/** Face-pile of the other users currently viewing this board's Table tab, rendered in `BoardHeader`. Renders nothing while alone. */
+/** Face-pile of the other users currently viewing this board, rendered in `BoardHeader` on the Table tab and in the Doc tab toolbar. Renders nothing while alone. */
 const PresenceAvatarStack: React.FC<PresenceAvatarStackProps> = ({ board_id }) => {
   const presence_users = useBoardPresence(board_id);
 

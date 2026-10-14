@@ -2777,6 +2777,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // table") view, mirroring monday.com's own default.
   const active_view_type: BoardViewKind = view_tabs.active_view?.view_type ?? "table";
   const active_doc_view = view_tabs.active_view;
+  // monday's "Collapse header" on a Doc tab, per visit.
+  const [is_doc_header_collapsed, setIsDocHeaderCollapsed] = useState(false);
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
 
@@ -4294,6 +4296,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   return (
     <BoardShell
+      // A Doc tab lays out its own toolbar and scroll area edge to edge, and can fold the title row away.
+      fill_body={active_view_type === "doc" && !!active_doc_view}
+      is_header_collapsed={active_view_type === "doc" && is_doc_header_collapsed}
       header={{
         title: board_label,
         is_favorite: is_board_favorite,
@@ -4392,7 +4397,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         ) : undefined
       }
     >
-      {view_tabs.is_dirty && (
+      {view_tabs.is_dirty && active_view_type !== "doc" && (
         <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
@@ -4616,7 +4621,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ) : active_view_type === "doc" && active_doc_view ? (
         <BoardDocView
           view={active_doc_view}
+          board_id={board_id}
           onSaveDocContent={(doc_content) => view_tabs.updateDocContent(active_doc_view.id, doc_content)}
+          onRenameView={node.can_edit_structure ? (label) => view_tabs.renameView(active_doc_view.id, label) : undefined}
+          is_header_collapsed={is_doc_header_collapsed}
+          onToggleHeaderCollapsed={() => setIsDocHeaderCollapsed((current) => !current)}
           onUploadFile={(file) => boardDocService.uploadFile(board_id, file)}
           members={workspace_members}
           editable={node.permission_level === "full" || node.permission_level === "content"}

@@ -13,6 +13,8 @@ export type SuggestionState<T> = {
   getRect: (() => DOMRect | null) | null;
   /** Picks an item, replacing the typed trigger. */
   command: ((item: T) => void) | null;
+  /** The popup was asked for its full list (the "/" menu's "More options"). */
+  is_expanded: boolean;
 };
 
 export type SuggestionStore<T> = {
@@ -30,6 +32,7 @@ const closedState = <T,>(): SuggestionState<T> => ({
   range: null,
   getRect: null,
   command: null,
+  is_expanded: false,
 });
 
 /**

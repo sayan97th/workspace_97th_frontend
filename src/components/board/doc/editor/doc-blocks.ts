@@ -62,11 +62,11 @@ export const DOC_BLOCK_GROUP_LABELS: Record<DocBlockGroup, string> = {
  * menu, the toolbar's "+ Add" menu and the block handle's "Turn into".
  */
 export const DOC_BLOCKS: DocBlock[] = [
-  { key: "text", label: "Text", group: "basic", icon: Type, aliases: ["paragraph", "normal", "plain"], apply: (chain) => chain.setParagraph() },
-  { key: "heading-1", label: "Heading 1", group: "basic", icon: Heading1, shortcut: "#", aliases: ["h1", "title", "large"], apply: (chain) => chain.setHeading({ level: 1 }) },
-  { key: "heading-2", label: "Heading 2", group: "basic", icon: Heading2, shortcut: "##", aliases: ["h2", "subtitle", "medium"], apply: (chain) => chain.setHeading({ level: 2 }) },
-  { key: "heading-3", label: "Heading 3", group: "basic", icon: Heading3, shortcut: "###", aliases: ["h3", "small"], apply: (chain) => chain.setHeading({ level: 3 }) },
-  { key: "heading-4", label: "Heading 4", group: "basic", icon: Heading4, shortcut: "####", aliases: ["h4"], apply: (chain) => chain.setHeading({ level: 4 }) },
+  { key: "text", label: "Normal text", group: "basic", icon: Type, aliases: ["paragraph", "text", "plain"], apply: (chain) => chain.setParagraph() },
+  { key: "heading-1", label: "Large title", group: "basic", icon: Heading1, shortcut: "#", aliases: ["h1", "heading", "large"], apply: (chain) => chain.setHeading({ level: 1 }) },
+  { key: "heading-2", label: "Medium title", group: "basic", icon: Heading2, shortcut: "##", aliases: ["h2", "heading", "subtitle"], apply: (chain) => chain.setHeading({ level: 2 }) },
+  { key: "heading-3", label: "Small title", group: "basic", icon: Heading3, shortcut: "###", aliases: ["h3", "heading"], apply: (chain) => chain.setHeading({ level: 3 }) },
+  { key: "heading-4", label: "Extra small title", group: "basic", icon: Heading4, shortcut: "####", aliases: ["h4", "heading"], apply: (chain) => chain.setHeading({ level: 4 }) },
   { key: "bullet-list", label: "Bulleted list", group: "basic", icon: List, shortcut: "-", aliases: ["unordered", "bullet", "ul"], apply: (chain) => chain.toggleBulletList() },
   { key: "numbered-list", label: "Numbered list", group: "basic", icon: ListOrdered, shortcut: "1.", aliases: ["ordered", "ol", "number"], apply: (chain) => chain.toggleOrderedList() },
   { key: "todo-list", label: "To-do list", group: "basic", icon: ListTodo, shortcut: "[]", aliases: ["todo", "task", "checkbox", "check"], apply: (chain) => chain.toggleTaskList() },
@@ -101,6 +101,14 @@ export const DOC_BLOCKS: DocBlock[] = [
 
 /** Blocks that can replace the one the caret is in ("Turn into"). */
 export const TURN_INTO_BLOCKS = DOC_BLOCKS.filter((block) => block.apply);
+
+/**
+ * What a bare "/" shows first, monday style: the text blocks under "Text"
+ * with a "More options" row that expands to the whole catalog.
+ */
+export const SLASH_QUICK_BLOCKS: DocBlock[] = ["text", "heading-1", "heading-2", "heading-3", "quote"]
+  .map((key) => DOC_BLOCKS.find((block) => block.key === key))
+  .filter((block): block is DocBlock => !!block);
 
 /** The "/" search: matches the label, then the aliases, keeping menu order. */
 export const filterDocBlocks = (query: string): DocBlock[] => {
