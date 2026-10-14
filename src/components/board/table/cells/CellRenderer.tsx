@@ -28,6 +28,7 @@ import CellHyperlink from "./CellHyperlink";
 import ConnectItemsCell from "./ConnectItemsCell";
 import MirrorCell from "./MirrorCell";
 import { RatingCell, VoteCell } from "./VoteRatingCells";
+import { ProgressTrackingCell } from "./ProgressTrackingCells";
 import DependencyMenu from "../menus/DependencyMenu";
 import { describeLag, type DependencyMenuLink } from "../menus/DependencyLinkRow";
 import ChecklistMenu from "../menus/ChecklistMenu";
@@ -40,7 +41,6 @@ import {
   HourCell,
   ItemNumberCell,
   LastUpdatedCell,
-  ProgressTrackingCell,
   WeekCell,
   type ColumnCenterCellProps,
 } from "./ColumnCenterCells";
@@ -137,7 +137,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     case "item_number":
       return <ItemNumberCell {...center_props} />;
     case "progress_tracking":
-      return <ProgressTrackingCell {...center_props} values={values} />;
+      return <ProgressTrackingCell node_id={node_id} column={column} values={values} state={state} />;
   }
 
   if (column.kind === "text" || column.kind === "email") {

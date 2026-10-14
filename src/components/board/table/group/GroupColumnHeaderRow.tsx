@@ -5,6 +5,7 @@ import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
+import { statusColumnsOf } from "../progressTracking";
 
 interface GroupColumnHeaderRowProps {
   group: BoardTableGroup;
@@ -46,6 +47,7 @@ export default function GroupColumnHeaderRow({
   const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   const HEADER_BG = "var(--color-boardtree-surface)";
+  const progress_status_columns = statusColumnsOf(group.base_columns.concat(group.custom_columns)).map(({ id, title }) => ({ id, title }));
   const is_all_selected = group.items.length > 0 && group.items.every((item) => state.selected_map[item.id]);
   // When the caller supplies `onRequestColumnSort`, the toolbar's own
   // `sort_rules` is the single source of sort truth for the main table (see
@@ -137,7 +139,7 @@ export default function GroupColumnHeaderRow({
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}

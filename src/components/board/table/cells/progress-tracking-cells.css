@@ -1,0 +1,191 @@
+/*
+ * Progress tracking battery, monday style: a green outlined bar that fills as
+ * the row's Status columns reach "Done", with the percent beside it. Used by
+ * the table cell and the group summary footer. Every color is a `--progress-*`
+ * token, so dark mode only swaps the tokens. Text uses Figtree, the app's
+ * board typeface, with tabular numbers so percents line up down the column.
+ */
+
+.progress-cell,
+.progress-summary,
+.progress-tooltip {
+  --progress-accent: #00854d;
+  --progress-fill: #00854d;
+  --progress-fill-complete: #00c875;
+  --progress-track: #ffffff;
+  --progress-text: #323338;
+  --progress-text-muted: #676879;
+}
+
+html.dark .progress-cell,
+html.dark .progress-summary,
+html.dark .progress-tooltip {
+  --progress-accent: #2fb979;
+  --progress-fill: #2fb979;
+  --progress-fill-complete: #33d391;
+  --progress-track: transparent;
+  --progress-text: #d5d8df;
+  --progress-text-muted: #9699a6;
+}
+
+.progress-cell {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px;
+  cursor: default;
+  font-family: var(--font-boardtree-sans-family, var(--font-figtree)), "Figtree", ui-sans-serif, sans-serif;
+}
+
+.progress-cell__empty {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-boardtree-text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Battery */
+
+.progress-battery {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  max-width: 156px;
+  font-family: var(--font-boardtree-sans-family, var(--font-figtree)), "Figtree", ui-sans-serif, sans-serif;
+}
+
+.progress-battery__bar {
+  position: relative;
+  flex: 1;
+  min-width: 32px;
+  height: 20px;
+  overflow: hidden;
+  border: 1.5px solid var(--progress-accent);
+  border-radius: 4px;
+  background: var(--progress-track);
+}
+
+.progress-battery__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--progress-fill);
+  transition: width 320ms cubic-bezier(0.25, 0.8, 0.25, 1), background-color 200ms ease;
+}
+
+.progress-battery.is-complete .progress-battery__bar {
+  border-color: var(--progress-fill-complete);
+}
+
+.progress-battery.is-complete .progress-battery__fill {
+  background: var(--progress-fill-complete);
+}
+
+.progress-battery__percent {
+  flex: none;
+  min-width: 36px;
+  color: var(--progress-text);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.progress-battery--sm {
+  gap: 6px;
+}
+
+.progress-battery--sm .progress-battery__bar {
+  height: 14px;
+  border-width: 1px;
+  border-radius: 3px;
+}
+
+.progress-battery--sm .progress-battery__percent {
+  min-width: 30px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-battery__fill {
+    transition: none;
+  }
+}
+
+/* Footer summary */
+
+.progress-summary {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Hover card */
+
+.progress-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+  text-align: left;
+}
+
+.progress-tooltip__title {
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.progress-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.progress-tooltip__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #c4c4c4;
+}
+
+.progress-tooltip__column {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-tooltip__label {
+  flex: none;
+  max-width: 110px;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.progress-tooltip__label.is-empty {
+  opacity: 0.6;
+  font-weight: 400;
+}
+
+.progress-tooltip__weight {
+  flex: none;
+  min-width: 32px;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}

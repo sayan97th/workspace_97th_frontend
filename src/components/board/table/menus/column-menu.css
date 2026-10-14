@@ -362,3 +362,90 @@ html.dark .column-menu {
 .rating-cell--heart .column-menu__rating-preview-glyph.is-filled { color: #e2445c; }
 .rating-cell--thumbs_up .column-menu__rating-preview-glyph.is-filled { color: #1f76c2; }
 .rating-cell--smiley .column-menu__rating-preview-glyph.is-filled { color: #00c875; }
+
+/* Progress tracking settings: the Status columns it tracks and their weights. */
+
+.column-menu__progress-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 232px;
+  padding: 2px 0 4px;
+  overflow-y: auto;
+}
+
+.column-menu__progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: 4px;
+}
+
+.column-menu__progress-row:hover {
+  background: var(--action-menu-hover);
+}
+
+.column-menu__progress-check {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--action-menu-text);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.column-menu__progress-check input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--column-menu-check);
+  cursor: pointer;
+}
+
+.column-menu__progress-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.column-menu__progress-weight {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  color: var(--action-menu-title);
+  font-size: 13px;
+}
+
+.column-menu__progress-weight .column-menu__input {
+  width: 60px;
+  height: 28px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.column-menu__help--error {
+  color: #d83a52;
+}
+
+html.dark .column-menu__help--error {
+  color: #ff7b8f;
+}
+
+.column-menu__link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--column-menu-check);
+  font: inherit;
+  cursor: pointer;
+}
+
+.column-menu__link:hover {
+  text-decoration: underline;
+}

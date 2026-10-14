@@ -4,7 +4,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } f
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnTypeIcon from "./ColumnTypeIcon";
-import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, RatingSettingsPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
+import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, ProgressTrackingSettingsPanel, RatingSettingsPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
+import type { ProgressStatusColumn } from "../progressTracking";
 import { ratingIconOf, ratingMaxOf } from "../cells/VoteRatingCells";
 import BoardPickerMenu from "./BoardPickerMenu";
 import DependencySettingsPanel from "./DependencySettingsPanel";
@@ -51,9 +52,12 @@ export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
   Partial<
     Pick<
       ColumnDef,
-      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon"
+      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
     >
-  >;
+  > & {
+    /** Progress tracking columns only: the Status columns of the same table its settings can pick from. */
+    progress_status_columns?: ProgressStatusColumn[];
+  };
 
 interface ColumnMenuProps {
   title: string;
@@ -95,7 +99,7 @@ interface ColumnMenuProps {
 
 const NOT_AVAILABLE_REASON = "Not available yet";
 /** Kinds whose group summary footer shows something, so "Hide column summary" has an effect. */
-const SUMMARY_KINDS: ColumnKind[] = ["status", "number", "timeline", "vote", "rating"];
+const SUMMARY_KINDS: ColumnKind[] = ["status", "number", "timeline", "vote", "rating", "progress_tracking"];
 const VIEWPORT_MARGIN = 8;
 /** The flyout's top edge sits this far above its row, so its first row lines up with the row that opened it. */
 const FLYOUT_TOP_OFFSET = 8;
@@ -374,7 +378,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "dependency" | "rating" | "reminder" | "validation" | "options";
+type SettingsSub = "button" | "dependency" | "progress" | "rating" | "reminder" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -435,6 +439,26 @@ export default function ColumnMenu({
           icon={icon}
           label={label}
           renderFlyout={() => <RatingSettingsPanel rating_max={ratingMaxOf(column)} rating_icon={ratingIconOf(column)} onChange={(patch) => onUpdateSettings(patch)} />}
+        />
+      );
+    }
+    if (column.kind === "progress_tracking") {
+      return (
+        <SubmenuRow
+          submenu_key="progress"
+          submenu={settings_sub}
+          icon={icon}
+          label={label}
+          renderFlyout={() => (
+            <ProgressTrackingSettingsPanel
+              status_columns={column.progress_status_columns ?? []}
+              progress_columns={column.progress_columns}
+              onSave={(progress_columns) => {
+                onUpdateSettings({ progress_columns });
+                onClose();
+              }}
+            />
+          )}
         />
       );
     }

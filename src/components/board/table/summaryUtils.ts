@@ -3,6 +3,7 @@ import { ratingMaxOf, ratingValueOf, voterIdsOf } from "./cells/VoteRatingCells"
 import { findDef } from "./colorUtils";
 import { fmtRange, parseRangeValue, rangeElapsedRatio } from "./dateUtils";
 import { computeFormulaOutcome, isNumericFormula } from "./formulaUtils";
+import { rowProgressOf, statusColumnsOf } from "./progressTracking";
 
 export interface StatusSegment {
   key: string;
@@ -37,6 +38,9 @@ export interface ColumnSummary {
   /** Rating columns: `sum_value` holds the average of the rated items (unrated ones left out), and `rating_max` the column's scale. */
   is_rating: boolean;
   rating_max: number;
+  /** Progress tracking columns: the average progress of the items (0 to 100), null when the table has no Status column to track. */
+  is_progress: boolean;
+  progress_percent: number | null;
 }
 
 /** A Number cell's value, stored as text by the cell editor or as a JSON number by automations and imports. */
@@ -67,9 +71,15 @@ function fmtAggregate(n: number): string {
   return String(Math.round(n * 100) / 100);
 }
 
-/** Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row. */
-export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[]): ColumnSummary {
-  const base: ColumnSummary = { column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0, is_vote: false, is_rating: false, rating_max: 0 };
+/**
+ * Aggregates a group's items into the status-distribution / numeric-sum shown by the group's summary row.
+ * `scope_columns` are the columns of the items' table, which a Progress tracking column reads its Status columns from.
+ */
+export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, status_defs: StatusDef[], scope_columns: ColumnDef[] = []): ColumnSummary {
+  const base: ColumnSummary = {
+    column_id: column.id, is_status: false, is_number: false, is_timeline: false, segments: [], sum_value: "0", aggregation: "sum", range_label: "", elapsed_ratio: 0,
+    is_vote: false, is_rating: false, rating_max: 0, is_progress: false, progress_percent: null,
+  };
 
   // The column menu's "Hide column summary" leaves the footer cell empty.
   if (column.hide_summary) return base;
@@ -89,6 +99,14 @@ export function summaryForColumn(items: BoardTableItem[], column: ColumnDef, sta
     const ratings = items.map((item) => ratingValueOf(item.values[column.id], rating_max)).filter((rating) => rating > 0);
     const average = ratings.length ? ratings.reduce((acc, rating) => acc + rating, 0) / ratings.length : 0;
     return { ...base, is_rating: true, sum_value: ratings.length ? String(Math.round(average * 10) / 10) : "", rating_max };
+  }
+
+  // monday averages the items' batteries, so an empty group reads 0%.
+  if (column.kind === "progress_tracking") {
+    const status_columns = statusColumnsOf(scope_columns);
+    if (status_columns.length === 0) return { ...base, is_progress: true };
+    const total = items.reduce((sum, item) => sum + rowProgressOf(column, status_columns, item.values, status_defs).percent, 0);
+    return { ...base, is_progress: true, progress_percent: items.length ? Math.round(total / items.length) : 0 };
   }
 
   if (column.kind === "status") {

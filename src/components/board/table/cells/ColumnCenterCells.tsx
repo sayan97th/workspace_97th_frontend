@@ -2,7 +2,6 @@
 
 import type { BoardTableGroup, CellValue, ColumnDef, DocCellValue, PersonDef } from "../types";
 import type { BoardTableActions, BoardTableState, ColumnScope } from "../useBoardTable";
-import { findDef } from "../colorUtils";
 import {
   countryFlag,
   countryName,
@@ -320,47 +319,6 @@ export function ItemNumberCell({ node_id, state }: ColumnCenterCellProps) {
   return (
     <div className="center-cell center-cell--static">
       <span className="center-cell__number">{position ?? "–"}</span>
-    </div>
-  );
-}
-
-/** A Status label counts as done when it reads "Done", monday's default done label. */
-const DONE_LABEL = /^done$/i;
-
-/**
- * Read only: a battery of the row's Status columns (same scope), one segment
- * per column in its label's color, and the share of them that are done.
- */
-export function ProgressTrackingCell({ node_id, values, state }: ColumnCenterCellProps & { values: Record<string, CellValue> }) {
-  const location = locateNode(state.groups, node_id);
-  const columns = location
-    ? location.scope === "main"
-      ? [...location.group.base_columns, ...location.group.custom_columns]
-      : [...location.group.sub_base_columns, ...location.group.sub_custom_columns]
-    : [];
-  const status_columns = columns.filter((entry) => entry.kind === "status");
-  if (status_columns.length === 0) {
-    return (
-      <div className="center-cell center-cell--static">
-        <span className="center-cell__muted">Add a Status column</span>
-      </div>
-    );
-  }
-  const segments = status_columns.map((status_column) => {
-    const def = findDef(status_column.options ?? state.status_defs, asString(values[status_column.id]));
-    const has_label = !!def && !!def.label;
-    return { id: status_column.id, title: status_column.title, label: has_label ? def.label : "", color: has_label ? def.color : null, is_done: has_label && DONE_LABEL.test(def.label) };
-  });
-  const done_count = segments.filter((segment) => segment.is_done).length;
-  const percent = Math.round((done_count / segments.length) * 100);
-  return (
-    <div className="center-cell center-cell--static" title={segments.map((segment) => `${segment.title}: ${segment.label || "Empty"}`).join("\n")}>
-      <span className="center-cell__battery" role="img" aria-label={`${percent}% done`}>
-        {segments.map((segment) => (
-          <span key={segment.id} className="center-cell__battery-segment" style={segment.color ? { background: segment.color } : undefined} />
-        ))}
-      </span>
-      <span className="center-cell__percent">{percent}%</span>
     </div>
   );
 }

@@ -97,6 +97,8 @@ export interface ColumnSettingsPatch {
   rating_max?: number;
   /** Rating columns only, see `ColumnDef.rating_icon`. */
   rating_icon?: RatingIcon;
+  /** Progress tracking columns only, see `ColumnDef.progress_columns`. Null tracks every Status column again. */
+  progress_columns?: ProgressColumnWeight[] | null;
 }
 
 /** An Hour column's display, "2:30 PM" or "14:30". */
@@ -319,6 +321,14 @@ export interface ColumnDef {
   rating_max?: number;
   /** Rating columns only: the icon the scale is drawn with. Unset reads as a star. */
   rating_icon?: RatingIcon;
+  /** Progress tracking columns only: the Status columns it tracks and how much each weighs. Unset tracks every Status column of its table with the same weight. */
+  progress_columns?: ProgressColumnWeight[];
+}
+
+/** One Status column a Progress tracking column tracks, and its weight in percent (the weights add up to 100). */
+export interface ProgressColumnWeight {
+  column_id: string;
+  weight: number;
 }
 
 /** The icons a Rating column can draw its scale with, see `ColumnDef.rating_icon`. */

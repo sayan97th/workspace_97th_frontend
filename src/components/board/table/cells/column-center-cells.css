@@ -1,7 +1,6 @@
 /*
  * Table cells of the Column Center types (Country, Week, Hour, Color picker,
- * Doc, Creation log, Last updated, Auto number,
- * Progress tracking). They read the board's `--color-boardtree-*` tokens, so
+ * Doc, Creation log, Last updated, Auto number). They read the board's `--color-boardtree-*` tokens, so
  * they follow the table's light (monday palette) and dark looks.
  */
 
@@ -166,31 +165,4 @@
 .center-cell__number {
   color: var(--color-boardtree-text-secondary);
   font-variant-numeric: tabular-nums;
-}
-
-/* Progress tracking battery */
-.center-cell__battery {
-  display: flex;
-  flex: 1;
-  gap: 2px;
-  max-width: 120px;
-  height: 18px;
-  padding: 2px;
-  border: 1px solid var(--color-boardtree-border);
-  border-radius: 4px;
-}
-
-.center-cell__battery-segment {
-  flex: 1;
-  border-radius: 2px;
-  background: var(--color-boardtree-track);
-}
-
-.center-cell__percent {
-  flex: none;
-  min-width: 34px;
-  color: var(--color-boardtree-text-secondary);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
 }

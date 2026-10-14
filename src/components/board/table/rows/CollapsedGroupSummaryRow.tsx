@@ -5,6 +5,7 @@ import type { BoardTableGroup } from "../types";
 import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate } from "../layoutUtils";
 import { summaryForColumn } from "../summaryUtils";
+import { ProgressTrackingSummary } from "../cells/ProgressTrackingCells";
 import { VoteRatingSummary } from "../cells/VoteRatingCells";
 import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
@@ -70,7 +71,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
           </div>
 
           {columns.map((col) => {
-            const summary = summaryForColumn(group.items, col, state.status_defs);
+            const summary = summaryForColumn(group.items, col, state.status_defs, columns);
             return (
               <div
                 key={col.id}
@@ -100,6 +101,8 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
                   <VoteRatingSummary column={col} kind={summary.is_vote ? "vote" : "rating"} value={summary.sum_value} rating_max={summary.rating_max} is_compact />
                 )}
 
+                {summary.is_progress && <ProgressTrackingSummary percent={summary.progress_percent} is_compact />}
+
                 {summary.is_timeline && (
                   <span
                     className="flex h-[18px] w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-caption text-white"
@@ -113,7 +116,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
                   </span>
                 )}
 
-                {!summary.is_status && !summary.is_number && !summary.is_timeline && !summary.is_vote && !summary.is_rating && (
+                {!summary.is_status && !summary.is_number && !summary.is_timeline && !summary.is_vote && !summary.is_rating && !summary.is_progress && (
                   <div className="text-[12px] text-boardtree-text-faint">–</div>
                 )}
               </div>

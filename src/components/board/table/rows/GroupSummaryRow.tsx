@@ -4,6 +4,7 @@ import { timelineFillBackground } from "../colorUtils";
 import { mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
 import { VoteRatingSummary } from "../cells/VoteRatingCells";
+import { ProgressTrackingSummary } from "../cells/ProgressTrackingCells";
 
 interface GroupSummaryRowProps {
   group: BoardTableGroup;
@@ -31,7 +32,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
         <div className="h-9 border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
 
         {columns.map((col, col_index) => {
-          const summary = summaryForColumn(group.items, col, state.status_defs);
+          const summary = summaryForColumn(group.items, col, state.status_defs, columns);
           const is_pinned = col_index < pinned_columns.length;
           return (
             <div
@@ -63,6 +64,7 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
               {(summary.is_vote || summary.is_rating) && (
                 <VoteRatingSummary column={col} kind={summary.is_vote ? "vote" : "rating"} value={summary.sum_value} rating_max={summary.rating_max} />
               )}
+              {summary.is_progress && <ProgressTrackingSummary percent={summary.progress_percent} />}
               {summary.is_timeline && (
                 <span
                   className="flex h-6 w-full min-w-0 items-center justify-center truncate rounded-full px-2 text-board-cell text-white"

@@ -88,6 +88,8 @@ export type BoardColumnConfig = {
   rating_max?: number;
   /** Rating columns only: the icon the scale is drawn with (a star when unset). */
   rating_icon?: "star" | "heart" | "thumbs_up" | "smiley";
+  /** Progress tracking columns only: the Status columns it tracks and their weight in percent. Unset tracks every Status column equally. */
+  progress_columns?: { column_id: number; weight: number }[] | null;
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
 };

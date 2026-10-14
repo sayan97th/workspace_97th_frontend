@@ -3,7 +3,8 @@
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../constants";
-import type { ColumnKind, ColumnValidation, RatingIcon } from "../types";
+import type { ColumnKind, ColumnValidation, ProgressColumnWeight, RatingIcon } from "../types";
+import { evenWeights, type ProgressStatusColumn } from "../progressTracking";
 import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
 
@@ -282,6 +283,115 @@ export function RatingSettingsPanel({ rating_max, rating_icon, onChange }: Ratin
         ))}
       </div>
       <div className="column-menu__help">Ratings above a smaller scale are capped when they are shown.</div>
+    </div>
+  );
+}
+
+interface ProgressTrackingSettingsPanelProps {
+  /** The Status columns of the same table, in board order. */
+  status_columns: ProgressStatusColumn[];
+  progress_columns?: ProgressColumnWeight[];
+  /** Null tracks every Status column with the same weight again. */
+  onSave: (progress_columns: ProgressColumnWeight[] | null) => void;
+}
+
+/**
+ * A Progress tracking column's settings: which Status columns fill the battery and,
+ * optionally, how much each one weighs. Tracking them all with even weights saves
+ * nothing, so Status columns added later are tracked too.
+ */
+export function ProgressTrackingSettingsPanel({ status_columns, progress_columns, onSave }: ProgressTrackingSettingsPanelProps) {
+  const saved = (progress_columns ?? []).filter((entry) => status_columns.some((status_column) => status_column.id === entry.column_id));
+  const [checked_ids, setCheckedIds] = useState<string[]>(saved.length ? saved.map((entry) => entry.column_id) : status_columns.map((status_column) => status_column.id));
+  const [has_custom_weights, setHasCustomWeights] = useState(saved.length > 0 && new Set(saved.map((entry) => entry.weight)).size > 1);
+  const [weights, setWeights] = useState<Record<string, number>>(() => Object.fromEntries(saved.map((entry) => [entry.column_id, entry.weight])));
+
+  const ordered_checked_ids = status_columns.map((status_column) => status_column.id).filter((id) => checked_ids.includes(id));
+  const weight_total = ordered_checked_ids.reduce((sum, id) => sum + (weights[id] ?? 0), 0);
+  const is_weight_total_valid = !has_custom_weights || weight_total === 100;
+  const can_save = ordered_checked_ids.length > 0 && is_weight_total_valid;
+
+  const spreadEvenly = (ids: string[]) => {
+    const even = evenWeights(ids.length);
+    setWeights(Object.fromEntries(ids.map((id, index) => [id, even[index]])));
+  };
+
+  const toggleColumn = (id: string) => {
+    const next_ids = checked_ids.includes(id) ? checked_ids.filter((entry) => entry !== id) : [...checked_ids, id];
+    setCheckedIds(next_ids);
+    if (has_custom_weights) spreadEvenly(status_columns.map((status_column) => status_column.id).filter((entry) => next_ids.includes(entry)));
+  };
+
+  const toggleCustomWeights = () => {
+    if (!has_custom_weights) spreadEvenly(ordered_checked_ids);
+    setHasCustomWeights(!has_custom_weights);
+  };
+
+  const save = () => {
+    const tracks_everything = ordered_checked_ids.length === status_columns.length && !has_custom_weights;
+    if (tracks_everything) return onSave(null);
+    const even = evenWeights(ordered_checked_ids.length);
+    onSave(ordered_checked_ids.map((id, index) => ({ column_id: id, weight: has_custom_weights ? weights[id] ?? 0 : even[index] })));
+  };
+
+  if (status_columns.length === 0) {
+    return (
+      <div className="action-menu column-menu__form w-[280px]">
+        <div className="column-menu__label">Status columns</div>
+        <div className="column-menu__help">Add a Status column to this board. The battery fills as its labels are set to Done.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="action-menu column-menu__form w-[296px]">
+      <div className="column-menu__label">Status columns to track</div>
+      <div className="column-menu__help">The battery fills as each column is set to Done.</div>
+      <div className="column-menu__progress-list" role="group" aria-label="Status columns to track">
+        {status_columns.map((status_column) => {
+          const is_checked = checked_ids.includes(status_column.id);
+          return (
+            <div key={status_column.id} className="column-menu__progress-row">
+              <label className="column-menu__progress-check">
+                <input type="checkbox" checked={is_checked} onChange={() => toggleColumn(status_column.id)} />
+                <span className="column-menu__progress-title" title={status_column.title}>{status_column.title}</span>
+              </label>
+              {has_custom_weights && is_checked && (
+                <span className="column-menu__progress-weight">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={weights[status_column.id] ?? 0}
+                    aria-label={`${status_column.title} weight`}
+                    onChange={(event) => setWeights((current) => ({ ...current, [status_column.id]: Math.min(100, Math.max(0, Math.round(Number(event.target.value) || 0))) }))}
+                    className="column-menu__input column-menu__input--short"
+                  />
+                  <span aria-hidden="true">%</span>
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="action-menu__divider" role="separator" />
+      <button type="button" role="menuitemcheckbox" aria-checked={has_custom_weights} onClick={toggleCustomWeights} className="action-menu__item">
+        <span className="action-menu__label">Custom weights</span>
+        <ToggleSwitch is_on={has_custom_weights} size="sm" />
+      </button>
+      {has_custom_weights && (
+        <div className={`column-menu__help${is_weight_total_valid ? "" : " column-menu__help--error"}`}>
+          Total {weight_total}%. Weights must add up to 100%.{" "}
+          <button type="button" className="column-menu__link" onClick={() => spreadEvenly(ordered_checked_ids)}>
+            Split evenly
+          </button>
+        </div>
+      )}
+      {ordered_checked_ids.length === 0 && <div className="column-menu__help column-menu__help--error">Pick at least one Status column.</div>}
+      <button type="button" disabled={!can_save} onClick={save} className="column-menu__primary">
+        Save
+      </button>
     </div>
   );
 }
