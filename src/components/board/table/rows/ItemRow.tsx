@@ -13,6 +13,7 @@ import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
+import { useTextEntryDragLock } from "./useTextEntryDragLock";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
 interface ItemRowProps {
@@ -33,7 +34,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const is_dragging = state.drag?.node_id === item.id;
   const row_h = ROW_HEIGHT_PX[state.row_height];
   const row_color = state.row_colors[item.id];
-  const row_bg = is_selected
+  // Editing the name highlights the whole row, like monday.com.
+  const row_bg = is_selected || is_editing
     ? "var(--color-boardtree-selected)"
     : row_color
       ? conditionalColorFill(row_color, is_hovered)
@@ -77,6 +79,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   }, []);
 
   const row_ref = useRef<HTMLDivElement>(null);
+  const { is_text_entry_focused, shouldCancelDrag, lock_handlers } = useTextEntryDragLock(row_ref);
   // Ctrl/Cmd+F "N of M" jump navigation — scrolls the newly active match's
   // row into view, mirroring a browser's own in-page find.
   useEffect(() => {
@@ -94,9 +97,13 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         outline: is_active_match ? "2px solid #fdab3d" : undefined,
         outlineOffset: is_active_match ? "-2px" : undefined,
       }}
-      draggable={!state.read_only}
+      // Not draggable while the name or any text field in the row is being
+      // edited, so mouse drags select text instead of moving the item.
+      draggable={!state.read_only && !is_editing && !is_text_entry_focused}
+      {...lock_handlers}
       onDragStart={(e) => {
-        // See `fill_handle_mousedown_ref`'s own doc comment — a fill-handle
+        if (shouldCancelDrag(e)) return;
+        // See `fill_handle_mousedown_ref`'s own doc comment, a fill-handle
         // drag starts inside this same `draggable` row, and must cancel the
         // row's own native drag instead of reordering it.
         if (fill_handle_mousedown_ref.current) {
@@ -165,9 +172,22 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
-        <div className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-2" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: row_bg }}>
+        <div
+          className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-2"
+          style={{
+            height: row_h,
+            position: "sticky",
+            left: sticky_offsets[1],
+            zIndex: is_editing ? 16 : 15,
+            // While editing, the whole cell reads as the field (white fill and a
+            // full blue frame) instead of an input box nested inside it, like monday.com.
+            background: is_editing ? "var(--color-boardtree-surface)" : row_bg,
+            outline: is_editing ? "1px solid var(--color-boardtree-accent)" : undefined,
+            outlineOffset: is_editing ? "-1px" : undefined,
+          }}
+        >
           {/* Overlaid on the cell edge instead of taking a slot, so item names sit close to the checkbox like monday.com. */}
-          <div className="absolute inset-y-0 left-0 flex w-2.5 cursor-grab items-center justify-center text-boardtree-text-faint" style={{ opacity: is_hovered ? 1 : 0 }}>
+          <div className="absolute inset-y-0 left-0 flex w-2.5 cursor-grab items-center justify-center text-boardtree-text-faint" style={{ opacity: is_hovered && !is_editing ? 1 : 0 }}>
             <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
           </div>
           {/* The expand arrow only shows for items with subitems (or on hover, to add the first one), like monday.com. */}
@@ -176,7 +196,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             onClick={() => actions.toggleItemOpen(item.id)}
             aria-label={is_open ? "Hide subitems" : "Show subitems"}
             className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text hover:bg-boardtree-hover-strong"
-            style={{ opacity: has_subs || is_hovered ? 1 : 0 }}
+            style={{ opacity: has_subs || (is_hovered && !is_editing) ? 1 : 0 }}
           >
             {is_open ? (
               <svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 4.5 L6 8 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
@@ -198,7 +218,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                     if (e.key === "Escape") actions.cancelEditName();
                   }}
-                  className="h-[30px] w-full min-w-0 rounded-[4px] border border-boardtree-accent bg-boardtree-surface py-0 pl-1.5 pr-7 text-board-cell text-boardtree-text outline-none"
+                  className="h-[30px] w-full min-w-0 border-0 bg-transparent py-0 pl-1.5 pr-7 text-board-cell text-boardtree-text outline-none"
                 />
                 <EmojiInsertButton
                   input_ref={name_input_ref}
@@ -226,58 +246,63 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
-            title={item.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
-            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
-            style={{
-              color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
-              opacity: is_hovered || item.is_priority ? 1 : 0,
-              pointerEvents: is_hovered || item.is_priority ? "auto" : "none",
-            }}
-          >
-            <svg viewBox="0 0 16 16" width="13" height="13">
-              <path
-                d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
-                fill={item.is_priority ? "currentColor" : "none"}
-                stroke={item.is_priority ? "none" : "currentColor"}
-                strokeWidth={item.is_priority ? undefined : "1.2"}
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          {item.recurrence && (
-            <span
-              title={`Recurs every ${item.recurrence.interval_count} ${item.recurrence.frequency === "daily" ? "day(s)" : item.recurrence.frequency === "weekly" ? "week(s)" : "month(s)"}`}
-              className="flex h-[18px] w-[18px] flex-none items-center justify-center text-boardtree-accent"
-            >
-              <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3 8 a5 5 0 0 1 8.5 -3.5 M13 4.6 V7.4 H10.2 M13 8 a5 5 0 0 1 -8.5 3.5 M3 11.4 V8.6 H5.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            </span>
+          {/* The hover icons step aside while editing so the field spans the whole cell, like monday.com. */}
+          {!is_editing && (
+            <>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
+                title={item.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
+                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+                style={{
+                  color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
+                  opacity: is_hovered || item.is_priority ? 1 : 0,
+                  pointerEvents: is_hovered || item.is_priority ? "auto" : "none",
+                }}
+              >
+                <svg viewBox="0 0 16 16" width="13" height="13">
+                  <path
+                    d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                    fill={item.is_priority ? "currentColor" : "none"}
+                    stroke={item.is_priority ? "none" : "currentColor"}
+                    strokeWidth={item.is_priority ? undefined : "1.2"}
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+              {item.recurrence && (
+                <span
+                  title={`Recurs every ${item.recurrence.interval_count} ${item.recurrence.frequency === "daily" ? "day(s)" : item.recurrence.frequency === "weekly" ? "week(s)" : "month(s)"}`}
+                  className="flex h-[18px] w-[18px] flex-none items-center justify-center text-boardtree-accent"
+                >
+                  <svg viewBox="0 0 16 16" width="13" height="13"><path d="M3 8 a5 5 0 0 1 8.5 -3.5 M13 4.6 V7.4 H10.2 M13 8 a5 5 0 0 1 -8.5 3.5 M3 11.4 V8.6 H5.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+              )}
+              {has_subs && (
+                <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[4px] bg-boardtree-border-soft px-1.5 text-board-caption text-boardtree-text">
+                  {item.subs.length}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); actions.openItem(item.id); }}
+                title="Open item"
+                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+                style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
+              >
+                <svg viewBox="0 0 14 14" width="12" height="12"><path d="M5.4 2.6 H2.6 V5.4 M8.6 2.6 H11.4 V5.4 M5.4 11.4 H2.6 V8.6 M8.6 11.4 H11.4 V8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); actions.addSubitem(item.id); }}
+                title="Add subitem"
+                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+                style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
+              >
+                <svg viewBox="0 0 14 14" width="13" height="13"><circle cx="7" cy="7" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M7 4.6 V9.4 M4.6 7 H9.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+              </button>
+            </>
           )}
-          {has_subs && (
-            <button type="button" onClick={() => actions.toggleItemOpen(item.id)} className="flex-none rounded-[4px] bg-boardtree-border-soft px-1.5 text-board-caption text-boardtree-text">
-              {item.subs.length}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); actions.openItem(item.id); }}
-            title="Open item"
-            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-            style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
-          >
-            <svg viewBox="0 0 14 14" width="12" height="12"><path d="M5.4 2.6 H2.6 V5.4 M8.6 2.6 H11.4 V5.4 M5.4 11.4 H2.6 V8.6 M8.6 11.4 H11.4 V8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          </button>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); actions.addSubitem(item.id); }}
-            title="Add subitem"
-            className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-            style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
-          >
-            <svg viewBox="0 0 14 14" width="13" height="13"><circle cx="7" cy="7" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M7 4.6 V9.4 M4.6 7 H9.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-          </button>
         </div>
 
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
