@@ -12,6 +12,7 @@ import GroupSection from "./group/GroupSection";
 import SortableGroupList from "./group/SortableGroupList";
 import ColumnMoveAnimator from "./ColumnMoveAnimator";
 import { columnMoveKey, columnOrderKey } from "./columnMove";
+import { findNode } from "./treeUtils";
 import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
@@ -187,6 +188,14 @@ export interface BoardTableProps {
    * imperative asks that don't warrant lifting the whole state up.
    */
   clear_selection_signal?: number;
+  /**
+   * Asks the table to open a row's name for editing, the way "+ Add item"
+   * does for its own new row (blue row, name selected and ready to type).
+   * Used for rows created outside the table, like the toolbar's "New item".
+   * A new `nonce` is a new request. The row may arrive a render later than
+   * the request, so it is kept until the row shows up in the table.
+   */
+  edit_item_request?: { item_id: string; nonce: number } | null;
 }
 
 /** The "Main table" board view: a Monday-style grid of groups, tree rows and subitems with rich per-column cell editing. Mirrors `BoardKanban`'s role as the generic shell for its own view kind. */
@@ -217,6 +226,7 @@ export default function BoardTable({
   active_sort_direction = null,
   onSelectionChange,
   clear_selection_signal,
+  edit_item_request = null,
 }: BoardTableProps) {
   const { state, actions: base_actions, summary_text } = useBoardTable(config);
 
@@ -249,6 +259,17 @@ export default function BoardTable({
     clear_selection_signal_ref.current = clear_selection_signal;
     base_actions.clearSelection();
   }, [clear_selection_signal, base_actions]);
+
+  const handled_edit_nonce_ref = useRef<number | null>(null);
+  useEffect(() => {
+    if (!edit_item_request || edit_item_request.nonce === handled_edit_nonce_ref.current) return;
+    const group = state.groups.find((g) => findNode([g], edit_item_request.item_id));
+    const node = group ? findNode([group], edit_item_request.item_id) : null;
+    if (!group || !node) return;
+    handled_edit_nonce_ref.current = edit_item_request.nonce;
+    if (state.collapsed_groups[group.key]) base_actions.toggleGroupCollapsed(group.key);
+    base_actions.startEditName(node.id, node.name);
+  }, [edit_item_request, state.groups, state.collapsed_groups, base_actions]);
 
   const addItemReal = useCallback(
     (group_key: string) => {

@@ -3,6 +3,9 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDownIcon } from "@/icons/workspace-icons";
 import { CollapseTableIcon } from "@/icons/board-icons";
+import { ImportIcon } from "@/icons/board-options-icons";
+import { GroupTypeIcon } from "@/icons/trash-icons";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import type {
   BoardSavedFilterActions,
   BoardToolbarApi,
@@ -30,6 +33,10 @@ export type BoardToolbarProps<TRow> = {
   new_item_label?: string;
   /** Wires the "New item" button to create a row. Omit to keep it display-only. */
   onNewItem?: () => void;
+  /** Wires the chevron menu's "New group of items" row, which adds a table at the top of the view. Omit to hide the row. */
+  onNewGroup?: () => void;
+  /** Wires the chevron menu's "Import items" row, which opens the import wizard. Omit to hide the row. */
+  onImportItems?: () => void;
   toolbar: BoardToolbarApi<TRow>;
   /** Wires the panels' "Save to this view"/"Save as new view" buttons. Omit to hide them. */
   view_actions?: BoardToolbarViewActions;
@@ -45,6 +52,8 @@ export type BoardToolbarProps<TRow> = {
 function BoardToolbar<TRow>({
   new_item_label = "New item",
   onNewItem,
+  onNewGroup,
+  onImportItems,
   toolbar,
   view_actions,
   saved_filter_actions,
@@ -56,6 +65,23 @@ function BoardToolbar<TRow>({
   const is_inline_panel_open = is_filter_open || is_color_open;
 
   const toolbar_row_ref = useRef<HTMLDivElement>(null);
+  const new_item_menu_anchor_ref = useRef<HTMLDivElement>(null);
+  const [is_new_item_menu_open, setIsNewItemMenuOpen] = useState(false);
+
+  const new_item_menu_sections: ActionMenuSection[] = [
+    {
+      key: "create",
+      items: [
+        ...(onNewGroup
+          ? [{ key: "new-group", label: "New group of items", icon: <GroupTypeIcon size={16} />, onClick: onNewGroup }]
+          : []),
+        ...(onImportItems
+          ? [{ key: "import-items", label: "Import items", icon: <ImportIcon size={16} />, onClick: onImportItems }]
+          : []),
+      ],
+    },
+  ];
+  const has_new_item_menu = new_item_menu_sections[0].items.length > 0;
   const [inline_panel_width, setInlinePanelWidth] = useState(INLINE_PANEL_MAX_WIDTH);
   const [is_color_feedback_open, setIsColorFeedbackOpen] = useState(false);
 
@@ -76,22 +102,43 @@ function BoardToolbar<TRow>({
   return (
     <div>
       <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
-        <div className="mr-3 flex h-8 flex-none items-stretch overflow-hidden rounded-[4px] bg-boardtree-accent text-white">
+        <div
+          ref={new_item_menu_anchor_ref}
+          className="mr-3 flex h-8 flex-none items-stretch overflow-hidden rounded-[4px] bg-boardtree-accent text-white"
+        >
           <button
             type="button"
-            onClick={onNewItem}
+            onClick={() => {
+              setIsNewItemMenuOpen(false);
+              onNewItem?.();
+            }}
             className="px-2 text-board-nav transition-colors hover:bg-boardtree-accent-hover"
           >
             {new_item_label}
           </button>
           <button
             type="button"
-            className="flex w-7 items-center justify-center border-l border-black/15 transition-colors hover:bg-boardtree-accent-hover"
+            onClick={() => setIsNewItemMenuOpen((is_open) => !is_open)}
+            disabled={!has_new_item_menu}
+            className={`flex w-7 items-center justify-center border-l border-black/15 transition-colors hover:bg-boardtree-accent-hover disabled:cursor-default disabled:hover:bg-transparent ${
+              is_new_item_menu_open ? "bg-boardtree-accent-hover" : ""
+            }`}
             aria-label="New item options"
+            aria-haspopup="menu"
+            aria-expanded={is_new_item_menu_open}
           >
             <ChevronDownIcon size={14} />
           </button>
         </div>
+        <ActionMenu
+          anchor_el={new_item_menu_anchor_ref.current}
+          is_open={is_new_item_menu_open && has_new_item_menu}
+          onClose={() => setIsNewItemMenuOpen(false)}
+          sections={new_item_menu_sections}
+          aria_label="New item options"
+          width={220}
+          align="start"
+        />
 
         <SearchControl toolbar={toolbar} />
         <PersonControl toolbar={toolbar} view_actions={view_actions} />

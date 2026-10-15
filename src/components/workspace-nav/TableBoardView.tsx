@@ -180,6 +180,7 @@ import type {
 import type { BoardAccessEntry } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
+import ImportItemsModal from "@/components/board/import/ImportItemsModal";
 import { buildBoardPath } from "./helpers";
 
 export type WorkspaceViewProps = {
@@ -932,6 +933,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Selection action bar — see `handleBulkDuplicate`/`handleBulkMove`/
   // `handleBulkArchive`/`handleBulkDelete` below for the actions themselves. ──
   const [selected_item_ids, setSelectedItemIds] = useState<number[]>([]);
+  /** The toolbar's "New item" chevron menu > "Import items" wizard. */
+  const [is_toolbar_import_open, setIsToolbarImportOpen] = useState(false);
+  /** The toolbar's "New item" row, opened for name editing in the table once it renders. */
+  const [new_item_edit_request, setNewItemEditRequest] = useState<{ item_id: string; nonce: number } | null>(null);
   const [is_bulk_action_busy, setIsBulkActionBusy] = useState(false);
   // Bumped after every bulk action resolves (and on the bar's own "×") to
   // tell `BoardTable`'s internal `state.selected_map` to reset — see
@@ -1813,13 +1818,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     const target_group = groups[0] ?? (await ensureBoardGroup());
     if (!target_group) return;
 
-    // `position` is an unsigned column, so making room at the front means
-    // shifting every existing sibling down by one before inserting at 0 —
-    // otherwise repeated clicks would all tie at the same position.
-    const siblings = items.filter((item) => item.group_id === target_group.id);
-    await Promise.all(
-      siblings.map((item) => boardContentService.updateItem(board_id, item.id, { position: item.position + 1 }))
-    );
+    // The API shifts every other row of this table down by one when an
+    // explicit `position` is sent (see `BoardItemController::store()`), so
+    // one request is enough and repeated clicks never tie at the same slot.
     const created = await boardContentService.createItem(board_id, {
       name: "New item",
       group_id: target_group.id,
@@ -1829,9 +1830,28 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setItems((current) => [
       created,
       ...current.map((item) =>
-        item.group_id === target_group.id ? { ...item, position: item.position + 1 } : item
+        item.group_id === target_group.id && item.parent_id === null ? { ...item, position: item.position + 1 } : item
       ),
     ]);
+    setNewItemEditRequest((current) => ({ item_id: String(created.id), nonce: (current?.nonce ?? 0) + 1 }));
+  };
+
+  // ── "New item" chevron menu's "New group of items": a new table at the very top of the view ──
+  const handleNewGroupAtTop = async () => {
+    if (view_tabs.active_view_id == null) return;
+    const top_position = groups.length > 0 ? Math.min(...groups.map((group) => group.position)) : 0;
+    try {
+      const created = await boardContentService.createGroup(board_id, {
+        view_id: view_tabs.active_view_id,
+        name: "New group",
+        position: top_position,
+      });
+      setGroups((current) => insertGroupAtPosition(current, created));
+      // A freshly created table has no rows yet, so there is nothing to lazy load.
+      setLoadedGroupIds((current) => new Set(current).add(created.id));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't create the group. Please try again."));
+    }
   };
 
   /**
@@ -4468,6 +4488,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           <BoardToolbar
             toolbar={toolbar}
             onNewItem={handleNewItemAtTop}
+            onNewGroup={node.can_edit_structure ? () => void handleNewGroupAtTop() : undefined}
+            onImportItems={node.can_edit_structure ? () => setIsToolbarImportOpen(true) : undefined}
             view_actions={toolbar_view_actions}
             saved_filter_actions={saved_filter_actions}
             export_options={export_options}
@@ -4532,6 +4554,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           active_sort_direction={active_sort_direction}
           onSelectionChange={(ids) => setSelectedItemIds(ids.map(Number))}
           clear_selection_signal={selection_clear_signal}
+          edit_item_request={new_item_edit_request}
         />
       ) : active_view_type === "kanban" ? (
         board_status_column ? (
@@ -4913,6 +4936,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         confirm_label="Delete group"
         onConfirm={handleConfirmDeleteTableGroup}
         onClose={() => setGroupPendingDelete(null)}
+      />
+
+      <ImportItemsModal
+        is_open={is_toolbar_import_open}
+        onClose={() => setIsToolbarImportOpen(false)}
+        board_id={board_id}
+        view_id={view_tabs.active_view_id ?? null}
+        onImported={handleImportItems}
       />
     </BoardShell>
   );
