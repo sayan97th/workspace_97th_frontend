@@ -1,4 +1,5 @@
-// `@mention` picker (`MentionPicker`), styled after the People column picker
+// `@mention` picker (`MentionPicker`), used by the comment composers and the
+// doc editor's "@" menu (`MentionMenu`), styled after the People column picker
 // (`people-picker.css`): a white card with an 8px radius and a soft shadow,
 // section captions ("Groups", "People in this account") and "Name (Job title)"
 // rows with a 28px photo. The card is portaled to the body and anchored under
@@ -56,7 +57,8 @@ $panel-padding: 8px;
     0 6px 20px var(--mention-picker-shadow),
     0 0 0 1px var(--mention-picker-outline);
   color: var(--mention-picker-text);
-  font-family: var(--rt-font);
+  // Spelled out instead of `--rt-font`, since the doc editor shows this card without loading `rich-text.css`.
+  font-family: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
   font-size: 14px;
   line-height: 20px;
 

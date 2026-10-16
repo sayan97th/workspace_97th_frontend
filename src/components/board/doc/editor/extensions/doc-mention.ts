@@ -11,7 +11,8 @@ export type DocMember = {
   job_title?: string | null;
 };
 
-const MAX_RESULTS = 8;
+/** The picker scrolls, so the cap only keeps a very large workspace from rendering every member at once. */
+const MAX_RESULTS = 50;
 
 export const DOC_MENTION_KEY = new PluginKey("docMention");
 
@@ -28,11 +29,16 @@ export const createDocMention = (store: SuggestionStore<DocMember>, getMembers: 
     suggestion: {
       char: "@",
       pluginKey: DOC_MENTION_KEY,
+      // Name matches first, then people found only by their role, the same order as the comment composer's picker.
       items: ({ query }) => {
         const needle = query.trim().toLowerCase();
-        return getMembers()
-          .filter((member) => !needle || member.full_name.toLowerCase().includes(needle))
-          .slice(0, MAX_RESULTS);
+        const members = getMembers();
+        if (!needle) return members.slice(0, MAX_RESULTS);
+        const name_matches = members.filter((member) => member.full_name.toLowerCase().includes(needle));
+        const role_matches = members.filter(
+          (member) => !name_matches.includes(member) && member.job_title?.toLowerCase().includes(needle)
+        );
+        return [...name_matches, ...role_matches].slice(0, MAX_RESULTS);
       },
       render: () => ({
         onStart: (props) => {
