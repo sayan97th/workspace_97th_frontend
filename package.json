@@ -17,7 +17,11 @@
     "pm2:restart:local": "pm2 restart ecosystem/ecosystem.local.config.js",
     "pm2:delete": "pm2 delete workspace-97th-frontend",
     "pm2:logs": "pm2 logs workspace-97th-frontend",
-    "pm2:status": "pm2 status"
+    "pm2:status": "pm2 status",
+    "deploy:setup": "bash deploy/release.sh setup",
+    "deploy:production": "bash deploy/release.sh production",
+    "deploy:testing": "bash deploy/release.sh testing",
+    "deploy:rollback": "bash deploy/release.sh rollback"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
