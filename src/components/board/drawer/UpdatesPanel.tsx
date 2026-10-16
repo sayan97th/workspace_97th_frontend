@@ -20,6 +20,12 @@ export type UpdatesPanelProps<TRow> = {
   presence?: { presence_users: CommentPresenceUser[]; typing_names: string[]; whisperTyping: () => void };
   /** False when the host already shows who is viewing (the item drawer header), so only the typing line remains here. */
   show_viewers?: boolean;
+  /**
+   * True to render the composer as the first block of the scrolling feed, so it
+   * scrolls up out of the way while reading older updates (monday's item
+   * drawer). False keeps it pinned above the feed.
+   */
+  composer_scrolls_with_feed?: boolean;
 };
 
 /** Skips whispering "typing" on every single keystroke — one whisper per this interval is plenty for the indicator's purpose. */
@@ -37,7 +43,7 @@ function sortKeyOf(iso: string | undefined): number {
 }
 
 /** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...), which folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. A search and filter row narrows the threads (and hides the activity log, which has nothing to match) while any filter is on. */
-function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true }: UpdatesPanelProps<TRow>) {
+function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_scrolls_with_feed = false }: UpdatesPanelProps<TRow>) {
   const last_whisper_at_ref = useRef(0);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState<CommentFilters>(default_comment_filters);
@@ -128,69 +134,79 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true }: UpdatesPa
     />
   );
 
+  const composer_area = (
+    <div className="board-drawer__composer-area">
+      <CommentComposer
+        target="composer"
+        value={drawer.composer_text}
+        onChange={handleComposerChange}
+        onSubmit={drawer.postComment}
+        placeholder="Write an update and mention others with @"
+        submit_label="Update"
+        variant="update"
+        mention_target={drawer.mention_target}
+        mention_matches={drawer.mention_matches}
+        onPickMention={drawer.pickMention}
+        mentionable_people={drawer.mentionable_people}
+        notify_target={drawer.notify_target}
+        onToggleNotifyPicker={drawer.toggleNotifyPicker}
+        onCloseNotifyPicker={drawer.closeNotifyPicker}
+        onPickNotifyPerson={drawer.pickNotifyPerson}
+        notified_people={drawer.notified_people_by_target.composer ?? []}
+        onRemoveNotifyPerson={(person_id) => drawer.removeNotifyPerson("composer", person_id)}
+        emoji_palette_target={drawer.emoji_palette_target}
+        onToggleEmojiPalette={drawer.toggleEmojiPalette}
+        onCloseEmojiPalette={drawer.closeEmojiPalette}
+        onInsertEmoji={drawer.insertEmoji}
+        attachments={drawer.composer_attachments}
+        onAddFiles={drawer.addComposerAttachments}
+        onRemoveAttachment={drawer.removeComposerAttachment}
+        reference_items={drawer.reference_items_with_links}
+        schedule_at={collaboration.composer_schedule_at}
+        onScheduleChange={is_api_backed ? collaboration.setComposerScheduleAt : undefined}
+      />
+      {is_api_backed && (
+        <ScheduledCommentsPanel
+          scheduled_comments={collaboration.scheduled_comments}
+          onReschedule={collaboration.rescheduleComment}
+          onSendNow={collaboration.sendScheduledNow}
+          onCancel={collaboration.cancelScheduledComment}
+        />
+      )}
+      {presence && (
+        <CommentPresenceIndicator
+          presence_users={show_viewers ? presence.presence_users : []}
+          typing_names={presence.typing_names}
+        />
+      )}
+      {drawer.comments.length > 0 && (
+        <CommentFilterBar
+          filters={filters}
+          onChange={updateFilters}
+          onClear={clearFilters}
+          authors={authors}
+          visible_count={visible_comments.length}
+          total_count={drawer.comments.length}
+          resolved_count={resolved_count}
+          sort_order={sort_order}
+          onSortChange={setSortOrder}
+        />
+      )}
+    </div>
+  );
+
   return (
     <div className="board-drawer__panel">
-      <div className="board-drawer__composer-area">
-        <CommentComposer
-          target="composer"
-          value={drawer.composer_text}
-          onChange={handleComposerChange}
-          onSubmit={drawer.postComment}
-          placeholder="Write an update and mention others with @"
-          submit_label="Update"
-          variant="update"
-          mention_target={drawer.mention_target}
-          mention_matches={drawer.mention_matches}
-          onPickMention={drawer.pickMention}
-          mentionable_people={drawer.mentionable_people}
-          notify_target={drawer.notify_target}
-          onToggleNotifyPicker={drawer.toggleNotifyPicker}
-          onCloseNotifyPicker={drawer.closeNotifyPicker}
-          onPickNotifyPerson={drawer.pickNotifyPerson}
-          notified_people={drawer.notified_people_by_target.composer ?? []}
-          onRemoveNotifyPerson={(person_id) => drawer.removeNotifyPerson("composer", person_id)}
-          emoji_palette_target={drawer.emoji_palette_target}
-          onToggleEmojiPalette={drawer.toggleEmojiPalette}
-          onCloseEmojiPalette={drawer.closeEmojiPalette}
-          onInsertEmoji={drawer.insertEmoji}
-          attachments={drawer.composer_attachments}
-          onAddFiles={drawer.addComposerAttachments}
-          onRemoveAttachment={drawer.removeComposerAttachment}
-          reference_items={drawer.reference_items_with_links}
-          schedule_at={collaboration.composer_schedule_at}
-          onScheduleChange={is_api_backed ? collaboration.setComposerScheduleAt : undefined}
-        />
-        {is_api_backed && (
-          <ScheduledCommentsPanel
-            scheduled_comments={collaboration.scheduled_comments}
-            onReschedule={collaboration.rescheduleComment}
-            onSendNow={collaboration.sendScheduledNow}
-            onCancel={collaboration.cancelScheduledComment}
-          />
-        )}
-        {presence && (
-          <CommentPresenceIndicator
-            presence_users={show_viewers ? presence.presence_users : []}
-            typing_names={presence.typing_names}
-          />
-        )}
-        {drawer.comments.length > 0 && (
-          <CommentFilterBar
-            filters={filters}
-            onChange={updateFilters}
-            onClear={clearFilters}
-            authors={authors}
-            visible_count={visible_comments.length}
-            total_count={drawer.comments.length}
-            resolved_count={resolved_count}
-            sort_order={sort_order}
-            onSortChange={setSortOrder}
-          />
-        )}
-      </div>
+      {!composer_scrolls_with_feed && composer_area}
 
       <CommentCollaborationProvider value={collaboration} enabled={is_api_backed}>
-      <div ref={scroll_area_ref} className="shell-scrollbar board-drawer__scroll">
+      <div
+        ref={scroll_area_ref}
+        className="shell-scrollbar board-drawer__scroll"
+        data-with-composer={composer_scrolls_with_feed ? "" : undefined}
+      >
+        {composer_scrolls_with_feed && composer_area}
+
         {drawer.comments_error && (
           <div role="alert" className="board-drawer__error">
             {drawer.comments_error}

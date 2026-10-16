@@ -167,7 +167,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
         aria-labelledby={`board-drawer-tab-${content.active_tab}`}
         className="board-drawer__panel"
       >
-        {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} show_viewers={false} />}
+        {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} show_viewers={false} composer_scrolls_with_feed />}
         {content.active_tab === "files" && <FilesPanel drawer={content} />}
         {content.active_tab === "info_boxes" && <InfoBoxesPanel info_boxes={content.info_boxes} />}
         {content.active_tab === "dependencies" && content.open_row_id && content.renderDependenciesTab?.(content.open_row_id)}

@@ -439,6 +439,19 @@ html.dark {
   border-bottom: 1px solid var(--bd-border);
 }
 
+/*
+ * Composer inside the scroll area: it is the first block of the feed and
+ * scrolls up with it, so reading older updates uses the full drawer height.
+ * Negative side margins let its divider reach both edges past the gutter.
+ */
+.board-drawer__scroll[data-with-composer] {
+  padding-top: 0;
+}
+
+.board-drawer__scroll[data-with-composer] > .board-drawer__composer-area {
+  margin: 0 -20px 4px;
+}
+
 .board-drawer__status-text {
   margin-top: 24px;
   text-align: center;
@@ -666,6 +679,11 @@ html.dark {
   .board-drawer__scroll {
     padding-right: 12px;
     padding-left: 12px;
+  }
+
+  .board-drawer__scroll[data-with-composer] > .board-drawer__composer-area {
+    margin-right: -12px;
+    margin-left: -12px;
   }
 }
 
