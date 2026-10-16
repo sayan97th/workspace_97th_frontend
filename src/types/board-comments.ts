@@ -93,6 +93,15 @@ export type CommentRevisionDto = {
   edited_by: { id: number; full_name: string; profile_photo_url: string | null; is_deactivated?: boolean } | null;
 };
 
+/** An author's edit of a comment or reply (item update or board discussion update). */
+export type UpdateCommentPayload = {
+  body: string;
+  /** Files added while editing. */
+  attachments?: File[];
+  /** Ids of the comment's own attachments the author took off. */
+  removed_attachment_ids?: number[];
+};
+
 export type CreateBoardItemCommentPayload = {
   body: string;
   /** Set to reply under an existing top-level comment. */

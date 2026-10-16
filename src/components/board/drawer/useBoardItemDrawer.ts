@@ -6,10 +6,11 @@ import { boardCommentsService } from "@/services/board-comments.service";
 import { boardItemAttachmentsService } from "@/services/board-item-attachments.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
+import { mapAttachmentDto, mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
+import { useCommentEditAttachments } from "./useCommentEditAttachments";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
@@ -90,6 +91,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
   const [edit_draft, setEditDraft] = useState("");
+  const edit_attachments = useCommentEditAttachments();
   const [item_action_feedback, setItemActionFeedback] = useState<DrawerActionFeedback | null>(null);
   // Account teams the `@mention` picker can offer as groups, loaded once per real board.
   const [mention_teams, setMentionTeams] = useState<MentionTeam[]>([]);
@@ -177,8 +179,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setFreshCommentIds([]);
     setFilesUploadError(null);
     setDescriptionDraft(null);
-    setEditingTarget(null);
-    setEditDraft("");
+    stopEditing();
     setItemActionFeedback(null);
 
     if (is_api_backed) {
@@ -212,8 +213,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setNotifyTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
-    setEditingTarget(null);
-    setEditDraft("");
+    stopEditing();
   };
 
   const onComposerTextChange = (value: string) => {
@@ -273,6 +273,13 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const updateComments = (row_id: string, updater: (comments: DrawerComment[]) => DrawerComment[]) =>
     setCommentsByRow((current) => ({ ...current, [row_id]: updater(current[row_id] ?? []) }));
+
+  /** Closes the inline comment editor, dropping its unsaved text and files. */
+  const stopEditing = () => {
+    setEditingTarget(null);
+    setEditDraft("");
+    edit_attachments.reset();
+  };
 
   const postComment = () => {
     if (!open_row_id) return;
@@ -578,12 +585,16 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       });
   };
 
-  /** Applies (or reverts, by calling it again with the prior body) a body edit for a comment or reply. */
-  const applyBodyEdit = (row_id: string, comment_id: string, reply_id: string | undefined, body: string) =>
+  /**
+   * Applies (or reverts, by calling it again with the prior values) an edit
+   * of a comment or reply. `attachments` is only given for a top-level
+   * comment, replies carry no files.
+   */
+  const applyCommentEdit = (row_id: string, comment_id: string, reply_id: string | undefined, body: string, attachments?: DrawerAttachment[]) =>
     updateComments(row_id, (comments) =>
       comments.map((comment) => {
         if (comment.id !== comment_id) return comment;
-        if (!reply_id) return { ...comment, body, is_edited: true };
+        if (!reply_id) return { ...comment, body, is_edited: true, ...(attachments ? { attachments } : {}) };
         return {
           ...comment,
           replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true } : reply)),
@@ -595,46 +606,49 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     if (!open_row_id) return;
     const comment = (comments_by_row[open_row_id] ?? []).find((c) => c.id === comment_id);
     const target = reply_id ? comment?.replies.find((reply) => reply.id === reply_id) : comment;
-    if (!target) return;
+    if (!comment || !target) return;
     setEditingTarget({ comment_id, reply_id });
     setEditDraft(target.body);
+    edit_attachments.start(reply_id ? [] : comment.attachments);
   };
 
   const onEditDraftChange = (value: string) => setEditDraft(value);
 
-  const cancelEditingComment = () => {
-    setEditingTarget(null);
-    setEditDraft("");
-  };
+  const cancelEditingComment = () => stopEditing();
 
   const saveEditedComment = () => {
     if (!open_row_id || !editing_target) return;
     const row_id = open_row_id;
     const { comment_id, reply_id } = editing_target;
     const body = edit_draft.trim();
-    if (isRichTextEmpty(body)) return;
+    const { attachments, new_files, removed_attachment_ids, has_changes } = edit_attachments;
+    // Like a new update, an edited one may be only files, but never nothing at all.
+    if (isRichTextEmpty(body) && attachments.length === 0) return;
 
-    // Saving the text unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
+    // Saving the text and files unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
     const current_comment = (comments_by_row[row_id] ?? []).find((comment) => comment.id === comment_id);
     const current_body = reply_id ? current_comment?.replies.find((reply) => reply.id === reply_id)?.body : current_comment?.body;
-    if (current_body?.trim() === body) {
-      setEditingTarget(null);
-      setEditDraft("");
+    // Bodies posted before line breaks were normalized may still carry CRLF.
+    if (current_body?.replace(/\r\n/g, "\n").trim() === body && !has_changes) {
+      stopEditing();
       return;
     }
 
     const previous_comments = comments_by_row[row_id] ?? [];
-    applyBodyEdit(row_id, comment_id, reply_id, body);
-    setEditingTarget(null);
-    setEditDraft("");
+    applyCommentEdit(row_id, comment_id, reply_id, body, reply_id ? undefined : attachments);
+    stopEditing();
 
     if (!is_api_backed) return;
     const item_id = Number(row_id);
     boardCommentsService
-      .updateComment(board_id, item_id, Number(reply_id ?? comment_id), body)
-      .catch(() => {
+      .updateComment(board_id, item_id, Number(reply_id ?? comment_id), { body, attachments: new_files, removed_attachment_ids })
+      .then((dto) => {
+        // The server's copy carries the real ids and download links of the files just added.
+        if (!reply_id) applyCommentEdit(row_id, comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+      })
+      .catch((error) => {
         setCommentsByRow((current) => ({ ...current, [row_id]: previous_comments }));
-        setCommentsError("Couldn't update that comment. Please try again.");
+        setCommentsError(getApiErrorMessage(error, "Couldn't update that comment. Please try again."));
       });
   };
 
@@ -964,6 +978,9 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     editing_key,
     edit_draft,
     onEditDraftChange,
+    edit_attachments: edit_attachments.attachments,
+    addEditAttachments: edit_attachments.add,
+    removeEditAttachment: edit_attachments.remove,
     startEditingComment,
     cancelEditingComment,
     saveEditedComment,

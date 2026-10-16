@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { BoardItemCommentDto, CommentRevisionDto, CreateBoardItemCommentPayload } from "@/types/board-comments";
+import type { BoardItemCommentDto, CommentRevisionDto, CreateBoardItemCommentPayload, UpdateCommentPayload } from "@/types/board-comments";
 
 /**
  * Talks to the board item drawer's comment endpoints
@@ -42,11 +42,18 @@ export const boardCommentsService = {
     return apiClient.get<Blob>(`/api/boards/${board_id}/items/${item_id}/updates/export`, { responseType: "blob" });
   },
 
-  /** PATCH /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
-  async updateComment(board_id: number, item_id: number, comment_id: number, body: string): Promise<BoardItemCommentDto> {
-    const response = await apiClient.patch<{ comment: BoardItemCommentDto }>(
+  /** PATCH /api/boards/{board_id}/items/{item_id}/comments/{comment_id}, the body plus any files added or taken off. */
+  async updateComment(board_id: number, item_id: number, comment_id: number, payload: UpdateCommentPayload): Promise<BoardItemCommentDto> {
+    // Multipart has to go as POST with `_method=PATCH`, PHP only parses uploaded files on POST.
+    const form_data = new FormData();
+    form_data.append("_method", "PATCH");
+    form_data.append("body", payload.body);
+    (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
+    (payload.removed_attachment_ids ?? []).forEach((attachment_id) => form_data.append("removed_attachment_ids[]", String(attachment_id)));
+
+    const response = await apiClient.postFormData<{ comment: BoardItemCommentDto }>(
       `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`,
-      { body }
+      form_data
     );
     return response.comment;
   },

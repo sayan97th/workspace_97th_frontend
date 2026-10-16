@@ -5,11 +5,12 @@ import { boardDiscussionService } from "@/services/board-discussion.service";
 import { boardMuteService } from "@/services/board-mute.service";
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
-import { mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
+import { mapAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
+import { useCommentEditAttachments } from "./useCommentEditAttachments";
 import type {
   CommentCollaborationApi,
   DrawerAttachment,
@@ -140,6 +141,10 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
   editing_key: string | null;
   edit_draft: string;
   onEditDraftChange: (value: string) => void;
+  /** Files of the update being edited: the ones it keeps, then the ones just added. Always empty while editing a reply. */
+  edit_attachments: DrawerAttachment[];
+  addEditAttachments: (files: File[]) => void;
+  removeEditAttachment: (attachment_id: string) => void;
   startEditingComment: (comment_id: string, reply_id?: string) => void;
   cancelEditingComment: () => void;
   saveEditedComment: () => void;
@@ -166,6 +171,14 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const [has_loaded_comments, setHasLoadedComments] = useState(false);
   const [editing_target, setEditingTarget] = useState<{ comment_id: string; reply_id?: string } | null>(null);
   const [edit_draft, setEditDraft] = useState("");
+  const edit_attachments = useCommentEditAttachments();
+
+  /** Closes the inline comment editor, dropping its unsaved text and files. */
+  const stopEditing = () => {
+    setEditingTarget(null);
+    setEditDraft("");
+    edit_attachments.reset();
+  };
 
   const [composer_text, setComposerText] = useState("");
   const [composer_attachment_drafts, setComposerAttachmentDrafts] = useState<ComposerAttachmentDraft[]>([]);
@@ -228,8 +241,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setCommentsError(null);
     setPendingCommentIds([]);
     setFreshCommentIds([]);
-    setEditingTarget(null);
-    setEditDraft("");
+    stopEditing();
 
     boardMuteService
       .listMutedBoards()
@@ -253,8 +265,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setNotifyTarget(null);
     setEmojiPaletteTarget(null);
     setReactionPaletteId(null);
-    setEditingTarget(null);
-    setEditDraft("");
+    stopEditing();
   };
 
   const onComposerTextChange = (value: string) => {
@@ -483,12 +494,16 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       });
   };
 
-  /** Applies (or reverts, by calling it again with the prior body) a body edit for a comment or reply. */
-  const applyBodyEdit = (comment_id: string, reply_id: string | undefined, body: string) =>
+  /**
+   * Applies (or reverts, by calling it again with the prior values) an edit
+   * of a comment or reply. `attachments` is only given for a top-level
+   * comment, replies carry no files.
+   */
+  const applyCommentEdit = (comment_id: string, reply_id: string | undefined, body: string, attachments?: DrawerAttachment[]) =>
     setComments((current) =>
       current.map((comment) => {
         if (comment.id !== comment_id) return comment;
-        if (!reply_id) return { ...comment, body, is_edited: true };
+        if (!reply_id) return { ...comment, body, is_edited: true, ...(attachments ? { attachments } : {}) };
         return {
           ...comment,
           replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true } : reply)),
@@ -499,42 +514,47 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const startEditingComment = (comment_id: string, reply_id?: string) => {
     const comment = comments.find((c) => c.id === comment_id);
     const target = reply_id ? comment?.replies.find((reply) => reply.id === reply_id) : comment;
-    if (!target) return;
+    if (!comment || !target) return;
     setEditingTarget({ comment_id, reply_id });
     setEditDraft(target.body);
+    edit_attachments.start(reply_id ? [] : comment.attachments);
   };
 
   const onEditDraftChange = (value: string) => setEditDraft(value);
 
-  const cancelEditingComment = () => {
-    setEditingTarget(null);
-    setEditDraft("");
-  };
+  const cancelEditingComment = () => stopEditing();
 
   const saveEditedComment = () => {
     if (!editing_target) return;
     const { comment_id, reply_id } = editing_target;
     const body = edit_draft.trim();
-    if (isRichTextEmpty(body)) return;
+    const { attachments, new_files, removed_attachment_ids, has_changes } = edit_attachments;
+    // Like a new update, an edited one may be only files, but never nothing at all.
+    if (isRichTextEmpty(body) && attachments.length === 0) return;
 
-    // Saving the text unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
+    // Saving the text and files unchanged is not an edit: nothing is sent and no "(edited)" marker appears.
     const current_comment = comments.find((comment) => comment.id === comment_id);
     const current_body = reply_id ? current_comment?.replies.find((reply) => reply.id === reply_id)?.body : current_comment?.body;
-    if (current_body?.trim() === body) {
-      setEditingTarget(null);
-      setEditDraft("");
+    // Bodies posted before line breaks were normalized may still carry CRLF.
+    if (current_body?.replace(/\r\n/g, "\n").trim() === body && !has_changes) {
+      stopEditing();
       return;
     }
 
     const previous_comments = comments;
-    applyBodyEdit(comment_id, reply_id, body);
-    setEditingTarget(null);
-    setEditDraft("");
+    applyCommentEdit(comment_id, reply_id, body, reply_id ? undefined : attachments);
+    stopEditing();
 
-    boardDiscussionService.updateComment(board_id, Number(reply_id ?? comment_id), body).catch(() => {
-      setComments(previous_comments);
-      setCommentsError("Couldn't update that update. Please try again.");
-    });
+    boardDiscussionService
+      .updateComment(board_id, Number(reply_id ?? comment_id), { body, attachments: new_files, removed_attachment_ids })
+      .then((dto) => {
+        // The server's copy carries the real ids and download links of the files just added.
+        if (!reply_id) applyCommentEdit(comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+      })
+      .catch((error) => {
+        setComments(previous_comments);
+        setCommentsError(getApiErrorMessage(error, "Couldn't update that update. Please try again."));
+      });
   };
 
   const toggleSeen = (comment_id: string) => {
@@ -730,6 +750,9 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     editing_key,
     edit_draft,
     onEditDraftChange,
+    edit_attachments: edit_attachments.attachments,
+    addEditAttachments: edit_attachments.add,
+    removeEditAttachment: edit_attachments.remove,
     startEditingComment,
     cancelEditingComment,
     saveEditedComment,

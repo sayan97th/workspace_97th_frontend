@@ -73,9 +73,9 @@ export type RichTextComposerProps = {
    */
   onSuggestionKeyDown?: (event: KeyboardEvent) => boolean;
   autoFocus?: boolean;
-  /** True when rendered inside `CommentComposer`'s own unified Slack-style box, drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Defaults to false for standalone use (`CommentEditForm`), which keeps its own self-contained bordered box. */
+  /** True when rendered inside `CommentComposer`'s own unified Slack-style box, drops this component's own border/padding/rounding so it reads as one continuous container with that parent's action row, and hides the toolbar entirely (the parent renders it via `show_toolbar`). Both `CommentComposer` and `CommentEditForm` use it. Defaults to false for standalone use, which keeps its own self-contained bordered box. */
   embedded?: boolean;
-  /** Embedded mode only: whether the formatting toolbar row is shown, driven by `CommentComposer`'s "Aa" toggle. */
+  /** Embedded mode only: whether the formatting toolbar row is shown, driven by the parent's "Aa" toggle. */
   show_toolbar?: boolean;
   /** The parent shows the `@mention` picker, so the "/" menu offers "Mention a person". */
   can_mention?: boolean;

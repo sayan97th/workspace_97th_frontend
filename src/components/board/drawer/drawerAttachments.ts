@@ -23,3 +23,8 @@ export const classifyAttachment = (file_name: string): { tag: DrawerAttachmentTa
   const extension = file_name.split(".").pop()?.toLowerCase() ?? "";
   return EXTENSION_TAGS[extension] ?? DEFAULT_TAG;
 };
+
+/** File picker `accept` list for comment attachments, the same extensions the API accepts on a comment. */
+export const COMMENT_ATTACHMENT_ACCEPT = Object.keys(EXTENSION_TAGS)
+  .map((extension) => `.${extension}`)
+  .join(",");

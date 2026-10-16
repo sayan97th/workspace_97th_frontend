@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { CommentRevisionDto } from "@/types/board-comments";
+import type { CommentRevisionDto, UpdateCommentPayload } from "@/types/board-comments";
 import type { BoardDiscussionCommentDto, CreateBoardDiscussionCommentPayload } from "@/types/board-discussion";
 
 /**
@@ -46,11 +46,18 @@ export const boardDiscussionService = {
     return response.data;
   },
 
-  /** PATCH /api/boards/{board_id}/comments/{comment_id} */
-  async updateComment(board_id: number, comment_id: number, body: string): Promise<BoardDiscussionCommentDto> {
-    const response = await apiClient.patch<{ comment: BoardDiscussionCommentDto }>(
+  /** PATCH /api/boards/{board_id}/comments/{comment_id}, the body plus any files added or taken off. */
+  async updateComment(board_id: number, comment_id: number, payload: UpdateCommentPayload): Promise<BoardDiscussionCommentDto> {
+    // Multipart has to go as POST with `_method=PATCH`, PHP only parses uploaded files on POST.
+    const form_data = new FormData();
+    form_data.append("_method", "PATCH");
+    form_data.append("body", payload.body);
+    (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
+    (payload.removed_attachment_ids ?? []).forEach((attachment_id) => form_data.append("removed_attachment_ids[]", String(attachment_id)));
+
+    const response = await apiClient.postFormData<{ comment: BoardDiscussionCommentDto }>(
       `/api/boards/${board_id}/comments/${comment_id}`,
-      { body }
+      form_data
     );
     return response.comment;
   },

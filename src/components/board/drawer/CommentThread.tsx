@@ -22,7 +22,7 @@ import type { MentionOption } from "./mentionOptions";
 import ReactionPill from "./ReactionPill";
 import RichTextContent from "./RichTextContent";
 import SeenByList from "./SeenByList";
-import type { DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
 import "./board-drawer.css";
 
 export type CommentThreadProps = {
@@ -38,6 +38,10 @@ export type CommentThreadProps = {
   onStartEditing: (comment_id: string, reply_id?: string) => void;
   onCancelEditing: () => void;
   onSaveEditing: () => void;
+  /** Files of the update being edited, shown in its edit form. Omit, with the two handlers, to edit text only. */
+  edit_attachments?: DrawerAttachment[];
+  onAddEditAttachments?: (files: File[]) => void;
+  onRemoveEditAttachment?: (attachment_id: string) => void;
   reaction_palette_id: string | null;
   onToggleReactionPalette: (id: string) => void;
   onCloseReactionPalette: () => void;
@@ -279,6 +283,9 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   onStartEditing,
   onCancelEditing,
   onSaveEditing,
+  edit_attachments,
+  onAddEditAttachments,
+  onRemoveEditAttachment,
   reaction_palette_id,
   onToggleReactionPalette,
   onCloseReactionPalette,
@@ -363,6 +370,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
 
   // A deep link into a resolved thread, or editing it, opens it.
   const is_edited_here = editing_key !== null && (editing_key === comment.id || editing_key.startsWith(`${comment.id}:`));
+  const is_editing_comment = editing_key === comment.id;
   const is_resolved_folded = Boolean(comment.is_resolved) && !is_resolved_open && !is_thread_highlighted && !is_edited_here;
 
   if (is_resolved_folded) {
@@ -495,13 +503,23 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           </div>
         </div>
 
-        {editing_key === comment.id ? (
-          <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+        {is_editing_comment ? (
+          <CommentEditForm
+            value={edit_draft}
+            onChange={onEditDraftChange}
+            onSave={onSaveEditing}
+            onCancel={onCancelEditing}
+            autoFocus
+            attachments={edit_attachments}
+            onAddFiles={onAddEditAttachments}
+            onRemoveAttachment={onRemoveEditAttachment}
+          />
         ) : (
           <RichTextContent html={comment.body} people={mentionable_people} className="update-card__body" />
         )}
 
-        {comment.attachments.length > 0 && (
+        {/* While editing, the form lists the files instead, with a remove button each. */}
+        {!is_editing_comment && comment.attachments.length > 0 && (
           <div className="update-card__attachments">
             {comment.attachments.map((attachment) => (
               <CommentAttachmentChip key={attachment.id} attachment={attachment} />

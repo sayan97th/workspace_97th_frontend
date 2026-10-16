@@ -369,6 +369,12 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   /** Live draft for whichever comment/reply {@link editing_key} points at. */
   edit_draft: string;
   onEditDraftChange: (value: string) => void;
+  /** Files of the update being edited: the ones it keeps, then the ones just added. Always empty while editing a reply, replies carry no files. */
+  edit_attachments: DrawerAttachment[];
+  /** Adds files to the update being edited, uploaded only when the edit is saved. */
+  addEditAttachments: (files: File[]) => void;
+  /** Takes a file off the update being edited, removed for good only when the edit is saved. */
+  removeEditAttachment: (attachment_id: string) => void;
   /** Opens the inline editor for a top-level comment, or (when `reply_id` is given) a reply — seeds {@link edit_draft} from its current body. Author-only — also enforced server-side. */
   startEditingComment: (comment_id: string, reply_id?: string) => void;
   cancelEditingComment: () => void;
