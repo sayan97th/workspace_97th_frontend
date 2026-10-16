@@ -1150,6 +1150,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         initials: getInitials(member.full_name),
         avatar_seed: index,
         avatar_url: member.profile_photo_url ?? undefined,
+        job_title: member.job_title?.trim() || undefined,
       })),
     [workspace_members]
   );

@@ -11,6 +11,7 @@ import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
 import type { MentionOption } from "./mentionOptions";
+import { useMentionPickerNavigation } from "./useMentionPickerNavigation";
 import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from "./RichTextComposer";
 import SavedRepliesMenu from "./SavedRepliesMenu";
 import { formatScheduledTime } from "./scheduleFormat";
@@ -116,7 +117,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   // in `useBoardItemDrawer`'s `postComment`), so the send button shouldn't
   // disable itself in that case.
   const has_draft = value.trim().length > 0 || value.includes("![") || attachments.length > 0;
-  const show_mention_picker = mention_target === target && mention_matches.length > 0;
   const show_notify_picker = notify_target === target;
   const show_emoji_palette = emoji_palette_target === target;
   const can_notify = Boolean(onToggleNotifyPicker && onPickNotifyPerson);
@@ -151,6 +151,19 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     rich_text_ref.current?.appendMarkdownBlock(quote_request.markdown);
   }, [quote_request]);
 
+  const handlePickMention = (option: MentionOption) => {
+    rich_text_ref.current?.insertMentionText(option.name);
+    onPickMention(option);
+  };
+
+  // The drawer shares one mention list between every composer, only the one being typed in offers it.
+  const own_mention_matches = useMemo(
+    () => (mention_target === target ? mention_matches : []),
+    [mention_target, target, mention_matches]
+  );
+  const mention_navigation = useMentionPickerNavigation(own_mention_matches, handlePickMention);
+  const show_mention_picker = mention_navigation.is_open;
+
   const handleTriggerChange = (next: ComposerTrigger | null) => {
     setTrigger(next);
     if (next === null) setDismissedKey(null);
@@ -165,6 +178,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
 
   // While a menu is open it claims the arrows, Enter, Tab and Escape, so Enter picks a row instead of sending the update.
   const handleSuggestionKeyDown = (event: KeyboardEvent): boolean => {
+    if (mention_navigation.handleKeyDown(event)) return true;
     if (!is_suggestion_menu_open) return false;
 
     if (event.key === "ArrowDown") setSuggestionIndex((index) => (index + 1) % menu_length);
@@ -174,11 +188,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     else return false;
 
     return true;
-  };
-
-  const handlePickMention = (option: MentionOption) => {
-    rich_text_ref.current?.insertMentionText(option.name);
-    onPickMention(option);
   };
 
   const handleInsertEmoji = (emoji: string) => {
@@ -265,9 +274,9 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             placeholder={placeholder}
             min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
             // Enter sends, matching Slack's own convention, except while a
-            // mention/notify picker is open: neither has its own
-            // Enter-to-select yet (only click), so Enter falls back to its
-            // default behavior instead of firing a submit mid-pick.
+            // picker is open: the mention picker claims Enter to pick its
+            // highlighted row, and the Notify picker (click only) leaves
+            // Enter to its default behavior instead of firing a submit mid-pick.
             onEnterSubmit={show_mention_picker || show_notify_picker ? undefined : onSubmit}
             onTriggerChange={handleTriggerChange}
             onSuggestionKeyDown={handleSuggestionKeyDown}
@@ -374,7 +383,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           )}
         </div>
 
-        {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
+        {show_mention_picker && (
+          <MentionPicker
+            people={own_mention_matches}
+            onPick={handlePickMention}
+            getAnchorRect={() => rich_text_ref.current?.getTriggerAnchorRect("@") ?? null}
+            active_index={mention_navigation.active_index}
+            onHover={mention_navigation.setActiveIndex}
+          />
+        )}
         {is_suggestion_menu_open && (
           <ComposerSuggestionMenu
             title="Link an item"
@@ -382,12 +399,16 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             active_index={suggestion_index}
             onPick={pickSuggestion}
             onHover={setSuggestionIndex}
+            getAnchorRect={() => rich_text_ref.current?.getTriggerAnchorRect("#") ?? null}
           />
         )}
         {show_notify_picker && onPickNotifyPerson && (
-          <div ref={notify_picker_ref}>
-            <MentionPicker people={mentionable_people} onPick={onPickNotifyPerson} />
-          </div>
+          <MentionPicker
+            people={mentionable_people}
+            onPick={onPickNotifyPerson}
+            getAnchorRect={() => notify_trigger_ref.current?.getBoundingClientRect() ?? null}
+            panel_ref={notify_picker_ref}
+          />
         )}
 
         {is_update && attachments.length > 0 && onRemoveAttachment && (

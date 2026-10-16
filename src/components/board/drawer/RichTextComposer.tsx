@@ -29,6 +29,8 @@ export type ComposerTrigger = { kind: "reference"; query: string };
 
 /** Matches a `#query` at the caret, only when it opens a word, so URL fragments never trigger it. */
 const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
+/** The `@partial` mention being typed right before the caret. */
+const MENTION_AT_CARET = /@(\w*)$/;
 /** How far back from the caret the trigger regexes look. */
 const TRIGGER_LOOKBEHIND = 60;
 
@@ -37,6 +39,12 @@ export type RichTextComposerRef = {
   insertText: (text: string) => void;
   /** Replaces an in-progress trailing `@partial` token with `@Full Name `, or appends it if there's none. */
   insertMentionText: (name: string) => void;
+  /**
+   * Screen rectangle of the `@` (or `#`) that opens the word in front of the
+   * caret, or of the caret itself when there is none, so the mention and item
+   * pickers open right under what is being typed instead of over it.
+   */
+  getTriggerAnchorRect: (trigger_char: "@" | "#") => DOMRect | null;
   /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
   insertMarkdown: (markdown: string) => void;
   /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
@@ -345,13 +353,28 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         insertMentionText: (name: string) => {
           if (!editor) return;
           const { from } = editor.state.selection;
-          const text_before = editor.state.doc.textBetween(Math.max(0, from - 60), from, "\n", "\n");
-          const match = /@(\w*)$/.exec(text_before);
+          const text_before = editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
+          const match = MENTION_AT_CARET.exec(text_before);
           if (match) {
             const start = from - match[0].length;
             editor.chain().focus().insertContentAt({ from: start, to: from }, `@${name} `).run();
           } else {
             editor.chain().focus().insertContent(`@${name} `).run();
+          }
+        },
+        getTriggerAnchorRect: (trigger_char: "@" | "#") => {
+          if (!editor || editor.isDestroyed) return null;
+          const { from } = editor.state.selection;
+          const text_before = editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
+          const match = (trigger_char === "@" ? MENTION_AT_CARET : REFERENCE_TRIGGER).exec(text_before);
+          // Measured from the trigger character itself, so a leading space caught by the `#` pattern is skipped.
+          const anchor_pos = match ? from - (match[0].length - match[0].indexOf(trigger_char)) : from;
+          try {
+            const coords = editor.view.coordsAtPos(anchor_pos);
+            return new DOMRect(coords.left, coords.top, 0, coords.bottom - coords.top);
+          } catch {
+            // The position fell outside the document mid update, the picker keeps its last spot.
+            return null;
           }
         },
         insertMarkdown: (markdown: string) => {

@@ -26,6 +26,10 @@ export const EVERYONE_MENTION_NAME = "Everyone";
 /** Matches an in-progress `@partial` token at the very end of a composer's Markdown body. */
 export const MENTION_TRIGGER = /@([\w]*)$/;
 
+/** "Name (Job title)" for a person row, the People column picker's label, or just the name when no role is set. */
+export const mentionOptionLabel = (option: MentionOption): string =>
+  !isMentionGroup(option) && option.job_title ? `${option.name} (${option.job_title})` : option.name;
+
 export const isMentionGroup = (option: MentionOption): option is MentionGroupOption => "is_group" in option;
 
 /** Ids a picked option contributes to the draft's `mentioned_user_ids`. */
@@ -36,9 +40,9 @@ export const mentionOptionUserIds = (option: MentionOption): string[] =>
  * The options offered for an in-progress `@query`: the "Everyone" group first
  * (when the query is a prefix of its name and there is someone besides the
  * viewer to reach), then every team whose name contains the query, then every
- * person whose name contains the query. A team reaches only its members who
- * are in `people` (so nobody outside the board), never the viewer, and is left
- * out when that leaves nobody. The backend caps a comment at 200 mentions, so
+ * person whose name contains the query, then those found only by their job
+ * title. A team reaches only its members who are in `people` (so nobody
+ * outside the board), never the viewer, and is left out when that leaves nobody. The backend caps a comment at 200 mentions, so
  * a group is left out of very large rosters rather than producing a request
  * that would be rejected.
  */
@@ -50,7 +54,12 @@ export function buildMentionMatches(
   teams: MentionTeam[] = []
 ): MentionOption[] {
   const needle = query.toLowerCase();
-  const matching_people = people.filter((person) => person.name.toLowerCase().includes(needle));
+  // Name matches first, then people found only by their role, so "@seo" still reaches the SEO Specialist.
+  const name_matches = people.filter((person) => person.name.toLowerCase().includes(needle));
+  const role_matches = needle
+    ? people.filter((person) => !name_matches.includes(person) && person.job_title?.toLowerCase().includes(needle))
+    : [];
+  const matching_people = [...name_matches, ...role_matches];
 
   const roster_ids = new Set(people.map((person) => person.id));
   const matching_teams: MentionGroupOption[] = teams

@@ -12,6 +12,8 @@ export type BoardPersonOption = {
   is_guest?: boolean;
   /** Real uploaded profile photo, when available — {@link PersonAvatar} prefers this over the initials-on-gradient fallback. */
   avatar_url?: string;
+  /** Free text role shown as "Name (Job title)" in the `@mention` picker, omitted when the member never set one. */
+  job_title?: string;
   /** The account was disabled or deleted. The person is still shown, faded, wherever they authored or were assigned something. */
   is_deactivated?: boolean;
 };

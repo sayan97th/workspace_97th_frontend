@@ -327,10 +327,10 @@ html.dark {
 
 /* ── Suggestion menus (/, #, @ and Notify) ────────────────────────────── */
 
+/* The `#` item picker, portaled and anchored under the typed `#` by `FloatingSuggestion`. */
 .rich-text-menu {
-  position: absolute;
-  left: 0;
-  z-index: 5;
+  position: fixed;
+  z-index: 1100;
   overflow: auto;
   padding: 6px;
   border-radius: 8px;
@@ -374,19 +374,6 @@ html.dark {
   font-size: 12px;
   line-height: 16px;
   color: var(--rt-text-secondary);
-}
-.rich-text-menu__badge {
-  display: flex;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: var(--rt-mention-bg);
-  color: var(--rt-mention);
-  font-size: 13px;
-  font-weight: 700;
 }
 
 /* ── "/" block menu ───────────────────────────────────────────────────── */

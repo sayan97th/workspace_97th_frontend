@@ -1,0 +1,184 @@
+// `@mention` picker (`MentionPicker`), styled after the People column picker
+// (`people-picker.css`): a white card with an 8px radius and a soft shadow,
+// section captions ("Groups", "People in this account") and "Name (Job title)"
+// rows with a 28px photo. The card is portaled to the body and anchored under
+// the typed `@` by `FloatingSuggestion`, so it is fixed positioned here.
+//
+// Colors are `--mention-picker-*` custom properties generated from `$tokens`
+// for light (`.mention-picker`) and dark (`html.dark .mention-picker`), so dark
+// mode only swaps the tokens, never the rules below.
+
+@use "sass:list";
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+
+// Each token as (light, dark).
+$tokens: (
+  "surface": (#ffffff, #0f1c1c),
+  "text": (#323338, #e9eded),
+  "text-secondary": (#676879, #b7c0c1),
+  "text-faint": (#9699a6, #9aa4a5),
+  "hover": (#dcdfec, rgba(255, 255, 255, 0.08)),
+  "active": (#cce5ff, rgba(77, 156, 255, 0.24)),
+  "divider": (#e7e9ef, rgba(255, 255, 255, 0.12)),
+  "badge-bg": (#cce5ff, rgba(77, 156, 255, 0.24)),
+  "badge-text": (#0073ea, #69a7ff),
+  "outline": (rgba(15, 15, 15, 0.05), rgba(255, 255, 255, 0.08)),
+  "shadow": (rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55)),
+);
+
+@mixin token-set($index) {
+  @each $name, $pair in $tokens {
+    --mention-picker-#{$name}: #{list.nth($pair, $index)};
+  }
+}
+
+$radius: 8px;
+$row-radius: 4px;
+$row-height: 40px;
+$avatar-size: 28px;
+$panel-padding: 8px;
+
+// ── Card ──────────────────────────────────────────────────────────────────
+
+.mention-picker {
+  @include token-set(1);
+
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 16px);
+  overflow: hidden;
+  border-radius: $radius;
+  background: var(--mention-picker-surface);
+  box-shadow:
+    0 6px 20px var(--mention-picker-shadow),
+    0 0 0 1px var(--mention-picker-outline);
+  color: var(--mention-picker-text);
+  font-family: var(--rt-font);
+  font-size: 14px;
+  line-height: 20px;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: mention-picker-enter 120ms ease-out;
+  }
+}
+
+html.dark .mention-picker {
+  @include token-set(2);
+}
+
+@keyframes mention-picker-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// The panel fills the height `FloatingSuggestion` allows, only the list scrolls.
+.mention-picker__panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mention-picker__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: $panel-padding;
+  scrollbar-width: thin;
+}
+
+// ── Sections ──────────────────────────────────────────────────────────────
+
+.mention-picker__section + .mention-picker__section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--mention-picker-divider);
+}
+
+.mention-picker__section-title {
+  padding: 4px 8px;
+  color: var(--mention-picker-text-secondary);
+  font-size: 14px;
+}
+
+.mention-picker__empty {
+  padding: 8px;
+  color: var(--mention-picker-text-faint);
+}
+
+// ── Rows ──────────────────────────────────────────────────────────────────
+
+.mention-picker__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: $row-height;
+  padding: 6px 8px;
+  border-radius: $row-radius;
+  color: var(--mention-picker-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 80ms ease;
+
+  &:hover {
+    background: var(--mention-picker-hover);
+  }
+
+  // The keyboard cursor, the row Enter or Tab picks.
+  &[data-active="true"] {
+    background: var(--mention-picker-active);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mention-picker-badge-text);
+    outline-offset: -2px;
+  }
+}
+
+.mention-picker__avatar {
+  flex: none;
+}
+
+.mention-picker__badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: $avatar-size;
+  height: $avatar-size;
+  border-radius: 999px;
+  background: var(--mention-picker-badge-bg);
+  color: var(--mention-picker-badge-text);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mention-picker__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mention-picker__label,
+.mention-picker__description {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-picker__description {
+  color: var(--mention-picker-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}

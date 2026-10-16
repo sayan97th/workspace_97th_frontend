@@ -12,6 +12,7 @@ import {
   type MentionTeam,
 } from "@/components/board/drawer/mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "@/components/board/drawer/RichTextComposer";
+import { useMentionPickerNavigation } from "@/components/board/drawer/useMentionPickerNavigation";
 import { FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { ClockIcon } from "@/icons/workspace-icons";
 
@@ -66,7 +67,6 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
     () => (mention_query === null ? [] : buildMentionMatches(people, mention_query, current_user.id, undefined, teams)),
     [mention_query, people, teams, current_user.id]
   );
-  const is_picker_open = mention_matches.length > 0;
 
   const ensurePeopleLoaded = () => {
     if (has_requested_people_ref.current) return;
@@ -95,6 +95,9 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
     setMentionPicks((current) => [...current, { name: option.name, user_ids: mentionOptionUserIds(option) }]);
     setMentionQuery(null);
   };
+
+  const mention_navigation = useMentionPickerNavigation(mention_matches, handlePickMention);
+  const is_picker_open = mention_navigation.is_open;
 
   /** Ids of everyone still `@mentioned` in the body: a pick whose text was edited away no longer notifies anyone. */
   const collectMentionedIds = (body: string): number[] => {
@@ -140,9 +143,9 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
             onChange={handleChange}
             placeholder={placeholder}
             min_height_class="min-h-10"
-            // Enter sends, except while the mention list is open: it has no
-            // Enter-to-select yet (only click), so Enter keeps its default there.
+            // Enter sends, except while the mention list is open: there it picks the highlighted person.
             onEnterSubmit={is_picker_open ? undefined : submit}
+            onSuggestionKeyDown={mention_navigation.handleKeyDown}
             can_mention
             onOpenEmojiPalette={() => setIsEmojiOpen(true)}
           />
@@ -208,7 +211,15 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
           </div>
         </div>
 
-        {is_picker_open && <MentionPicker people={mention_matches} onPick={handlePickMention} placement="above" />}
+        {is_picker_open && (
+          <MentionPicker
+            people={mention_matches}
+            onPick={handlePickMention}
+            getAnchorRect={() => rich_text_ref.current?.getTriggerAnchorRect("@") ?? null}
+            active_index={mention_navigation.active_index}
+            onHover={mention_navigation.setActiveIndex}
+          />
+        )}
 
         {is_scheduling && (
           <div className="mt-2.5 flex items-center gap-2">
