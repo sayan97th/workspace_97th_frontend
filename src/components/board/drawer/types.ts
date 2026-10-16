@@ -380,3 +380,69 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   cancelEditingComment: () => void;
   saveEditedComment: () => void;
 };
+
+/**
+ * The comment thread side both comment drawers share (the item drawer and the
+ * board discussion drawer), everything `UpdatesPanel` needs to render the
+ * composer and the feed. The activity log and the `#` references only exist
+ * for items, so they are optional here.
+ */
+export type CommentFeedApi = Pick<
+  BoardItemDrawerApi<unknown>,
+  | "collaboration"
+  | "current_user"
+  | "mentionable_people"
+  | "comments"
+  | "comments_loading"
+  | "comments_error"
+  | "pending_update_count"
+  | "loadPendingUpdates"
+  | "fresh_comment_ids"
+  | "loadCommentRevisions"
+  | "composer_text"
+  | "composer_attachments"
+  | "onComposerTextChange"
+  | "postComment"
+  | "addComposerAttachments"
+  | "removeComposerAttachment"
+  | "reply_text_by_comment"
+  | "onReplyTextChange"
+  | "postReply"
+  | "mention_target"
+  | "mention_matches"
+  | "pickMention"
+  | "notify_target"
+  | "toggleNotifyPicker"
+  | "closeNotifyPicker"
+  | "notified_people_by_target"
+  | "pickNotifyPerson"
+  | "removeNotifyPerson"
+  | "emoji_palette_target"
+  | "toggleEmojiPalette"
+  | "closeEmojiPalette"
+  | "insertEmoji"
+  | "reaction_palette_id"
+  | "toggleReactionPalette"
+  | "closeReactionPalette"
+  | "toggleReaction"
+  | "toggleLike"
+  | "toggleSeen"
+  | "togglePin"
+  | "deleteComment"
+  | "editing_key"
+  | "edit_draft"
+  | "onEditDraftChange"
+  | "edit_attachments"
+  | "addEditAttachments"
+  | "removeEditAttachment"
+  | "startEditingComment"
+  | "cancelEditingComment"
+  | "saveEditedComment"
+> &
+  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links">>;
+
+/** What the "Files" tab needs: every attachment of the thread plus the dropzone's upload state, shared by both comment drawers. */
+export type DrawerFilesApi = Pick<
+  BoardItemDrawerApi<unknown>,
+  "all_attachments" | "postAttachments" | "is_uploading_files" | "files_upload_error" | "dismissFilesUploadError" | "deleteAttachment"
+>;

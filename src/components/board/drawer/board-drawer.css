@@ -157,8 +157,9 @@ html.dark {
   }
 }
 
+/* Doubled class so it wins over `.board-drawer__icon-button`'s display, declared further down. */
 @media (max-width: 640px) {
-  .board-drawer__expand-button {
+  .board-drawer__icon-button.board-drawer__expand-button {
     display: none;
   }
 }

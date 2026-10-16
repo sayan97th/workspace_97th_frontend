@@ -1,54 +1,27 @@
 "use client";
-import React, { useState } from "react";
-import { GitBranch, Maximize2, Minimize2, Zap } from "lucide-react";
+import React from "react";
+import { GitBranch, Zap } from "lucide-react";
 import { CloseIcon } from "@/icons/board-icons";
 import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
 import BoardDrawerHeader from "./BoardDrawerHeader";
+import BoardDrawerTabs, { drawerTabId, drawerTabPanelId, type BoardDrawerTab } from "./BoardDrawerTabs";
+import BoardDrawerViewers from "./BoardDrawerViewers";
 import BoardItemOptionsMenu from "./BoardItemOptionsMenu";
+import DrawerExpandButton from "./DrawerExpandButton";
 import FilesPanel from "./FilesPanel";
 import InfoBoxesPanel from "./InfoBoxesPanel";
 import SlideOverPanel from "./SlideOverPanel";
 import UpdatesPanel from "./UpdatesPanel";
 import type { BoardItemDrawerApi, DrawerTabId } from "./types";
-import { useCommentPresence, type CommentPresenceUser } from "./useCommentPresence";
+import { useCommentPresence } from "./useCommentPresence";
+import { useDrawerExpanded } from "./useDrawerExpanded";
 import { useLatchWhileOpen } from "./useLatchWhileOpen";
 
 export type BoardItemDrawerProps<TRow> = {
   drawer: BoardItemDrawerApi<TRow>;
 };
 
-type TabDefinition = {
-  id: DrawerTabId;
-  label: string;
-  icon: React.ReactNode;
-  count?: number;
-};
-
-/** How many viewer avatars the header shows before folding the rest into "+N". */
-const MAX_HEADER_VIEWERS = 3;
-
-/** Avatars of the people who have this item open right now, monday style, next to the "..." menu. */
-const HeaderViewers: React.FC<{ viewers: CommentPresenceUser[] }> = ({ viewers }) => {
-  if (viewers.length === 0) return null;
-  const overflow_count = viewers.length - MAX_HEADER_VIEWERS;
-  const names = viewers.map((viewer) => viewer.name).join(", ");
-
-  return (
-    <div className="board-drawer__viewers" title={`Viewing now: ${names}`} aria-label={`Viewing now: ${names}`}>
-      {viewers.slice(0, MAX_HEADER_VIEWERS).map((viewer) => (
-        <span key={viewer.id} className="board-drawer__viewer">
-          {viewer.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={viewer.avatar} alt="" />
-          ) : (
-            viewer.name.slice(0, 1).toUpperCase()
-          )}
-        </span>
-      ))}
-      {overflow_count > 0 && <span className="board-drawer__viewer">+{overflow_count}</span>}
-    </div>
-  );
-};
+const TAB_ID_PREFIX = "board-item-drawer";
 
 /**
  * Slide in item detail drawer, laid out like monday.com's item drawer: close
@@ -72,20 +45,11 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
     drawer.board_id !== undefined && content.open_row_id ? `board-item.${content.open_row_id}` : null;
   const presence = useCommentPresence(presence_channel_name, { onCommentPosted: content.onRemoteCommentPosted });
 
-  // Expanded turns the drawer into a large centered dialog for long updates.
-  // Every fresh open starts as the regular drawer again; resetting here, during
-  // render, avoids painting one expanded frame first.
-  const [is_expanded, setIsExpanded] = useState(false);
-  const [was_open, setWasOpen] = useState(drawer.is_open);
-  if (was_open !== drawer.is_open) {
-    setWasOpen(drawer.is_open);
-    if (drawer.is_open) setIsExpanded(false);
-  }
-  const expand_label = is_expanded ? "Exit full screen" : "Full screen";
+  const { is_expanded, toggleExpanded } = useDrawerExpanded(drawer.is_open);
 
   if (!drawer.is_open && !content.is_open) return null;
 
-  const tabs: TabDefinition[] = [
+  const tabs: BoardDrawerTab<DrawerTabId>[] = [
     { id: "updates", label: "Updates", icon: <UpdatesTabIcon size={16} />, count: content.comments.length },
     { id: "files", label: "Files", icon: <FilesTabIcon size={16} />, count: content.all_attachments.length },
     { id: "info_boxes", label: "Info Boxes", icon: <InfoBoxesTabIcon size={16} /> },
@@ -117,17 +81,8 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
         }
         actions={
           <>
-            <HeaderViewers viewers={presence.presence_users} />
-            {presence.presence_users.length > 0 && <span className="board-drawer__divider" aria-hidden="true" />}
-            <button
-              type="button"
-              onClick={() => setIsExpanded((value) => !value)}
-              aria-label={expand_label}
-              title={expand_label}
-              className="board-drawer__icon-button board-drawer__expand-button"
-            >
-              {is_expanded ? <Minimize2 size={16} strokeWidth={1.75} /> : <Maximize2 size={16} strokeWidth={1.75} />}
-            </button>
+            <BoardDrawerViewers viewers={presence.presence_users} />
+            <DrawerExpandButton is_expanded={is_expanded} onToggle={toggleExpanded} />
             <BoardItemOptionsMenu drawer={content} onItemRemoved={drawer.close} />
           </>
         }
@@ -142,29 +97,18 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
         </div>
       )}
 
-      <div className="board-drawer__tabs" role="tablist" aria-label="Item sections">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            id={`board-drawer-tab-${tab.id}`}
-            type="button"
-            role="tab"
-            aria-selected={content.active_tab === tab.id}
-            aria-controls="board-drawer-tabpanel"
-            onClick={() => drawer.setActiveTab(tab.id)}
-            className="board-drawer__tab"
-          >
-            {tab.icon}
-            {tab.label}
-            {tab.count !== undefined && tab.count > 0 && <span className="board-drawer__tab-count">/ {tab.count}</span>}
-          </button>
-        ))}
-      </div>
+      <BoardDrawerTabs
+        tabs={tabs}
+        active_tab={content.active_tab}
+        onChange={drawer.setActiveTab}
+        aria_label="Item sections"
+        id_prefix={TAB_ID_PREFIX}
+      />
 
       <div
-        id="board-drawer-tabpanel"
+        id={drawerTabPanelId(TAB_ID_PREFIX)}
         role="tabpanel"
-        aria-labelledby={`board-drawer-tab-${content.active_tab}`}
+        aria-labelledby={drawerTabId(TAB_ID_PREFIX, content.active_tab)}
         className="board-drawer__panel"
       >
         {content.active_tab === "updates" && <UpdatesPanel drawer={content} presence={presence} show_viewers={false} composer_scrolls_with_feed />}

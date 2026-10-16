@@ -17,6 +17,7 @@ import type {
   DrawerComment,
   DrawerCommentRevision,
   DrawerComposerTarget,
+  DrawerFilesApi,
   DrawerReaction,
   RemoteCommentEvent,
 } from "./types";
@@ -63,13 +64,19 @@ export type BoardDiscussionDrawerConfig = {
   can_edit?: boolean;
 };
 
+/** Tabs of the board discussion drawer, the same Updates and Files tabs the item drawer opens with. */
+export type BoardDiscussionTabId = "updates" | "files";
+
 /** Full live state + actions returned by {@link useBoardDiscussionDrawer}. */
-export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & {
+export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFilesApi & {
   /** Bookmarks, copy link, quote and scheduling, see {@link CommentCollaborationApi}. */
   collaboration: CommentCollaborationApi;
   is_open: boolean;
   open: () => void;
   close: () => void;
+  /** Starts on Updates every time the drawer opens. */
+  active_tab: BoardDiscussionTabId;
+  setActiveTab: (tab: BoardDiscussionTabId) => void;
 
   comments: DrawerComment[];
   /** True while the board's discussion comments are being fetched. */
@@ -164,6 +171,9 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const { board_id } = config;
 
   const [is_open, setIsOpen] = useState(false);
+  const [active_tab, setActiveTab] = useState<BoardDiscussionTabId>("updates");
+  const [is_uploading_files, setIsUploadingFiles] = useState(false);
+  const [files_upload_error, setFilesUploadError] = useState<string | null>(null);
   const [comments, setComments] = useState<DrawerComment[]>([]);
   const [comments_loading, setCommentsLoading] = useState(false);
   const [comments_error, setCommentsError] = useState<string | null>(null);
@@ -230,6 +240,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   const open = () => {
     setIsOpen(true);
+    setActiveTab("updates");
+    setFilesUploadError(null);
     setComposerText("");
     setComposerAttachmentDrafts([]);
     setMentionTarget(null);
@@ -357,6 +369,29 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   const removeComposerAttachment = (attachment_id: string) =>
     setComposerAttachmentDrafts((current) => current.filter((draft) => draft.attachment.id !== attachment_id));
+
+  /**
+   * Shares files from the Files tab's dropzone right away, as a file only
+   * update, since a board has no attachment store of its own. Kept apart from
+   * the composer so whatever the viewer is typing there stays untouched, and
+   * tracked through its own {@link files_upload_error} because the Files tab
+   * never shows the composer's banner.
+   */
+  const postAttachments = (files: File[]) => {
+    if (files.length === 0) return;
+    setFilesUploadError(null);
+    setIsUploadingFiles(true);
+    boardDiscussionService
+      .postComment(board_id, { body: "", attachments: files })
+      .then((dto) => setComments((current) => [mapDiscussionCommentDtoToDrawerComment(dto), ...current]))
+      .catch((error) => setFilesUploadError(getApiErrorMessage(error, "Couldn't upload one or more files. Please try again.")))
+      .finally(() => setIsUploadingFiles(false));
+  };
+
+  // Discussion files belong to their update, which is how they are removed, so
+  // no attachment is ever offered for a delete on its own (`can_delete` is never set).
+  const deleteAttachment = () => {};
+  const dismissFilesUploadError = () => setFilesUploadError(null);
 
   const postReply = (comment_id: string) => {
     const body = (reply_text_by_comment[comment_id] ?? "").trim();
@@ -685,6 +720,9 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       : editing_target.comment_id
     : null;
 
+  // Every file shared in the discussion, for the Files tab.
+  const all_attachments = useMemo(() => comments.flatMap((comment) => comment.attachments), [comments]);
+
   const comment_count = has_loaded_comments
     ? comments.reduce((total, comment) => total + 1 + comment.replies.length, 0)
     : config.initial_comment_count ?? 0;
@@ -696,6 +734,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     is_open,
     open,
     close,
+    active_tab,
+    setActiveTab,
 
     comments,
     comments_loading,
@@ -716,6 +756,13 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     postComment,
     addComposerAttachments,
     removeComposerAttachment,
+
+    all_attachments,
+    postAttachments,
+    is_uploading_files,
+    files_upload_error,
+    dismissFilesUploadError,
+    deleteAttachment,
 
     reply_text_by_comment,
     onReplyTextChange,

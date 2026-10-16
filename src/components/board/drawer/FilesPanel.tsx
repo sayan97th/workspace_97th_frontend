@@ -4,11 +4,14 @@ import { FilesTabIcon } from "@/icons/drawer-icons";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import FileGalleryDropzone from "../file-gallery/FileGalleryDropzone";
 import CommentAttachmentChip from "./CommentAttachmentChip";
-import type { BoardItemDrawerApi, DrawerAttachment } from "./types";
+import type { DrawerAttachment, DrawerFilesApi } from "./types";
 import "./board-drawer.css";
 
-export type FilesPanelProps<TRow> = {
-  drawer: BoardItemDrawerApi<TRow>;
+export type FilesPanelProps = {
+  /** The item drawer or the board discussion drawer. `open_row_title` names the item in the empty state. */
+  drawer: DrawerFilesApi & { open_row_title?: string };
+  /** Empty state line, defaults to one naming the open item. */
+  empty_text?: string;
 };
 
 /**
@@ -20,7 +23,7 @@ export type FilesPanelProps<TRow> = {
  * already uses, so a file dropped here shows up identically everywhere
  * `all_attachments` is read.
  */
-function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
+function FilesPanel({ drawer, empty_text }: FilesPanelProps) {
   const attachments = drawer.all_attachments;
   const has_files = attachments.length > 0;
   const [pending_delete_attachment, setPendingDeleteAttachment] = useState<DrawerAttachment | null>(null);
@@ -81,7 +84,7 @@ function FilesPanel<TRow>({ drawer }: FilesPanelProps<TRow>) {
                 </span>
                 <h3 className="board-drawer__empty-title">No files yet</h3>
                 <p className="board-drawer__empty-text">
-                  Drag and drop files anywhere on this panel, or browse to share the first one on {drawer.open_row_title}.
+                  {empty_text ?? `Drag and drop files anywhere on this panel, or browse to share the first one on ${drawer.open_row_title}.`}
                 </p>
                 <button
                   type="button"

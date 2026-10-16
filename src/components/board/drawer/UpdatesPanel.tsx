@@ -6,17 +6,18 @@ import PersonAvatar from "../PersonAvatar";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
 import CommentFilterBar from "./CommentFilterBar";
-import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters } from "./commentFilters";
+import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters, type CommentSortOrder } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
-import type { BoardItemDrawerApi, DrawerActivityEntry, DrawerComment } from "./types";
+import type { CommentFeedApi, DrawerActivityEntry, DrawerComment } from "./types";
 import { useCommentSortOrder } from "./useCommentSortOrder";
 import type { CommentPresenceUser } from "./useCommentPresence";
 import "./board-drawer.css";
 
-export type UpdatesPanelProps<TRow> = {
-  drawer: BoardItemDrawerApi<TRow>;
+export type UpdatesPanelProps = {
+  /** The item drawer or the board discussion drawer, anything that owns a comment thread. */
+  drawer: CommentFeedApi;
   presence?: { presence_users: CommentPresenceUser[]; typing_names: string[]; whisperTyping: () => void };
   /** False when the host already shows who is viewing (the item drawer header), so only the typing line remains here. */
   show_viewers?: boolean;
@@ -26,6 +27,13 @@ export type UpdatesPanelProps<TRow> = {
    * drawer). False keeps it pinned above the feed.
    */
   composer_scrolls_with_feed?: boolean;
+  /** Where the viewer's sort choice is remembered, one key per kind of thread. */
+  sort_storage_key?: string;
+  /** Order shown until the viewer picks one. */
+  default_sort_order?: CommentSortOrder;
+  /** Empty state copy, shown while the thread has no updates at all. */
+  empty_title?: string;
+  empty_text?: string;
 };
 
 /** Skips whispering "typing" on every single keystroke — one whisper per this interval is plenty for the indicator's purpose. */
@@ -43,7 +51,16 @@ function sortKeyOf(iso: string | undefined): number {
 }
 
 /** The drawer's default "Updates" tab: the new-update composer, plus every comment thread interleaved chronologically with the item's activity log (column/status changes, moves, archives, ...), which folds what used to be a separate "Activity Log" tab into this single feed. Pinned comments render in their own section above the chronological feed. A search and filter row narrows the threads (and hides the activity log, which has nothing to match) while any filter is on. */
-function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_scrolls_with_feed = false }: UpdatesPanelProps<TRow>) {
+function UpdatesPanel({
+  drawer,
+  presence,
+  show_viewers = true,
+  composer_scrolls_with_feed = false,
+  sort_storage_key = "item-drawer",
+  default_sort_order = "oldest",
+  empty_title = "No updates yet for this item",
+  empty_text = "Be the first one to update about progress, mention someone or upload files to share with your team members.",
+}: UpdatesPanelProps) {
   const last_whisper_at_ref = useRef(0);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
   const [filters, setFilters] = useState<CommentFilters>(default_comment_filters);
@@ -56,8 +73,8 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
   );
   const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
   const resolved_count = useMemo(() => countResolvedComments(drawer.comments), [drawer.comments]);
-  // A conversation reads oldest first by default, the choice is remembered in this browser.
-  const { sort_order, setSortOrder } = useCommentSortOrder("item-drawer", "oldest");
+  // The viewer's sort choice is remembered in this browser, per kind of thread.
+  const { sort_order, setSortOrder } = useCommentSortOrder(sort_storage_key, default_sort_order);
 
   // Freshly loaded updates land at the end the thread grows from, the bottom
   // when it reads oldest first and the top when newest first: after loading
@@ -84,12 +101,12 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
   const pinned_comments = sortComments(visible_comments.filter((comment) => comment.pinned), sort_order);
   const unpinned_comments = visible_comments.filter((comment) => !comment.pinned);
 
-  const is_empty =
-    !drawer.comments_loading && !drawer.comments_error && drawer.comments.length === 0 && drawer.activity_log.length === 0;
+  const activity_log = drawer.activity_log ?? [];
+  const is_empty = !drawer.comments_loading && !drawer.comments_error && drawer.comments.length === 0 && activity_log.length === 0;
 
   const feed: FeedEntry[] = [
     ...unpinned_comments.map((comment): FeedEntry => ({ kind: "comment", sort_key: sortKeyOf(comment.posted_at_iso), comment })),
-    ...(is_filtering ? [] : drawer.activity_log).map((entry): FeedEntry => ({ kind: "activity", sort_key: sortKeyOf(entry.occurred_at_iso), entry })),
+    ...(is_filtering ? [] : activity_log).map((entry): FeedEntry => ({ kind: "activity", sort_key: sortKeyOf(entry.occurred_at_iso), entry })),
   ].sort((a, b) => (sort_order === "newest" ? b.sort_key - a.sort_key : a.sort_key - b.sort_key));
 
   const renderThread = (comment: DrawerComment) => (
@@ -135,6 +152,32 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
       onLoadRevisions={drawer.loadCommentRevisions}
       reference_items={drawer.reference_items_with_links}
     />
+  );
+
+  // Live "N new updates" pill: sticks to the edge the newest updates land on once
+  // loaded, the top when the thread reads newest first and the bottom otherwise.
+  const is_newest_first = sort_order === "newest";
+  const pending_updates_pill = (
+    <div
+      role="status"
+      aria-live="polite"
+      className={`sticky z-[3] flex justify-center ${is_newest_first ? "top-2 mb-1" : "bottom-2 mt-3"}`}
+    >
+      {drawer.pending_update_count > 0 && (
+        <button type="button" onClick={showPendingUpdates} className={`board-drawer__pill ${is_newest_first ? "mt-2" : ""}`}>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+            <path
+              d={is_newest_first ? "M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" : "M6 2v8m0 0L2.5 6.5M6 10l3.5-3.5"}
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          {drawer.pending_update_count} new {drawer.pending_update_count === 1 ? "update" : "updates"}
+        </button>
+      )}
+    </div>
   );
 
   const composer_area = (
@@ -210,6 +253,8 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
       >
         {composer_scrolls_with_feed && composer_area}
 
+        {sort_order === "newest" && pending_updates_pill}
+
         {drawer.comments_error && (
           <div role="alert" className="board-drawer__error">
             {drawer.comments_error}
@@ -223,10 +268,8 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
             <span className="board-drawer__empty-icon">
               <UpdatesTabIcon size={26} />
             </span>
-            <h3 className="board-drawer__empty-title">No updates yet for this item</h3>
-            <p className="board-drawer__empty-text">
-              Be the first one to update about progress, mention someone or upload files to share with your team members.
-            </p>
+            <h3 className="board-drawer__empty-title">{empty_title}</h3>
+            <p className="board-drawer__empty-text">{empty_text}</p>
           </div>
         )}
 
@@ -262,17 +305,7 @@ function UpdatesPanel<TRow>({ drawer, presence, show_viewers = true, composer_sc
           )
         )}
 
-        {/* Live "N new updates" pill: sticks to the bottom edge, where the newest updates land once loaded. */}
-        <div role="status" aria-live="polite" className="sticky bottom-2 z-[3] mt-3 flex justify-center">
-          {drawer.pending_update_count > 0 && (
-            <button type="button" onClick={showPendingUpdates} className="board-drawer__pill">
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                <path d="M6 2v8m0 0L2.5 6.5M6 10l3.5-3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              {drawer.pending_update_count} new {drawer.pending_update_count === 1 ? "update" : "updates"}
-            </button>
-          )}
-        </div>
+        {sort_order === "oldest" && pending_updates_pill}
       </div>
       </CommentCollaborationProvider>
     </div>
