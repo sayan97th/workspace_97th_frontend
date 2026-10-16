@@ -22,6 +22,7 @@ import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
 import type { SlashCommandAction } from "./slashCommands";
 import "./rich-text.css";
+import "./markdown/rich-text-markdown.scss";
 
 /** A `/command` or `#item` being typed right before the caret, reported so the parent can show its suggestion menu. */
 export type ComposerTrigger = { kind: "slash" | "reference"; query: string };

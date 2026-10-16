@@ -1,0 +1,804 @@
+// Markdown typography for every Rich Text surface: the composer
+// (`RichTextComposer`, class `shell-rich-text-editor`) and the posted body
+// (`RichTextContent`, class `shell-rich-text-content`). Styles everything
+// `renderRichTextMarkdown` can output: headings, emphasis, highlights, quotes,
+// lists and task lists, code with syntax colors and diffs, tables, footnotes,
+// definition lists, alerts, math, Mermaid diagrams, emoji and the formatting
+// HTML tags (`<details>`, `<kbd>`, `<abbr>`, `<ins>`...).
+//
+// Colors are `--rt-*` custom properties: the base set comes from
+// `rich-text.css`, the set below is generated from `$tokens` for light
+// (`:root`) and dark (`html.dark`). Sizes are in `em`, so a body scales with
+// `--rt-content-size` (see `.shell-rich-text-content--compact`).
+
+@use "sass:list";
+@use "sass:map";
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+
+// Each token as (light, dark).
+$tokens: (
+  "mark-bg": (rgba(255, 203, 0, 0.32), rgba(255, 203, 0, 0.26)),
+  "ins-bg": (rgba(0, 200, 117, 0.14), rgba(0, 200, 117, 0.18)),
+  "ins-line": (#00a35c, #33d391),
+  "task-done": (#00c875, #00c875),
+  "block-bg": (#f6f7fb, rgba(255, 255, 255, 0.04)),
+  "block-header-bg": (#eceef5, rgba(255, 255, 255, 0.06)),
+  "table-header-bg": (#f6f7fb, rgba(255, 255, 255, 0.05)),
+  "table-stripe": (#fafbfd, rgba(255, 255, 255, 0.025)),
+  "kbd-border": (#c3c6d4, rgba(255, 255, 255, 0.18)),
+  "nested-quote-bar": (#e1e3ec, rgba(255, 255, 255, 0.12)),
+  "syntax-comment": (#80869a, #8b93a7),
+  "syntax-keyword": (#a626a4, #d58cf0),
+  "syntax-string": (#2f8a3a, #8fd18f),
+  "syntax-number": (#c25b00, #f4a259),
+  "syntax-title": (#0060b9, #7cb7ff),
+  "syntax-type": (#b5831d, #e5c07b),
+  "syntax-attr": (#0b7285, #66d9e8),
+  "syntax-tag": (#d83a52, #ff8599),
+  "syntax-meta": (#5559df, #a5a8ff),
+  "diff-add-bg": (rgba(0, 200, 117, 0.12), rgba(0, 200, 117, 0.16)),
+  "diff-add-text": (#00733f, #5ee3a1),
+  "diff-remove-bg": (rgba(216, 58, 82, 0.1), rgba(255, 107, 129, 0.14)),
+  "diff-remove-text": (#b42c43, #ff8599),
+  "diff-hunk-bg": (rgba(85, 89, 223, 0.08), rgba(165, 168, 255, 0.1)),
+  "diff-hunk-text": (#5559df, #a5a8ff),
+  "alert-note": (#0073ea, #69a7ff),
+  "alert-tip": (#00854d, #33d391),
+  "alert-important": (#8f4ad3, #c792ea),
+  "alert-warning": (#b56d00, #fdab3d),
+  "alert-caution": (#d83a52, #ff6b81),
+);
+
+:root {
+  @each $name, $values in $tokens {
+    --rt-#{$name}: #{list.nth($values, 1)};
+  }
+}
+
+html.dark {
+  @each $name, $values in $tokens {
+    --rt-#{$name}: #{list.nth($values, 2)};
+  }
+}
+
+// ── Scale ─────────────────────────────────────────────────────────────────
+
+$scope: ":is(.shell-rich-text-editor, .shell-rich-text-content)";
+$content: ".shell-rich-text-content";
+
+// Space under every block, about 8px at the default 14px.
+$block-gap: 0.57em;
+$radius: 8px;
+$radius-sm: 4px;
+$code-padding-x: 14px;
+
+// Font size, weight and line height per heading level. h1 and h2 get a hairline under them.
+$headings: (
+  h1: (1.5em, 700, 1.3),
+  h2: (1.3em, 600, 1.35),
+  h3: (1.15em, 600, 1.4),
+  h4: (1em, 600, 1.45),
+  h5: (0.93em, 600, 1.45),
+  h6: (0.86em, 600, 1.45),
+);
+
+// highlight.js classes per syntax color token.
+$syntax-classes: (
+  "comment": (comment, quote),
+  "keyword": (keyword, selector-tag, built_in, doctag, operator),
+  "string": (string, regexp, template-tag, template-variable, char),
+  "number": (number, literal, symbol, bullet, variable),
+  "title": (title, section, function),
+  "type": (type, class, selector-class, selector-id),
+  "attr": (attr, attribute, property, selector-attr, selector-pseudo, params),
+  "tag": (name, tag, deletion),
+  "meta": (meta, link, subst, addition),
+);
+
+$alert-kinds: (note, tip, important, warning, caution);
+
+// Every block that keeps its own spacing. `:where()` keeps it at the lowest
+// specificity, so any rule below can tune one block's margins.
+$blocks: "p, ul, ol, dl, blockquote, pre, table, details, figure, h1, h2, h3, h4, h5, h6, .rt-code-block, .rt-table-wrap, .rt-alert, .rt-mermaid, .rt-math--block, .rich-text-image-gallery";
+
+@mixin surface-block {
+  border: 1px solid var(--rt-border-soft);
+  border-radius: $radius;
+  background: var(--rt-block-bg);
+}
+
+@mixin focus-ring {
+  outline: 2px solid var(--rt-active-text);
+  outline-offset: 1px;
+}
+
+@mixin reset-pre {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+// ── Base ──────────────────────────────────────────────────────────────────
+
+#{$scope} {
+  font-family: var(--rt-font);
+  font-size: var(--rt-content-size, 14px);
+  line-height: 1.6;
+  color: var(--rt-content-color, var(--rt-text));
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+
+  :where(#{$blocks}) {
+    margin: 0 0 $block-gap;
+  }
+  :where(#{$blocks}):last-child {
+    margin-bottom: 0;
+  }
+
+  // ── Headings ────────────────────────────────────────────────────────────
+
+  :is(h1, h2, h3, h4, h5, h6) {
+    margin: 1.1em 0 0.45em;
+    font-family: var(--font-heading);
+    color: var(--rt-text);
+    letter-spacing: -0.005em;
+    scroll-margin-top: 16px;
+  }
+  :is(h1, h2, h3, h4, h5, h6):first-child {
+    margin-top: 0;
+  }
+  @each $level, $style in $headings {
+    #{$level} {
+      font-size: list.nth($style, 1);
+      font-weight: list.nth($style, 2);
+      line-height: list.nth($style, 3);
+    }
+  }
+  :is(h1, h2) {
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--rt-border-soft);
+  }
+  h6 {
+    color: var(--rt-text-secondary);
+  }
+
+  // ── Inline text ─────────────────────────────────────────────────────────
+
+  :is(strong, b) {
+    font-weight: 700;
+  }
+  :is(em, i, cite, var) {
+    font-style: italic;
+  }
+  :is(del, s) {
+    text-decoration: line-through;
+    text-decoration-color: var(--rt-text-faint);
+    color: var(--rt-text-secondary);
+  }
+  ins {
+    padding: 0 0.15em;
+    border-radius: 3px;
+    background: var(--rt-ins-bg);
+    text-decoration: underline;
+    text-decoration-color: var(--rt-ins-line);
+    text-decoration-thickness: 1.5px;
+    text-underline-offset: 2px;
+  }
+  u {
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  mark {
+    padding: 0.05em 0.2em;
+    border-radius: 3px;
+    background: var(--rt-mark-bg);
+    color: inherit;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+  }
+  small {
+    font-size: 0.86em;
+  }
+  :is(sup, sub) {
+    position: relative;
+    font-size: 0.75em;
+    line-height: 0;
+    vertical-align: baseline;
+  }
+  sup {
+    top: -0.5em;
+  }
+  sub {
+    bottom: -0.25em;
+  }
+  abbr[title] {
+    cursor: help;
+    text-decoration: underline dotted;
+    text-decoration-color: var(--rt-text-faint);
+    text-underline-offset: 3px;
+  }
+  cite {
+    color: var(--rt-text-secondary);
+  }
+  q {
+    quotes: "\201C" "\201D" "\2018" "\2019";
+  }
+  :is(kbd, samp, var) {
+    font-family: var(--rt-font-mono);
+  }
+  kbd {
+    display: inline-block;
+    min-width: 1.7em;
+    padding: 0.05em 0.45em;
+    border: 1px solid var(--rt-kbd-border);
+    border-radius: 5px;
+    background: var(--rt-kbd-bg);
+    box-shadow: inset 0 -1px 0 var(--rt-kbd-border);
+    font-size: 0.8em;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--rt-text);
+    vertical-align: 0.1em;
+    white-space: nowrap;
+  }
+
+  a {
+    color: var(--rt-link);
+    text-decoration: none;
+    text-underline-offset: 2px;
+    border-radius: 2px;
+  }
+  a:hover {
+    color: var(--rt-link-hover);
+    text-decoration: underline;
+  }
+  a:focus-visible {
+    @include focus-ring;
+  }
+
+  code {
+    padding: 0.1em 0.35em;
+    border-radius: $radius-sm;
+    background: var(--rt-code-bg);
+    font-family: var(--rt-font-mono);
+    font-size: 0.86em;
+    color: var(--rt-code);
+  }
+
+  .rt-emoji {
+    font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", var(--rt-font);
+    font-size: 1.15em;
+    line-height: 1;
+    vertical-align: -0.1em;
+  }
+
+  // ── Quotes and alerts ───────────────────────────────────────────────────
+
+  blockquote {
+    padding: 2px 0 2px 12px;
+    border-left: 3px solid var(--rt-quote-bar);
+    color: var(--rt-text-secondary);
+  }
+  blockquote blockquote {
+    margin-top: $block-gap;
+    border-left-color: var(--rt-nested-quote-bar);
+  }
+
+  .rt-alert {
+    --rt-alert-color: var(--rt-alert-note);
+    padding: 8px 12px 8px 12px;
+    border-left: 3px solid var(--rt-alert-color);
+    border-radius: 0 $radius-sm * 1.5 $radius-sm * 1.5 0;
+    background: color-mix(in srgb, var(--rt-alert-color) 8%, transparent);
+  }
+  @each $kind in $alert-kinds {
+    .rt-alert--#{$kind} {
+      --rt-alert-color: var(--rt-alert-#{$kind});
+    }
+  }
+  .rt-alert__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--rt-alert-color);
+  }
+  .rt-alert__icon {
+    flex: none;
+    width: 1em;
+    height: 1em;
+    fill: currentColor;
+  }
+
+  // ── Lists ───────────────────────────────────────────────────────────────
+
+  :is(ul, ol) {
+    padding-left: 1.6em;
+  }
+  // Tailwind's preflight zeroes `list-style` on every list, so the markers come back here, one shape per nesting level.
+  ul {
+    list-style: disc;
+  }
+  :is(ul, ol) ul {
+    list-style-type: circle;
+  }
+  :is(ul, ol) :is(ul, ol) ul {
+    list-style-type: square;
+  }
+  ol {
+    list-style: decimal;
+  }
+  :is(ul, ol) ol {
+    list-style-type: lower-alpha;
+  }
+  :is(ul, ol) :is(ul, ol) ol {
+    list-style-type: lower-roman;
+  }
+  li {
+    padding-left: 2px;
+  }
+  li + li {
+    margin-top: 2px;
+  }
+  li::marker {
+    color: var(--rt-text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  // Tiptap (and a loose Markdown list) wraps each item's text in a `<p>`, which would otherwise space the items out like paragraphs.
+  li > p {
+    margin: 0;
+  }
+  li > :is(ul, ol) {
+    margin: 2px 0 0;
+  }
+
+  .rt-task-list {
+    padding-left: 0.2em;
+    list-style: none;
+  }
+  // A plain item mixed into a task list keeps its bullet.
+  .rt-task-list > li:not(.rt-task) {
+    margin-left: 1.4em;
+    list-style: disc;
+  }
+  .rt-task {
+    position: relative;
+    padding-left: 1.7em;
+  }
+  .rt-task[data-checked="true"] {
+    color: var(--rt-text-secondary);
+  }
+  .rt-task__checkbox {
+    position: absolute;
+    top: 0.3em;
+    left: 0;
+    width: 1.07em;
+    height: 1.07em;
+    margin: 0;
+    border: 1.5px solid var(--rt-border);
+    border-radius: $radius-sm;
+    background: var(--rt-surface) center / 75% no-repeat;
+    appearance: none;
+    opacity: 1;
+    cursor: default;
+  }
+  .rt-task__checkbox:checked {
+    border-color: var(--rt-task-done);
+    background-color: var(--rt-task-done);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6.2 5 8.6l4.5-5'/%3E%3C/svg%3E");
+  }
+
+  dt {
+    font-weight: 600;
+    color: var(--rt-text);
+  }
+  dd {
+    margin: 2px 0 0;
+    padding-left: 14px;
+    border-left: 2px solid var(--rt-border-soft);
+    color: var(--rt-text-secondary);
+  }
+  dd + dt {
+    margin-top: 8px;
+  }
+
+  // ── Dividers and media ──────────────────────────────────────────────────
+
+  hr {
+    height: 1px;
+    margin: 1em 0;
+    border: 0;
+    background: var(--rt-border-soft);
+  }
+  img {
+    max-width: 100%;
+    height: auto;
+    margin: 6px 0;
+    border: 1px solid var(--rt-border-soft);
+    border-radius: $radius;
+    vertical-align: middle;
+  }
+
+  // ── Code ────────────────────────────────────────────────────────────────
+
+  // A bare `<pre>`: the composer's code block and raw HTML `<pre>` in a body.
+  pre {
+    @include surface-block;
+    padding: 10px $code-padding-x;
+    overflow-x: auto;
+    overflow-wrap: normal;
+    white-space: pre;
+    tab-size: 2;
+  }
+  pre code {
+    padding: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 0.89em;
+    line-height: 1.6;
+    color: var(--rt-text);
+  }
+
+  .rt-code-block {
+    @include surface-block;
+    overflow: hidden;
+
+    pre {
+      @include reset-pre;
+      padding: 10px $code-padding-x;
+      max-height: 480px;
+      overflow: auto;
+      scrollbar-width: thin;
+    }
+    // `inline-block` + `min-width` makes diff lines span the widest line when the block scrolls sideways.
+    pre code {
+      display: inline-block;
+      min-width: 100%;
+    }
+  }
+  .rt-code-block__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    height: 30px;
+    padding: 0 6px 0 12px;
+    border-bottom: 1px solid var(--rt-border-soft);
+    background: var(--rt-block-header-bg);
+    font-family: var(--rt-font);
+    font-size: 12px;
+    line-height: 1;
+    color: var(--rt-text-secondary);
+  }
+  .rt-code-block__language {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .rt-code-block__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: $radius-sm;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--rt-text-secondary);
+    opacity: 0;
+    transition:
+      opacity 120ms ease,
+      background-color 120ms ease,
+      color 120ms ease;
+  }
+  .rt-code-block:hover .rt-code-block__copy,
+  .rt-code-block__copy:focus-visible,
+  .rt-code-block__copy[data-copied] {
+    opacity: 1;
+  }
+  .rt-code-block__copy:hover {
+    background: var(--rt-hover);
+    color: var(--rt-text);
+  }
+  .rt-code-block__copy:focus-visible {
+    @include focus-ring;
+  }
+  .rt-code-block__copy[data-copied] {
+    color: var(--rt-diff-add-text);
+  }
+
+  // highlight.js token colors, shared with the Doc editor's palette.
+  @each $token, $classes in $syntax-classes {
+    $selectors: ();
+    @each $class in $classes {
+      $selectors: list.append($selectors, ".hljs-#{$class}", comma);
+    }
+    :is(#{$selectors}) {
+      color: var(--rt-syntax-#{$token});
+    }
+  }
+  :is(.hljs-comment, .hljs-quote, .hljs-emphasis) {
+    font-style: italic;
+  }
+  :is(.hljs-strong, .hljs-section, .hljs-title.class_) {
+    font-weight: 600;
+  }
+
+  // Diff blocks color whole lines, edge to edge.
+  .rt-code-block[data-language="diff"] pre {
+    padding-inline: 0;
+  }
+  .rt-diff-line {
+    display: block;
+    padding-inline: $code-padding-x;
+  }
+  .rt-diff-line--add {
+    background: var(--rt-diff-add-bg);
+    color: var(--rt-diff-add-text);
+  }
+  .rt-diff-line--remove {
+    background: var(--rt-diff-remove-bg);
+    color: var(--rt-diff-remove-text);
+  }
+  .rt-diff-line--hunk {
+    background: var(--rt-diff-hunk-bg);
+    color: var(--rt-diff-hunk-text);
+  }
+  .rt-diff-line--file {
+    font-weight: 600;
+    color: var(--rt-text-secondary);
+  }
+
+  // ── Tables ──────────────────────────────────────────────────────────────
+
+  // Markdown and raw HTML tables both come wrapped in `.rt-table-wrap`, which scrolls sideways when the table is wider than the body.
+  .rt-table-wrap {
+    max-width: 100%;
+    border: 1px solid var(--rt-border-soft);
+    border-radius: $radius;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  table {
+    min-width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.93em;
+    line-height: 1.5;
+    overflow-wrap: normal;
+  }
+  .rt-table-wrap table {
+    width: max-content;
+    margin: 0;
+  }
+  :is(th, td) {
+    min-width: 64px;
+    max-width: 360px;
+    padding: 6px 12px;
+    border-right: 1px solid var(--rt-border-soft);
+    border-bottom: 1px solid var(--rt-border-soft);
+    text-align: left;
+    vertical-align: top;
+  }
+  :is(th, td):last-child {
+    border-right: 0;
+  }
+  :is(tbody, table) > tr:last-child > td,
+  tbody:last-child > tr:last-child > :is(td, th) {
+    border-bottom: 0;
+  }
+  th {
+    background: var(--rt-table-header-bg);
+    font-weight: 600;
+    color: var(--rt-text);
+  }
+  tbody tr:nth-child(even) {
+    background: var(--rt-table-stripe);
+  }
+  :is(th, td)[align="center"] {
+    text-align: center;
+  }
+  :is(th, td)[align="right"] {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ── Disclosure (`<details>`) ────────────────────────────────────────────
+
+  details {
+    @include surface-block;
+    padding: 0 12px;
+    background: var(--rt-surface);
+  }
+  details[open] {
+    padding-bottom: 10px;
+  }
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 -12px;
+    padding: 7px 12px;
+    border-radius: $radius - 1px;
+    font-weight: 600;
+    color: var(--rt-text);
+    list-style: none;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 120ms ease;
+  }
+  summary::-webkit-details-marker {
+    display: none;
+  }
+  // A chevron that points right when closed and down when open.
+  summary::before {
+    content: "";
+    flex: none;
+    width: 0.42em;
+    height: 0.42em;
+    margin: 0 0.15em;
+    border-right: 1.5px solid var(--rt-text-secondary);
+    border-bottom: 1.5px solid var(--rt-text-secondary);
+    transform: rotate(-45deg);
+    transition: transform 150ms ease;
+  }
+  summary:hover {
+    background: var(--rt-hover);
+  }
+  summary:focus-visible {
+    @include focus-ring;
+  }
+  details[open] > summary {
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--rt-border-soft);
+    border-radius: ($radius - 1px) ($radius - 1px) 0 0;
+  }
+  details[open] > summary::before {
+    transform: rotate(45deg);
+  }
+
+  // ── Math and diagrams ───────────────────────────────────────────────────
+
+  .rt-math .katex {
+    font-size: 1.08em;
+    overflow-wrap: normal;
+  }
+  .rt-math--block {
+    padding: 4px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+
+    .katex-display {
+      margin: 0;
+    }
+  }
+
+  .rt-mermaid {
+    @include surface-block;
+    padding: 12px;
+    background: var(--rt-surface);
+    overflow-x: auto;
+  }
+  .rt-mermaid__diagram svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 0 auto;
+  }
+  .rt-mermaid__source {
+    @include reset-pre;
+  }
+  .rt-mermaid[data-rt-mermaid="pending"] .rt-mermaid__source {
+    opacity: 0.55;
+  }
+  .rt-mermaid[data-rt-mermaid="ready"] .rt-mermaid__source {
+    display: none;
+  }
+  .rt-mermaid[data-rt-mermaid="error"]::before {
+    content: "This diagram could not be drawn";
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--rt-danger);
+  }
+
+  // ── Footnotes ───────────────────────────────────────────────────────────
+
+  .rt-footnote-ref a {
+    padding: 0 0.15em;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .rt-footnotes {
+    margin-top: 1em;
+    padding-top: 0.6em;
+    border-top: 1px solid var(--rt-border-soft);
+    font-size: 0.86em;
+    color: var(--rt-text-secondary);
+
+    ol {
+      margin: 0;
+      padding-left: 1.4em;
+    }
+    li {
+      border-radius: $radius-sm;
+    }
+  }
+  .rt-footnote-backref {
+    font-family: var(--rt-font);
+    text-decoration: none;
+  }
+  [data-rt-flash] {
+    animation: rt-flash 1.6s ease-out;
+  }
+}
+
+@keyframes rt-flash {
+  from {
+    background-color: var(--rt-mention-bg-hover);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+// ── Posted body only ──────────────────────────────────────────────────────
+
+// Smaller, quieter bodies: edit history and scheduled updates.
+.shell-rich-text-content--compact {
+  --rt-content-size: 13px;
+  --rt-content-color: var(--rt-text-secondary);
+}
+
+// `#Item` links written by the composer's `#` picker.
+#{$content} a.rich-text-item-ref {
+  padding: 1px 6px;
+  border-radius: $radius-sm;
+  background: var(--rt-mention-bg);
+  font-weight: 500;
+  color: var(--rt-mention);
+  text-decoration: none;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--rt-mention-bg-hover);
+  }
+}
+
+// Two or more images in one update are laid out as a grid, like monday's update gallery.
+#{$content} .rich-text-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: $block-gap;
+
+  img {
+    width: 100%;
+    height: 140px;
+    margin: 0;
+    object-fit: cover;
+  }
+}
+
+// The copy button stays visible where there's no hover to reveal it.
+@media (hover: none) {
+  #{$scope} .rt-code-block__copy {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #{$scope} :is(summary, summary::before, .rt-code-block__copy) {
+    transition: none;
+  }
+  #{$scope} [data-rt-flash] {
+    animation: none;
+  }
+}

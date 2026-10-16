@@ -1,11 +1,14 @@
 "use client";
-import React, { useMemo } from "react";
+import React, { useEffect, useId, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
-import { Marked } from "marked";
 import { PersonCardPopover, useHoverCardController, type HoverCardPerson } from "@/components/people/PersonHoverCard";
 import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
+import { CODE_COPIED_LABEL, CODE_COPY_LABEL, renderRichTextMarkdown } from "./markdown/renderRichTextMarkdown";
+import { renderMermaidDiagrams } from "./markdown/renderMermaidDiagrams";
+import "katex/dist/katex.min.css";
 import "./rich-text.css";
+import "./markdown/rich-text-markdown.scss";
 
 export type RichTextContentProps = {
   /** Markdown comment/update body, as typed into `RichTextComposer` and stored as-is by the API (see `BoardItemCommentController`/`BoardCommentController`, which no longer HTML-sanitize it, the body is plain Markdown text, not markup). */
@@ -27,19 +30,8 @@ const ITEM_REFERENCE_CLASS = "rich-text-item-ref";
 const markItemReferences = (html: string): string =>
   html.replace(ITEM_REFERENCE_LINK_PATTERN, (_match, href: string) => `<a data-item-ref="true" class="${ITEM_REFERENCE_CLASS}" href="${href}"`);
 
-/**
- * A `marked` instance with raw HTML tokens neutralized, any literal
- * `<tag>` a user types or pastes into the Markdown source is dropped
- * outright rather than passed through into the rendered HTML, so a comment
- * body can never inject markup regardless of render context (server or
- * client). DOMPurify below is defense in depth on top of this, not the only
- * line of defense the way it was when the stored body was raw HTML.
- */
-const markdown_renderer = new Marked({
-  renderer: {
-    html: () => "",
-  },
-});
+/** How long a code block's copy button says "Copied". */
+const COPIED_RESET_MS = 1600;
 
 /** Wraps `@Full Name` runs in the highlighted span the plain-text renderer used to apply, now working over an HTML string instead of plain text. The name is kept in `data-mention` so a hover can find who it refers to. */
 const highlightMentions = (html: string): string =>
@@ -58,10 +50,15 @@ const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverC
  * Read-only renderer for a comment/update body, the rich text counterpart
  * of the old `renderMentionText()` plain-text highlighter, used by
  * `CommentThread` and `UpdateFeedCard`. Parses the stored Markdown to HTML
- * (raw HTML tokens stripped by {@link markdown_renderer}) and re-sanitizes
- * with DOMPurify as defense in depth (skipped during SSR, where `window`
- * doesn't exist yet, the Markdown parse alone is already safe for that
- * first paint, and the client pass re-checks it right after hydration).
+ * with {@link renderRichTextMarkdown} (GitHub flavored Markdown plus
+ * highlights, footnotes, math, emoji, alerts and a small set of formatting
+ * HTML tags, all styled in `rich-text-markdown.scss`) and re-sanitizes with
+ * DOMPurify as defense in depth (skipped during SSR, where `window` doesn't
+ * exist yet, the Markdown render alone is already safe for that first paint,
+ * and the client pass re-checks it right after hydration).
+ * Code blocks get a copy button, footnote links scroll inside the drawer
+ * instead of changing the URL, and ` ```mermaid ` blocks are drawn as
+ * diagrams once the body is on screen.
  * A `[#Item name](/boards/1/pulses/2)` link written by the composer's `#` picker
  * renders as a chip that opens that item through the router. When the body carries two or more inline images, they're pulled out of
  * the flowing text and laid out as a grid instead of stacked full-width,
@@ -70,11 +67,13 @@ const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverC
 const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className, people }) => {
   const router = useRouter();
   const { target, show, hide, keepOpen, dismiss } = useHoverCardController();
-  const parsed_html = useMemo(() => markdown_renderer.parse(body, { async: false }), [body]);
+  const container_ref = useRef<HTMLDivElement>(null);
+  const footnote_prefix = `rt${useId()}`;
+  const parsed_html = useMemo(() => renderRichTextMarkdown(body, footnote_prefix), [body, footnote_prefix]);
 
   const sanitized_html = useMemo(() => {
     if (typeof window === "undefined") return parsed_html;
-    return DOMPurify.sanitize(parsed_html, { ADD_ATTR: ["target"] });
+    return DOMPurify.sanitize(parsed_html, { ADD_ATTR: ["target", "loading"] });
   }, [parsed_html]);
 
   const { text_html, gallery_urls } = useMemo(() => {
@@ -91,10 +90,59 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
     if (person) show(person, mention_el);
   };
 
+  useEffect(() => {
+    const container = container_ref.current;
+    if (!container) return;
+    let is_cancelled = false;
+    void renderMermaidDiagrams(container, () => is_cancelled);
+    return () => {
+      is_cancelled = true;
+    };
+  }, [text_html]);
+
+  const copyCode = (button: HTMLButtonElement) => {
+    const code = button.closest(".rt-code-block")?.querySelector("pre code");
+    if (!code || !navigator.clipboard) return;
+    // `innerText`, not `textContent`, so diff lines (one block span per line) keep their line breaks.
+    void navigator.clipboard.writeText((code as HTMLElement).innerText).then(() => {
+      const label = button.querySelector(".rt-code-block__copy-label");
+      button.dataset.copied = "true";
+      if (label) label.textContent = CODE_COPIED_LABEL;
+      window.setTimeout(() => {
+        delete button.dataset.copied;
+        if (label) label.textContent = CODE_COPY_LABEL;
+      }, COPIED_RESET_MS);
+    });
+  };
+
+  // A footnote link scrolls its target into view inside the drawer, without touching the page URL.
+  const scrollToFootnote = (link: HTMLAnchorElement) => {
+    const target_id = link.getAttribute("href")?.slice(1);
+    const target_el = target_id ? document.getElementById(target_id) : null;
+    if (!target_el) return;
+    target_el.scrollIntoView({ behavior: "smooth", block: "center" });
+    target_el.setAttribute("data-rt-flash", "true");
+    window.setTimeout(() => target_el.removeAttribute("data-rt-flash"), COPIED_RESET_MS);
+  };
+
   // An item reference opens through the router (a plain modified click still opens a new tab).
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    const reference_el = (event.target as HTMLElement).closest<HTMLAnchorElement>("a[data-item-ref]");
+    if (event.defaultPrevented || event.button !== 0) return;
+    const event_target = event.target as HTMLElement;
+    const copy_button = event_target.closest<HTMLButtonElement>("button[data-rt-copy]");
+    if (copy_button) {
+      event.preventDefault();
+      copyCode(copy_button);
+      return;
+    }
+    const footnote_link = event_target.closest<HTMLAnchorElement>("a[data-rt-footnote]");
+    if (footnote_link) {
+      event.preventDefault();
+      scrollToFootnote(footnote_link);
+      return;
+    }
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const reference_el = event_target.closest<HTMLAnchorElement>("a[data-item-ref]");
     const href = reference_el?.getAttribute("href");
     if (!href) return;
     event.preventDefault();
@@ -106,7 +154,7 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
   };
 
   return (
-    <div className={`shell-rich-text-content ${className ?? ""}`} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut} onClick={handleClick}>
+    <div ref={container_ref} className={`shell-rich-text-content ${className ?? ""}`} onMouseOver={handleMouseOver} onMouseOut={handleMouseOut} onClick={handleClick}>
       <div dangerouslySetInnerHTML={{ __html: text_html }} />
       {gallery_urls.length > 0 && (
         <div className="rich-text-image-gallery">

@@ -441,18 +441,13 @@ html.dark {
   box-shadow: 0 0 0 3px var(--rt-focus-ring);
 }
 
-/* ── Typography shared by the editor and the posted body ──────────────── */
+/* ── Editor surface ───────────────────────────────────────────────────── */
 
-.shell-rich-text-editor,
-.shell-rich-text-content {
-  font-family: var(--rt-font);
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--rt-text);
-  overflow-wrap: anywhere;
-  -webkit-font-smoothing: antialiased;
-}
-
+/*
+ * The typography shared by the editor and the posted body (headings, lists,
+ * code, tables, alerts...) lives in `markdown/rich-text-markdown.scss`. Only
+ * the composer's own editing chrome stays here.
+ */
 .shell-rich-text-editor.ProseMirror {
   outline: none;
   padding: 10px 14px;
@@ -485,97 +480,6 @@ html.dark {
   color: var(--rt-placeholder);
 }
 
-:is(.shell-rich-text-editor, .shell-rich-text-content) p {
-  margin: 0 0 8px;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) p:last-child {
-  margin-bottom: 0;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) :is(ul, ol) {
-  margin: 0 0 8px;
-  padding-left: 22px;
-}
-/* Tailwind's preflight zeroes `list-style` on every list, so the markers have to be restored. */
-:is(.shell-rich-text-editor, .shell-rich-text-content) ul {
-  list-style: disc;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) ol {
-  list-style: decimal;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) li {
-  padding-left: 2px;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) li + li {
-  margin-top: 2px;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) li::marker {
-  color: var(--rt-text-secondary);
-}
-/* Tiptap wraps each list item's text in a `<p>`, which would otherwise space the items out like paragraphs. */
-:is(.shell-rich-text-editor, .shell-rich-text-content) li > p {
-  margin: 0;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) li > :is(ul, ol) {
-  margin: 2px 0 0;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) a {
-  color: var(--rt-link);
-  text-decoration: none;
-  text-underline-offset: 2px;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) a:hover {
-  color: var(--rt-link-hover);
-  text-decoration: underline;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) strong {
-  font-weight: 700;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) em {
-  font-style: italic;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) s {
-  text-decoration: line-through;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) blockquote {
-  margin: 0 0 8px;
-  padding: 2px 0 2px 12px;
-  border-left: 3px solid var(--rt-quote-bar);
-  color: var(--rt-text-secondary);
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) code {
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--rt-code-bg);
-  font-family: var(--rt-font-mono);
-  font-size: 0.86em;
-  color: var(--rt-code);
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) pre {
-  margin: 0 0 8px;
-  padding: 10px 14px;
-  border: 1px solid var(--rt-border-soft);
-  border-radius: 8px;
-  background: var(--rt-code-bg);
-  overflow-x: auto;
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) pre code {
-  padding: 0;
-  background: none;
-  font-size: 12.5px;
-  line-height: 1.6;
-  color: var(--rt-text);
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) hr {
-  margin: 12px 0;
-  border: none;
-  border-top: 1px solid var(--rt-border-soft);
-}
-:is(.shell-rich-text-editor, .shell-rich-text-content) img {
-  max-width: 100%;
-  margin: 6px 0;
-  border: 1px solid var(--rt-border-soft);
-  border-radius: 8px;
-}
 .shell-rich-text-editor.ProseMirror img.ProseMirror-selectednode {
   outline: 2px solid var(--rt-link);
   outline-offset: 2px;
@@ -588,61 +492,4 @@ html.dark {
   background: var(--rt-mention-bg);
   font-weight: 500;
   color: var(--rt-mention);
-}
-
-/* `#Item` links written by the composer's `#` picker. */
-.shell-rich-text-content a.rich-text-item-ref {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--rt-mention-bg);
-  font-weight: 500;
-  color: var(--rt-mention);
-  text-decoration: none;
-  transition: background-color 120ms ease;
-}
-.shell-rich-text-content a.rich-text-item-ref:hover {
-  background: var(--rt-mention-bg-hover);
-}
-
-/*
- * Headings only appear in the posted body: `marked` renders an `<h1>`-`<h6>`
- * from any stored Markdown line that starts with `#`, even though the
- * composer has no heading button. Poppins, like every other title in the app.
- */
-.shell-rich-text-content :is(h1, h2, h3, h4, h5, h6) {
-  margin: 12px 0 6px;
-  font-family: var(--font-heading);
-  font-weight: 500;
-  line-height: 1.35;
-  color: var(--rt-text);
-}
-.shell-rich-text-content :is(h1, h2, h3, h4, h5, h6):first-child {
-  margin-top: 0;
-}
-.shell-rich-text-content h1 {
-  font-size: 20px;
-}
-.shell-rich-text-content h2 {
-  font-size: 18px;
-}
-.shell-rich-text-content h3 {
-  font-size: 16px;
-}
-.shell-rich-text-content :is(h4, h5, h6) {
-  font-size: 14px;
-  font-weight: 600;
-}
-
-/* Two or more images in one update are laid out as a grid, like monday's update gallery. */
-.shell-rich-text-content .rich-text-image-gallery {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-  margin: 8px 0 0;
-}
-.shell-rich-text-content .rich-text-image-gallery img {
-  width: 100%;
-  height: 140px;
-  margin: 0;
-  object-fit: cover;
 }
