@@ -9,7 +9,6 @@
 $toggle-duration: 220ms;
 // Quick start with a soft landing, close to monday's expand arrow.
 $toggle-easing: cubic-bezier(0.2, 0.9, 0.3, 1);
-$label-radius: 4px;
 
 .item-name-cell {
   &[data-draggable="true"] {
@@ -20,17 +19,12 @@ $label-radius: 4px;
     }
   }
 
-  // Like monday.com, the text itself shows the text cursor and a light frame,
-  // a click renames the item and the editor then fills the whole cell. The
-  // empty space around it and the gaps between buttons stay the grab area.
+  // The text itself shows the text cursor (no hover frame, by client
+  // request), a click renames the item and the editor then fills the whole
+  // cell. The empty space around it and the gaps between buttons stay the
+  // grab area.
   &__label {
     cursor: text;
-    border-radius: $label-radius;
-    transition: box-shadow 120ms ease;
-
-    &:hover {
-      box-shadow: inset 0 0 0 1px var(--color-boardtree-control-border);
-    }
   }
 }
 
@@ -58,7 +52,6 @@ $label-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .item-name-cell__label,
   .item-expand-toggle,
   .item-expand-toggle__icon {
     transition: none;
