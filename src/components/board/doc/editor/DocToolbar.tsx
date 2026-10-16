@@ -28,6 +28,7 @@ import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import { DOC_BLOCK_GROUP_LABELS, DOC_BLOCKS, type DocBlockGroup } from "./doc-blocks";
 import { useDocEditor } from "./DocEditorContext";
 import ColorPalette from "./menus/ColorPalette";
+import { runHistoryCommand } from "./extensions/safe-history";
 import { applyTextType, getActiveTextTypeKey, TEXT_TYPES } from "./text-types";
 
 const ICON_SIZE = 16;
@@ -199,10 +200,10 @@ const DocToolbar: React.FC<DocToolbarProps> = ({ trailing }) => {
           <Plus size={16} strokeWidth={2.25} />
           Add
         </button>
-        <ToolbarButton label="Undo" disabled={!state.can_undo} onClick={() => chain().undo().run()}>
+        <ToolbarButton label="Undo" disabled={!state.can_undo} onClick={() => runHistoryCommand(editor, "undo")}>
           <Undo2 size={ICON_SIZE} />
         </ToolbarButton>
-        <ToolbarButton label="Redo" disabled={!state.can_redo} onClick={() => chain().redo().run()}>
+        <ToolbarButton label="Redo" disabled={!state.can_redo} onClick={() => runHistoryCommand(editor, "redo")}>
           <Redo2 size={ICON_SIZE} />
         </ToolbarButton>
       </div>

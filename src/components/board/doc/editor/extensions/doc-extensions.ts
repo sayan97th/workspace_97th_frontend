@@ -18,6 +18,7 @@ import { AudioBlock, Bookmark, Callout, FileBlock, ImageBlock, VideoBlock } from
 import { SlashCommand } from "./slash-command";
 import { createDocMention, type DocMember } from "./doc-mention";
 import { FileDropPaste } from "./file-drop-paste";
+import { SafeHistory } from "./safe-history";
 
 const lowlight = createLowlight(common);
 
@@ -95,6 +96,7 @@ export const buildDocExtensions = (config: DocExtensionsConfig): AnyExtension[] 
   createDocMention(config.mention_store, config.getMembers),
   SlashCommand.configure({ store: config.slash_store, onSelect: config.onSlashSelect }),
   FileDropPaste.configure({ onFiles: config.onFiles }),
+  SafeHistory,
   Placeholder.configure({
     includeChildren: true,
     showOnlyCurrent: true,

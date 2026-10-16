@@ -8,6 +8,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { useSavedReplies } from "@/hooks/useSavedReplies";
 import { inlineUploadService } from "@/services/inline-upload.service";
+import { SafeHistory } from "../doc/editor/extensions/safe-history";
 import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
@@ -204,10 +205,11 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         }),
         ...buildRichTextBlockExtensions(),
         TiptapImage,
-        Placeholder.configure({
-          includeChildren: true,
-          placeholder: ({ node }) => (node.type.name === "detailsSummary" ? "Toggle title" : placeholder),
-        }),
+        // Top level only: `includeChildren` maps old placeholder decorations
+        // through every step, and undo can map them out of range ("Position -1
+        // outside of fragment"). An empty toggle title gets its hint from CSS.
+        Placeholder.configure({ placeholder }),
+        SafeHistory,
         MentionHighlight,
         RichTextSlashCommand.configure({
           store: slash_store,

@@ -4,6 +4,7 @@ import type { Editor } from "@tiptap/core";
 import { useEditorState } from "@tiptap/react";
 import { ChevronDown } from "lucide-react";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
+import { runHistoryCommand } from "../doc/editor/extensions/safe-history";
 import { applyTextType, getActiveTextTypeKey, TEXT_TYPES } from "../doc/editor/text-types";
 import {
   BoldIcon,
@@ -136,10 +137,10 @@ const RichTextToolbar: React.FC<RichTextToolbarProps> = ({ editor, onOpenLink })
 
   return (
     <div className="rich-text-toolbar" role="toolbar" aria-label="Formatting">
-      <ToolbarButton label="Undo" shortcut={`${mod_key}+Z`} disabled={!state.can_undo} onClick={() => chain().undo().run()}>
+      <ToolbarButton label="Undo" shortcut={`${mod_key}+Z`} disabled={!state.can_undo} onClick={() => runHistoryCommand(editor, "undo")}>
         <UndoIcon size={ICON_SIZE} />
       </ToolbarButton>
-      <ToolbarButton label="Redo" shortcut={`${mod_key}+Shift+Z`} disabled={!state.can_redo} onClick={() => chain().redo().run()}>
+      <ToolbarButton label="Redo" shortcut={`${mod_key}+Shift+Z`} disabled={!state.can_redo} onClick={() => runHistoryCommand(editor, "redo")}>
         <RedoIcon size={ICON_SIZE} />
       </ToolbarButton>
       <ToolbarDivider />

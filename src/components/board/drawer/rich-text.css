@@ -644,16 +644,6 @@ html.dark {
   color: var(--rt-placeholder);
 }
 
-/* An empty toggle title shows "Toggle title", drawn the same way. */
-.shell-rich-text-editor.ProseMirror summary.is-empty::before {
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-  font-weight: 500;
-  color: var(--rt-placeholder);
-}
-
 /*
  * Editing chrome for the "/" menu blocks. Their published look comes from
  * `markdown/rich-text-markdown.scss`; these rules only cover how Tiptap draws
@@ -736,6 +726,16 @@ html.dark {
 }
 .shell-rich-text-editor.ProseMirror .rt-toggle summary::before {
   display: none;
+}
+/* An empty toggle title (only ProseMirror's trailing break inside) shows "Toggle title". */
+.shell-rich-text-editor.ProseMirror .rt-toggle summary:has(> .ProseMirror-trailingBreak:only-child)::before {
+  content: "Toggle title";
+  display: block;
+  float: left;
+  height: 0;
+  pointer-events: none;
+  font-weight: 500;
+  color: var(--rt-placeholder);
 }
 .shell-rich-text-editor.ProseMirror .rt-toggle.is-open [data-type="detailsContent"] {
   margin-top: 6px;
