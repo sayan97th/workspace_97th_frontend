@@ -268,7 +268,7 @@ export default function BoardTable({
     if (!group || !node) return;
     handled_edit_nonce_ref.current = edit_item_request.nonce;
     if (state.collapsed_groups[group.key]) base_actions.toggleGroupCollapsed(group.key);
-    base_actions.startEditName(node.id, node.name);
+    base_actions.startEditName(node.id, node.name, true);
   }, [edit_item_request, state.groups, state.collapsed_groups, base_actions]);
 
   const addItemReal = useCallback(

@@ -80,6 +80,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
 
   const row_ref = useRef<HTMLDivElement>(null);
   const { is_text_entry_focused, shouldCancelDrag, lock_handlers } = useTextEntryDragLock(row_ref);
+  // A freshly created row opens with its placeholder name selected, so typing replaces it.
+  useEffect(() => {
+    if (is_editing && state.edit_select_all) name_input_ref.current?.select();
+  }, [is_editing, state.edit_select_all]);
   // Ctrl/Cmd+F "N of M" jump navigation — scrolls the newly active match's
   // row into view, mirroring a browser's own in-page find.
   useEffect(() => {

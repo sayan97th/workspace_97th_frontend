@@ -498,6 +498,8 @@ export interface BoardTableState {
   selected_map: Record<string, boolean>;
   editing_id: string | null;
   edit_draft: string;
+  /** True when the name editor opened for a freshly created row, so its whole placeholder name is selected and typing replaces it, like monday.com. */
+  edit_select_all: boolean;
   editing_group_key: string | null;
   group_draft: string;
   /** The header cell currently in inline-rename mode, identified by its `scoped_key` (see `ColumnHeaderCell`) — null for both real columns and the item-title/sub-title virtual columns when none is being edited. */
@@ -622,6 +624,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     selected_map: is_controlled ? {} : { "i3-s2": true },
     editing_id: null,
     edit_draft: "",
+    edit_select_all: false,
     editing_group_key: null,
     group_draft: "",
     editing_column: null,
@@ -848,8 +851,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onCollapsedGroupsChange?.(collapsedGroupKeys(collapsed_groups));
   }, []);
 
-  const startEditName = useCallback((id: string, current_name: string) => {
-    setState((s) => ({ ...s, editing_id: id, edit_draft: current_name, ...closeAllMenus }));
+  /** `select_all` selects the whole name once the editor opens, used for rows that were just created (see `edit_select_all`). */
+  const startEditName = useCallback((id: string, current_name: string, select_all = false) => {
+    setState((s) => ({ ...s, editing_id: id, edit_draft: current_name, edit_select_all: select_all, ...closeAllMenus }));
   }, []);
 
   const updateEditDraft = useCallback((value: string) => {
@@ -1325,6 +1329,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         groups: insertItemIntoGroup(s.groups, group_key, { id, name: "New item", values: { owner: [], status: "" }, subs: [] }),
         editing_id: id,
         edit_draft: "New item",
+        edit_select_all: true,
         collapsed_groups: { ...s.collapsed_groups, [group_key]: false },
       }));
       return id;
@@ -1341,6 +1346,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         open_map: { ...s.open_map, [item_id]: true },
         editing_id: id,
         edit_draft: "New subitem",
+        edit_select_all: true,
       }));
       return id;
     },
@@ -1365,6 +1371,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
             groups: insertItemIntoGroup(s.groups, location.group_key, { id: new_id, name: "New item", values: { owner: [], status: "" }, subs: [] }, location.item_index + 1),
             editing_id: new_id,
             edit_draft: "New item",
+            edit_select_all: true,
             open_row_menu_id: null,
           };
         }
@@ -1373,6 +1380,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
           groups: insertSubIntoItem(s.groups, location.item_id, { id: new_id, name: "New subitem", values: { owner: [], status: "" } }, location.sub_index + 1),
           editing_id: new_id,
           edit_draft: "New subitem",
+          edit_select_all: true,
           open_row_menu_id: null,
         };
       });

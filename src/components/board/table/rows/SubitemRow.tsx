@@ -51,6 +51,10 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const fill_handle_mousedown_ref = useRef(false);
   const grid_ref = useRef<HTMLDivElement>(null);
   const { is_text_entry_focused, shouldCancelDrag, lock_handlers } = useTextEntryDragLock(grid_ref);
+  // A freshly created row opens with its placeholder name selected, so typing replaces it.
+  useEffect(() => {
+    if (is_editing && state.edit_select_all) name_input_ref.current?.select();
+  }, [is_editing, state.edit_select_all]);
   useEffect(() => {
     const clear = () => { fill_handle_mousedown_ref.current = false; };
     window.addEventListener("mouseup", clear);
