@@ -326,14 +326,8 @@ function FieldValue({ field, people, is_picker_open, onOpenPicker, onClosePicker
           <StatusMenu
             status_defs={field.options.filter((option) => option.is_active !== false)}
             selected_id={def?.id ?? null}
-            onPick={(id) => {
-              onClosePicker();
-              onSave(id);
-            }}
-            onClear={() => {
-              onClosePicker();
-              onSave(null);
-            }}
+            onPick={(id) => onSave(id)}
+            onClear={() => onSave(null)}
             onClose={onClosePicker}
           />
         )}

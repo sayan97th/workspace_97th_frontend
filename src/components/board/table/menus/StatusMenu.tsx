@@ -29,12 +29,19 @@ export default function StatusMenu({ status_defs, selected_id, onPick, onClear, 
   // The fixed blank def is the "no status" pill the grid already renders on its own.
   const editable_defs = status_defs.filter((def) => !def.fixed && def.label);
 
+  // A pick is final, like monday: save it and close so the next cell is one click away.
+  const pickOption = (option_id: string | null) => {
+    if (option_id === null) onClear();
+    else onPick(option_id);
+    onClose();
+  };
+
   return (
     <PopoverPanel onClose={onClose} unstyled className="left-1/2 top-full w-max -translate-x-1/2">
       <StatusOptionGrid
         options={editable_defs}
         selected_id={selected_id}
-        onPick={(option_id) => (option_id === null ? onClear() : onPick(option_id))}
+        onPick={pickOption}
         option_actions={option_actions}
         used_option_ids={used_option_ids}
         onCreateOption={
