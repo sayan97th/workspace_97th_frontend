@@ -162,6 +162,36 @@ export const StrikethroughIcon: React.FC<IconProps> = ({ className, size = 15 })
   </svg>
 );
 
+export const UnderlineIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M4.5 2.5 V7.2 A3.5 3.5 0 0 0 11.5 7.2 V2.5 M3.5 13.5 H12.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  </svg>
+);
+
+export const UndoIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M5.5 3.5 L2.5 6.5 L5.5 9.5 M2.5 6.5 H9.5 A3.5 3.5 0 0 1 9.5 13.5 H7"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const RedoIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path
+      d="M10.5 3.5 L13.5 6.5 L10.5 9.5 M13.5 6.5 H6.5 A3.5 3.5 0 0 0 6.5 13.5 H9"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
 export const LinkFormatIcon: React.FC<IconProps> = ({ className, size = 15 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
     <path

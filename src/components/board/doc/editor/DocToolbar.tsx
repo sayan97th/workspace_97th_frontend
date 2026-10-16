@@ -10,52 +10,27 @@ import {
   Bold,
   ChevronDown,
   Code,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
   Image,
   Italic,
   List,
   ListOrdered,
   ListTodo,
   Plus,
-  Quote,
   Redo2,
   RemoveFormatting,
-  SquareCode,
   Strikethrough,
   Table,
-  Type,
   Underline,
   Undo2,
 } from "lucide-react";
-import type { ChainedCommands } from "@tiptap/core";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import { DOC_BLOCK_GROUP_LABELS, DOC_BLOCKS, type DocBlockGroup } from "./doc-blocks";
 import { useDocEditor } from "./DocEditorContext";
 import ColorPalette from "./menus/ColorPalette";
+import { applyTextType, getActiveTextTypeKey, TEXT_TYPES } from "./text-types";
 
 const ICON_SIZE = 16;
-
-type TextTypeOption = {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  apply: (chain: ChainedCommands) => ChainedCommands;
-};
-
-/** The "Normal text" dropdown, named the way monday's doc toolbar names them. */
-const TEXT_TYPES: TextTypeOption[] = [
-  { key: "paragraph", label: "Normal text", icon: <Type size={ICON_SIZE} />, apply: (chain) => chain.setParagraph() },
-  { key: "heading-1", label: "Large title", icon: <Heading1 size={ICON_SIZE} />, apply: (chain) => chain.setHeading({ level: 1 }) },
-  { key: "heading-2", label: "Medium title", icon: <Heading2 size={ICON_SIZE} />, apply: (chain) => chain.setHeading({ level: 2 }) },
-  { key: "heading-3", label: "Small title", icon: <Heading3 size={ICON_SIZE} />, apply: (chain) => chain.setHeading({ level: 3 }) },
-  { key: "heading-4", label: "Extra small title", icon: <Heading4 size={ICON_SIZE} />, apply: (chain) => chain.setHeading({ level: 4 }) },
-  { key: "blockquote", label: "Quote", icon: <Quote size={ICON_SIZE} />, apply: (chain) => chain.setBlockquote() },
-  { key: "codeBlock", label: "Code block", icon: <SquareCode size={ICON_SIZE} />, apply: (chain) => chain.setCodeBlock() },
-];
 
 const ALIGNMENTS = [
   { value: "left", label: "Align left", icon: AlignLeft },
@@ -117,15 +92,10 @@ const DocToolbar: React.FC<DocToolbarProps> = ({ trailing }) => {
     editor,
     selector: ({ editor: current }) => {
       if (!current) return null;
-      const text_type =
-        TEXT_TYPES.find((option) => {
-          if (option.key.startsWith("heading-")) return current.isActive("heading", { level: Number(option.key.slice(-1)) });
-          return option.key !== "paragraph" && current.isActive(option.key);
-        })?.key ?? "paragraph";
       return {
         can_undo: current.can().undo(),
         can_redo: current.can().redo(),
-        text_type,
+        text_type: getActiveTextTypeKey(current),
         align: ALIGNMENTS.find((option) => current.isActive({ textAlign: option.value }))?.value ?? "left",
         bullet_list: current.isActive("bulletList"),
         ordered_list: current.isActive("orderedList"),
@@ -178,7 +148,7 @@ const DocToolbar: React.FC<DocToolbarProps> = ({ trailing }) => {
         icon: option.icon,
         onClick: () => {
           closeMenu();
-          option.apply(chain().clearNodes()).run();
+          applyTextType(editor, option);
         },
       })),
     },

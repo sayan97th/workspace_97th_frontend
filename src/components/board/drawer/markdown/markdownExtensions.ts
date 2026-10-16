@@ -53,6 +53,25 @@ const highlight_extension: TokenizerAndRendererExtension = {
   },
 };
 
+/**
+ * `++Underline++` renders as `<u>`, the form the composer's Underline mark
+ * (`@tiptap/extension-underline`) writes. The text must open and close on a
+ * non space, so `C++ and C++` stays plain text.
+ */
+const underline_extension: TokenizerAndRendererExtension = {
+  name: "underline",
+  level: "inline",
+  start: (src) => src.indexOf("++"),
+  tokenizer(src) {
+    const match = /^\+\+(?=[^\s+])([\s\S]*?[^\s+])\+\+(?!\+)/.exec(src);
+    if (!match) return undefined;
+    return { type: "underline", raw: match[0], text: match[1], tokens: this.lexer.inlineTokens(match[1]) };
+  },
+  renderer(token) {
+    return `<u>${this.parser.parseInline(token.tokens ?? [])}</u>`;
+  },
+};
+
 /** `$$ ... $$` on its own lines, rendered by KaTeX as display math. */
 const math_block_extension: TokenizerAndRendererExtension = {
   name: "mathBlock",
@@ -266,6 +285,7 @@ export const markdown_extensions: TokenizerAndRendererExtension[] = [
   math_block_extension,
   definition_list_extension,
   highlight_extension,
+  underline_extension,
   math_inline_extension,
   emoji_extension,
 ];

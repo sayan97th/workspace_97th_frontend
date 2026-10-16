@@ -142,6 +142,28 @@ html.dark {
   background: var(--rt-active);
   color: var(--rt-active-text);
 }
+.rich-text-tool:disabled {
+  color: var(--rt-disabled-text);
+  background: transparent;
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The text type dropdown ("Normal text", the titles): icon, current type and a chevron. */
+.rich-text-tool--labeled {
+  width: auto;
+  max-width: 172px;
+  gap: 5px;
+  padding: 0 6px 0 7px;
+  font-size: 13px;
+  font-weight: 500;
+}
+.rich-text-tool__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .rich-text-tool--lg {
   width: 32px;
   height: 32px;

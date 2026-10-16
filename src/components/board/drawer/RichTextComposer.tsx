@@ -1,22 +1,11 @@
 "use client";
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
-import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapImage from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
-import {
-  BoldIcon,
-  BulletListIcon,
-  CodeBlockIcon,
-  InlineCodeIcon,
-  ItalicIcon,
-  LinkFormatIcon,
-  NumberedListIcon,
-  QuoteIcon,
-  StrikethroughIcon,
-} from "@/icons/drawer-icons";
 import { useSavedReplies } from "@/hooks/useSavedReplies";
 import { inlineUploadService } from "@/services/inline-upload.service";
 import { createSuggestionStore } from "../doc/editor/suggestion-store";
@@ -26,6 +15,7 @@ import { buildRichTextBlockExtensions } from "./richTextBlocks";
 import { RichTextSlashCommand } from "./richTextSlashCommand";
 import { buildRichTextSlashItems, type RichTextSlashContext, type RichTextSlashItem } from "./richTextSlashItems";
 import RichTextSlashMenu from "./RichTextSlashMenu";
+import RichTextToolbar from "./RichTextToolbar";
 import "./rich-text.css";
 import "./markdown/rich-text-markdown.scss";
 
@@ -118,42 +108,15 @@ const deleteTriggerText = (current_editor: Editor): void => {
   current_editor.chain().focus().deleteRange({ from: from - match.text.length, to: from }).run();
 };
 
-/** The label of the platform's command key, for the shortcut hints in the toolbar tooltips. */
-const getModKeyLabel = (): string =>
-  typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318" : "Ctrl";
-
-const ToolbarButton: React.FC<{
-  label: string;
-  /** Keyboard chord shown after the label in the tooltip, e.g. "Ctrl+B". */
-  shortcut?: string;
-  active?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ label, shortcut, active, onClick, children }) => (
-  <button
-    type="button"
-    // Keeps the editor focused, so a click never drops the selection it formats.
-    onMouseDown={(event) => event.preventDefault()}
-    onClick={onClick}
-    aria-label={label}
-    aria-pressed={active}
-    title={shortcut ? `${label} (${shortcut})` : label}
-    data-active={active ? "true" : undefined}
-    className="rich-text-tool"
-  >
-    {children}
-  </button>
-);
-
-const ToolbarDivider: React.FC = () => <span className="rich-text-tool-divider" aria-hidden="true" />;
-
 /** Blocks where Enter keeps its editing meaning (a new item, line or cell) instead of sending the draft. */
 const MULTILINE_BLOCKS = ["bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "callout", "details", "table"];
 
 /**
  * Tiptap-backed rich text editor used by `CommentComposer` in place of a
- * plain `<textarea>`, bold/italic/lists/links, plus uploading a
- * pasted/dropped image straight into the body via `inlineUploadService`.
+ * plain `<textarea>`, with Slack's formatting row (`RichTextToolbar`: undo
+ * and redo, the doc's title dropdown, bold, italic, underline, strikethrough,
+ * links, lists, quotes and code), plus uploading a pasted/dropped image
+ * straight into the body via `inlineUploadService`.
  * Typing "/" opens the block menu the doc editor has (`RichTextSlashMenu`):
  * titles, lists, to-dos, toggles, callouts, quotes, tables, dividers, code,
  * images, links, mentions, emoji, the date and the user's saved replies.
@@ -299,6 +262,12 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           // Slack's own line-break chord, honored on both Windows and macOS
           // (Alt on Windows, Option on Mac, both surface as `event.altKey`).
           if (event.altKey || event.shiftKey) {
+            // A title holds one line, so a new line after it starts normal text below instead.
+            if (editor?.isActive("heading")) {
+              event.preventDefault();
+              editor.chain().focus().splitBlock().run();
+              return true;
+            }
             if (event.altKey) {
               event.preventDefault();
               editor?.chain().focus().setHardBreak().run();
@@ -412,36 +381,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       [editor]
     );
 
-    const editor_state = useEditorState({
-      editor,
-      selector: (context) => ({
-        bold: context.editor?.isActive("bold") ?? false,
-        italic: context.editor?.isActive("italic") ?? false,
-        strike: context.editor?.isActive("strike") ?? false,
-        code: context.editor?.isActive("code") ?? false,
-        blockquote: context.editor?.isActive("blockquote") ?? false,
-        bullet_list: context.editor?.isActive("bulletList") ?? false,
-        ordered_list: context.editor?.isActive("orderedList") ?? false,
-        code_block: context.editor?.isActive("codeBlock") ?? false,
-        link: context.editor?.isActive("link") ?? false,
-      }),
-    });
-
     if (!editor) return null;
-
-    const active_state =
-      editor_state ??
-      {
-        bold: false,
-        italic: false,
-        strike: false,
-        code: false,
-        blockquote: false,
-        bullet_list: false,
-        ordered_list: false,
-        code_block: false,
-        link: false,
-      };
 
     // Opens `InsertLinkModal` prefilled from whatever's under the cursor: the
     // selected text (as the label) and, when the cursor already sits inside
@@ -450,13 +390,14 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // a link still edits the *whole* link instead of just where the caret
     // happened to land).
     const openLinkModal = () => {
-      if (active_state.link) editor.chain().focus().extendMarkRange("link").run();
+      const is_in_link = editor.isActive("link");
+      if (is_in_link) editor.chain().focus().extendMarkRange("link").run();
       const { from, to, empty } = editor.state.selection;
       const selected_text = empty ? "" : editor.state.doc.textBetween(from, to, " ");
       const href = editor.getAttributes("link").href;
       setLinkInitialText(selected_text);
       setLinkInitialUrl(typeof href === "string" ? href : "");
-      setIsEditingExistingLink(active_state.link);
+      setIsEditingExistingLink(is_in_link);
       setIsLinkModalOpen(true);
     };
 
@@ -479,81 +420,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     };
 
     open_link_modal_ref.current = openLinkModal;
-    const mod_key = getModKeyLabel();
 
-    const toolbar = (
-      <div className="rich-text-toolbar" role="toolbar" aria-label="Formatting">
-        <ToolbarButton
-          label="Bold"
-          shortcut={`${mod_key}+B`}
-          active={active_state.bold}
-          onClick={() => editor.chain().focus().toggleBold().run()}
-        >
-          <BoldIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Italic"
-          shortcut={`${mod_key}+I`}
-          active={active_state.italic}
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-        >
-          <ItalicIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Strikethrough"
-          shortcut={`${mod_key}+Shift+S`}
-          active={active_state.strike}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-        >
-          <StrikethroughIcon size={15} />
-        </ToolbarButton>
-        <ToolbarDivider />
-        <ToolbarButton
-          label="Bulleted list"
-          shortcut={`${mod_key}+Shift+8`}
-          active={active_state.bullet_list}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-        >
-          <BulletListIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Numbered list"
-          shortcut={`${mod_key}+Shift+7`}
-          active={active_state.ordered_list}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        >
-          <NumberedListIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Quote"
-          shortcut={`${mod_key}+Shift+B`}
-          active={active_state.blockquote}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        >
-          <QuoteIcon size={15} />
-        </ToolbarButton>
-        <ToolbarDivider />
-        <ToolbarButton
-          label="Inline code"
-          shortcut={`${mod_key}+E`}
-          active={active_state.code}
-          onClick={() => editor.chain().focus().toggleCode().run()}
-        >
-          <InlineCodeIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton
-          label="Code block"
-          shortcut={`${mod_key}+Alt+C`}
-          active={active_state.code_block}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        >
-          <CodeBlockIcon size={15} />
-        </ToolbarButton>
-        <ToolbarButton label="Link" shortcut={`${mod_key}+K`} active={active_state.link} onClick={openLinkModal}>
-          <LinkFormatIcon size={15} />
-        </ToolbarButton>
-      </div>
-    );
+    const toolbar = <RichTextToolbar editor={editor} onOpenLink={openLinkModal} />;
 
     const link_modal = (
       <InsertLinkModal
