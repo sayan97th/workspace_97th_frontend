@@ -20,10 +20,11 @@ $label-radius: 4px;
     }
   }
 
-  // The name keeps the grab cursor so the whole cell reads as one handle. A
-  // light frame on hover still tells the user a click renames the item.
+  // Like monday.com, the text itself shows the text cursor and a light frame,
+  // a click renames the item and the editor then fills the whole cell. The
+  // empty space around it and the gaps between buttons stay the grab area.
   &__label {
-    cursor: inherit;
+    cursor: text;
     border-radius: $label-radius;
     transition: box-shadow 120ms ease;
 
