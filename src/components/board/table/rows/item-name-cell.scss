@@ -1,0 +1,65 @@
+// Item name cell of the table board (`ItemRow` and `SubitemRow`).
+//
+// The whole row is a native `draggable` element, so like monday.com the name
+// cell itself is the drag handle, there is no separate grip icon. Cells set
+// `data-draggable="true"` only while the row can actually be moved (not read
+// only and not editing), so the grab cursor never promises a drag that will
+// not happen.
+
+$toggle-duration: 220ms;
+// Quick start with a soft landing, close to monday's expand arrow.
+$toggle-easing: cubic-bezier(0.2, 0.9, 0.3, 1);
+$label-radius: 4px;
+
+.item-name-cell {
+  &[data-draggable="true"] {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  // The name keeps the grab cursor so the whole cell reads as one handle. A
+  // light frame on hover still tells the user a click renames the item.
+  &__label {
+    cursor: inherit;
+    border-radius: $label-radius;
+    transition: box-shadow 120ms ease;
+
+    &:hover {
+      box-shadow: inset 0 0 0 1px var(--color-boardtree-control-border);
+    }
+  }
+}
+
+// Expand arrow that shows and hides subitems. One right pointing chevron
+// rotates down when open, so open and close are one smooth turn instead of
+// an icon swap.
+.item-expand-toggle {
+  transition:
+    opacity 150ms ease,
+    background-color 120ms ease;
+
+  &__icon {
+    transition: transform $toggle-duration $toggle-easing;
+    transform-origin: 50% 50%;
+  }
+
+  &[aria-expanded="true"] &__icon {
+    transform: rotate(90deg);
+  }
+
+  &:active &__icon {
+    // A small press back, the turn then lands with the easing above.
+    scale: 0.85;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-name-cell__label,
+  .item-expand-toggle,
+  .item-expand-toggle__icon {
+    transition: none;
+  }
+}

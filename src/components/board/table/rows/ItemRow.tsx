@@ -14,6 +14,7 @@ import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
+import "./item-name-cell.scss";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
 interface ItemRowProps {
@@ -176,8 +177,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           </button>
         </div>
 
+        {/* The whole name cell is the drag handle, like monday.com, see `item-name-cell.scss`. */}
         <div
-          className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-1.5"
+          className="item-name-cell flex items-center gap-0.5 border-r border-boardtree-grid pl-1 pr-1.5"
+          data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,
             position: "sticky",
@@ -190,23 +193,16 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             outlineOffset: is_editing ? "-1px" : undefined,
           }}
         >
-          {/* Overlaid on the cell edge instead of taking a slot, so item names sit close to the checkbox like monday.com. */}
-          <div className="absolute inset-y-0 left-0 flex w-2.5 cursor-grab items-center justify-center text-boardtree-text-faint" style={{ opacity: is_hovered && !is_editing ? 1 : 0 }}>
-            <svg viewBox="0 0 6 14" width="6" height="12"><circle cx="1.5" cy="3" r="1.1" fill="currentColor" /><circle cx="4.5" cy="3" r="1.1" fill="currentColor" /><circle cx="1.5" cy="7" r="1.1" fill="currentColor" /><circle cx="4.5" cy="7" r="1.1" fill="currentColor" /><circle cx="1.5" cy="11" r="1.1" fill="currentColor" /><circle cx="4.5" cy="11" r="1.1" fill="currentColor" /></svg>
-          </div>
           {/* The expand arrow only shows for items with subitems (or on hover, to add the first one), like monday.com. */}
           <button
             type="button"
             onClick={() => actions.toggleItemOpen(item.id)}
             aria-label={is_open ? "Hide subitems" : "Show subitems"}
-            className="flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text hover:bg-boardtree-hover-strong"
+            aria-expanded={is_open}
+            className="item-expand-toggle flex h-5 w-5 flex-none items-center justify-center rounded-[4px] text-boardtree-text hover:bg-boardtree-hover-strong"
             style={{ opacity: has_subs || (is_hovered && !is_editing) ? 1 : 0 }}
           >
-            {is_open ? (
-              <svg viewBox="0 0 12 12" width="11" height="11"><path d="M3 4.5 L6 8 L9 4.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-            ) : (
-              <svg viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
-            )}
+            <svg className="item-expand-toggle__icon" viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           </button>
           {/* `data-filter-cell` feeds the table's right-click "Filter by this value" menu (see `BoardTable`). */}
           <div className="flex min-w-0 flex-1 items-center" data-filter-cell="true" data-item-id={item.id} data-column-id="__name">
@@ -236,7 +232,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             ) : (
               <span
                 onClick={() => actions.startEditName(item.id, item.name)}
-                className={`max-w-full cursor-text rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text ${
+                className={`item-name-cell__label max-w-full px-1.5 py-0.5 text-board-cell text-boardtree-text ${
                   state.row_height === "quad"
                     ? "line-clamp-4 whitespace-normal"
                     : state.row_height === "triple"

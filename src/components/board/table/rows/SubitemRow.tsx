@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
+import "./item-name-cell.scss";
 import TreeHook from "./TreeHook";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
@@ -139,7 +140,8 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         <div
-          className="flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-1.5"
+          className="item-name-cell flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-1.5"
+          data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,
             position: "sticky",
@@ -150,9 +152,6 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             outlineOffset: is_editing ? "-1px" : undefined,
           }}
         >
-          <div className="flex w-[11px] flex-none cursor-grab items-center text-boardtree-text-faint" style={{ visibility: is_editing ? "hidden" : undefined }}>
-            <svg viewBox="0 0 6 14" width="6" height="11"><circle cx="1.5" cy="3" r="1" fill="currentColor" /><circle cx="4.5" cy="3" r="1" fill="currentColor" /><circle cx="1.5" cy="7" r="1" fill="currentColor" /><circle cx="4.5" cy="7" r="1" fill="currentColor" /><circle cx="1.5" cy="11" r="1" fill="currentColor" /><circle cx="4.5" cy="11" r="1" fill="currentColor" /></svg>
-          </div>
           <div className="flex min-w-0 flex-1 items-center">
             {is_editing ? (
               <span className="relative flex min-w-0 flex-1 items-center">
@@ -178,7 +177,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 />
               </span>
             ) : (
-              <span onClick={() => actions.startEditName(sub.id, sub.name)} className="max-w-full cursor-text truncate rounded-[4px] px-1.5 py-0.5 text-board-cell text-boardtree-text">
+              <span onClick={() => actions.startEditName(sub.id, sub.name)} className="item-name-cell__label max-w-full truncate px-1.5 py-0.5 text-board-cell text-boardtree-text">
                 {highlightSearchMatches(sub.name, state.search_query)}
               </span>
             )}
