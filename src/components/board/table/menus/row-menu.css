@@ -1,0 +1,173 @@
+/*
+ * The board table's row "..." menu. The card, rows, dividers and submenus come
+ * from `action-menu.css`; this file only adds what is specific to row actions:
+ * group color dots, icon accents and the "Set recurring" schedule panel. Every
+ * color reads an `--action-menu-*` token (or a `--row-menu-*` one declared
+ * next to them), so dark mode only swaps tokens.
+ */
+
+.action-menu.row-menu {
+  --row-menu-priority: #fdab3d;
+  --row-menu-success: #00854d;
+  --row-menu-accent: #0073ea;
+  --row-menu-accent-hover: #0060b9;
+  --row-menu-accent-text: #ffffff;
+  --row-menu-field-border: #c3c6d4;
+  --row-menu-field-bg: #ffffff;
+  --row-menu-segment-bg: #f5f6f8;
+  --row-menu-segment-active: #cce5ff;
+  --row-menu-segment-active-text: #0060b9;
+  --row-menu-danger-hover: rgba(216, 58, 82, 0.1);
+}
+
+html.dark .action-menu.row-menu {
+  --row-menu-priority: #ffcb00;
+  --row-menu-success: #33d391;
+  --row-menu-accent: #4d9cff;
+  --row-menu-accent-hover: #6aaeff;
+  --row-menu-accent-text: #0f1c1c;
+  --row-menu-field-border: rgba(255, 255, 255, 0.18);
+  --row-menu-field-bg: rgba(255, 255, 255, 0.04);
+  --row-menu-segment-bg: rgba(255, 255, 255, 0.06);
+  --row-menu-segment-active: rgba(77, 156, 255, 0.24);
+  --row-menu-segment-active-text: #9ccaff;
+  --row-menu-danger-hover: rgba(240, 100, 122, 0.14);
+}
+
+/* Group targets in "Move to" show the group's color like the group title does. */
+.row-menu__group-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.row-menu__icon--priority {
+  color: var(--row-menu-priority);
+}
+
+.row-menu__icon--success {
+  color: var(--row-menu-success);
+}
+
+.row-menu__icon--active {
+  color: var(--row-menu-accent);
+}
+
+.row-menu .action-menu__item[aria-disabled="true"] .row-menu__group-dot {
+  opacity: 0.45;
+}
+
+/* "Set recurring" schedule panel. */
+.row-menu-recurrence {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row-menu-recurrence__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.row-menu-recurrence__label {
+  color: var(--action-menu-text);
+  font-size: 14px;
+}
+
+.row-menu-recurrence__input {
+  width: 64px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--row-menu-field-border);
+  border-radius: 4px;
+  background: var(--row-menu-field-bg);
+  color: var(--action-menu-text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 70ms ease-in;
+}
+
+.row-menu-recurrence__input:hover {
+  border-color: var(--action-menu-text);
+}
+
+.row-menu-recurrence__input:focus {
+  border-color: var(--row-menu-accent);
+  box-shadow: 0 0 0 1px var(--row-menu-accent);
+}
+
+.row-menu-recurrence__segments {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--row-menu-segment-bg);
+}
+
+.row-menu-recurrence__segment {
+  height: 28px;
+  border-radius: 4px;
+  color: var(--action-menu-text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 70ms ease-in;
+}
+
+.row-menu-recurrence__segment:hover {
+  background: var(--action-menu-hover);
+}
+
+.row-menu-recurrence__segment[data-active="true"] {
+  background: var(--row-menu-segment-active);
+  color: var(--row-menu-segment-active-text);
+  font-weight: 500;
+}
+
+.row-menu-recurrence__segment:focus-visible,
+.row-menu-recurrence__button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--action-menu-focus);
+}
+
+.row-menu-recurrence__summary {
+  margin: 0;
+  color: var(--action-menu-title);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: normal;
+}
+
+.row-menu-recurrence__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.row-menu-recurrence__button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 70ms ease-in;
+}
+
+.row-menu-recurrence__button--primary {
+  background: var(--row-menu-accent);
+  color: var(--row-menu-accent-text);
+}
+
+.row-menu-recurrence__button--primary:hover {
+  background: var(--row-menu-accent-hover);
+}
+
+.row-menu-recurrence__button--danger {
+  color: var(--action-menu-danger);
+}
+
+.row-menu-recurrence__button--danger:hover {
+  background: var(--row-menu-danger-hover);
+}

@@ -3431,6 +3431,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         });
       },
       getNodeLink: (node_id) => `${window.location.origin}/boards/${board_id}/pulses/${node_id}`,
+      onOpenIntegrations: () => setIsIntegrationsModalOpen(true),
+      onOpenAutomations: active_view_type === "table" ? () => openAutomationCenter() : undefined,
       onReorderItems: handleReorderTableItems,
       onReorderColumns: handleReorderTableColumns,
       onRenameGroup: (group_key, name) => patchTableGroup(group_key, { name }, "Couldn't rename the group. Please try again."),

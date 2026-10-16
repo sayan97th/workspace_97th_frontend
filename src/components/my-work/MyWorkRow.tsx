@@ -1,10 +1,13 @@
 "use client";
 import React, { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
+import { NewTabIcon, OpenItemIcon } from "@/components/board/table/menus/row-menu-icons";
 import { fmtDateShort, fmtRange } from "@/components/board/table/dateUtils";
 import UserAvatar from "@/components/common/UserAvatar";
-import { CloseIcon, LinkIcon, MoreDotsIcon, OpenInNewTabIcon, PersonIcon, WarningTriangleIcon } from "@/icons/workspace-icons";
+import { BoardGridIcon, CloseIcon, LinkIcon, MoreDotsIcon, PersonIcon, WarningTriangleIcon } from "@/icons/workspace-icons";
 import { getDeactivatedClass, getPersonTitle } from "@/lib/deactivated-user";
 import type { MyWorkItemDto, MyWorkPerson, MyWorkStatus } from "@/types/personal";
 import { EMPTY_LABEL_COLOR } from "./myWorkBuckets";
@@ -111,11 +114,26 @@ const MyWorkRow: React.FC<MyWorkRowProps> = ({
   );
 };
 
-/** The row's "..." menu, shown on hover just left of the colored bar. */
+/** The row's "..." menu, shown on hover just left of the colored bar, in the same {@link ActionMenu} look as the board table's row menu. */
 const RowMenu: React.FC<{ item_href: string; board_href: string; onCopyLink: () => void }> = ({ item_href, board_href, onCopyLink }) => {
+  const router = useRouter();
   const button_ref = useRef<HTMLButtonElement>(null);
   const [is_open, setIsOpen] = useState(false);
-  const menu_item_class = "flex h-8 w-full items-center gap-2.5 rounded px-2 text-left text-board-cell text-[var(--mw-text)] hover:bg-[var(--mw-hover)]";
+
+  const sections: ActionMenuSection[] = [
+    {
+      key: "open",
+      items: [
+        { key: "open", label: "Open item", icon: <OpenItemIcon size={16} />, onClick: () => router.push(item_href) },
+        { key: "open-new-tab", label: "Open in new tab", icon: <NewTabIcon size={16} />, onClick: () => window.open(item_href, "_blank", "noopener,noreferrer") },
+        { key: "board", label: "Go to board", icon: <BoardGridIcon size={16} />, onClick: () => router.push(board_href) },
+      ],
+    },
+    {
+      key: "link",
+      items: [{ key: "copy-link", label: "Copy item link", icon: <LinkIcon size={16} />, onClick: onCopyLink }],
+    },
+  ];
 
   return (
     <>
@@ -130,30 +148,15 @@ const RowMenu: React.FC<{ item_href: string; board_href: string; onCopyLink: () 
       >
         <MoreDotsIcon size={16} />
       </button>
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={200} align="start">
-        <div role="menu" className="my-work-theme flex flex-col p-1.5">
-          <Link role="menuitem" href={item_href} className={menu_item_class} onClick={() => setIsOpen(false)}>
-            <OpenInNewTabIcon size={15} />
-            Open item
-          </Link>
-          <Link role="menuitem" href={board_href} className={menu_item_class} onClick={() => setIsOpen(false)}>
-            <OpenInNewTabIcon size={15} />
-            Go to board
-          </Link>
-          <button
-            role="menuitem"
-            type="button"
-            className={menu_item_class}
-            onClick={() => {
-              onCopyLink();
-              setIsOpen(false);
-            }}
-          >
-            <LinkIcon size={15} />
-            Copy item link
-          </button>
-        </div>
-      </BoardPopover>
+      <ActionMenu
+        anchor_el={button_ref.current}
+        is_open={is_open}
+        onClose={() => setIsOpen(false)}
+        sections={sections}
+        aria_label="Item actions"
+        width={220}
+        align="start"
+      />
     </>
   );
 };

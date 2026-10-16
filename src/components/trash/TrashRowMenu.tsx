@@ -1,9 +1,8 @@
 "use client";
 import React, { useRef, useState } from "react";
-import { BoardPopover } from "@/components/board";
-import { DeleteIcon } from "@/icons/workspace-icons";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
+import { DeleteIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { RestoreIcon } from "@/icons/trash-icons";
-import { MoreDotsIcon } from "@/icons/workspace-icons";
 
 export type TrashRowMenuProps = {
   entry_name: string;
@@ -11,19 +10,21 @@ export type TrashRowMenuProps = {
   onDeleteForever: () => void;
 };
 
-const menu_row_class =
-  "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-shell-text transition-colors hover:bg-shell-hover";
-
 /**
- * Per-row "..." menu (Restore / Delete permanently) for a trash/archive entry. Anchors a
- * {@link BoardPopover} to its own trigger button, the same "..." pattern the board
- * toolbar's `OverflowControl` uses, so it stays consistent with the rest of the app
- * instead of introducing a new dropdown primitive.
+ * Per-row "..." menu (Restore / Delete permanently) for a trash/archive entry, built on
+ * {@link ActionMenu} so it shares the look of the board table's row menu.
  */
 const TrashRowMenu: React.FC<TrashRowMenuProps> = ({ entry_name, onRestore, onDeleteForever }) => {
   const button_ref = useRef<HTMLButtonElement>(null);
   const [is_open, setIsOpen] = useState(false);
   const close = () => setIsOpen(false);
+  const sections: ActionMenuSection[] = [
+    { key: "restore", items: [{ key: "restore", label: "Restore", icon: <RestoreIcon size={16} />, onClick: onRestore }] },
+    {
+      key: "danger",
+      items: [{ key: "delete-forever", label: "Delete permanently", icon: <DeleteIcon size={16} />, danger: true, onClick: onDeleteForever }],
+    },
+  ];
 
   return (
     <>
@@ -41,36 +42,14 @@ const TrashRowMenu: React.FC<TrashRowMenuProps> = ({ entry_name, onRestore, onDe
         <MoreDotsIcon size={15} />
       </button>
 
-      <BoardPopover anchor_el={button_ref.current} is_open={is_open} onClose={close} width={196}>
-        <div className="p-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              onRestore();
-              close();
-            }}
-            className={menu_row_class}
-          >
-            <span className="flex flex-none text-shell-text-muted">
-              <RestoreIcon size={14} />
-            </span>
-            Restore
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onDeleteForever();
-              close();
-            }}
-            className={`${menu_row_class} text-error-400 hover:bg-error-500/[0.12]`}
-          >
-            <span className="flex flex-none text-error-400">
-              <DeleteIcon size={14} />
-            </span>
-            Delete permanently
-          </button>
-        </div>
-      </BoardPopover>
+      <ActionMenu
+        anchor_el={button_ref.current}
+        is_open={is_open}
+        onClose={close}
+        sections={sections}
+        aria_label={`Actions for ${entry_name}`}
+        width={208}
+      />
     </>
   );
 };

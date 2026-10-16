@@ -32,6 +32,16 @@ export type ActionMenuItem = {
   is_selected?: boolean;
   /** Short muted text at the end of the row, e.g. how many columns are pinned. */
   meta?: string;
+  /** Tooltip for an enabled row, e.g. the full name of a long group that the row truncates. */
+  tooltip?: string;
+  /** Runs `onClick` without closing the menu, for rows that confirm in place (e.g. "Copy item link" turning into "Copied"). */
+  keep_open?: boolean;
+  /** Muted heading at the top of the submenu, e.g. "Make it a subitem of". */
+  submenu_title?: string;
+  /** Caps the submenu height (in pixels) and scrolls past it, for long lists like every group on a board. */
+  submenu_max_height?: number;
+  /** A custom panel (e.g. a small form) shown in the side flyout instead of rows. Wins over `submenu` and `submenu_sections`. */
+  submenu_content?: React.ReactNode;
 };
 
 /** One group of rows. Groups are split by a thin divider, the way monday.com groups its menus. */
@@ -86,12 +96,14 @@ const getSubmenuSections = (item: ActionMenuItem): ActionMenuSection[] => {
 };
 
 const hasSubmenu = (item: ActionMenuItem): boolean =>
-  getSubmenuSections(item).some((section) => section.items.length > 0);
+  Boolean(item.submenu_content) || getSubmenuSections(item).some((section) => section.items.length > 0);
 
 type ActionMenuLevelProps = {
   sections: ActionMenuSection[];
   aria_label: string;
   title?: string;
+  /** Caps the list height in pixels, the rest scrolls. */
+  max_height?: number;
   /** What takes focus on mount: the list itself (so arrow keys work), its first enabled row, or nothing (submenus opened on hover). */
   initial_focus?: "list" | "first_item" | "none";
   submenu_width: number;
@@ -110,6 +122,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
   sections,
   aria_label,
   title,
+  max_height,
   initial_focus = "list",
   submenu_width,
   submenu_side,
@@ -176,7 +189,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
         data-danger={item.danger || undefined}
         data-submenu-open={is_submenu_open || undefined}
         data-split={is_split || undefined}
-        title={item.disabled ? item.disabled_reason : undefined}
+        title={item.disabled ? item.disabled_reason : item.tooltip}
         className="action-menu__item"
         onMouseEnter={() => {
           if (has_submenu && !item.disabled) openSubmenu(item, false);
@@ -224,6 +237,8 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
         tabIndex={-1}
         onKeyDown={handleKeyDown}
         className={`action-menu ${boardTreeFontClassName} ${class_name ?? ""}`}
+        data-scrollable={max_height ? true : undefined}
+        style={max_height ? { maxHeight: max_height } : undefined}
       >
         {title && (
           <div className="action-menu__title" aria-hidden="true">
@@ -247,10 +262,30 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
           width={submenu_width}
           unstyled
         >
+          {open_submenu_item.submenu_content ? (
+            <div
+              role="group"
+              aria-label={open_submenu_item.label}
+              className={`action-menu action-menu--panel ${boardTreeFontClassName} ${class_name ?? ""}`}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                // Escape inside the panel goes back to its row instead of closing the whole menu.
+                event.stopPropagation();
+                const parent_row = item_refs.current[open_submenu_item.key];
+                closeSubmenu();
+                parent_row?.focus();
+              }}
+            >
+              {open_submenu_item.submenu_title && <div className="action-menu__title">{open_submenu_item.submenu_title}</div>}
+              {open_submenu_item.submenu_content}
+            </div>
+          ) : (
           <ActionMenuLevel
             key={open_submenu_item.key}
             sections={getSubmenuSections(open_submenu_item)}
             aria_label={open_submenu_item.label}
+            title={open_submenu_item.submenu_title}
+            max_height={open_submenu_item.submenu_max_height}
             initial_focus={open_submenu?.focus_first ? "first_item" : "none"}
             submenu_width={submenu_width}
             submenu_side={submenu_side}
@@ -262,6 +297,7 @@ const ActionMenuLevel: React.FC<ActionMenuLevelProps> = ({
               parent_row?.focus();
             }}
           />
+          )}
         </MenuFlyout>
       )}
     </>
@@ -290,7 +326,7 @@ const ActionMenu: React.FC<ActionMenuProps> = ({
   class_name,
 }) => {
   const selectItem = (item: ActionMenuItem) => {
-    onClose();
+    if (!item.keep_open) onClose();
     item.onClick?.();
   };
 

@@ -37,6 +37,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const sticky_offsets = subStickyOffsets(name_col_width);
 
   const move_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.map((it) => ({ id: it.id, label: it.name, current: it.id === item.id })));
+  const row_apps = actions.getRowApps();
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
   const name_input_ref = useRef<HTMLInputElement>(null);
@@ -89,6 +90,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               copied={state.copied_row_id === sub.id}
               is_priority={!!sub.is_priority}
               onOpen={() => actions.openItem(sub.id)}
+              onOpenInNewTab={() => actions.openRowInNewTab(sub.id)}
               onCopyLink={() => actions.copyRowLink(sub.id)}
               onCreateBelow={() => actions.createBelow(sub.id)}
               onAddSubitem={() => {}}
@@ -97,6 +99,8 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               onConvertToItem={() => actions.convertSubToItem(sub.id)}
               onConvertToSubOf={() => {}}
               onTogglePriority={() => actions.toggleNodePriority(sub.id)}
+              onOpenIntegrations={row_apps.has_integrations ? () => actions.openRowApp("integrations") : undefined}
+              onOpenAutomations={row_apps.has_automations ? () => actions.openRowApp("automations") : undefined}
               onArchive={() => actions.archiveNode(sub.id)}
               onDelete={() => actions.deleteNode(sub.id)}
               onClose={actions.closeRowMenu}

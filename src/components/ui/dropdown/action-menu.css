@@ -203,3 +203,24 @@ html.dark .action-menu {
 .action-menu--selectable .action-menu__item[data-submenu-open="true"] {
   background: var(--action-menu-split-active);
 }
+
+/* Long submenus (every group on a board) scroll inside the card instead of running off screen. */
+.action-menu[data-scrollable="true"] {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.action-menu[data-scrollable="true"] .action-menu__item {
+  flex: none;
+}
+
+/* A custom panel opened from a row (e.g. the recurring schedule form) keeps the card look with a little more room. */
+.action-menu--panel {
+  gap: 8px;
+  padding: 12px;
+}
+
+.action-menu--panel .action-menu__title {
+  padding: 0;
+}

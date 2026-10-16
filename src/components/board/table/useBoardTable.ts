@@ -291,6 +291,13 @@ export interface UseBoardTableConfig {
    */
   getNodeLink?: (node_id: string) => string;
   /**
+   * The row menu's "Apps" submenu: opens the board's Integrations center or
+   * Automations center. Each omitted entry is left out of the submenu, and
+   * the whole "Apps" row hides when both are omitted (the standalone demo).
+   */
+  onOpenIntegrations?: () => void;
+  onOpenAutomations?: () => void;
+  /**
    * Fires once per completed drag that actually changed a list's order — a
    * table's own root items reordered within their group, or one item's
    * subitems reordered within it (see `ReorderPayload`). The local drag
@@ -2586,6 +2593,25 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       .catch(() => {});
   }, []);
 
+  /** The row menu's "Open in new tab", the same link "Copy item link" puts on the clipboard. */
+  const openRowInNewTab = useCallback((id: string) => {
+    if (typeof window === "undefined") return;
+    const link = config_ref.current.getNodeLink?.(id) ?? `${window.location.origin}${window.location.pathname}#${id}`;
+    window.open(link, "_blank", "noopener,noreferrer");
+  }, []);
+
+  /** Which entries the row menu's "Apps" submenu offers, see `UseBoardTableConfig.onOpenIntegrations`. */
+  const getRowApps = useCallback(() => ({
+    has_integrations: Boolean(config_ref.current.onOpenIntegrations),
+    has_automations: Boolean(config_ref.current.onOpenAutomations),
+  }), []);
+
+  const openRowApp = useCallback((app: "integrations" | "automations") => {
+    setState((s) => ({ ...s, open_row_menu_id: null }));
+    if (app === "integrations") config_ref.current.onOpenIntegrations?.();
+    else config_ref.current.onOpenAutomations?.();
+  }, []);
+
   const selected_count = useMemo(() => Object.values(state.selected_map).filter(Boolean).length, [state.selected_map]);
   const total_subs = useMemo(() => state.groups.reduce((a, g) => a + g.items.reduce((b, it) => b + it.subs.length, 0), 0), [state.groups]);
   const summary_text = selected_count ? `${selected_count} selected` : `${total_subs} subitems`;
@@ -2745,6 +2771,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       canSetUpButtons,
       closeAllOverlays,
       copyRowLink,
+      openRowInNewTab,
+      getRowApps,
+      openRowApp,
       openComments,
       openItem,
       requestGroupItems,
@@ -2763,7 +2792,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openRowInNewTab, getRowApps, openRowApp, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2782,7 +2811,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
     "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards", "openLinkedItem", "openBoardItem", "submitFeedback", "closeLinkedItem", "fetchLinkedItem",
-    "closeAllOverlays", "copyRowLink", "openComments", "openItem", "requestGroupItems",
+    "closeAllOverlays", "copyRowLink", "openRowInNewTab", "getRowApps", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
 

@@ -52,9 +52,10 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
 
-  const move_targets: RowMenuTarget[] = state.groups.map((g) => ({ id: g.key, label: g.title, current: g.key === group.key }));
+  const move_targets: RowMenuTarget[] = state.groups.map((g) => ({ id: g.key, label: g.title, current: g.key === group.key, color: g.color }));
   const convert_targets: RowMenuTarget[] = state.groups.flatMap((g) => g.items.filter((it) => it.id !== item.id).map((it) => ({ id: it.id, label: it.name })));
 
+  const row_apps = actions.getRowApps();
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
   const name_input_ref = useRef<HTMLInputElement>(null);
@@ -142,6 +143,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               convert_blocked_reason={getConvertBlockedReason(item.subs.length)}
               copied={state.copied_row_id === item.id}
               onOpen={() => actions.openItem(item.id)}
+              onOpenInNewTab={() => actions.openRowInNewTab(item.id)}
               is_priority={!!item.is_priority}
               recurrence={item.recurrence}
               onCopyLink={() => actions.copyRowLink(item.id)}
@@ -154,6 +156,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               onTogglePriority={() => actions.toggleNodePriority(item.id)}
               onSetRecurrence={(frequency, interval_count) => actions.setItemRecurrence(item.id, { frequency, interval_count })}
               onClearRecurrence={() => actions.clearItemRecurrence(item.id)}
+              onOpenIntegrations={row_apps.has_integrations ? () => actions.openRowApp("integrations") : undefined}
+              onOpenAutomations={row_apps.has_automations ? () => actions.openRowApp("automations") : undefined}
               onArchive={() => actions.archiveNode(item.id)}
               onDelete={() => actions.deleteNode(item.id)}
               onClose={actions.closeRowMenu}
