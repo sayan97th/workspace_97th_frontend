@@ -17,19 +17,26 @@ import {
   QuoteIcon,
   StrikethroughIcon,
 } from "@/icons/drawer-icons";
+import { useSavedReplies } from "@/hooks/useSavedReplies";
 import { inlineUploadService } from "@/services/inline-upload.service";
+import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
 import { MentionHighlight } from "./mentionHighlight";
-import type { SlashCommandAction } from "./slashCommands";
+import { buildRichTextBlockExtensions } from "./richTextBlocks";
+import { RichTextSlashCommand } from "./richTextSlashCommand";
+import { buildRichTextSlashItems, type RichTextSlashContext, type RichTextSlashItem } from "./richTextSlashItems";
+import RichTextSlashMenu from "./RichTextSlashMenu";
 import "./rich-text.css";
 import "./markdown/rich-text-markdown.scss";
 
-/** A `/command` or `#item` being typed right before the caret, reported so the parent can show its suggestion menu. */
-export type ComposerTrigger = { kind: "slash" | "reference"; query: string };
+/**
+ * A `#item` being typed right before the caret, reported so the parent can
+ * show its "Link an item" menu. The "/" block menu is the composer's own
+ * (`RichTextSlashMenu`), so it is never reported.
+ */
+export type ComposerTrigger = { kind: "reference"; query: string };
 
-/** Matches a `/query` at the caret, only when it opens a word, so `https://` and file paths never trigger it. */
-const SLASH_TRIGGER = /(?:^|\s)\/([\w-]*)$/;
-/** Matches a `#query` at the caret, likewise only at the start of a word. */
+/** Matches a `#query` at the caret, only when it opens a word, so URL fragments never trigger it. */
 const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
 /** How far back from the caret the trigger regexes look. */
 const TRIGGER_LOOKBEHIND = 60;
@@ -43,8 +50,6 @@ export type RichTextComposerRef = {
   insertMarkdown: (markdown: string) => void;
   /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
   appendMarkdownBlock: (markdown: string) => void;
-  /** Replaces the `/query` being typed with the result of a slash command. The `emoji` command only clears the query, the parent opens its palette. */
-  applySlashCommand: (action: SlashCommandAction) => void;
   /** Replaces the `#query` being typed with a link to another item, shown as `#Name`. */
   insertItemReference: (name: string, href: string) => void;
   focus: () => void;
@@ -82,16 +87,22 @@ export type RichTextComposerProps = {
   embedded?: boolean;
   /** Embedded mode only: whether the formatting toolbar row is shown, driven by `CommentComposer`'s "Aa" toggle. */
   show_toolbar?: boolean;
+  /** The parent shows the `@mention` picker, so the "/" menu offers "Mention a person". */
+  can_mention?: boolean;
+  /** The parent shows the `#` item picker, so the "/" menu offers "Link an item". */
+  can_link_items?: boolean;
+  /** Opens the parent's emoji palette, the "/" menu's "Emoji" row. Omit to leave the row out. */
+  onOpenEmojiPalette?: () => void;
+  /** Opens the parent's file attach dialog, the "/" menu's "File" row. Omit to leave the row out. */
+  onAttachFiles?: () => void;
 };
 
-/** The text run from the caret back to the start of its `/` or `#` word, or null when the caret is not in one. */
+/** The text run from the caret back to the start of its `#` word, or null when the caret is not in one. */
 const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; text: string } | null => {
   const { from, empty } = current_editor.state.selection;
   if (!empty) return null;
 
   const text_before = current_editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
-  const slash = SLASH_TRIGGER.exec(text_before);
-  if (slash) return { trigger: { kind: "slash", query: slash[1] }, text: slash[0].trimStart() };
   const reference = REFERENCE_TRIGGER.exec(text_before);
   if (reference) return { trigger: { kind: "reference", query: reference[1] }, text: reference[0].trimStart() };
   return null;
@@ -99,7 +110,7 @@ const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; t
 
 const detectTrigger = (current_editor: Editor): ComposerTrigger | null => findTriggerMatch(current_editor)?.trigger ?? null;
 
-/** Deletes the trigger text (`/query` or `#query`) in front of the caret, leaving the caret where it started. */
+/** Deletes the `#query` in front of the caret, leaving the caret where it started. */
 const deleteTriggerText = (current_editor: Editor): void => {
   const match = findTriggerMatch(current_editor);
   if (!match) return;
@@ -136,10 +147,16 @@ const ToolbarButton: React.FC<{
 
 const ToolbarDivider: React.FC = () => <span className="rich-text-tool-divider" aria-hidden="true" />;
 
+/** Blocks where Enter keeps its editing meaning (a new item, line or cell) instead of sending the draft. */
+const MULTILINE_BLOCKS = ["bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "callout", "details", "table"];
+
 /**
  * Tiptap-backed rich text editor used by `CommentComposer` in place of a
  * plain `<textarea>`, bold/italic/lists/links, plus uploading a
  * pasted/dropped image straight into the body via `inlineUploadService`.
+ * Typing "/" opens the block menu the doc editor has (`RichTextSlashMenu`):
+ * titles, lists, to-dos, toggles, callouts, quotes, tables, dividers, code,
+ * images, links, mentions, emoji, the date and the user's saved replies.
  * `@mention` autocomplete and emoji insertion stay owned by the parent
  * drawer hook (`mention_target`/`emoji_palette_target`), which drives this
  * component purely through the imperative ref: picking a mention or emoji
@@ -165,6 +182,10 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       autoFocus,
       embedded = false,
       show_toolbar = true,
+      can_mention = false,
+      can_link_items = false,
+      onOpenEmojiPalette,
+      onAttachFiles,
     },
     ref
   ) => {
@@ -173,21 +194,66 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
     const open_link_modal_ref = useRef<() => void>(() => {});
+    const image_input_ref = useRef<HTMLInputElement>(null);
+
+    // The "/" menu: one store per editor bridges the Tiptap suggestion plugin to `RichTextSlashMenu`.
+    const [slash_store] = useState(() => createSuggestionStore<RichTextSlashItem>());
+    const { saved_replies, ensureLoaded: ensureSavedRepliesLoaded } = useSavedReplies();
+    const slash_items_ref = useRef<(query: string) => RichTextSlashItem[]>(() => []);
+    const slash_context_ref = useRef<Omit<RichTextSlashContext, "editor">>({
+      openImagePicker: () => {},
+      openLinkDialog: () => {},
+    });
+
     useEffect(() => {
       trigger_change_ref.current = onTriggerChange;
       suggestion_key_down_ref.current = onSuggestionKeyDown;
+      slash_items_ref.current = (query: string) => {
+        ensureSavedRepliesLoaded();
+        const features = {
+          mentions: can_mention,
+          item_links: can_link_items,
+          emoji: Boolean(onOpenEmojiPalette),
+          files: Boolean(onAttachFiles),
+        };
+        return buildRichTextSlashItems(query, features, saved_replies);
+      };
+      slash_context_ref.current = {
+        openImagePicker: () => image_input_ref.current?.click(),
+        openLinkDialog: () => open_link_modal_ref.current(),
+        openEmojiPalette: onOpenEmojiPalette,
+        attachFiles: onAttachFiles,
+      };
     });
+
+    // Saved replies arrive after the menu first opens, so an open menu picks them up right away.
+    useEffect(() => {
+      const state = slash_store.getState();
+      if (state.is_open) slash_store.setState({ items: slash_items_ref.current(state.query) });
+    }, [saved_replies, slash_store]);
 
     const editor = useEditor({
       extensions: [
         // StarterKit v3 already bundles `link`, so it's configured here instead of registering `Link` separately.
         StarterKit.configure({
-          heading: false,
+          heading: { levels: [1, 2, 3, 4] },
           link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } },
         }),
+        ...buildRichTextBlockExtensions(),
         TiptapImage,
-        Placeholder.configure({ placeholder }),
+        Placeholder.configure({
+          includeChildren: true,
+          placeholder: ({ node }) => (node.type.name === "detailsSummary" ? "Toggle title" : placeholder),
+        }),
         MentionHighlight,
+        RichTextSlashCommand.configure({
+          store: slash_store,
+          getItems: (query) => slash_items_ref.current(query),
+          onSelect: (item, range, current_editor) => {
+            current_editor.chain().focus().deleteRange(range).run();
+            item.run({ editor: current_editor, ...slash_context_ref.current });
+          },
+        }),
         Markdown,
       ],
       content: value || "",
@@ -212,6 +278,10 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             event.preventDefault();
             return true;
           }
+          // The "/" menu's own plugin handles the arrows, Enter, Tab and Escape
+          // while it is open. Enter with no matching row still sends.
+          const slash_state = slash_store.getState();
+          if (slash_state.is_open && (event.key !== "Enter" || slash_state.items.length > 0)) return false;
           // Ctrl/Cmd+K opens the link dialog, the shortcut every other editor uses for it.
           if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
             event.preventDefault();
@@ -236,13 +306,15 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             }
             return false; // Shift+Enter, let HardBreak's own "Shift-Enter" keymap handle it.
           }
+          // Enter moves through a table like Tab, adding a row past the last
+          // cell, since a Markdown table cell holds a single line.
+          if (editor?.isActive("table")) {
+            event.preventDefault();
+            if (!editor.commands.goToNextCell()) editor.chain().addRowAfter().goToNextCell().run();
+            return true;
+          }
           if (!onEnterSubmit) return false;
-          const in_multiline_block =
-            editor?.isActive("bulletList") ||
-            editor?.isActive("orderedList") ||
-            editor?.isActive("blockquote") ||
-            editor?.isActive("codeBlock");
-          if (in_multiline_block) return false;
+          if (MULTILINE_BLOCKS.some((block) => editor?.isActive(block))) return false;
           event.preventDefault();
           onEnterSubmit();
           // Blurs so the post-submit external reset (parent clearing `value`
@@ -321,21 +393,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           // An empty draft is replaced rather than left with a blank line above the quote.
           if (editor.isEmpty) editor.chain().setContent(content).focus("end").run();
           else editor.chain().focus("end").insertContent(content).run();
-        },
-        applySlashCommand: (action: SlashCommandAction) => {
-          if (!editor) return;
-          deleteTriggerText(editor);
-          const chain = editor.chain().focus();
-          if (action.type === "text") chain.insertContent(action.text).run();
-          else if (action.type === "mention") chain.insertContent("@").run();
-          else if (action.type === "markdown") chain.insertContent(action.markdown, { contentType: "markdown" }).run();
-          else if (action.type === "block") {
-            if (action.block === "bullet_list") chain.toggleBulletList().run();
-            else if (action.block === "ordered_list") chain.toggleOrderedList().run();
-            else if (action.block === "quote") chain.toggleBlockquote().run();
-            else if (action.block === "code_block") chain.toggleCodeBlock().run();
-            else chain.setHorizontalRule().run();
-          }
         },
         insertItemReference: (name: string, href: string) => {
           if (!editor) return;
@@ -510,12 +567,35 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       />
     );
 
+    // The "/" menu's "Image" row: picks images from the computer and uploads them like a paste.
+    const image_input = (
+      <input
+        ref={image_input_ref}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(event) => {
+          Array.from(event.target.files ?? []).forEach((file) => void uploadAndInsert(file));
+          event.target.value = "";
+        }}
+      />
+    );
+
+    const overlays = (
+      <>
+        {link_modal}
+        {image_input}
+        <RichTextSlashMenu editor={editor} store={slash_store} />
+      </>
+    );
+
     if (embedded) {
       return (
         <div>
           {show_toolbar && toolbar}
           <EditorContent editor={editor} />
-          {link_modal}
+          {overlays}
         </div>
       );
     }
@@ -524,7 +604,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       <div className="rich-text-box">
         {toolbar}
         <EditorContent editor={editor} />
-        {link_modal}
+        {overlays}
       </div>
     );
   }

@@ -5,7 +5,6 @@ import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon, ClockIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
-import { useSavedReplies } from "@/hooks/useSavedReplies";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
@@ -15,7 +14,7 @@ import type { MentionOption } from "./mentionOptions";
 import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from "./RichTextComposer";
 import SavedRepliesMenu from "./SavedRepliesMenu";
 import { formatScheduledTime } from "./scheduleFormat";
-import { buildSlashSuggestions, filterReferenceItems, type SlashSuggestion } from "./slashCommands";
+import { filterReferenceItems } from "./itemReferences";
 import type { CommentQuoteRequest, DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
 
 export type CommentComposerProps = {
@@ -63,14 +62,12 @@ export type CommentComposerProps = {
   quote_request?: CommentQuoteRequest;
 };
 
-/** Which menu the composer is offering for the text at the caret, if any. */
-type ComposerMenuKind = "slash" | "reference";
-
 /**
  * Textarea + `@mention` autocomplete + emoji insert (+ file attach, for updates) used
  * both for the drawer's top-level "write an update" box and every comment's reply box.
- * Typing `/` opens a command menu (mention, date, emoji, lists, quote, code, divider and
- * the user's saved replies), typing `#` links another item of the board, and the
+ * Typing `/` opens the editor's block menu (titles, lists, to-dos, toggles, callouts,
+ * tables, media, mention, emoji, date and the user's saved replies, see
+ * `RichTextSlashMenu`), typing `#` links another item of the board, and the
  * "Saved replies" toolbar button inserts or saves reusable templates.
  */
 const CommentComposer: React.FC<CommentComposerProps> = ({
@@ -130,25 +127,19 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const [toolbar_hidden, setToolbarHidden] = useState(false);
   const show_toolbar = !toolbar_hidden;
 
-  // `/` and `#` menus: the editor reports the trigger at the caret, this owns the keyboard cursor.
-  const { saved_replies, ensureLoaded: ensureSavedRepliesLoaded } = useSavedReplies();
+  // `#` menu: the editor reports the trigger at the caret, this owns the keyboard cursor.
   const [trigger, setTrigger] = useState<ComposerTrigger | null>(null);
   const [suggestion_index, setSuggestionIndex] = useState(0);
   // Escape hides the menu for the text typed so far, it returns once the query changes.
   const [dismissed_key, setDismissedKey] = useState<string | null>(null);
   const trigger_key = trigger ? `${trigger.kind}:${trigger.query}` : null;
 
-  const slash_suggestions = useMemo(
-    () => (trigger?.kind === "slash" ? buildSlashSuggestions(trigger.query, saved_replies) : []),
-    [trigger, saved_replies]
-  );
   const reference_matches = useMemo(
-    () => (trigger?.kind === "reference" ? filterReferenceItems(reference_items, trigger.query) : []),
+    () => (trigger ? filterReferenceItems(reference_items, trigger.query) : []),
     [trigger, reference_items]
   );
-  const menu_kind: ComposerMenuKind | null = trigger?.kind ?? null;
-  const menu_length = menu_kind === "slash" ? slash_suggestions.length : reference_matches.length;
-  const is_suggestion_menu_open = menu_kind !== null && menu_length > 0 && dismissed_key !== trigger_key;
+  const menu_length = reference_matches.length;
+  const is_suggestion_menu_open = menu_length > 0 && dismissed_key !== trigger_key;
 
   useEffect(() => {
     setSuggestionIndex(0);
@@ -160,29 +151,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     rich_text_ref.current?.appendMarkdownBlock(quote_request.markdown);
   }, [quote_request]);
 
-  useEffect(() => {
-    if (trigger?.kind === "slash") ensureSavedRepliesLoaded();
-  }, [trigger?.kind, ensureSavedRepliesLoaded]);
-
   const handleTriggerChange = (next: ComposerTrigger | null) => {
     setTrigger(next);
     if (next === null) setDismissedKey(null);
   };
 
   const pickSuggestion = (index: number) => {
-    const editor = rich_text_ref.current;
-    if (!editor) return;
-
-    if (menu_kind === "slash") {
-      const suggestion: SlashSuggestion | undefined = slash_suggestions[index];
-      if (!suggestion) return;
-      editor.applySlashCommand(suggestion.action);
-      if (suggestion.action.type === "emoji") onToggleEmojiPalette(target);
-    } else {
-      const item = reference_matches[index];
-      if (!item) return;
-      editor.insertItemReference(item.name, item.href);
-    }
+    const item = reference_matches[index];
+    if (!item) return;
+    rich_text_ref.current?.insertItemReference(item.name, item.href);
     setTrigger(null);
   };
 
@@ -294,6 +271,10 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             onEnterSubmit={show_mention_picker || show_notify_picker ? undefined : onSubmit}
             onTriggerChange={handleTriggerChange}
             onSuggestionKeyDown={handleSuggestionKeyDown}
+            can_mention
+            can_link_items={reference_items.length > 0}
+            onOpenEmojiPalette={() => onToggleEmojiPalette(target)}
+            onAttachFiles={is_update && onAddFiles ? () => file_input_ref.current?.click() : undefined}
           />
 
           {(is_update || has_draft) && (
@@ -396,12 +377,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
         {show_mention_picker && <MentionPicker people={mention_matches} onPick={handlePickMention} />}
         {is_suggestion_menu_open && (
           <ComposerSuggestionMenu
-            title={menu_kind === "slash" ? "Commands" : "Link an item"}
-            items={
-              menu_kind === "slash"
-                ? slash_suggestions.map((suggestion) => ({ id: suggestion.id, label: suggestion.label, description: suggestion.description }))
-                : reference_matches.map((item) => ({ id: item.id, label: item.name }))
-            }
+            title="Link an item"
+            items={reference_matches.map((item) => ({ id: item.id, label: item.name }))}
             active_index={suggestion_index}
             onPick={pickSuggestion}
             onHover={setSuggestionIndex}

@@ -6,6 +6,8 @@ type FloatingSuggestionProps = {
   getRect: (() => DOMRect | null) | null;
   width: number;
   max_height: number;
+  /** Theme and surface classes of the panel, the doc look unless a host passes its own (the Rich Text composer). */
+  class_name?: string;
   children: React.ReactNode;
 };
 
@@ -15,9 +17,16 @@ const GAP = 6;
 /**
  * Fixed position panel under the caret for the "/" and "@" menus, flipped
  * above it when there is no room below and clamped inside the window.
- * Portaled to the body so no scroll container clips it.
+ * Portaled to the body so no scroll container clips it. Shared by the doc
+ * editor and the Rich Text composer's "/" menu.
  */
-const FloatingSuggestion: React.FC<FloatingSuggestionProps> = ({ getRect, width, max_height, children }) => {
+const FloatingSuggestion: React.FC<FloatingSuggestionProps> = ({
+  getRect,
+  width,
+  max_height,
+  class_name = "doc-theme doc-suggestion",
+  children,
+}) => {
   const panel_ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; max_height: number } | null>(null);
 
@@ -54,7 +63,7 @@ const FloatingSuggestion: React.FC<FloatingSuggestionProps> = ({ getRect, width,
   return createPortal(
     <div
       ref={panel_ref}
-      className="doc-theme doc-suggestion"
+      className={class_name}
       style={{
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,

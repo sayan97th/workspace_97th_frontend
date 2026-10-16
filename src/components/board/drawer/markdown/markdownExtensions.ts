@@ -152,7 +152,7 @@ const definition_list_extension: TokenizerAndRendererExtension = {
 };
 
 /** GitHub alert kinds, with their title and octicon path. */
-const ALERT_KINDS: Record<string, { title: string; icon: string }> = {
+export const ALERT_KINDS: Record<string, { title: string; icon: string }> = {
   note: {
     title: "Note",
     icon: "M0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm8-6.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM6.5 7.75A.75.75 0 0 1 7.25 7h1a.75.75 0 0 1 .75.75v2.75h.25a.75.75 0 0 1 0 1.5h-2a.75.75 0 0 1 0-1.5h.25v-2h-.25a.75.75 0 0 1-.75-.75ZM8 6a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z",
@@ -180,7 +180,7 @@ const ALERT_KINDS: Record<string, { title: string; icon: string }> = {
  * quotes render as GitHub style alerts. The composer saves a typed `[` as
  * `\[`, so the escaped marker is accepted too.
  */
-const ALERT_PATTERN = /^ {0,3}>[ \t]?\\?\[!(note|tip|important|warning|caution)\\?\][ \t]*(?:\n|$)((?: {0,3}>[^\n]*(?:\n|$))*)/i;
+export const ALERT_PATTERN = /^ {0,3}>[ \t]?\\?\[!(note|tip|important|warning|caution)\\?\][ \t]*(?:\n|$)((?: {0,3}>[^\n]*(?:\n|$))*)/i;
 
 const alert_extension: TokenizerAndRendererExtension = {
   name: "alert",

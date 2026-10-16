@@ -367,6 +367,148 @@ html.dark {
   font-weight: 700;
 }
 
+/* ── "/" block menu ───────────────────────────────────────────────────── */
+
+/*
+ * `RichTextSlashMenu`, the doc editor's "/" menu in the Rich Text tokens:
+ * grouped rows with an icon and a Markdown shortcut keycap, and a "Close
+ * menu" footer. Portaled to the body by `FloatingSuggestion`, which sets its
+ * position, width and max height.
+ */
+.rich-text-slash-menu {
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--rt-surface);
+  box-shadow: var(--rt-shadow-menu);
+  font-family: var(--rt-font);
+  color: var(--rt-text);
+  animation: rich-text-slash-menu-in 120ms ease-out;
+}
+@keyframes rich-text-slash-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rich-text-slash-menu {
+    animation: none;
+  }
+}
+
+.rich-text-slash-menu__list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  scrollbar-width: thin;
+}
+
+.rich-text-slash-menu__section + .rich-text-slash-menu__section {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rt-border-soft);
+}
+
+.rich-text-slash-menu__section-label {
+  padding: 8px 8px 6px;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  color: var(--rt-text-secondary);
+}
+
+.rich-text-slash-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: left;
+  color: var(--rt-text);
+}
+.rich-text-slash-row[data-selected="true"] {
+  background: var(--rt-hover);
+}
+
+.rich-text-slash-row__icon {
+  flex: none;
+  color: var(--rt-text);
+}
+
+.rich-text-slash-row__text {
+  flex: 1;
+  min-width: 0;
+}
+.rich-text-slash-row__label,
+.rich-text-slash-row__description {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rich-text-slash-row__description {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--rt-text-secondary);
+}
+
+/* The Markdown shortcut keycap on a row ("#", "##", "1.", ...). */
+.rich-text-slash-row__key {
+  flex: none;
+  min-width: 18px;
+  padding: 1px 4px;
+  border: 1px solid var(--rt-border-soft);
+  border-radius: 4px;
+  background: var(--rt-kbd-bg);
+  font-family: var(--rt-font);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+  color: var(--rt-text-secondary);
+}
+
+.rich-text-slash-menu__empty {
+  padding: 10px 8px;
+  font-size: 14px;
+  color: var(--rt-text-faint);
+}
+
+.rich-text-slash-menu__footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  border-top: 1px solid var(--rt-border-soft);
+  font-size: 14px;
+  color: var(--rt-text);
+}
+.rich-text-slash-menu__footer:hover {
+  background: var(--rt-hover);
+}
+.rich-text-slash-menu__footer-key {
+  font-size: 12px;
+  color: var(--rt-text-faint);
+}
+
+/* The typed "/" followed by monday's "Type to search list" hint while nothing is typed after it. */
+.rich-text-slash-trigger.is-empty::after {
+  content: attr(data-decoration-content);
+  color: var(--rt-placeholder);
+  pointer-events: none;
+}
+
 /* ── Link dialog ──────────────────────────────────────────────────────── */
 
 .rich-text-dialog__backdrop {
@@ -478,6 +620,136 @@ html.dark {
   height: 0;
   pointer-events: none;
   color: var(--rt-placeholder);
+}
+
+/* An empty toggle title shows "Toggle title", drawn the same way. */
+.shell-rich-text-editor.ProseMirror summary.is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  font-weight: 500;
+  color: var(--rt-placeholder);
+}
+
+/*
+ * Editing chrome for the "/" menu blocks. Their published look comes from
+ * `markdown/rich-text-markdown.scss`; these rules only cover how Tiptap draws
+ * them while editing.
+ */
+
+/* To-do list: the checkbox is Tiptap's `<label><input>`, styled with the posted `.rt-task__checkbox` look. */
+.shell-rich-text-editor.ProseMirror .rt-task > label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  user-select: none;
+}
+.shell-rich-text-editor.ProseMirror .rt-task > label > input {
+  cursor: pointer;
+}
+.shell-rich-text-editor.ProseMirror .rt-task > div {
+  min-width: 0;
+}
+.shell-rich-text-editor.ProseMirror .rt-task[data-checked="true"] > div {
+  text-decoration: line-through;
+  text-decoration-color: var(--rt-text-faint);
+}
+
+/* Toggle list: Tiptap draws a `<div>` with a button instead of a native `<details>`, framed like the posted one. */
+.shell-rich-text-editor.ProseMirror .rt-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0 0 8px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--rt-border-soft);
+  border-radius: 8px;
+  background: var(--rt-surface);
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle > button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 0;
+  border-radius: 4px;
+  color: var(--rt-text-secondary);
+  transition: background-color 120ms ease;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle > button:hover {
+  background: var(--rt-hover);
+}
+/* A chevron that points right when closed and down when open, as on the posted toggle. */
+.shell-rich-text-editor.ProseMirror .rt-toggle > button::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 150ms ease;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle.is-open > button::after {
+  transform: rotate(45deg);
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle > div {
+  flex: 1;
+  min-width: 0;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle summary {
+  display: block;
+  margin: 0;
+  padding: 1px 0;
+  border: 0;
+  font-weight: 600;
+  cursor: text;
+  list-style: none;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle summary:hover {
+  background: none;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle summary::before {
+  display: none;
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle.is-open [data-type="detailsContent"] {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rt-border-soft);
+}
+.shell-rich-text-editor.ProseMirror .rt-toggle:not(.is-open) [data-type="detailsContent"] {
+  display: none;
+}
+
+/* Callout: the title row is not editable, the body below it is. */
+.shell-rich-text-editor.ProseMirror .rt-alert .rt-alert__title {
+  user-select: none;
+}
+.shell-rich-text-editor.ProseMirror :is(.rt-toggle [data-type="detailsContent"], [data-callout-body]) > :last-child {
+  margin-bottom: 0;
+}
+
+/* Table: framed like the posted `.rt-table-wrap`, with ProseMirror's cell selection tinted. */
+.shell-rich-text-editor.ProseMirror table {
+  border: 1px solid var(--rt-border-soft);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.shell-rich-text-editor.ProseMirror :is(th, td) {
+  position: relative;
+}
+.shell-rich-text-editor.ProseMirror :is(th, td) > p {
+  margin: 0;
+}
+.shell-rich-text-editor.ProseMirror .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--rt-mention-bg);
+  pointer-events: none;
 }
 
 .shell-rich-text-editor.ProseMirror img.ProseMirror-selectednode {

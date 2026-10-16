@@ -374,7 +374,9 @@ $blocks: "p, ul, ol, dl, blockquote, pre, table, details, figure, h1, h2, h3, h4
   .rt-task[data-checked="true"] {
     color: var(--rt-text-secondary);
   }
-  .rt-task__checkbox {
+  // `.rt-task > label > input` is the composer's own checkbox (Tiptap's task item).
+  .rt-task__checkbox,
+  .rt-task > label > input {
     position: absolute;
     top: 0.3em;
     left: 0;
@@ -388,7 +390,8 @@ $blocks: "p, ul, ol, dl, blockquote, pre, table, details, figure, h1, h2, h3, h4
     opacity: 1;
     cursor: default;
   }
-  .rt-task__checkbox:checked {
+  .rt-task__checkbox:checked,
+  .rt-task > label > input:checked {
     border-color: var(--rt-task-done);
     background-color: var(--rt-task-done);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' d='M2.5 6.2 5 8.6l4.5-5'/%3E%3C/svg%3E");

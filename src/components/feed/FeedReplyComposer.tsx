@@ -143,6 +143,8 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
             // Enter sends, except while the mention list is open: it has no
             // Enter-to-select yet (only click), so Enter keeps its default there.
             onEnterSubmit={is_picker_open ? undefined : submit}
+            can_mention
+            onOpenEmojiPalette={() => setIsEmojiOpen(true)}
           />
 
           <div className="rich-text-actions">
