@@ -12,6 +12,7 @@ import GroupSection from "./group/GroupSection";
 import SortableGroupList from "./group/SortableGroupList";
 import ColumnMoveAnimator from "./ColumnMoveAnimator";
 import { columnMoveKey, columnOrderKey } from "./columnMove";
+import { COLUMN_REVEAL_TIMEOUT_MS, findColumnCell, revealColumnCell, type ColumnRevealRequest } from "./revealColumn";
 import { findNode } from "./treeUtils";
 import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
@@ -376,17 +377,71 @@ export default function BoardTable({
     [base_actions]
   );
 
+  // ── Reveal a newly added column ──
+  // The table grows to the right, so a column added from the "+" gallery (or
+  // "Add column to the right") can land past the visible edge. Like monday.com,
+  // the table scrolls horizontally until the new column is in view. The request
+  // waits in a ref until the column is rendered: the API path only knows the
+  // id once the call resolves, and the parent's resync brings the column into
+  // `state.groups` a render later.
+  const table_root_ref = useRef<HTMLDivElement>(null);
+  const column_reveal_ref = useRef<ColumnRevealRequest | null>(null);
+  const [column_reveal_nonce, setColumnRevealNonce] = useState(0);
+
+  const requestColumnReveal = useCallback((request: Omit<ColumnRevealRequest, "requested_at">) => {
+    column_reveal_ref.current = { ...request, requested_at: Date.now() };
+    setColumnRevealNonce((nonce) => nonce + 1);
+  }, []);
+
+  // Declared before the reveal effect below, so it already sees the latest groups.
+  const groups_ref = useRef(state.groups);
+  useEffect(() => {
+    groups_ref.current = state.groups;
+  }, [state.groups]);
+
+  const scopeColumnIds = useCallback((group_key: string, scope: ColumnScope): string[] => {
+    const group = groups_ref.current.find((g) => g.key === group_key);
+    if (!group) return [];
+    const columns = scope === "main" ? group.base_columns.concat(group.custom_columns) : group.sub_base_columns.concat(group.sub_custom_columns);
+    return columns.map((c) => c.id);
+  }, []);
+
+  useEffect(() => {
+    const request = column_reveal_ref.current;
+    const root = table_root_ref.current;
+    if (!request || !root) return;
+    if (Date.now() - request.requested_at > COLUMN_REVEAL_TIMEOUT_MS) {
+      column_reveal_ref.current = null;
+      return;
+    }
+    const prior_ids = request.prior_column_ids;
+    const column_id = request.column_id ?? (prior_ids ? scopeColumnIds(request.group_key, request.scope).find((id) => !prior_ids.includes(id)) : undefined);
+    if (!column_id) return;
+    const cell = findColumnCell(root, request.scope, column_id);
+    if (!cell) return;
+    column_reveal_ref.current = null;
+    revealColumnCell(cell, request.scroll_to_end);
+  }, [column_reveal_nonce, state.groups, scopeColumnIds]);
+
   const addColumnReal = useCallback(
     (group_key: string, scope: ColumnScope, kind: ColumnKind, label: string, default_width: number, after_column_id?: string) => {
-      if (after_column_id) {
-        if (!onAddColumnRight) return base_actions.addColumn(group_key, scope, kind, label, default_width, after_column_id);
-        void onAddColumnRight(group_key, scope, after_column_id, kind, label, default_width).then((column_id) => openConfigEditorForKind(kind, column_id));
+      const scroll_to_end = !after_column_id;
+      const onCreated = (column_id: string | void) => {
+        if (column_id) requestColumnReveal({ group_key, scope, column_id, scroll_to_end });
+        openConfigEditorForKind(kind, column_id);
+      };
+      if (after_column_id && onAddColumnRight) {
+        void onAddColumnRight(group_key, scope, after_column_id, kind, label, default_width).then(onCreated);
         return;
       }
-      if (!onAddColumn) return base_actions.addColumn(group_key, scope, kind, label, default_width);
-      void onAddColumn(group_key, scope, kind, label, default_width).then((column_id) => openConfigEditorForKind(kind, column_id));
+      if (!after_column_id && onAddColumn) {
+        void onAddColumn(group_key, scope, kind, label, default_width).then(onCreated);
+        return;
+      }
+      requestColumnReveal({ group_key, scope, prior_column_ids: scopeColumnIds(group_key, scope), scroll_to_end });
+      return base_actions.addColumn(group_key, scope, kind, label, default_width, after_column_id);
     },
-    [onAddColumn, onAddColumnRight, base_actions, openConfigEditorForKind]
+    [onAddColumn, onAddColumnRight, base_actions, openConfigEditorForKind, requestColumnReveal, scopeColumnIds]
   );
 
   const duplicateColumnReal = useCallback(
@@ -688,7 +743,7 @@ export default function BoardTable({
           competition to this subtree, so the table's own headers only ever
           out-rank content inside the table, never the shell around it.
         */}
-        <div className="isolate" onContextMenu={handleGridContextMenu}>{grid}</div>
+        <div ref={table_root_ref} className="isolate" onContextMenu={handleGridContextMenu}>{grid}</div>
         {modals}
       </div>
     );
@@ -706,7 +761,7 @@ export default function BoardTable({
             checkbox columns, leaving a gap once horizontal scroll sticks them. */}
         <div className="table-board-scroll h-full overflow-auto pb-[60px]">
           {/* See the `embedded` branch above for why this needs `isolate`. */}
-          <div className="isolate px-7" onContextMenu={handleGridContextMenu}>{grid}</div>
+          <div ref={table_root_ref} className="isolate px-7" onContextMenu={handleGridContextMenu}>{grid}</div>
         </div>
       </div>
 
