@@ -459,6 +459,19 @@ html.dark {
 }
 
 /*
+ * A composer never grows past its cap: a long draft scrolls inside the editor
+ * so the toolbar and the send button above and below it stay reachable. Hosts
+ * with a known height (the board drawers) tune the cap with
+ * `--rt-editor-max-height`.
+ */
+.rich-text-box .shell-rich-text-editor.ProseMirror {
+  max-height: var(--rt-editor-max-height, min(45vh, 420px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+/*
  * The library's `Placeholder` extension only marks the empty first
  * paragraph with `data-placeholder` and an `is-editor-empty` class; the
  * placeholder text itself is drawn here, as Tiptap's docs ask every consumer

@@ -12,6 +12,8 @@ export type SlideOverPanelProps = {
   overlay_class_name?: string;
   /** Accessible name of the drawer dialog. */
   aria_label?: string;
+  /** Turns the edge drawer into a large centered dialog (wider screens only, phones stay full screen). */
+  is_expanded?: boolean;
 };
 
 const TRANSITION_DURATION_MS = 260;
@@ -27,7 +29,15 @@ const TRANSITION_DURATION_MS = 260;
  * this with {@link useLatchWhileOpen} so the panel keeps showing its last
  * row's content while it slides away, instead of going blank mid animation.
  */
-function SlideOverPanel({ is_open, onClose, children, panel_class_name = "", overlay_class_name = "", aria_label }: SlideOverPanelProps) {
+function SlideOverPanel({
+  is_open,
+  onClose,
+  children,
+  panel_class_name = "",
+  overlay_class_name = "",
+  aria_label,
+  is_expanded = false,
+}: SlideOverPanelProps) {
   const [is_mounted, setIsMounted] = useState(is_open);
   const [is_visible, setIsVisible] = useState(false);
   const panel_ref = useRef<HTMLDivElement>(null);
@@ -97,6 +107,7 @@ function SlideOverPanel({ is_open, onClose, children, panel_class_name = "", ove
         aria-label={aria_label}
         tabIndex={-1}
         data-visible={is_visible || undefined}
+        data-expanded={is_expanded || undefined}
         className={`board-drawer ${panel_class_name}`}
       >
         {children}

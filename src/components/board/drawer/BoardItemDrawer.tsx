@@ -1,6 +1,6 @@
 "use client";
-import React from "react";
-import { GitBranch, Zap } from "lucide-react";
+import React, { useState } from "react";
+import { GitBranch, Maximize2, Minimize2, Zap } from "lucide-react";
 import { CloseIcon } from "@/icons/board-icons";
 import { FilesTabIcon, InfoBoxesTabIcon, UpdatesTabIcon } from "@/icons/drawer-icons";
 import BoardDrawerHeader from "./BoardDrawerHeader";
@@ -72,6 +72,17 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
     drawer.board_id !== undefined && content.open_row_id ? `board-item.${content.open_row_id}` : null;
   const presence = useCommentPresence(presence_channel_name, { onCommentPosted: content.onRemoteCommentPosted });
 
+  // Expanded turns the drawer into a large centered dialog for long updates.
+  // Every fresh open starts as the regular drawer again; resetting here, during
+  // render, avoids painting one expanded frame first.
+  const [is_expanded, setIsExpanded] = useState(false);
+  const [was_open, setWasOpen] = useState(drawer.is_open);
+  if (was_open !== drawer.is_open) {
+    setWasOpen(drawer.is_open);
+    if (drawer.is_open) setIsExpanded(false);
+  }
+  const expand_label = is_expanded ? "Exit full screen" : "Full screen";
+
   if (!drawer.is_open && !content.is_open) return null;
 
   const tabs: TabDefinition[] = [
@@ -88,6 +99,7 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
       onClose={drawer.close}
       aria_label={content.open_row_title || "Item details"}
       panel_class_name="w-[clamp(560px,48vw,880px)]"
+      is_expanded={is_expanded}
     >
       <BoardDrawerHeader
         title={content.open_row_title}
@@ -107,6 +119,15 @@ function BoardItemDrawer<TRow>({ drawer }: BoardItemDrawerProps<TRow>) {
           <>
             <HeaderViewers viewers={presence.presence_users} />
             {presence.presence_users.length > 0 && <span className="board-drawer__divider" aria-hidden="true" />}
+            <button
+              type="button"
+              onClick={() => setIsExpanded((value) => !value)}
+              aria-label={expand_label}
+              title={expand_label}
+              className="board-drawer__icon-button board-drawer__expand-button"
+            >
+              {is_expanded ? <Minimize2 size={16} strokeWidth={1.75} /> : <Maximize2 size={16} strokeWidth={1.75} />}
+            </button>
             <BoardItemOptionsMenu drawer={content} onItemRemoved={drawer.close} />
           </>
         }

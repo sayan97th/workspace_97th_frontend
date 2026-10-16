@@ -45,6 +45,7 @@
   --bd-shadow: -16px 0 48px -12px rgba(15, 23, 42, 0.22), -2px 0 8px rgba(15, 23, 42, 0.06);
   --bd-card-shadow-hover: 0 4px 14px -6px rgba(15, 23, 42, 0.14);
   --bd-pill-shadow: 0 8px 24px -6px rgba(15, 23, 42, 0.3);
+  --bd-expanded-shadow: 0 24px 64px -12px rgba(15, 23, 42, 0.35), 0 8px 24px -8px rgba(15, 23, 42, 0.2);
   --bd-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -77,6 +78,7 @@ html.dark {
   --bd-shadow: -24px 0 60px rgba(0, 0, 0, 0.55);
   --bd-card-shadow-hover: 0 6px 18px -8px rgba(0, 0, 0, 0.6);
   --bd-pill-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.6);
+  --bd-expanded-shadow: 0 32px 80px -16px rgba(0, 0, 0, 0.75);
 }
 
 /* ── Shell ─────────────────────────────────────────────────────────────── */
@@ -112,11 +114,53 @@ html.dark {
   line-height: 20px;
   outline: none;
   transform: translateX(100%);
-  transition: transform 260ms var(--bd-ease-out);
+  transition:
+    transform 260ms var(--bd-ease-out),
+    opacity 260ms var(--bd-ease-out),
+    top 260ms var(--bd-ease-out),
+    right 260ms var(--bd-ease-out),
+    bottom 260ms var(--bd-ease-out),
+    width 260ms var(--bd-ease-out),
+    border-radius 260ms var(--bd-ease-out);
+  /* Room left for the long draft of a composer, after the header, tabs, composer toolbar and action row. */
+  --rt-editor-max-height: clamp(120px, calc(100dvh - 400px), 420px);
 }
 
 .board-drawer[data-visible] {
   transform: none;
+}
+
+/*
+ * Expanded: the drawer leaves the right edge and becomes a large centered
+ * dialog, like the full screen toggle of the Kanban item card. It opens and
+ * closes with a fade instead of the slide, which would leave a strip of the
+ * panel on screen while it is inset from the edge. Phones keep the full
+ * screen drawer, so the toggle is hidden there.
+ */
+@media (min-width: 641px) {
+  .board-drawer[data-expanded] {
+    top: 24px;
+    right: max(24px, calc((100vw - 1200px) / 2));
+    bottom: 24px;
+    width: min(1200px, calc(100vw - 48px));
+    border: 1px solid var(--bd-border);
+    border-radius: 12px;
+    box-shadow: var(--bd-expanded-shadow);
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+    --rt-editor-max-height: clamp(160px, calc(100dvh - 440px), 640px);
+  }
+
+  .board-drawer[data-expanded][data-visible] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .board-drawer__expand-button {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
