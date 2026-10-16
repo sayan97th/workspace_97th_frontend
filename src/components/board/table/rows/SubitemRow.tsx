@@ -139,7 +139,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         <div
-          className="flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-3"
+          className="flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-1.5"
           style={{
             height: row_h,
             position: "sticky",
@@ -183,39 +183,28 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
               </span>
             )}
           </div>
-          {/* See `ItemRow`: the hover icons step aside while editing. */}
+          {/* See `ItemRow`: the hover icons step aside while editing and only take width while they show. */}
           {!is_editing && (
             <>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(sub.id); }}
-                title={sub.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
-                className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
-                style={{
-                  color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
-                  opacity: is_hovered || sub.is_priority ? 1 : 0,
-                  pointerEvents: is_hovered || sub.is_priority ? "auto" : "none",
-                }}
-              >
-                <svg viewBox="0 0 16 16" width="12" height="12">
-                  <path
-                    d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
-                    fill={sub.is_priority ? "currentColor" : "none"}
-                    stroke={sub.is_priority ? "none" : "currentColor"}
-                    strokeWidth={sub.is_priority ? undefined : "1.2"}
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); actions.openItem(sub.id); }}
-                title="Open item"
-                className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-                style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
-              >
-                <svg viewBox="0 0 14 14" width="11" height="11"><path d="M5.4 2.6 H2.6 V5.4 M8.6 2.6 H11.4 V5.4 M5.4 11.4 H2.6 V8.6 M8.6 11.4 H11.4 V8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
+              {(is_hovered || sub.is_priority) && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(sub.id); }}
+                  title={sub.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
+                  className="flex h-5 w-5 flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+                  style={{ color: sub.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)" }}
+                >
+                  <svg viewBox="0 0 16 16" width="12" height="12">
+                    <path
+                      d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                      fill={sub.is_priority ? "currentColor" : "none"}
+                      stroke={sub.is_priority ? "none" : "currentColor"}
+                      strokeWidth={sub.is_priority ? undefined : "1.2"}
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              )}
             </>
           )}
         </div>

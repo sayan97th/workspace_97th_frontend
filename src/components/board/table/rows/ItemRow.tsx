@@ -177,7 +177,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         </div>
 
         <div
-          className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-2"
+          className="flex items-center gap-1 border-r border-boardtree-grid pl-2.5 pr-1.5"
           style={{
             height: row_h,
             position: "sticky",
@@ -250,30 +250,30 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               </span>
             )}
           </div>
-          {/* The hover icons step aside while editing so the field spans the whole cell, like monday.com. */}
+          {/* The hover icons step aside while editing so the field spans the whole cell, like monday.com.
+              They are only mounted while they show, so a resting row gives the name the full cell width
+              instead of reserving blank space for invisible icons. The comment icon opens the drawer. */}
           {!is_editing && (
             <>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
-                title={item.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
-                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
-                style={{
-                  color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)",
-                  opacity: is_hovered || item.is_priority ? 1 : 0,
-                  pointerEvents: is_hovered || item.is_priority ? "auto" : "none",
-                }}
-              >
-                <svg viewBox="0 0 16 16" width="13" height="13">
-                  <path
-                    d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
-                    fill={item.is_priority ? "currentColor" : "none"}
-                    stroke={item.is_priority ? "none" : "currentColor"}
-                    strokeWidth={item.is_priority ? undefined : "1.2"}
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </button>
+              {(is_hovered || item.is_priority) && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); actions.toggleNodePriority(item.id); }}
+                  title={item.is_priority ? "Unmark as priority" : "Mark as priority, this task sorts above the rest"}
+                  className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] hover:bg-boardtree-hover-strong"
+                  style={{ color: item.is_priority ? "#fdab3d" : "var(--color-boardtree-text-faint)" }}
+                >
+                  <svg viewBox="0 0 16 16" width="13" height="13">
+                    <path
+                      d="M8 1.7 l1.8 3.9 4.3 .5 -3.2 2.9 .9 4.2 -3.8 -2.2 -3.8 2.2 .9 -4.2 -3.2 -2.9 4.3 -.5z"
+                      fill={item.is_priority ? "currentColor" : "none"}
+                      stroke={item.is_priority ? "none" : "currentColor"}
+                      strokeWidth={item.is_priority ? undefined : "1.2"}
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+              )}
               {item.recurrence && (
                 <span
                   title={`Recurs every ${item.recurrence.interval_count} ${item.recurrence.frequency === "daily" ? "day(s)" : item.recurrence.frequency === "weekly" ? "week(s)" : "month(s)"}`}
@@ -287,24 +287,16 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                   {item.subs.length}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); actions.openItem(item.id); }}
-                title="Open item"
-                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-                style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
-              >
-                <svg viewBox="0 0 14 14" width="12" height="12"><path d="M5.4 2.6 H2.6 V5.4 M8.6 2.6 H11.4 V5.4 M5.4 11.4 H2.6 V8.6 M8.6 11.4 H11.4 V8.6" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </button>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); actions.addSubitem(item.id); }}
-                title="Add subitem"
-                className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
-                style={{ opacity: is_hovered ? 1 : 0, pointerEvents: is_hovered ? "auto" : "none" }}
-              >
-                <svg viewBox="0 0 14 14" width="13" height="13"><circle cx="7" cy="7" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M7 4.6 V9.4 M4.6 7 H9.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-              </button>
+              {is_hovered && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); actions.addSubitem(item.id); }}
+                  title="Add subitem"
+                  className="flex h-[22px] w-[22px] flex-none items-center justify-center rounded-full text-boardtree-text-faint hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
+                >
+                  <svg viewBox="0 0 14 14" width="13" height="13"><circle cx="7" cy="7" r="5.4" fill="none" stroke="currentColor" strokeWidth="1.3" /><path d="M7 4.6 V9.4 M4.6 7 H9.4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
+                </button>
+              )}
             </>
           )}
         </div>
