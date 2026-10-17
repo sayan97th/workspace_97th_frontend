@@ -15,11 +15,20 @@ export type SlackWorkspaceDto = {
   linked_members_count: number;
 };
 
-/** The signed in user's own Slack account, present once they have used "Connect my Slack". */
+/**
+ * The Slack account the signed in user's direct messages go to: their link in the active workspace,
+ * or in a Slack workspace they set up for themselves from My Profile > Integrations.
+ */
 export type SlackUserLinkDto = {
   slack_user_id: string;
   slack_display_name: string | null;
   linked_at: string | null;
+  /** Workspace of the link, older API answers omit these. */
+  team_id?: string;
+  team_name?: string;
+  team_url?: string | null;
+  /** False when the link is in the member's own workspace instead of the account's active one. */
+  is_active_workspace?: boolean;
 };
 
 /**
@@ -46,6 +55,14 @@ export type SlackStatusDto = {
   needs_setup?: boolean;
   /** Frontend path of the Slack setup page, Administration > Integrations > Slack. */
   setup_path?: string;
+  /** True only while no Slack app is in use, the one part of the setup that needs an administrator. */
+  needs_app_setup?: boolean;
+  /** Frontend path where any member sets up Slack for their own account, My Profile > Integrations. */
+  personal_setup_path?: string;
+  /** Whether the signed in user may set up Slack for their own account (app in use and the integrations permission). */
+  can_connect_account?: boolean;
+  /** How many Slack accounts the signed in user connected themselves. */
+  connections_count?: number;
   /** Whether the current user may connect, switch or disconnect workspaces (admin and account owner). */
   can_manage: boolean;
   /** Whether the current user may set up the Slack app itself, a one time setting (admin and account owner). */

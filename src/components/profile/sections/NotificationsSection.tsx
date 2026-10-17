@@ -33,7 +33,7 @@ const CHANNEL_COLUMNS: { channel: ProfileNotificationChannel; label: string; des
 /** My Profile > Notifications, per category in app, email, Slack and desktop preferences plus delivery settings. */
 const NotificationsSection: React.FC<NotificationsSectionProps> = ({ profile }) => {
   const slack = useSlackIntegration();
-  const is_slack_linked = slack.status?.is_connected === true && slack.status.current_user_link !== null;
+  const is_slack_linked = (slack.status?.current_user_link ?? null) !== null;
   const [muted_boards, setMutedBoards] = useState<MutedBoardDto[] | null>(null);
 
   // The list is only fetched once the section is expanded.

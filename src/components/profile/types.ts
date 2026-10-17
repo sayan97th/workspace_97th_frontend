@@ -3,6 +3,7 @@ export type ProfileSectionId =
   | "personal"
   | "working"
   | "notifications"
+  | "integrations"
   | "language"
   | "password"
   | "sessions";

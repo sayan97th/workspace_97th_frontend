@@ -32,6 +32,13 @@ const ProfileGlyph = () => (
     <path d="M3 13 c0-2.8 2.2-4.3 5-4.3 s5 1.5 5 4.3" strokeLinecap="round" />
   </svg>
 );
+const IntegrationsGlyph = () => (
+  <svg {...iconBaseProps}>
+    <rect x="2" y="2" width="5" height="5" rx="1" />
+    <rect x="9" y="9" width="5" height="5" rx="1" />
+    <path d="M11.5 2.5 v4 M9.5 4.5 h4 M4.5 9 v4.5" strokeLinecap="round" />
+  </svg>
+);
 const InvitationsGlyph = () => (
   <svg {...iconBaseProps}>
     <rect x="1.8" y="3.5" width="12.4" height="9" rx="1.2" />
@@ -236,6 +243,8 @@ export type AccountMenuProps = {
   onClose: () => void;
   /** Opens the My Profile dialog owned by the top bar. */
   onOpenProfile?: () => void;
+  /** Opens My Profile > Integrations, where a member connects their own Slack account. */
+  onOpenIntegrations?: () => void;
   /** Opens the invite members flow owned by the top bar. */
   onInviteMembers?: () => void;
   /** Navigates to the Teams directory page, provided by the top bar. */
@@ -269,6 +278,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
   is_open,
   onClose,
   onOpenProfile,
+  onOpenIntegrations,
   onInviteMembers,
   onOpenTeams,
   onOpenInvitations,
@@ -379,6 +389,7 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
 
   const account_items: MenuItem[] = [
     { key: "profile", label: "My profile", icon: <ProfileGlyph />, onSelect: runAndClose(onOpenProfile) },
+    { key: "integrations", label: "My integrations", icon: <IntegrationsGlyph />, onSelect: runAndClose(onOpenIntegrations) },
     { key: "invitations", label: "Invitations", icon: <InvitationsGlyph />, onSelect: runAndClose(onOpenInvitations) },
     { key: "teams", label: "Teams", icon: <TeamsGlyph />, onSelect: runAndClose(onOpenTeams) },
     { key: "trash", label: "Trash", icon: <TrashGlyph />, onSelect: runAndClose(onOpenTrash) },

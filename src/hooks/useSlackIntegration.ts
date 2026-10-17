@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { slackService } from "@/services/slack.service";
 import { listenForSlackAuthorization, openSlackAuthorizationTab } from "@/lib/slackAuthorizationTab";
-import { isSlackSetupError, slackNeedsSetup, slackSetupHref } from "@/lib/slackSetup";
+import { canSetUpOwnSlack, isSlackSetupError, slackNeedsAppSetup, slackNeedsSetup, slackSetupHref, SLACK_PERSONAL_SETUP_PATH } from "@/lib/slackSetup";
 import type { SlackAuthorizationMessage, SlackAuthorizationPurpose, SlackStatusDto } from "@/types/slack";
 
 export type SlackIntegrationApi = {
@@ -33,9 +33,9 @@ export type SlackIntegrationApi = {
   connectWorkspace: (return_path?: string) => Promise<void>;
   disconnectWorkspace: () => Promise<void>;
   /**
-   * Opens "Connect my Slack" in a new tab, pinned to the active workspace. While Slack still needs
-   * its one time setup, administrators are sent to Administration > Integrations > Slack instead
-   * and everyone else is told to ask one.
+   * Opens "Connect my Slack" in a new tab, pinned to the active workspace. Without a workspace the
+   * member is sent to My Profile > Integrations to set Slack up for themselves, and without a Slack
+   * app administrators are sent to Slack settings while everyone else is told to ask one.
    */
   connectMyAccount: (return_path?: string) => Promise<void>;
   disconnectMyAccount: () => Promise<void>;
@@ -256,9 +256,20 @@ export function useSlackIntegration(): SlackIntegrationApi {
     [run]
   );
 
-  /** Sends administrators to the Slack setup page, tells everyone else who can finish it. */
+  /**
+   * Sends a member to the page that finishes the setup: their own Slack setup in My Profile >
+   * Integrations when only the workspace is missing, the administrators' Slack settings when the
+   * app itself is missing. Members who cannot do either are told who can.
+   */
   const redirectToSetup = useCallback(() => {
-    if (status_ref.current?.can_configure_app) {
+    const current_status = status_ref.current;
+
+    if (!slackNeedsAppSetup(current_status) && canSetUpOwnSlack(current_status)) {
+      router.push(SLACK_PERSONAL_SETUP_PATH);
+      return;
+    }
+
+    if (current_status?.can_configure_app) {
       router.push(slackSetupHref("connect"));
       return;
     }

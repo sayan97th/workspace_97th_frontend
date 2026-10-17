@@ -1,4 +1,4 @@
-import { Bell, BriefcaseBusiness, Globe, History, LockKeyhole, UserRound, type LucideIcon } from "lucide-react";
+import { Bell, Blocks, BriefcaseBusiness, Globe, History, LockKeyhole, UserRound, type LucideIcon } from "lucide-react";
 import type { ProfileSectionId } from "./types";
 
 export type ProfileNavItem = {
@@ -29,6 +29,13 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: "Notifications",
     description: "Choose what you hear about and where, in app, by email, on Slack or on your desktop.",
     icon: Bell,
+  },
+  {
+    id: "integrations",
+    label: "Integrations",
+    title: "My integrations",
+    description: "Connect your own Slack account. The Slack app itself is chosen by your administrators.",
+    icon: Blocks,
   },
   {
     id: "language",

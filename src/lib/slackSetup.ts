@@ -7,6 +7,12 @@ import type { SlackStatusDto } from "@/types/slack";
  */
 export const SLACK_SETUP_PATH = "/administration?section=slack";
 
+/**
+ * My Profile > Integrations, where any member sets up Slack for their own account with the Slack
+ * app an administrator chose. It never shows or changes the app itself. Mirrors `SlackStatus::PERSONAL_SETUP_PATH`.
+ */
+export const SLACK_PERSONAL_SETUP_PATH = "/profile?section=integrations";
+
 /** Roles allowed on the Slack setup page, the same `role:super_admin,admin` gate the API routes use. */
 export const SLACK_SETUP_ROLES = ["super_admin", "admin"];
 
@@ -23,6 +29,17 @@ export const slackSetupHref = (reason?: "connect"): string =>
 /** Whether Slack still needs the one time setup, older API answers without `needs_setup` are derived from the flags. */
 export const slackNeedsSetup = (status: SlackStatusDto | null): boolean =>
   status ? status.needs_setup ?? (!status.is_configured || !status.is_connected) : false;
+
+/** Whether the Slack app itself is missing, the only part of the setup a member cannot do on their own. */
+export const slackNeedsAppSetup = (status: SlackStatusDto | null): boolean =>
+  status ? status.needs_app_setup ?? !status.is_configured : false;
+
+/**
+ * Whether the signed in user can set up Slack for their own account right now. Older API answers
+ * without `can_connect_account` fall back to whether the app is set up.
+ */
+export const canSetUpOwnSlack = (status: SlackStatusDto | null): boolean =>
+  status ? status.can_connect_account ?? status.is_configured : false;
 
 /** Whether an API failure means the Slack app or the workspace is missing. */
 export const isSlackSetupError = (failure: unknown): boolean => {

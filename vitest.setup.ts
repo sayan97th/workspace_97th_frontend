@@ -25,6 +25,7 @@ Element.prototype.scrollIntoView ??= () => {};
 const fontStub = () => ({ className: "", variable: "", style: { fontFamily: "" } });
 
 vi.mock("next/font/google", () => ({
+  Figtree: fontStub,
   IBM_Plex_Mono: fontStub,
   IBM_Plex_Sans: fontStub,
 }));

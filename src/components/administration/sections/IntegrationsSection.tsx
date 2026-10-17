@@ -7,7 +7,7 @@ import SlackConnectionCard from "@/components/slack/SlackConnectionCard";
 import IntegrationAppsCard from "@/components/administration/integrations/IntegrationAppsCard";
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from "@/components/administration/slack/slackAdminStyles";
 import { useSlackIntegration } from "@/hooks/useSlackIntegration";
-import { slackNeedsSetup, SLACK_SETUP_PATH } from "@/lib/slackSetup";
+import { canSetUpOwnSlack, slackNeedsAppSetup, slackNeedsSetup, SLACK_PERSONAL_SETUP_PATH, SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 const SLACK_BENEFITS = [
   "Anyone you tag or notify in an update gets a Slack direct message, just like an in-app notification.",
@@ -34,6 +34,8 @@ const IntegrationsSection: React.FC = () => {
   const workspace = status?.workspace ?? null;
   const workspaces_count = status?.workspaces_count ?? 0;
   const needs_setup = slackNeedsSetup(status);
+  // Members set up Slack for their own account in My Profile once the app is in place.
+  const can_set_up_own = !can_manage && !slackNeedsAppSetup(status) && canSetUpOwnSlack(status);
 
   const app_summary = status?.app_name ? ` Using the ${status.app_name} Slack app.` : "";
 
@@ -41,7 +43,9 @@ const IntegrationsSection: React.FC = () => {
   if (!needs_setup && workspace) {
     summary = `Active workspace: ${workspace.team_name}.${workspaces_count > 1 ? ` ${workspaces_count} workspaces are connected.` : ""}${can_manage ? app_summary : ""}`;
   } else if (status?.is_configured) {
-    summary = `The Slack app is set up.${can_manage ? app_summary : ""} Connect a Slack workspace to start sending notifications.`;
+    summary = can_manage
+      ? `The Slack app is set up.${app_summary} Connect a Slack workspace to start sending notifications.`
+      : "The Slack app is set up. Set up Slack for your own account to receive your notifications there.";
   } else {
     summary = "Send notifications and automation messages straight to Slack. Set it up once for the whole account.";
   }
@@ -72,6 +76,10 @@ const IntegrationsSection: React.FC = () => {
             <Link href={SLACK_SETUP_PATH} className={`${needs_setup ? PRIMARY_BUTTON : SECONDARY_BUTTON} flex-none`}>
               {needs_setup ? "Set up Slack" : "Manage Slack"}
             </Link>
+          ) : can_set_up_own ? (
+            <Link href={SLACK_PERSONAL_SETUP_PATH} className={`${needs_setup ? PRIMARY_BUTTON : SECONDARY_BUTTON} flex-none`}>
+              {needs_setup ? "Set up my Slack" : "My Slack accounts"}
+            </Link>
           ) : workspace?.team_url ? (
             <a href={workspace.team_url} target="_blank" rel="noopener noreferrer" className={`${SECONDARY_BUTTON} flex-none`}>
               Open Slack
@@ -79,12 +87,12 @@ const IntegrationsSection: React.FC = () => {
           ) : null}
         </div>
 
-        {needs_setup && !can_manage ? (
-          <div className="mt-4 text-[12.5px] text-shell-text-muted">Ask an account administrator or the account owner to set up Slack for this account.</div>
+        {needs_setup && !can_manage && !can_set_up_own ? (
+          <div className="mt-4 text-[12.5px] text-shell-text-muted">Ask an account administrator or the account owner to add the Slack app for this account.</div>
         ) : null}
       </div>
 
-      {!needs_setup ? (
+      {!needs_setup || (status?.current_user_link ?? null) !== null ? (
         <div className="mt-5">
           <SlackConnectionCard slack={slack} show_messages={false} />
         </div>

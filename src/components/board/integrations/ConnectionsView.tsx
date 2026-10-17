@@ -9,7 +9,7 @@ import { EXTERNAL_APP_ORDER } from "@/lib/externalApps";
 import ExternalAccountsCard from "./ExternalAccountsCard";
 import { EnvelopeIcon, MessageBanner, PRIMARY_BUTTON, SECONDARY_BUTTON, StatusPill } from "./integrationUi";
 import SlackConnectAccountDialog from "./SlackConnectAccountDialog";
-import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
+import { canSetUpOwnSlack, slackNeedsAppSetup, SLACK_PERSONAL_SETUP_PATH, SLACK_SETUP_PATH } from "@/lib/slackSetup";
 
 export type ConnectionsViewProps = {
   slack: SlackIntegrationApi;
@@ -123,8 +123,16 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates,
         {status?.is_configured ? "Add workspace" : "Set up Slack"}
       </Link>
     );
+  } else if (!slackNeedsAppSetup(status) && canSetUpOwnSlack(status)) {
+    // The app is in place, so a member does not need an administrator to set up their own Slack.
+    workspace_description = "The Slack app is ready. Set up Slack for your own account in My Profile, pick your Slack workspace and click Allow.";
+    workspace_action = (
+      <Link href={SLACK_PERSONAL_SETUP_PATH} className={`${PRIMARY_BUTTON} inline-flex items-center`}>
+        Set up my Slack
+      </Link>
+    );
   } else {
-    workspace_description = "An account administrator connects the Slack workspace once for everyone. Ask one to set it up in Administration > Integrations > Slack.";
+    workspace_description = "An account administrator adds the Slack app once for everyone. Ask one to set it up in Administration > Slack settings.";
   }
 
   let account_description: React.ReactNode;
@@ -149,7 +157,10 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates,
       ? "Waiting for Slack. Finish signing in in the new tab."
       : `Sign in with your ${workspace.team_name} account to receive your notifications in Slack.`;
     account_action = (
-      <button type="button" onClick={() => setIsConnectDialogOpen(true)} className={PRIMARY_BUTTON}>Connect my Slack</button>
+      <>
+        <Link href={SLACK_PERSONAL_SETUP_PATH} className={`${SECONDARY_BUTTON} inline-flex items-center`}>Other options</Link>
+        <button type="button" onClick={() => setIsConnectDialogOpen(true)} className={PRIMARY_BUTTON}>Connect my Slack</button>
+      </>
     );
   }
 

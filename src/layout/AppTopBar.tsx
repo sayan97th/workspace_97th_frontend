@@ -28,6 +28,7 @@ import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import NotificationsPanel from "./NotificationsPanel";
 import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TrashModal, type TrashTabId } from "@/components/trash";
+import { SLACK_PERSONAL_SETUP_PATH } from "@/lib/slackSetup";
 import {
   AppsGridIcon,
   BellIcon,
@@ -115,6 +116,9 @@ const AppTopBar: React.FC = () => {
 
   /** "My Profile" is now a routed page (`/profile`) rather than a modal. */
   const openProfile = () => router.push("/profile");
+
+  /** My Profile > Integrations, where any member sets up Slack for their own account. */
+  const openIntegrations = () => router.push(SLACK_PERSONAL_SETUP_PATH);
 
   /** "Teams" is now a routed page (`/teams`) rather than a modal. */
   const openTeams = () => router.push("/teams");
@@ -375,6 +379,7 @@ const AppTopBar: React.FC = () => {
         onOpenOrganization={openOrganization}
         onClose={closeAccount}
         onOpenProfile={openProfile}
+        onOpenIntegrations={openIntegrations}
         onInviteMembers={openInvite}
         onOpenTeams={openTeams}
         onOpenInvitations={openInvitations}

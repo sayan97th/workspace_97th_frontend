@@ -4,7 +4,7 @@ import Link from "next/link";
 import SlackLogo from "@/components/slack/SlackLogo";
 import SlackMessageBanner from "@/components/slack/SlackMessageBanner";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
-import { slackNeedsSetup, slackSetupHref } from "@/lib/slackSetup";
+import { canSetUpOwnSlack, slackNeedsAppSetup, slackNeedsSetup, slackSetupHref, SLACK_PERSONAL_SETUP_PATH } from "@/lib/slackSetup";
 
 export type SlackConnectionCardProps = {
   slack: SlackIntegrationApi;
@@ -35,20 +35,9 @@ const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack, show_m
   let description: React.ReactNode;
   let action: React.ReactNode = null;
 
-  if (slackNeedsSetup(status)) {
-    // Slack is set up once by an administrator before anyone can connect, so send them to that page first.
-    if (status?.can_configure_app) {
-      description = "Slack has to be set up for the account before you can connect your own Slack. It only takes a few minutes and is done once.";
-      action = (
-        <Link href={slackSetupHref("connect")} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
-          Set up Slack
-        </Link>
-      );
-    } else {
-      description = "Slack is not set up for this account yet. Ask an administrator or the account owner to set it up, then connect your Slack here.";
-    }
-  } else if (link) {
-    description = `Connected as ${link.slack_display_name ?? "your Slack account"} in ${workspace_name}. Choose what reaches you in the Slack column below.`;
+  if (link) {
+    const team_name = link.team_name ?? workspace_name;
+    description = `Connected as ${link.slack_display_name ?? "your Slack account"} in ${team_name}. Choose what reaches you in the Slack column below.`;
     action = (
       <div className="flex flex-none gap-2">
         <button type="button" onClick={() => void slack.sendTestMessage()} disabled={slack.is_working} className={SECONDARY_BUTTON}>
@@ -59,14 +48,39 @@ const SlackConnectionCard: React.FC<SlackConnectionCardProps> = ({ slack, show_m
         </button>
       </div>
     );
+  } else if (slackNeedsSetup(status) && !slackNeedsAppSetup(status) && canSetUpOwnSlack(status)) {
+    // The Slack app is ready but no workspace is connected, any member can set Slack up for themselves.
+    description = "Set up Slack for your own account. Slack opens in a new tab, pick your Slack workspace and click Allow.";
+    action = (
+      <Link href={SLACK_PERSONAL_SETUP_PATH} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
+        Set up Slack
+      </Link>
+    );
+  } else if (slackNeedsSetup(status)) {
+    // Only the Slack app itself needs an administrator, so send them to that page first.
+    if (status?.can_configure_app) {
+      description = "Slack has to be set up for the account before you can connect your own Slack. It only takes a few minutes and is done once.";
+      action = (
+        <Link href={slackSetupHref("connect")} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
+          Set up Slack
+        </Link>
+      );
+    } else {
+      description = "Slack is not set up for this account yet. Ask an administrator or the account owner to set it up, then connect your Slack here.";
+    }
   } else {
     description = slack.awaiting_purpose === "link"
       ? `Waiting for Slack. Finish in the new tab, signed in with your ${workspace_name} account.`
       : `Get a Slack message from the app when someone tags you, assigns you or an automation notifies you. Slack opens in a new tab, sign in with your ${workspace_name}${workspace_domain ? ` (${workspace_domain})` : ""} account.`;
     action = (
-      <button type="button" onClick={() => void slack.connectMyAccount()} disabled={slack.is_working} className={`${PRIMARY_BUTTON} flex-none whitespace-nowrap`}>
-        {slack.is_working ? "Opening Slack…" : "Connect my Slack"}
-      </button>
+      <div className="flex flex-none items-center gap-2">
+        <Link href={SLACK_PERSONAL_SETUP_PATH} className={`${SECONDARY_BUTTON} whitespace-nowrap`}>
+          Other options
+        </Link>
+        <button type="button" onClick={() => void slack.connectMyAccount()} disabled={slack.is_working} className={`${PRIMARY_BUTTON} whitespace-nowrap`}>
+          {slack.is_working ? "Opening Slack…" : "Connect my Slack"}
+        </button>
+      </div>
     );
   }
 

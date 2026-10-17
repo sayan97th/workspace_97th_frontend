@@ -12,6 +12,7 @@ import type { ProfileSectionId } from "./types";
 import PersonalInfoSection from "./sections/PersonalInfoSection";
 import WorkingStatusSection from "./sections/WorkingStatusSection";
 import NotificationsSection from "./sections/NotificationsSection";
+import IntegrationsSection from "./sections/IntegrationsSection";
 import LanguageRegionSection from "./sections/LanguageRegionSection";
 import PasswordSection from "./sections/PasswordSection";
 import SessionHistorySection from "./sections/SessionHistorySection";
@@ -49,6 +50,8 @@ const ProfileView: React.FC = () => {
         return <WorkingStatusSection profile={profile} />;
       case "notifications":
         return <NotificationsSection profile={profile} />;
+      case "integrations":
+        return <IntegrationsSection onOpenNotifications={() => profile.selectSection("notifications")} />;
       case "language":
         return <LanguageRegionSection profile={profile} />;
       case "password":
