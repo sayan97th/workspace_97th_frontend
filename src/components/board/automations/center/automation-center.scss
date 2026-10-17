@@ -331,6 +331,81 @@ html.dark .automation-center {
   color: var(--ac-text-faint);
 }
 
+/* Integrations sidebar search, finds the events and functions of every app. */
+
+.automation-center__sidebar-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: -8px 0 -4px;
+
+  input {
+    width: 100%;
+    height: 32px;
+    padding: 0 28px 0 30px;
+    border: 1px solid var(--ac-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--ac-text);
+    background: var(--ac-surface);
+    outline: none;
+    transition: border-color 120ms ease;
+
+    &::placeholder {
+      color: var(--ac-text-faint);
+    }
+
+    &:focus {
+      border-color: var(--ac-accent);
+    }
+
+    &::-webkit-search-cancel-button {
+      display: none;
+    }
+  }
+
+  @media (max-width: $phone) {
+    display: none;
+  }
+}
+
+.automation-center__sidebar-search-icon {
+  position: absolute;
+  left: 10px;
+  display: flex;
+  color: var(--ac-text-faint);
+  pointer-events: none;
+}
+
+.automation-center__sidebar-search-clear {
+  position: absolute;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--ac-text-faint);
+
+  &:hover {
+    color: var(--ac-text-secondary);
+    background: var(--ac-hover);
+  }
+}
+
+.automation-center__nav-app {
+  flex: none;
+  font-size: 11.5px;
+  color: var(--ac-text-faint);
+}
+
+.automation-center__sidebar-empty {
+  padding: 4px 12px;
+  font-size: 12.5px;
+  color: var(--ac-text-faint);
+}
+
 .automation-center__divider {
   height: 1px;
   margin: 0 12px;

@@ -3,15 +3,17 @@ import React from "react";
 import type { IntegrationAppOverviewDto } from "@/types/integration-overview";
 import RecipeCard from "../builder/RecipeCard";
 import type { AutomationRecipe } from "../builder/automationTemplates";
-import IntegrationAppBanner, { BackToIntegrations } from "../center/IntegrationAppBanner";
-import { builderRecipesForApp } from "../center/centerNav";
-import { COMMUNICATION_TEMPLATES } from "../communicationTemplates";
+import IntegrationAppBanner, { BackToIntegrations, IntegrationEventFilter } from "../center/IntegrationAppBanner";
+import { builderRecipesForApp, integrationEventOf, recipeEvent, type IntegrationEventKey } from "../center/centerNav";
 import SlackRecipeCard from "./SlackRecipeCard";
-import { SLACK_RECIPES, isCoveredBySlackRecipe, slackRecipeFor, type SlackRecipe } from "./slackRecipes";
+import { ALL_SLACK_RECIPES, type SlackRecipe } from "./slackRecipes";
 
 export type SlackAppPageProps = {
   /** Lower case search text from the center's search box. */
   search: string;
+  /** Only the recipes of this event, picked in the sidebar, null for all of them. */
+  event?: IntegrationEventKey | null;
+  onClearEvent?: () => void;
   /** The signed in user's Slack status, for the banner. */
   overview?: IntegrationAppOverviewDto | null;
   onBack: () => void;
@@ -23,26 +25,21 @@ export type SlackAppPageProps = {
 /** Slack's brand aubergine, the banner and the whole connect and recipe flow use it like monday.com. */
 export const SLACK_PURPLE = "#4a154b";
 
-/** monday.com's Slack recipes first, then the Slack templates none of them covers, such as a new subitem. */
-const ALL_SLACK_RECIPES: SlackRecipe[] = [
-  ...SLACK_RECIPES,
-  ...COMMUNICATION_TEMPLATES.filter((template) => template.channel !== "email" && !isCoveredBySlackRecipe(template))
-    .map((template) => slackRecipeFor(template.trigger, template.channel))
-    .filter((recipe): recipe is SlackRecipe => recipe !== null),
-];
-
 /**
  * The Slack app inside the Integrations dialog, monday.com's integration
  * page: a banner saying what the integration does, then every Slack recipe as a card. "Use
  * template" starts the flow that connects a Slack account and fills the recipe.
  */
-export default function SlackAppPage({ search, overview = null, onBack, onUse, onUseRecipe }: SlackAppPageProps) {
-  const recipes = ALL_SLACK_RECIPES.filter((recipe) => recipe.search_text.includes(search));
-  const builder_recipes = onUseRecipe ? builderRecipesForApp("slack").filter((recipe) => recipe.title.replaceAll("**", "").toLowerCase().includes(search)) : [];
+export default function SlackAppPage({ search, event = null, onClearEvent = () => {}, overview = null, onBack, onUse, onUseRecipe }: SlackAppPageProps) {
+  const recipes = ALL_SLACK_RECIPES.filter((recipe) => recipe.search_text.includes(search) && (!event || integrationEventOf(recipe.trigger) === event));
+  const builder_recipes = onUseRecipe
+    ? builderRecipesForApp("slack").filter((recipe) => recipe.title.replaceAll("**", "").toLowerCase().includes(search) && (!event || recipeEvent(recipe) === event))
+    : [];
 
   return (
     <div>
       <BackToIntegrations onBack={onBack} />
+      <IntegrationEventFilter event={event} count={recipes.length + builder_recipes.length} onClear={onClearEvent} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="sm:col-span-2">

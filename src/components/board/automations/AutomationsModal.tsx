@@ -319,6 +319,8 @@ function AutomationCenter(props: AutomationsModalProps) {
   let integration_content: React.ReactNode = null;
   if (is_on_gallery && page.section === "integrations") {
     const back = () => openIntegration("overview");
+    const event = page.event ?? null;
+    const clearEvent = () => navigate({ section: "integrations", page: page.page });
     if (page.page === "overview" || (!has_automations && page.page !== "connections")) {
       integration_content = <IntegrationsOverview overview={overview} search={search_text} has_automations={has_automations} onOpenApp={openIntegration} onOpenConnections={() => openIntegration("connections")} />;
     } else if (page.page === "connections") {
@@ -327,12 +329,12 @@ function AutomationCenter(props: AutomationsModalProps) {
       );
     } else if (page.page === "email") {
       integration_content = (
-        <EmailAppPage search={search_text} columns={item_columns} people={people} slack={slack_options} overview={overview.appFor("email")} onBack={back} onCreate={props.onCreate} onCreated={finishIntegration} onUseRecipe={useRecipe} />
+        <EmailAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("email")} onBack={back} onUseRecipe={useRecipe} />
       );
     } else if (page.page === "slack") {
-      integration_content = <SlackAppPage search={search_text} overview={overview.appFor("slack")} onBack={back} onUse={setSlackRecipe} onUseRecipe={useRecipe} />;
+      integration_content = <SlackAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("slack")} onBack={back} onUse={setSlackRecipe} onUseRecipe={useRecipe} />;
     } else {
-      integration_content = <ConnectedAppPage app={page.page} search={search_text} overview={overview.appFor(page.page)} onBack={back} onUse={startConnectedRecipe} />;
+      integration_content = <ConnectedAppPage app={page.page} search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor(page.page)} onBack={back} onUse={startConnectedRecipe} />;
     }
   }
 

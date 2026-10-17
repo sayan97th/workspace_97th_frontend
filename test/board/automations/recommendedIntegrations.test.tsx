@@ -148,8 +148,37 @@ describe("Recommended category", () => {
     expect(labelsOf("Calendar")).toEqual(["Google Calendar"]);
     expect(labelsOf("Setup")).toEqual(["Connections"]);
 
-    await user.click(within(screen.getByRole("group", { name: "Email" })).getByRole("button", { name: /Gmail/ }));
-    expect(onNavigate).toHaveBeenCalledWith({ section: "integrations", page: "gmail" });
+    await user.click(within(screen.getByRole("group", { name: "Email" })).getByRole("button", { name: /^Gmail/ }));
+    expect(onNavigate).toHaveBeenCalledWith({ section: "integrations", page: "gmail", event: null });
+  });
+
+  it("finds the events and functions of every app from the sidebar search", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    const overview = { apps: [], can_manage: false, is_loading: false, appFor: () => null, reload: vi.fn() };
+    render(<AutomationCenterSidebar variant="integrations" page={{ section: "integrations", page: "overview" }} onNavigate={onNavigate} overview={overview} has_automations saved_count={0} account_count={0} />);
+
+    await user.type(screen.getByRole("searchbox", { name: "Search integration events or functions" }), "status");
+    expect(screen.queryByRole("group", { name: "Communication" })).not.toBeInTheDocument();
+    const results = screen.getByRole("group", { name: /result/ });
+    const rows = within(results).getAllByRole("button");
+    expect(rows.map(navLabel)).toContain("Status changes");
+    expect(rows.some((row) => row.textContent?.includes("Slack"))).toBe(true);
+
+    await user.click(rows.find((row) => navLabel(row) === "Status changes" && row.textContent?.includes("Slack"))!);
+    expect(onNavigate).toHaveBeenLastCalledWith({ section: "integrations", page: "slack", event: "status_changed" });
+
+    // A function's words find it too, such as a weekly email.
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), "every time period");
+    expect(within(screen.getByRole("group", { name: /result/ })).getAllByRole("button").map(navLabel)).toContain("Scheduled");
+
+    await user.clear(screen.getByRole("searchbox"));
+    await user.type(screen.getByRole("searchbox"), "zzz");
+    expect(screen.getByText("No events or functions match your search.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear search" }));
+    expect(screen.getByRole("group", { name: "Communication" })).toBeInTheDocument();
   });
 
   it("only lists the integrations overview and connections without a Table view", () => {

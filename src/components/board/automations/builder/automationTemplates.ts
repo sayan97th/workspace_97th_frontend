@@ -1,6 +1,7 @@
 import type { BoardAutomationAction, BoardAutomationCondition, BoardAutomationDefinition, BoardAutomationTriggerType } from "@/types/board-automation";
 import type { ExternalService } from "@/types/external-account";
 import type { ColumnKind } from "../../table/types";
+import type { CommunicationTemplate, CommunicationTrigger } from "../communicationTemplates";
 import { browserTimezone, type AutomationBuilderContext } from "./automationCatalog";
 
 /**
@@ -91,6 +92,35 @@ const weekly = () => ({ schedule: { frequency: "weekly" as const, weekdays: [1],
 
 const notifyAssignees = (context: AutomationBuilderContext): BoardAutomationAction => ({ type: "notify_person", params: withColumn("notify_from_people_column_id", people(context), {}) });
 const emailAssignees = (context: AutomationBuilderContext): BoardAutomationAction => ({ type: "send_email", params: withColumn("notify_from_people_column_id", people(context), {}) });
+
+/**
+ * "Send an email" with the recipient most people want for what set it off: the item creator hears
+ * when the work they asked for changes status, the people assigned when their date arrives, you
+ * when new work comes in, the person just assigned, and everyone following the item when a column
+ * changes or an update is posted. Falls back to the item creator when the table lacks the column.
+ */
+const emailFor = (trigger: BoardAutomationTriggerType, context: AutomationBuilderContext, trigger_column_id: number | null = null): BoardAutomationAction => {
+  const email = (params: BoardAutomationAction["params"]): BoardAutomationAction => ({ type: "send_email", params });
+  const creator = email({ recipient_source: "creator" });
+  switch (trigger) {
+    case "date_arrived":
+    case "item_scan": {
+      const people_column_id = people(context);
+      return people_column_id ? email({ notify_from_people_column_id: people_column_id }) : creator;
+    }
+    case "person_assigned":
+      return trigger_column_id ? email({ notify_from_people_column_id: trigger_column_id }) : creator;
+    case "item_created":
+    case "subitem_created":
+    case "recurring":
+      return context.viewer_id ? email({ notify_user_id: Number(context.viewer_id) }) : email({ recipient_source: "owner" });
+    case "column_changed":
+    case "update_posted":
+      return email({ recipient_source: "subscribers" });
+    default:
+      return creator;
+  }
+};
 const changeStatus = (context: AutomationBuilderContext): BoardAutomationAction => ({ type: "set_column_value", params: withColumn("target_column_id", pick(context, ["status"]), {}) });
 const moveToGroup = (): BoardAutomationAction => ({ type: "move_to_group", params: {} });
 
@@ -220,7 +250,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "When **status** changes to **something**, send an **email** to **someone**",
     apps: ["email"],
     requires: [NEEDS.status],
-    build: (context) => define("status_changed", status(context), [emailAssignees(context)]),
+    build: (context) => define("status_changed", status(context), [emailFor("status_changed", context)]),
   },
   {
     id: "webhook_create_item",
@@ -555,7 +585,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "**When date** arrives and **status is something**, send an **email** to **someone**",
     apps: ["email"],
     requires: [NEEDS.date, NEEDS.status],
-    build: (context) => define("date_arrived", date(context), [emailAssignees(context)], { trigger_config: dayConfig(), conditions: condition(status(context), "is") }),
+    build: (context) => define("date_arrived", date(context), [emailFor("date_arrived", context)], { trigger_config: dayConfig(), conditions: condition(status(context), "is") }),
   },
   {
     id: "item_created_email",
@@ -563,7 +593,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "When a new item is created, send an **email** to **someone**",
     apps: ["email"],
     requires: [],
-    build: () => define("item_created", null, [{ type: "send_email", params: {} }]),
+    build: (context) => define("item_created", null, [emailFor("item_created", context)]),
   },
   {
     id: "item_created_slack_channel",
@@ -595,7 +625,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "**Every time period**, if **status is something**, send an **email** to **someone**",
     apps: ["email"],
     requires: [NEEDS.status],
-    build: (context) => define("item_scan", null, [emailAssignees(context)], { trigger_config: weekly(), conditions: condition(status(context), "is") }),
+    build: (context) => define("item_scan", null, [emailFor("item_scan", context)], { trigger_config: weekly(), conditions: condition(status(context), "is") }),
   },
   {
     id: "status_from_to_email",
@@ -603,7 +633,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "When **status** changes from **something** to **something else**, send an **email** to **someone**",
     apps: ["email"],
     requires: [NEEDS.status],
-    build: (context) => define("status_changed", status(context), [emailAssignees(context)]),
+    build: (context) => define("status_changed", status(context), [emailFor("status_changed", context)]),
   },
   {
     id: "update_slack_channel",
@@ -619,7 +649,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "**Every time period**, send an **email** to **someone**",
     apps: ["email"],
     requires: [],
-    build: () => define("recurring", null, [{ type: "send_email", params: {} }], { trigger_config: weekly() }),
+    build: (context) => define("recurring", null, [emailFor("recurring", context)], { trigger_config: weekly() }),
   },
   {
     id: "item_created_notify_team",
@@ -635,7 +665,7 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     title: "When **a column** changes, send an **email** to **someone**",
     apps: ["email"],
     requires: [],
-    build: (context) => define("column_changed", pick(context, ["status", "dropdown", "number", "checkbox", "text", "date"]), [emailAssignees(context)]),
+    build: (context) => define("column_changed", pick(context, ["status", "dropdown", "number", "checkbox", "text", "date"]), [emailFor("column_changed", context)]),
   },
   {
     id: "status_notify_team",
@@ -798,4 +828,35 @@ export function missingColumns(requires: RecipeColumnNeed[], context: Automation
     const matching = context.columns.filter((column) => column.scope === need.scope && (column.kind === need.kind || (need.kind === "status" && column.kind === "label")));
     return matching.length <= nth;
   });
+}
+
+/** The trigger half of an email template: its column, picked from the table when one fits, and what that needs. */
+const EMAIL_TRIGGERS: Record<CommunicationTrigger, { requires: RecipeColumnNeed[]; column: (context: AutomationBuilderContext) => number | null; extra?: () => Partial<BoardAutomationDefinition> }> = {
+  status_changed: { requires: [NEEDS.status], column: status },
+  date_arrived: { requires: [NEEDS.date], column: (context) => date(context), extra: () => ({ trigger_config: dayConfig() }) },
+  item_created: { requires: [], column: () => null },
+  subitem_created: { requires: [], column: () => null },
+  person_assigned: { requires: [NEEDS.people], column: people },
+  column_changed: { requires: [], column: (context) => pick(context, ["status", "dropdown", "number", "checkbox", "text", "date"]) },
+  update_posted: { requires: [], column: () => null },
+};
+
+/**
+ * An email template of the Integrations dialog as a builder recipe, so "Use template" opens the
+ * sentence builder ("When Date arrives, then send an email to someone") with every token clickable,
+ * like any other recipe.
+ */
+export function emailTemplateRecipe(template: CommunicationTemplate): AutomationRecipe {
+  const trigger = EMAIL_TRIGGERS[template.trigger];
+  return {
+    id: `email_template:${template.id}`,
+    categories: ["communication"],
+    title: template.title,
+    apps: ["email"],
+    requires: trigger.requires,
+    build: (context) => {
+      const column_id = trigger.column(context);
+      return define(template.trigger, column_id, [emailFor(template.trigger, context, column_id)], trigger.extra?.() ?? {});
+    },
+  };
 }

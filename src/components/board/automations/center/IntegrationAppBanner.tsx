@@ -1,7 +1,7 @@
 import React from "react";
 import type { IntegrationAppKey, IntegrationAppOverviewDto } from "@/types/integration-overview";
 import IntegrationAppLogo from "./IntegrationAppLogo";
-import { INTEGRATION_STATUS_LABELS, integrationAppMeta } from "./centerNav";
+import { INTEGRATION_STATUS_LABELS, integrationAppMeta, integrationEventLabel, type IntegrationEventKey } from "./centerNav";
 import "./automation-center.scss";
 
 export type IntegrationAppBannerProps = {
@@ -34,6 +34,21 @@ export default function IntegrationAppBanner({ app, tagline, hint, overview = nu
         )}
       </div>
     </section>
+  );
+}
+
+/** Says an app page only lists one event's templates, picked in the sidebar, with a way back to all of them. */
+export function IntegrationEventFilter({ event, count, onClear }: { event: IntegrationEventKey | null; count: number; onClear: () => void }) {
+  if (!event) return null;
+  return (
+    <div role="status" className="mb-4 flex flex-wrap items-center gap-2 text-[13px] text-boardtree-text-secondary">
+      <span>
+        Showing {count} {count === 1 ? "template" : "templates"} for <strong className="font-semibold text-boardtree-text">{integrationEventLabel(event)}</strong>
+      </span>
+      <button type="button" onClick={onClear} className="font-medium text-boardtree-accent hover:underline">
+        Show all
+      </button>
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-import type { CommunicationChannel, CommunicationTemplate, CommunicationTrigger } from "../communicationTemplates";
+import { COMMUNICATION_TEMPLATES, type CommunicationChannel, type CommunicationTemplate, type CommunicationTrigger } from "../communicationTemplates";
 
 /** Where a Slack recipe delivers: a channel of the chosen Slack account, or people as direct messages. */
 export type SlackRecipeTarget = "channel" | "person";
@@ -137,3 +137,11 @@ export const isCoveredBySlackRecipe = (template: CommunicationTemplate): boolean
 
 /** The template card badge of a recipe. */
 export const recipeChannel = (recipe: SlackRecipe): CommunicationChannel => (recipe.target === "channel" ? "slack_channel" : "slack_person");
+
+/** monday.com's Slack recipes first, then the Slack templates none of them covers, such as a new subitem. Every recipe the Slack app page lists. */
+export const ALL_SLACK_RECIPES: SlackRecipe[] = [
+  ...SLACK_RECIPES,
+  ...COMMUNICATION_TEMPLATES.filter((template) => template.channel !== "email" && !isCoveredBySlackRecipe(template))
+    .map((template) => slackRecipeFor(template.trigger, template.channel))
+    .filter((recipe): recipe is SlackRecipe => recipe !== null),
+];

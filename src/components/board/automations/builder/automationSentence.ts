@@ -130,8 +130,8 @@ export function recipientLabel(context: AutomationBuilderContext, params: BoardA
   const person_ids = [...new Set([params.notify_user_id, ...(params.notify_user_ids ?? [])].filter((id): id is number => Boolean(id)))];
   for (const id of person_ids) recipients.push(context.viewer_id && String(id) === context.viewer_id ? "Me" : personLabel(context, id));
   for (const id of params.notify_team_ids ?? []) recipients.push(context.teams?.find((team) => team.id === id)?.name ?? "a team");
-  if (params.recipient_source) recipients.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
-  if (params.notify_from_people_column_id) recipients.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  if (params.recipient_source) recipients.push(`the ${RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase()}`);
+  if (params.notify_from_people_column_id) recipients.push(`everyone in ${columnLabel(context, params.notify_from_people_column_id)}`);
   const parts: string[] = recipients.length > 2 ? [`${recipients.slice(0, 2).join(", ")} +${recipients.length - 2}`] : recipients;
   if (params.email_column_id) parts.push(`the address in ${columnLabel(context, params.email_column_id)}`);
   const addresses = params.email_addresses ?? [];
@@ -602,14 +602,14 @@ export function actionParts(action: BoardAutomationAction, context: AutomationBu
   }
 }
 
-/** `Ada and Grace`, `people in Owner`, `the team Design`, `the item creator`: who a subscribe, unsubscribe or digest action names. */
+/** `Ada and Grace`, `everyone in Owner`, `the team Design`, `the item creator`: who a subscribe, unsubscribe or digest action names. */
 export function peopleSelectionLabel(context: AutomationBuilderContext, params: BoardAutomationActionParams): string {
   const parts: string[] = [];
   const ids = params.user_ids ?? [];
   if (ids.length === 1) parts.push(personLabel(context, ids[0]));
   else if (ids.length === 2) parts.push(`${personLabel(context, ids[0])} and ${personLabel(context, ids[1])}`);
   else if (ids.length > 2) parts.push(`${ids.length} people`);
-  if (params.notify_from_people_column_id) parts.push(`people in ${columnLabel(context, params.notify_from_people_column_id)}`);
+  if (params.notify_from_people_column_id) parts.push(`everyone in ${columnLabel(context, params.notify_from_people_column_id)}`);
   if (params.team_id) parts.push(`the team ${teamLabel(context, params.team_id)}`);
   if (params.recipient_source) parts.push(RECIPIENT_SOURCE_LABELS[params.recipient_source].toLowerCase());
   return parts.length ? parts.join(" and ") : "people";

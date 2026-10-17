@@ -108,7 +108,7 @@ describe("people, subitem and digest actions", () => {
   test("a recipient source counts as a recipient", () => {
     const draft = withTrigger({ trigger_type: "item_created", actions: [{ ...actionFromPicker("notify_person", context), params: { recipient_source: "subscribers" } }] });
     expect(draftProblems(draft, context)).toEqual([]);
-    expect(recipientLabel(context, { recipient_source: "subscribers" })).toBe("item subscribers");
+    expect(recipientLabel(context, { recipient_source: "subscribers" })).toBe("the item subscribers");
   });
 
   test("a digest starts with columns to show and needs recipients and complete rules", () => {

@@ -5,13 +5,17 @@ import type { ExternalService } from "@/types/external-account";
 import type { IntegrationAppOverviewDto } from "@/types/integration-overview";
 import type { AutomationRecipe } from "../builder/automationTemplates";
 import RecipeCard from "../builder/RecipeCard";
-import IntegrationAppBanner, { BackToIntegrations } from "../center/IntegrationAppBanner";
+import IntegrationAppBanner, { BackToIntegrations, IntegrationEventFilter } from "../center/IntegrationAppBanner";
+import { recipeEvent, type IntegrationEventKey } from "../center/centerNav";
 import { recipesForApp } from "./connectedRecipes";
 
 export type ConnectedAppPageProps = {
   app: ExternalService;
   /** Lower case search text from the center's search box. */
   search: string;
+  /** Only the recipes of this event, picked in the sidebar, null for all of them. */
+  event?: IntegrationEventKey | null;
+  onClearEvent?: () => void;
   /** The signed in user's status with the app, for the banner. */
   overview?: IntegrationAppOverviewDto | null;
   onBack: () => void;
@@ -22,13 +26,14 @@ export type ConnectedAppPageProps = {
  * One app of the Integrations dialog, monday.com's integration page: a
  * banner in the app's colour saying what the integration does, then every recipe that uses it.
  */
-export default function ConnectedAppPage({ app, search, overview = null, onBack, onUse }: ConnectedAppPageProps) {
+export default function ConnectedAppPage({ app, search, event = null, onClearEvent = () => {}, overview = null, onBack, onUse }: ConnectedAppPageProps) {
   const meta = EXTERNAL_APPS[app];
-  const recipes = recipesForApp(app).filter((recipe) => `${recipe.title.replaceAll("**", "")} ${meta.label}`.toLowerCase().includes(search));
+  const recipes = recipesForApp(app).filter((recipe) => `${recipe.title.replaceAll("**", "")} ${meta.label}`.toLowerCase().includes(search) && (!event || recipeEvent(recipe) === event));
 
   return (
     <div>
       <BackToIntegrations onBack={onBack} />
+      <IntegrationEventFilter event={event} count={recipes.length} onClear={onClearEvent} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="sm:col-span-2">
