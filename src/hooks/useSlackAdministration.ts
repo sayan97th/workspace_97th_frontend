@@ -11,8 +11,8 @@ import type {
   SlackWorkspacesResponse,
 } from "@/types/slack";
 
-/** What an administration action is running on: a workspace id, the credentials form, the app selection or the email match. */
-export type SlackAdministrationBusyKey = number | "credentials" | "select_app" | "match" | null;
+/** What an administration action is running on: a workspace id, the credentials form, the app selection, the email match or the invitations setting. */
+export type SlackAdministrationBusyKey = number | "credentials" | "select_app" | "match" | "invitations" | null;
 
 export type SlackAdministrationApi = {
   workspaces: SlackConnectedWorkspaceDto[];
@@ -23,6 +23,8 @@ export type SlackAdministrationApi = {
   /** Resolves to true when the workspace was disconnected. */
   disconnectWorkspace: (workspace_id: number) => Promise<boolean>;
   matchMembers: () => Promise<void>;
+  /** Turns Slack invitations on or off for one workspace. */
+  setNotifyInvitations: (workspace_id: number, notify_invitations: boolean) => Promise<void>;
   /** Creates a Slack app from a configuration token, resolves to true when it worked. */
   createApp: (configuration_token: string, label: string | null) => Promise<boolean>;
   /** Saves a new app, or updates the saved app `app_id`. Resolves to true when the credentials were saved. */
@@ -117,6 +119,18 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     if (response) applyWorkspaces(response);
   }, [applyWorkspaces, runAction]);
 
+  const setNotifyInvitations = useCallback(
+    async (workspace_id: number, notify_invitations: boolean) => {
+      const response = await runAction(
+        "invitations",
+        () => slackService.updateWorkspaceSettings(workspace_id, { notify_invitations }),
+        "Failed to update the Slack invitations setting."
+      );
+      if (response) applyWorkspaces(response);
+    },
+    [applyWorkspaces, runAction]
+  );
+
   const applyCredentials = useCallback(
     async (response: (SlackAppCredentialsDto & { message: string }) | null) => {
       if (!response) return false;
@@ -173,6 +187,7 @@ export function useSlackAdministration(slack: SlackIntegrationApi, can_manage: b
     activateWorkspace,
     disconnectWorkspace,
     matchMembers,
+    setNotifyInvitations,
     createApp,
     saveCredentials,
     removeCredentials,

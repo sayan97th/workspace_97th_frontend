@@ -13,6 +13,7 @@ const SLACK_BENEFITS = [
   "Anyone you tag or notify in an update gets a Slack direct message, just like an in-app notification.",
   "Automations can post to a Slack channel or message a person when a status, date or column changes.",
   "Members are matched to Slack by email, anyone else connects their own account and chooses what reaches them from My Profile.",
+  "People invited to a workspace or a board also get the invitation in Slack when their email is in the connected Slack workspace, no sign in needed.",
 ];
 
 /**

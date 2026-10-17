@@ -9,6 +9,7 @@ import SlackSetupSteps from "@/components/administration/slack/SlackSetupSteps";
 import SlackAppCredentialsCard from "@/components/administration/slack/SlackAppCredentialsCard";
 import SlackWorkspacesCard from "@/components/administration/slack/SlackWorkspacesCard";
 import SlackMembersCard from "@/components/administration/slack/SlackMembersCard";
+import SlackInvitationsCard from "@/components/administration/slack/SlackInvitationsCard";
 import { SLACK_DIAGNOSTICS_PATH, SLACK_TEST_ROLES } from "@/components/slack-test/slackTestNav";
 import { useAuth } from "@/context/AuthContext";
 import { SECONDARY_BUTTON, SECTION_CARD, SECTION_HINT, SECTION_TITLE } from "@/components/administration/slack/slackAdminStyles";
@@ -40,6 +41,7 @@ const SlackSettingsView: React.FC = () => {
   const admin = useSlackAdministration(slack, status?.can_manage ?? false, status?.can_configure_app ?? false);
 
   const workspace = status?.workspace ?? null;
+  const active_workspace = admin.workspaces.find((connected) => connected.is_active) ?? null;
   const needs_setup = slackNeedsSetup(status);
   const came_from_connect = search_params.get(SLACK_SETUP_REASON_PARAM) === "connect";
 
@@ -88,6 +90,8 @@ const SlackSettingsView: React.FC = () => {
           <SlackWorkspacesCard slack={slack} admin={admin} />
 
           {workspace ? <SlackMembersCard workspace={workspace} admin={admin} /> : null}
+
+          {active_workspace ? <SlackInvitationsCard workspace={active_workspace} admin={admin} /> : null}
 
           {!needs_setup ? (
             <section className={`${SECTION_CARD} flex flex-wrap items-center justify-between gap-3`}>

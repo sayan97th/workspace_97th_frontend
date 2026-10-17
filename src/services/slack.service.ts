@@ -94,6 +94,11 @@ export const slackService = {
     return apiClient.post<SlackWorkspacesResponse>(`/api/integrations/slack/workspaces/${workspace_id}/activate`);
   },
 
+  /** PATCH /api/integrations/slack/workspaces/{id}, administrators only. Per workspace settings. */
+  async updateWorkspaceSettings(workspace_id: number, payload: { notify_invitations: boolean }): Promise<SlackWorkspacesResponse> {
+    return apiClient.patch<SlackWorkspacesResponse>(`/api/integrations/slack/workspaces/${workspace_id}`, payload);
+  },
+
   /** DELETE /api/integrations/slack/workspaces/{id}, administrators only. */
   async disconnectWorkspaceById(workspace_id: number): Promise<SlackWorkspacesResponse> {
     return apiClient.delete<SlackWorkspacesResponse>(`/api/integrations/slack/workspaces/${workspace_id}`);

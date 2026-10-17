@@ -132,6 +132,10 @@ export type SlackConnectedWorkspaceDto = {
   linked_members_count: number;
   /** Bot scopes this workspace was installed without, "Reconnect" grants them. */
   missing_scopes: string[];
+  /** Workspace and board invitations also go out as a Slack direct message. */
+  notify_invitations: boolean;
+  /** Whether the app can find invitees by email (`users:read.email`), otherwise only linked members get them. */
+  can_lookup_by_email: boolean;
   /** Which Slack app installed it, null when it matches no known app. */
   app?: { key: SlackAppKey; name: string } | null;
 };
