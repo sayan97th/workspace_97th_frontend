@@ -1,0 +1,67 @@
+/* Shared dark tooltip bubble for `PortalTooltip`, same look as the My Profile tooltip. */
+
+:root {
+  --portal-tooltip-bg: #323338;
+}
+
+html.dark {
+  --portal-tooltip-bg: #3a4747;
+}
+
+.portal-tooltip-trigger {
+  display: inline-flex;
+  min-width: 0;
+}
+
+.portal-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  background: var(--portal-tooltip-bg);
+  color: #ffffff;
+  font-family: var(--font-outfit);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  animation: portal-tooltip-in 120ms ease-out;
+}
+
+.portal-tooltip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.portal-tooltip[data-placement="top"] {
+  transform: translate(-50%, -100%);
+}
+
+.portal-tooltip[data-placement="top"]::after {
+  bottom: -4px;
+}
+
+.portal-tooltip[data-placement="bottom"] {
+  transform: translate(-50%, 0);
+}
+
+.portal-tooltip[data-placement="bottom"]::after {
+  top: -4px;
+}
+
+@keyframes portal-tooltip-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

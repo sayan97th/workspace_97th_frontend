@@ -3,35 +3,36 @@ import React, { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   INVITATION_MANAGER_ROLES,
+  InvitationStatCards,
   InvitationsFilterBar,
+  InvitationsPager,
   InvitationsTable,
   SendInvitationModal,
   canManageWorkspaceInvitations,
   useInvitations,
+  INVITATIONS_PER_PAGE,
 } from "@/components/invitations";
+import type { InvitationStatFilter } from "@/components/invitations";
+import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import { useWorkspaces } from "@/context/WorkspaceContext";
 import { useAuth } from "@/context/AuthContext";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
-import { ChevronRightIcon, PlusIcon } from "@/icons/workspace-icons";
+import { AlertCircleIcon, ChevronLeftIcon, PlusIcon } from "@/icons/workspace-icons";
+import type { WorkspaceInvitation } from "@/types/invitation";
 
 /**
- * "Sent invitations" — a standalone page (not a modal) listing every
- * invitation ever sent for a workspace: server-side search, single-select
- * status/role filters, column sorting, an "invited at" date range, revoking a
- * pending invitation, and sending a new one — ported structurally from
- * `base_portal`'s `AdminInvitationsContent` reference and restyled onto this
- * app's `shell-*` design tokens.
+ * "Sent invitations", a standalone page listing every invitation ever sent for a workspace:
+ * summary cards that double as the status filter, server side search, role filter, sorting,
+ * an "invited at" date range, revoking a pending invitation and sending a new one.
  *
- * Which workspace: an explicit `?workspace={slug}` query param (used by links
- * from a specific workspace's own views, e.g. Manage Workspace's Collaborators
- * tab) takes priority; otherwise falls back to the top bar's "active"
- * workspace, matching where `InviteMembersModal`'s own "View sent
- * invitations" link sends the user.
+ * Which workspace: an explicit `?workspace={slug}` query param (used by links from a specific
+ * workspace's own views, e.g. Manage Workspace's Collaborators tab) takes priority; otherwise
+ * it falls back to the top bar's active workspace, matching where `InviteMembersModal`'s own
+ * "View sent invitations" link sends the user.
  *
- * Gated to a privileged global role (super_admin/admin) or that workspace's
- * own owner, matching the Laravel `WorkspaceInvitationController`'s own
- * authorization — anyone else sees a permission message instead of a failed
- * fetch.
+ * Gated to a privileged global role (super_admin/admin) or that workspace's own owner,
+ * matching the Laravel `WorkspaceInvitationController`'s own authorization, so anyone else
+ * sees a permission message instead of a failed fetch.
  */
 const InvitationsView: React.FC = () => {
   const router = useRouter();
@@ -45,7 +46,6 @@ const InvitationsView: React.FC = () => {
     : active_workspace;
 
   const workspace_slug = workspace_param ?? active_workspace_slug;
-  const workspace_name = target_workspace?.name;
   const can_manage_invitations = canManageWorkspaceInvitations(
     hasAnyRole(...INVITATION_MANAGER_ROLES),
     target_workspace
@@ -53,6 +53,7 @@ const InvitationsView: React.FC = () => {
 
   const invitations = useInvitations(!is_workspaces_loading && can_manage_invitations ? workspace_slug : undefined);
   const [is_invite_modal_open, setIsInviteModalOpen] = useState(false);
+  const [pending_revoke, setPendingRevoke] = useState<WorkspaceInvitation | null>(null);
 
   if (is_workspaces_loading) {
     return <BoardLoadingSpinner />;
@@ -71,43 +72,64 @@ const InvitationsView: React.FC = () => {
     );
   }
 
+  const active_stat: InvitationStatFilter = invitations.status_filter || "all";
+  const list_error = invitations.error ?? invitations.revoke_error;
+
+  const confirmRevoke = async () => {
+    if (!pending_revoke) return;
+    const invitation_id = pending_revoke.id;
+    setPendingRevoke(null);
+    await invitations.revokeInvitation(invitation_id);
+  };
+
   return (
-    <div className="min-h-full bg-shell-bg">
-      <div className="mx-auto max-w-[1120px] px-8 py-7">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="mb-4 flex items-center gap-1 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:text-shell-text"
-        >
-          <ChevronRightIcon size={11} className="rotate-180" />
+    <div className="invitations-theme inv-page">
+      <div className="inv-page-inner">
+        <button type="button" onClick={() => router.back()} className="inv-back-link">
+          <ChevronLeftIcon size={14} />
           Back
         </button>
 
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-shell-text font-heading text-page-title">Sent invitations</h1>
-            <p className="mt-1 text-sm text-shell-text-muted">
-              Invite new teammates to {workspace_name ?? "this workspace"}. See every invitation that's active,
-              expired, or accepted.
+        <header className="inv-page-header">
+          <div className="min-w-0">
+            {target_workspace ? (
+              <span className="inv-workspace-chip">
+                <span className="inv-workspace-mono" style={{ background: target_workspace.color }} aria-hidden>
+                  {target_workspace.mono}
+                </span>
+                {target_workspace.name}
+              </span>
+            ) : null}
+            <h1 className="font-heading text-page-title text-[var(--inv-text)]">Sent invitations</h1>
+            <p className="inv-page-subtitle">
+              Everyone invited to {target_workspace?.name ?? "this workspace"}, whether they joined, are still pending
+              or let the invitation expire.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsInviteModalOpen(true)}
-            className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-brand-600"
-          >
+          <button type="button" onClick={() => setIsInviteModalOpen(true)} className="inv-button inv-button-primary">
             <PlusIcon size={16} />
-            Invite Member
+            Invite member
           </button>
-        </div>
+        </header>
 
-        <div className="mt-6">
+        <InvitationStatCards
+          counts={invitations.counts}
+          active={active_stat}
+          onSelect={(filter) => invitations.setStatusFilter(filter === "all" ? "" : filter)}
+        />
+
+        {list_error ? (
+          <div role="alert" className="inv-notice" data-tone="danger">
+            <AlertCircleIcon size={16} />
+            <span>{list_error}</span>
+          </div>
+        ) : null}
+
+        <section className="inv-card" aria-label="Invitations list">
           <InvitationsFilterBar
             search_value={invitations.search_value}
             on_search_change={invitations.setSearchValue}
-            status_filter={invitations.status_filter}
-            on_status_change={invitations.setStatusFilter}
             role_filter={invitations.role_filter}
             on_role_change={invitations.setRoleFilter}
             sort_field={invitations.sort_field}
@@ -121,51 +143,30 @@ const InvitationsView: React.FC = () => {
             has_active_filters={invitations.has_active_filters}
             on_clear_all={invitations.clearAll}
           />
-        </div>
 
-        {(invitations.error || invitations.revoke_error) && (
-          <div className="mt-4 rounded-lg bg-error-500/10 p-4 text-sm text-error-400">
-            {invitations.error ?? invitations.revoke_error}
-          </div>
-        )}
-
-        <div className="mt-6 overflow-hidden rounded-2xl border border-shell-border bg-shell-panel">
           <InvitationsTable
             invitations={invitations.invitations}
             is_loading={invitations.is_loading}
             sort_field={invitations.sort_field}
             sort_direction={invitations.sort_direction}
             onSort={invitations.toggleColumnSort}
-            onRevoke={invitations.revokeInvitation}
+            onRevoke={setPendingRevoke}
+            revoking_id={invitations.revoking_id}
+            has_active_filters={invitations.has_active_filters}
+            onClearFilters={invitations.clearAll}
+            onInvite={() => setIsInviteModalOpen(true)}
           />
 
-          {!invitations.is_loading && invitations.meta && invitations.meta.last_page > 1 && (
-            <div className="flex items-center justify-between border-t border-shell-border px-6 py-3">
-              <p className="text-xs text-shell-text-muted">
-                Page {invitations.meta.current_page} of {invitations.meta.last_page} &middot; {invitations.meta.total}{" "}
-                total
-              </p>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => invitations.setPage(Math.max(1, invitations.page - 1))}
-                  disabled={invitations.page === 1}
-                  className="rounded-lg border border-shell-border-strong px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  onClick={() => invitations.setPage(Math.min(invitations.meta!.last_page, invitations.page + 1))}
-                  disabled={invitations.page === invitations.meta.last_page}
-                  className="rounded-lg border border-shell-border-strong px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+          {invitations.meta ? (
+            <InvitationsPager
+              page={invitations.meta.current_page}
+              last_page={invitations.meta.last_page}
+              total={invitations.meta.total}
+              per_page={INVITATIONS_PER_PAGE}
+              onPageChange={invitations.setPage}
+            />
+          ) : null}
+        </section>
       </div>
 
       <SendInvitationModal
@@ -173,6 +174,17 @@ const InvitationsView: React.FC = () => {
         onClose={() => setIsInviteModalOpen(false)}
         workspace_slug={workspace_slug}
         onSent={invitations.reload}
+      />
+
+      <ConfirmActionModal
+        is_open={pending_revoke !== null}
+        title="Revoke invitation"
+        description={`The invitation link sent to ${pending_revoke?.email ?? ""} will stop working right away. You can always invite them again.`}
+        confirm_label="Revoke invitation"
+        cancel_label="Keep it"
+        variant="danger"
+        onConfirm={confirmRevoke}
+        onClose={() => setPendingRevoke(null)}
       />
     </div>
   );

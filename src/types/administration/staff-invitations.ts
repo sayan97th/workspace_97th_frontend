@@ -22,11 +22,19 @@ export type AdminStaffInvitationsPage = {
   current_page: number;
   last_page: number;
   total: number;
-  counts: { pending: number; expired: number };
+  counts: StaffInvitationStatusCounts;
 };
+
+/** Account wide total per status, ignoring the list filters. Feeds the summary cards. */
+export type StaffInvitationStatusCounts = Record<StaffInvitationStatus | "all", number>;
+
+/** Server side order of the list: newest/oldest by last sent, email A to Z, or soonest expiry first. */
+export type StaffInvitationSort = "newest" | "oldest" | "email" | "expires";
 
 export type AdminStaffInvitationsQuery = {
   status?: StaffInvitationStatus | "all";
+  role?: PlatformRoleName;
+  sort?: StaffInvitationSort;
   search?: string;
   page?: number;
   per_page?: number;

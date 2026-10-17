@@ -4,21 +4,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { invitationService } from "@/services/invitation.service";
 import type { WorkspaceInvitationCandidate, WorkspaceMembershipRole } from "@/types/invitation";
 import type { ApiError } from "@/types/auth";
-import { CheckIcon, CloseIcon, CrownIcon, EyeIcon, InviteIcon, MemberIcon, SearchIcon } from "@/icons/workspace-icons";
-import CreatorAvatar from "@/components/content/CreatorAvatar";
-import { gradientForId, initialsFromName } from "@/components/workspace-manage/creatorAvatar";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import { AlertCircleIcon, CheckIcon, CloseIcon, InviteIcon, SearchIcon } from "@/icons/workspace-icons";
+import InvitationAvatar from "./InvitationAvatar";
+import { WORKSPACE_ROLE_META } from "./InvitationRoleBadge";
+import "./invitations.scss";
 
 /** How long to wait after the last keystroke before searching the "pool of users". */
 const CANDIDATE_SEARCH_DEBOUNCE_MS = 250;
 
-/** Minimum characters typed before the "pool of users" autocomplete fires — mirrors the backend's own floor. */
+/** Minimum characters typed before the "pool of users" autocomplete fires, mirrors the backend's own floor. */
 const CANDIDATE_MIN_SEARCH_LENGTH = 2;
 
-const ROLE_OPTIONS: Array<{ value: WorkspaceMembershipRole; label: string; hint: string; Icon: typeof CrownIcon }> = [
-  { value: "owner", label: "Owner", hint: "Full access", Icon: CrownIcon },
-  { value: "member", label: "Member", hint: "Can create and edit", Icon: MemberIcon },
-  { value: "viewer", label: "Viewer", hint: "Read-only access", Icon: EyeIcon },
-];
+const ROLE_OPTIONS: ReadonlyArray<WorkspaceMembershipRole> = ["member", "viewer", "owner"];
 
 const apiErrorMessage = (error: unknown, fallback: string): string => {
   const api_error = error as ApiError;
@@ -35,10 +33,9 @@ export type SendInvitationModalProps = {
 };
 
 /**
- * "Invite Member" form embedded directly in the "Sent invitations" view —
- * ported structurally from `base_portal`'s `AdminInvitationsContent` modal +
- * confirm dialog (single email, single role, a confirmation step before the
- * request fires), restyled onto this app's `shell-*` tokens.
+ * "Invite member" dialog used by the "Sent invitations" page and Manage Workspace's
+ * Collaborators tab: pick a known teammate or type any email, choose a role, then confirm
+ * before the request fires. Styled with the shared `--inv-*` tokens in invitations.scss.
  */
 const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onClose, workspace_slug, onSent }) => {
   const [email, setEmail] = useState("");
@@ -135,51 +132,54 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={resetAndClose} aria-hidden="true" />
+  const is_locked = is_sending || send_success;
+  const role_meta = WORKSPACE_ROLE_META[role];
 
-      <div className="relative w-full max-w-lg rounded-2xl border border-shell-border bg-shell-panel shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="flex items-center justify-between border-b border-shell-border px-6 py-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-500/10">
-              <InviteIcon size={18} className="text-brand-400" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-shell-text">Invite a Team Member</h2>
-              <p className="text-xs text-shell-text-muted">Search for someone already on the platform, or invite by email.</p>
-            </div>
+  return (
+    <div className="invitations-theme inv-modal-root" role="dialog" aria-modal="true" aria-labelledby="send_invitation_title">
+      <div className="inv-modal-backdrop" onClick={resetAndClose} aria-hidden="true" />
+
+      <div className="inv-modal">
+        <div className="inv-modal-header">
+          <span className="inv-empty-icon !mb-0 !h-10 !w-10 flex-none">
+            <InviteIcon size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 id="send_invitation_title" className="font-heading text-dialog-title text-[var(--inv-text)]">
+              Invite a team member
+            </h2>
+            <p className="inv-modal-subtitle">Search for someone already on the platform, or invite any email address.</p>
           </div>
-          <button
-            type="button"
-            onClick={resetAndClose}
-            className="rounded-lg p-1.5 text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-          >
-            <CloseIcon size={18} />
-          </button>
+          <PortalTooltip content="Close">
+            <button type="button" aria-label="Close" onClick={resetAndClose} className="inv-icon-button">
+              <CloseIcon size={16} />
+            </button>
+          </PortalTooltip>
         </div>
 
-        <div className="px-6 py-5">
-          {send_success && (
-            <div className="mb-4 flex items-center gap-2 rounded-lg bg-success-500/10 p-3 text-sm text-success-400">
-              <CheckIcon size={16} className="flex-none" />
-              Invitation sent successfully! Closing…
-            </div>
-          )}
-          {send_error && (
-            <div className="mb-4 rounded-lg bg-error-500/10 p-3 text-sm text-error-400">{send_error}</div>
-          )}
+        <form onSubmit={handleSubmit}>
+          <div className="inv-modal-body space-y-5">
+            {send_success ? (
+              <div role="status" className="inv-notice !mb-0" data-tone="success">
+                <CheckIcon size={16} />
+                <span>Invitation sent. Closing this dialog.</span>
+              </div>
+            ) : null}
+            {send_error ? (
+              <div role="alert" className="inv-notice !mb-0" data-tone="danger">
+                <AlertCircleIcon size={16} />
+                <span>{send_error}</span>
+              </div>
+            ) : null}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <label htmlFor="invite_email" className="mb-1.5 block text-sm font-medium text-shell-text-secondary">
+            <div className="inv-combobox">
+              <label htmlFor="invite_email" className="inv-label">
                 Teammate or email address
               </label>
-              <div className="relative">
-                <SearchIcon
-                  size={14}
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-shell-text-muted"
-                />
+              <div className="inv-field w-full">
+                <span className="inv-field-icon !left-3">
+                  <SearchIcon size={15} />
+                </span>
                 <input
                   id="invite_email"
                   type="email"
@@ -197,39 +197,35 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
                     }
                   }}
                   onBlur={() => window.setTimeout(() => setShowCandidates(false), 150)}
-                  placeholder="Search by name or email…"
-                  disabled={is_sending || send_success}
-                  className="h-11 w-full rounded-lg border border-shell-border-strong bg-shell-bg pl-10 pr-4 text-sm text-shell-text placeholder:text-shell-text-muted outline-none focus:border-brand-400 disabled:opacity-60"
+                  placeholder="Search by name or email"
+                  disabled={is_locked}
+                  className="inv-input disabled:opacity-60"
                 />
               </div>
 
-              {selected_candidate && (
-                <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-brand-400/30 bg-brand-500/10 px-3 py-2">
-                  <CreatorAvatar
-                    initials={initialsFromName(selected_candidate.full_name)}
-                    gradient_from={gradientForId(selected_candidate.id)[0]}
-                    gradient_to={gradientForId(selected_candidate.id)[1]}
+              {selected_candidate ? (
+                <div className="inv-selected-person">
+                  <InvitationAvatar
+                    email={selected_candidate.email}
+                    full_name={selected_candidate.full_name}
                     photo_url={selected_candidate.profile_photo_url}
-                    title={selected_candidate.full_name}
-                    size={22}
+                    size={24}
                   />
-                  <span className="min-w-0 flex-1 text-xs">
-                    <span className="block truncate font-medium text-shell-text">{selected_candidate.full_name}</span>
-                  </span>
-                  <CheckIcon size={14} className="flex-none text-brand-400" />
+                  <span className="min-w-0 flex-1 truncate font-medium">{selected_candidate.full_name}</span>
+                  <PortalTooltip content="Already on the platform">
+                    <CheckIcon size={14} className="flex-none text-[var(--inv-primary)]" />
+                  </PortalTooltip>
                 </div>
-              )}
+              ) : null}
 
-              {show_candidates && (
-                <div className="absolute z-10 mt-1.5 w-full overflow-hidden rounded-lg border border-shell-border-strong bg-shell-panel shadow-[0_18px_40px_rgba(0,0,0,0.45)]">
+              {show_candidates ? (
+                <div className="inv-suggestions">
                   {is_searching_candidates ? (
-                    <p className="px-4 py-3 text-xs text-shell-text-muted">Searching…</p>
+                    <p>Searching teammates...</p>
                   ) : candidates.length === 0 ? (
-                    <p className="px-4 py-3 text-xs text-shell-text-muted">
-                      No matching teammates — you can still invite this email address directly.
-                    </p>
+                    <p>No matching teammates. You can still invite this email address directly.</p>
                   ) : (
-                    <ul className="max-h-56 overflow-y-auto py-1">
+                    <ul role="listbox">
                       {candidates.map((candidate) => (
                         <li key={candidate.id}>
                           <button
@@ -239,21 +235,17 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
                               event.preventDefault();
                               handleSelectCandidate(candidate);
                             }}
-                            className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-shell-hover"
+                            className="inv-suggestion"
                           >
-                            <CreatorAvatar
-                              initials={initialsFromName(candidate.full_name)}
-                              gradient_from={gradientForId(candidate.id)[0]}
-                              gradient_to={gradientForId(candidate.id)[1]}
+                            <InvitationAvatar
+                              email={candidate.email}
+                              full_name={candidate.full_name}
                               photo_url={candidate.profile_photo_url}
-                              title={candidate.full_name}
-                              size={26}
+                              size={28}
                             />
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-shell-text">
-                                {candidate.full_name}
-                              </span>
-                              <span className="block truncate text-xs text-shell-text-muted">{candidate.email}</span>
+                              <span className="inv-person-email">{candidate.full_name}</span>
+                              <span className="inv-person-meta">{candidate.email}</span>
                             </span>
                           </button>
                         </li>
@@ -261,102 +253,87 @@ const SendInvitationModal: React.FC<SendInvitationModalProps> = ({ is_open, onCl
                     </ul>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
 
-            <div>
-              <span className="mb-1.5 block text-sm font-medium text-shell-text-secondary">Role</span>
-              <div className="space-y-2">
+            <fieldset>
+              <legend className="inv-label">Role</legend>
+              <div className="inv-role-grid">
                 {ROLE_OPTIONS.map((option) => {
-                  const is_selected = role === option.value;
+                  const meta = WORKSPACE_ROLE_META[option];
+                  const is_selected = role === option;
                   return (
-                    <label
-                      key={option.value}
-                      className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-                        is_selected ? "border-brand-400 bg-brand-500/10" : "border-shell-border-strong bg-shell-bg hover:border-shell-border-strong"
-                      }`}
-                    >
+                    <label key={option} className="inv-role-option" data-selected={is_selected ? "true" : "false"}>
                       <input
                         type="radio"
                         name="invite_role"
-                        value={option.value}
+                        value={option}
                         checked={is_selected}
-                        onChange={() => setRole(option.value)}
-                        disabled={is_sending || send_success}
+                        onChange={() => setRole(option)}
+                        disabled={is_locked}
                         className="sr-only"
                       />
-                      <div className={`flex h-8 w-8 flex-none items-center justify-center rounded-full ${is_selected ? "bg-brand-500/20" : "bg-shell-hover"}`}>
-                        <option.Icon size={15} className={is_selected ? "text-brand-400" : "text-shell-text-muted"} />
-                      </div>
-                      <div>
-                        <p className={`text-sm font-medium ${is_selected ? "text-brand-300" : "text-shell-text"}`}>{option.label}</p>
-                        <p className="text-xs text-shell-text-muted">{option.hint}</p>
-                      </div>
+                      <span className="inv-role-option-icon">
+                        <meta.Icon size={15} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="inv-role-option-label block">{meta.label}</span>
+                        <span className="inv-role-option-hint block">{meta.hint}</span>
+                      </span>
                     </label>
                   );
                 })}
               </div>
-            </div>
+            </fieldset>
+          </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={resetAndClose}
-                className="rounded-lg border border-shell-border-strong px-4 py-2.5 text-sm font-medium text-shell-text-secondary transition-colors hover:text-shell-text"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={is_sending || send_success}
-                className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {is_sending ? "Sending…" : "Send Invitation"}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="inv-modal-footer">
+            <button type="button" onClick={resetAndClose} className="inv-button inv-button-secondary">
+              Cancel
+            </button>
+            <button type="submit" disabled={is_locked} className="inv-button inv-button-primary">
+              {is_sending ? <span className="inv-spinner" aria-hidden /> : null}
+              {is_sending ? "Sending..." : "Send invitation"}
+            </button>
+          </div>
+        </form>
       </div>
 
-      {show_confirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center">
-          <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={() => setShowConfirm(false)} aria-hidden="true" />
-          <div className="relative mx-4 w-full max-w-md rounded-2xl border border-shell-border bg-shell-panel p-6 shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-brand-500/10">
-              <InviteIcon size={22} className="text-brand-400" />
+      {show_confirm ? (
+        <div className="inv-modal-root" data-layer="confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm_invitation_title">
+          <div className="inv-modal-backdrop" onClick={() => setShowConfirm(false)} aria-hidden="true" />
+          <div className="inv-modal" data-size="sm">
+            <div className="inv-modal-header">
+              <div className="min-w-0 flex-1">
+                <h3 id="confirm_invitation_title" className="font-heading text-dialog-title text-[var(--inv-text)]">
+                  Send this invitation?
+                </h3>
+              </div>
             </div>
-
-            <h3 className="text-lg font-semibold text-shell-text">Confirm Invitation</h3>
-
-            <p className="mt-2 text-sm text-shell-text-muted">
-              You&apos;re about to send an invitation to{" "}
-              <span className="font-medium text-shell-text">{email}</span> granting them access to this workspace as
-              a{" "}
-              <span className="font-medium capitalize text-brand-400">{role}</span>.
-            </p>
-            <p className="mt-2 text-sm text-shell-text-muted">
-              Once accepted, they will become an active member of this workspace.
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowConfirm(false)}
-                className="rounded-lg border border-shell-border-strong px-4 py-2 text-sm font-medium text-shell-text-secondary transition-colors hover:text-shell-text"
-              >
-                Cancel
+            <div className="inv-modal-body">
+              <div className="inv-person">
+                <InvitationAvatar email={email} full_name={selected_candidate?.full_name} photo_url={selected_candidate?.profile_photo_url} size={40} />
+                <span className="min-w-0">
+                  <span className="inv-person-email">{selected_candidate?.full_name ?? email}</span>
+                  <span className="inv-person-meta">{email}</span>
+                </span>
+              </div>
+              <p className="inv-summary">
+                They will join this workspace as <strong>{role_meta.label}</strong>. {role_meta.hint} The link works for 7
+                days.
+              </p>
+            </div>
+            <div className="inv-modal-footer">
+              <button type="button" onClick={() => setShowConfirm(false)} className="inv-button inv-button-secondary">
+                Go back
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmSend}
-                className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600"
-              >
+              <button type="button" onClick={handleConfirmSend} className="inv-button inv-button-primary">
                 Yes, send invitation
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

@@ -31,12 +31,16 @@ export type WorkspaceInvitation = {
   created_at: string | null;
 };
 
+/** How many invitations a workspace has per status, ignoring the list filters. Feeds the summary cards. */
+export type WorkspaceInvitationStatusCounts = Record<WorkspaceInvitationStatus | "all", number>;
+
 /** Pagination metadata mirroring every other server-paginated list in the app (Content tab, team rosters, …). */
 export type WorkspaceInvitationsPageMeta = {
   current_page: number;
   last_page: number;
   per_page: number;
   total: number;
+  counts: WorkspaceInvitationStatusCounts;
 };
 
 /** Response for `GET /api/workspaces/{slug}/invitations`. */

@@ -1,24 +1,29 @@
 import React from "react";
 import type { WorkspaceMembershipRole } from "@/types/invitation";
+import { CrownIcon, EyeIcon, MemberIcon } from "@/icons/workspace-icons";
+import InvitationPill from "./InvitationPill";
+import type { InvitationTone } from "./invitationFormat";
 
-const ROLE_META: Record<WorkspaceMembershipRole, { label: string; classes: string; dot: string }> = {
-  owner: { label: "Owner", classes: "bg-brand-500/10 text-brand-400", dot: "bg-brand-500" },
-  member: { label: "Member", classes: "bg-blue-light-500/10 text-blue-light-500", dot: "bg-blue-light-500" },
-  viewer: { label: "Viewer", classes: "bg-shell-hover text-shell-text-secondary", dot: "bg-shell-text-faint" },
+export const WORKSPACE_ROLE_META: Record<
+  WorkspaceMembershipRole,
+  { label: string; tone: InvitationTone; hint: string; Icon: typeof CrownIcon }
+> = {
+  owner: { label: "Owner", tone: "brand", hint: "Full access, can manage members and settings.", Icon: CrownIcon },
+  member: { label: "Member", tone: "info", hint: "Can create and edit boards in this workspace.", Icon: MemberIcon },
+  viewer: { label: "Viewer", tone: "neutral", hint: "Read only access to this workspace.", Icon: EyeIcon },
 };
 
 export type InvitationRoleBadgeProps = {
   role: WorkspaceMembershipRole;
 };
 
-/** Pill badge for a {@link WorkspaceMembershipRole}, shared by the invitations table and its filter dropdown. */
+/** Workspace role pill with its icon and a tooltip describing what the role can do. */
 const InvitationRoleBadge: React.FC<InvitationRoleBadgeProps> = ({ role }) => {
-  const meta = ROLE_META[role];
+  const meta = WORKSPACE_ROLE_META[role];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${meta.classes}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+    <InvitationPill tone={meta.tone} tooltip={meta.hint} icon={<meta.Icon size={12} />}>
       {meta.label}
-    </span>
+    </InvitationPill>
   );
 };
 

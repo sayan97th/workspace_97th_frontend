@@ -1,24 +1,36 @@
 import React from "react";
-import type { WorkspaceInvitationStatus } from "@/types/invitation";
+import InvitationPill from "./InvitationPill";
+import type { InvitationStatusValue, InvitationTone } from "./invitationFormat";
 
-const STATUS_META: Record<WorkspaceInvitationStatus, { label: string; classes: string; dot: string }> = {
-  pending: { label: "Pending", classes: "bg-warning-500/10 text-warning-500", dot: "bg-warning-500" },
-  accepted: { label: "Accepted", classes: "bg-success-500/10 text-success-400", dot: "bg-success-500" },
-  expired: { label: "Expired", classes: "bg-error-500/10 text-error-400", dot: "bg-error-500" },
+export const INVITATION_STATUS_META: Record<InvitationStatusValue, { label: string; tone: InvitationTone; hint: string }> = {
+  pending: {
+    label: "Pending",
+    tone: "info",
+    hint: "Sent and waiting for the person to accept. The link still works.",
+  },
+  accepted: {
+    label: "Accepted",
+    tone: "success",
+    hint: "The person accepted and now has an active account.",
+  },
+  expired: {
+    label: "Expired",
+    tone: "warning",
+    hint: "The link stopped working before it was accepted. Send it again to revive it.",
+  },
 };
 
 export type InvitationStatusBadgeProps = {
-  status: WorkspaceInvitationStatus;
+  status: InvitationStatusValue;
 };
 
-/** Pill badge for a {@link WorkspaceInvitationStatus}, shared by the invitations table and its filter dropdown. */
+/** Pending / Accepted / Expired pill with a tooltip that explains the status. Shared by every invitations list. */
 const InvitationStatusBadge: React.FC<InvitationStatusBadgeProps> = ({ status }) => {
-  const meta = STATUS_META[status];
+  const meta = INVITATION_STATUS_META[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${meta.classes}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
+    <InvitationPill tone={meta.tone} tooltip={meta.hint}>
       {meta.label}
-    </span>
+    </InvitationPill>
   );
 };
 

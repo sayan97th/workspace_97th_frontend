@@ -7,15 +7,18 @@ import type {
   WorkspaceInvitationSortField,
   WorkspaceInvitationsPageMeta,
   WorkspaceInvitationStatus,
+  WorkspaceInvitationStatusCounts,
   WorkspaceMembershipRole,
 } from "@/types/invitation";
 
-const PER_PAGE = 20;
+export const INVITATIONS_PER_PAGE = 20;
 const SEARCH_DEBOUNCE_MS = 450;
 
 export type InvitationsApi = {
   invitations: WorkspaceInvitation[];
   meta: WorkspaceInvitationsPageMeta | null;
+  /** Workspace wide total per status for the summary cards, null until the first page loads. */
+  counts: WorkspaceInvitationStatusCounts | null;
   is_loading: boolean;
   error: string | null;
 
@@ -43,19 +46,21 @@ export type InvitationsApi = {
   has_active_filters: boolean;
   clearAll: () => void;
 
-  /** Revokes a pending invitation and drops it from the current page locally. */
+  /** Revokes a pending invitation, drops it from the current page and refreshes the counts. */
   revokeInvitation: (id: number) => Promise<void>;
+  /** The invitation being revoked right now, for its row's spinner. */
+  revoking_id: number | null;
   revoke_error: string | null;
 
   reload: () => void;
 };
 
 /**
- * Owns all state for the "Sent invitations" view — debounced server-side
+ * Owns all state for the "Sent invitations" view, debounced server-side
  * search, single-select status/role filters, column sorting, an "invited at"
- * date range, server-side pagination, and revoking a pending invitation —
+ * date range, server-side pagination, and revoking a pending invitation,
  * behind one config-in/API-out hook, mirroring `useTrashManager`/
- * `useWorkspaces` so the view component itself stays presentational.
+ * `useWorkspaces`, so the view component itself stays presentational.
  */
 export function useInvitations(workspace_slug: string | undefined): InvitationsApi {
   const [invitations, setInvitations] = useState<WorkspaceInvitation[]>([]);
@@ -63,6 +68,7 @@ export function useInvitations(workspace_slug: string | undefined): InvitationsA
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revoke_error, setRevokeError] = useState<string | null>(null);
+  const [revoking_id, setRevokingId] = useState<number | null>(null);
 
   const [page, setPage] = useState(1);
   const [search_value, setSearchValue] = useState("");
@@ -95,7 +101,7 @@ export function useInvitations(workspace_slug: string | undefined): InvitationsA
     invitationService
       .listInvitations(workspace_slug, {
         page,
-        per_page: PER_PAGE,
+        per_page: INVITATIONS_PER_PAGE,
         search: debounced_search || undefined,
         status: status_filter || undefined,
         role: role_filter || undefined,
@@ -154,12 +160,15 @@ export function useInvitations(workspace_slug: string | undefined): InvitationsA
     async (id: number) => {
       if (!workspace_slug) return;
       setRevokeError(null);
+      setRevokingId(id);
       try {
         await invitationService.revokeInvitation(workspace_slug, id);
         setInvitations((previous) => previous.filter((invitation) => invitation.id !== id));
-        setMeta((previous) => (previous ? { ...previous, total: Math.max(0, previous.total - 1) } : previous));
+        setReloadToken((token) => token + 1);
       } catch {
         setRevokeError("We couldn't revoke that invitation. Please try again.");
+      } finally {
+        setRevokingId(null);
       }
     },
     [workspace_slug]
@@ -173,6 +182,7 @@ export function useInvitations(workspace_slug: string | undefined): InvitationsA
   return {
     invitations,
     meta,
+    counts: meta?.counts ?? null,
     is_loading,
     error,
     page,
@@ -193,6 +203,7 @@ export function useInvitations(workspace_slug: string | undefined): InvitationsA
     has_active_filters,
     clearAll,
     revokeInvitation,
+    revoking_id,
     revoke_error,
     reload,
   };

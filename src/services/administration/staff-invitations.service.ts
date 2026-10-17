@@ -8,6 +8,8 @@ import type {
 const buildQuery = (query?: AdminStaffInvitationsQuery): string => {
   const params = new URLSearchParams();
   if (query?.status) params.set("status", query.status);
+  if (query?.role) params.set("role", query.role);
+  if (query?.sort) params.set("sort", query.sort);
   if (query?.search) params.set("search", query.search);
   if (query?.page) params.set("page", String(query.page));
   if (query?.per_page) params.set("per_page", String(query.per_page));
