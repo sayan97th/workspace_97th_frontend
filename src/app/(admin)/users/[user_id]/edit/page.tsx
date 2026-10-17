@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import EditUserView from "@/components/users-directory/EditUserView";
 
 export const metadata: Metadata = {
-  title: "Edit User",
-  description: "Edit an account's name, email, phone and department",
+  title: "Edit user",
+  description: "Edit an account's details, password and access",
 };
 
 export default async function EditUserPage({ params }: { params: Promise<{ user_id: string }> }) {

@@ -1,150 +1,179 @@
 "use client";
 import React from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
-import SearchField from "@/components/common/SearchField";
-import SettingsDropdown from "@/components/administration/SettingsDropdown";
+import { BoardLoadingSpinner } from "@/app/(admin)/boards/_components/BoardRouteStates";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
+import InviteUserModal from "@/components/administration/InviteUserModal";
+import { useTeamInvite } from "@/components/teams/useTeamInvite";
+import { AlertCircleIcon, ChevronLeftIcon, CloseIcon, PlusIcon, UploadIcon } from "@/icons/workspace-icons";
+import "@/components/invitations/invitations.scss";
+import "./users-directory.scss";
+import UsersAccessDenied from "./UsersAccessDenied";
+import UserStatCards, { type UserStatFilter } from "./UserStatCards";
+import UsersDirectoryToolbar from "./UsersDirectoryToolbar";
 import UsersDirectoryTable from "./UsersDirectoryTable";
 import UsersDirectoryFooter from "./UsersDirectoryFooter";
-import { PER_PAGE_OPTIONS, useUsersDirectory, type AccountStatusFilter } from "./useUsersDirectory";
-import type { PlatformRoleName } from "@/types/administration/admin-users";
-
-/** Roles allowed to view the site's user list, mirroring the Laravel API's `/admin` route group floor. */
-const USERS_DIRECTORY_ROLES = ["super_admin", "admin", "staff"];
-
-const PER_PAGE_DROPDOWN_OPTIONS = PER_PAGE_OPTIONS.map((value) => ({
-  id: String(value),
-  label: `${value} per page`,
-}));
-
-const ROLE_FILTER_OPTIONS: { id: string; label: string }[] = [
-  { id: "", label: "All roles" },
-  { id: "super_admin", label: "Super admin" },
-  { id: "admin", label: "Admin" },
-  { id: "staff", label: "Staff" },
-  { id: "client", label: "Client" },
-];
-
-const STATUS_FILTER_OPTIONS: { id: string; label: string }[] = [
-  { id: "", label: "All statuses" },
-  { id: "active", label: "Active" },
-  { id: "disabled", label: "Disabled" },
-  { id: "deleted", label: "Deleted" },
-];
+import { PER_PAGE_OPTIONS, useUsersDirectory } from "./useUsersDirectory";
+import { USER_MANAGER_ROLES } from "./userManagementPermissions";
 
 /**
- * Standalone `/users` page: a read-only directory of every account on the site, in a real,
- * filterable, sortable table with each person's name, email, site-wide role, department,
- * active status and join date. Gated to `super_admin`/`admin`/`staff`, the same floor the
- * backend already enforces on `/api/admin/users`.
+ * Manage users (`/users`): every account on the site in the monday administration look.
+ * Summary cards that double as the account status filter, search, role and department
+ * filters, sortable columns, and per row actions (edit, change password, impersonate,
+ * disable or enable, delete or restore) behind confirmation dialogs.
+ *
+ * Only super admins and admins get in, the same gate the API puts on every account change.
+ * Anyone else sees a permission message instead of the list.
  */
 const UsersDirectoryView: React.FC = () => {
+  const router = useRouter();
   const { isLoading: is_auth_loading, hasAnyRole } = useAuth();
   const directory = useUsersDirectory();
+  const invite = useTeamInvite();
 
   if (is_auth_loading) {
     return <BoardLoadingSpinner />;
   }
 
-  if (!hasAnyRole(...USERS_DIRECTORY_ROLES)) {
-    return (
-      <CenteredMessage
-        title="You don't have access to this page"
-        detail="Only account administrators and staff can view the user list."
-      />
-    );
+  if (!hasAnyRole(...USER_MANAGER_ROLES) || directory.is_forbidden) {
+    return <UsersAccessDenied />;
   }
 
+  const active_stat: UserStatFilter = directory.status_filter ?? "all";
+
   return (
-    <div className="mx-auto max-w-[1440px] px-6 py-7">
-      <h1 className="mb-1.5 text-shell-text font-heading text-page-title">Users</h1>
-      <p className="mb-5 max-w-[640px] text-[13px] leading-relaxed text-shell-text-muted">
-        Every account registered on this site, with their email, site-wide role, department, status and join date.
-      </p>
+    <div className="invitations-theme inv-page">
+      <div className="inv-page-inner">
+        <button type="button" onClick={() => router.back()} className="inv-back-link">
+          <ChevronLeftIcon size={14} />
+          Back
+        </button>
 
-      {directory.error ? (
-        <div className="mb-3.5 rounded-[9px] border border-brand-500/30 bg-brand-500/[0.1] px-3.5 py-2.5 text-[12.5px] font-medium text-brand-200">
-          {directory.error}
-        </div>
-      ) : null}
+        <header className="inv-page-header">
+          <div className="min-w-0">
+            <h1 className="font-heading text-page-title text-[var(--inv-text)]">Manage users</h1>
+            <p className="inv-page-subtitle">
+              Everyone with an account on this site. Edit their details, reset a password, or disable, delete and
+              restore an account.
+            </p>
+          </div>
 
-      <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
-        <SearchField
-          value={directory.search_query}
-          onChange={directory.setSearchQuery}
-          placeholder="Search name or email"
-          className="w-[280px]"
+          <div className="flex flex-wrap items-center gap-2">
+            <PortalTooltip content="Download the users that match the current filters as a CSV file">
+              <button
+                type="button"
+                onClick={() => void directory.exportUsers()}
+                disabled={directory.is_exporting}
+                className="inv-button inv-button-secondary"
+              >
+                {directory.is_exporting ? <span className="inv-spinner" aria-hidden /> : <UploadIcon size={16} />}
+                Export CSV
+              </button>
+            </PortalTooltip>
+            <button type="button" onClick={invite.openInvite} className="inv-button inv-button-primary">
+              <PlusIcon size={16} />
+              Invite user
+            </button>
+          </div>
+        </header>
+
+        <UserStatCards
+          counts={directory.status_counts}
+          active={active_stat}
+          onSelect={(filter) => directory.setStatusFilter(filter === "all" ? null : filter)}
         />
 
-        <SettingsDropdown
-          value={directory.role_filter ?? ""}
-          options={ROLE_FILTER_OPTIONS}
-          onChange={(value) => directory.setRoleFilter(value ? (value as PlatformRoleName) : null)}
-          className="w-[150px]"
-        />
+        {directory.error ? (
+          <div role="alert" className="inv-notice" data-tone="danger">
+            <AlertCircleIcon size={16} />
+            <span>{directory.error}</span>
+            <PortalTooltip content="Dismiss">
+              <button
+                type="button"
+                aria-label="Dismiss"
+                onClick={() => directory.clearError()}
+                className="inv-notice-close"
+              >
+                <CloseIcon size={12} />
+              </button>
+            </PortalTooltip>
+          </div>
+        ) : null}
 
-        <SettingsDropdown
-          value={directory.status_filter ?? ""}
-          options={STATUS_FILTER_OPTIONS}
-          onChange={(value) => directory.setStatusFilter(value ? (value as AccountStatusFilter) : null)}
-          className="w-[150px]"
-        />
-
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-[12.5px] text-shell-text-faint">Rows per page</span>
-          <SettingsDropdown
-            value={String(directory.per_page)}
-            options={PER_PAGE_DROPDOWN_OPTIONS}
-            onChange={(value) => directory.setPerPage(Number(value))}
-            className="w-[130px]"
+        <section className="inv-card" aria-label="Users list">
+          <UsersDirectoryToolbar
+            search_query={directory.search_query}
+            onSearchChange={directory.setSearchQuery}
+            role_filter={directory.role_filter}
+            onRoleChange={directory.setRoleFilter}
+            department_filter={directory.department_filter}
+            onDepartmentChange={directory.setDepartmentFilter}
+            department_rows={directory.department_rows}
+            total={directory.user_total}
+            is_loading={directory.is_loading}
+            has_active_filters={directory.has_active_filters}
+            onClearFilters={directory.clearFilters}
           />
-        </div>
+
+          <UsersDirectoryTable
+            user_rows={directory.user_rows}
+            is_loading={directory.is_loading}
+            sort_field={directory.sort_field}
+            sort_direction={directory.sort_direction}
+            onSort={directory.toggleSort}
+            current_user_id={directory.current_user_id}
+            canManageRow={directory.canManageRow}
+            onToggleActive={directory.requestToggleActive}
+            onDelete={directory.requestDelete}
+            onRestore={directory.requestRestore}
+            canImpersonate={directory.canImpersonate}
+            onImpersonate={directory.requestImpersonate}
+            has_active_filters={directory.has_active_filters}
+            onClearFilters={directory.clearFilters}
+          />
+
+          {directory.user_total > 0 ? (
+            <UsersDirectoryFooter
+              current_page={directory.page}
+              last_page={directory.last_page}
+              total={directory.user_total}
+              per_page={directory.per_page}
+              per_page_options={PER_PAGE_OPTIONS}
+              onPerPageChange={directory.setPerPage}
+              onPrevious={() => directory.setPage(directory.page - 1)}
+              onNext={() => directory.setPage(directory.page + 1)}
+            />
+          ) : null}
+        </section>
       </div>
 
-      <div className="mb-2.5 text-[12.5px] text-shell-text-faint">
-        Showing {directory.user_rows.length} of {directory.user_total} users
-      </div>
-
-      <UsersDirectoryTable
-        user_rows={directory.user_rows}
-        is_loading={directory.is_loading}
-        sort_field={directory.sort_field}
-        sort_direction={directory.sort_direction}
-        onSort={directory.toggleSort}
-        can_manage={directory.can_manage}
-        current_user_id={directory.current_user_id}
-        onToggleActive={directory.requestToggleActive}
-        onDelete={directory.requestDelete}
-        onRestore={directory.requestRestore}
-        canImpersonate={directory.canImpersonate}
-        onImpersonate={directory.requestImpersonate}
-      />
-
-      <UsersDirectoryFooter
-        current_page={directory.page}
-        last_page={directory.last_page}
-        total={directory.user_total}
-        onPrevious={() => directory.setPage(directory.page - 1)}
-        onNext={() => directory.setPage(directory.page + 1)}
-      />
+      <InviteUserModal users={invite} />
 
       <ConfirmActionModal
         is_open={directory.user_pending_toggle !== null}
-        title={directory.user_pending_toggle?.is_active ? "Disable user login" : "Enable user login"}
+        title={directory.user_pending_toggle?.is_active ? "Disable account" : "Enable account"}
         description={
           directory.user_pending_toggle?.is_active ? (
             <>
-              This will temporarily disable website access for &quot;{directory.user_pending_toggle?.full_name}&quot;.
-              The account and its data are kept as is, and the person will see a message that their account has been
-              temporarily disabled the next time they try to sign in. You can re-enable access at any time.
+              &quot;{directory.user_pending_toggle?.full_name}&quot; will not be able to sign in until you enable the
+              account again. Their data, boards and history are kept as they are.
             </>
           ) : (
-            <>&quot;{directory.user_pending_toggle?.full_name}&quot; will regain access and be able to sign in again.</>
+            <>&quot;{directory.user_pending_toggle?.full_name}&quot; will be able to sign in again right away.</>
           )
         }
-        confirm_label={directory.user_pending_toggle?.is_active ? "Disable login" : "Enable login"}
+        confirm_label={directory.user_pending_toggle?.is_active ? "Disable account" : "Enable account"}
         variant={directory.user_pending_toggle?.is_active ? "warning" : "neutral"}
+        risk_items={
+          directory.user_pending_toggle?.is_active
+            ? [
+                "Sessions they already have open stop working too.",
+                "They see a message that their account is disabled when they try to sign in.",
+              ]
+            : undefined
+        }
         onConfirm={directory.confirmToggleActive}
         onClose={directory.cancelToggleActive}
       />
@@ -164,7 +193,7 @@ const UsersDirectoryView: React.FC = () => {
         risk_items={[
           "The account will lose access immediately.",
           "They will no longer appear in people pickers or mentions.",
-          "You can restore the account from the Deleted filter.",
+          "You can restore the account from the Deleted card.",
         ]}
         onConfirm={directory.confirmDelete}
         onClose={directory.cancelDelete}

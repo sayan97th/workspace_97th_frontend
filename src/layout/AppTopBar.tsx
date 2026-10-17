@@ -129,7 +129,7 @@ const AppTopBar: React.FC = () => {
   /** "Organization" opens the company profile and branding page. */
   const openOrganization = () => router.push(ORGANIZATION_SETTINGS_PATH);
 
-  /** "Users" opens the site-wide user directory, gated to super_admin/admin/staff. */
+  /** "Manage users" opens the site-wide user list, gated to super_admin/admin. */
   const openUsers = () => router.push("/users");
 
   /** "Invitations" opens the Sent invitations page, scoped to the active workspace. */

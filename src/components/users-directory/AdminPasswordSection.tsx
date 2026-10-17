@@ -1,23 +1,29 @@
 "use client";
 import React, { useCallback, useState } from "react";
-import ProfileCard from "@/components/profile/ProfileCard";
-import ProfileSectionHeader from "@/components/profile/ProfileSectionHeader";
-import ProfileBanner from "@/components/profile/ProfileBanner";
-import ProfileFieldError from "@/components/profile/ProfileFieldError";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
-import { inputClass, labelClass, primaryButtonClass, outlineButtonClass } from "@/components/profile/profileStyles";
+import { InvitationIconButton, type InvitationTone } from "@/components/invitations";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { adminUsersService } from "@/services/administration/admin-users.service";
-import { CheckIcon, EyeIcon, EyeOffIcon, KeyIcon, MailIcon, PlusIcon } from "@/icons/workspace-icons";
+import {
+  AlertCircleIcon,
+  CheckCircleIcon,
+  CheckIcon,
+  EyeIcon,
+  EyeOffIcon,
+  KeyIcon,
+  MailIcon,
+  MinusIcon,
+} from "@/icons/workspace-icons";
+import EditUserSection, { EditUserFieldError } from "./EditUserSection";
 import type { AdminUserDto } from "@/types/administration/admin-users";
 import type { ApiError } from "@/types/auth";
 
 // ── Password strength (mirrors ChangePasswordSection's own account password form) ─────────
 
-type PasswordStrength = { score: number; label: string; color: string; bar_color: string };
+type PasswordStrength = { score: number; label: string; tone: InvitationTone };
 
 function evaluateStrength(password: string): PasswordStrength {
-  if (!password) return { score: 0, label: "", color: "", bar_color: "" };
+  if (!password) return { score: 0, label: "", tone: "neutral" };
 
   let score = 0;
   if (password.length >= 8) score++;
@@ -28,11 +34,11 @@ function evaluateStrength(password: string): PasswordStrength {
   score = Math.min(score, 4);
 
   const levels: PasswordStrength[] = [
-    { score: 0, label: "", color: "", bar_color: "" },
-    { score: 1, label: "Weak", color: "text-error-600", bar_color: "bg-error-500" },
-    { score: 2, label: "Fair", color: "text-warning-600", bar_color: "bg-warning-500" },
-    { score: 3, label: "Good", color: "text-blue-600", bar_color: "bg-blue-500" },
-    { score: 4, label: "Strong", color: "text-success-600", bar_color: "bg-success-500" },
+    { score: 0, label: "", tone: "neutral" },
+    { score: 1, label: "Weak", tone: "danger" },
+    { score: 2, label: "Fair", tone: "warning" },
+    { score: 3, label: "Good", tone: "info" },
+    { score: 4, label: "Strong", tone: "success" },
   ];
 
   return levels[score];
@@ -43,21 +49,19 @@ type Requirement = { label: string; met: boolean };
 function getRequirements(password: string): Requirement[] {
   return [
     { label: "At least 8 characters", met: password.length >= 8 },
-    { label: "Uppercase & lowercase letters", met: /[A-Z]/.test(password) && /[a-z]/.test(password) },
+    { label: "Uppercase and lowercase letters", met: /[A-Z]/.test(password) && /[a-z]/.test(password) },
     { label: "At least one number", met: /[0-9]/.test(password) },
     { label: "At least one special character", met: /[^A-Za-z0-9]/.test(password) },
   ];
 }
 
+/** Show or hide toggle inside a password input, its label doubles as the tooltip. */
 const EyeButton: React.FC<{ visible: boolean; onToggle: () => void }> = ({ visible, onToggle }) => (
-  <button
-    type="button"
-    onClick={onToggle}
-    className="absolute right-3 top-1/2 -translate-y-1/2 text-shell-text-faint transition-colors hover:text-shell-text-secondary"
-    tabIndex={-1}
-  >
-    {visible ? <EyeOffIcon size={17} /> : <EyeIcon size={17} />}
-  </button>
+  <span className="ud-input-trailing">
+    <InvitationIconButton label={visible ? "Hide password" : "Show password"} onClick={onToggle}>
+      {visible ? <EyeOffIcon size={16} /> : <EyeIcon size={16} />}
+    </InvitationIconButton>
+  </span>
 );
 
 export type AdminPasswordSectionProps = {
@@ -65,9 +69,8 @@ export type AdminPasswordSectionProps = {
 };
 
 /**
- * "Account security" card for {@link EditUserView}: lets an administrator either set a
- * new password for the account directly, or email the account a reset link so the person
- * picks their own, mirroring the two flows `UserController::setPassword()` and
+ * Password tab of {@link EditUserView}: lets an administrator either set a new password for
+ * the account directly, or email the account a reset link so the person picks their own, mirroring the two flows `UserController::setPassword()` and
  * `UserController::sendPasswordResetLink()` expose. Reachable only for other accounts, not
  * the signed-in admin's own, since the "Edit" link that opens this page never appears on the
  * admin's own row (see `UsersDirectoryTable`), the backend enforces the same restriction.
@@ -148,181 +151,175 @@ const AdminPasswordSection: React.FC<AdminPasswordSectionProps> = ({ user }) => 
 
   return (
     <>
-      <ProfileCard>
-        <ProfileSectionHeader
-          icon={<KeyIcon size={16} />}
-          title="Account security"
-          description="Set a new password for this account directly, or send the person a link so they can choose their own."
-        />
-
-        {save_success ? (
-          <ProfileBanner tone="success" className="mb-5">
-            {save_success}
-          </ProfileBanner>
-        ) : null}
-        {save_error ? (
-          <ProfileBanner tone="error" className="mb-5">
-            {save_error}
-          </ProfileBanner>
-        ) : null}
-
+      <div className="ud-stack">
         <form onSubmit={handleSetPassword} noValidate>
-          <div className="space-y-5">
-            <div>
-              <label className={labelClass} htmlFor="admin_new_password">
-                New password
-              </label>
-              <div className="relative">
-                <input
-                  id="admin_new_password"
-                  name="admin_new_password"
-                  type={show_new ? "text" : "password"}
-                  value={new_password}
-                  autoComplete="new-password"
-                  placeholder="Enter a new password for this account"
-                  onChange={(e) => {
-                    setNewPassword(e.target.value);
-                    if (field_errors.password) setFieldErrors((p) => ({ ...p, password: "" }));
-                  }}
-                  className={`${inputClass(!!field_errors.password)} pr-11`}
-                />
-                <EyeButton visible={show_new} onToggle={() => setShowNew((v) => !v)} />
-              </div>
-              {field_errors.password ? <ProfileFieldError message={field_errors.password} /> : null}
-
-              {new_password ? (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4].map((level) => (
-                        <div
-                          key={level}
-                          className={`h-1.5 w-10 rounded-full transition-all duration-300 ${
-                            strength.score >= level ? strength.bar_color : "bg-shell-hover-strong"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    {strength.label ? (
-                      <span className={`text-xs font-medium ${strength.color}`}>{strength.label}</span>
-                    ) : null}
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-                    {requirements.map((req) => (
-                      <div key={req.label} className="flex items-center gap-1.5">
-                        {req.met ? (
-                          <CheckIcon size={13} className="flex-none text-success-500" />
-                        ) : (
-                          <PlusIcon size={13} className="flex-none text-shell-text-faint" />
-                        )}
-                        <span className={`text-xs ${req.met ? "text-shell-text-secondary" : "text-shell-text-muted"}`}>
-                          {req.label}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+          <EditUserSection
+            icon={<KeyIcon size={17} />}
+            title="Set a new password"
+            description="Choose the password for this account yourself, for when the person needs working credentials right away."
+            footer={
+              <>
+                <p className="ud-footer-hint">They will sign in with this password from now on.</p>
+                <div className="ud-footer-actions">
+                  {has_any_input && !is_saving ? (
+                    <button type="button" onClick={resetForm} className="inv-button inv-button-ghost">
+                      Clear
+                    </button>
+                  ) : null}
+                  <button type="submit" disabled={is_saving || !has_any_input} className="inv-button inv-button-primary">
+                    {is_saving ? <span className="ud-button-spinner" aria-hidden /> : null}
+                    {is_saving ? "Updating" : "Set password"}
+                  </button>
                 </div>
-              ) : null}
-            </div>
+              </>
+            }
+          >
+            {save_success ? (
+              <div role="status" className="inv-notice" data-tone="success">
+                <CheckCircleIcon size={16} />
+                <span>{save_success}</span>
+              </div>
+            ) : null}
+            {save_error ? (
+              <div role="alert" className="inv-notice" data-tone="danger">
+                <AlertCircleIcon size={16} />
+                <span>{save_error}</span>
+              </div>
+            ) : null}
 
-            <div>
-              <label className={labelClass} htmlFor="admin_confirm_password">
-                Confirm new password
-              </label>
-              <div className="relative">
-                <input
-                  id="admin_confirm_password"
-                  name="admin_confirm_password"
-                  type={show_confirm ? "text" : "password"}
-                  value={confirm_password}
-                  autoComplete="new-password"
-                  placeholder="Re-enter the new password"
-                  onChange={(e) => {
-                    setConfirmPassword(e.target.value);
-                    if (field_errors.password_confirmation) setFieldErrors((p) => ({ ...p, password_confirmation: "" }));
-                  }}
-                  className={`${inputClass(!!field_errors.password_confirmation)} pr-11`}
-                />
-                <EyeButton visible={show_confirm} onToggle={() => setShowConfirm((v) => !v)} />
+            <div className="ud-form-grid">
+              <div className="ud-field-full">
+                <label className="ud-label" htmlFor="admin_new_password">
+                  New password
+                </label>
+                <div className="ud-input-wrap">
+                  <input
+                    id="admin_new_password"
+                    name="admin_new_password"
+                    type={show_new ? "text" : "password"}
+                    value={new_password}
+                    autoComplete="new-password"
+                    placeholder="Enter a new password for this account"
+                    aria-invalid={field_errors.password ? true : undefined}
+                    aria-describedby={field_errors.password ? "admin_new_password_error" : undefined}
+                    data-has-trailing="true"
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      setSaveSuccess(null);
+                      if (field_errors.password) setFieldErrors((p) => ({ ...p, password: "" }));
+                    }}
+                    className="ud-input"
+                  />
+                  <EyeButton visible={show_new} onToggle={() => setShowNew((v) => !v)} />
+                </div>
+                <EditUserFieldError id="admin_new_password_error" message={field_errors.password} />
+
+                {new_password ? (
+                  <>
+                    <div className="ud-strength" data-tone={strength.tone}>
+                      <span className="ud-strength-bars" aria-hidden>
+                        {[1, 2, 3, 4].map((level) => (
+                          <span key={level} data-on={strength.score >= level ? "true" : "false"} />
+                        ))}
+                      </span>
+                      {strength.label ? <span className="ud-strength-label">{strength.label}</span> : null}
+                    </div>
+
+                    <ul className="ud-requirements">
+                      {requirements.map((req) => (
+                        <li key={req.label} className="ud-requirement" data-met={req.met ? "true" : "false"}>
+                          {req.met ? <CheckIcon size={13} /> : <MinusIcon size={13} />}
+                          {req.label}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                ) : (
+                  <p className="ud-field-hint">Use at least 8 characters with letters, numbers and a symbol.</p>
+                )}
               </div>
 
-              {passwords_match ? (
-                <p className="mt-1.5 flex items-center gap-1 text-xs text-success-600">
-                  <CheckIcon size={13} className="flex-none" />
-                  Passwords match
-                </p>
-              ) : null}
-              {passwords_mismatch && !field_errors.password_confirmation ? (
-                <p className="mt-1.5 text-xs text-[var(--profile-danger-text)]">Passwords do not match</p>
-              ) : null}
-              {field_errors.password_confirmation ? (
-                <ProfileFieldError message={field_errors.password_confirmation} />
-              ) : null}
-            </div>
-          </div>
+              <div className="ud-field-full">
+                <label className="ud-label" htmlFor="admin_confirm_password">
+                  Confirm new password
+                </label>
+                <div className="ud-input-wrap">
+                  <input
+                    id="admin_confirm_password"
+                    name="admin_confirm_password"
+                    type={show_confirm ? "text" : "password"}
+                    value={confirm_password}
+                    autoComplete="new-password"
+                    placeholder="Enter the new password again"
+                    aria-invalid={field_errors.password_confirmation || passwords_mismatch ? true : undefined}
+                    data-has-trailing="true"
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (field_errors.password_confirmation) setFieldErrors((p) => ({ ...p, password_confirmation: "" }));
+                    }}
+                    className="ud-input"
+                  />
+                  <EyeButton visible={show_confirm} onToggle={() => setShowConfirm((v) => !v)} />
+                </div>
 
-          <div className="mt-6 flex items-center justify-between gap-4 border-t border-shell-border pt-5">
-            <p className="text-xs text-shell-text-faint">
-              The account will need to sign in again with this password next time.
-            </p>
-            <div className="flex shrink-0 items-center gap-2">
-              {has_any_input && !is_saving ? (
-                <button type="button" onClick={resetForm} className={outlineButtonClass}>
-                  Clear
-                </button>
-              ) : null}
-              <button type="submit" disabled={is_saving} className={primaryButtonClass}>
-                {is_saving ? (
-                  <span className="flex items-center gap-2">
-                    <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                    Updating…
-                  </span>
-                ) : (
-                  "Set password"
-                )}
+                {passwords_match ? (
+                  <p className="ud-field-success">
+                    <CheckIcon size={13} />
+                    Passwords match
+                  </p>
+                ) : null}
+                {field_errors.password_confirmation ? (
+                  <EditUserFieldError message={field_errors.password_confirmation} />
+                ) : passwords_mismatch ? (
+                  <EditUserFieldError message="Passwords do not match" />
+                ) : null}
+              </div>
+            </div>
+          </EditUserSection>
+        </form>
+
+        <EditUserSection
+          icon={<MailIcon size={17} />}
+          title="Send a password reset link"
+          description="Let the person choose their own password. The link expires after a short time."
+          tone="info"
+          is_flush
+        >
+          {reset_link_success || reset_link_error ? (
+            <div className="px-6">
+              <div
+                role={reset_link_error ? "alert" : "status"}
+                className="inv-notice"
+                data-tone={reset_link_error ? "danger" : "success"}
+              >
+                {reset_link_error ? <AlertCircleIcon size={16} /> : <CheckCircleIcon size={16} />}
+                <span>{reset_link_error ?? reset_link_success}</span>
+              </div>
+            </div>
+          ) : null}
+          <div className="ud-action-list">
+            <div className="ud-action-row">
+              <div className="ud-action-text">
+                <p className="ud-action-title">Email {user.email}</p>
+                <p className="ud-action-description">
+                  They get the same link as &quot;Forgot password&quot; on the sign in page.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetLinkError(null);
+                  setIsResetLinkModalOpen(true);
+                }}
+                className="inv-button inv-button-secondary"
+              >
+                <MailIcon size={15} />
+                Send reset link
               </button>
             </div>
           </div>
-        </form>
-
-        <div className="mt-6 border-t border-shell-border pt-5">
-          {reset_link_success ? (
-            <ProfileBanner tone="success" className="mb-4">
-              {reset_link_success}
-            </ProfileBanner>
-          ) : null}
-          {reset_link_error ? (
-            <ProfileBanner tone="error" className="mb-4">
-              {reset_link_error}
-            </ProfileBanner>
-          ) : null}
-
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-start gap-2.5">
-              <span className="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-brand-500/10 text-brand-500">
-                <MailIcon size={14} />
-              </span>
-              <div>
-                <p className="text-[13.5px] font-semibold text-shell-text">Send a password reset link instead</p>
-                <p className="mt-0.5 text-xs text-shell-text-muted">
-                  Emails {user.email} a link to choose their own password. The link expires after a short time.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setResetLinkError(null);
-                setIsResetLinkModalOpen(true);
-              }}
-              className={outlineButtonClass}
-            >
-              Send reset link
-            </button>
-          </div>
-        </div>
-      </ProfileCard>
+        </EditUserSection>
+      </div>
 
       <ConfirmActionModal
         is_open={is_reset_link_modal_open}

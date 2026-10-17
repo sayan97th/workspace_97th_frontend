@@ -1,0 +1,715 @@
+/*
+ * Manage users (`/users` list and `/users/{id}/edit`), in the same monday administration look
+ * as the Invitations pages: gray page, white rounded cards, Figtree body text (`--font-outfit`)
+ * and Poppins titles (`--font-heading`).
+ *
+ * It builds on the `--inv-*` tokens and `inv-*` classes from invitations.scss (page shell,
+ * buttons, toolbar inputs, list grid, pills, skeletons) and only adds what Manage users needs on
+ * top, under the `ud-` prefix. Dark mode comes for free from the tokens. The components import
+ * invitations.scss themselves (through `@/components/invitations`), so it is not repeated here.
+ */
+
+// ── List extras ──────────────────────────────────────────────────────────────
+
+.ud-person-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ud-you-tag {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--inv-primary-soft);
+  color: var(--inv-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.ud-person-link {
+  min-width: 0;
+  border-radius: 4px;
+
+  &:hover .inv-person-email {
+    color: var(--inv-info-text);
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 2px;
+  }
+}
+
+.ud-status-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+// Read only rows: the actions cell shows a lock instead of the edit buttons.
+.ud-locked {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--inv-text-faint);
+}
+
+.ud-row[data-faded="true"] {
+  .inv-cell:not(.inv-cell-actions) {
+    opacity: 0.72;
+  }
+}
+
+.ud-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  border-top: 1px solid var(--inv-divider);
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+
+  @media (max-width: 640px) {
+    padding: 12px 16px;
+  }
+}
+
+.ud-footer-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+
+  strong {
+    color: var(--inv-text);
+    font-weight: 600;
+  }
+}
+
+.ud-footer .inv-select {
+  height: 32px;
+  font-size: 13px;
+}
+
+// ── Access denied ────────────────────────────────────────────────────────────
+
+.ud-denied {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  background: var(--inv-page-bg);
+}
+
+.ud-denied-card {
+  display: flex;
+  width: 100%;
+  max-width: 460px;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 32px 32px;
+  border-radius: 8px;
+  background: var(--inv-card-bg);
+  box-shadow: var(--inv-card-shadow);
+  text-align: center;
+
+  @media (max-width: 640px) {
+    padding: 32px 20px 24px;
+  }
+}
+
+.ud-denied-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  border-radius: 999px;
+  background: var(--inv-warning-bg);
+  color: var(--inv-warning-text);
+}
+
+.ud-denied-title {
+  color: var(--inv-text);
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 28px;
+}
+
+.ud-denied-detail {
+  margin-top: 8px;
+  color: var(--inv-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.ud-denied-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+// ── Edit user: header card ───────────────────────────────────────────────────
+
+.ud-edit-inner {
+  max-width: 880px;
+}
+
+.ud-hero {
+  overflow: hidden;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--inv-card-bg);
+  box-shadow: var(--inv-card-shadow);
+}
+
+// Soft brand band behind the avatar, like the Profile and Teams covers.
+.ud-hero-band {
+  height: 72px;
+  background:
+    radial-gradient(circle at 15% 20%, color-mix(in srgb, var(--color-brand-500) 22%, transparent), transparent 60%),
+    linear-gradient(135deg, var(--inv-primary-soft), var(--inv-info-bg));
+}
+
+.ud-hero-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 4px 16px;
+  padding: 0 24px 20px;
+
+  @media (max-width: 640px) {
+    padding: 0 16px 16px;
+  }
+}
+
+// Only the avatar overlaps the band, the name and email start below it.
+.ud-hero-avatar {
+  flex: none;
+  margin-top: -40px;
+  border: 4px solid var(--inv-card-bg);
+  border-radius: 999px;
+  background: var(--inv-card-bg);
+
+  &[data-faded="true"] .inv-avatar {
+    opacity: 0.45;
+    filter: grayscale(1);
+  }
+}
+
+.ud-hero-main {
+  min-width: 0;
+  flex: 1 1 260px;
+  padding-top: 12px;
+}
+
+.ud-hero-name {
+  overflow: hidden;
+  color: var(--inv-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ud-hero-email {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  color: var(--inv-text-secondary);
+  font-size: 14px;
+
+  > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .inv-icon-button {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+.ud-hero-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.ud-hero-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--inv-divider);
+
+  @media (max-width: 760px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.ud-fact {
+  min-width: 0;
+  padding: 12px 24px;
+  border-right: 1px solid var(--inv-divider);
+
+  &:last-child {
+    border-right: 0;
+  }
+
+  @media (max-width: 760px) {
+    padding: 12px 16px;
+
+    &:nth-child(2n) {
+      border-right: 0;
+    }
+
+    &:nth-child(-n + 2) {
+      border-bottom: 1px solid var(--inv-divider);
+    }
+  }
+}
+
+.ud-fact-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.ud-fact-value {
+  display: block;
+  overflow: hidden;
+  margin-top: 4px;
+  color: var(--inv-text);
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// ── Edit user: tabs ──────────────────────────────────────────────────────────
+
+.ud-tabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--inv-divider);
+  scrollbar-width: none;
+}
+
+.ud-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px 4px 0 0;
+  color: var(--inv-text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: var(--inv-hover);
+    color: var(--inv-text);
+  }
+
+  &[aria-selected="true"] {
+    color: var(--inv-text);
+    font-weight: 500;
+
+    &::after {
+      content: "";
+      position: absolute;
+      right: 8px;
+      bottom: -1px;
+      left: 8px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--inv-primary);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: -2px;
+  }
+}
+
+// ── Edit user: section cards and form ────────────────────────────────────────
+
+.ud-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.ud-section {
+  border-radius: 8px;
+  background: var(--inv-card-bg);
+  box-shadow: var(--inv-card-shadow);
+}
+
+.ud-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 20px 24px 0;
+
+  @media (max-width: 640px) {
+    padding: 16px 16px 0;
+  }
+}
+
+.ud-section-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--inv-tone-bg, var(--inv-primary-soft));
+  color: var(--inv-tone-text, var(--inv-primary));
+}
+
+.ud-section-title {
+  color: var(--inv-text);
+  font-family: var(--font-outfit);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.ud-section-description {
+  margin-top: 2px;
+  color: var(--inv-text-secondary);
+  font-size: 13.5px;
+  line-height: 20px;
+}
+
+.ud-section-body {
+  padding: 20px 24px;
+
+  @media (max-width: 640px) {
+    padding: 16px;
+  }
+}
+
+.ud-section-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--inv-divider);
+  background: var(--inv-subtle-bg);
+  border-radius: 0 0 8px 8px;
+
+  @media (max-width: 640px) {
+    padding: 12px 16px;
+  }
+}
+
+.ud-footer-hint {
+  color: var(--inv-text-faint);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.ud-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.ud-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ud-field-full {
+  grid-column: 1 / -1;
+}
+
+.ud-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--inv-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.ud-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > .inv-field-icon {
+    left: 12px;
+  }
+}
+
+.ud-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--inv-border);
+  border-radius: 4px;
+  background: var(--inv-input-bg);
+  color: var(--inv-text);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &::placeholder {
+    color: var(--inv-text-faint);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--inv-text-secondary);
+  }
+
+  &:focus {
+    border-color: var(--inv-primary);
+    box-shadow: 0 0 0 3px var(--inv-primary-soft);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    background: var(--inv-subtle-bg);
+    color: var(--inv-text-secondary);
+  }
+
+  &[aria-invalid="true"] {
+    border-color: var(--inv-danger-text);
+  }
+
+  &[data-has-icon="true"] {
+    padding-left: 38px;
+  }
+
+  &[data-has-trailing="true"] {
+    padding-right: 44px;
+  }
+}
+
+// The department picker is a native select dressed like the inputs.
+select.ud-input {
+  appearance: none;
+  padding-right: 32px;
+  cursor: pointer;
+
+  option {
+    background: var(--inv-card-bg);
+    color: var(--inv-text);
+  }
+}
+
+.ud-input-trailing {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.ud-select-caret {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  color: var(--inv-text-faint);
+  pointer-events: none;
+}
+
+.ud-field-error {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--inv-danger-text);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.ud-field-hint {
+  margin-top: 6px;
+  color: var(--inv-text-faint);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.ud-field-success {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  color: var(--inv-success-text);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+// ── Password strength ────────────────────────────────────────────────────────
+
+.ud-strength {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ud-strength-bars {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  max-width: 220px;
+
+  > span {
+    height: 4px;
+    border-radius: 999px;
+    background: var(--inv-divider);
+    transition: background-color 200ms ease;
+  }
+
+  > span[data-on="true"] {
+    background: var(--inv-tone-text);
+  }
+}
+
+.ud-strength-label {
+  color: var(--inv-tone-text);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.ud-requirements {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 16px;
+  margin-top: 10px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.ud-requirement {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-text-secondary);
+  font-size: 12.5px;
+  line-height: 18px;
+
+  svg {
+    flex: none;
+    color: var(--inv-text-faint);
+  }
+
+  &[data-met="true"] {
+    color: var(--inv-text);
+
+    svg {
+      color: var(--inv-success-text);
+    }
+  }
+}
+
+// ── Access actions ───────────────────────────────────────────────────────────
+
+.ud-action-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ud-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--inv-divider);
+
+  &:first-child {
+    border-top: 0;
+  }
+
+  @media (max-width: 640px) {
+    padding: 14px 16px;
+  }
+}
+
+.ud-action-text {
+  min-width: 0;
+  flex: 1 1 280px;
+}
+
+.ud-action-title {
+  color: var(--inv-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.ud-action-description {
+  margin-top: 2px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.ud-button-danger {
+  border: 1px solid var(--inv-danger-text);
+  background: transparent;
+  color: var(--inv-danger-text);
+
+  &:hover:not(:disabled) {
+    background: var(--inv-danger-bg);
+  }
+}
+
+.ud-section[data-tone="danger"] {
+  box-shadow: var(--inv-card-shadow), inset 0 0 0 1px color-mix(in srgb, var(--inv-danger-text) 35%, transparent);
+}
+
+.ud-button-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: inv-spin 700ms linear infinite;
+}

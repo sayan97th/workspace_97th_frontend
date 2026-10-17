@@ -1,40 +1,29 @@
+"use client";
 import React from "react";
 import Link from "next/link";
-import { PersonAvatar } from "@/components/board";
-import { toPersonOption } from "@/components/administration/adminUserMapping";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import {
+  InvitationAvatar,
+  InvitationSentDate,
+  InvitationSkeletonRows,
+  InvitationsEmptyState,
+  formatInvitationDateTime,
+  formatRelative,
+} from "@/components/invitations";
 import { primaryRole } from "@/components/administration/useUsersManager";
+import { BuildingIcon, ChevronDownIcon, ClockIcon, LockIcon, PencilIcon, SearchIcon, TeamsIcon } from "@/icons/workspace-icons";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
 import UserRowActionsMenu from "./UserRowActionsMenu";
+import { STAFF_TIER_LOCKED_HINT } from "./userManagementPermissions";
 import type { AdminUserDto, AdminUsersSortDirection, AdminUsersSortField } from "@/types/administration/admin-users";
 
-const SKELETON_ROWS = 8;
+const LIST_STYLE = {
+  "--inv-columns": "minmax(220px, 2.2fr) 124px minmax(130px, 1fr) minmax(140px, 1fr) 120px 76px",
+  "--inv-min-width": "880px",
+} as React.CSSProperties;
 
-const formatDate = (iso: string): string => new Date(iso).toLocaleDateString();
-
-/** Up/down caret pair for a sortable header, the active field+direction highlighted. */
-const SortIcon: React.FC<{ is_active: boolean; direction: AdminUsersSortDirection }> = ({ is_active, direction }) => (
-  <span className={`ml-1 inline-flex flex-col gap-px transition-opacity ${is_active ? "opacity-100" : "opacity-0 group-hover:opacity-40"}`}>
-    <svg
-      className={`h-2.5 w-2.5 transition-colors ${is_active && direction === "asc" ? "text-brand-500" : "text-shell-text-muted"}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={3}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-    </svg>
-    <svg
-      className={`-mt-1 h-2.5 w-2.5 transition-colors ${is_active && direction === "desc" ? "text-brand-500" : "text-shell-text-muted"}`}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={3}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  </span>
-);
+const COLUMN_COUNT = 6;
 
 const SortableHeader: React.FC<{
   field: AdminUsersSortField;
@@ -42,17 +31,38 @@ const SortableHeader: React.FC<{
   sort_direction: AdminUsersSortDirection;
   onSort: (field: AdminUsersSortField) => void;
   children: React.ReactNode;
-}> = ({ field, sort_field, sort_direction, onSort, children }) => (
-  <th
-    className="group cursor-pointer select-none px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-shell-text-faint transition-colors hover:text-shell-text-secondary"
-    onClick={() => onSort(field)}
-  >
-    <span className="inline-flex items-center">
-      {children}
-      <SortIcon is_active={sort_field === field} direction={sort_direction} />
+}> = ({ field, sort_field, sort_direction, onSort, children }) => {
+  const is_active = sort_field === field;
+  return (
+    <span role="columnheader" aria-sort={is_active ? (sort_direction === "asc" ? "ascending" : "descending") : "none"}>
+      <button
+        type="button"
+        onClick={() => onSort(field)}
+        data-active={is_active ? "true" : "false"}
+        data-direction={sort_direction}
+        className="inv-sort-button"
+      >
+        {children}
+        <ChevronDownIcon size={11} className="inv-sort-caret" />
+      </button>
     </span>
-  </th>
-);
+  );
+};
+
+/** "Last active 3 days ago" under the status pill, the exact time in a tooltip. */
+const LastActive: React.FC<{ iso: string | null | undefined }> = ({ iso }) =>
+  iso ? (
+    <PortalTooltip content={`Last active ${formatInvitationDateTime(iso)}`}>
+      <span className="ud-status-meta">
+        <ClockIcon size={11} />
+        {formatRelative(iso)}
+      </span>
+    </PortalTooltip>
+  ) : (
+    <PortalTooltip content="This person has not signed in yet.">
+      <span className="ud-status-meta">Never signed in</span>
+    </PortalTooltip>
+  );
 
 export type UsersDirectoryTableProps = {
   user_rows: AdminUserDto[];
@@ -60,23 +70,24 @@ export type UsersDirectoryTableProps = {
   sort_field: AdminUsersSortField;
   sort_direction: AdminUsersSortDirection;
   onSort: (field: AdminUsersSortField) => void;
-  /** Whether the signed-in account may edit, deactivate/reactivate or delete other accounts. */
-  can_manage: boolean;
   current_user_id: number | null;
+  /** Whether the signed in account may change this row, see `canManageAccount`. */
+  canManageRow: (user: AdminUserDto) => boolean;
   onToggleActive: (user: AdminUserDto) => void;
   onDelete: (user: AdminUserDto) => void;
   onRestore: (user: AdminUserDto) => void;
-  /** Whether the signed-in account may impersonate this specific row; hides the button when false. */
+  /** Whether the signed-in account may impersonate this specific row; hides the menu item when false. */
   canImpersonate: (user: AdminUserDto) => boolean;
   onImpersonate: (user: AdminUserDto) => void;
+  has_active_filters: boolean;
+  onClearFilters: () => void;
 };
 
 /**
- * Real `<table>` roster for the standalone Users directory: name, email, site-wide role,
- * department, active status and join date, one row per account, with every column
- * click-to-sort against the backend's `UserController::applySort()`. Mirrors the shape of
- * `InvitationsTable` (skeleton rows while loading, an empty state, hoverable rows) so every
- * account-wide roster in the app reads the same way.
+ * Person / Role / Department / Status / Joined / Actions list for Manage users, on the same
+ * grid as the Invitations lists. Header clicks sort server side (`AdminUserQuery::applySort()`),
+ * below 820px each row becomes a card. Rows the signed in account cannot change show a lock
+ * with the reason instead of the edit buttons.
  */
 const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
   user_rows,
@@ -84,140 +95,158 @@ const UsersDirectoryTable: React.FC<UsersDirectoryTableProps> = ({
   sort_field,
   sort_direction,
   onSort,
-  can_manage,
   current_user_id,
+  canManageRow,
   onToggleActive,
   onDelete,
   onRestore,
   canImpersonate,
   onImpersonate,
+  has_active_filters,
+  onClearFilters,
 }) => {
-  const column_count = can_manage ? 6 : 5;
+  const sort_props = { sort_field, sort_direction, onSort };
 
   return (
-  <div className="overflow-x-auto rounded-t-[10px] border border-b-0 border-shell-border">
-    <table className="w-full text-sm">
-      <thead>
-        <tr className="border-b border-shell-border bg-shell-panel-alt">
-          <SortableHeader field="name" sort_field={sort_field} sort_direction={sort_direction} onSort={onSort}>
-            Name
-          </SortableHeader>
-          <SortableHeader field="role" sort_field={sort_field} sort_direction={sort_direction} onSort={onSort}>
-            Role
-          </SortableHeader>
-          <SortableHeader field="department" sort_field={sort_field} sort_direction={sort_direction} onSort={onSort}>
-            Department
-          </SortableHeader>
-          <SortableHeader field="status" sort_field={sort_field} sort_direction={sort_direction} onSort={onSort}>
-            Status
-          </SortableHeader>
-          <SortableHeader field="created_at" sort_field={sort_field} sort_direction={sort_direction} onSort={onSort}>
-            Joined
-          </SortableHeader>
-          {can_manage ? (
-            <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-shell-text-faint">
-              Actions
-            </th>
-          ) : null}
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-shell-border">
-        {is_loading ? (
-          Array.from({ length: SKELETON_ROWS }).map((_, row_index) => (
-            <tr key={row_index}>
-              {Array.from({ length: column_count }).map((__, column_index) => (
-                <td key={column_index} className="px-4 py-4">
-                  <div className="h-4 animate-pulse rounded bg-shell-hover" />
-                </td>
-              ))}
-            </tr>
-          ))
-        ) : user_rows.length === 0 ? (
-          <tr>
-            <td colSpan={column_count} className="px-4 py-12 text-center">
-              <div className="flex flex-col items-center gap-2 text-shell-text-muted">
-                <svg className="h-8 w-8 text-shell-text-faint" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.964 0a9 9 0 10-11.964 0m11.964 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <p className="text-sm font-medium text-shell-text-secondary">No users found</p>
-                <p className="text-xs text-shell-text-faint">Try adjusting your search or filters</p>
-              </div>
-            </td>
-          </tr>
+    <div className="inv-list" role="table" aria-label="Users" style={LIST_STYLE}>
+      <div className="inv-list-head" role="row">
+        <SortableHeader field="name" {...sort_props}>
+          Name
+        </SortableHeader>
+        <SortableHeader field="role" {...sort_props}>
+          Role
+        </SortableHeader>
+        <SortableHeader field="department" {...sort_props}>
+          Department
+        </SortableHeader>
+        <SortableHeader field="status" {...sort_props}>
+          Status
+        </SortableHeader>
+        <SortableHeader field="created_at" {...sort_props}>
+          Joined
+        </SortableHeader>
+        <span role="columnheader" className="sr-only">
+          Actions
+        </span>
+      </div>
+
+      {is_loading && user_rows.length === 0 ? (
+        <InvitationSkeletonRows columns={COLUMN_COUNT} rows={8} />
+      ) : user_rows.length === 0 ? (
+        has_active_filters ? (
+          <InvitationsEmptyState
+            icon={<SearchIcon size={22} />}
+            title="No users match"
+            detail="Try another name or email, or clear the filters to see everyone again."
+            actions={
+              <button type="button" onClick={onClearFilters} className="inv-button inv-button-secondary">
+                Clear filters
+              </button>
+            }
+          />
         ) : (
-          user_rows.map((row) => {
-            const person = toPersonOption(row);
-            const role = primaryRole(row);
+          <InvitationsEmptyState
+            icon={<TeamsIcon size={22} />}
+            title="No users here"
+            detail="No account has this status right now."
+          />
+        )
+      ) : (
+        <div role="rowgroup" style={{ opacity: is_loading ? 0.6 : 1, transition: "opacity 120ms ease" }}>
+          {user_rows.map((row) => {
             const is_self = current_user_id !== null && row.id === current_user_id;
+            const is_deleted = Boolean(row.deleted_at);
+            const can_manage_row = canManageRow(row);
+            const edit_href = `/users/${row.id}/edit`;
+
+            const person = (
+              <div className="inv-person" data-faded={is_deleted || !row.is_active ? "true" : undefined}>
+                <InvitationAvatar email={row.email} full_name={row.full_name} photo_url={row.profile_photo_url} />
+                <span className="min-w-0">
+                  <span className="ud-person-name">
+                    <span className="inv-person-email">{row.full_name}</span>
+                    {is_self ? <span className="ud-you-tag">You</span> : null}
+                  </span>
+                  <span className="inv-person-meta">{row.email}</span>
+                </span>
+              </div>
+            );
 
             return (
-              <tr key={row.id} className="transition-colors hover:bg-shell-hover">
-                <td className="px-4 py-3">
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <PersonAvatar person={person} size={28} />
-                    <div className="min-w-0">
-                      <div
-                        className={`truncate text-[13.5px] font-semibold ${
-                          row.is_active && !row.deleted_at ? "text-shell-text" : "text-shell-text-faint line-through"
-                        }`}
-                      >
-                        {row.full_name}
-                      </div>
-                      <div className="truncate text-xs text-shell-text-muted">{row.email}</div>
-                    </div>
+              <div key={row.id} className="inv-row ud-row" role="row" data-faded={is_deleted ? "true" : undefined}>
+                <div className="inv-cell inv-cell-person" role="cell">
+                  {can_manage_row ? (
+                    <PortalTooltip content={`Edit ${row.full_name}`} className="max-w-full">
+                      <Link href={edit_href} className="ud-person-link block">
+                        {person}
+                      </Link>
+                    </PortalTooltip>
+                  ) : (
+                    person
+                  )}
+                </div>
+
+                <div className="inv-cell" role="cell" data-label="Role">
+                  <UserRoleBadge role={primaryRole(row)} />
+                </div>
+
+                <div className="inv-cell" role="cell" data-label="Department">
+                  {row.department ? (
+                    <span className="inv-department">
+                      <BuildingIcon size={14} />
+                      <span>{row.department.name}</span>
+                    </span>
+                  ) : (
+                    <span className="inv-muted">No department</span>
+                  )}
+                </div>
+
+                <div className="inv-cell" role="cell" data-label="Status">
+                  <div className="inv-status-stack">
+                    <UserStatusBadge is_active={row.is_active} is_deleted={is_deleted} />
+                    {is_deleted ? null : <LastActive iso={row.last_active_at} />}
                   </div>
-                </td>
+                </div>
 
-                <td className="px-4 py-3">
-                  <UserRoleBadge role={role} />
-                </td>
+                <div className="inv-cell" role="cell" data-label="Joined">
+                  <InvitationSentDate iso={row.created_at} />
+                </div>
 
-                <td className="px-4 py-3 text-sm text-shell-text-muted">
-                  {row.department?.name ?? <span className="text-shell-text-faint">Unassigned</span>}
-                </td>
-
-                <td className="px-4 py-3">
-                  <UserStatusBadge is_active={row.is_active} is_deleted={Boolean(row.deleted_at)} />
-                </td>
-
-                <td className="px-4 py-3 text-sm text-shell-text-muted">{formatDate(row.created_at)}</td>
-
-                {can_manage ? (
-                  <td className="px-4 py-3">
-                    {is_self ? (
-                      <span className="block text-right text-xs text-shell-text-faint">You</span>
-                    ) : (
-                      <div className="flex items-center justify-end gap-1.5">
-                        <Link
-                          href={`/users/${row.id}/edit`}
-                          aria-label={`Edit ${row.full_name}`}
-                          className="rounded-lg border border-shell-border-strong px-2.5 py-1 text-xs font-semibold text-shell-text-secondary transition-colors hover:border-shell-text-muted hover:bg-shell-hover hover:text-shell-text"
-                        >
-                          Edit
-                        </Link>
-                        <UserRowActionsMenu
-                          user={row}
-                          can_impersonate={canImpersonate(row)}
-                          onToggleActive={() => onToggleActive(row)}
-                          onDelete={() => onDelete(row)}
-                          onRestore={() => onRestore(row)}
-                          onImpersonate={() => onImpersonate(row)}
-                        />
-                      </div>
-                    )}
-                  </td>
-                ) : null}
-              </tr>
+                <div className="inv-cell inv-cell-actions" role="cell">
+                  {can_manage_row ? (
+                    <>
+                      {is_deleted ? null : (
+                        <PortalTooltip content="Edit user">
+                          <Link href={edit_href} aria-label={`Edit ${row.full_name}`} className="inv-icon-button">
+                            <PencilIcon size={15} />
+                          </Link>
+                        </PortalTooltip>
+                      )}
+                      <UserRowActionsMenu
+                        user={row}
+                        can_impersonate={canImpersonate(row)}
+                        onToggleActive={() => onToggleActive(row)}
+                        onDelete={() => onDelete(row)}
+                        onRestore={() => onRestore(row)}
+                        onImpersonate={() => onImpersonate(row)}
+                      />
+                    </>
+                  ) : (
+                    <PortalTooltip
+                      content={is_self ? "This is you. Change your own account from My Profile." : STAFF_TIER_LOCKED_HINT}
+                    >
+                      <span className="ud-locked" tabIndex={0} aria-label={is_self ? "Your account" : "Read only account"}>
+                        <LockIcon size={15} />
+                      </span>
+                    </PortalTooltip>
+                  )}
+                </div>
+              </div>
             );
-          })
-        )}
-      </tbody>
-    </table>
-  </div>
+          })}
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -1,7 +1,18 @@
 "use client";
 import React, { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import AnchoredMenu, { type AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
-import { DeleteIcon, EyeIcon, LockIcon, MoreDotsIcon, RefreshIcon, UnlockIcon } from "@/icons/workspace-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import {
+  DeleteIcon,
+  EyeIcon,
+  KeyIcon,
+  LockIcon,
+  MoreDotsIcon,
+  PencilIcon,
+  RefreshIcon,
+  UnlockIcon,
+} from "@/icons/workspace-icons";
 import type { AdminUserDto } from "@/types/administration/admin-users";
 
 export type UserRowActionsMenuProps = {
@@ -14,12 +25,9 @@ export type UserRowActionsMenuProps = {
 };
 
 /**
- * A user row's "..." trigger for the actions that don't warrant their own always-visible
- * text button: Impersonate, Disable/Enable account, Delete and, for a deleted account,
- * Restore. Built on the same
- * {@link AnchoredMenu} primitive as {@link TeamOptionsButton}, so the row keeps one
- * "Edit" button in view and everything else reads as labeled text here instead of
- * unlabeled icons.
+ * A user row's "..." menu: Edit details and Change password open the edit page on that tab,
+ * then Impersonate, Disable or Enable account and Delete user. A deleted account only offers
+ * Restore. Built on {@link AnchoredMenu}, so it reads like every other row menu in the app.
  */
 const UserRowActionsMenu: React.FC<UserRowActionsMenuProps> = ({
   user,
@@ -29,47 +37,62 @@ const UserRowActionsMenu: React.FC<UserRowActionsMenuProps> = ({
   onRestore,
   onImpersonate,
 }) => {
+  const router = useRouter();
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const button_ref = useRef<HTMLButtonElement>(null);
+  const edit_href = `/users/${user.id}/edit`;
 
   // A deleted account can only be brought back, everything else needs a live account.
   const items: AnchoredMenuItem[] = user.deleted_at
-    ? [{ key: "restore", label: "Restore account", icon: <RefreshIcon />, onClick: onRestore }]
+    ? [
+        { key: "view", label: "View account", icon: <EyeIcon />, onClick: () => router.push(edit_href) },
+        { key: "restore", label: "Restore account", icon: <RefreshIcon />, onClick: onRestore },
+      ]
     : [
+        { key: "edit", label: "Edit details", icon: <PencilIcon />, onClick: () => router.push(edit_href) },
+        {
+          key: "password",
+          label: "Change password",
+          icon: <KeyIcon />,
+          onClick: () => router.push(`${edit_href}?tab=password`),
+        },
         ...(can_impersonate
-          ? [{ key: "impersonate", label: "Impersonate", icon: <EyeIcon />, onClick: onImpersonate }]
+          ? [{ key: "impersonate", label: "Impersonate", icon: <EyeIcon />, onClick: onImpersonate, divider_before: true }]
           : []),
         {
           key: "toggle-active",
           label: user.is_active ? "Disable account" : "Enable account",
           icon: user.is_active ? <LockIcon /> : <UnlockIcon />,
           onClick: onToggleActive,
+          divider_before: !can_impersonate,
         },
         { key: "delete", label: "Delete user", icon: <DeleteIcon />, onClick: onDelete, danger: true },
       ];
 
   return (
     <span className="inline-flex">
-      <button
-        ref={button_ref}
-        type="button"
-        onClick={() => setIsMenuOpen((open) => !open)}
-        aria-label={`More actions for ${user.full_name}`}
-        aria-haspopup="menu"
-        aria-expanded={is_menu_open}
-        className={`flex h-7 w-7 flex-none items-center justify-center rounded-lg text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text ${
-          is_menu_open ? "bg-shell-hover text-shell-text" : ""
-        }`}
-      >
-        <MoreDotsIcon size={14} />
-      </button>
+      {/* Never toggle the tooltip's `disabled` here: that remounts the button and the menu anchors to a detached node. */}
+      <PortalTooltip content="More actions">
+        <button
+          ref={button_ref}
+          type="button"
+          onClick={() => setIsMenuOpen((open) => !open)}
+          aria-label={`More actions for ${user.full_name}`}
+          aria-haspopup="menu"
+          aria-expanded={is_menu_open}
+          className="inv-icon-button"
+          style={is_menu_open ? { background: "var(--inv-hover)", color: "var(--inv-text)" } : undefined}
+        >
+          <MoreDotsIcon size={15} />
+        </button>
+      </PortalTooltip>
 
       <AnchoredMenu
         anchor_el={button_ref.current}
         is_open={is_menu_open}
         onClose={() => setIsMenuOpen(false)}
         items={items}
-        width={190}
+        width={210}
         align="end"
       />
     </span>

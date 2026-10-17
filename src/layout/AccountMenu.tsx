@@ -9,6 +9,7 @@ import MenuFlyout from "@/components/ui/dropdown/MenuFlyout";
 import { boardTreeFontClassName } from "@/components/board/board-tree-font";
 import { CheckIcon } from "@/icons/workspace-icons";
 import { getUserDisplayName } from "@/lib/user";
+import { USER_MANAGER_ROLES } from "@/components/users-directory/userManagementPermissions";
 import { profilePreferencesService } from "@/services/profile-preferences.service";
 import "./account-menu.css";
 
@@ -384,8 +385,9 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     closeFlyout();
   };
 
-  /** Only super_admin/admin/staff may view the Users directory, mirroring the page's own gate. */
+  /** Organization stays open to staff, Manage users only to the roles its page and API allow. */
   const can_view_users = hasAnyRole("super_admin", "admin", "staff");
+  const can_manage_users = hasAnyRole(...USER_MANAGER_ROLES);
 
   const account_items: MenuItem[] = [
     { key: "profile", label: "My profile", icon: <ProfileGlyph />, onSelect: runAndClose(onOpenProfile) },
@@ -401,8 +403,10 @@ const AccountMenu: React.FC<AccountMenuProps> = ({
     ...(can_view_users
       ? [
           { key: "organization", label: "Organization", icon: <OrganizationGlyph />, onSelect: runAndClose(onOpenOrganization) },
-          { key: "users", label: "Users", icon: <UsersGlyph />, onSelect: runAndClose(onOpenUsers) },
         ]
+      : []),
+    ...(can_manage_users
+      ? [{ key: "users", label: "Manage users", icon: <UsersGlyph />, onSelect: runAndClose(onOpenUsers) }]
       : []),
     { key: "invite", label: "Invite members", icon: <InviteGlyph />, onSelect: runAndClose(onInviteMembers) },
   ];

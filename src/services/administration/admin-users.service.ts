@@ -25,6 +25,7 @@ const buildQuery = (query?: AdminUsersQuery): string => {
   if (query?.sort_field) params.set("sort_field", query.sort_field);
   if (query?.sort_direction) params.set("sort_direction", query.sort_direction);
   if (query?.ids?.length) params.set("ids", query.ids.join(","));
+  if (query?.with_counts) params.set("with_counts", "1");
   Object.entries(query?.filter_params ?? {}).forEach(([key, value]) => params.set(key, value));
   const search = params.toString();
   return search ? `?${search}` : "";

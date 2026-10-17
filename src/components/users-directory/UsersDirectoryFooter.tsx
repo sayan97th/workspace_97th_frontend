@@ -1,53 +1,96 @@
+"use client";
 import React from "react";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import { ChevronDownIcon } from "@/icons/workspace-icons";
 
 export type UsersDirectoryFooterProps = {
   current_page: number;
   last_page: number;
   total: number;
+  per_page: number;
+  per_page_options: readonly number[];
+  onPerPageChange: (per_page: number) => void;
   onPrevious: () => void;
   onNext: () => void;
 };
 
 /**
- * Previous/Next pager for the Users table, sitting flush under `UsersDirectoryTable` as one
- * continuous bordered card. Unlike the shared `Pagination` component (a numeric "X-Y of Z"
- * range used by several other rosters in the app), this reads "Page X of Y, Z total" with
- * plain Previous/Next buttons, the layout asked for specifically for this table.
+ * Bottom bar of the Manage users card: "1 to 25 of 57 users", a rows per page picker and
+ * previous / next page buttons.
  */
 const UsersDirectoryFooter: React.FC<UsersDirectoryFooterProps> = ({
   current_page,
   last_page,
   total,
+  per_page,
+  per_page_options,
+  onPerPageChange,
   onPrevious,
   onNext,
-}) => (
-  <div className="flex items-center justify-between rounded-b-[10px] border border-t-0 border-shell-border bg-shell-panel-alt px-4 py-3">
-    <div className="text-[12.5px] text-shell-text-muted">
-      Page <span className="font-semibold text-shell-text">{current_page}</span> of{" "}
-      <span className="font-semibold text-shell-text">{last_page}</span>
-      {", "}
-      {total} total
-    </div>
+}) => {
+  const range_start = total === 0 ? 0 : (current_page - 1) * per_page + 1;
+  const range_end = Math.min(current_page * per_page, total);
 
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={onPrevious}
-        disabled={current_page <= 1}
-        className="rounded-lg border border-shell-border-strong px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Previous
-      </button>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={current_page >= last_page}
-        className="rounded-lg border border-shell-border-strong px-3 py-1.5 text-xs font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        Next
-      </button>
+  return (
+    <div className="ud-footer">
+      <div className="ud-footer-start">
+        <span>
+          <strong>
+            {range_start} to {range_end}
+          </strong>{" "}
+          of {total} {total === 1 ? "user" : "users"}
+        </span>
+        <PortalTooltip content="Rows per page">
+          <span className="inv-field">
+            <select
+              value={per_page}
+              aria-label="Rows per page"
+              onChange={(event) => onPerPageChange(Number(event.target.value))}
+              className="inv-select"
+              style={{ paddingLeft: 10 }}
+            >
+              {per_page_options.map((option) => (
+                <option key={option} value={option}>
+                  {option} per page
+                </option>
+              ))}
+            </select>
+            <span className="inv-field-trailing">
+              <ChevronDownIcon size={12} />
+            </span>
+          </span>
+        </PortalTooltip>
+      </div>
+
+      <div className="inv-pager-buttons">
+        <PortalTooltip content="Previous page">
+          <button
+            type="button"
+            aria-label="Previous page"
+            disabled={current_page <= 1}
+            onClick={onPrevious}
+            className="inv-icon-button"
+          >
+            <ChevronDownIcon size={14} className="rotate-90" />
+          </button>
+        </PortalTooltip>
+        <span className="inv-pager-page">
+          Page {current_page} of {Math.max(1, last_page)}
+        </span>
+        <PortalTooltip content="Next page">
+          <button
+            type="button"
+            aria-label="Next page"
+            disabled={current_page >= last_page}
+            onClick={onNext}
+            className="inv-icon-button"
+          >
+            <ChevronDownIcon size={14} className="-rotate-90" />
+          </button>
+        </PortalTooltip>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 export default UsersDirectoryFooter;

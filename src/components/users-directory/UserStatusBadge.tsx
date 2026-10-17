@@ -1,4 +1,25 @@
 import React from "react";
+import { InvitationPill, type InvitationTone } from "@/components/invitations";
+
+export type UserAccountStatus = "active" | "disabled" | "deleted";
+
+export const USER_STATUS_META: Record<UserAccountStatus, { label: string; tone: InvitationTone; hint: string }> = {
+  active: { label: "Active", tone: "success", hint: "Can sign in and use the account." },
+  disabled: {
+    label: "Disabled",
+    tone: "warning",
+    hint: "Sign in is blocked for now. The account and its data are kept, and it can be enabled again.",
+  },
+  deleted: {
+    label: "Deleted",
+    tone: "neutral",
+    hint: "Removed from the account. Name and history are kept, and it can be restored.",
+  },
+};
+
+/** Deleted wins over disabled, since a deleted account is gone whatever its active flag says. */
+export const userAccountStatus = (is_active: boolean, is_deleted: boolean): UserAccountStatus =>
+  is_deleted ? "deleted" : is_active ? "active" : "disabled";
 
 export type UserStatusBadgeProps = {
   is_active: boolean;
@@ -6,22 +27,14 @@ export type UserStatusBadgeProps = {
   is_deleted?: boolean;
 };
 
-/** Pill badge for a user account's active/disabled/deleted state, matching {@link InvitationStatusBadge}'s look. */
-const UserStatusBadge: React.FC<UserStatusBadgeProps> = ({ is_active, is_deleted = false }) =>
-  is_deleted ? (
-    <span className="inline-flex items-center gap-1.5 rounded-full bg-shell-hover px-2.5 py-0.5 text-xs font-medium text-shell-text-muted">
-      <span className="h-1.5 w-1.5 rounded-full bg-shell-text-faint" />
-      Deleted
-    </span>
-  ) : (
-  <span
-    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-      is_active ? "bg-success-500/10 text-success-400" : "bg-error-500/10 text-error-400"
-    }`}
-  >
-    <span className={`h-1.5 w-1.5 rounded-full ${is_active ? "bg-success-500" : "bg-error-500"}`} />
-    {is_active ? "Active" : "Disabled"}
-  </span>
-);
+/** Active / Disabled / Deleted pill with what the status means in a tooltip. */
+const UserStatusBadge: React.FC<UserStatusBadgeProps> = ({ is_active, is_deleted = false }) => {
+  const meta = USER_STATUS_META[userAccountStatus(is_active, is_deleted)];
+  return (
+    <InvitationPill tone={meta.tone} tooltip={meta.hint}>
+      {meta.label}
+    </InvitationPill>
+  );
+};
 
 export default UserStatusBadge;

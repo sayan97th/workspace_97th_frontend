@@ -41,11 +41,21 @@ export type AdminUserDto = {
   profile_fields?: Record<string, string | null>;
 };
 
+/** Users per account status for the current filters (minus the status), from `with_counts=1`. */
+export type AdminUserStatusCounts = {
+  all: number;
+  active: number;
+  disabled: number;
+  deleted: number;
+};
+
 export type AdminUsersPage = {
   data: AdminUserDto[];
   current_page: number;
   last_page: number;
   total: number;
+  /** Only present when the request asked for `with_counts`. */
+  counts?: AdminUserStatusCounts;
 };
 
 /** Columns the `/api/admin/users` list can be sorted by, mirroring `AdminUserQuery::ALLOWED_SORT_FIELDS`. */
@@ -72,6 +82,8 @@ export type AdminUsersQuery = {
   filter_params?: Record<string, string>;
   /** Restricts an export to the selected rows. */
   ids?: number[];
+  /** Adds `counts` per account status to the page, see {@link AdminUserStatusCounts}. */
+  with_counts?: boolean;
 };
 
 export type BulkUserAction = "set_department" | "set_role" | "deactivate" | "reactivate";

@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import UsersDirectoryView from "@/components/users-directory/UsersDirectoryView";
 
 export const metadata: Metadata = {
-  title: "Users",
-  description: "Browse every account registered on this site, with their email and site-wide role",
+  title: "Manage users",
+  description: "Every account on this site, with their role, department and status, and the actions to manage them",
 };
 
 export default function UsersPage() {
