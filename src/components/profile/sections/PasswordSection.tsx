@@ -4,10 +4,9 @@ import ChangePasswordSection from "@/components/admin/profile/ChangePasswordSect
 import TwoFactorSection from "@/components/user-profile/TwoFactorSection";
 
 /**
- * My Profile > Password — hosts the existing, fully functional {@link ChangePasswordSection}
- * and {@link TwoFactorSection} unchanged (both already wired to the real profile/2FA APIs).
- * Styled entirely with theme-aware `shell-*` tokens, so it follows the site-wide theme
- * toggle like every other Profile/Administration section.
+ * My Profile > Password, hosts the fully functional {@link ChangePasswordSection} and
+ * {@link TwoFactorSection} (both wired to the real profile and 2FA APIs) as two framed cards,
+ * styled through the shared `profileStyles` recipes.
  */
 const PasswordSection: React.FC = () => (
   <div className="space-y-6">

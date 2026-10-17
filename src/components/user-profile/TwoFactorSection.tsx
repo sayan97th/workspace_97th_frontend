@@ -87,7 +87,7 @@ const OtpInput = ({ value, onChange, error }: OtpInputProps) => {
           onPaste={handlePaste}
           className={`h-12 w-10 rounded-xl border bg-shell-bg text-center text-lg font-semibold outline-none transition-all focus:ring-2 sm:w-12 ${
             error
-              ? "border-[#e2445c] text-[#ff8a94] focus:border-[#e2445c] focus:ring-[#e2445c]/20"
+              ? "border-[var(--profile-danger-text)] text-[var(--profile-danger-text)] focus:border-[var(--profile-danger-text)] focus:ring-[var(--profile-danger-bg)]"
               : "border-shell-border-strong text-shell-text focus:border-brand-500 focus:ring-brand-500/20"
           }`}
         />
@@ -166,7 +166,7 @@ export default function TwoFactorSection() {
   const [recovery_codes, setRecoveryCodes] = useState<string[]>([]);
   const [all_copied, setAllCopied] = useState(false);
 
-  // Disable state — this API confirms with the account password.
+  // Disable state, this API confirms with the account password.
   const [disable_password, setDisablePassword] = useState("");
   const [is_disabling, setIsDisabling] = useState(false);
   const [disable_error, setDisableError] = useState<string | null>(null);
@@ -185,7 +185,7 @@ export default function TwoFactorSection() {
       setIsEnabled(response.enabled);
       setEnabledAt(response.confirmed_at ?? null);
     } catch {
-      // Fail silently — assume disabled
+      // Fail silently, assume disabled
     } finally {
       setIsLoadingStatus(false);
     }
@@ -320,8 +320,8 @@ export default function TwoFactorSection() {
         }
         badge={
           is_enabled ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#6fcf97]/[0.14] px-2 py-0.5 text-xs font-medium text-[#6fcf97]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#6fcf97]" />
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--profile-success-bg)] px-2 py-0.5 text-xs font-medium text-[var(--profile-success-text)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--profile-success-text)]" />
               Active
             </span>
           ) : (

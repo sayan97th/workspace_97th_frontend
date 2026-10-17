@@ -70,7 +70,7 @@ export type AdminPasswordSectionProps = {
  * picks their own, mirroring the two flows `UserController::setPassword()` and
  * `UserController::sendPasswordResetLink()` expose. Reachable only for other accounts, not
  * the signed-in admin's own, since the "Edit" link that opens this page never appears on the
- * admin's own row (see `UsersDirectoryTable`) — the backend enforces the same restriction.
+ * admin's own row (see `UsersDirectoryTable`), the backend enforces the same restriction.
  */
 const AdminPasswordSection: React.FC<AdminPasswordSectionProps> = ({ user }) => {
   const [new_password, setNewPassword] = useState("");
@@ -254,7 +254,7 @@ const AdminPasswordSection: React.FC<AdminPasswordSectionProps> = ({ user }) => 
                 </p>
               ) : null}
               {passwords_mismatch && !field_errors.password_confirmation ? (
-                <p className="mt-1.5 text-xs text-[#ff8a94]">Passwords do not match</p>
+                <p className="mt-1.5 text-xs text-[var(--profile-danger-text)]">Passwords do not match</p>
               ) : null}
               {field_errors.password_confirmation ? (
                 <ProfileFieldError message={field_errors.password_confirmation} />

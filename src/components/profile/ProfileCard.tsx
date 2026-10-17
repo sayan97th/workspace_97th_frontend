@@ -8,10 +8,8 @@ export type ProfileCardProps = {
 };
 
 /**
- * Plain padded card wrapper (`shell-panel-alt` fill, `shell-border` outline) shared by the
- * Personal info / Password real-API-backed sections — the recessed-layer counterpart to the
- * page background (`shell-panel`, inherited from {@link ProfileView}), so cards read as a
- * distinct tone from the modal in both light and dark theme.
+ * Bordered card shared by the Password and two-factor sections and the Users directory edit page,
+ * a framed block inside the white section card, same as the setting groups of the other sections.
  */
 const ProfileCard: React.FC<ProfileCardProps> = ({ children, className = "" }) => (
   <div className={`${cardClass} ${className}`}>{children}</div>

@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
-import { SettingsRadioOption } from "@/components/administration";
 import { timezone_options } from "@/data/timezone-options";
+import { ProfileSegmented, ProfileSettingGroup, ProfileSettingRow } from "../ProfileSettingRow";
+import type { ProfileDateFormat, ProfileFirstDayOfWeek, ProfileTimeFormat } from "../types";
 import type { ProfileManagerApi } from "../useProfileManager";
 
 export type LanguageRegionSectionProps = {
@@ -20,95 +21,100 @@ const LANGUAGE_OPTIONS = [
   { value: "zh", label: "中文" },
 ];
 
-const selectClass =
-  "w-full rounded-[9px] border border-shell-border-strong bg-shell-panel-alt px-[13px] py-[11px] text-[14px] text-shell-text outline-none focus:border-brand-500";
+const TIME_FORMAT_OPTIONS: { value: ProfileTimeFormat; label: string }[] = [
+  { value: "12", label: "12 hours" },
+  { value: "24", label: "24 hours" },
+];
 
-const FieldLabel: React.FC<{ children: React.ReactNode; className?: string }> = ({ children, className = "" }) => (
-  <div className={`mb-2 text-[13px] font-semibold text-shell-text-secondary ${className}`}>{children}</div>
-);
+const DATE_FORMAT_OPTIONS: { value: ProfileDateFormat; label: string }[] = [
+  { value: "long", label: "July 12, 2026" },
+  { value: "euro", label: "12 July, 2026" },
+];
 
-/** My Profile > Language & region — locale, timezone, and date/time display preferences. */
+const FIRST_DAY_OPTIONS: { value: ProfileFirstDayOfWeek; label: string }[] = [
+  { value: "sunday", label: "Sunday" },
+  { value: "monday", label: "Monday" },
+];
+
+/** My Profile > Language & region, locale, time zone, and date and time display preferences. */
 const LanguageRegionSection: React.FC<LanguageRegionSectionProps> = ({ profile }) => (
-  <div className="max-w-[460px]">
-    <div className="mb-[26px] text-[24px] font-extrabold tracking-[-0.01em] text-shell-text">Language &amp; region</div>
+  <div>
+    <ProfileSettingGroup title="Language and time zone">
+      <ProfileSettingRow
+        label="Language"
+        description="The language used across your workspace."
+        control={
+          <select
+            value={profile.language}
+            onChange={(event) => profile.setLanguage(event.target.value)}
+            aria-label="Language"
+            className="profile-input w-[240px]"
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        }
+      />
+      <ProfileSettingRow
+        label="Time zone"
+        description="Used for quiet hours and the local time shown on your profile."
+        control={
+          <select
+            value={profile.region_timezone}
+            onChange={(event) => profile.setRegionTimezone(event.target.value)}
+            aria-label="Time zone"
+            className="profile-input w-[280px] max-w-full"
+          >
+            {profile.region_timezone ? null : <option value="">Select your time zone</option>}
+            {timezone_options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        }
+      />
+    </ProfileSettingGroup>
 
-    <div className="mb-[22px]">
-      <FieldLabel>Language</FieldLabel>
-      <select
-        value={profile.language}
-        onChange={(event) => profile.setLanguage(event.target.value)}
-        className={selectClass}
-      >
-        {LANGUAGE_OPTIONS.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    <div className="mb-7">
-      <FieldLabel>Timezone</FieldLabel>
-      <select
-        value={profile.region_timezone}
-        onChange={(event) => profile.setRegionTimezone(event.target.value)}
-        className={selectClass}
-      >
-        {timezone_options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    <div className="mb-[26px]">
-      <FieldLabel className="mb-3">Time format</FieldLabel>
-      <div className="flex flex-col gap-3">
-        <SettingsRadioOption
-          label="12 Hours"
-          is_selected={profile.time_format === "12"}
-          onSelect={() => profile.setTimeFormat("12")}
-        />
-        <SettingsRadioOption
-          label="24 Hours"
-          is_selected={profile.time_format === "24"}
-          onSelect={() => profile.setTimeFormat("24")}
-        />
-      </div>
-    </div>
-
-    <div className="mb-[26px]">
-      <FieldLabel className="mb-3">Date format</FieldLabel>
-      <div className="flex flex-col gap-3">
-        <SettingsRadioOption
-          label="July 12, 2026"
-          is_selected={profile.date_format === "long"}
-          onSelect={() => profile.setDateFormat("long")}
-        />
-        <SettingsRadioOption
-          label="12 July, 2026"
-          is_selected={profile.date_format === "euro"}
-          onSelect={() => profile.setDateFormat("euro")}
-        />
-      </div>
-    </div>
-
-    <div>
-      <FieldLabel className="mb-3">First day displayed on your calendars</FieldLabel>
-      <div className="flex flex-col gap-3">
-        <SettingsRadioOption
-          label="Sunday"
-          is_selected={profile.first_day_of_week === "sunday"}
-          onSelect={() => profile.setFirstDayOfWeek("sunday")}
-        />
-        <SettingsRadioOption
-          label="Monday"
-          is_selected={profile.first_day_of_week === "monday"}
-          onSelect={() => profile.setFirstDayOfWeek("monday")}
-        />
-      </div>
-    </div>
+    <ProfileSettingGroup title="Date and time format">
+      <ProfileSettingRow
+        label="Time format"
+        control={
+          <ProfileSegmented
+            aria-label="Time format"
+            value={profile.time_format}
+            options={TIME_FORMAT_OPTIONS}
+            onChange={profile.setTimeFormat}
+          />
+        }
+      />
+      <ProfileSettingRow
+        label="Date format"
+        control={
+          <ProfileSegmented
+            aria-label="Date format"
+            value={profile.date_format}
+            options={DATE_FORMAT_OPTIONS}
+            onChange={profile.setDateFormat}
+          />
+        }
+      />
+      <ProfileSettingRow
+        label="First day of the week"
+        description="The first day shown on your calendars."
+        control={
+          <ProfileSegmented
+            aria-label="First day of the week"
+            value={profile.first_day_of_week}
+            options={FIRST_DAY_OPTIONS}
+            onChange={profile.setFirstDayOfWeek}
+          />
+        }
+      />
+    </ProfileSettingGroup>
   </div>
 );
 

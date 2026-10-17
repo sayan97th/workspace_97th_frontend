@@ -6,3 +6,6 @@ export type { ProfileCheckboxProps } from "./ProfileCheckbox";
 export { useProfileManager } from "./useProfileManager";
 export type { ProfileManagerApi } from "./useProfileManager";
 export * from "./types";
+export { default as ProfileTooltip } from "./ProfileTooltip";
+export type { ProfileTooltipProps } from "./ProfileTooltip";
+export { ProfileSettingGroup, ProfileSettingRow, ProfileSegmented } from "./ProfileSettingRow";

@@ -1,117 +1,106 @@
 "use client";
 import React, { useEffect } from "react";
-import { format } from "date-fns";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
-import UserAvatar from "@/components/common/UserAvatar";
-import { getUserDisplayName } from "@/lib/user";
-import { ChevronRightIcon } from "@/icons/workspace-icons";
+import { ArrowLeft } from "lucide-react";
 import ProfileTabs from "./ProfileTabs";
 import ProfileBanner from "./ProfileBanner";
+import ProfileHero from "./ProfileHero";
 import { useProfileManager } from "./useProfileManager";
+import { useProfileOverview } from "./useProfileOverview";
+import { PROFILE_SECTION_IDS, findProfileNavItem } from "./profileNavConfig";
 import type { ProfileSectionId } from "./types";
-
-const VALID_SECTION_IDS: ProfileSectionId[] = ["personal", "working", "notifications", "language", "password", "sessions"];
 import PersonalInfoSection from "./sections/PersonalInfoSection";
 import WorkingStatusSection from "./sections/WorkingStatusSection";
 import NotificationsSection from "./sections/NotificationsSection";
 import LanguageRegionSection from "./sections/LanguageRegionSection";
 import PasswordSection from "./sections/PasswordSection";
 import SessionHistorySection from "./sections/SessionHistorySection";
+import "./profile.scss";
 
 /**
- * "My Profile" page, mounted at `/profile`. Replaces the old floating `ProfileModal`
- * dialog with a full route: the same six sections, still driven by {@link useProfileManager},
- * now switched through a top tab bar ({@link ProfileTabs}) instead of a left nav, and framed
- * by an identity header instead of a dimmed backdrop + centered panel.
+ * "My Profile" page, mounted at `/profile` and styled after monday.com's profile: an identity
+ * header ({@link ProfileHero}) over a soft gray page, the section rail ({@link ProfileTabs}) on
+ * the left and the active section inside a white card with its title and subtitle. Every
+ * section is still driven by {@link useProfileManager}. Styles live in `profile.scss`.
  */
 const ProfileView: React.FC = () => {
   const router = useRouter();
   const search_params = useSearchParams();
-  const { user } = useAuth();
   const profile = useProfileManager();
+  const { overview } = useProfileOverview();
 
-  /** "Teams" is a routed page (`/teams`) rather than a modal. */
-  const openTeams = () => router.push("/teams");
-
-  // Deep-link support for `/profile?section=notifications` — e.g. the board
-  // options menu's "Notifications" row, which sends the user here instead of
-  // duplicating a second, board-scoped notification-preferences UI.
+  // Deep-link support for `/profile?section=notifications`, e.g. the board options menu's
+  // "Notifications" row, which sends the user here instead of duplicating the preferences UI.
   useEffect(() => {
     const section = search_params.get("section");
-    if (VALID_SECTION_IDS.includes(section as ProfileSectionId)) {
+    if (PROFILE_SECTION_IDS.includes(section as ProfileSectionId)) {
       profile.selectSection(section as ProfileSectionId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search_params]);
 
-  const SECTION_PANELS: Record<ProfileSectionId, React.ReactNode> = {
-    personal: <PersonalInfoSection onOpenTeams={openTeams} />,
-    working: <WorkingStatusSection profile={profile} />,
-    notifications: <NotificationsSection profile={profile} />,
-    language: <LanguageRegionSection profile={profile} />,
-    password: <PasswordSection />,
-    sessions: <SessionHistorySection profile={profile} />,
+  const active_item = findProfileNavItem(profile.active_section);
+
+  const renderActiveSection = () => {
+    switch (profile.active_section) {
+      case "personal":
+        return <PersonalInfoSection profile={profile} overview={overview} onOpenTeams={() => router.push("/teams")} />;
+      case "working":
+        return <WorkingStatusSection profile={profile} />;
+      case "notifications":
+        return <NotificationsSection profile={profile} />;
+      case "language":
+        return <LanguageRegionSection profile={profile} />;
+      case "password":
+        return <PasswordSection />;
+      case "sessions":
+        return <SessionHistorySection profile={profile} />;
+      default:
+        return null;
+    }
   };
 
-  const role_names = (user?.roles ?? []).map((role) => (typeof role === "string" ? role : role.name));
-  const member_since = user?.created_at ? format(new Date(user.created_at), "MMMM yyyy") : null;
-
   return (
-    <div className="mx-auto flex min-h-full max-w-[1040px] flex-col px-6 pb-16 pt-7 sm:px-8">
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="mb-5 flex w-fit items-center gap-1.5 text-[13px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
-      >
-        <ChevronRightIcon className="rotate-180" size={11} />
-        Back
-      </button>
+    <div className="profile-shell profile-theme">
+      <div className="profile-container">
+        <button type="button" onClick={() => router.back()} className="profile-back-button">
+          <ArrowLeft size={16} strokeWidth={1.75} aria-hidden="true" />
+          Back
+        </button>
 
-      <div className="relative mb-7 overflow-hidden rounded-2xl border border-shell-border bg-shell-panel-alt p-6 sm:p-7">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full bg-[radial-gradient(circle,rgba(229,62,46,0.16),transparent_70%)]"
+        <ProfileHero
+          overview={overview}
+          working_status={profile.working_status}
+          status_options={profile.status_options}
+          onSelectSection={profile.selectSection}
         />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <UserAvatar user={user} size={64} font_size={22} className="ring-4 ring-shell-panel" />
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="truncate text-shell-text font-heading text-page-title">
-                  {getUserDisplayName(user)}
-                </h1>
-                {role_names.map((role_name) => (
-                  <span
-                    key={role_name}
-                    className="flex-none rounded-md bg-brand-500/10 px-2 py-[3px] text-[11px] font-bold uppercase tracking-[0.03em] text-brand-500"
-                  >
-                    {role_name}
-                  </span>
-                ))}
-              </div>
-              <p className="mt-0.5 truncate text-[13.5px] text-shell-text-muted">{user?.email}</p>
-            </div>
-          </div>
 
-          {member_since ? (
-            <div className="flex-none text-left text-[12.5px] text-shell-text-muted sm:text-right">
-              Member since
-              <div className="text-[13.5px] font-semibold text-shell-text-secondary">{member_since}</div>
+        <div className="profile-body">
+          <ProfileTabs active_section={profile.active_section} onSelect={profile.selectSection} />
+
+          <section
+            id="profile-section-panel"
+            role="tabpanel"
+            aria-labelledby="profile-card-title"
+            className="profile-card"
+          >
+            <div className="profile-card-header">
+              <h2 id="profile-card-title" className="profile-card-title">
+                {active_item.title ?? active_item.label}
+              </h2>
+              <p className="profile-card-subtitle">{active_item.description}</p>
             </div>
-          ) : null}
+
+            <div key={profile.active_section} className="profile-card-content">
+              {profile.preferences_error ? (
+                <ProfileBanner tone="error" className="mb-6">
+                  {profile.preferences_error}
+                </ProfileBanner>
+              ) : null}
+              {renderActiveSection()}
+            </div>
+          </section>
         </div>
-      </div>
-
-      <ProfileTabs active_section={profile.active_section} onSelect={profile.selectSection} />
-
-      <div className="pt-7">
-        {profile.preferences_error ? (
-          <ProfileBanner tone="error" className="mb-6">
-            {profile.preferences_error}
-          </ProfileBanner>
-        ) : null}
-        {SECTION_PANELS[profile.active_section]}
       </div>
     </div>
   );

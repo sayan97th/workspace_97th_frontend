@@ -44,7 +44,7 @@ export type ProfileNotificationRow = ProfileNotificationSeed & {
 export type ProfileNotificationChannel = "app" | "email" | "slack" | "push";
 
 /**
- * One row of the personal Session history table. There is no "Location" column —
+ * One row of the personal Session history table. There is no "Location" column ,
  * the backend deliberately does not do geo-IP lookups (see `UserSessionController`),
  * so the raw IP address is shown instead of a fabricated city/region.
  */

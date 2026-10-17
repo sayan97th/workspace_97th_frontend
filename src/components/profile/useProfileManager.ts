@@ -216,7 +216,7 @@ export function useProfileManager(): ProfileManagerApi {
   const [session_rows, setSessionRows] = useState<ProfileSessionRow[]>([]);
   const [is_loading_sessions, setIsLoadingSessions] = useState(true);
 
-  // Hydrate every section's local state from the already-fetched AuthContext user —
+  // Hydrate every section's local state from the already-fetched AuthContext user ,
   // no extra GET needed, ProfileResource now includes all of this in one payload.
   useEffect(() => {
     if (!user) return;
@@ -240,7 +240,7 @@ export function useProfileManager(): ProfileManagerApi {
     setFirstDayOfWeekValue(user.first_day_of_week ?? "sunday");
   }, [user]);
 
-  // Fetch Session history once on mount — its own endpoint, not part of the profile payload.
+  // Fetch Session history once on mount, its own endpoint, not part of the profile payload.
   useEffect(() => {
     let cancelled = false;
     profilePreferencesService

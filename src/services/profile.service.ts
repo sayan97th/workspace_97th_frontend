@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client";
 import type {
   ProfileData,
   PartialProfileData,
+  ProfileOverview,
   ProfileResponse,
   UpdateProfileResponse,
   ProfilePhotoResponse,
@@ -13,6 +14,12 @@ export const profileService = {
   /** GET /api/profile — fetch the full profile on page load. */
   async fetchUserProfile(): Promise<ProfileResponse> {
     const response = await apiClient.get<{ data: ProfileResponse }>("/api/profile");
+    return response.data;
+  },
+
+  /** GET /api/profile/overview, the department and teams of the signed in user. */
+  async fetchProfileOverview(): Promise<ProfileOverview> {
+    const response = await apiClient.get<{ data: ProfileOverview }>("/api/profile/overview");
     return response.data;
   },
 

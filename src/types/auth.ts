@@ -14,6 +14,8 @@ export interface User {
   full_name: string;
   email: string;
   phone: string | null;
+  /** Free text role shown under the name, e.g. "Product Designer". */
+  job_title?: string | null;
   timezone: string | null;
   profile_photo_url: string | null;
   email_verified_at: string | null;
@@ -157,7 +159,14 @@ export interface ProfileData {
   last_name: string;
   email: string;
   phone: string | null;
+  job_title?: string | null;
   timezone: string | null;
+}
+
+/** Read only account details from GET /api/profile/overview, shown on the My Profile page. */
+export interface ProfileOverview {
+  department: { id: number; name: string } | null;
+  teams: { id: number; name: string; picture_url: string | null; members_count: number }[];
 }
 
 /** Shape returned by GET /api/profile (unwrapped from the `data` envelope). */

@@ -202,7 +202,7 @@ export default function ChangePasswordSection() {
               <div className="w-full border-t border-shell-border" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-shell-panel-alt px-3 text-xs text-shell-text-faint">
+              <span className="bg-shell-panel px-3 text-xs text-shell-text-faint">
                 New password
               </span>
             </div>
@@ -296,7 +296,7 @@ export default function ChangePasswordSection() {
               </p>
             )}
             {passwords_mismatch && !field_errors.password_confirmation && (
-              <p className="mt-1.5 text-xs text-[#ff8a94]">Passwords do not match</p>
+              <p className="mt-1.5 text-xs text-[var(--profile-danger-text)]">Passwords do not match</p>
             )}
             {field_errors.password_confirmation && (
               <ProfileFieldError message={field_errors.password_confirmation} />
