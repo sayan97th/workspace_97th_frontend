@@ -1,18 +1,25 @@
 import { format, formatDistanceToNowStrict } from "date-fns";
-import type { BoardAutomationActionType, BoardAutomationDto, BoardAutomationRunStatus } from "@/types/board-automation";
-import { COMMUNICATION_ACTION_TYPES } from "../../automations/communicationTemplates";
-import { IMPORTANCE_LABELS } from "../../automations/builder/automationCatalog";
+import type { BoardAutomationActionType, BoardAutomationDto, BoardAutomationRunStatus, BoardAutomationSource } from "@/types/board-automation";
+import { IMPORTANCE_LABELS, isIntegrationDefinition } from "../../automations/builder/automationCatalog";
 
 export { ACTION_LABELS, TRIGGER_LABELS } from "../../automations/builder/automationCatalog";
 
-/** The three groups the Manage tab filters and labels automations by. */
-export type AutomationKind = "email" | "slack" | "board";
+/**
+ * The groups the Manage tab filters and labels automations by. A board automation stays inside the
+ * app and lives in the Automations dialog, every other kind reaches an outside app and lives in the
+ * Integrations dialog.
+ */
+export type AutomationKind = "board" | "email" | "slack" | "calendar";
 
 export const AUTOMATION_KIND_LABELS: Record<AutomationKind, string> = {
+  board: "Board automation",
   email: "Email",
   slack: "Slack",
-  board: "Board action",
+  calendar: "Google Calendar",
 };
+
+/** Which dialog lists the automation: Automations (`board`) or Integrations (`integrations`). Mirrors the API's `BoardAutomation::isIntegration()`. */
+export const automationSource = (automation: BoardAutomationDto): BoardAutomationSource => (isIntegrationDefinition(automation) ? "integrations" : "board");
 
 export const RUN_STATUS_LABELS: Record<BoardAutomationRunStatus, string> = {
   success: "Success",
@@ -25,11 +32,15 @@ export function automationActionTypes(automation: BoardAutomationDto): BoardAuto
   return automation.actions?.length ? automation.actions.map((action) => action.type) : [automation.action_type];
 }
 
-/** Email when any action sends an email, Slack when any posts to Slack, otherwise a board action. */
+/**
+ * Email when it reads an inbox or any action emails someone, Slack when any action posts to Slack,
+ * Google Calendar when it syncs events, otherwise a board automation.
+ */
 export function automationKind(automation: BoardAutomationDto): AutomationKind {
-  const types = automationActionTypes(automation);
-  if (types.includes("send_email")) return "email";
-  if (types.some((type) => COMMUNICATION_ACTION_TYPES.includes(type))) return "slack";
+  const types = [...automationActionTypes(automation), ...(automation.else_actions ?? []).map((action) => action.type)];
+  if (automation.trigger_type === "email_received" || types.includes("send_email") || types.includes("send_digest")) return "email";
+  if (types.some((type) => type === "slack_notify_channel" || type === "slack_notify_person")) return "slack";
+  if (types.includes("google_calendar_sync")) return "calendar";
   return "board";
 }
 

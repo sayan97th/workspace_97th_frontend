@@ -26,7 +26,7 @@ import { actionFromPicker, type ActionDraft, type ConditionDraft } from "./build
 import ExternalAppLogo from "@/components/integrations/ExternalAppLogo";
 import SlackLogo from "@/components/slack/SlackLogo";
 import { ActionOutlineIcon } from "./actionIcons";
-import { ACTIONS, CONDITION_KIND_BY_COLUMN, conditionOperatorOptions, type ActionPickerId, type AutomationBuilderContext } from "./automationCatalog";
+import { ACTIONS, CONDITION_KIND_BY_COLUMN, INTEGRATION_ACTION_TYPES, conditionOperatorOptions, type ActionPickerId, type AutomationBuilderContext } from "./automationCatalog";
 import type { PickerEntry } from "./builderUi";
 
 /**
@@ -104,8 +104,17 @@ const SLACK_PICKER_IDS: ActionPickerId[] = ["slack_notify_channel", "slack_notif
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** Every entry of the "Then do this" menu, grouped and ordered like monday's. Slack entries need a connected workspace. */
-export function buttonActionEntries(is_slack_connected: boolean): ButtonActionEntry[] {
+const isIntegrationPicker = (picker_id: ActionPickerId): boolean => {
+  const type = ACTIONS.find((action) => action.id === picker_id)?.type;
+  return type !== undefined && INTEGRATION_ACTION_TYPES.includes(type);
+};
+
+/**
+ * Every entry of the "Then do this" menu, grouped and ordered like monday's. Slack entries need a
+ * connected workspace, and the Automations dialog (`allow_integrations` false) leaves out every
+ * email, Slack and Google Calendar entry.
+ */
+export function buttonActionEntries(is_slack_connected: boolean, allow_integrations = true): ButtonActionEntry[] {
   const curated_ids = new Set(CURATED_ACTIONS.map((entry) => entry.picker_id));
   const remaining = ACTIONS.filter((action) => !curated_ids.has(action.id) && action.section !== "Most used").map(
     (action): ButtonActionEntry => ({
@@ -118,13 +127,14 @@ export function buttonActionEntries(is_slack_connected: boolean): ButtonActionEn
   );
   return [...CURATED_ACTIONS, ...remaining]
     .filter((entry) => is_slack_connected || !SLACK_PICKER_IDS.includes(entry.picker_id))
+    .filter((entry) => allow_integrations || !isIntegrationPicker(entry.picker_id))
     .sort((a, b) => SECTION_ORDER.indexOf(a.section) - SECTION_ORDER.indexOf(b.section));
 }
 
 /** The same entries as picker sections. */
-export function buttonActionSections(is_slack_connected: boolean): { title: string; entries: PickerEntry<string>[] }[] {
+export function buttonActionSections(is_slack_connected: boolean, allow_integrations = true): { title: string; entries: PickerEntry<string>[] }[] {
   const sections: { title: string; entries: PickerEntry<string>[] }[] = [];
-  for (const entry of buttonActionEntries(is_slack_connected)) {
+  for (const entry of buttonActionEntries(is_slack_connected, allow_integrations)) {
     let section = sections.find((candidate) => candidate.title === entry.section);
     if (!section) {
       section = { title: entry.section, entries: [] };

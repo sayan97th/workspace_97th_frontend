@@ -8,12 +8,14 @@
  * - `board-table-theme`: the Table view body (BoardTable and its drag preview).
  * - `board-chrome-theme`: the rows above any board body, the title row, the
  *   view tabs and the toolbar (BoardShell).
+ * - `automation-center`: the Automations center dialog, automations and integrations.
  *
  * Every `bg-boardtree-*`/`text-shell-*` utility inside those wrappers reads
  * these values, while dark mode keeps the hand tuned set from `globals.css`.
  */
 html:not(.dark) .board-table-theme,
-html:not(.dark) .board-chrome-theme {
+html:not(.dark) .board-chrome-theme,
+html:not(.dark) .automation-center {
   /* The page behind the tables and their sticky group headers, kept equal to the app shell so no band shows. */
   --color-boardtree-bg: var(--color-shell-bg);
   --color-boardtree-surface: #ffffff;

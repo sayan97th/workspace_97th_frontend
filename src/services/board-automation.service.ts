@@ -13,6 +13,7 @@ import type {
   BoardAutomationRunDetail,
   BoardAutomationRunDto,
   BoardAutomationSettingsDto,
+  BoardAutomationSource,
   BoardAutomationVersionDto,
   BoardButtonPressResult,
   BoardItemAutomationsDto,
@@ -74,13 +75,13 @@ export const boardAutomationService = {
   },
 
   /** GET /api/boards/{board_id}/automations/runs, the Manage tab's run history, newest first. */
-  async getRuns(board_id: number, view_id: number | null, filters: BoardAutomationRunFilters, page: number, per_page: number): Promise<BoardAutomationRunsPage> {
-    return apiClient.get<BoardAutomationRunsPage>(`/api/boards/${board_id}/automations/runs${buildQuery({ view_id, ...filters, page, per_page })}`);
+  async getRuns(board_id: number, view_id: number | null, filters: BoardAutomationRunFilters, page: number, per_page: number, source: BoardAutomationSource | null = null): Promise<BoardAutomationRunsPage> {
+    return apiClient.get<BoardAutomationRunsPage>(`/api/boards/${board_id}/automations/runs${buildQuery({ view_id, ...filters, page, per_page, source })}`);
   },
 
-  /** GET /api/boards/{board_id}/automations/usage, run totals for the last 30 days. */
-  async getUsage(board_id: number, view_id: number | null): Promise<BoardAutomationUsageDto> {
-    const response = await apiClient.get<{ data: BoardAutomationUsageDto }>(`/api/boards/${board_id}/automations/usage${buildQuery({ view_id })}`);
+  /** GET /api/boards/{board_id}/automations/usage, run totals for the last 30 days, of one dialog's automations when `source` is set. */
+  async getUsage(board_id: number, view_id: number | null, source: BoardAutomationSource | null = null): Promise<BoardAutomationUsageDto> {
+    const response = await apiClient.get<{ data: BoardAutomationUsageDto }>(`/api/boards/${board_id}/automations/usage${buildQuery({ view_id, source })}`);
     return response.data;
   },
 

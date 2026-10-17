@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
-import type { BoardAutomationRunDto, BoardAutomationRunFilters, BoardAutomationRunsPage } from "@/types/board-automation";
+import type { BoardAutomationRunDto, BoardAutomationRunFilters, BoardAutomationRunsPage, BoardAutomationSource } from "@/types/board-automation";
 
 export const RUNS_PER_PAGE = 20;
 
@@ -18,9 +18,10 @@ const EMPTY_META: BoardAutomationRunsPage["meta"] = { current_page: 1, last_page
 
 /**
  * One page of a board tab's automation run history, refetched whenever the filters or the page
- * change. `refresh` reloads the current page, used by the tab's refresh button.
+ * change. `refresh` reloads the current page, used by the tab's refresh button. `source` keeps
+ * only the runs of the Automations dialog or of the Integrations dialog.
  */
-export function useAutomationRuns(board_id: number, view_id: number | null, filters: BoardAutomationRunFilters, page: number): AutomationRunsApi {
+export function useAutomationRuns(board_id: number, view_id: number | null, filters: BoardAutomationRunFilters, page: number, source: BoardAutomationSource | null = null): AutomationRunsApi {
   const [runs, setRuns] = useState<BoardAutomationRunDto[]>([]);
   const [meta, setMeta] = useState(EMPTY_META);
   const [is_loading, setIsLoading] = useState(true);
@@ -35,7 +36,7 @@ export function useAutomationRuns(board_id: number, view_id: number | null, filt
     setError(null);
 
     boardAutomationService
-      .getRuns(board_id, view_id, { status, automation_id, from, to }, page, RUNS_PER_PAGE)
+      .getRuns(board_id, view_id, { status, automation_id, from, to }, page, RUNS_PER_PAGE, source)
       .then((result) => {
         if (cancelled) return;
         setRuns(result.data);
@@ -51,7 +52,7 @@ export function useAutomationRuns(board_id: number, view_id: number | null, filt
     return () => {
       cancelled = true;
     };
-  }, [board_id, view_id, status, automation_id, from, to, page, reload_key]);
+  }, [board_id, view_id, status, automation_id, from, to, page, source, reload_key]);
 
   const refresh = useCallback(() => setReloadKey((key) => key + 1), []);
 

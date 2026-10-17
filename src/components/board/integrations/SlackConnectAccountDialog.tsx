@@ -25,7 +25,7 @@ function Spinner() {
 }
 
 /**
- * Integrate dialog > Connections > "Connect my Slack". Explains what happens before Slack opens in
+ * Integrations dialog > Connections > "Connect my Slack". Explains what happens before Slack opens in
  * a new tab, waits for the tab to report back (see `useSlackIntegration`), then confirms which
  * Slack account was connected. Errors from Slack are shown here, where the member is looking.
  */

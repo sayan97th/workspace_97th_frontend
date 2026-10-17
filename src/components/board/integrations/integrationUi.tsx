@@ -1,6 +1,6 @@
 import React from "react";
 
-/** Class names and small pieces shared by the views of the Integrate dialog. */
+/** Class names and small pieces shared by the views of the Integrations dialog. */
 export const PRIMARY_BUTTON = "h-8 rounded-[7px] bg-boardtree-accent px-3.5 text-[12.5px] font-medium text-white hover:bg-boardtree-accent-hover disabled:opacity-40";
 export const SECONDARY_BUTTON = "h-8 rounded-[7px] border border-boardtree-border px-3.5 text-[12.5px] text-boardtree-text hover:bg-boardtree-hover disabled:opacity-40";
 export const DANGER_BUTTON = "h-8 rounded-[7px] bg-boardtree-danger px-3.5 text-[12.5px] font-medium text-white hover:opacity-90 disabled:opacity-40";

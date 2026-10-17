@@ -2,13 +2,15 @@
 import React from "react";
 import { format } from "date-fns";
 import { useAutomationUsage } from "@/hooks/useAutomationUsage";
-import type { BoardAutomationUsageDto } from "@/types/board-automation";
+import type { BoardAutomationSource, BoardAutomationUsageDto } from "@/types/board-automation";
 import { ACTION_LABELS, TRIGGER_LABELS } from "./manageFormat";
 import { InlineAlert } from "./manageUi";
 
 export type UsageTabProps = {
   board_id: number;
   view_id: number | null;
+  /** Only the numbers of this dialog's automations, the Automations dialog (`board`) or the Integrations dialog. */
+  source?: BoardAutomationSource | null;
 };
 
 function StatTile({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "danger" }) {
@@ -73,8 +75,8 @@ const CARD = "rounded-[10px] border border-boardtree-border-soft bg-boardtree-su
  * Manage > Usage. How much this table's automations ran over the last 30 days, split by result,
  * by day, by automation and by action.
  */
-export default function UsageTab({ board_id, view_id }: UsageTabProps) {
-  const { usage, is_loading, error, refresh } = useAutomationUsage(board_id, view_id);
+export default function UsageTab({ board_id, view_id, source = null }: UsageTabProps) {
+  const { usage, is_loading, error, refresh } = useAutomationUsage(board_id, view_id, source);
 
   if (error) return <InlineAlert message={error} onDismiss={refresh} action_label="Retry" />;
   if (is_loading || !usage) return <div className="py-12 text-center text-[13px] text-boardtree-text-muted">Loading usage...</div>;

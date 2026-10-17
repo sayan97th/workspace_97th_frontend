@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { PauseCircle } from "lucide-react";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
-import type { BoardAutomationDto, BoardAutomationSettingsDto, UpdateBoardAutomationPayload, UpdateBoardAutomationSettingsPayload } from "@/types/board-automation";
+import type { BoardAutomationDto, BoardAutomationSettingsDto, BoardAutomationSource, UpdateBoardAutomationPayload, UpdateBoardAutomationSettingsPayload } from "@/types/board-automation";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { AutomateIcon } from "@/icons/board-icons";
 import { ChevronDownIcon, PlusIcon } from "@/icons/workspace-icons";
@@ -21,6 +21,12 @@ export type ManageViewProps = {
   board_id: number;
   view_id: number | null;
   board_label: string;
+  /**
+   * Which dialog this is. `board` (Automations) lists the automations that stay inside the app,
+   * `integrations` (Integrations) the ones that use email, Slack or Google Calendar, and adds the
+   * My connections tab. `automations` must already hold only that dialog's automations.
+   */
+  source: BoardAutomationSource;
   slack: SlackIntegrationApi;
   return_path: string;
   automations: BoardAutomationDto[];
@@ -35,9 +41,9 @@ export type ManageViewProps = {
   onExploreTemplates: () => void;
   /** Opens a blank sentence builder. */
   onCreateCustom: () => void;
-  /** Jumps to the email and Slack templates, the menu entry is hidden when omitted. */
+  /** Opens the integration templates (the Integrations dialog), the menu entry is hidden when omitted. */
   onExploreCommunication?: () => void;
-  /** Jumps to the connections setup. */
+  /** Jumps to the connections setup, the Integrations dialog's My connections tab links to it. */
   onOpenConnections: () => void;
   /** Administrators only: publishes an automation as a template for every board. */
   onPublishAccountTemplate?: (automation_id: number, name: string) => Promise<void>;
@@ -56,12 +62,13 @@ const TABS: { id: ManageTab; label: string }[] = [
 ];
 
 /**
- * Modelled on monday.com's "Manage your board automations". A header with the create menu, then
+ * Modelled on monday.com's "Manage your board automations", for the Automations dialog or the
+ * Integrations dialog (see `source`). A header with the create menu, then
  * four sub tabs: the automations on this table, their run history, the connections they use and
- * how much they ran. Shared by the Automations center and the Integrations dialog.
+ * how much they ran. The Manage tab of both the Automations and the Integrations dialogs.
  */
 export default function ManageView(props: ManageViewProps) {
-  const { board_id, view_id, board_label, slack, return_path, automations, onExploreTemplates, onCreateCustom, onExploreCommunication, onOpenConnections } = props;
+  const { board_id, view_id, board_label, source, slack, return_path, automations, onExploreTemplates, onCreateCustom, onExploreCommunication, onOpenConnections } = props;
   const [tab, setTab] = useState<ManageTab>("automations");
   const [runs_automation_id, setRunsAutomationId] = useState<number | null>(null);
   const [is_create_menu_open, setIsCreateMenuOpen] = useState(false);
@@ -89,6 +96,9 @@ export default function ManageView(props: ManageViewProps) {
   };
   const create_menu_ref = useOutsideClick<HTMLDivElement>(is_create_menu_open, () => setIsCreateMenuOpen(false));
 
+  const is_integrations = source === "integrations";
+  const tabs = TABS.filter((item) => item.id !== "connections" || is_integrations);
+
   const openTab = (next: ManageTab) => {
     if (next === "runs") setRunsAutomationId(null);
     setTab(next);
@@ -102,7 +112,7 @@ export default function ManageView(props: ManageViewProps) {
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-boardtree-text font-heading text-page-title">Manage your board automations</h2>
+        <h2 className="text-boardtree-text font-heading text-page-title">{is_integrations ? "Manage your integrations" : "Manage your board automations"}</h2>
 
         <div className="flex items-center gap-3">
           <button type="button" onClick={() => openTab("usage")} className="flex h-9 items-center gap-2 rounded-[6px] px-2 text-[13px] text-boardtree-text-secondary hover:bg-boardtree-hover">
@@ -112,7 +122,7 @@ export default function ManageView(props: ManageViewProps) {
 
           <div ref={create_menu_ref} className="relative flex">
             <button type="button" onClick={onExploreTemplates} className="h-9 rounded-l-[4px] bg-boardtree-accent px-3.5 text-[13px] font-medium text-white hover:bg-boardtree-accent-hover">
-              Create automation
+              {is_integrations ? "Add integration" : "Create automation"}
             </button>
             <button
               type="button"
@@ -128,16 +138,16 @@ export default function ManageView(props: ManageViewProps) {
               <div role="menu" className={`${MENU_PANEL} right-0 top-full w-[230px]`}>
                 <button type="button" role="menuitem" onClick={() => pickFromMenu(onCreateCustom)} className={MENU_ITEM}>
                   <PlusIcon size={14} />
-                  Custom automation
+                  {is_integrations ? "Custom integration automation" : "Custom automation"}
                 </button>
                 <button type="button" role="menuitem" onClick={() => pickFromMenu(onExploreTemplates)} className={MENU_ITEM}>
                   <AutomateIcon size={14} />
-                  From a template
+                  {is_integrations ? "From an integration template" : "From a template"}
                 </button>
                 {onExploreCommunication && (
                   <button type="button" role="menuitem" onClick={() => pickFromMenu(onExploreCommunication)} className={MENU_ITEM}>
                     <PlusIcon size={14} />
-                    Email and Slack template
+                    Integration template
                   </button>
                 )}
               </div>
@@ -159,7 +169,7 @@ export default function ManageView(props: ManageViewProps) {
       )}
 
       <div role="tablist" aria-label="Manage sections" className="mb-5 flex gap-1 border-b border-boardtree-border-soft">
-        {TABS.map((item) => (
+        {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -180,6 +190,7 @@ export default function ManageView(props: ManageViewProps) {
             board_id={board_id}
             view_id={view_id}
             board_label={board_label}
+            source={source}
             onPublishAccountTemplate={props.onPublishAccountTemplate}
             onReplaceAutomation={props.onReplaceAutomation}
             onReloadAutomations={props.onReloadAutomations}
@@ -204,12 +215,13 @@ export default function ManageView(props: ManageViewProps) {
             board_id={board_id}
             view_id={view_id}
             automations={automations}
+            source={source}
             initial_automation_id={runs_automation_id}
             onAddAutomation={onExploreTemplates}
           />
         )}
         {tab === "connections" && <MyConnectionsTab slack={slack} return_path={return_path} automations={automations} onOpenSetup={onOpenConnections} />}
-        {tab === "usage" && <UsageTab board_id={board_id} view_id={view_id} />}
+        {tab === "usage" && <UsageTab board_id={board_id} view_id={view_id} source={source} />}
         {tab === "settings" && <AutomationSettingsTab settings={settings} is_loading={is_loading_settings} onSave={saveSettings} />}
       </div>
     </div>

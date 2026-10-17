@@ -88,7 +88,7 @@ const successNotice = (message: Pick<SlackAuthorizationMessage, "purpose" | "wor
 /**
  * State and actions for the Slack integration, shared by Administration > Integrations > Slack
  * (set up the app, connect and switch workspaces), My Profile > Notifications (link a personal account) and
- * the board Integrations dialog.
+ * the board's Integrations dialog (Connections).
  *
  * Slack always opens in a new tab, like monday.com, so the workspace is never replaced. The
  * tab finishes on `/integrations/slack/complete`, which broadcasts the result back here and

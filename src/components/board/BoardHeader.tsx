@@ -61,7 +61,7 @@ export type BoardHeaderProps = {
   board_updates_count?: number;
   /** Whether that badge reads as unseen (brand red, to draw the eye) rather than caught-up (neutral gray). */
   board_updates_unseen?: boolean;
-  /** Opens the "Integrate" dialog where Email and Slack are connected; the button stays inert when omitted. */
+  /** Opens the Integrations dialog (Email, Slack, Gmail, Outlook, Google Calendar); the button stays inert when omitted. */
   onIntegrateClick?: () => void;
   /** Opens the rule-based automations panel; the "Automate" button stays inert when omitted (every board view but Table, which is the only one with an automations engine so far). */
   onAutomateClick?: () => void;

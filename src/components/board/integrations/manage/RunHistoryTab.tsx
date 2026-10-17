@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import type { BoardAutomationDto, BoardAutomationRunFilters, BoardAutomationRunStatus } from "@/types/board-automation";
+import type { BoardAutomationDto, BoardAutomationRunFilters, BoardAutomationRunStatus, BoardAutomationSource } from "@/types/board-automation";
 import { FilterIcon, RefreshIcon } from "@/icons/workspace-icons";
 import { RUNS_PER_PAGE, useAutomationRuns } from "@/hooks/useAutomationRuns";
 import { ACTION_LABELS, RUN_STATUS_LABELS, TRIGGER_LABELS, formatDateTime } from "./manageFormat";
@@ -11,6 +11,8 @@ export type RunHistoryTabProps = {
   board_id: number;
   view_id: number | null;
   automations: BoardAutomationDto[];
+  /** Only the runs of this dialog's automations, the Automations dialog (`board`) or the Integrations dialog. */
+  source?: BoardAutomationSource | null;
   /** Opens the history already narrowed to one automation, the card menu's "Run history". */
   initial_automation_id?: number | null;
   onAddAutomation: () => void;
@@ -25,11 +27,11 @@ const CELL = "px-4 py-3 align-top text-[12.5px] text-boardtree-text-secondary";
  * Manage > Run history. Every time one of this table's automations ran, newest first, with what
  * came of it. Filter by result, automation and date, and page through the rest.
  */
-export default function RunHistoryTab({ board_id, view_id, automations, initial_automation_id = null, onAddAutomation }: RunHistoryTabProps) {
+export default function RunHistoryTab({ board_id, view_id, automations, source = null, initial_automation_id = null, onAddAutomation }: RunHistoryTabProps) {
   const [filters, setFilters] = useState<BoardAutomationRunFilters>({ ...NO_FILTERS, automation_id: initial_automation_id });
   const [is_filter_bar_open, setIsFilterBarOpen] = useState(initial_automation_id !== null);
   const [page, setPage] = useState(1);
-  const { runs, meta, is_loading, error, refresh } = useAutomationRuns(board_id, view_id, filters, page);
+  const { runs, meta, is_loading, error, refresh } = useAutomationRuns(board_id, view_id, filters, page, source);
   const [open_run_id, setOpenRunId] = useState<number | null>(null);
 
   const active_count = Object.values(filters).filter((value) => value !== null && value !== "").length;

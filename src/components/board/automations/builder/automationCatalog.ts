@@ -30,6 +30,8 @@ export type AutomationBuilderContext = {
   /** The active Slack workspace, stamped on a picked channel since channel ids only mean something there. */
   slack_team_id?: string | null;
   slack_team_name?: string | null;
+  /** False in the Automations dialog: its pickers leave out the email, Slack and Google Calendar triggers and actions. */
+  allow_integrations?: boolean;
   /** Account teams a "notify team" action can reach, loaded with the dialog. */
   teams?: { id: number; name: string; member_count: number }[];
   /** This board's form views, for the "form is submitted" trigger. */
@@ -96,10 +98,16 @@ export const TRIGGERS: TriggerDef[] = [
 
 export const TRIGGER_BY_TYPE = Object.fromEntries(TRIGGERS.map((trigger) => [trigger.type, trigger])) as Record<BoardAutomationTriggerType, TriggerDef>;
 
-export function triggerSections(): PickerSection<BoardAutomationTriggerType>[] {
+/** Triggers fired by an outside app, only offered by the Integrations dialog's builder. */
+export const INTEGRATION_TRIGGER_TYPES: BoardAutomationTriggerType[] = ["email_received"];
+
+export function triggerSections(allow_integrations = true): PickerSection<BoardAutomationTriggerType>[] {
   const order: TriggerDef["section"][] = ["Most used", "Status and columns", "Dates and time", "Items and updates", "Subitems and groups", "Forms and webhooks", "Integrations"];
   return order
-    .map((title) => ({ title, entries: TRIGGERS.filter((trigger) => trigger.section === title).map((trigger) => ({ id: trigger.type, label: trigger.label })) }))
+    .map((title) => ({
+      title,
+      entries: TRIGGERS.filter((trigger) => trigger.section === title && (allow_integrations || !INTEGRATION_TRIGGER_TYPES.includes(trigger.type))).map((trigger) => ({ id: trigger.type, label: trigger.label })),
+    }))
     .filter((section) => section.entries.length > 0);
 }
 
@@ -201,13 +209,27 @@ export const ITEMLESS_ACTION_TYPES = ACTIONS.filter((action) => action.is_itemle
 /** Actions that name no item of their own but can take the item's group (`from_item_group`), which needs an item. */
 export const GROUP_ACTION_TYPES: BoardAutomationActionType[] = ["duplicate_group", "archive_group", "group_items", "sort_group"];
 
-export function actionSections(options: { only_itemless: boolean; is_slack_connected: boolean }): PickerSection<ActionPickerId>[] {
+/**
+ * Actions that reach an outside app (email, Slack, Google Calendar). An automation using one, or an
+ * integration trigger, belongs to the Integrations dialog, the Automations dialog never offers them.
+ */
+export const INTEGRATION_ACTION_TYPES: BoardAutomationActionType[] = ["send_email", "send_digest", "slack_notify_person", "slack_notify_channel", "google_calendar_sync"];
+
+/** Whether a definition is triggered by or reaches an outside app, from either branch. Mirrors the API's `BoardAutomation::isIntegration()`. */
+export function isIntegrationDefinition(definition: { trigger_type: BoardAutomationTriggerType; action_type?: BoardAutomationActionType; actions?: { type: BoardAutomationActionType }[]; else_actions?: { type: BoardAutomationActionType }[] }): boolean {
+  if (INTEGRATION_TRIGGER_TYPES.includes(definition.trigger_type)) return true;
+  const actions = definition.actions?.length ? definition.actions : definition.action_type ? [{ type: definition.action_type }] : [];
+  return [...actions, ...(definition.else_actions ?? [])].some((action) => INTEGRATION_ACTION_TYPES.includes(action.type));
+}
+
+export function actionSections(options: { only_itemless: boolean; is_slack_connected: boolean; allow_integrations?: boolean }): PickerSection<ActionPickerId>[] {
   const order: ActionDef["section"][] = ["Most used", "Flow", "Items", "Subitems", "Columns", "Dates", "Groups", "People", "Notifications", "Email and Slack", "Other boards", "Webhooks", "Integrations"];
   return order
     .map((title) => ({
       title,
       entries: ACTIONS.filter((action) => action.section === title)
         .filter((action) => !options.only_itemless || action.is_itemless)
+        .filter((action) => options.allow_integrations !== false || !INTEGRATION_ACTION_TYPES.includes(action.type))
         .filter((action) => options.is_slack_connected || (action.type !== "slack_notify_person" && action.type !== "slack_notify_channel"))
         .map((action) => ({ id: action.id, label: action.label })),
     }))

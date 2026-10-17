@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
-import type { BoardAutomationUsageDto } from "@/types/board-automation";
+import type { BoardAutomationSource, BoardAutomationUsageDto } from "@/types/board-automation";
 
 export type AutomationUsageApi = {
   usage: BoardAutomationUsageDto | null;
@@ -11,8 +11,11 @@ export type AutomationUsageApi = {
   refresh: () => void;
 };
 
-/** Run totals for a board tab's automations over the last 30 days, fetched when the usage tab opens. */
-export function useAutomationUsage(board_id: number, view_id: number | null): AutomationUsageApi {
+/**
+ * Run totals for a board tab's automations over the last 30 days, fetched when the usage tab opens.
+ * `source` narrows them to the Automations dialog or the Integrations dialog.
+ */
+export function useAutomationUsage(board_id: number, view_id: number | null, source: BoardAutomationSource | null = null): AutomationUsageApi {
   const [usage, setUsage] = useState<BoardAutomationUsageDto | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,7 +27,7 @@ export function useAutomationUsage(board_id: number, view_id: number | null): Au
     setError(null);
 
     boardAutomationService
-      .getUsage(board_id, view_id)
+      .getUsage(board_id, view_id, source)
       .then((result) => {
         if (!cancelled) setUsage(result);
       })
@@ -38,7 +41,7 @@ export function useAutomationUsage(board_id: number, view_id: number | null): Au
     return () => {
       cancelled = true;
     };
-  }, [board_id, view_id, reload_key]);
+  }, [board_id, view_id, source, reload_key]);
 
   const refresh = useCallback(() => setReloadKey((key) => key + 1), []);
 

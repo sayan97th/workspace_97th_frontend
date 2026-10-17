@@ -91,8 +91,8 @@ const defineRecipe = ({ id, trigger, target, is_item_scoped = false, recipient_k
 });
 
 /**
- * The Slack app page of the Automations center and the first templates of the Integrate dialog, in
- * monday.com's exact order and wording: channel recipes first, then direct message ones.
+ * The Slack app page of the Automations center, in monday.com's exact order and wording: channel
+ * recipes first, then direct message ones.
  */
 export const SLACK_RECIPES: SlackRecipe[] = [
   defineRecipe({ id: "slack:date_arrived:channel", trigger: "date_arrived", target: "channel", parts: [...TRIGGER_PARTS.date_arrived, ...ACTION_PARTS.notify_in_channel], title: "**When date** arrives, **notify** in **channel**" }),
@@ -110,7 +110,7 @@ export const SLACK_RECIPES: SlackRecipe[] = [
   defineRecipe({ id: "slack:status_changed:someone", trigger: "status_changed", target: "person", recipient_kind: "someone", parts: [...TRIGGER_PARTS.status_changed, ...ACTION_PARTS.notify_someone], title: "When **a status** changes to **something**, **notify someone**" }),
 ];
 
-/** The sentences of the triggers monday.com has no Slack recipe for, still reachable from the Integrate dialog's templates. */
+/** The sentences of the triggers monday.com has no Slack recipe for, still listed on the Slack app page. */
 const EXTRA_TRIGGER_PARTS: Partial<Record<CommunicationTrigger, SlackRecipePart[]>> = {
   person_assigned: [text("When a person is assigned in "), slot("trigger_column", "a people column")],
   subitem_created: [text("When a subitem is created")],
@@ -131,7 +131,7 @@ export function slackRecipeFor(trigger: CommunicationTrigger, channel: Communica
   return defineRecipe({ id: `slack:${trigger}:${target}`, trigger, target, parts, title: titleOf(parts) });
 }
 
-/** True when a featured Slack recipe already covers a communication template, so the Integrate dialog does not list it twice. */
+/** True when a featured Slack recipe already covers a communication template, so the Slack app page does not list it twice. */
 export const isCoveredBySlackRecipe = (template: CommunicationTemplate): boolean =>
   template.channel !== "email" && SLACK_RECIPES.some((recipe) => recipe.trigger === template.trigger && recipe.target === targetOf(template.channel as Exclude<CommunicationChannel, "email">));
 

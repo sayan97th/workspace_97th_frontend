@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import type { BoardAutomationImportance } from "@/types/board-automation";
+import type { BoardAutomationImportance, BoardAutomationSource } from "@/types/board-automation";
 import { FilterIcon } from "@/icons/workspace-icons";
 import { useOutsideClick } from "../../table/useOutsideClick";
 import { Radio } from "../../automations/automationFormParts";
@@ -26,11 +26,12 @@ const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
   { id: "disabled", label: "Disabled" },
 ];
 
+/** Only the Integrations dialog has several kinds, the Automations dialog lists board automations only. */
 const KIND_OPTIONS: { id: KindFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "email", label: AUTOMATION_KIND_LABELS.email },
   { id: "slack", label: AUTOMATION_KIND_LABELS.slack },
-  { id: "board", label: AUTOMATION_KIND_LABELS.board },
+  { id: "calendar", label: AUTOMATION_KIND_LABELS.calendar },
 ];
 
 const IMPORTANCE_OPTIONS: { id: ImportanceFilter; label: string }[] = [
@@ -41,8 +42,8 @@ const IMPORTANCE_OPTIONS: { id: ImportanceFilter; label: string }[] = [
 const GROUP_LABEL = "px-3 pb-1 pt-2 text-[11.5px] font-semibold uppercase tracking-wide text-boardtree-text-faint";
 const OPTION = "flex h-8 w-full items-center gap-2.5 px-3 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover";
 
-/** The Filter button of the Automations tab, a small popover with the status, type and importance filters. */
-export default function AutomationFilterMenu({ filters, onChange }: { filters: AutomationFilters; onChange: (filters: AutomationFilters) => void }) {
+/** The Filter button of the Automations tab, a small popover with the status, importance and, for integrations, app filters. */
+export default function AutomationFilterMenu({ filters, source = "board", onChange }: { filters: AutomationFilters; source?: BoardAutomationSource; onChange: (filters: AutomationFilters) => void }) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLDivElement>(is_open, () => setIsOpen(false));
   const active_count = countActiveFilters(filters);
@@ -72,13 +73,17 @@ export default function AutomationFilterMenu({ filters, onChange }: { filters: A
               {option.label}
             </button>
           ))}
-          <div className={GROUP_LABEL}>Type</div>
-          {KIND_OPTIONS.map((option) => (
-            <button key={option.id} type="button" onClick={() => onChange({ ...filters, kind: option.id })} className={OPTION}>
-              <Radio checked={filters.kind === option.id} />
-              {option.label}
-            </button>
-          ))}
+          {source === "integrations" && (
+            <>
+              <div className={GROUP_LABEL}>App</div>
+              {KIND_OPTIONS.map((option) => (
+                <button key={option.id} type="button" onClick={() => onChange({ ...filters, kind: option.id })} className={OPTION}>
+                  <Radio checked={filters.kind === option.id} />
+                  {option.label}
+                </button>
+              ))}
+            </>
+          )}
           {active_count > 0 && (
             <button type="button" onClick={() => onChange(NO_FILTERS)} className="mt-1 flex h-8 w-full items-center border-t border-boardtree-border-soft px-3 text-[12.5px] font-medium text-boardtree-accent hover:bg-boardtree-hover">
               Clear filters

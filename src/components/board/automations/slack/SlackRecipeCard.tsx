@@ -5,7 +5,7 @@ import { recipeChannel, type SlackRecipe } from "./slackRecipes";
 
 export type SlackRecipeCardProps = {
   recipe: SlackRecipe;
-  /** `large` is the Slack app page card, `regular` matches the Integrate dialog's template cards. */
+  /** `large` is the Slack app page card, `regular` is a compact card for narrow lists. */
   size?: "large" | "regular";
   onUse: (recipe: SlackRecipe) => void;
 };

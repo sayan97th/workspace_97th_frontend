@@ -63,7 +63,7 @@ function TriggerSwitch({ label, draft, context, onChange, is_placeholder = false
     <Token label={label} is_placeholder={is_placeholder} aria_label="Choose a trigger">
       {(close) => (
         <PickerList
-          sections={triggerSections()}
+          sections={triggerSections(context.allow_integrations !== false)}
           selected={draft.trigger_type}
           onPick={(type) => {
             onChange(pickTrigger(type, context));

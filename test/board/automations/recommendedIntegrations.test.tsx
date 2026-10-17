@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import TemplateGallery from "@/components/board/automations/builder/TemplateGallery";
+import AutomationCenterSidebar from "@/components/board/automations/center/AutomationCenterSidebar";
+import { builderRecipesForApp, isIntegrationRecipe } from "@/components/board/automations/center/centerNav";
 import ConnectedRecipeEditor from "@/components/board/automations/connected/ConnectedRecipeEditor";
 import { AUTOMATION_RECIPES, EMAIL_UPDATE_TEMPLATE } from "@/components/board/automations/builder/automationTemplates";
 import type { AutomationBuilderContext } from "@/components/board/automations/builder/automationCatalog";
@@ -57,6 +59,9 @@ const account = (overrides: Partial<ExternalAccountDto> = {}): ExternalAccountDt
 
 const recipe = (id: string) => AUTOMATION_RECIPES.find((entry) => entry.id === id)!;
 
+/** A sidebar row's label, without its logo or count. */
+const navLabel = (button: HTMLElement) => button.querySelector(".automation-center__nav-label")?.textContent;
+
 const galleryProps = {
   context,
   saved_templates: [],
@@ -68,7 +73,7 @@ const galleryProps = {
   onUseAccount: vi.fn(),
   onDeleteSaved: vi.fn(),
   onDeleteAccount: vi.fn(),
-  onUseSlackRecipe: vi.fn(),
+  search: "",
 };
 
 describe("Recommended category", () => {
@@ -92,19 +97,19 @@ describe("Recommended category", () => {
     expect(recipe("google_calendar_item_sync").connected_app).toBe("google_calendar");
   });
 
-  it("opens the connected flow for integration recipes, the builder for the rest, and ends with the custom card", async () => {
+  it("leaves integration recipes out of the Automations gallery and ends with the custom card", async () => {
     const user = userEvent.setup();
     const onUseRecipe = vi.fn();
-    const onUseConnectedRecipe = vi.fn();
     const onCustom = vi.fn();
-    render(<TemplateGallery {...galleryProps} onUseRecipe={onUseRecipe} onUseConnectedRecipe={onUseConnectedRecipe} onCustom={onCustom} />);
+    render(<TemplateGallery {...galleryProps} category="recommended" onUseRecipe={onUseRecipe} onCustom={onCustom} />);
 
-    await user.click(screen.getByRole("button", { name: "Recommended" }));
+    const board_only = AUTOMATION_RECIPES.filter((entry) => entry.categories.includes("recommended") && !isIntegrationRecipe(entry));
     const buttons = screen.getAllByRole("button", { name: /^Use template:/ });
-    expect(buttons).toHaveLength(11);
+    expect(buttons).toHaveLength(board_only.length);
+    expect(screen.queryByText(/Google Calendar/)).not.toBeInTheDocument();
+    expect(isIntegrationRecipe(recipe("google_calendar_item_sync"))).toBe(true);
+    expect(isIntegrationRecipe(recipe("gmail_email_create_item"))).toBe(true);
 
-    await user.click(buttons[1]);
-    expect(onUseConnectedRecipe).toHaveBeenCalledWith(expect.objectContaining({ id: "google_calendar_item_sync" }));
     await user.click(buttons[0]);
     expect(onUseRecipe).toHaveBeenCalledWith(expect.objectContaining({ id: "status_move" }));
 
@@ -112,10 +117,46 @@ describe("Recommended category", () => {
     expect(onCustom).toHaveBeenCalled();
   });
 
-  it("lists Outlook, Gmail, Slack and Google Calendar in the Integrations box", () => {
-    render(<TemplateGallery {...galleryProps} onUseRecipe={vi.fn()} onUseConnectedRecipe={vi.fn()} onCustom={vi.fn()} />);
-    const box = screen.getByRole("group", { name: "Integrations" });
-    expect(within(box).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual(["Outlook", "Gmail", "Slack", "Google Calendar"]);
+  it("gives every recipe that emails or posts to Slack to its integration page", () => {
+    const email = builderRecipesForApp("email");
+    const slack = builderRecipesForApp("slack");
+    expect(email.length).toBeGreaterThan(0);
+    expect(slack.length).toBeGreaterThan(0);
+    expect([...email, ...slack].every((entry) => !entry.connected_app && isIntegrationRecipe(entry))).toBe(true);
+  });
+
+  it("lists only template categories in the Automations dialog sidebar", () => {
+    const overview = { apps: [], can_manage: false, is_loading: false, appFor: () => null, reload: vi.fn() };
+    render(<AutomationCenterSidebar variant="board" page={{ section: "automations", category: "recommended" }} onNavigate={vi.fn()} overview={overview} has_automations saved_count={0} account_count={0} />);
+
+    const categories = screen.getByRole("group", { name: "Categories" });
+    expect(within(categories).getByRole("button", { name: "Recommended" })).toHaveAttribute("aria-current", "page");
+    expect(screen.queryByRole("group", { name: "Integrations" })).not.toBeInTheDocument();
+  });
+
+  it("groups the integration apps by type in the Integrations dialog sidebar", async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    const overview = { apps: [], can_manage: false, is_loading: false, appFor: () => null, reload: vi.fn() };
+    render(<AutomationCenterSidebar variant="integrations" page={{ section: "integrations", page: "overview" }} onNavigate={onNavigate} overview={overview} has_automations saved_count={0} account_count={0} />);
+
+    expect(screen.queryByRole("group", { name: "Categories" })).not.toBeInTheDocument();
+    const labelsOf = (name: string) => within(screen.getByRole("group", { name })).getAllByRole("button").map(navLabel);
+    expect(labelsOf("Integrations")).toEqual(["All integrations"]);
+    expect(labelsOf("Communication")).toEqual(["Email", "Slack"]);
+    expect(labelsOf("Email")).toEqual(["Gmail", "Outlook"]);
+    expect(labelsOf("Calendar")).toEqual(["Google Calendar"]);
+    expect(labelsOf("Setup")).toEqual(["Connections"]);
+
+    await user.click(within(screen.getByRole("group", { name: "Email" })).getByRole("button", { name: /Gmail/ }));
+    expect(onNavigate).toHaveBeenCalledWith({ section: "integrations", page: "gmail" });
+  });
+
+  it("only lists the integrations overview and connections without a Table view", () => {
+    const overview = { apps: [], can_manage: false, is_loading: false, appFor: () => null, reload: vi.fn() };
+    render(<AutomationCenterSidebar variant="integrations" page={{ section: "integrations", page: "overview" }} onNavigate={vi.fn()} overview={overview} has_automations={false} saved_count={0} account_count={0} />);
+
+    expect(screen.getAllByRole("button").map(navLabel)).toEqual(["All integrations", "Connections"]);
   });
 });
 

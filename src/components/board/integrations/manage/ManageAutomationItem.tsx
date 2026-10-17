@@ -263,12 +263,13 @@ function DeleteConfirm({ automation, actions, is_busy }: { automation: BoardAuto
   );
 }
 
-/** The email or Slack mark of automations that reach people outside the app, nothing for board actions. */
+/** The email, Slack or Google Calendar mark of automations that reach an outside app, nothing for board automations. */
 function KindMark({ automation }: { automation: BoardAutomationDto }) {
   const kind = automationKind(automation);
   if (kind === "board") return null;
-  const type = (automation.actions?.length ? automation.actions : [{ type: automation.action_type }]).find((action) => action.type === "send_email" || action.type.startsWith("slack_"))?.type;
-  return <ChannelBadge channel={type === "send_email" ? "email" : type === "slack_notify_channel" ? "slack_channel" : "slack_person"} />;
+  if (kind === "email" || kind === "calendar") return <ChannelBadge channel={kind === "email" ? "email" : "google_calendar"} />;
+  const type = (automation.actions?.length ? automation.actions : [{ type: automation.action_type }]).find((action) => action.type.startsWith("slack_"))?.type;
+  return <ChannelBadge channel={type === "slack_notify_channel" ? "slack_channel" : "slack_person"} />;
 }
 
 const META_LABEL = "text-boardtree-text-faint";

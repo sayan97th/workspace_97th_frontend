@@ -565,6 +565,9 @@ export type BoardAutomationImportResult = {
   data: { automation_id: number; name: string | null; unmapped: string[] }[];
 };
 
+/** `board` automations live in the Automations dialog, `integrations` ones (email, Slack, Google Calendar) in the Integrations dialog. */
+export type BoardAutomationSource = "board" | "integrations";
+
 export type BoardAutomationRunFilters = {
   status?: BoardAutomationRunStatus | null;
   automation_id?: number | null;

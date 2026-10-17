@@ -79,7 +79,7 @@ function ActionSwitch({ label, action, context, only_itemless, onChange, is_plac
       <Token label={label} is_placeholder={is_placeholder} aria_label="Choose an action" popover_width={330}>
         {(close) => (
           <PickerList
-            sections={buttonActionSections(context.is_slack_connected)}
+            sections={buttonActionSections(context.is_slack_connected, context.allow_integrations !== false)}
             selected={buttonEntryIdOf(action)}
             onPick={(entry_id) => {
               const next = actionFromButtonEntry(entry_id, context, action.key);
@@ -94,7 +94,7 @@ function ActionSwitch({ label, action, context, only_itemless, onChange, is_plac
     );
   }
 
-  const sections = actionSections({ only_itemless, is_slack_connected: context.is_slack_connected }).map((section) => ({
+  const sections = actionSections({ only_itemless, is_slack_connected: context.is_slack_connected, allow_integrations: context.allow_integrations }).map((section) => ({
     title: section.title,
     entries: section.entries.map((entry): PickerEntry<ActionPickerId> => ({ ...entry, leading: <ActionIcon id={entry.id} /> })),
   }));

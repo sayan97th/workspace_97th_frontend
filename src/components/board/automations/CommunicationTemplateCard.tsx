@@ -1,6 +1,7 @@
 import React from "react";
 import BrandLogo from "@/components/common/BrandLogo";
 import SlackLogo from "@/components/slack/SlackLogo";
+import ExternalAppLogo from "@/components/integrations/ExternalAppLogo";
 import { CHANNEL_LABELS, splitTitle, type CommunicationChannel, type CommunicationTemplate } from "./communicationTemplates";
 
 const EnvelopeIcon = () => (
@@ -10,16 +11,16 @@ const EnvelopeIcon = () => (
   </svg>
 );
 
-/** The small "app to channel" strip at the top of a template card: the 97th Floor mark, an arrow and the channel. */
-export function ChannelBadge({ channel }: { channel: CommunicationChannel }) {
+/** The small "app to channel" strip at the top of a template card: the 97th Floor mark, an arrow and the channel or app. */
+export function ChannelBadge({ channel }: { channel: CommunicationChannel | "google_calendar" }) {
   return (
     <div className="flex items-center gap-1.5 text-[12px] text-boardtree-text-faint">
       <BrandLogo size={24} className="!rounded-[6px]" />
       <span aria-hidden="true">&rarr;</span>
       <span className="flex h-6 w-6 items-center justify-center rounded-[6px] border border-boardtree-border-soft bg-boardtree-panel-alt text-boardtree-text-muted">
-        {channel === "email" ? <EnvelopeIcon /> : <SlackLogo size={13} />}
+        {channel === "email" ? <EnvelopeIcon /> : channel === "google_calendar" ? <ExternalAppLogo app="google_calendar" size={14} /> : <SlackLogo size={13} />}
       </span>
-      <span>{CHANNEL_LABELS[channel]}</span>
+      <span>{channel === "google_calendar" ? "Google Calendar" : CHANNEL_LABELS[channel]}</span>
     </div>
   );
 }

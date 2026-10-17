@@ -151,7 +151,7 @@ export default function ButtonAutomationBuilder({ context, initial_draft, is_loa
       <Token key={is_fresh ? fresh_key : "idle"} label={index === 0 ? "Then do this" : "and then do this"} tone="link" default_open={is_fresh} aria_label="Choose an action" popover_width={330}>
         {(close) => (
           <PickerList
-            sections={buttonActionSections(context.is_slack_connected)}
+            sections={buttonActionSections(context.is_slack_connected, context.allow_integrations !== false)}
             onPick={(entry_id) => {
               const next = actionFromButtonEntry(entry_id, context, action.key);
               if (next) updateAction(next);

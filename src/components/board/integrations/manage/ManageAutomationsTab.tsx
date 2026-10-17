@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
-import type { BoardAutomationBulkAction, BoardAutomationCopyResult, BoardAutomationDto, BoardAutomationImportResult, UpdateBoardAutomationPayload } from "@/types/board-automation";
+import type { BoardAutomationBulkAction, BoardAutomationCopyResult, BoardAutomationDto, BoardAutomationImportResult, BoardAutomationSource, UpdateBoardAutomationPayload } from "@/types/board-automation";
 import { boardAutomationService } from "@/services/board-automation.service";
 import { DownloadIcon, GridViewToggleIcon, ListViewToggleIcon } from "@/icons/board-icons";
 import { SearchIcon } from "@/icons/workspace-icons";
@@ -22,6 +22,8 @@ export type ManageAutomationsTabProps = {
   /** The active tab, what Export reads from and Import writes to. */
   view_id?: number | null;
   board_label: string;
+  /** Which dialog the list belongs to, it words the empty state and the Type filter. */
+  source?: BoardAutomationSource;
   automations: BoardAutomationDto[];
   context: AutomationBuilderContext;
   onToggle: (automation_id: number, is_enabled: boolean) => Promise<void>;
@@ -65,7 +67,7 @@ const fileSlug = (text: string): string => text.toLowerCase().replace(/[^a-z0-9]
  * transfer or delete each one, like monday's "Manage your board automations".
  */
 export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
-  const { board_id, view_id = null, board_label, automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates, onPublishAccountTemplate, onReplaceAutomation, onReloadAutomations } = props;
+  const { board_id, view_id = null, board_label, source = "board", automations, context, onToggle, onUpdate, onDuplicate, onDelete, onEdit, onSaveAsTemplate, onShowRuns, onExploreTemplates, onPublishAccountTemplate, onReplaceAutomation, onReloadAutomations } = props;
   const [selected_ids, setSelectedIds] = useState<number[]>([]);
   const [versions_id, setVersionsId] = useState<number | null>(null);
   const [is_bulk_busy, setIsBulkBusy] = useState(false);
@@ -305,7 +307,10 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
       <>
         {action_error && <InlineAlert message={action_error} onDismiss={() => setActionError(null)} />}
         {notice && <div role="status" className="mb-3 rounded-[8px] border border-[#00c875]/30 bg-[#00c875]/[0.08] px-3 py-2 text-[12.5px] text-boardtree-text-secondary">{notice}</div>}
-        <ManageEmptyState title="Create your first automation to save time" description="Start from a template, build your own sentence, or import automations exported from another table.">
+        <ManageEmptyState
+          title={source === "integrations" ? "Connect your first integration" : "Create your first automation to save time"}
+          description={source === "integrations" ? "Send what happens on this board to email, Slack or Google Calendar, or turn incoming emails into items." : "Start from a template, build your own sentence, or import automations exported from another table."}
+        >
           <div className="flex items-center gap-2">
             <button type="button" onClick={onExploreTemplates} className="h-9 rounded-[6px] border border-boardtree-border px-4 text-[13.5px] text-boardtree-text hover:bg-boardtree-hover">
               Explore templates
@@ -356,7 +361,7 @@ export default function ManageAutomationsTab(props: ManageAutomationsTabProps) {
             className="h-9 w-full rounded-[4px] border border-boardtree-border bg-boardtree-surface pl-9 pr-3 text-[13px] text-boardtree-text outline-none placeholder:text-boardtree-text-faint focus:border-boardtree-accent"
           />
         </label>
-        <AutomationFilterMenu filters={filters} onChange={setFilters} />
+        <AutomationFilterMenu filters={filters} source={source} onChange={setFilters} />
         <label className="flex h-9 items-center gap-2 px-2 text-[12.5px] text-boardtree-text-secondary">
           <input
             type="checkbox"

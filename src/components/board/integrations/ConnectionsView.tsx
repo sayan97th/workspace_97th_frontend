@@ -4,7 +4,9 @@ import Link from "next/link";
 import SlackLogo from "@/components/slack/SlackLogo";
 import type { SlackIntegrationApi } from "@/hooks/useSlackIntegration";
 import { CheckIcon } from "@/icons/workspace-icons";
-import type { ChannelFilter } from "./CommunicationView";
+import type { IntegrationAppKey } from "@/types/integration-overview";
+import { EXTERNAL_APP_ORDER } from "@/lib/externalApps";
+import ExternalAccountsCard from "./ExternalAccountsCard";
 import { EnvelopeIcon, MessageBanner, PRIMARY_BUTTON, SECONDARY_BUTTON, StatusPill } from "./integrationUi";
 import SlackConnectAccountDialog from "./SlackConnectAccountDialog";
 import { SLACK_SETUP_PATH } from "@/lib/slackSetup";
@@ -13,8 +15,12 @@ export type ConnectionsViewProps = {
   slack: SlackIntegrationApi;
   /** Where Slack sends the browser back to after an OAuth round trip. */
   return_path: string;
-  /** Jumps to the Communication templates filtered to a channel; the buttons are hidden when omitted (boards without automations). */
-  onBrowseTemplates?: (channel: ChannelFilter) => void;
+  /** Opens an app's templates in the Integrations dialog, the buttons are hidden when omitted (views without automations). */
+  onBrowseTemplates?: (app: IntegrationAppKey) => void;
+  /** Administrators can set up the Google and Microsoft apps. */
+  can_manage_apps?: boolean;
+  /** Called after an account was connected or removed, so the center's badges refresh. */
+  onChanged?: () => void;
 };
 
 type StepState = "done" | "current" | "locked";
@@ -75,11 +81,12 @@ function SetupStep({ number, state, title, description, action, children, is_las
 }
 
 /**
- * Integrate dialog > Connections. Email is built in, so it only offers shortcuts. Slack takes two
- * steps: an administrator connects the workspace once in Administration > Integrations > Slack,
- * then every member links their own Slack account through {@link SlackConnectAccountDialog}.
+ * Integrations dialog > Connections. Email is built in, so it only offers shortcuts.
+ * Slack takes two steps: an administrator connects the workspace once in Administration >
+ * Integrations > Slack, then every member links their own Slack account through
+ * {@link SlackConnectAccountDialog}. Gmail, Outlook and Google Calendar list the member's own accounts.
  */
-export default function ConnectionsView({ slack, return_path, onBrowseTemplates }: ConnectionsViewProps) {
+export default function ConnectionsView({ slack, return_path, onBrowseTemplates, can_manage_apps = false, onChanged }: ConnectionsViewProps) {
   const [is_connect_dialog_open, setIsConnectDialogOpen] = useState(false);
 
   const status = slack.status;
@@ -147,9 +154,9 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
   }
 
   return (
-    <div className="max-w-[720px]">
-      <h2 className="text-boardtree-text font-heading text-dialog-title">Connections</h2>
-      <p className="mb-4 mt-1 text-[13px] text-boardtree-text-muted">Connect the channels your team uses to get notified.</p>
+    <div className="max-w-[760px]">
+      <h2 className="text-boardtree-text font-heading text-page-title">Connections</h2>
+      <p className="mb-5 mt-1 text-[13.5px] text-boardtree-text-secondary">Connect the apps your team uses. Notifications and integration automations go through these accounts.</p>
 
       {/* The dialog shows Slack errors itself while it is open. */}
       {!is_connect_dialog_open && <MessageBanner error={slack.error} notice={slack.notice} onDismiss={slack.dismissMessages} />}
@@ -163,7 +170,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
         >
           <div className="flex flex-wrap gap-2">
             <Link href="/profile?section=notifications" className={`${SECONDARY_BUTTON} inline-flex items-center`}>Email preferences</Link>
-            {onBrowseTemplates && <button type="button" onClick={() => onBrowseTemplates("email")} className={SECONDARY_BUTTON}>Browse email templates</button>}
+            {onBrowseTemplates && <button type="button" onClick={() => onBrowseTemplates("email")} className={SECONDARY_BUTTON}>Email templates</button>}
           </div>
         </IntegrationCard>
 
@@ -201,12 +208,27 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates 
 
               {workspace && onBrowseTemplates && (
                 <div className="mt-4">
-                  <button type="button" onClick={() => onBrowseTemplates("slack")} className={SECONDARY_BUTTON}>Browse Slack templates</button>
+                  <button type="button" onClick={() => onBrowseTemplates("slack")} className={SECONDARY_BUTTON}>Slack templates</button>
                 </div>
               )}
             </>
           )}
         </IntegrationCard>
+      </div>
+
+      <h3 className="mb-1 mt-7 font-outfit text-section-title text-boardtree-text">Your email and calendar accounts</h3>
+      <p className="mb-3 text-[12.5px] text-boardtree-text-muted">Used by the Gmail, Outlook and Google Calendar integrations, only you can see and use them.</p>
+      <div className="flex flex-col gap-3">
+        {EXTERNAL_APP_ORDER.map((service) => (
+          <ExternalAccountsCard
+            key={service}
+            service={service}
+            return_path={return_path}
+            can_manage_apps={can_manage_apps}
+            onChanged={onChanged}
+            onBrowseTemplates={onBrowseTemplates ? () => onBrowseTemplates(service) : undefined}
+          />
+        ))}
       </div>
 
       {is_connect_dialog_open && workspace && (

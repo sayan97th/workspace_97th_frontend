@@ -1,0 +1,619 @@
+/*
+ * The board's Automations and Integrations dialogs, after monday.com's
+ * automation and integration centers. Both share this shell: a header with
+ * the Create and Manage tabs, a sidebar (template categories in Automations,
+ * apps in Integrations) and the page on the right.
+ *
+ * Every color is an `--ac-*` token read from the boardtree palette, so the
+ * light monday palette (`monday-palette.css`) and dark mode both apply by
+ * only swapping tokens. The pages inside keep their Tailwind utilities.
+ */
+
+$phone: 767px;
+$sidebar-width: 248px;
+$radius: 8px;
+
+.automation-center {
+  --ac-overlay: rgba(41, 47, 76, 0.55);
+  --ac-surface: var(--color-boardtree-surface);
+  --ac-panel: var(--color-boardtree-panel-alt);
+  --ac-border: var(--color-boardtree-border);
+  --ac-border-soft: var(--color-boardtree-border-soft);
+  --ac-hover: var(--color-boardtree-hover);
+  --ac-text: var(--color-boardtree-text);
+  --ac-text-secondary: var(--color-boardtree-text-secondary);
+  --ac-text-faint: var(--color-boardtree-text-faint);
+  --ac-accent: var(--color-boardtree-accent);
+  --ac-accent-surface: var(--color-boardtree-accent-surface);
+  --ac-success: #00c875;
+  --ac-success-text: #0a9a5c;
+  --ac-warning: #fdab3d;
+  --ac-warning-text: #b56a00;
+  --ac-shadow: 0 24px 60px rgba(30, 34, 55, 0.3);
+  --ac-card-shadow: 0 6px 18px rgba(30, 34, 55, 0.1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: var(--ac-overlay);
+}
+
+html.dark .automation-center {
+  --ac-overlay: rgba(0, 0, 0, 0.6);
+  --ac-success-text: #3ddc97;
+  --ac-warning-text: #ffc46b;
+  --ac-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --ac-card-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .automation-center {
+    animation: automation-center-fade 140ms ease-out;
+  }
+
+  .automation-center__dialog {
+    animation: automation-center-rise 180ms ease-out;
+  }
+}
+
+@keyframes automation-center-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes automation-center-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+
+.automation-center__dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 1200px;
+  max-width: 100%;
+  height: 88vh;
+  max-height: 920px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ac-surface);
+  box-shadow: var(--ac-shadow);
+
+  @media (max-width: $phone) {
+    height: 100%;
+    max-height: none;
+    border-radius: 10px;
+  }
+}
+
+/* Header: title on the left, the Create and Manage tabs centered, close on the right. */
+
+.automation-center__header {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 60px;
+  padding: 10px 16px 10px 24px;
+  border-bottom: 1px solid var(--ac-border-soft);
+
+  @media (max-width: $phone) {
+    flex-wrap: wrap;
+    padding: 10px 12px 10px 16px;
+  }
+}
+
+.automation-center__title {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 17px;
+  color: var(--ac-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  strong {
+    font-weight: 700;
+  }
+}
+
+.automation-center__board {
+  margin-left: 6px;
+  font-weight: 400;
+  color: var(--ac-text-secondary);
+}
+
+.automation-center__modes {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--ac-border);
+  border-radius: 6px;
+  transform: translateX(-50%);
+
+  @media (max-width: $phone) {
+    position: static;
+    order: 3;
+    width: 100%;
+    transform: none;
+  }
+}
+
+.automation-center__mode {
+  flex: 1;
+  padding: 7px 30px;
+  font-size: 14px;
+  color: var(--ac-text-secondary);
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--ac-hover);
+  }
+
+  &[aria-selected="true"] {
+    font-weight: 500;
+    color: var(--ac-accent);
+    background: var(--ac-accent-surface);
+  }
+
+  & + & {
+    border-left: 1px solid var(--ac-border);
+  }
+}
+
+.automation-center__close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: var(--ac-text-faint);
+
+  &:hover {
+    color: var(--ac-text);
+    background: var(--ac-hover);
+  }
+}
+
+.automation-center__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+
+  @media (max-width: $phone) {
+    flex-direction: column;
+  }
+}
+
+.automation-center__main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+
+  &--padded {
+    padding: 24px 32px;
+
+    @media (max-width: $phone) {
+      padding: 16px;
+    }
+  }
+
+  &--muted {
+    background: var(--ac-panel);
+  }
+}
+
+/* Sidebar: two labelled groups, board automations then integrations. */
+
+.automation-center__sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 20px;
+  width: $sidebar-width;
+  overflow-y: auto;
+  padding: 18px 12px;
+  border-right: 1px solid var(--ac-border-soft);
+  background: var(--ac-panel);
+
+  @media (max-width: $phone) {
+    flex-direction: row;
+    gap: 12px;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 12px;
+    border-right: 0;
+    border-bottom: 1px solid var(--ac-border-soft);
+  }
+}
+
+.automation-center__group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  @media (max-width: $phone) {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.automation-center__group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ac-text-faint);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  @media (max-width: $phone) {
+    display: none;
+  }
+}
+
+.automation-center__nav-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  color: var(--ac-text-secondary);
+  text-align: left;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: var(--ac-hover);
+  }
+
+  &[aria-current="page"] {
+    font-weight: 500;
+    color: var(--ac-accent);
+    background: var(--ac-accent-surface);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ac-accent);
+    outline-offset: -2px;
+  }
+
+  @media (max-width: $phone) {
+    flex: none;
+    width: auto;
+    height: 32px;
+    padding: 0 10px;
+    white-space: nowrap;
+  }
+}
+
+.automation-center__nav-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  opacity: 0.85;
+}
+
+.automation-center__nav-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.automation-center__nav-count {
+  flex: none;
+  min-width: 18px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ac-text-faint);
+}
+
+.automation-center__divider {
+  height: 1px;
+  margin: 0 12px;
+  background: var(--ac-border-soft);
+
+  @media (max-width: $phone) {
+    width: 1px;
+    height: 20px;
+    margin: 0;
+  }
+}
+
+/* Status dot of an app row, the overview card says the same in words. */
+
+$status-colors: (
+  "ready": var(--ac-success),
+  "connected": var(--ac-success),
+  "available": var(--ac-text-faint),
+  "needs_setup": var(--ac-warning),
+);
+
+.integration-status-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ac-text-faint);
+
+  @each $status, $color in $status-colors {
+    &--#{$status} {
+      background: $color;
+    }
+  }
+}
+
+.integration-status-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ac-text-secondary);
+  background: var(--ac-hover);
+
+  &--ready,
+  &--connected {
+    color: var(--ac-success-text);
+    background: color-mix(in srgb, var(--ac-success) 14%, transparent);
+  }
+
+  &--needs_setup {
+    color: var(--ac-warning-text);
+    background: color-mix(in srgb, var(--ac-warning) 16%, transparent);
+  }
+}
+
+/* Integrations overview: a short intro, then one card per app grouped by category. */
+
+.integration-overview__intro {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.integration-overview__summary {
+  display: flex;
+  gap: 8px;
+}
+
+.integration-overview__stat {
+  min-width: 96px;
+  padding: 8px 12px;
+  border: 1px solid var(--ac-border-soft);
+  border-radius: $radius;
+  background: var(--ac-surface);
+
+  strong {
+    display: block;
+    font-size: 18px;
+    line-height: 1.2;
+    color: var(--ac-text);
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--ac-text-faint);
+  }
+}
+
+.integration-overview__section + .integration-overview__section {
+  margin-top: 28px;
+}
+
+.integration-overview__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.integration-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 188px;
+  padding: 16px;
+  border: 1px solid var(--ac-border-soft);
+  border-radius: 10px;
+  background: var(--ac-surface);
+  text-align: left;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--ac-accent) 45%, transparent);
+    box-shadow: var(--ac-card-shadow);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ac-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover {
+      transform: translateY(-1px);
+    }
+  }
+}
+
+.integration-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.integration-card__logo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--ac-border-soft);
+  border-radius: 10px;
+  color: var(--ac-text-secondary);
+  background: var(--ac-surface);
+  // The app's brand color, set inline, tints the tile.
+  box-shadow: inset 0 -3px 0 var(--integration-brand, transparent);
+}
+
+.integration-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ac-text);
+}
+
+.integration-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ac-text-secondary);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.integration-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--ac-border-soft);
+  font-size: 12px;
+  color: var(--ac-text-faint);
+}
+
+.integration-card__accounts {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.integration-card__cta {
+  flex: none;
+  font-weight: 500;
+  color: var(--ac-accent);
+}
+
+.integration-callout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 28px;
+  padding: 14px 16px;
+  border: 1px dashed var(--ac-border);
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--ac-text-secondary);
+
+  strong {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 14px;
+    color: var(--ac-text);
+  }
+}
+
+/* The colored banner on top of an app page, shared by Email, Slack, Gmail, Outlook and Google Calendar. */
+
+.integration-app-banner {
+  display: flex;
+  gap: 20px;
+  min-height: 200px;
+  padding: 24px;
+  border-radius: $radius;
+  color: #ffffff;
+  background: var(--integration-brand);
+
+  @media (max-width: $phone) {
+    flex-direction: column;
+    gap: 14px;
+    min-height: 0;
+    padding: 18px;
+  }
+}
+
+.integration-app-banner__logo {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  border-radius: $radius;
+  color: var(--integration-brand);
+  background: #ffffff;
+
+  @media (max-width: $phone) {
+    width: 64px;
+    height: 64px;
+  }
+}
+
+.integration-app-banner__name {
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+.integration-app-banner__tagline {
+  margin-top: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.integration-app-banner__hint {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.integration-app-banner__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.16);
+}

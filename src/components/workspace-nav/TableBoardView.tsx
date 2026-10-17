@@ -146,11 +146,13 @@ import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutom
 import type { AutomationColumn } from "../board/automations/builder/automationCatalog";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
+import type { IntegrationPage } from "../board/automations/center/centerNav";
+import IntegrationsModal from "../board/integrations/IntegrationsModal";
+import { automationSource } from "../board/integrations/manage/manageFormat";
 import ItemAutomationsPanel from "../board/automations/ItemAutomationsPanel";
 import ItemDependenciesPanel from "../board/dependencies/ItemDependenciesPanel";
 import { buildItemDependencySections } from "../board/dependencies/buildItemDependencySections";
 import { countAutomationsByColumn } from "../board/automations/builder/automationColumns";
-import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardDocService } from "@/services/board-doc.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
@@ -903,24 +905,15 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [automation_edit_id, setAutomationEditId] = useState<number | null>(null);
   // Set by a column header's "Automate", the builder opens with a trigger for that column.
   const [automation_column_id, setAutomationColumnId] = useState<string | null>(null);
-  // ── Integrations ("Integrate" header button) — connects Email and Slack. Slack's OAuth round
-  // trip leaves the app, so the API sends the browser back to `integrations_return_path`, and the
-  // `integrate` param reopens the dialog on arrival (see the effect below). ──
+  // ── Integrations ("Integrate" header button), its own dialog for the automations that use email,
+  // Slack, Gmail, Outlook or Google Calendar. OAuth round trips leave the app, so the API sends the
+  // browser back to `integrations_return_path`, and the `integrate` param reopens it on Connections. ──
   const [is_integrations_modal_open, setIsIntegrationsModalOpen] = useState(false);
+  const [integrations_page, setIntegrationsPage] = useState<IntegrationPage>("overview");
+  // Set when an integration automation is opened in the builder from elsewhere (an item, a link).
+  const [integration_edit_id, setIntegrationEditId] = useState<number | null>(null);
   const integrations_return_path = `${pathname}?integrate=slack`;
 
-  useEffect(() => {
-    if (search_params.get("integrate") === "slack") setIsIntegrationsModalOpen(true);
-  }, [search_params]);
-
-  const handleCloseIntegrations = () => {
-    setIsIntegrationsModalOpen(false);
-    if (!search_params.has("integrate")) return;
-    const next_params = new URLSearchParams(search_params.toString());
-    next_params.delete("integrate");
-    const query = next_params.toString();
-    router.replace(query ? `${pathname}?${query}` : pathname);
-  };
   // ── Item detail drawer's Activity tab — the board's own activity log
   // already carries an `item_id` in `meta` for the entries that concern one
   // specific item (restored, permanently deleted, an automation ran against
@@ -1393,19 +1386,33 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)));
   };
 
-  const handleSaveAutomationTemplate = async (automation_id: number, name: string) => {
-    await boardAutomationService.saveAsTemplate(board_id, automation_id, { name });
-  };
-
-  const openAutomationCenter = (edit_automation_id?: number, column_id?: string) => {
-    setAutomationEditId(edit_automation_id ?? null);
-    setAutomationColumnId(column_id ?? null);
-    setIsAutomationsModalOpen(true);
-    // Runs happen in the background (other people's changes, scheduled triggers), so the run counts are read again.
+  // Runs happen in the background (other people's changes, scheduled triggers), so the run counts are read again.
+  const refreshAutomations = () => {
+    if (active_view_type !== "table") return;
     boardAutomationService
       .getAutomations(board_id, view_tabs.active_view_id)
       .then(setAutomations)
       .catch(() => {});
+  };
+
+  const openIntegrationsCenter = (integration_page: IntegrationPage = "overview", edit_automation_id?: number) => {
+    setIntegrationsPage(integration_page);
+    setIntegrationEditId(edit_automation_id ?? null);
+    setIsIntegrationsModalOpen(true);
+    refreshAutomations();
+  };
+
+  // An automation that uses an integration is edited in the Integrations dialog, every other one here.
+  const openAutomationCenter = (edit_automation_id?: number, column_id?: string) => {
+    const editing = edit_automation_id ? automations.find((automation) => automation.id === edit_automation_id) : undefined;
+    if (editing && automationSource(editing) === "integrations") {
+      openIntegrationsCenter("overview", editing.id);
+      return;
+    }
+    setAutomationEditId(edit_automation_id ?? null);
+    setAutomationColumnId(column_id ?? null);
+    setIsAutomationsModalOpen(true);
+    refreshAutomations();
   };
 
   // `?automation=<id>`, a link from the account wide Automations center, opens that automation in
@@ -1420,11 +1427,17 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [automation_param]);
 
+  useEffect(() => {
+    if (search_params.get("integrate") === "slack") openIntegrationsCenter("connections");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search_params]);
+
   const clearAutomationParam = () => {
-    if (!search_params.has("automation")) return;
+    if (!search_params.has("automation") && !search_params.has("integrate")) return;
     opened_automation_param.current = null;
     const next_params = new URLSearchParams(search_params.toString());
     next_params.delete("automation");
+    next_params.delete("integrate");
     const query = next_params.toString();
     router.replace(query ? `${pathname}?${query}` : pathname);
   };
@@ -3431,7 +3444,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         });
       },
       getNodeLink: (node_id) => `${window.location.origin}/boards/${board_id}/pulses/${node_id}`,
-      onOpenIntegrations: () => setIsIntegrationsModalOpen(true),
+      onOpenIntegrations: () => openIntegrationsCenter(),
       onOpenAutomations: active_view_type === "table" ? () => openAutomationCenter() : undefined,
       onReorderItems: handleReorderTableItems,
       onReorderColumns: handleReorderTableColumns,
@@ -4429,9 +4442,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onBoardUpdatesClick: discussion_drawer.open,
         board_updates_count: discussion_drawer.comment_count,
         board_updates_unseen: discussion_drawer.has_unseen_comments,
-        onIntegrateClick: () => setIsIntegrationsModalOpen(true),
+        onIntegrateClick: () => openIntegrationsCenter(),
         onAutomateClick: active_view_type === "table" ? () => openAutomationCenter() : undefined,
-        automation_count: automations.filter((a) => a.is_enabled).length,
+        automation_count: automations.filter((a) => a.is_enabled && automationSource(a) === "board").length,
         options_menu: {
           board_id,
           board_label,
@@ -4847,36 +4860,6 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       {/* A Doc tab shows the board's discussion as its inline Comments panel instead. */}
       {!(active_view_type === "doc" && active_doc_view) && <BoardDiscussionDrawer drawer={discussion_drawer} />}
 
-      <IntegrationsModal
-        is_open={is_integrations_modal_open}
-        onClose={handleCloseIntegrations}
-        board_label={board_label}
-        return_path={integrations_return_path}
-        automation_tools={
-          active_view_type === "table"
-            ? {
-                board_id,
-                view_id: view_tabs.active_view_id,
-                automations,
-                columns: table_base_columns,
-                people: assignable_table_people,
-                items: automation_test_items,
-                context: automation_context,
-                onCreate: handleCreateAutomation,
-                onToggle: handleToggleAutomation,
-                onUpdate: handleUpdateAutomation,
-                onDuplicate: handleDuplicateAutomation,
-                onDelete: handleDeleteAutomation,
-                onSaveAsTemplate: handleSaveAutomationTemplate,
-                onOpenBoardAutomations: (edit_automation_id?: number) => {
-                  handleCloseIntegrations();
-                  openAutomationCenter(edit_automation_id);
-                },
-              }
-            : undefined
-        }
-      />
-
       <AutomationsModal
         is_open={is_automations_modal_open}
         onClose={() => {
@@ -4904,11 +4887,40 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onToggle={handleToggleAutomation}
         onDuplicate={handleDuplicateAutomation}
         onDelete={handleDeleteAutomation}
-        onOpenCommunicationTemplates={() => {
+        onOpenIntegrations={(integration_page) => {
           setIsAutomationsModalOpen(false);
           setAutomationEditId(null);
-          setIsIntegrationsModalOpen(true);
+          setAutomationColumnId(null);
+          openIntegrationsCenter(integration_page);
         }}
+      />
+      <IntegrationsModal
+        is_open={is_integrations_modal_open}
+        onClose={() => {
+          setIsIntegrationsModalOpen(false);
+          setIntegrationEditId(null);
+          clearAutomationParam();
+        }}
+        board_id={board_id}
+        view_id={view_tabs.active_view_id}
+        board_label={board_label}
+        return_path={integrations_return_path}
+        initial_integration_page={integrations_page}
+        has_automations={active_view_type === "table"}
+        automations={automations}
+        columns={automation_columns}
+        groups={selection_move_targets}
+        people={assignable_table_people}
+        edit_automation_id={integration_edit_id}
+        forms={automation_forms}
+        test_items={automation_test_items}
+        onReplaceAutomation={(updated) => setAutomations((current) => current.map((a) => (a.id === updated.id ? updated : a)))}
+        onReloadAutomations={reloadAutomations}
+        onCreate={handleCreateAutomation}
+        onUpdate={handleUpdateAutomation}
+        onToggle={handleToggleAutomation}
+        onDuplicate={handleDuplicateAutomation}
+        onDelete={handleDeleteAutomation}
       />
       <ColumnPermissionsModal
         is_open={permissions_column_id !== null}
