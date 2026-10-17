@@ -986,10 +986,6 @@ html.dark {
   padding: 16px;
 }
 
-.inv-modal-root[data-layer="confirm"] {
-  z-index: 60;
-}
-
 .inv-modal-backdrop {
   position: absolute;
   inset: 0;
@@ -1199,6 +1195,194 @@ html.dark {
   strong {
     color: var(--inv-text);
     font-weight: 500;
+  }
+}
+
+// ── Invite dialog steps ──────────────────────────────────────────────────────
+// The dialog swaps its body in place (Details, then Review) instead of stacking a
+// second confirm dialog on top. The stepper shows where the user is and lets them
+// jump back to Details.
+
+.inv-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 24px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--inv-divider);
+}
+
+.inv-stepper-item {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  // Connector line between two steps, filled once the earlier step is done.
+  & + & {
+    flex: 1 1 auto;
+  }
+
+  & + &::before {
+    content: "";
+    flex: 1 1 auto;
+    min-width: 24px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--inv-divider);
+  }
+
+  &[data-state="current"] + &::before,
+  &[data-state="done"] + &::before {
+    background: var(--inv-primary);
+  }
+}
+
+.inv-stepper-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 2px 6px 2px 2px;
+  border-radius: 999px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 20px;
+
+  [data-state="current"] > & {
+    color: var(--inv-text);
+  }
+
+  @at-root button#{&} {
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--inv-row-hover);
+      color: var(--inv-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--inv-primary);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.inv-stepper-marker {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--inv-border);
+  border-radius: 999px;
+  background: var(--inv-card-bg);
+  color: var(--inv-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+
+  [data-state="current"] & {
+    border-color: var(--inv-primary);
+    background: var(--inv-primary);
+    color: #ffffff;
+  }
+
+  [data-state="done"] & {
+    border-color: var(--inv-primary);
+    background: var(--inv-primary-soft);
+    color: var(--inv-primary);
+  }
+}
+
+.inv-stepper-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Remounted per step (keyed in React), so each step slides in from its side.
+.inv-step-panel {
+  animation: inv-step-forward 180ms ease-out;
+
+  &[data-step="details"] {
+    animation-name: inv-step-back;
+  }
+}
+
+.inv-review-list {
+  overflow: hidden;
+  border: 1px solid var(--inv-divider);
+  border-radius: 8px;
+}
+
+.inv-review-row {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 8px 12px 14px;
+
+  & + & {
+    border-top: 1px solid var(--inv-divider);
+  }
+
+  @media (max-width: 520px) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 6px;
+  }
+}
+
+.inv-review-term {
+  color: var(--inv-text-faint);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.inv-review-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  > .inv-person {
+    flex: 1 1 auto;
+  }
+
+  .inv-role-option-icon[data-tone="primary"] {
+    width: 36px;
+    height: 36px;
+    background: var(--inv-primary-soft);
+    color: var(--inv-primary);
+  }
+}
+
+.inv-review-hint {
+  display: block;
+  color: var(--inv-text-faint);
+  font-size: 12.5px;
+  line-height: 17px;
+}
+
+@keyframes inv-step-forward {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes inv-step-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-step-panel {
+    animation: none;
   }
 }
 
