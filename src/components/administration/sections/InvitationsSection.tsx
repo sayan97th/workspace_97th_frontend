@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { CheckCircleIcon } from "@/icons/workspace-icons";
 import AdminPageActions from "../AdminPageActions";
 import InviteButton from "../InviteButton";
 import InviteUserModal from "../InviteUserModal";
@@ -26,12 +27,13 @@ const InvitationsSection: React.FC<InvitationsSectionProps> = ({ users }) => {
       </AdminPageActions>
 
       {users.invite_sent_notice ? (
-        <div role="status" className="admin-notice admin-notice-success mb-4">
-          {users.invite_sent_notice}
+        <div role="status" className="invitations-theme inv-notice" data-tone="success">
+          <CheckCircleIcon size={16} />
+          <span>{users.invite_sent_notice}</span>
         </div>
       ) : null}
 
-      <InvitationsPanel invitations={invitations} can_manage={users.can_manage_users} />
+      <InvitationsPanel invitations={invitations} can_manage={users.can_manage_users} onInvite={users.openInvite} />
       <InviteUserModal users={users} />
     </div>
   );

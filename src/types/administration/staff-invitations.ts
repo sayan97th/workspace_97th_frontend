@@ -15,6 +15,17 @@ export type AdminStaffInvitationDto = {
   updated_at: string;
   department: { id: number; name: string } | null;
   inviter: { id: number; full_name: string; profile_photo_url: string | null } | null;
+  /** The account that joined through this invitation, only set once it is accepted. */
+  account?: StaffInvitationAccount | null;
+};
+
+export type StaffInvitationAccount = {
+  id: number;
+  full_name: string;
+  job_title: string | null;
+  profile_photo_url: string | null;
+  /** The person joined but an admin deactivated the account later. */
+  is_deactivated: boolean;
 };
 
 export type AdminStaffInvitationsPage = {

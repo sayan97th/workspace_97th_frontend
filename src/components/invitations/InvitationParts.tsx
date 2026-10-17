@@ -22,17 +22,22 @@ import {
 
 export type InvitationPersonProps = {
   email: string;
-  /** "Sent Oct 3, 2026" style line under the email. */
+  /** The account's name once the person joined; the email then moves to the tooltip. */
+  full_name?: string | null;
+  photo_url?: string | null;
+  /** "Sent Oct 3, 2026" style line under the name or email. */
   meta?: React.ReactNode;
+  /** Fades the avatar, for a deactivated account. */
+  is_faded?: boolean;
 };
 
-/** Avatar plus the invited email; the full address shows in a tooltip when it is truncated. */
-export const InvitationPerson: React.FC<InvitationPersonProps> = ({ email, meta }) => (
-  <div className="inv-person">
-    <InvitationAvatar email={email} />
+/** Avatar plus the account name or invited email; the full address shows in a tooltip. */
+export const InvitationPerson: React.FC<InvitationPersonProps> = ({ email, full_name, photo_url, meta, is_faded }) => (
+  <div className="inv-person" data-faded={is_faded ? "true" : undefined}>
+    <InvitationAvatar email={email} full_name={full_name} photo_url={photo_url} />
     <span className="min-w-0">
-      <PortalTooltip content={email} className="max-w-full">
-        <span className="inv-person-email">{email}</span>
+      <PortalTooltip content={full_name ? `${full_name} (${email})` : email} className="max-w-full">
+        <span className="inv-person-email">{full_name || email}</span>
       </PortalTooltip>
       {meta ? <span className="inv-person-meta">{meta}</span> : null}
     </span>

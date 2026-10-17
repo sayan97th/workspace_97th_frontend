@@ -387,6 +387,20 @@ html.dark {
   }
 }
 
+// Inside the white Administration card the summary cards trade their shadow for a border.
+[data-surface="card"] .inv-stat {
+  border-color: var(--inv-divider);
+  box-shadow: none;
+
+  &:hover {
+    border-color: var(--inv-border);
+  }
+
+  &[data-active="true"] {
+    border-color: var(--inv-tone-text);
+  }
+}
+
 // ── Card, toolbar and inputs ─────────────────────────────────────────────────
 
 .inv-card {
@@ -497,6 +511,12 @@ html.dark {
   .inv-input {
     width: 100%;
     padding: 0 32px 0 34px;
+
+    // The custom clear button replaces the browser's own one.
+    &::-webkit-search-cancel-button {
+      display: none;
+      appearance: none;
+    }
   }
 
   @media (max-width: 640px) {
@@ -530,6 +550,21 @@ html.dark {
     background: var(--inv-card-bg);
     color: var(--inv-text);
   }
+}
+
+.inv-input-lg {
+  height: 40px;
+  padding-left: 36px;
+}
+
+.inv-textarea {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 84px;
+  padding: 10px 12px;
+  line-height: 20px;
+  resize: vertical;
 }
 
 .inv-date-input {
@@ -691,6 +726,17 @@ html.dark {
   white-space: nowrap;
 }
 
+.inv-person[data-faded="true"] {
+  .inv-avatar {
+    opacity: 0.45;
+    filter: grayscale(1);
+  }
+
+  .inv-person-email {
+    color: var(--inv-text-secondary);
+  }
+}
+
 .inv-avatar {
   display: inline-flex;
   flex: none;
@@ -713,6 +759,26 @@ html.dark {
   font-size: 14px;
 
   > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.inv-department {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-text);
+  font-size: 14px;
+
+  svg {
+    flex: none;
+    color: var(--inv-text-faint);
+  }
+
+  > span {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -798,6 +864,23 @@ html.dark {
 
   > span {
     flex: 1;
+  }
+}
+
+.inv-notice-close {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: inherit;
+  opacity: 0.7;
+
+  &:hover {
+    background: color-mix(in srgb, currentColor 12%, transparent);
+    opacity: 1;
   }
 }
 
@@ -1028,8 +1111,20 @@ html.dark {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 
+  &[data-columns="2"] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    .inv-role-option {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+  }
+
   @media (max-width: 520px) {
-    grid-template-columns: 1fr;
+    &,
+    &[data-columns="2"] {
+      grid-template-columns: 1fr;
+    }
   }
 }
 
@@ -1065,6 +1160,7 @@ html.dark {
 
 .inv-role-option-icon {
   display: inline-flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 32px;

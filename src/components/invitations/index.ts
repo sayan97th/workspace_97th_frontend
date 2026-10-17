@@ -2,6 +2,8 @@ export { default as InvitationStatusBadge, INVITATION_STATUS_META } from "./Invi
 export type { InvitationStatusBadgeProps } from "./InvitationStatusBadge";
 export { default as InvitationRoleBadge, WORKSPACE_ROLE_META } from "./InvitationRoleBadge";
 export type { InvitationRoleBadgeProps } from "./InvitationRoleBadge";
+export { default as InvitationPlatformRoleBadge, PLATFORM_ROLE_META } from "./InvitationPlatformRoleBadge";
+export type { InvitationPlatformRoleBadgeProps } from "./InvitationPlatformRoleBadge";
 export { default as InvitationPill } from "./InvitationPill";
 export type { InvitationPillProps } from "./InvitationPill";
 export { default as InvitationAvatar } from "./InvitationAvatar";
