@@ -1,25 +1,41 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { CloseIcon } from "@/icons/workspace-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import { useBoardImportProgress } from "@/hooks/useBoardImportProgress";
 import { boardImportService } from "@/services/board-import.service";
+import { boardOptionsService } from "@/services/board-options.service";
 import type {
   BoardImportAnalyzeResponse,
   BoardImportDuplicateMode,
   BoardImportJobDto,
   BoardImportMapping,
 } from "@/types/board-import";
+import GiveFeedbackModal from "../GiveFeedbackModal";
 import ImportUploadStep from "./ImportUploadStep";
-import ImportMapColumnsStep from "./ImportMapColumnsStep";
-import ImportHandleMatchesStep from "./ImportHandleMatchesStep";
+import ImportMapColumnsStep, { FILE_GROUPS_TARGET, NEW_GROUP_TARGET } from "./ImportMapColumnsStep";
+import ImportHandleMatchesStep, { type MatchingDuplicateMode } from "./ImportHandleMatchesStep";
 import ImportProgressStep from "./ImportProgressStep";
-import { importErrorMessage, suggestGroupName } from "./importWizardUtils";
+import type { ImportSelectOption } from "./ImportSelect";
+import {
+  CheckCircleIcon,
+  CheckIcon,
+  ChevronLeftIcon,
+  CloseIcon,
+  FeedbackIcon,
+  ImportColumnIcon,
+  ImportItemNameIcon,
+  PlusCircleIcon,
+  Spinner,
+  XCircleIcon,
+} from "./importIcons";
+import { READ_ONLY_COLUMN_TYPES, importErrorMessage, suggestGroupName } from "./importWizardUtils";
+import "./import-wizard.scss";
 
 export type ImportItemsModalProps = {
   is_open: boolean;
   onClose: () => void;
   board_id: number;
-  /** The currently open tab — the import always lands on this tab. */
+  /** The currently open tab, the import always lands on this tab. */
   view_id: number | null;
   /** Fired once the background job has actually written rows (as soon as it reaches a terminal status with a target table), so the caller can refresh its columns/groups/items. */
   onImported: (result: { group_id: number }) => void;
@@ -33,31 +49,35 @@ const STEPS: { id: Exclude<WizardStep, "progress">; label: string }[] = [
   { id: "match", label: "Handle matches" },
 ];
 
+const EMPTY_MATCH_BY: Record<MatchingDuplicateMode, number | null> = { skip: null, update: null };
+
 /**
- * Board options menu's "More actions" > "Import items" — a wizard for
- * bulk-importing a .csv/.xlsx/.xls file into the current tab, either into a
- * new table or an existing one: "Upload" (pick a file) → "Map columns"
- * (choose each column's destination) → "Handle matches" (dedupe strategy) →
- * "Importing…" (live progress on the background job, with a "Stop" button —
- * see {@link useBoardImportProgress} and `ProcessBoardImportJob`). Owns the
- * whole flow itself; the caller only needs to render it and refresh its own
- * board data from {@link ImportItemsModalProps.onImported}.
+ * Board options menu's "More actions" > "Import items", restyled after
+ * monday.com's "Import file" flow: a full screen dialog with a centered
+ * stepper, "Upload" (pick a file), "Map columns" (choose each column's
+ * destination), "Handle matches" (dedupe strategy), then live progress on the
+ * background job with a "Stop import" button (see
+ * {@link useBoardImportProgress} and `ProcessBoardImportJob`). Owns the whole
+ * flow; the caller only renders it and refreshes its own board data from
+ * {@link ImportItemsModalProps.onImported}.
  */
 const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, board_id, view_id, onImported }) => {
   const [step, setStep] = useState<WizardStep>("upload");
   const [is_analyzing, setIsAnalyzing] = useState(false);
   const [is_starting_import, setIsStartingImport] = useState(false);
   const [is_stopping, setIsStopping] = useState(false);
+  const [is_feedback_open, setIsFeedbackOpen] = useState(false);
   const [upload_error, setUploadError] = useState<string | null>(null);
   const [map_error, setMapError] = useState<string | null>(null);
   const [start_error, setStartError] = useState<string | null>(null);
 
   const [analysis, setAnalysis] = useState<BoardImportAnalyzeResponse | null>(null);
   const [mappings, setMappings] = useState<BoardImportMapping[]>([]);
-  const [target_group_id, setTargetGroupId] = useState<number | null>(null);
+  const [target, setTarget] = useState<string>(NEW_GROUP_TARGET);
   const [new_group_name, setNewGroupName] = useState("");
+  const [import_subitems, setImportSubitems] = useState(true);
   const [duplicate_mode, setDuplicateMode] = useState<BoardImportDuplicateMode>("add");
-  const [match_source_index, setMatchSourceIndex] = useState<number | null>(null);
+  const [match_by, setMatchBy] = useState<Record<MatchingDuplicateMode, number | null>>(EMPTY_MATCH_BY);
 
   const [seed_job, setSeedJob] = useState<BoardImportJobDto | null>(null);
   const job = useBoardImportProgress(board_id, seed_job);
@@ -69,24 +89,25 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
     setIsAnalyzing(false);
     setIsStartingImport(false);
     setIsStopping(false);
+    setIsFeedbackOpen(false);
     setUploadError(null);
     setMapError(null);
     setStartError(null);
     setAnalysis(null);
     setMappings([]);
-    setTargetGroupId(null);
+    setTarget(NEW_GROUP_TARGET);
     setNewGroupName("");
+    setImportSubitems(true);
     setDuplicateMode("add");
-    setMatchSourceIndex(null);
+    setMatchBy(EMPTY_MATCH_BY);
     setSeedJob(null);
     has_reported_import_ref.current = false;
   }, [is_open]);
 
   // Refreshes the caller's board data the moment the job reaches a terminal
-  // status with rows actually written — before the viewer even clicks
-  // "Done" — so the table's already current by the time they close the
-  // wizard. Guarded by a ref (not state) so a later poll/broadcast update
-  // carrying the same terminal status doesn't fire this a second time.
+  // status with rows actually written, before the viewer even clicks "Done".
+  // Guarded by a ref (not state) so a later poll/broadcast update carrying
+  // the same terminal status doesn't fire this a second time.
   useEffect(() => {
     if (!job || has_reported_import_ref.current) return;
     const is_terminal = job.status === "completed" || job.status === "failed" || job.status === "cancelled";
@@ -95,6 +116,15 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       onImported({ group_id: job.group_id });
     }
   }, [job, onImported]);
+
+  useEffect(() => {
+    if (!is_open || is_feedback_open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [is_open, is_feedback_open, onClose]);
 
   if (!is_open) return null;
 
@@ -106,13 +136,12 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       setAnalysis(result);
       setMappings(result.suggested_mappings);
       setNewGroupName(suggestGroupName(result.file_name));
-      const name_mapping = result.suggested_mappings.find((mapping) => mapping.mode === "name");
-      setMatchSourceIndex(name_mapping?.source_index ?? 0);
+      setTarget((result.file_groups ?? []).length > 0 ? FILE_GROUPS_TARGET : NEW_GROUP_TARGET);
+      setImportSubitems((result.subitem_count ?? 0) > 0);
+      setMatchBy(EMPTY_MATCH_BY);
       setStep("map");
     } catch (error) {
-      setUploadError(
-        importErrorMessage(error, "We couldn't read that file. Make sure it's a .csv, .xlsx or .xls file and try again.")
-      );
+      setUploadError(importErrorMessage(error, "We couldn't read that file. Make sure it's a .csv, .xlsx or .xls file and try again."));
     } finally {
       setIsAnalyzing(false);
     }
@@ -120,18 +149,24 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
 
   const handleContinueFromMap = () => {
     if (!mappings.some((mapping) => mapping.mode === "name")) {
-      setMapError("Choose which column is the item's name before continuing.");
+      setMapError("Choose which file column becomes the item name.");
       return;
     }
     if (mappings.some((mapping) => mapping.mode === "map" && mapping.target_column_id == null)) {
-      setMapError("Pick an existing column for every row mapped to one, or choose another destination.");
+      setMapError("Pick a board column for every mapped row, or clear it.");
       return;
     }
-    if (target_group_id === null && new_group_name.trim() === "") {
-      setMapError("Give the new table a name before continuing.");
+    if (target === NEW_GROUP_TARGET && new_group_name.trim() === "") {
+      setMapError("Give the new group a name before continuing.");
       return;
     }
     setMapError(null);
+    // A match column only counts while its file column is still imported.
+    const importable = new Set(mappings.filter((mapping) => mapping.mode !== "skip").map((mapping) => mapping.source_index));
+    setMatchBy((current) => ({
+      skip: current.skip !== null && importable.has(current.skip) ? current.skip : null,
+      update: current.update !== null && importable.has(current.update) ? current.update : null,
+    }));
     setStep("match");
   };
 
@@ -140,21 +175,29 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       setStep("upload");
       setAnalysis(null);
       setMappings([]);
+      setMapError(null);
     } else if (step === "match") {
+      setStartError(null);
       setStep("map");
     }
   };
 
+  const match_source_index = duplicate_mode === "add" ? null : match_by[duplicate_mode];
+  const is_missing_match = duplicate_mode !== "add" && match_source_index === null;
+
   const handleStartImport = async () => {
-    if (!analysis) return;
+    if (!analysis || is_missing_match) return;
     setStartError(null);
     setIsStartingImport(true);
     try {
+      const is_existing_group = target !== NEW_GROUP_TARGET && target !== FILE_GROUPS_TARGET;
       const created_job = await boardImportService.commit(board_id, {
         import_token: analysis.import_token,
         view_id,
-        target_group_id,
-        new_group_name: target_group_id === null ? new_group_name.trim() || suggestGroupName(analysis.file_name) : null,
+        target_group_id: is_existing_group ? Number(target) : null,
+        new_group_name: target === NEW_GROUP_TARGET ? new_group_name.trim() || suggestGroupName(analysis.file_name) : null,
+        group_mode: target === FILE_GROUPS_TARGET ? "file" : "single",
+        import_subitems: import_subitems && analysis.subitem_count > 0,
         mappings,
         duplicate_mode,
         match_source_index,
@@ -175,174 +218,208 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       const updated = await boardImportService.cancel(board_id, job.id);
       setSeedJob(updated);
     } catch {
-      // The next poll tick / broadcast will reconcile the real state either way.
+      // The next poll tick or broadcast reconciles the real state either way.
     } finally {
       setIsStopping(false);
     }
   };
 
-  const matchable_columns = mappings
-    .filter((mapping) => mapping.mode === "name" || mapping.mode === "map" || mapping.mode === "create")
-    .map((mapping) => {
-      const source = analysis?.source_columns.find((column) => column.index === mapping.source_index);
-      const label =
-        mapping.mode === "name"
-          ? "Item (name)"
-          : mapping.mode === "create"
-            ? mapping.new_label || source?.label || "Untitled"
-            : analysis?.board_columns.find((column) => column.id === mapping.target_column_id)?.label ?? source?.label ?? "Untitled";
-      return { source_index: mapping.source_index, label };
-    });
+  const match_options: ImportSelectOption[] = (() => {
+    if (!analysis) return [];
+    const name_mapping = mappings.find((mapping) => mapping.mode === "name");
+    const options: ImportSelectOption[] = [
+      {
+        value: name_mapping ? String(name_mapping.source_index) : "unmapped:name",
+        label: "Item",
+        icon: <ImportItemNameIcon />,
+        is_disabled: !name_mapping,
+        disabled_reason: "Choose the file column for the item name first",
+      },
+    ];
+    for (const column of analysis.board_columns) {
+      if (READ_ONLY_COLUMN_TYPES.includes(column.type)) continue;
+      const mapping = mappings.find((candidate) => candidate.mode === "map" && candidate.target_column_id === column.id);
+      options.push({
+        value: mapping ? String(mapping.source_index) : `unmapped:${column.id}`,
+        label: column.label,
+        icon: <ImportColumnIcon type={column.type} />,
+        is_disabled: !mapping,
+        disabled_reason: "Map a file column to this column to match rows by it",
+      });
+    }
+    for (const mapping of mappings.filter((candidate) => candidate.mode === "create")) {
+      const source = analysis.source_columns.find((column) => column.index === mapping.source_index);
+      options.push({
+        value: String(mapping.source_index),
+        label: mapping.new_label || source?.label || "Untitled",
+        icon: <ImportColumnIcon type={mapping.new_type ?? source?.suggested_type ?? "text"} />,
+        hint: "New",
+      });
+    }
+    return options;
+  })();
 
   const mapped_count = mappings.filter((mapping) => mapping.mode === "name" || mapping.mode === "map").length;
   const create_count = mappings.filter((mapping) => mapping.mode === "create").length;
   const skip_count = mappings.filter((mapping) => mapping.mode === "skip").length;
 
-  const step_index = STEPS.findIndex((entry) => entry.id === step);
+  const step_index = step === "progress" ? STEPS.length : STEPS.findIndex((entry) => entry.id === step);
   const can_go_back = step === "map" || step === "match";
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Import items" className="fixed inset-0 z-[430] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={onClose} aria-hidden="true" />
+    <div role="dialog" aria-modal="true" aria-labelledby="iw-dialog-title" className="iw-overlay">
+      <div className="iw-backdrop" onClick={onClose} aria-hidden="true" />
 
-      <div className="relative z-[431] flex h-[min(760px,92vh)] w-[min(1080px,94vw)] flex-col overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-2xl">
-        <div className="flex items-center justify-between border-b border-shell-border px-7 py-4">
-          <div className="flex w-[90px] items-center">
-            {can_go_back && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[13px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+      <div className="iw-dialog">
+        <header className="iw-header">
+          <div className="iw-header-start">
+            {can_go_back ? (
+              <button type="button" onClick={handleBack} className="iw-text-button">
+                <ChevronLeftIcon size={18} />
                 Back
               </button>
+            ) : (
+              <h1 id="iw-dialog-title" className="iw-title">
+                Import file
+              </h1>
+            )}
+            {can_go_back && (
+              <span id="iw-dialog-title" className="sr-only">
+                Import file
+              </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {step === "progress"
-              ? STEPS.map((entry, index) => (
-                  <React.Fragment key={entry.id}>
-                    {index > 0 && <span className="h-px w-8 bg-brand-500" />}
-                    <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand-500 text-white">
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                        <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </span>
-                  </React.Fragment>
-                ))
-              : STEPS.map((entry, index) => {
-                  const is_current = index === step_index;
-                  const is_done = index < step_index;
-                  return (
-                    <React.Fragment key={entry.id}>
-                      {index > 0 && <span className="h-px w-8 bg-shell-border-strong" />}
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`flex h-6 w-6 flex-none items-center justify-center rounded-full text-[11.5px] font-semibold ${
-                            is_done
-                              ? "bg-brand-500 text-white"
-                              : is_current
-                                ? "border-2 border-brand-500 text-brand-500"
-                                : "border border-shell-border-strong text-shell-text-muted"
-                          }`}
-                        >
-                          {is_done ? (
-                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                              <path d="M5 13l4 4L19 7" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
-                          ) : (
-                            index + 1
-                          )}
-                        </span>
-                        <span className={`text-[13px] font-medium ${is_current ? "text-shell-text" : "text-shell-text-muted"}`}>{entry.label}</span>
-                      </div>
-                    </React.Fragment>
-                  );
-                })}
-          </div>
+          <ol className="iw-stepper" aria-label="Import steps">
+            {STEPS.map((entry, index) => {
+              const state = index < step_index ? "done" : index === step_index ? "current" : "upcoming";
+              return (
+                <React.Fragment key={entry.id}>
+                  {index > 0 && <li className="iw-step-connector" data-done={index <= step_index} aria-hidden="true" />}
+                  <li className="iw-step" data-state={state} aria-current={state === "current" ? "step" : undefined}>
+                    <span className="iw-step-dot">{state === "done" ? <CheckIcon size={13} /> : <span>{index + 1}</span>}</span>
+                    <span className="iw-step-label">{entry.label}</span>
+                  </li>
+                </React.Fragment>
+              );
+            })}
+          </ol>
 
-          <div className="flex w-[90px] items-center justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Close"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-            >
-              <CloseIcon size={14} />
-            </button>
+          <div className="iw-header-end">
+            <PortalTooltip content="Tell us how importing your file went" placement="bottom">
+              <button type="button" className="iw-text-button" onClick={() => setIsFeedbackOpen(true)}>
+                <FeedbackIcon size={18} />
+                <span className="iw-text-button-label">Feedback</span>
+              </button>
+            </PortalTooltip>
+            <PortalTooltip content="Close" placement="bottom">
+              <button type="button" onClick={onClose} aria-label="Close" className="iw-icon-button">
+                <CloseIcon size={20} />
+              </button>
+            </PortalTooltip>
           </div>
+        </header>
+
+        <div className="iw-body">
+          {step === "upload" && <ImportUploadStep is_analyzing={is_analyzing} error={upload_error} onFileSelected={handleFileSelected} />}
+
+          {step === "map" && analysis && (
+            <ImportMapColumnsStep
+              file_name={analysis.file_name}
+              row_count={analysis.row_count}
+              source_columns={analysis.source_columns}
+              board_columns={analysis.board_columns}
+              groups={analysis.groups}
+              file_groups={analysis.file_groups ?? []}
+              subitem_count={analysis.subitem_count ?? 0}
+              creatable_column_types={analysis.creatable_column_types}
+              mappings={mappings}
+              suggested_mappings={analysis.suggested_mappings}
+              onChangeMappings={(next) => {
+                setMappings(next);
+                setMapError(null);
+              }}
+              target={target}
+              onChangeTarget={setTarget}
+              new_group_name={new_group_name}
+              onChangeNewGroupName={setNewGroupName}
+              import_subitems={import_subitems}
+              onChangeImportSubitems={setImportSubitems}
+            />
+          )}
+
+          {step === "match" && (
+            <ImportHandleMatchesStep
+              duplicate_mode={duplicate_mode}
+              onChangeDuplicateMode={(mode) => {
+                setDuplicateMode(mode);
+                setStartError(null);
+              }}
+              match_by={match_by}
+              onChangeMatchBy={(mode, source_index) => setMatchBy((current) => ({ ...current, [mode]: source_index }))}
+              match_options={match_options}
+            />
+          )}
+
+          {step === "progress" && <ImportProgressStep job={job} is_stopping={is_stopping} onStop={() => void handleStop()} onDone={onClose} />}
         </div>
 
-        {step === "upload" && <ImportUploadStep is_analyzing={is_analyzing} error={upload_error} onFileSelected={handleFileSelected} />}
-
-        {step === "map" && analysis && (
-          <ImportMapColumnsStep
-            file_name={analysis.file_name}
-            row_count={analysis.row_count}
-            source_columns={analysis.source_columns}
-            board_columns={analysis.board_columns}
-            groups={analysis.groups}
-            creatable_column_types={analysis.creatable_column_types}
-            mappings={mappings}
-            suggested_mappings={analysis.suggested_mappings}
-            onChangeMappings={setMappings}
-            target_group_id={target_group_id}
-            onChangeTargetGroupId={setTargetGroupId}
-            new_group_name={new_group_name}
-            onChangeNewGroupName={setNewGroupName}
-            error={map_error}
-          />
-        )}
-
-        {step === "match" && (
-          <ImportHandleMatchesStep
-            duplicate_mode={duplicate_mode}
-            onChangeDuplicateMode={setDuplicateMode}
-            match_source_index={match_source_index}
-            onChangeMatchSourceIndex={setMatchSourceIndex}
-            matchable_columns={matchable_columns}
-          />
-        )}
-
-        {step === "progress" && <ImportProgressStep job={job} is_stopping={is_stopping} onStop={() => void handleStop()} onDone={onClose} />}
-
         {(step === "map" || step === "match") && (
-          <div className="flex items-center justify-between border-t border-shell-border px-7 py-4">
-            <div className="flex items-center gap-4 text-[12.5px] text-shell-text-secondary">
-              {step === "map" && (
-                <>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-success-500" />
-                    Mapped: {mapped_count}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
-                    Create new column: {create_count}
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-shell-text-muted" />
-                    Don&apos;t import: {skip_count}
-                  </span>
-                </>
-              )}
-              {step === "match" && start_error && <span className="text-error-500">{start_error}</span>}
-            </div>
+          <footer className="iw-footer">
+            <p className="iw-footer-message" role={(step === "map" ? map_error : start_error) ? "alert" : undefined}>
+              {step === "map" ? map_error : start_error}
+            </p>
 
-            <button
-              type="button"
-              onClick={step === "map" ? handleContinueFromMap : () => void handleStartImport()}
-              disabled={is_starting_import}
-              className="rounded-lg bg-brand-500 px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-default disabled:opacity-50"
-            >
-              {step === "map" ? "Continue" : is_starting_import ? "Starting…" : "Import Now"}
-            </button>
-          </div>
+            {step === "map" ? (
+              <ul className="iw-stats" aria-label="Mapping summary">
+                <li className="iw-stat" data-tone="success">
+                  <CheckCircleIcon />
+                  Mapped: {mapped_count}
+                </li>
+                <li className="iw-stat" data-tone="success">
+                  <PlusCircleIcon />
+                  Create new column: {create_count}
+                </li>
+                <li className="iw-stat" data-tone="danger">
+                  <XCircleIcon />
+                  Don&apos;t import: {skip_count}
+                </li>
+              </ul>
+            ) : (
+              <span />
+            )}
+
+            <div className="iw-footer-end">
+              {step === "map" ? (
+                <button type="button" className="iw-button" data-variant="primary" onClick={handleContinueFromMap}>
+                  Continue
+                </button>
+              ) : (
+                <PortalTooltip content={is_missing_match ? "Choose the column rows are matched by" : ""} placement="top">
+                  <button
+                    type="button"
+                    className="iw-button"
+                    data-variant="primary"
+                    onClick={() => void handleStartImport()}
+                    disabled={is_starting_import || is_missing_match}
+                  >
+                    {is_starting_import && <Spinner />}
+                    {is_starting_import ? "Starting…" : "Import Now"}
+                  </button>
+                </PortalTooltip>
+              )}
+            </div>
+          </footer>
         )}
       </div>
+
+      <GiveFeedbackModal
+        is_open={is_feedback_open}
+        description="Tell us how importing your file went, or what you'd like the import to do."
+        layer_class_name="z-[450]"
+        onClose={() => setIsFeedbackOpen(false)}
+        onSubmit={(message) => boardOptionsService.submitFeedback(`[Import] ${message}`, board_id)}
+      />
     </div>
   );
 };

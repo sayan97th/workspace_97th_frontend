@@ -1,5 +1,5 @@
 /**
- * API types for the board header's "More actions" > "Import items" wizard —
+ * API types for the board header's "More actions" > "Import items" wizard ,
  * mirrors `App\Http\Controllers\Board\BoardImportController`'s payloads.
  * Reuses {@link BoardColumnDto}/{@link BoardGroupDto} from `board-content`
  * (the same shapes the rest of the table-board engine already works with)
@@ -13,7 +13,7 @@ export type BoardImportSourceColumn = {
   label: string;
   sample_values: string[];
   suggested_type: BoardColumnType;
-  /** Why the backend guessed `suggested_type`, e.g. "100% of values are dates" — shown under the column so the guess can be checked. */
+  /** Why the backend guessed `suggested_type`, e.g. "100% of values are dates", shown under the column so the guess can be checked. */
   detection_reason: string;
   /** Every creatable type that can hold (nearly) all of this column's values: the type picker recommends these and warns about any other choice. Every type when the column is empty. */
   compatible_types: BoardColumnType[];
@@ -23,17 +23,17 @@ export type BoardImportSourceColumn = {
   filled_count: number;
 };
 
-/** How one source column is handled on commit — mirrors the "Map columns" step's per-row picker. */
+/** How one source column is handled on commit, mirrors the "Map columns" step's per-row picker. */
 export type BoardImportMappingMode = "name" | "map" | "create" | "skip";
 
 export type BoardImportMapping = {
   source_index: number;
   mode: BoardImportMappingMode;
-  /** Required when `mode` is `"map"` — the existing board column this source column feeds. */
+  /** Required when `mode` is `"map"`, the existing board column this source column feeds. */
   target_column_id?: number | null;
-  /** `"create"` only — defaults to the source column's own label when omitted. */
+  /** `"create"` only, defaults to the source column's own label when omitted. */
   new_label?: string | null;
-  /** `"create"` only — defaults to `suggested_type` when omitted. */
+  /** `"create"` only, defaults to `suggested_type` when omitted. */
   new_type?: BoardColumnType | null;
 };
 
@@ -47,9 +47,18 @@ export type BoardImportAnalyzeResponse = {
   groups: BoardGroupDto[];
   /** The subset of column types the "create a new column" mapping mode may target. */
   creatable_column_types: BoardColumnType[];
+  /** The groups a monday.com export's rows sat under, in file order. Empty for a plain table. */
+  file_groups: BoardImportFileGroup[];
+  /** How many subitem rows a monday.com export lists under its items. */
+  subitem_count: number;
 };
 
-/** How an incoming row that matches an existing item is handled — the "Handle matches" step. */
+export type BoardImportFileGroup = { name: string; row_count: number };
+
+/** `"single"` imports every row into one table, `"file"` into the groups a monday.com export already has. */
+export type BoardImportGroupMode = "single" | "file";
+
+/** How an incoming row that matches an existing item is handled, the "Handle matches" step. */
 export type BoardImportDuplicateMode = "add" | "skip" | "update";
 
 export type BoardImportCommitPayload = {
@@ -58,20 +67,23 @@ export type BoardImportCommitPayload = {
   /** Import into this existing table, or omit (with `new_group_name`) to create one. */
   target_group_id?: number | null;
   new_group_name?: string | null;
+  group_mode?: BoardImportGroupMode;
+  /** Adds the subitem rows a monday.com export lists under each new item. */
+  import_subitems?: boolean;
   mappings: BoardImportMapping[];
   duplicate_mode: BoardImportDuplicateMode;
-  /** Which source column identifies "the same row" for skip/update — defaults to the `"name"` mapping's column server-side when omitted. */
+  /** Which source column identifies "the same row" for skip/update, defaults to the `"name"` mapping's column server-side when omitted. */
   match_source_index?: number | null;
 };
 
-/** A {@link BoardImportJobDto}'s lifecycle — mirrors `App\Models\BoardImportJob::STATUS_*`. */
+/** A {@link BoardImportJobDto}'s lifecycle, mirrors `App\Models\BoardImportJob::STATUS_*`. */
 export type BoardImportJobStatus = "queued" | "processing" | "completed" | "failed" | "cancelled";
 
-/** Terminal statuses — no further `board_import_progress` broadcasts will arrive for this job. */
+/** Terminal statuses, no further `board_import_progress` broadcasts will arrive for this job. */
 export const BOARD_IMPORT_JOB_TERMINAL_STATUSES: BoardImportJobStatus[] = ["completed", "failed", "cancelled"];
 
 /**
- * Progress snapshot for one run of the background import job — the "Import
+ * Progress snapshot for one run of the background import job, the "Import
  * items" wizard's 4th ("Importing…") step polls/listens for this. Mirrors
  * `App\Http\Resources\BoardImportJobResource`, the same shape returned by
  * `commit()`'s 202 response, `GET .../import/{id}`, and the live
@@ -89,6 +101,8 @@ export type BoardImportJobDto = {
   updated_count: number;
   skipped_count: number;
   columns_created: number;
+  groups_created: number;
+  subitems_created: number;
   group_id: number | null;
   cancel_requested: boolean;
   error_message: string | null;

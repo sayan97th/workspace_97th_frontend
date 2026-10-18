@@ -77,6 +77,13 @@ export const IMPORT_TYPE_NOTES: Partial<Record<BoardColumnType, string>> = {
   files: "Each URL is attached as a link; files themselves aren't downloaded.",
   time_tracking: "Reads hh:mm:ss durations or a number of hours.",
   checkbox: "Values like \"v\", \"yes\" or \"true\" tick the box.",
+  rating: "Whole numbers become stars, the scale grows up to 10 when a value needs it.",
+  country: "Country names or two letter codes become countries, other values are left empty.",
+  world_clock: "Reads time zone names like \"America/New_York\".",
+  week: "Reads week numbers (\"2026-W38\") or any date of the week.",
+  hour: "Reads times like \"14:30\" or \"2:30 PM\".",
+  color_picker: "Reads hex colors like \"#00C875\".",
+  location: "Each value is kept as an address, line breaks become commas.",
 };
 
 /** Column types whose value is computed by the board, so an import can never write into them. Mirrors `BoardColumn::READ_ONLY_TYPES`. */

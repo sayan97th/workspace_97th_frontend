@@ -8,6 +8,8 @@ export type GiveFeedbackModalProps = {
   description?: string;
   onSubmit: (message: string) => Promise<void>;
   onClose: () => void;
+  /** Stacking class of the dialog, for opening it on top of another dialog (e.g. the import wizard). */
+  layer_class_name?: string;
 };
 
 /**
@@ -16,7 +18,13 @@ export type GiveFeedbackModalProps = {
  * (one textarea, no category/severity picker) since it's meant as a quick
  * "here's a thought" channel, not a bug-report/support-ticket flow.
  */
-const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({ is_open, description = "Tell us what's working, what isn't, or what you'd like to see on this board.", onSubmit, onClose }) => {
+const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({
+  is_open,
+  description = "Tell us what's working, what isn't, or what you'd like to see on this board.",
+  onSubmit,
+  onClose,
+  layer_class_name = "z-[420]",
+}) => {
   const [message, setMessage] = useState("");
   const [is_submitting, setIsSubmitting] = useState(false);
   const [is_sent, setIsSent] = useState(false);
@@ -53,7 +61,7 @@ const GiveFeedbackModal: React.FC<GiveFeedbackModalProps> = ({ is_open, descript
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Give feedback" className="fixed inset-0 z-[420] flex items-center justify-center p-6">
+    <div role="dialog" aria-modal="true" aria-label="Give feedback" className={`fixed inset-0 ${layer_class_name} flex items-center justify-center p-6`}>
       <div className="absolute inset-0 bg-[#060e0e]/[0.68]" onClick={onClose} aria-hidden="true" />
 
       <div className="relative z-[421] w-[460px] max-w-full overflow-hidden rounded-2xl border border-shell-border-strong bg-shell-panel text-shell-text shadow-2xl">
