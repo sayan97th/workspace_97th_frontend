@@ -4,9 +4,10 @@ import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { getBoardViewTypeOption } from "../boardViewTypes";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-import { ViewTabIcon, viewTabIconColorClass } from "./ViewTabFace";
+import ViewCreatorAvatar from "./ViewCreatorAvatar";
+import { ViewTabIcon, isViewTabIconAccent } from "./ViewTabFace";
 
-const CARD_WIDTH = 280;
+const CARD_WIDTH = 320;
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
 
@@ -17,27 +18,28 @@ export const formatViewDate = (value: string | null | undefined): string | null 
   return Number.isNaN(date.getTime()) ? null : format(date, "MMM d, yyyy");
 };
 
-/** The status chips of a view (default, pinned, locked, hidden, unsaved), shared by the hover card and the "Manage views" panel. */
-export const ViewStatusChips: React.FC<{ tab: BoardViewTabItem }> = ({ tab }) => {
-  const chips = [
-    tab.is_default && "Your default",
-    tab.pinned && "Pinned",
-    tab.is_locked && "Locked",
-    tab.is_hidden && "Hidden for you",
-    tab.has_unsaved_changes && "Unsaved changes",
-  ].filter((chip): chip is string => Boolean(chip));
+type ViewStatusChip = { key: string; label: string; tone: "neutral" | "info" | "success" | "warning" };
+
+/** The status of a view (default, pinned, locked, hidden, unsaved) as labeled, toned chips. */
+export const getViewStatusChips = (tab: BoardViewTabItem): ViewStatusChip[] =>
+  [
+    tab.is_default && { key: "default", label: "Your default", tone: "success" as const },
+    tab.pinned && { key: "pinned", label: "Pinned", tone: "info" as const },
+    tab.is_locked && { key: "locked", label: "Locked", tone: "neutral" as const },
+    tab.is_hidden && { key: "hidden", label: "Hidden for you", tone: "neutral" as const },
+    tab.has_unsaved_changes && { key: "unsaved", label: "Unsaved changes", tone: "warning" as const },
+  ].filter((chip): chip is ViewStatusChip => Boolean(chip));
+
+/** The status chips of a view, shared by the hover card and the "Manage views" dialog. */
+export const ViewStatusChips: React.FC<{ tab: BoardViewTabItem; className?: string }> = ({ tab, className = "" }) => {
+  const chips = getViewStatusChips(tab);
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-1">
+    <div className={`vt-chip-list ${className}`}>
       {chips.map((chip) => (
-        <span
-          key={chip}
-          className={`rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold ${
-            chip === "Unsaved changes" ? "bg-[#fdab3d]/[0.16] text-[#fdab3d]" : "bg-shell-hover text-shell-text-secondary"
-          }`}
-        >
-          {chip}
+        <span key={chip.key} className="vt-chip" data-tone={chip.tone}>
+          {chip.label}
         </span>
       ))}
     </div>
@@ -52,8 +54,8 @@ export type ViewTabInfoCardProps = {
 
 /**
  * The card shown after hovering a tab for a moment: what kind of view it is,
- * its description, who created it and when, and its status. Read only and
- * pointer transparent, so it never gets in the way of the tab bar.
+ * its description, its status, who created it and when it last changed.
+ * Read only and pointer transparent, so it never gets in the way of the tab bar.
  */
 const ViewTabInfoCard: React.FC<ViewTabInfoCardProps> = ({ tab, anchor_el }) => {
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -64,7 +66,7 @@ const ViewTabInfoCard: React.FC<ViewTabInfoCardProps> = ({ tab, anchor_el }) => 
       return;
     }
     const rect = anchor_el.getBoundingClientRect();
-    const max_left = window.innerWidth - CARD_WIDTH - VIEWPORT_MARGIN;
+    const max_left = window.innerWidth - Math.min(CARD_WIDTH, window.innerWidth - VIEWPORT_MARGIN * 2) - VIEWPORT_MARGIN;
     setPosition({
       top: rect.bottom + ANCHOR_GAP,
       left: Math.max(VIEWPORT_MARGIN, Math.min(rect.left, max_left)),
@@ -75,37 +77,61 @@ const ViewTabInfoCard: React.FC<ViewTabInfoCardProps> = ({ tab, anchor_el }) => 
 
   const type_option = getBoardViewTypeOption(tab.view_type);
   const created_on = formatViewDate(tab.created_at);
+  const updated_on = formatViewDate(tab.updated_at);
 
   return createPortal(
     <div
       role="tooltip"
-      style={{ top: position.top, left: position.left, width: CARD_WIDTH }}
-      className="pointer-events-none fixed z-[1000] rounded-xl border border-boardtree-border-soft bg-boardtree-surface p-3.5 text-boardtree-text shadow-2xl shadow-black/40 motion-safe:animate-[view-tab-card-in_140ms_ease-out]"
+      className="vt-card"
+      style={{ top: position.top, left: position.left, width: CARD_WIDTH, maxWidth: `calc(100vw - ${VIEWPORT_MARGIN * 2}px)` }}
     >
-      <div className="flex items-center gap-2">
-        <span className={`flex h-7 w-7 flex-none items-center justify-center rounded-[7px] bg-shell-hover ${viewTabIconColorClass(tab)}`}>
-          <ViewTabIcon tab={tab} size={15} />
+      <div className="vt-card-header">
+        <span className="vt-icon-tile" data-size="lg" data-accent={isViewTabIconAccent(tab)}>
+          <ViewTabIcon tab={tab} size={18} />
         </span>
         <div className="min-w-0">
-          <p className="truncate text-[13.5px] font-semibold text-shell-text">{tab.label}</p>
-          <p className="text-[11.5px] text-shell-text-faint">{type_option.label} view</p>
+          <p className="vt-card-title">{tab.label}</p>
+          <p className="vt-card-subtitle">
+            {type_option.label} view{tab.is_primary ? ", main view of this board" : ""}
+          </p>
         </div>
       </div>
 
-      <p className={`mt-2.5 whitespace-pre-line text-[12.5px] leading-[1.45] ${tab.description ? "text-shell-text-secondary" : "text-shell-text-faint"}`}>
+      <p className="vt-card-description" data-empty={!tab.description}>
         {tab.description || "No description yet."}
       </p>
 
-      {(tab.creator_name || created_on) && (
-        <p className="mt-2.5 text-[11.5px] text-shell-text-muted">
-          {tab.creator_name ? `Created by ${tab.creator_name}` : "Created"}
-          {created_on ? ` on ${created_on}` : ""}
-        </p>
-      )}
+      <ViewStatusChips tab={tab} className="vt-card-chips" />
 
-      <div className="mt-2.5 empty:hidden">
-        <ViewStatusChips tab={tab} />
-      </div>
+      {(tab.creator_name || created_on || updated_on) && (
+        <dl className="vt-card-meta">
+          {tab.creator_name && (
+            <>
+              <dt>Created by</dt>
+              <dd>
+                <ViewCreatorAvatar full_name={tab.creator_name} photo_url={tab.creator_photo_url} />
+                <span>{tab.creator_name}</span>
+              </dd>
+            </>
+          )}
+          {created_on && (
+            <>
+              <dt>Created on</dt>
+              <dd>
+                <span>{created_on}</span>
+              </dd>
+            </>
+          )}
+          {updated_on && updated_on !== created_on && (
+            <>
+              <dt>Last updated</dt>
+              <dd>
+                <span>{updated_on}</span>
+              </dd>
+            </>
+          )}
+        </dl>
+      )}
     </div>,
     document.body
   );

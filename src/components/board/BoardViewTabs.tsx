@@ -40,6 +40,7 @@ import {
 import { PinIcon } from "@/icons/board-icons";
 import { ReactSmileyIcon } from "@/icons/drawer-icons";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import AddBoardViewMenu from "./AddBoardViewMenu";
 import type { BoardViewKind, BoardViewTypeOption } from "./boardViewTypes";
 import BoardViewEmojiPicker from "./BoardViewEmojiPicker";
@@ -67,7 +68,9 @@ export type BoardViewTabItem = {
   view_type?: BoardViewKind;
   description?: string | null;
   creator_name?: string | null;
+  creator_photo_url?: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
   /** Hidden for the viewer only ("Hide view for me"). Still shown in the bar while it's the active tab. */
   is_hidden?: boolean;
   /** The tab the viewer wants opened first when they open the board. */
@@ -151,29 +154,22 @@ const BoardViewTabs: React.FC<BoardViewTabsProps> = (props) => {
 
   return (
     <div className="flex items-center gap-0.5 border-b border-shell-border">
-      <span className="-mb-px flex items-center gap-2 border-b-2 border-boardtree-accent px-3 py-[9px] text-board-nav text-shell-text">
-        {primary_label}
-        <span className="text-shell-text-muted">
-          <MoreDotsIcon size={12} />
+      <span className="vt-tab" data-state="active">
+        <span className="vt-tab-label">{primary_label}</span>
+        <span className="vt-tab-menu-button">
+          <MoreDotsIcon size={14} />
         </span>
       </span>
 
       {views.map((view, index) => (
-        <span
-          key={`${view}-${index}`}
-          className="-mb-px cursor-pointer whitespace-nowrap rounded-t-[4px] border-b-2 border-transparent px-3 py-[9px] text-board-nav text-shell-text transition-colors hover:bg-shell-hover"
-        >
-          {view}
+        <span key={`${view}-${index}`} className="vt-tab" data-state="idle" data-has-menu="false">
+          <span className="vt-tab-label">{view}</span>
         </span>
       ))}
 
       <Tooltip content="Add view" placement="right" className="ml-1 flex">
-        <button
-          type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover"
-          aria-label="Add view"
-        >
-          <PlusIcon size={15} />
+        <button type="button" className="vt-bar-button" data-variant="add" aria-label="Add view">
+          <PlusIcon size={16} />
         </button>
       </Tooltip>
     </div>
@@ -548,11 +544,11 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
       {/* Off screen copy of every tab, measured to decide which ones fit in the bar. */}
       <div ref={measure_ref} aria-hidden="true" className="pointer-events-none invisible absolute left-0 top-0 flex w-max items-center">
         {shown_tabs.map((tab) => (
-          <div key={tab.id} data-measure-id={String(tab.id)} className="flex-none border-b-2 border-transparent">
+          <div key={tab.id} data-measure-id={String(tab.id)} className="flex-none">
             <ViewTabFace tab={tab} has_menu />
           </div>
         ))}
-        <span data-measure-more className="flex h-[30px] flex-none items-center gap-1 px-2.5 text-board-nav">
+        <span data-measure-more className="vt-bar-button">
           99 more
           <ChevronDownIcon size={12} />
         </span>
@@ -588,6 +584,7 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
                   tab={{ ...tab, is_primary: isPrimary(tab) }}
                   is_active={tab.id === active_view_id}
                   is_editing={is_editing}
+                  is_menu_open={menu_id === tab.id}
                   is_drag_disabled={!onReorderPersonalTabs || is_editing}
                   href={getViewUrl ? getViewUrl(tab) : null}
                   has_menu
@@ -620,27 +617,27 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
       </DndContext>
 
       {show_more_button && (
-        <button
-          ref={more_button_ref}
-          type="button"
-          onClick={() => setIsMoreMenuOpen(true)}
-          aria-haspopup="menu"
-          aria-expanded={is_more_menu_open}
-          aria-label={overflow_tabs.length > 0 ? `${overflow_tabs.length} more views` : `${hidden_tabs.length} hidden views`}
-          className={`flex h-8 flex-none items-center gap-1 rounded-[4px] px-2.5 text-board-nav transition-colors hover:bg-shell-hover hover:text-shell-text ${
-            is_more_menu_open ? "bg-shell-hover text-shell-text" : "text-shell-text-muted"
-          }`}
-        >
-          {overflow_tabs.length > 0 ? (
-            `${overflow_tabs.length} more`
-          ) : (
-            <>
-              <EyeOffIcon size={13} />
-              {hidden_tabs.length}
-            </>
-          )}
-          <ChevronDownIcon size={12} />
-        </button>
+        <PortalTooltip content={overflow_tabs.length > 0 ? "More views" : "Views hidden for you"} className="flex-none">
+          <button
+            ref={more_button_ref}
+            type="button"
+            onClick={() => setIsMoreMenuOpen(true)}
+            aria-haspopup="menu"
+            aria-expanded={is_more_menu_open}
+            aria-label={overflow_tabs.length > 0 ? `${overflow_tabs.length} more views` : `${hidden_tabs.length} hidden views`}
+            className="vt-bar-button"
+          >
+            {overflow_tabs.length > 0 ? (
+              `${overflow_tabs.length} more`
+            ) : (
+              <>
+                <EyeOffIcon size={14} />
+                {hidden_tabs.length}
+              </>
+            )}
+            <ChevronDownIcon size={12} />
+          </button>
+        </PortalTooltip>
       )}
 
       {/* Hides only the bubble while the menu is open. Toggling `disabled` would remount the button and detach the menu's anchor. */}
@@ -653,10 +650,13 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
           ref={add_view_button_ref}
           type="button"
           onClick={() => (view_type_options ? setIsViewTypeMenuOpen(true) : onAddView?.())}
-          className={`flex h-8 w-8 flex-none items-center justify-center rounded-[4px] text-shell-text transition-colors hover:bg-shell-hover ${is_view_type_menu_open ? "bg-shell-hover" : ""}`}
+          className="vt-bar-button"
+          data-variant="add"
+          aria-haspopup={view_type_options ? "menu" : undefined}
+          aria-expanded={view_type_options ? is_view_type_menu_open : undefined}
           aria-label="Add view"
         >
-          <PlusIcon size={15} />
+          <PlusIcon size={16} />
         </button>
       </Tooltip>
 

@@ -3,11 +3,13 @@ import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CloseIcon, DeleteIcon, EyeIcon, EyeOffIcon, HomeIcon, RefreshIcon, SearchIcon } from "@/icons/workspace-icons";
 import { EditPencilIcon } from "@/icons/board-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import { getBoardViewTypeOption } from "../boardViewTypes";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-import { VIEW_DESCRIPTION_MAX_LENGTH } from "./ViewDescriptionPopover";
+import ViewCreatorAvatar from "./ViewCreatorAvatar";
+import { DescriptionCounter, VIEW_DESCRIPTION_MAX_LENGTH } from "./ViewDescriptionPopover";
 import { ViewStatusChips, formatViewDate } from "./ViewTabInfoCard";
-import { ViewTabIcon, viewTabIconColorClass } from "./ViewTabFace";
+import { ViewTabIcon, isViewTabIconAccent } from "./ViewTabFace";
 
 export type ManageViewsModalProps = {
   is_open: boolean;
@@ -25,13 +27,27 @@ export type ManageViewsModalProps = {
   onResetOrder?: () => void;
 };
 
-const icon_button_base_class =
-  "flex h-7 w-7 flex-none items-center justify-center rounded-lg transition-colors hover:bg-shell-hover disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent";
-const icon_button_class = `${icon_button_base_class} text-shell-text-muted hover:text-shell-text`;
+type VisibilityFilter = "all" | "shown" | "hidden";
+
+const VISIBILITY_FILTERS: Array<{ key: VisibilityFilter; label: string }> = [
+  { key: "all", label: "All" },
+  { key: "shown", label: "Shown" },
+  { key: "hidden", label: "Hidden" },
+];
+
+const matchesQuery = (tab: BoardViewTabItem, query: string) =>
+  !query ||
+  tab.label.toLowerCase().includes(query) ||
+  (tab.description ?? "").toLowerCase().includes(query) ||
+  (tab.creator_name ?? "").toLowerCase().includes(query) ||
+  getBoardViewTypeOption(tab.view_type).label.toLowerCase().includes(query);
+
+const matchesVisibility = (tab: BoardViewTabItem, filter: VisibilityFilter) =>
+  filter === "all" || (filter === "hidden" ? Boolean(tab.is_hidden) : !tab.is_hidden);
 
 /**
  * Every view of the board in one searchable list: type, description, creator
- * and date, plus quick actions (open, set as default, hide for me, edit the
+ * and dates, plus quick actions (open, set as default, hide for me, edit the
  * description, delete). Hiding and the default view only affect the viewer.
  */
 const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
@@ -48,12 +64,14 @@ const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
   onResetOrder,
 }) => {
   const [query, setQuery] = useState("");
+  const [visibility_filter, setVisibilityFilter] = useState<VisibilityFilter>("all");
   const [editing_id, setEditingId] = useState<number | string | null>(null);
   const [description_draft, setDescriptionDraft] = useState("");
 
   useEffect(() => {
     if (!is_open) return;
     setQuery("");
+    setVisibilityFilter("all");
     setEditingId(null);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -65,15 +83,15 @@ const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
   if (!is_open || typeof document === "undefined") return null;
 
   const normalized_query = query.trim().toLowerCase();
-  const matching_tabs = tabs.filter(
-    (tab) =>
-      !normalized_query ||
-      tab.label.toLowerCase().includes(normalized_query) ||
-      (tab.description ?? "").toLowerCase().includes(normalized_query) ||
-      (tab.creator_name ?? "").toLowerCase().includes(normalized_query) ||
-      getBoardViewTypeOption(tab.view_type).label.toLowerCase().includes(normalized_query)
-  );
+  const searched_tabs = tabs.filter((tab) => matchesQuery(tab, normalized_query));
+  const matching_tabs = searched_tabs.filter((tab) => matchesVisibility(tab, visibility_filter));
   const visible_count = tabs.filter((tab) => !tab.is_hidden).length;
+  const hidden_count = tabs.length - visible_count;
+  const filter_counts: Record<VisibilityFilter, number> = {
+    all: searched_tabs.length,
+    shown: searched_tabs.filter((tab) => !tab.is_hidden).length,
+    hidden: searched_tabs.filter((tab) => tab.is_hidden).length,
+  };
 
   const startEditing = (tab: BoardViewTabItem) => {
     setEditingId(tab.id);
@@ -86,195 +104,244 @@ const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
     setEditingId(null);
   };
 
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Manage views" className="fixed inset-0 z-[420] flex items-center justify-center p-6">
-      <div className="absolute inset-0 bg-[#060e0e]/[0.62]" onClick={onClose} aria-hidden="true" />
+  const openView = (tab: BoardViewTabItem) => {
+    onSelectView(tab.id);
+    onClose();
+  };
 
-      <div className="relative z-[421] flex max-h-[86vh] w-[640px] max-w-full flex-col overflow-hidden rounded-[18px] border border-shell-border bg-shell-panel text-shell-text shadow-[0_30px_70px_rgba(0,0,0,0.55)]">
-        <div className="flex items-center justify-between border-b border-shell-border px-7 py-5">
-          <div className="min-w-0">
-            <h2 className="font-heading text-dialog-title">Manage views</h2>
-            <p className="text-[12.5px] text-shell-text-muted">
-              {tabs.length} {tabs.length === 1 ? "view" : "views"}. Hiding a view or picking your default only changes what you see.
-            </p>
+  const renderActions = (tab: BoardViewTabItem, is_editing: boolean) => {
+    const can_hide = tab.is_hidden || visible_count > 1;
+
+    return (
+      <div className="vt-view-row-actions">
+        {onChangeDescription && !tab.is_locked && !is_editing && (
+          <PortalTooltip content={tab.description ? "Edit description" : "Add description"}>
+            <button type="button" onClick={() => startEditing(tab)} aria-label={`Edit description of ${tab.label}`} className="vt-icon-button">
+              <EditPencilIcon size={16} />
+            </button>
+          </PortalTooltip>
+        )}
+        {onSetDefaultView && (
+          <PortalTooltip
+            content={
+              tab.is_default ? (tab.is_primary ? "The main view opens first by default" : "Remove as my default view") : "Set as my default view"
+            }
+          >
+            <button
+              type="button"
+              onClick={() => onSetDefaultView(tab.is_default && !tab.is_primary ? null : tab.id)}
+              disabled={tab.is_default && tab.is_primary}
+              aria-pressed={Boolean(tab.is_default)}
+              aria-label={tab.is_default ? `${tab.label} is your default view` : `Set ${tab.label} as your default view`}
+              className="vt-icon-button"
+            >
+              <HomeIcon size={16} />
+            </button>
+          </PortalTooltip>
+        )}
+        {onToggleHiddenView && (
+          <PortalTooltip content={can_hide ? (tab.is_hidden ? "Show in the tab bar" : "Hide view for me") : "At least one view must stay visible"}>
+            <button
+              type="button"
+              onClick={() => onToggleHiddenView(tab.id)}
+              disabled={!can_hide}
+              aria-label={tab.is_hidden ? `Show ${tab.label}` : `Hide ${tab.label} for me`}
+              className="vt-icon-button"
+            >
+              {tab.is_hidden ? <EyeIcon size={16} /> : <EyeOffIcon size={16} />}
+            </button>
+          </PortalTooltip>
+        )}
+        {onRequestDelete && !tab.is_primary && !tab.is_locked && (
+          <PortalTooltip content="Delete view">
+            <button type="button" onClick={() => onRequestDelete(tab.id)} aria-label={`Delete ${tab.label}`} className="vt-icon-button" data-tone="danger">
+              <DeleteIcon size={16} />
+            </button>
+          </PortalTooltip>
+        )}
+      </div>
+    );
+  };
+
+  const renderRow = (tab: BoardViewTabItem) => {
+    const type_option = getBoardViewTypeOption(tab.view_type);
+    const created_on = formatViewDate(tab.created_at);
+    const updated_on = formatViewDate(tab.updated_at);
+    const is_editing = editing_id === tab.id;
+    const is_active = tab.id === active_view_id;
+
+    return (
+      <li key={tab.id} className="vt-view-row" data-active={is_active}>
+        <span className="vt-icon-tile" data-accent={isViewTabIconAccent(tab)} data-muted={Boolean(tab.is_hidden)}>
+          <ViewTabIcon tab={tab} size={16} />
+        </span>
+
+        <div className="vt-view-row-body">
+          <div className="vt-view-row-title">
+            <PortalTooltip content={is_active ? "You are on this view" : "Open view"}>
+              <button type="button" onClick={() => openView(tab)} aria-current={is_active ? "page" : undefined} className="vt-view-row-name">
+                {tab.label}
+              </button>
+            </PortalTooltip>
+            <span className="vt-view-row-type">{type_option.label}</span>
+            {is_active && (
+              <span className="vt-chip" data-tone="info">
+                Current view
+              </span>
+            )}
+            <ViewStatusChips tab={tab} />
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className={icon_button_class}>
-            <CloseIcon size={16} />
-          </button>
+
+          {is_editing ? (
+            <div className="vt-view-row-editor">
+              <textarea
+                autoFocus
+                value={description_draft}
+                maxLength={VIEW_DESCRIPTION_MAX_LENGTH}
+                rows={3}
+                placeholder="What is this view for? Who should use it?"
+                aria-label={`Description of ${tab.label}`}
+                onChange={(event) => setDescriptionDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                    event.preventDefault();
+                    saveDescription(tab);
+                  }
+                  if (event.key === "Escape") {
+                    event.stopPropagation();
+                    setEditingId(null);
+                  }
+                }}
+                className="vt-textarea"
+              />
+              <div className="vt-form-footer">
+                <DescriptionCounter length={description_draft.length} />
+                <div className="vt-form-actions">
+                  <button type="button" onClick={() => setEditingId(null)} className="vt-button" data-variant="tertiary">
+                    Cancel
+                  </button>
+                  <PortalTooltip content="Save, or press Ctrl + Enter">
+                    <button type="button" onClick={() => saveDescription(tab)} className="vt-button" data-variant="primary">
+                      Save
+                    </button>
+                  </PortalTooltip>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="vt-view-row-description" data-empty={!tab.description}>
+              {tab.description || "No description yet."}
+            </p>
+          )}
+
+          {(tab.creator_name || created_on) && (
+            <div className="vt-view-row-meta">
+              {tab.creator_name && (
+                <>
+                  <ViewCreatorAvatar full_name={tab.creator_name} photo_url={tab.creator_photo_url} size={18} />
+                  <span>Created by {tab.creator_name}</span>
+                </>
+              )}
+              {created_on && (
+                <>
+                  {tab.creator_name && <span className="vt-meta-separator" aria-hidden />}
+                  <span>{tab.creator_name ? created_on : `Created on ${created_on}`}</span>
+                </>
+              )}
+              {updated_on && updated_on !== created_on && (
+                <>
+                  <span className="vt-meta-separator" aria-hidden />
+                  <span>Updated {updated_on}</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="border-b border-shell-border px-7 py-3">
-          <label className="flex items-center gap-2 rounded-[10px] border border-shell-border-strong bg-shell-bg px-3 py-2 focus-within:border-brand-500">
-            <span className="text-shell-text-faint">
-              <SearchIcon size={14} />
-            </span>
+        {renderActions(tab, is_editing)}
+      </li>
+    );
+  };
+
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-labelledby="manage-views-title" className="vt-modal-root">
+      <div className="vt-modal-overlay" onClick={onClose} aria-hidden="true" />
+
+      <div className="vt-modal">
+        <div className="vt-modal-header">
+          <div className="min-w-0">
+            <h2 id="manage-views-title" className="vt-modal-title">
+              Manage views
+            </h2>
+            <p className="vt-modal-subtitle">
+              {tabs.length} {tabs.length === 1 ? "view" : "views"} on this board
+              {hidden_count > 0 ? `, ${hidden_count} hidden for you` : ""}.
+            </p>
+          </div>
+          <PortalTooltip content="Close" placement="bottom">
+            <button type="button" onClick={onClose} aria-label="Close" className="vt-icon-button">
+              <CloseIcon size={18} />
+            </button>
+          </PortalTooltip>
+        </div>
+
+        <div className="vt-modal-toolbar">
+          <label className="vt-search" data-size="lg">
+            <SearchIcon size={16} />
             <input
               autoFocus
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search by name, type, description or creator"
               aria-label="Search views"
-              className="min-w-0 flex-1 bg-transparent text-[13px] text-shell-text outline-none placeholder:text-shell-text-faint"
             />
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="vt-search-clear">
+                <CloseIcon size={12} />
+              </button>
+            )}
           </label>
+
+          <div className="vt-segmented" role="group" aria-label="Filter views by visibility">
+            {VISIBILITY_FILTERS.map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                aria-pressed={visibility_filter === filter.key}
+                onClick={() => setVisibilityFilter(filter.key)}
+                className="vt-segment"
+              >
+                {filter.label}
+                <span className="vt-segment-count">{filter_counts[filter.key]}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        <ul className="shell-scrollbar min-h-0 flex-1 divide-y divide-shell-border overflow-y-auto px-4 py-2">
-          {matching_tabs.length === 0 && <li className="px-3 py-8 text-center text-[13px] text-shell-text-faint">No views match your search.</li>}
-
-          {matching_tabs.map((tab) => {
-            const type_option = getBoardViewTypeOption(tab.view_type);
-            const created_on = formatViewDate(tab.created_at);
-            const is_editing = editing_id === tab.id;
-            const can_hide = tab.is_hidden || visible_count > 1;
-
-            return (
-              <li key={tab.id} className="flex gap-3 px-3 py-3">
-                <span
-                  className={`mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-[8px] bg-shell-hover ${viewTabIconColorClass(tab)} ${
-                    tab.is_hidden ? "opacity-50" : ""
-                  }`}
-                >
-                  <ViewTabIcon tab={tab} size={15} />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onSelectView(tab.id);
-                        onClose();
-                      }}
-                      className={`truncate text-left text-[13.5px] font-semibold hover:underline ${
-                        tab.id === active_view_id ? "text-brand-400" : "text-shell-text"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                    <span className="text-[11.5px] text-shell-text-faint">{type_option.label}</span>
-                    <ViewStatusChips tab={tab} />
-                  </div>
-
-                  {is_editing ? (
-                    <div className="mt-2 flex flex-col gap-2">
-                      <textarea
-                        autoFocus
-                        value={description_draft}
-                        maxLength={VIEW_DESCRIPTION_MAX_LENGTH}
-                        rows={3}
-                        placeholder="What is this view for?"
-                        aria-label={`Description of ${tab.label}`}
-                        onChange={(event) => setDescriptionDraft(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-                            event.preventDefault();
-                            saveDescription(tab);
-                          }
-                          if (event.key === "Escape") {
-                            event.stopPropagation();
-                            setEditingId(null);
-                          }
-                        }}
-                        className="w-full resize-none rounded-[9px] border border-shell-border-strong bg-shell-bg px-2.5 py-2 text-[12.5px] leading-[1.45] text-shell-text outline-none placeholder:text-shell-text-faint focus:border-brand-500"
-                      />
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setEditingId(null)}
-                          className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => saveDescription(tab)}
-                          className="rounded-lg bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className={`mt-1 line-clamp-2 text-[12.5px] ${tab.description ? "text-shell-text-secondary" : "text-shell-text-faint"}`}>
-                      {tab.description || "No description yet."}
-                    </p>
-                  )}
-
-                  {(tab.creator_name || created_on) && (
-                    <p className="mt-1 text-[11.5px] text-shell-text-faint">
-                      {tab.creator_name ? `Created by ${tab.creator_name}` : "Created"}
-                      {created_on ? ` on ${created_on}` : ""}
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex flex-none items-start gap-0.5">
-                  {onChangeDescription && !tab.is_locked && !is_editing && (
-                    <button type="button" onClick={() => startEditing(tab)} aria-label={`Edit description of ${tab.label}`} title="Edit description" className={icon_button_class}>
-                      <EditPencilIcon size={14} />
-                    </button>
-                  )}
-                  {onSetDefaultView && (
-                    <button
-                      type="button"
-                      onClick={() => onSetDefaultView(tab.is_default && !tab.is_primary ? null : tab.id)}
-                      disabled={tab.is_default && tab.is_primary}
-                      aria-pressed={Boolean(tab.is_default)}
-                      aria-label={tab.is_default ? `${tab.label} is your default view` : `Set ${tab.label} as your default view`}
-                      title={tab.is_default ? "Your default view" : "Set as my default view"}
-                      className={tab.is_default ? `${icon_button_base_class} text-brand-400` : icon_button_class}
-                    >
-                      <HomeIcon size={14} />
-                    </button>
-                  )}
-                  {onToggleHiddenView && (
-                    <button
-                      type="button"
-                      onClick={() => onToggleHiddenView(tab.id)}
-                      disabled={!can_hide}
-                      aria-label={tab.is_hidden ? `Show ${tab.label}` : `Hide ${tab.label} for me`}
-                      title={can_hide ? (tab.is_hidden ? "Show view" : "Hide view for me") : "At least one view must stay visible"}
-                      className={icon_button_class}
-                    >
-                      {tab.is_hidden ? <EyeIcon size={14} /> : <EyeOffIcon size={14} />}
-                    </button>
-                  )}
-                  {onRequestDelete && !tab.is_primary && !tab.is_locked && (
-                    <button
-                      type="button"
-                      onClick={() => onRequestDelete(tab.id)}
-                      aria-label={`Delete ${tab.label}`}
-                      title="Delete view"
-                      className={`${icon_button_base_class} text-shell-text-muted hover:text-error-400`}
-                    >
-                      <DeleteIcon size={14} />
-                    </button>
-                  )}
-                </div>
-              </li>
-            );
-          })}
+        <ul className="vt-modal-list shell-scrollbar">
+          {matching_tabs.length === 0 ? (
+            <li className="vt-modal-empty">
+              <SearchIcon size={22} />
+              <strong>{normalized_query ? "No views match your search" : "No hidden views"}</strong>
+              <span>{normalized_query ? "Try another name, type or creator." : "Views you hide for yourself show up here."}</span>
+            </li>
+          ) : (
+            matching_tabs.map(renderRow)
+          )}
         </ul>
 
-        <div className="flex items-center justify-between gap-2 border-t border-shell-border px-7 py-4">
+        <div className="vt-modal-footer">
           {onResetOrder && has_personal_order ? (
-            <button
-              type="button"
-              onClick={onResetOrder}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
-            >
-              <RefreshIcon size={13} />
-              Reset to default order
-            </button>
+            <PortalTooltip content="Go back to the board's own tab order">
+              <button type="button" onClick={onResetOrder} className="vt-button" data-variant="tertiary">
+                <RefreshIcon size={14} />
+                Reset to default order
+              </button>
+            </PortalTooltip>
           ) : (
-            <span />
+            <span className="vt-modal-footer-note">Hiding a view or picking your default only changes what you see.</span>
           )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-3.5 py-2.5 text-[13.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
-          >
+          <button type="button" onClick={onClose} className="vt-button" data-variant="primary" data-size="lg">
             Done
           </button>
         </div>

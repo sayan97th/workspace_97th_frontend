@@ -1,0 +1,1177 @@
+/*
+ * Board view tabs: the tab bar, the hover info card, the "N more" menu, the description
+ * popover and the "Manage views" dialog. Styled after monday.com's board chrome, with the
+ * same Figtree body / Poppins title pairing as the sidebar, the board, Profile and the
+ * invitations views.
+ *
+ * The tabs sit inside `.board-chrome-theme`, so they keep reading its `shell-*` and
+ * `boardtree-*` tokens. Everything portaled to `document.body` (card, menus, dialog) reads
+ * the `--vt-*` tokens declared on `:root`, and dark mode only swaps those tokens under
+ * `html.dark`. Status chips pick their colors through `data-tone`.
+ */
+
+:root {
+  --vt-surface: #ffffff;
+  --vt-surface-alt: #f6f7fb;
+  --vt-text: #323338;
+  --vt-text-secondary: #676879;
+  --vt-text-faint: #9699a6;
+  --vt-border: #c3c6d4;
+  --vt-divider: #e7e9ef;
+  --vt-hover: #dcdfec;
+  --vt-row-hover: #f5f6f8;
+  --vt-selected: #e5f1ff;
+  --vt-accent: #0073ea;
+  --vt-accent-soft: #cce5ff;
+  --vt-primary: var(--color-brand-500);
+  --vt-primary-hover: var(--color-brand-600);
+  --vt-primary-soft: color-mix(in srgb, var(--color-brand-500) 10%, transparent);
+  --vt-danger: #d83a52;
+  --vt-danger-soft: #fbe9ec;
+  --vt-overlay: rgba(41, 47, 76, 0.7);
+  --vt-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  --vt-modal-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
+  --vt-card-border: transparent;
+  --vt-neutral-bg: #ecedf5;
+  --vt-neutral-text: #323338;
+  --vt-info-bg: #e5f1ff;
+  --vt-info-text: #0060b9;
+  --vt-success-bg: #d6f2e4;
+  --vt-success-text: #00854d;
+  --vt-warning-bg: #ffe9c4;
+  --vt-warning-text: #9d5e00;
+  --vt-unsaved: #fdab3d;
+  --vt-primary-tab: #00c875;
+}
+
+html.dark {
+  --vt-surface: #0f1c1c;
+  --vt-surface-alt: rgba(255, 255, 255, 0.03);
+  --vt-text: #e9eded;
+  --vt-text-secondary: #9aa4a5;
+  --vt-text-faint: #6f7b7c;
+  --vt-border: rgba(255, 255, 255, 0.24);
+  --vt-divider: rgba(255, 255, 255, 0.1);
+  --vt-hover: rgba(255, 255, 255, 0.08);
+  --vt-row-hover: rgba(255, 255, 255, 0.04);
+  --vt-selected: rgba(77, 156, 255, 0.14);
+  --vt-accent: #4d9cff;
+  --vt-accent-soft: rgba(77, 156, 255, 0.24);
+  --vt-primary-soft: color-mix(in srgb, var(--color-brand-500) 18%, transparent);
+  --vt-danger: #ff8a94;
+  --vt-danger-soft: rgba(226, 68, 92, 0.14);
+  --vt-overlay: rgba(0, 0, 0, 0.65);
+  --vt-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --vt-modal-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --vt-card-border: rgba(255, 255, 255, 0.08);
+  --vt-neutral-bg: rgba(255, 255, 255, 0.08);
+  --vt-neutral-text: #e9eded;
+  --vt-info-bg: rgba(87, 155, 252, 0.14);
+  --vt-info-text: #8cbcff;
+  --vt-success-bg: rgba(0, 200, 117, 0.14);
+  --vt-success-text: #3ddc97;
+  --vt-warning-bg: rgba(253, 171, 61, 0.14);
+  --vt-warning-text: #ffc46b;
+}
+
+// ── Shared pieces ────────────────────────────────────────────────────────────
+
+@mixin vt-focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--vt-accent);
+    outline-offset: 1px;
+  }
+}
+
+@mixin vt-portal-font {
+  font-family: var(--font-outfit);
+  color: var(--vt-text);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.vt-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.vt-chip {
+  --vt-tone-bg: var(--vt-neutral-bg);
+  --vt-tone-text: var(--vt-neutral-text);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--vt-tone-bg);
+  color: var(--vt-tone-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  white-space: nowrap;
+
+  &[data-tone="info"] {
+    --vt-tone-bg: var(--vt-info-bg);
+    --vt-tone-text: var(--vt-info-text);
+  }
+
+  &[data-tone="success"] {
+    --vt-tone-bg: var(--vt-success-bg);
+    --vt-tone-text: var(--vt-success-text);
+  }
+
+  &[data-tone="warning"] {
+    --vt-tone-bg: var(--vt-warning-bg);
+    --vt-tone-text: var(--vt-warning-text);
+  }
+}
+
+// Square tile holding a view's emoji or type icon.
+.vt-icon-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--vt-surface-alt);
+  box-shadow: inset 0 0 0 1px var(--vt-divider);
+  color: var(--vt-text-secondary);
+
+  &[data-accent="true"] {
+    color: var(--vt-primary-tab);
+  }
+
+  &[data-muted="true"] {
+    opacity: 0.5;
+  }
+
+  &[data-size="lg"] {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+}
+
+.vt-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  color: #ffffff;
+  font-weight: 600;
+  line-height: 1;
+  object-fit: cover;
+}
+
+.vt-unsaved-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--vt-unsaved);
+}
+
+.vt-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--vt-border);
+  border-radius: 4px;
+  background: var(--vt-surface);
+  color: var(--vt-text-faint);
+  transition: border-color 120ms ease;
+
+  &:hover {
+    border-color: var(--vt-text-secondary);
+  }
+
+  &:focus-within {
+    border-color: var(--vt-accent);
+  }
+
+  input {
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--vt-text);
+    font: inherit;
+    font-size: 14px;
+    outline: none;
+
+    &::placeholder {
+      color: var(--vt-text-faint);
+    }
+  }
+
+  &[data-size="lg"] {
+    height: 40px;
+    padding: 0 12px;
+  }
+}
+
+.vt-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--vt-text-secondary);
+
+  &:hover {
+    background: var(--vt-hover);
+    color: var(--vt-text);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-family: var(--font-outfit);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  @include vt-focus-ring;
+
+  &[data-variant="primary"] {
+    background: var(--vt-primary);
+    color: #ffffff;
+
+    &:hover {
+      background: var(--vt-primary-hover);
+    }
+  }
+
+  &[data-variant="tertiary"] {
+    color: var(--vt-text);
+
+    &:hover {
+      background: var(--vt-hover);
+    }
+  }
+
+  &[data-size="lg"] {
+    height: 40px;
+    padding: 0 16px;
+  }
+}
+
+.vt-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--vt-text-secondary);
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--vt-hover);
+    color: var(--vt-text);
+  }
+
+  &[aria-pressed="true"] {
+    color: var(--vt-accent);
+  }
+
+  &[data-tone="danger"]:hover:not(:disabled) {
+    background: var(--vt-danger-soft);
+    color: var(--vt-danger);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  @include vt-focus-ring;
+}
+
+// ── Tab bar ──────────────────────────────────────────────────────────────────
+
+// Shared by the real tab and the off screen copy that measures it, so both have the same width.
+.vt-tab {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -1px;
+  padding: 9px 8px 9px 12px;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px 4px 0 0;
+  font-family: var(--font-outfit);
+  font-size: 14px;
+  line-height: 20px;
+  user-select: none;
+  touch-action: none;
+
+  &[data-has-menu="false"] {
+    padding-right: 12px;
+  }
+
+  &[data-draggable="true"] {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  &[data-state="idle"] {
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--color-shell-hover);
+    }
+  }
+
+  &[data-state="active"] {
+    border-bottom-color: var(--color-boardtree-accent);
+
+    .vt-tab-label {
+      color: var(--color-shell-text);
+      font-weight: 500;
+    }
+  }
+
+  // While carried, the tab lifts above its neighbors as a white card with an accent
+  // outline and a soft shadow, the look of a dragged label in Edit Labels.
+  &[data-state="dragging"] {
+    z-index: 10;
+    border-bottom-color: transparent;
+    border-radius: 4px;
+    background: var(--color-shell-panel);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    outline: 1px solid var(--color-boardtree-accent);
+    outline-offset: -1px;
+  }
+}
+
+.vt-tab-glyph {
+  display: flex;
+  flex: none;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
+
+  &[data-accent="true"] {
+    color: var(--vt-primary-tab);
+  }
+}
+
+button.vt-tab-glyph {
+  margin: -2px;
+  padding: 2px;
+  border-radius: 4px;
+
+  &:hover {
+    background: var(--color-shell-hover);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-tab-badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  color: var(--color-shell-text-faint);
+}
+
+// The label itself, a real link (or a button) so Ctrl/Cmd click opens the view in a new tab.
+.vt-tab-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-shell-text);
+  font-weight: 400;
+  white-space: nowrap;
+  outline: none;
+
+  &:focus-visible {
+    border-radius: 2px;
+    box-shadow: 0 0 0 2px var(--vt-accent-soft);
+  }
+}
+
+.vt-tab-label-text {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.vt-tab-menu-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: var(--color-shell-text-muted);
+  transition: background-color 120ms ease, opacity 120ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--color-shell-hover-strong, var(--color-shell-hover));
+    color: var(--color-shell-text);
+  }
+
+  @include vt-focus-ring;
+}
+
+// Only the active tab shows its "..." at rest, the others reveal it on hover or focus.
+.vt-tab:not([data-state="active"]) .vt-tab-menu-button:not([aria-expanded="true"]) {
+  opacity: 0;
+}
+
+.vt-tab:hover .vt-tab-menu-button,
+.vt-tab:focus-within .vt-tab-menu-button {
+  opacity: 1;
+}
+
+// "N more" and "+" at the end of the bar.
+.vt-bar-button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--color-shell-text-muted);
+  font-family: var(--font-outfit);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: nowrap;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--color-shell-hover);
+    color: var(--color-shell-text);
+  }
+
+  &[data-variant="add"] {
+    padding: 0;
+    color: var(--color-shell-text);
+  }
+
+  @include vt-focus-ring;
+}
+
+// ── Hover info card ──────────────────────────────────────────────────────────
+
+.vt-card {
+  @include vt-portal-font;
+
+  position: fixed;
+  z-index: 1000;
+  overflow: hidden;
+  border: 1px solid var(--vt-card-border);
+  border-radius: 8px;
+  background: var(--vt-surface);
+  box-shadow: var(--vt-card-shadow);
+  pointer-events: none;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: view-tab-card-in 140ms ease-out;
+  }
+}
+
+.vt-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+.vt-card-title {
+  overflow: hidden;
+  color: var(--vt-text);
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-card-subtitle {
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.vt-card-description {
+  margin: 0 16px;
+  color: var(--vt-text);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+
+  // Long descriptions are cut after six lines, the full text is in Manage views.
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  overflow: hidden;
+
+  &[data-empty="true"] {
+    color: var(--vt-text-faint);
+    font-style: italic;
+  }
+}
+
+.vt-card-chips {
+  margin: 12px 16px 0;
+}
+
+.vt-card-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 12px;
+  margin-top: 16px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--vt-divider);
+  background: var(--vt-surface-alt);
+  font-size: 13px;
+  line-height: 18px;
+
+  dt {
+    color: var(--vt-text-secondary);
+  }
+
+  dd {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    color: var(--vt-text);
+
+    > span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+// ── Popovers ("N more" menu, description editor) ─────────────────────────────
+
+.vt-popover {
+  @include vt-portal-font;
+
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vt-card-border);
+  border-radius: 8px;
+  background: var(--vt-surface);
+  box-shadow: var(--vt-card-shadow);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: view-tab-card-in 120ms ease-out;
+  }
+}
+
+.vt-popover-header {
+  padding: 16px 16px 0;
+}
+
+.vt-popover-title {
+  color: var(--vt-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+}
+
+.vt-popover-subtitle {
+  overflow: hidden;
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-menu-search {
+  padding: 8px 8px 4px;
+}
+
+.vt-menu-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 0 8px 8px;
+  overscroll-behavior: contain;
+}
+
+.vt-menu-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 8px 4px;
+  color: var(--vt-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.vt-menu-section-count {
+  color: var(--vt-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.vt-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding-right: 4px;
+  border-radius: 4px;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--vt-hover);
+  }
+
+  &[data-active="true"] {
+    background: var(--vt-selected);
+  }
+}
+
+.vt-menu-row-main {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: left;
+
+  @include vt-focus-ring;
+}
+
+.vt-menu-row-glyph {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--vt-text-secondary);
+
+  &[data-accent="true"] {
+    color: var(--vt-primary-tab);
+  }
+}
+
+.vt-menu-row-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.vt-menu-row-label {
+  overflow: hidden;
+  color: var(--vt-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-menu-row-caption {
+  overflow: hidden;
+  color: var(--vt-text-faint);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-menu-row[data-hidden-row="true"] {
+  .vt-menu-row-label {
+    color: var(--vt-text-secondary);
+  }
+
+  .vt-menu-row-glyph {
+    opacity: 0.55;
+  }
+}
+
+.vt-menu-row-action {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--vt-accent);
+  font-size: 13px;
+  font-weight: 500;
+
+  &:hover {
+    background: var(--vt-accent-soft);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-menu-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 20px 8px;
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.vt-menu-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 16px);
+  height: 36px;
+  margin: 0 8px 8px;
+  padding: 0 8px;
+  border-top: 0;
+  border-radius: 4px;
+  color: var(--vt-text);
+  font-size: 14px;
+  text-align: left;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--vt-hover);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-menu-divider {
+  height: 1px;
+  margin: 0 16px 8px;
+  background: var(--vt-divider);
+}
+
+.vt-description-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.vt-textarea {
+  width: 100%;
+  min-height: 96px;
+  padding: 8px 12px;
+  border: 1px solid var(--vt-border);
+  border-radius: 4px;
+  background: var(--vt-surface);
+  color: var(--vt-text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 120ms ease;
+
+  &::placeholder {
+    color: var(--vt-text-faint);
+  }
+
+  &:hover {
+    border-color: var(--vt-text-secondary);
+  }
+
+  &:focus {
+    border-color: var(--vt-accent);
+  }
+}
+
+.vt-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vt-form-hint {
+  color: var(--vt-text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+
+  &[data-near-limit="true"] {
+    color: var(--vt-warning-text);
+  }
+}
+
+.vt-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+// ── Manage views dialog ──────────────────────────────────────────────────────
+
+.vt-modal-root {
+  @include vt-portal-font;
+
+  position: fixed;
+  inset: 0;
+  z-index: 420;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+
+  @media (max-width: 640px) {
+    align-items: stretch;
+    padding: 16px;
+  }
+}
+
+.vt-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--vt-overlay);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: vt-fade-in 160ms ease-out;
+  }
+}
+
+.vt-modal {
+  position: relative;
+  display: flex;
+  width: 720px;
+  max-width: 100%;
+  max-height: min(86vh, 760px);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--vt-card-border);
+  border-radius: 8px;
+  background: var(--vt-surface);
+  box-shadow: var(--vt-modal-shadow);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: vt-modal-in 180ms cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  @media (max-width: 640px) {
+    max-height: 100%;
+  }
+}
+
+.vt-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 24px 16px;
+}
+
+.vt-modal-title {
+  margin: 0;
+  color: var(--vt-text);
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.1px;
+  line-height: 28px;
+}
+
+.vt-modal-subtitle {
+  margin-top: 4px;
+  color: var(--vt-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.vt-modal-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0 24px 16px;
+  border-bottom: 1px solid var(--vt-divider);
+
+  .vt-search {
+    min-width: 220px;
+    flex: 1 1 260px;
+  }
+}
+
+// "All / Shown / Hidden" segmented filter.
+.vt-segmented {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--vt-surface-alt);
+  box-shadow: inset 0 0 0 1px var(--vt-divider);
+}
+
+.vt-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  color: var(--vt-text-secondary);
+  font-size: 14px;
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    color: var(--vt-text);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--vt-surface);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    color: var(--vt-text);
+    font-weight: 500;
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-segment-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--vt-neutral-bg);
+  color: var(--vt-text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+}
+
+.vt-modal-list {
+  min-height: 160px;
+  flex: 1 1 auto;
+  margin: 0;
+  overflow-y: auto;
+  padding: 8px 12px;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.vt-view-row {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+
+  & + & {
+    margin-top: 2px;
+  }
+
+  &:hover,
+  &:focus-within {
+    background: var(--vt-row-hover);
+  }
+
+  &[data-active="true"] {
+    background: var(--vt-selected);
+  }
+
+  @media (max-width: 640px) {
+    flex-wrap: wrap;
+  }
+}
+
+.vt-view-row-body {
+  min-width: 0;
+  flex: 1 1 auto;
+
+  // On a phone the row wraps so the actions get their own line, the icon tile (32px + 12px gap) keeps the text beside it.
+  @media (max-width: 640px) {
+    flex-basis: calc(100% - 44px);
+  }
+}
+
+.vt-view-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+
+.vt-view-row-name {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--vt-text);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 22px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 2px;
+
+  &:hover {
+    color: var(--vt-accent);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-view-row-type {
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.vt-view-row-description {
+  display: -webkit-box;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--vt-text);
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  &[data-empty="true"] {
+    color: var(--vt-text-faint);
+    font-style: italic;
+  }
+}
+
+.vt-view-row-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.vt-meta-separator {
+  width: 3px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--vt-text-faint);
+}
+
+// Row actions stay visible for keyboard and touch users, but sit faded until the row is hovered.
+.vt-view-row-actions {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 2px;
+  opacity: 0.55;
+  transition: opacity 120ms ease;
+
+  .vt-view-row:hover &,
+  .vt-view-row:focus-within &,
+  .vt-view-row[data-active="true"] & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+
+  @media (max-width: 640px) {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.vt-view-row-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.vt-modal-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 40px 16px;
+  color: var(--vt-text-secondary);
+  text-align: center;
+
+  strong {
+    color: var(--vt-text);
+    font-size: 15px;
+    font-weight: 500;
+  }
+}
+
+.vt-modal-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--vt-divider);
+}
+
+.vt-modal-footer-note {
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+@keyframes vt-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes vt-modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

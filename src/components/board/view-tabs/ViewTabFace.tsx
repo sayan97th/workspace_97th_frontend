@@ -4,9 +4,7 @@ import { LockBadgeIcon, MoreDotsIcon } from "@/icons/workspace-icons";
 import { PinIcon, TableViewIcon } from "@/icons/board-icons";
 import { getBoardViewTypeOption } from "../boardViewTypes";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-
-/** Shared spacing of every tab, so the measuring row, the drag preview and the real tab have the same width. */
-export const VIEW_TAB_PADDING_CLASS = "flex items-center gap-1.5 px-3 py-[9px]";
+import "./view-tabs.scss";
 
 /** monday shows tabs as plain text, so only a tab the user gave an emoji carries a leading glyph. */
 export const hasViewTabGlyph = (tab: BoardViewTabItem): boolean => Boolean(tab.emoji);
@@ -16,34 +14,28 @@ export const hasViewTabGlyph = (tab: BoardViewTabItem): boolean => Boolean(tab.e
  * view type (Table, Kanban, Doc...). The primary tab keeps the green table
  * icon it has always had.
  */
-export const ViewTabIcon: React.FC<{ tab: BoardViewTabItem; size?: number }> = ({ tab, size = 13 }) => {
-  if (tab.emoji) return <span className="text-[13px] leading-none not-italic">{tab.emoji}</span>;
+export const ViewTabIcon: React.FC<{ tab: BoardViewTabItem; size?: number }> = ({ tab, size = 14 }) => {
+  if (tab.emoji) return <span style={{ fontSize: size, lineHeight: 1 }}>{tab.emoji}</span>;
   if (tab.is_primary && (!tab.view_type || tab.view_type === "table")) return <TableViewIcon size={size} />;
   const { Icon } = getBoardViewTypeOption(tab.view_type);
   return <Icon size={size} />;
 };
 
-/** Color of {@link ViewTabIcon}: green for the primary table and for emojis, muted for type icons. */
-export const viewTabIconColorClass = (tab: BoardViewTabItem): string =>
-  tab.emoji || tab.is_primary ? "text-[#00c875]" : "text-shell-text-muted";
+/** Whether {@link ViewTabIcon} is drawn in the primary green (the primary table) rather than muted gray. */
+export const isViewTabIconAccent = (tab: BoardViewTabItem): boolean => Boolean(tab.emoji || tab.is_primary);
 
 /** The small dot shown on a tab whose filter, sort or display changes aren't saved to the view. */
 export const UnsavedChangesDot: React.FC = () => (
-  <span
-    className="h-[6px] w-[6px] flex-none rounded-full bg-[#fdab3d]"
-    role="img"
-    aria-label="Unsaved changes"
-    title="This view has unsaved changes"
-  />
+  <span className="vt-unsaved-dot" role="img" aria-label="Unsaved changes" title="This view has unsaved changes" />
 );
 
 /** The label with its trailing lock badge and unsaved changes dot. */
 export const ViewTabLabel: React.FC<{ tab: BoardViewTabItem }> = ({ tab }) => (
   <>
-    <span className="max-w-[220px] truncate">{tab.label}</span>
+    <span className="vt-tab-label-text">{tab.label}</span>
     {tab.is_locked && (
-      <span className="flex flex-none items-center text-shell-text-faint" aria-label="Locked">
-        <LockBadgeIcon size={9} />
+      <span className="vt-tab-badge" aria-label="Locked">
+        <LockBadgeIcon size={10} />
       </span>
     )}
     {tab.has_unsaved_changes && <UnsavedChangesDot />}
@@ -54,31 +46,30 @@ export type ViewTabFaceProps = {
   tab: BoardViewTabItem;
   /** Reserves the "..." button's space, matching a tab that has an options menu. */
   has_menu?: boolean;
-  className?: string;
 };
 
 /**
- * A non interactive tab, used by the width measuring row and the drag preview.
- * Mirrors the markup of the real tab in `SortableViewTab`.
+ * A non interactive tab, used by the width measuring row. Mirrors the markup
+ * of the real tab in `SortableViewTab`, both share the `.vt-tab` box.
  */
-const ViewTabFace: React.FC<ViewTabFaceProps> = ({ tab, has_menu = false, className = "" }) => (
-  <div className={`${VIEW_TAB_PADDING_CLASS} ${className}`}>
+const ViewTabFace: React.FC<ViewTabFaceProps> = ({ tab, has_menu = false }) => (
+  <div className="vt-tab" data-state="active" data-has-menu={has_menu}>
     {tab.pinned && (
-      <span className="flex flex-none items-center text-shell-text-faint">
-        <PinIcon size={11} />
+      <span className="vt-tab-badge">
+        <PinIcon size={12} />
       </span>
     )}
     {hasViewTabGlyph(tab) && (
-      <span className={`flex flex-none items-center ${viewTabIconColorClass(tab)}`}>
+      <span className="vt-tab-glyph">
         <ViewTabIcon tab={tab} />
       </span>
     )}
-    <span className="flex items-center gap-1 whitespace-nowrap text-board-nav text-shell-text">
+    <span className="vt-tab-label">
       <ViewTabLabel tab={tab} />
     </span>
     {has_menu && (
-      <span className="flex flex-none items-center text-shell-text-muted">
-        <MoreDotsIcon size={12} />
+      <span className="vt-tab-menu-button">
+        <MoreDotsIcon size={14} />
       </span>
     )}
   </div>

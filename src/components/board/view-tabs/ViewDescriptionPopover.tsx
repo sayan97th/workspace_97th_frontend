@@ -1,9 +1,12 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import BoardPopover from "../toolbar/BoardPopover";
 
 /** Mirrors the API's `max:1000` rule on `board_views.description`. */
 export const VIEW_DESCRIPTION_MAX_LENGTH = 1000;
+/** The counter turns amber once this close to the limit. */
+export const VIEW_DESCRIPTION_WARNING_GAP = 100;
 
 export type ViewDescriptionPopoverProps = {
   anchor_el: HTMLElement | null;
@@ -14,6 +17,13 @@ export type ViewDescriptionPopoverProps = {
   /** Called with the new text, or null when it was cleared. */
   onSave: (description: string | null) => void;
 };
+
+/** "12/1000", amber when the text is close to the limit. */
+export const DescriptionCounter: React.FC<{ length: number }> = ({ length }) => (
+  <span className="vt-form-hint" data-near-limit={length >= VIEW_DESCRIPTION_MAX_LENGTH - VIEW_DESCRIPTION_WARNING_GAP}>
+    {length}/{VIEW_DESCRIPTION_MAX_LENGTH}
+  </span>
+);
 
 /** Small editor anchored under a tab for its "Edit description" menu item. Ctrl/Cmd + Enter saves. */
 const ViewDescriptionPopover: React.FC<ViewDescriptionPopoverProps> = ({
@@ -37,52 +47,48 @@ const ViewDescriptionPopover: React.FC<ViewDescriptionPopoverProps> = ({
   };
 
   return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} align="start" width={320}>
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} align="start" width={360} unstyled>
       <form
-        className="flex flex-col gap-2.5 p-3"
+        className="vt-popover"
+        aria-label="View description"
         onSubmit={(event) => {
           event.preventDefault();
           save();
         }}
       >
-        <div>
-          <p className="text-[13px] font-semibold text-shell-text">View description</p>
-          <p className="truncate text-[11.5px] text-shell-text-faint">{view_label}</p>
+        <div className="vt-popover-header">
+          <p className="vt-popover-title">{description ? "Edit description" : "Add description"}</p>
+          <p className="vt-popover-subtitle">{view_label}</p>
         </div>
-        <textarea
-          autoFocus
-          value={draft}
-          maxLength={VIEW_DESCRIPTION_MAX_LENGTH}
-          rows={4}
-          placeholder="What is this view for?"
-          aria-label="View description"
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-              event.preventDefault();
-              save();
-            }
-          }}
-          className="shell-scrollbar w-full resize-none rounded-[9px] border border-shell-border-strong bg-shell-bg px-2.5 py-2 text-[13px] leading-[1.45] text-shell-text outline-none placeholder:text-shell-text-faint focus:border-brand-500"
-        />
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px] text-shell-text-faint">
-            {draft.length}/{VIEW_DESCRIPTION_MAX_LENGTH}
-          </span>
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600"
-            >
-              Save
-            </button>
+        <div className="vt-description-form">
+          <textarea
+            autoFocus
+            value={draft}
+            maxLength={VIEW_DESCRIPTION_MAX_LENGTH}
+            rows={4}
+            placeholder="What is this view for? Who should use it?"
+            aria-label="View description"
+            onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                save();
+              }
+            }}
+            className="vt-textarea shell-scrollbar"
+          />
+          <div className="vt-form-footer">
+            <DescriptionCounter length={draft.length} />
+            <div className="vt-form-actions">
+              <button type="button" onClick={onClose} className="vt-button" data-variant="tertiary">
+                Cancel
+              </button>
+              <PortalTooltip content="Save, or press Ctrl + Enter">
+                <button type="submit" className="vt-button" data-variant="primary">
+                  Save
+                </button>
+              </PortalTooltip>
+            </div>
           </div>
         </div>
       </form>

@@ -1,9 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { EyeIcon, SearchIcon, ViewsIcon } from "@/icons/workspace-icons";
+import { CloseIcon, EyeIcon, SearchIcon, ViewsIcon } from "@/icons/workspace-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import BoardPopover from "../toolbar/BoardPopover";
+import { getBoardViewTypeOption } from "../boardViewTypes";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-import { UnsavedChangesDot, ViewTabIcon, viewTabIconColorClass } from "./ViewTabFace";
+import { UnsavedChangesDot, ViewTabIcon, isViewTabIconAccent } from "./ViewTabFace";
 
 export type MoreViewsMenuProps = {
   anchor_el: HTMLElement | null;
@@ -17,7 +19,7 @@ export type MoreViewsMenuProps = {
   onSelectView: (id: number | string) => void;
   /** Shows a hidden tab again. Omit to hide the "Show" buttons. */
   onShowView?: (id: number | string) => void;
-  /** Opens the "Manage views" panel. Omit to hide the footer link. */
+  /** Opens the "Manage views" dialog. Omit to hide the footer link. */
   onManageViews?: () => void;
 };
 
@@ -27,7 +29,7 @@ const matchesQuery = (tab: BoardViewTabItem, query: string) =>
 /**
  * The "More" dropdown at the end of the tab bar: a searchable list of the
  * tabs that didn't fit, plus the viewer's hidden tabs with a way to show them
- * again, and a link to the "Manage views" panel.
+ * again, and a link to the "Manage views" dialog.
  */
 const MoreViewsMenu: React.FC<MoreViewsMenuProps> = ({
   anchor_el,
@@ -57,83 +59,91 @@ const MoreViewsMenu: React.FC<MoreViewsMenuProps> = ({
   };
 
   const renderRow = (tab: BoardViewTabItem, is_hidden_row: boolean) => (
-    <div
-      key={tab.id}
-      className={`group/row flex items-center gap-1 rounded-[7px] pr-1 transition-colors hover:bg-shell-hover ${
-        tab.id === active_view_id ? "bg-shell-hover" : ""
-      }`}
-    >
-      <button
-        type="button"
-        onClick={() => select(tab.id)}
-        className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left"
-      >
-        <span className={`flex w-4 flex-none items-center justify-center ${viewTabIconColorClass(tab)} ${is_hidden_row ? "opacity-60" : ""}`}>
-          <ViewTabIcon tab={tab} />
+    <div key={tab.id} className="vt-menu-row" data-active={tab.id === active_view_id} data-hidden-row={is_hidden_row}>
+      <button type="button" onClick={() => select(tab.id)} className="vt-menu-row-main">
+        <span className="vt-menu-row-glyph" data-accent={isViewTabIconAccent(tab)}>
+          <ViewTabIcon tab={tab} size={16} />
         </span>
-        <span className={`truncate text-[13px] ${is_hidden_row ? "text-shell-text-muted" : "text-shell-text"}`}>{tab.label}</span>
+        <span className="vt-menu-row-text">
+          <span className="vt-menu-row-label">{tab.label}</span>
+          <span className="vt-menu-row-caption">{tab.description || `${getBoardViewTypeOption(tab.view_type).label} view`}</span>
+        </span>
         {tab.has_unsaved_changes && <UnsavedChangesDot />}
       </button>
       {is_hidden_row && onShowView && (
-        <button
-          type="button"
-          onClick={() => onShowView(tab.id)}
-          aria-label={`Show ${tab.label}`}
-          title="Show in the tab bar"
-          className="flex h-6 flex-none items-center gap-1 rounded-md px-1.5 text-[11.5px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover-strong hover:text-shell-text"
-        >
-          <EyeIcon size={12} />
-          Show
-        </button>
+        <PortalTooltip content="Show in the tab bar">
+          <button type="button" onClick={() => onShowView(tab.id)} aria-label={`Show ${tab.label}`} className="vt-menu-row-action">
+            <EyeIcon size={14} />
+            Show
+          </button>
+        </PortalTooltip>
       )}
     </div>
   );
 
   return (
-    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} align="start" width={280}>
-      <div className="flex flex-col p-2">
-        <label className="mb-1.5 flex items-center gap-2 rounded-[8px] border border-shell-border-strong bg-shell-bg px-2.5 py-1.5 focus-within:border-brand-500">
-          <span className="text-shell-text-faint">
-            <SearchIcon size={13} />
-          </span>
-          <input
-            autoFocus
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search views"
-            aria-label="Search views"
-            className="min-w-0 flex-1 bg-transparent text-[13px] text-shell-text outline-none placeholder:text-shell-text-faint"
-          />
-        </label>
+    <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} align="start" width={300} unstyled>
+      <div className="vt-popover" aria-label="More views">
+        <div className="vt-menu-search">
+          <label className="vt-search">
+            <SearchIcon size={14} />
+            <input
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search views"
+              aria-label="Search views"
+            />
+            {query && (
+              <button type="button" onClick={() => setQuery("")} aria-label="Clear search" className="vt-search-clear">
+                <CloseIcon size={12} />
+              </button>
+            )}
+          </label>
+        </div>
 
-        <div className="shell-scrollbar max-h-[320px] overflow-y-auto">
+        <div className="vt-menu-list shell-scrollbar">
           {matching_overflow.length > 0 && (
             <>
-              <p className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wide text-shell-text-faint">More views</p>
+              <p className="vt-menu-section-title">
+                <span>More views</span>
+                <span className="vt-menu-section-count">{matching_overflow.length}</span>
+              </p>
               {matching_overflow.map((tab) => renderRow(tab, false))}
             </>
           )}
           {matching_hidden.length > 0 && (
             <>
-              <p className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-shell-text-faint">Hidden views</p>
+              <p className="vt-menu-section-title">
+                <span>Hidden views</span>
+                <span className="vt-menu-section-count">{matching_hidden.length}</span>
+              </p>
               {matching_hidden.map((tab) => renderRow(tab, true))}
             </>
           )}
-          {!has_results && <p className="px-2 py-3 text-center text-[12.5px] text-shell-text-faint">No views match your search.</p>}
+          {!has_results && (
+            <div className="vt-menu-empty">
+              <SearchIcon size={18} />
+              No views match your search.
+            </div>
+          )}
         </div>
 
         {onManageViews && (
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onManageViews();
-            }}
-            className="mt-1.5 flex items-center gap-2 border-t border-shell-border px-2 pb-0.5 pt-2 text-left text-[12.5px] font-semibold text-shell-text-secondary transition-colors hover:text-shell-text"
-          >
-            <ViewsIcon size={13} />
-            Manage views
-          </button>
+          <>
+            <div className="vt-menu-divider" />
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onManageViews();
+              }}
+              className="vt-menu-footer"
+            >
+              <ViewsIcon size={16} />
+              Manage views
+            </button>
+          </>
         )}
       </div>
     </BoardPopover>

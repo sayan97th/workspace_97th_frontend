@@ -538,7 +538,9 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     view_type: v.view_type,
     description: v.description,
     creator_name: v.creator?.full_name ?? null,
+    creator_photo_url: v.creator?.profile_photo_url ?? null,
     created_at: v.created_at,
+    updated_at: v.updated_at,
     is_hidden: hidden_view_ids.includes(v.id),
     is_default: default_view_id === null ? v.is_primary : default_view_id === v.id,
     // Only the active tab can be compared against the live toolbar; any other

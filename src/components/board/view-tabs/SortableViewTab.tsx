@@ -4,9 +4,10 @@ import { defaultAnimateLayoutChanges, useSortable, type AnimateLayoutChanges } f
 import { CSS } from "@dnd-kit/utilities";
 import { MoreDotsIcon } from "@/icons/workspace-icons";
 import { PinIcon } from "@/icons/board-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import InlineTitleEditor from "../InlineTitleEditor";
 import type { BoardViewTabItem } from "../BoardViewTabs";
-import { VIEW_TAB_PADDING_CLASS, ViewTabIcon, ViewTabLabel, hasViewTabGlyph, viewTabIconColorClass } from "./ViewTabFace";
+import { ViewTabIcon, ViewTabLabel, hasViewTabGlyph, isViewTabIconAccent } from "./ViewTabFace";
 
 /** Slide timing shared by every tab that moves, whether by dragging or by the "Reorder" menu. */
 export const VIEW_TAB_TRANSITION = { duration: 240, easing: "cubic-bezier(0.25, 1, 0.5, 1)" };
@@ -22,6 +23,8 @@ export type SortableViewTabProps = {
   tab: BoardViewTabItem;
   is_active: boolean;
   is_editing: boolean;
+  /** Whether this tab's "..." menu is the one open, kept highlighted while it is. */
+  is_menu_open?: boolean;
   /** Turns dragging off (no reorder handler, or the tab is being renamed). */
   is_drag_disabled: boolean;
   /** Deep link of the tab. When set, the label is a real link, so Ctrl/Cmd click or middle click opens it in a new browser tab. */
@@ -51,6 +54,7 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
   tab,
   is_active,
   is_editing,
+  is_menu_open = false,
   is_drag_disabled,
   href,
   has_menu,
@@ -98,14 +102,7 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
     onSelect();
   };
 
-  // While carried, the tab lifts above its neighbors as a white card with an accent
-  // outline and a soft shadow, the look of a dragged label in Edit Labels.
-  const state_class = isDragging
-    ? "z-10 rounded-[4px] border-transparent bg-shell-panel shadow-[0_6px_20px_rgba(0,0,0,0.2)] outline outline-1 -outline-offset-1 outline-boardtree-accent"
-    : is_active
-      ? "border-boardtree-accent"
-      : "rounded-t-[4px] border-transparent transition-colors hover:bg-shell-hover";
-
+  const state = isDragging ? "dragging" : is_active ? "active" : "idle";
   const label_content = <ViewTabLabel tab={tab} />;
 
   return (
@@ -116,29 +113,32 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
       onMouseEnter={(event) => onHoverStart(event.currentTarget)}
       onMouseLeave={onHoverEnd}
       data-view-tab-id={tab.id}
-      className={`group relative -mb-px flex-none touch-none select-none border-b-2 ${VIEW_TAB_PADDING_CLASS} ${state_class} ${
-        is_drag_disabled ? "" : "cursor-grab active:cursor-grabbing"
-      }`}
+      data-state={state}
+      data-has-menu={has_menu}
+      data-draggable={!is_drag_disabled}
+      className="vt-tab"
     >
       {tab.pinned && (
-        <span className="flex flex-none items-center text-shell-text-faint" aria-label="Pinned">
-          <PinIcon size={11} />
+        <span className="vt-tab-badge" aria-label="Pinned">
+          <PinIcon size={12} />
         </span>
       )}
 
       {!hasViewTabGlyph(tab) ? null : can_change_emoji ? (
-        <button
-          ref={emojiButtonRef}
-          type="button"
-          aria-label="Change tab emoji"
-          title="Change icon"
-          onClick={onOpenEmojiPicker}
-          className={`flex flex-none items-center ${viewTabIconColorClass(tab)}`}
-        >
-          <ViewTabIcon tab={tab} />
-        </button>
+        <PortalTooltip content="Change icon">
+          <button
+            ref={emojiButtonRef}
+            type="button"
+            aria-label="Change tab emoji"
+            onClick={onOpenEmojiPicker}
+            className="vt-tab-glyph"
+            data-accent={isViewTabIconAccent(tab)}
+          >
+            <ViewTabIcon tab={tab} />
+          </button>
+        </PortalTooltip>
       ) : (
-        <span className={`flex flex-none items-center ${viewTabIconColorClass(tab)}`}>
+        <span className="vt-tab-glyph" data-accent={isViewTabIconAccent(tab)}>
           <ViewTabIcon tab={tab} />
         </span>
       )}
@@ -147,7 +147,7 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
         <InlineTitleEditor
           value={tab.label}
           aria_label="Tab name"
-          className="w-[120px] text-board-nav"
+          className="w-[140px] text-board-nav"
           onCommit={onCommitRename}
           onCancel={onCancelRename}
         />
@@ -161,7 +161,7 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
           onKeyDown={onDragKeyDown}
           onClick={handleLinkClick}
           onDoubleClick={onStartRename}
-          className="flex items-center gap-1 whitespace-nowrap text-board-nav text-shell-text outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-brand-500/60"
+          className="vt-tab-label"
         >
           {label_content}
         </a>
@@ -174,26 +174,26 @@ const SortableViewTab: React.FC<SortableViewTabProps> = ({
           onKeyDown={onDragKeyDown}
           onClick={onSelect}
           onDoubleClick={onStartRename}
-          className="flex items-center gap-1 whitespace-nowrap text-board-nav text-shell-text outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-brand-500/60"
+          className="vt-tab-label"
         >
           {label_content}
         </button>
       )}
 
       {has_menu && (
-        <button
-          ref={menuButtonRef}
-          type="button"
-          aria-label="Tab options"
-          onClick={onOpenMenu}
-          className={
-            is_active
-              ? "flex flex-none items-center text-shell-text-muted"
-              : "flex flex-none items-center text-shell-text-muted opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
-          }
-        >
-          <MoreDotsIcon size={12} />
-        </button>
+        <PortalTooltip content="View options">
+          <button
+            ref={menuButtonRef}
+            type="button"
+            aria-label="Tab options"
+            aria-haspopup="menu"
+            aria-expanded={is_menu_open}
+            onClick={onOpenMenu}
+            className="vt-tab-menu-button"
+          >
+            <MoreDotsIcon size={14} />
+          </button>
+        </PortalTooltip>
       )}
     </div>
   );
