@@ -1,134 +1,46 @@
 "use client";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import { useGlobalSearch } from "@/hooks/useGlobalSearch";
+import useRecentBoards from "@/hooks/useRecentBoards";
 import { useShortcutLabel } from "@/hooks/useShortcutLabel";
 import { onShellPanelOpen, openSearchEverything } from "./shell-events";
-import WorkspaceBadge from "./WorkspaceBadge";
-import { buildBoardPath, BOARD_ROUTE_BASE } from "@/components/workspace-nav/helpers";
-import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import GlobalSearchOptionRow from "@/components/global-search/GlobalSearchOptionRow";
 import {
-  BoardGridIcon,
-  CloseIcon,
-  DashboardIcon,
-  FileIcon,
-  LockIcon,
-  SearchIcon,
-  WorkflowIcon,
-  type IconComponent,
-} from "@/icons/workspace-icons";
-import { GLOBAL_SEARCH_MIN_LENGTH, type GlobalSearchResults, type SearchAssetType } from "@/types/search";
+  buildRecentOptions,
+  buildSearchOptions,
+  SECTION_LABELS,
+  SECTION_ORDER,
+  type SearchOption,
+} from "@/components/global-search/searchOptions";
+import { AlertCircleIcon, ArrowRightIcon, CloseIcon, SearchIcon } from "@/icons/workspace-icons";
+import { GLOBAL_SEARCH_MIN_LENGTH } from "@/types/search";
+import "@/components/global-search/global-search.scss";
 
-type SearchSection = "boards" | "items" | "workspaces";
-
-type SearchOption = {
-  key: string;
-  section: SearchSection;
-  href: string;
-  label: string;
-  secondary: string;
-  leading: React.ReactNode;
-  is_private?: boolean;
+type StatusMessage = {
+  title: string;
+  text: string;
+  tone?: "error";
+  show_scopes?: boolean;
 };
 
-const SECTION_ORDER: SearchSection[] = ["boards", "items", "workspaces"];
+const SEARCH_SCOPES = ["Boards", "Docs", "Items", "Workspaces"];
+const SKELETON_ROWS = [62, 48, 70];
 
-const SECTION_LABELS: Record<SearchSection, string> = {
-  boards: "Boards and docs",
-  items: "Items",
-  workspaces: "Workspaces",
-};
-
-const ASSET_TYPE_ICONS: Record<SearchAssetType, IconComponent> = {
-  board: BoardGridIcon,
-  doc: FileIcon,
-  dashboard: DashboardIcon,
-  workflow: WorkflowIcon,
-};
-
-const ASSET_TYPE_LABELS: Record<SearchAssetType, string> = {
-  board: "Board",
-  doc: "Doc",
-  dashboard: "Dashboard",
-  workflow: "Workflow",
-};
-
-const leading_box_class = "flex h-6 w-6 flex-none items-center justify-center text-shell-text-secondary";
-
-/** Wraps the first case-insensitive occurrence of `term` in `text` so the match stands out. */
-const HighlightedText: React.FC<{ text: string; term: string }> = ({ text, term }) => {
-  const match_index = term ? text.toLowerCase().indexOf(term.toLowerCase()) : -1;
-  if (match_index === -1) return <>{text}</>;
-
-  const match_end = match_index + term.length;
-  return (
-    <>
-      {text.slice(0, match_index)}
-      <mark className="bg-transparent font-semibold text-brand-500">{text.slice(match_index, match_end)}</mark>
-      {text.slice(match_end)}
-    </>
-  );
-};
-
-/** Flattens the grouped API payload into one ordered list, so keyboard navigation can walk every section. */
-const buildSearchOptions = (results: GlobalSearchResults): SearchOption[] => {
-  const boards: SearchOption[] = results.boards.map((board) => {
-    const AssetIcon = ASSET_TYPE_ICONS[board.asset_type] ?? BoardGridIcon;
-    const secondary_parts = [board.asset_type === "board" ? null : ASSET_TYPE_LABELS[board.asset_type], board.workspace.name];
-
-    return {
-      key: `board-${board.id}`,
-      section: "boards",
-      href: buildBoardPath(board.id),
-      label: board.label,
-      secondary: secondary_parts.filter(Boolean).join(" · "),
-      leading: (
-        <span className={leading_box_class}>
-          <AssetIcon size={15} />
-        </span>
-      ),
-      is_private: board.board_type === "private",
-    };
-  });
-
-  const items: SearchOption[] = results.items.map((item) => ({
-    key: `item-${item.id}`,
-    section: "items",
-    href: `${BOARD_ROUTE_BASE}/${item.board.id}/pulses/${item.id}?view_id=${item.view_id}`,
-    label: item.name,
-    secondary: [item.is_subitem && item.parent_name ? `Subitem of ${item.parent_name}` : null, item.board.label, item.workspace.name]
-      .filter(Boolean)
-      .join(" · "),
-    leading: (
-      <span className={leading_box_class}>
-        <span className="h-1.5 w-1.5 rounded-full bg-shell-text-muted" />
-      </span>
-    ),
-  }));
-
-  const workspaces: SearchOption[] = results.workspaces.map((workspace) => ({
-    key: `workspace-${workspace.id}`,
-    section: "workspaces",
-    href: buildWorkspaceManagePath(workspace.id),
-    label: workspace.name,
-    secondary: "Workspace",
-    leading: (
-      <WorkspaceBadge
-        workspace={{ mono: workspace.mono, color: workspace.color, avatar_url: workspace.avatar_url ?? undefined, is_home: false }}
-        size={24}
-      />
-    ),
-  }));
-
-  return [...boards, ...items, ...workspaces];
+const formatVisit = (iso: string): string => {
+  const visited_at = new Date(iso);
+  return Number.isNaN(visited_at.getTime()) ? "" : formatDistanceToNow(visited_at, { addSuffix: true });
 };
 
 /**
  * The top bar's "Search for anything..." box. A typeahead over boards, docs,
- * items and workspaces backed by `GET /api/search` (see `useGlobalSearch`).
+ * items and workspaces backed by `GET /api/search` (see `useGlobalSearch`),
+ * which suggests recently visited boards before the user types.
  * Implements the ARIA combobox pattern: arrow keys move through the results,
  * Enter opens the highlighted one, Escape closes, and Ctrl/Cmd+K focuses the
- * box from anywhere in the app.
+ * box from anywhere in the app. Styles live in `global-search.scss`.
  */
 const GlobalSearch: React.FC = () => {
   const router = useRouter();
@@ -142,7 +54,13 @@ const GlobalSearch: React.FC = () => {
   const shortcut_label = useShortcutLabel();
 
   const trimmed_query = query.trim();
-  const options = useMemo(() => buildSearchOptions(results), [results]);
+  const is_query_empty = trimmed_query === "";
+  const { boards: recent_boards, is_loading: is_recent_loading } = useRecentBoards(is_open && is_query_empty);
+
+  const options = useMemo(
+    () => (is_query_empty ? buildRecentOptions(recent_boards, formatVisit) : buildSearchOptions(results)),
+    [is_query_empty, recent_boards, results]
+  );
   const has_options = options.length > 0;
   // Results can shrink between responses, so clamp instead of resetting in an effect.
   const safe_active_index = options.length === 0 ? -1 : Math.min(active_index, options.length - 1);
@@ -232,16 +150,14 @@ const GlobalSearch: React.FC = () => {
         if (is_open && safe_active_index >= 0) {
           event.preventDefault();
           selectOption(options[safe_active_index]);
-        } else if (trimmed_query !== "") {
+        } else if (!is_query_empty) {
           event.preventDefault();
           openFullSearch();
         }
         break;
       case "Escape":
         event.preventDefault();
-        if (is_open && query === "") {
-          closeAndReset();
-        } else if (is_open) {
+        if (is_open && query !== "") {
           setIsOpen(false);
         } else {
           closeAndReset();
@@ -253,31 +169,48 @@ const GlobalSearch: React.FC = () => {
     }
   };
 
-  const renderStatusMessage = () => {
-    if (trimmed_query === "") {
-      return "Search boards, docs, items and workspaces.";
+  const resolveStatusMessage = (): StatusMessage | null => {
+    if (is_query_empty) {
+      if (has_options || is_recent_loading) return null;
+      return {
+        title: "Search across your account",
+        text: "Find boards, docs, items and workspaces by name.",
+        show_scopes: true,
+      };
     }
     if (!is_searchable) {
-      return `Keep typing, at least ${GLOBAL_SEARCH_MIN_LENGTH} characters are needed.`;
+      return {
+        title: "Keep typing",
+        text: `Type at least ${GLOBAL_SEARCH_MIN_LENGTH} characters to see results.`,
+      };
     }
     if (has_error) {
-      return "Search is unavailable right now. Please try again.";
+      return {
+        title: "Search is unavailable right now",
+        text: "Something went wrong on our side. Please try again in a moment.",
+        tone: "error",
+      };
     }
     if (is_empty_result) {
-      return `No results for "${trimmed_query}".`;
-    }
-    if (options.length === 0) {
-      return "Searching...";
+      return {
+        title: `No results for "${trimmed_query}"`,
+        text: "Check the spelling, or open Search Everything to also look through updates, files and people.",
+      };
     }
     return null;
   };
 
-  const status_message = renderStatusMessage();
+  const status_message = resolveStatusMessage();
+  const is_first_search = !is_query_empty && is_searchable && !has_options && !status_message;
+  const is_recent_first_load = is_query_empty && !has_options && is_recent_loading;
+  const show_skeleton = is_first_search || is_recent_first_load;
 
   return (
-    <div ref={container_ref} className="relative w-full max-w-[520px]">
-      <div className="flex w-full items-center gap-2.5 rounded-[10px] border border-shell-border bg-shell-hover px-3.5 py-2 text-shell-text-muted transition-colors hover:bg-shell-hover-strong focus-within:border-brand-500 focus-within:bg-shell-surface">
-        <SearchIcon size={15} className="flex-none" />
+    <div ref={container_ref} className="global-search">
+      <div className="global-search__field">
+        <span className="global-search__field-icon">
+          <SearchIcon size={16} />
+        </span>
         <input
           ref={input_ref}
           type="text"
@@ -295,101 +228,137 @@ const GlobalSearch: React.FC = () => {
           aria-controls={is_open && has_options ? list_id : undefined}
           aria-autocomplete="list"
           aria-activedescendant={is_open && has_options ? active_option_id : undefined}
-          className="min-w-0 flex-1 bg-transparent text-[13.5px] text-shell-text placeholder:text-shell-text-muted focus:outline-none"
+          className="global-search__input"
         />
         {is_loading ? (
-          <span
-            className="h-3.5 w-3.5 flex-none animate-spin rounded-full border-2 border-shell-border-strong border-t-brand-500"
-            aria-hidden="true"
-          />
+          <span className="global-search__spinner" aria-hidden="true" />
         ) : query ? (
-          <button
-            type="button"
-            onClick={() => {
-              resetSearch();
-              input_ref.current?.focus();
-            }}
-            aria-label="Clear search"
-            className="flex flex-none items-center text-shell-text-faint hover:text-shell-text"
-          >
-            <CloseIcon size={12} />
-          </button>
+          <PortalTooltip content="Clear search" placement="bottom">
+            <button
+              type="button"
+              onClick={() => {
+                resetSearch();
+                setActiveIndex(0);
+                input_ref.current?.focus();
+              }}
+              aria-label="Clear search"
+              className="global-search__clear"
+            >
+              <CloseIcon size={12} />
+            </button>
+          </PortalTooltip>
         ) : (
-          <kbd className="hidden flex-none rounded border border-shell-border-strong px-1.5 py-0.5 font-sans text-[10.5px] text-shell-text-muted sm:block">
-            {shortcut_label}
-          </kbd>
+          <PortalTooltip content={`Press ${shortcut_label} to search from anywhere`} placement="bottom">
+            <kbd className="global-search__kbd global-search__shortcut">{shortcut_label}</kbd>
+          </PortalTooltip>
         )}
       </div>
 
       {is_open && (
-        <div className="shell-scrollbar absolute left-0 right-0 top-full z-[70] mt-2 max-h-[min(70vh,480px)] overflow-y-auto rounded-xl border border-shell-border-strong bg-shell-panel p-1.5 shadow-lg">
-          {status_message && <p className="px-3 py-3 text-[13px] text-shell-text-muted">{status_message}</p>}
-
-          {has_options && (
-            <div id={list_id} role="listbox" aria-label="Search results">
-              {SECTION_ORDER.map((section) => {
-                const section_options = options.filter((option) => option.section === section);
-                if (section_options.length === 0) return null;
-    
-                return (
-                  <div
-                    key={section}
-                    role="group"
-                    aria-label={SECTION_LABELS[section]}
-                    className={is_loading ? "opacity-60 transition-opacity" : "transition-opacity"}
-                  >
-                    <div className="px-3 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-shell-text-muted">
-                      {SECTION_LABELS[section]}
-                    </div>
-                    {section_options.map((option) => {
-                      const option_index = options.indexOf(option);
-                      const is_active = option_index === safe_active_index;
-    
-                      return (
-                        <div
-                          key={option.key}
-                          id={getOptionId(option_index)}
-                          role="option"
-                          aria-selected={is_active}
-                          // Keep focus on the input so the click doesn't blur and close the list first.
-                          onMouseDown={(event) => event.preventDefault()}
-                          onClick={() => selectOption(option)}
-                          onMouseEnter={() => setActiveIndex(option_index)}
-                          className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 ${
-                            is_active ? "bg-shell-hover-strong" : ""
-                          }`}
-                        >
-                          {option.leading}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate text-[13.5px] text-shell-text">
-                              <HighlightedText text={option.label} term={trimmed_query} />
-                            </span>
-                            <span className="block truncate text-[12px] text-shell-text-muted">{option.secondary}</span>
-                          </span>
-                          {option.is_private && (
-                            <span className="flex-none text-shell-text-muted" title="Private board">
-                              <LockIcon size={12} />
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
+        <div className="global-search__panel">
+          <div className="global-search__scroll shell-scrollbar">
+            {status_message && (
+              <div className="global-search__message">
+                <span className="global-search__message-icon" data-tone={status_message.tone}>
+                  {status_message.tone === "error" ? <AlertCircleIcon size={18} /> : <SearchIcon size={18} />}
+                </span>
+                <p className="global-search__message-title">{status_message.title}</p>
+                <p className="global-search__message-text">{status_message.text}</p>
+                {status_message.show_scopes && (
+                  <div className="global-search__scopes">
+                    {SEARCH_SCOPES.map((scope) => (
+                      <span key={scope} className="global-search__scope">
+                        {scope}
+                      </span>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          <button
-            type="button"
-            // Keep focus on the input so the click doesn't blur and close the list first.
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={openFullSearch}
-            className="mt-1 flex w-full items-center gap-2.5 rounded-lg border-t border-shell-border px-3 py-2.5 text-left text-[13px] text-brand-500 hover:bg-shell-hover-strong"
-          >
-            <SearchIcon size={14} className="flex-none" />
-            <span className="truncate">{trimmed_query ? `See all results for "${trimmed_query}"` : "Open Search Everything"}</span>
-          </button>
+            {show_skeleton && (
+              <div aria-hidden="true">
+                {SKELETON_ROWS.map((width) => (
+                  <div key={width} className="global-search__skeleton">
+                    <span className="global-search__skeleton-bar" data-shape="icon" />
+                    <span className="flex flex-1 flex-col gap-1.5">
+                      <span className="global-search__skeleton-bar" style={{ width: `${width}%` }} />
+                      <span className="global-search__skeleton-bar" style={{ width: `${width / 2}%`, height: 8 }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {has_options && (
+              <div id={list_id} role="listbox" aria-label={is_query_empty ? "Recently visited" : "Search results"}>
+                {SECTION_ORDER.map((section) => {
+                  const section_options = options.filter((option) => option.section === section);
+                  if (section_options.length === 0) return null;
+
+                  return (
+                    <div
+                      key={section}
+                      role="group"
+                      aria-label={SECTION_LABELS[section]}
+                      className="global-search__section"
+                      data-stale={is_loading || undefined}
+                    >
+                      <div className="global-search__section-header" aria-hidden="true">
+                        <span>{SECTION_LABELS[section]}</span>
+                        {section !== "recent" && (
+                          <span className="global-search__section-count">{section_options.length}</span>
+                        )}
+                      </div>
+                      {section_options.map((option) => {
+                        const option_index = options.indexOf(option);
+                        return (
+                          <GlobalSearchOptionRow
+                            key={option.key}
+                            option={option}
+                            option_id={getOptionId(option_index)}
+                            term={trimmed_query}
+                            is_active={option_index === safe_active_index}
+                            onSelect={() => selectOption(option)}
+                            onHover={() => setActiveIndex(option_index)}
+                          />
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="global-search__footer">
+            <button
+              type="button"
+              // Keep focus on the input so the click doesn't blur and close the list first.
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={openFullSearch}
+              className="global-search__see-all"
+            >
+              <SearchIcon size={14} className="flex-none" />
+              <span>{is_query_empty ? "Open Search Everything" : `See all results for "${trimmed_query}"`}</span>
+              <ArrowRightIcon size={14} className="flex-none" />
+            </button>
+            <div className="global-search__legend" aria-hidden="true">
+              <span className="global-search__legend-entry">
+                <kbd className="global-search__kbd">↑</kbd>
+                <kbd className="global-search__kbd">↓</kbd>
+                Navigate
+              </span>
+              <span className="global-search__legend-entry">
+                <kbd className="global-search__kbd">↵</kbd>
+                Open
+              </span>
+              <span className="global-search__legend-entry">
+                <kbd className="global-search__kbd">Esc</kbd>
+                Close
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
