@@ -435,17 +435,23 @@ button.vt-tab-glyph {
   color: var(--color-shell-text-muted);
   transition: background-color 120ms ease, opacity 120ms ease;
 
-  &:hover,
-  &[aria-expanded="true"] {
+  &:hover {
     background: var(--color-shell-hover-strong, var(--color-shell-hover));
     color: var(--color-shell-text);
+  }
+
+  // While its menu is open the button turns monday's light blue, with blue dots.
+  &[aria-expanded="true"] {
+    background: var(--vt-accent-soft);
+    color: var(--vt-accent);
   }
 
   @include vt-focus-ring;
 }
 
-// Only the active tab shows its "..." at rest, the others reveal it on hover or focus.
-.vt-tab:not([data-state="active"]) .vt-tab-menu-button:not([aria-expanded="true"]) {
+// Every tab's "..." shows only while the tab is hovered or focused, or while its menu is open.
+// Opacity rather than display keeps its space, so the tabs never shift when it appears.
+.vt-tab .vt-tab-menu-button:not([aria-expanded="true"]) {
   opacity: 0;
 }
 
@@ -1173,5 +1179,23 @@ button.vt-tab-glyph {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+// ── Tab "..." menu ───────────────────────────────────────────────────────────
+
+// Built on ActionMenu (action-menu.css): groups split by dividers, Reorder opens a side flyout on
+// hover. Only the type and sizing are set here, so it reads like the rest of the tab bar.
+.view-tab-menu {
+  font-family: var(--font-outfit);
+
+  .action-menu__item {
+    height: 36px;
+    gap: 10px;
+    padding: 0 10px;
+  }
+
+  .action-menu__divider {
+    margin: 6px 0;
   }
 }

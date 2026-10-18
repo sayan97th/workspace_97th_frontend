@@ -14,13 +14,11 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { restrictToHorizontalAxis, restrictToParentElement } from "@dnd-kit/modifiers";
-import AnchoredMenu from "@/components/ui/dropdown/AnchoredMenu";
-import type { MenuListItem } from "@/components/ui/dropdown/MenuItemList";
+import ActionMenu, { type ActionMenuItem, type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import CopyLinkModal from "@/components/ui/modal/CopyLinkModal";
 import {
   ChevronDownIcon,
-  ChevronRightIcon,
   DeleteIcon,
   DuplicateIcon,
   EyeIcon,
@@ -29,9 +27,7 @@ import {
   InfoIcon,
   LockIcon,
   MoreDotsIcon,
-  MoveToIcon,
   PlusIcon,
-  RefreshIcon,
   RenameIcon,
   ShareIcon,
   UnlockIcon,
@@ -188,6 +184,18 @@ const TAB_GAP = 2;
 const ADD_BUTTON_SPACE = 30 + TAB_GAP;
 /** How long the pointer has to rest on a tab before its info card opens. */
 const INFO_CARD_DELAY_MS = 550;
+/** The tab "..." menu, sized like monday's own view menu. */
+const MENU_WIDTH = 240;
+const SUBMENU_WIDTH = 220;
+const MENU_ICON_SIZE = 16;
+
+/** Up and down chevrons, the "Reorder" row's icon. */
+const ReorderIcon: React.FC = () => (
+  <svg width={MENU_ICON_SIZE} height={MENU_ICON_SIZE} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M5 6l3-3 3 3M5 10l3 3 3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** A press held at least this long is a grab, so releasing it doesn't open the tab even when it barely moved. */
 const LONG_PRESS_MS = 500;
 
@@ -428,8 +436,8 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
   const menu_tab = tabs.find((tab) => tab.id === menu_id) ?? null;
   const emoji_tab = tabs.find((tab) => tab.id === emoji_picker_id) ?? null;
 
-  /** Builds the "Reorder (for you only)" submenu, or `undefined` when there's nothing to reorder. */
-  const buildReorderSubmenu = (tab: BoardViewTabItem): MenuListItem[] | undefined => {
+  /** Builds the "Reorder (for you only)" submenu, or `undefined` when there's nothing to reorder. Rows have no icons, like monday's own. */
+  const buildReorderSubmenu = (tab: BoardViewTabItem): ActionMenuSection[] | undefined => {
     if (!onReorderPersonalTabs) return undefined;
     const index = shown_ids.indexOf(tab.id);
     if (index < 0) return undefined;
@@ -437,107 +445,119 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
     const is_last = index === shown_ids.length - 1;
     const moveTo = (target_index: number) => onReorderPersonalTabs(mergeReorderedIds(all_ids, moveId(shown_ids, tab.id, target_index)));
 
-    const items: MenuListItem[] =
-      shown_ids.length < 2
-        ? []
-        : [
-            { key: "move-back", label: "Move back", icon: <ChevronRightIcon className="-rotate-90" size={13} />, disabled: is_first, onClick: () => moveTo(index - 1) },
-            { key: "move-ahead", label: "Move ahead", icon: <ChevronRightIcon className="rotate-90" size={13} />, disabled: is_last, onClick: () => moveTo(index + 1) },
-            { key: "move-first", label: "Move to first", icon: <ChevronRightIcon className="-rotate-90" size={13} />, disabled: is_first, onClick: () => moveTo(0) },
-            { key: "move-last", label: "Move to last", icon: <ChevronRightIcon className="rotate-90" size={13} />, disabled: is_last, onClick: () => moveTo(shown_ids.length - 1) },
-          ];
-    if (onResetPersonalTabOrder) {
-      items.push({
-        key: "reset-order",
-        label: "Reset to default order",
-        icon: <RefreshIcon size={13} />,
-        disabled: !has_personal_order,
-        onClick: onResetPersonalTabOrder,
+    const sections: ActionMenuSection[] = [];
+    if (shown_ids.length >= 2) {
+      sections.push({
+        key: "move",
+        items: [
+          { key: "move-back", label: "Move back", disabled: is_first, onClick: () => moveTo(index - 1) },
+          { key: "move-ahead", label: "Move ahead", disabled: is_last, onClick: () => moveTo(index + 1) },
+          { key: "move-first", label: "Move to first", disabled: is_first, onClick: () => moveTo(0) },
+          { key: "move-last", label: "Move to last", disabled: is_last, onClick: () => moveTo(shown_ids.length - 1) },
+        ],
       });
     }
-    return items.length > 0 ? items : undefined;
+    if (onResetPersonalTabOrder) {
+      sections.push({
+        key: "reset",
+        items: [{ key: "reset-order", label: "Reset to default order", disabled: !has_personal_order, onClick: onResetPersonalTabOrder }],
+      });
+    }
+    return sections.length > 0 ? sections : undefined;
   };
 
-  /** Builds a tab's "..." menu items: a reduced set while the view is locked, matching the backend's edit guards. */
-  const buildMenuItems = (tab: BoardViewTabItem): MenuListItem[] => {
-    const items: MenuListItem[] = [];
+  /**
+   * Builds a tab's "..." menu, grouped the way monday.com groups it: Pin, then
+   * the view's own edits, then the viewer's personal choices, Reorder, and
+   * Delete last. Locked views get a reduced set, matching the backend's edit guards.
+   */
+  const buildMenuSections = (tab: BoardViewTabItem): ActionMenuSection[] => {
     const is_locked = Boolean(tab.is_locked);
     const is_primary = isPrimary(tab);
+    const pin_items: ActionMenuItem[] = [];
+    const edit_items: ActionMenuItem[] = [];
+    const personal_items: ActionMenuItem[] = [];
+    const reorder_items: ActionMenuItem[] = [];
+    const delete_items: ActionMenuItem[] = [];
+
+    if (onPinView) {
+      pin_items.push({ key: "pin", label: tab.pinned ? "Unpin view" : "Pin view", icon: <PinIcon size={MENU_ICON_SIZE} />, onClick: () => onPinView(tab.id) });
+    }
 
     if (onRenameView && !is_locked) {
-      items.push({ key: "rename", label: "Rename view", icon: <RenameIcon size={14} />, onClick: () => setEditingId(tab.id) });
+      edit_items.push({ key: "rename", label: "Rename view", icon: <RenameIcon size={MENU_ICON_SIZE} />, onClick: () => setEditingId(tab.id) });
     }
     if (onChangeDescription && !is_locked) {
-      items.push({
+      edit_items.push({
         key: "description",
         label: tab.description ? "Edit description" : "Add description",
-        icon: <InfoIcon size={14} />,
+        icon: <InfoIcon size={MENU_ICON_SIZE} />,
         onClick: () => setDescriptionId(tab.id),
       });
     }
     if (onChangeEmoji && !is_locked) {
-      items.push({
+      edit_items.push({
         key: "icon",
         label: tab.emoji ? "Change icon" : "Add icon",
-        icon: <ReactSmileyIcon size={14} />,
+        icon: <ReactSmileyIcon size={MENU_ICON_SIZE} />,
         onClick: () => setEmojiPickerId(tab.id),
       });
     }
-    if (onPinView) {
-      items.push({ key: "pin", label: tab.pinned ? "Unpin view" : "Pin view", icon: <PinIcon size={14} />, onClick: () => onPinView(tab.id) });
-    }
     if (onDuplicateView && !is_locked) {
-      items.push({ key: "duplicate", label: "Duplicate view", icon: <DuplicateIcon size={14} />, onClick: () => onDuplicateView(tab.id) });
+      edit_items.push({ key: "duplicate", label: "Duplicate view", icon: <DuplicateIcon size={MENU_ICON_SIZE} />, onClick: () => onDuplicateView(tab.id) });
     }
     if (getViewUrl) {
-      items.push({ key: "share", label: "Share view", icon: <ShareIcon size={14} />, onClick: () => setShareViewId(tab.id) });
-    }
-    if (onSetDefaultView && !(tab.is_default && is_primary)) {
-      items.push({
-        key: "default",
-        label: tab.is_default ? "Remove as my default view" : "Set as my default view",
-        icon: <HomeIcon size={14} />,
-        onClick: () => onSetDefaultView(tab.is_default ? null : tab.id),
-      });
+      edit_items.push({ key: "share", label: "Share view", icon: <ShareIcon size={MENU_ICON_SIZE} />, onClick: () => setShareViewId(tab.id) });
     }
     if (onLockView) {
-      items.push({
+      edit_items.push({
         key: "lock",
         label: is_locked ? "Unlock view" : "Lock view to restrict edits",
-        icon: is_locked ? <UnlockIcon size={14} /> : <LockIcon size={14} />,
+        icon: is_locked ? <UnlockIcon size={MENU_ICON_SIZE} /> : <LockIcon size={MENU_ICON_SIZE} />,
         onClick: () => onLockView(tab.id),
+      });
+    }
+
+    if (onSetDefaultView && !(tab.is_default && is_primary)) {
+      personal_items.push({
+        key: "default",
+        label: tab.is_default ? "Remove as my default view" : "Set as my default view",
+        icon: <HomeIcon size={MENU_ICON_SIZE} />,
+        onClick: () => onSetDefaultView(tab.is_default ? null : tab.id),
       });
     }
     if (onToggleHiddenView) {
       const is_last_visible = !tab.is_hidden && tabs.filter((other) => !other.is_hidden).length <= 1;
-      items.push({
+      personal_items.push({
         key: "hide",
         label: tab.is_hidden ? "Show view" : "Hide view for me",
-        icon: tab.is_hidden ? <EyeIcon size={14} /> : <EyeOffIcon size={14} />,
+        icon: tab.is_hidden ? <EyeIcon size={MENU_ICON_SIZE} /> : <EyeOffIcon size={MENU_ICON_SIZE} />,
         disabled: is_last_visible,
+        disabled_reason: is_last_visible ? "At least one view must stay visible" : undefined,
         onClick: () => onToggleHiddenView(tab.id),
       });
     }
-    const reorder_submenu = buildReorderSubmenu(tab);
-    if (reorder_submenu) {
-      items.push({
-        key: "reorder",
-        label: "Reorder (for you only)",
-        icon: <MoveToIcon size={14} />,
-        trailing: <ChevronRightIcon size={11} />,
-        onClick: () => {},
-        submenu: reorder_submenu,
-      });
-    }
-    items.push({ key: "manage", label: "Manage views", icon: <ViewsIcon size={14} />, onClick: () => setIsManageOpen(true) });
-    if (onDeleteView && !is_primary && !is_locked) {
-      items.push({ key: "delete", label: "Delete view", icon: <DeleteIcon size={14} />, danger: true, onClick: () => setPendingDeleteId(tab.id) });
+    personal_items.push({ key: "manage", label: "Manage views", icon: <ViewsIcon size={MENU_ICON_SIZE} />, onClick: () => setIsManageOpen(true) });
+
+    const reorder_sections = buildReorderSubmenu(tab);
+    if (reorder_sections) {
+      reorder_items.push({ key: "reorder", label: "Reorder (for you only)", icon: <ReorderIcon />, submenu_sections: reorder_sections });
     }
 
-    return items;
+    if (onDeleteView && !is_primary && !is_locked) {
+      delete_items.push({ key: "delete", label: "Delete view", icon: <DeleteIcon size={MENU_ICON_SIZE} />, onClick: () => setPendingDeleteId(tab.id) });
+    }
+
+    return [
+      { key: "pin", items: pin_items },
+      { key: "edit", items: edit_items },
+      { key: "personal", items: personal_items },
+      { key: "reorder", items: reorder_items },
+      { key: "delete", items: delete_items },
+    ].filter((section) => section.items.length > 0);
   };
 
-  const menu_items = menu_tab ? buildMenuItems(menu_tab) : [];
+  const menu_sections = menu_tab ? buildMenuSections(menu_tab) : [];
 
   return (
     <div ref={bar_ref} className="relative flex min-w-0 items-center gap-0.5 border-b border-shell-border">
@@ -698,13 +718,17 @@ const InteractiveBoardViewTabs: React.FC<InteractiveBoardViewTabsProps> = ({
         />
       )}
 
-      <AnchoredMenu
+      <ActionMenu
         key={menu_id ?? "closed"}
         anchor_el={menu_id !== null ? menu_button_refs.current[String(menu_id)] ?? null : null}
-        is_open={menu_tab !== null && menu_items.length > 0}
+        is_open={menu_tab !== null && menu_sections.length > 0}
         onClose={() => setMenuId(null)}
-        width={230}
-        items={menu_items}
+        aria_label={menu_tab ? `${menu_tab.label} view options` : "View options"}
+        width={MENU_WIDTH}
+        submenu_width={SUBMENU_WIDTH}
+        align="start"
+        class_name="view-tab-menu"
+        sections={menu_sections}
       />
 
       {onChangeDescription && (
