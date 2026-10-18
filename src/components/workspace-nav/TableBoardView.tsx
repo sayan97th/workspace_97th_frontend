@@ -157,6 +157,7 @@ import { boardInvitationService } from "@/services/board-invitation.service";
 import { boardDocService } from "@/services/board-doc.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
+import { downloadBlob } from "@/lib/download-blob";
 import { personalService } from "@/services/personal.service";
 import { peopleService } from "@/services/people.service";
 import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
@@ -3241,6 +3242,16 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       });
   };
 
+  /** Group menu's "Export to Excel", downloads only that group's items of the open tab. */
+  const handleExportTableGroup = (group_key: string) => {
+    const group = groups.find((g) => String(g.id) === group_key);
+    if (!group) return;
+    void boardOptionsService
+      .exportToExcel(board_id, view_tabs.active_view_id, group.id)
+      .then((blob) => downloadBlob(blob, `${`${board_label} ${group.name}`.replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_export.xlsx`))
+      .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't export the group. Please try again.")));
+  };
+
   /** "Delete group" is confirmed first (see `ConfirmActionModal` below), the group is only removed once the server has deleted it. */
   const handleConfirmDeleteTableGroup = async () => {
     if (!group_pending_delete) return;
@@ -3453,6 +3464,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onToggleGroupPriority: (group_key, is_priority) => patchTableGroup(group_key, { is_priority }, "Couldn't update the group. Please try again."),
       onMoveGroup: handleMoveTableGroup,
       onArchiveGroup: handleArchiveTableGroup,
+      onExportGroup: handleExportTableGroup,
       onRequestRemoveGroup: (group_key) => {
         const group = groups.find((g) => String(g.id) === group_key);
         if (group) setGroupPendingDelete(group);

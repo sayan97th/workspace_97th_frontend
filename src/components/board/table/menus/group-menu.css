@@ -1,0 +1,83 @@
+/*
+ * The board table's group "..." menu. The card, rows, dividers and submenus
+ * come from `action-menu.css`; this file only adds what is specific to group
+ * actions: icon accents and the "Change group color" swatch grid. Every color
+ * reads an `--action-menu-*` token (or a `--group-menu-*` one declared next
+ * to them), so dark mode only swaps tokens.
+ */
+
+.action-menu.group-menu {
+  --group-menu-priority: #fdab3d;
+  --group-menu-swatch-ring: #ffffff;
+  --group-menu-swatch-check: #ffffff;
+  --group-menu-swatch-outline: #0073ea;
+}
+
+html.dark .action-menu.group-menu {
+  --group-menu-priority: #ffcb00;
+  --group-menu-swatch-ring: #0f1c1c;
+  --group-menu-swatch-check: #ffffff;
+  --group-menu-swatch-outline: #4d9cff;
+}
+
+/* The "..." trigger keeps monday's light blue fill while its menu is open. */
+.group-menu-trigger[data-open="true"] {
+  background: #cce5ff;
+  color: #0060b9;
+}
+
+html.dark .group-menu-trigger[data-open="true"] {
+  background: rgba(77, 156, 255, 0.24);
+  color: #9ccaff;
+}
+
+.group-menu__icon--priority {
+  color: var(--group-menu-priority);
+}
+
+.group-menu__icon--flipped {
+  transform: rotate(180deg);
+}
+
+/* "Change group color" swatch grid. */
+.group-menu-palette {
+  display: grid;
+  grid-template-columns: repeat(6, 24px);
+  justify-content: space-between;
+  row-gap: 8px;
+}
+
+.group-menu-palette__swatch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--group-menu-swatch-check);
+  cursor: pointer;
+  transition: transform 90ms ease-out, box-shadow 90ms ease-out;
+}
+
+.group-menu-palette__swatch:hover {
+  transform: scale(1.12);
+}
+
+.group-menu-palette__swatch[data-current="true"] {
+  box-shadow: 0 0 0 2px var(--group-menu-swatch-ring), 0 0 0 4px var(--group-menu-swatch-outline);
+}
+
+.group-menu-palette__swatch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--group-menu-swatch-ring), 0 0 0 4px var(--action-menu-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .group-menu-palette__swatch {
+    transition: none;
+  }
+
+  .group-menu-palette__swatch:hover {
+    transform: none;
+  }
+}

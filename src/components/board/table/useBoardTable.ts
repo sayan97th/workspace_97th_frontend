@@ -336,6 +336,8 @@ export interface UseBoardTableConfig {
   onArchiveGroup?: (group_key: string) => void;
   /** Group menu's "Change group color", `color` is a `#rrggbb` value from `GROUP_PALETTE`. */
   onChangeGroupColor?: (group_key: string, color: string) => void;
+  /** Group menu's "Export to Excel", downloads only that group's items. The row is hidden when omitted (the standalone demo). */
+  onExportGroup?: (group_key: string) => void;
   /**
    * Group menu's "Move group" (top, up, down, bottom). `ordered_group_keys` is
    * the whole table order after the move, so the caller can persist the moved
@@ -2606,6 +2608,14 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     has_automations: Boolean(config_ref.current.onOpenAutomations),
   }), []);
 
+  /** Whether the group menu offers "Export to Excel", see `UseBoardTableConfig.onExportGroup`. */
+  const canExportGroup = useCallback(() => Boolean(config_ref.current.onExportGroup), []);
+
+  const exportGroup = useCallback((key: string) => {
+    setState((s) => ({ ...s, open_group_menu_key: null }));
+    config_ref.current.onExportGroup?.(key);
+  }, []);
+
   const openRowApp = useCallback((app: "integrations" | "automations") => {
     setState((s) => ({ ...s, open_row_menu_id: null }));
     if (app === "integrations") config_ref.current.onOpenIntegrations?.();
@@ -2774,6 +2784,8 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       openRowInNewTab,
       getRowApps,
       openRowApp,
+      canExportGroup,
+      exportGroup,
       openComments,
       openItem,
       requestGroupItems,
@@ -2792,7 +2804,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
-      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openRowInNewTab, getRowApps, openRowApp, openComments, openItem, requestGroupItems, undo, redo,
+      setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openRowInNewTab, getRowApps, openRowApp, canExportGroup, exportGroup, openComments, openItem, requestGroupItems, undo, redo,
     ]
   );
 
@@ -2811,7 +2823,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     "openPicker", "closePicker", "setPickerQuery", "openCellMenu", "closeCellMenu",
     "openOwnerMenu", "closeOwnerMenu", "setPeopleQuery", "openLabelEditor", "closeLabelEditor",
     "openConfigEditor", "closeConfigEditor", "openTagEditor", "closeTagEditor", "setTagQuery", "ensureConnectOptions", "fetchConnectedBoards", "openLinkedItem", "openBoardItem", "submitFeedback", "closeLinkedItem", "fetchLinkedItem",
-    "closeAllOverlays", "copyRowLink", "openRowInNewTab", "getRowApps", "openComments", "openItem", "requestGroupItems",
+    "closeAllOverlays", "copyRowLink", "openRowInNewTab", "getRowApps", "canExportGroup", "exportGroup", "openComments", "openItem", "requestGroupItems",
     "setSort", "collapseAllGroups", "expandAllGroups", "setAllSubsOpen",
   ]);
 
