@@ -140,12 +140,15 @@ export function useBoardToolbar<TRow>(config: BoardToolbarConfig<TRow>): BoardTo
   const focusSearch = () => setIsSearchFocused(true);
   const blurSearch = () => setIsSearchFocused(false);
 
+  // An empty list means "search every column", so a toggle starts from the full list and never empties it,
+  // which would silently turn the last unchecked column back into "all columns".
   const toggleSearchColumnId = (column_id: string) =>
-    setSearchColumnIds((current) =>
-      current.includes(column_id)
-        ? current.filter((id) => id !== column_id)
-        : [...current, column_id]
-    );
+    setSearchColumnIds((current) => {
+      const selected_ids = current.length ? current : config.columns.map((column) => column.id);
+      if (!selected_ids.includes(column_id)) return [...selected_ids, column_id];
+      const next_ids = selected_ids.filter((id) => id !== column_id);
+      return next_ids.length ? next_ids : current;
+    });
   const setAllSearchColumns = (selected: boolean) =>
     setSearchColumnIds(selected ? config.columns.map((column) => column.id) : []);
 

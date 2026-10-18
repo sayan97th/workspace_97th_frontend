@@ -1,0 +1,239 @@
+// Board toolbar "Search this board" box, styled after monday.com.
+//
+// The box lives inside the board chrome (`board-chrome-theme`), so it reads
+// the `--color-boardtree-*` tokens that `monday-palette.css` repaints in light
+// mode and `globals.css` tunes for dark mode. Nothing here hard codes a color
+// per theme. The "Choose columns to search" panel is portaled to the body and
+// is styled by `filter-panel.css` and `toolbar-panel.css`, like the Hide panel.
+
+$box-height: 32px;
+$width-idle: 240px;
+$width-expanded: 320px;
+$ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
+
+.board-search {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  width: $width-idle;
+  max-width: 100%;
+  height: $box-height;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--color-boardtree-control-border);
+  border-radius: 4px;
+  background: var(--color-boardtree-surface);
+  color: var(--color-boardtree-text);
+  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+  transition:
+    width 200ms $ease-out,
+    border-color 120ms ease;
+
+  &:hover {
+    border-color: var(--color-boardtree-text);
+  }
+
+  &[data-expanded="true"] {
+    width: $width-expanded;
+    border-color: var(--color-boardtree-accent);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: board-search-enter 160ms $ease-out;
+  }
+
+  &__icon {
+    display: flex;
+    flex: none;
+    color: var(--color-boardtree-text-secondary);
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    color: var(--color-boardtree-text);
+    font: inherit;
+    outline: none;
+
+    &::placeholder {
+      color: var(--color-boardtree-text-secondary);
+    }
+  }
+
+  // "2 of 5" match counter with its previous and next arrows.
+  &__matches {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 2px;
+  }
+
+  &__count {
+    padding: 0 4px;
+    color: var(--color-boardtree-text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    &[data-empty="true"] {
+      color: var(--color-boardtree-danger, #d83a52);
+    }
+  }
+
+  &__icon-button {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-boardtree-text-secondary);
+    cursor: pointer;
+    transition:
+      background-color 120ms ease,
+      color 120ms ease;
+
+    &:hover:not(:disabled) {
+      background: var(--color-boardtree-hover-strong);
+      color: var(--color-boardtree-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-boardtree-accent);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+
+    &[aria-expanded="true"] {
+      background: var(--color-boardtree-hover-strong);
+      color: var(--color-boardtree-text);
+    }
+
+    // Some columns are left out of the search, like a filter that is applied.
+    &[data-active="true"] {
+      color: var(--color-boardtree-accent);
+    }
+  }
+
+  // Recent searches list under the box, shown while the box is focused and empty.
+  &__recent {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: -1px;
+    z-index: 210;
+    width: calc(100% + 2px);
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--color-boardtree-surface);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: board-search-enter 140ms ease-out;
+    }
+  }
+
+  &__recent-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 8px 6px;
+    color: var(--color-boardtree-text-secondary);
+    font-size: 13px;
+  }
+
+  &__recent-clear {
+    padding: 2px 6px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-boardtree-text-secondary);
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-boardtree-hover-strong);
+      color: var(--color-boardtree-text);
+    }
+  }
+
+  &__recent-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 32px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--color-boardtree-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-boardtree-hover-strong);
+    }
+
+    svg {
+      flex: none;
+      color: var(--color-boardtree-text-faint);
+    }
+  }
+
+  &__recent-label {
+    overflow: hidden;
+    min-width: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+html.dark .board-search__recent {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes board-search-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Narrow screens: the box fills the toolbar row instead of pushing it wider.
+@media (max-width: 600px) {
+  .board-search,
+  .board-search[data-expanded="true"] {
+    width: 100%;
+    min-width: 180px;
+  }
+}
+
+// "Also search in" section of the columns panel, under the column list.
+.search-panel__scope {
+  padding: 8px 16px 12px;
+  border-top: 1px solid var(--filter-panel-divider);
+}
+
+.search-panel__toggle-row {
+  justify-content: space-between;
+}

@@ -140,7 +140,7 @@ function BoardToolbar<TRow>({
           align="start"
         />
 
-        <SearchControl toolbar={toolbar} />
+        <SearchControl toolbar={toolbar} onSubmitFeedback={onSubmitFeedback} />
         <PersonControl toolbar={toolbar} view_actions={view_actions} />
         <FilterControl toolbar={toolbar} />
         <StarredFilterControl toolbar={toolbar} />
