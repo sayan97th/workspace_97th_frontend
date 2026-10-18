@@ -14,7 +14,7 @@ export type CopyLinkModalProps = {
 /**
  * Generic "share this link" dialog: a title/description, a read-only link
  * field and a Copy button with a transient "Copied" state. Mirrors the
- * "Invite with link" section of {@link "@/layout/InviteMembersModal"} but
+ * "Invite with link" section of {@link "@/components/invitations/invite-members/InviteLinkPanel"} but
  * factored out as its own small modal so any future "share this" feature
  * (a view, a board, a report, …) can reuse it instead of re-implementing the
  * copy-to-clipboard dance.

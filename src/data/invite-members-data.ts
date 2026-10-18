@@ -1,8 +1,8 @@
 /**
- * Static data backing the "Invite members" modal. Mirrors the approved 97
- * Workspace design. Roles and the placeholder invite link are intentionally
- * decoupled from the modal component so the same options can later be fed from
- * the API without touching the presentation layer.
+ * Static data backing the top bar "Invite members" dialog
+ * (`components/invitations/invite-members`). Roles are kept out of the
+ * component so the same options can later be fed from the API without
+ * touching the presentation layer.
  */
 
 /** Selectable permission levels an invited teammate can be granted. */
@@ -38,8 +38,5 @@ export const invite_roles: InviteRole[] = [
 /** Role selected by default when the invite modal is opened. */
 export const invite_default_role: InviteRoleId = "member";
 
-/** Placeholder shown in the multi-email input. */
-export const invite_email_placeholder = "name@company.com, name@company.com ...";
-
 /** Placeholder shown in the optional message textarea. */
-export const invite_message_placeholder = "Add context for new members";
+export const invite_message_placeholder = "Say hi, or tell them what they will work on";

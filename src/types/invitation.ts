@@ -71,7 +71,7 @@ export type WorkspaceInvitationListQuery = {
 /**
  * A platform user offered up by the "pool of users" autocomplete on the
  * invite-member form, from `GET /api/workspaces/{slug}/invitations/available-users`.
- * Picking one just fills in their email — sending the invitation still goes
+ * Picking one just fills in their email, sending the invitation still goes
  * through the normal {@link WorkspaceInvitation} flow.
  */
 export type WorkspaceInvitationCandidate = {
@@ -79,6 +79,9 @@ export type WorkspaceInvitationCandidate = {
   full_name: string;
   email: string;
   profile_photo_url: string | null;
+  job_title: string | null;
+  /** Already has an open invitation to this workspace, sending again resends it. */
+  has_pending_invitation: boolean;
 };
 
 /** One email that was NOT invited, and why. */
@@ -93,6 +96,8 @@ export type InviteWorkspaceMembersResult = {
   message: string;
   data: WorkspaceInvitation[];
   skipped: SkippedInvitation[];
+  /** Addresses that already had an open invitation, sent again with a fresh expiry. */
+  resent_emails?: string[];
 };
 
 /** The public preview shown on the accept-invitation page, from `GET /api/auth/invitations/{code}`. */

@@ -1,0 +1,627 @@
+/*
+ * Top bar "Invite members" dialog. Built on the shared invitations kit (`--inv-*` tokens,
+ * `.inv-modal`, `.inv-role-option`, `.inv-suggestions` in invitations.scss), so it follows the
+ * same Figtree body / Poppins title pairing and swaps colors for dark mode on its own. This file
+ * only adds the pieces the other invite dialogs do not have: the chip field, the link card and
+ * the per address result list.
+ */
+
+// ── Dialog frame ─────────────────────────────────────────────────────────────
+
+.inv-invite-modal {
+  display: flex;
+  max-width: 600px;
+  flex-direction: column;
+  overflow: hidden;
+
+  .inv-empty-icon[data-tone] {
+    background: var(--inv-tone-bg);
+    color: var(--inv-tone-text);
+  }
+}
+
+// The body scrolls on its own so the footer buttons always stay in view.
+.inv-invite-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  padding-bottom: 4px;
+}
+
+.inv-invite-section {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.inv-invite-label-row,
+.inv-invite-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.inv-invite-label-row {
+  justify-content: space-between;
+}
+
+// A legend does not take flex on its own in every browser, float + width keeps it on one row.
+.inv-invite-legend {
+  float: left;
+  width: 100%;
+
+  + * {
+    clear: both;
+  }
+}
+
+.inv-invite-counter {
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--inv-primary);
+  }
+
+  &[data-full="true"] {
+    background: var(--inv-warning-bg);
+    color: var(--inv-warning-text);
+  }
+}
+
+.inv-invite-hint {
+  display: flex;
+  min-height: 18px;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--inv-text-faint);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.inv-invite-hint-error {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-danger-text);
+}
+
+.inv-invite-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+
+  &::before,
+  &::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: var(--inv-divider);
+  }
+}
+
+.inv-invite-footer {
+  flex: none;
+  align-items: center;
+  margin-top: 20px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--inv-divider);
+
+  .inv-button-primary[data-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.5;
+
+    &:hover {
+      background: var(--inv-primary);
+    }
+  }
+
+  @media (max-width: 520px) {
+    flex-wrap: wrap;
+
+    .inv-button:not(.inv-invite-sent-link) {
+      flex: 1 1 0;
+    }
+  }
+}
+
+.inv-invite-sent-link {
+  height: 36px;
+  margin-right: auto;
+  padding: 0 8px;
+
+  @media (max-width: 520px) {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.inv-text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--inv-primary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+  transition: background-color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--inv-primary-soft);
+  }
+
+  &[data-tone="danger"] {
+    color: var(--inv-danger-text);
+
+    &:hover:not(:disabled) {
+      background: var(--inv-danger-bg);
+    }
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+// ── Role cards ───────────────────────────────────────────────────────────────
+
+.inv-invite-roles .inv-role-option {
+  position: relative;
+}
+
+.inv-role-option-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--inv-primary);
+  color: #ffffff;
+  animation: inv-pop-in 140ms ease-out;
+}
+
+// ── Personal message toggle ──────────────────────────────────────────────────
+
+.inv-add-message {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-left: -8px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--inv-primary);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--inv-primary-soft);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+// ── Recipient chips ──────────────────────────────────────────────────────────
+
+.inv-recipients {
+  position: relative;
+
+  .inv-suggestions {
+    z-index: 20;
+  }
+}
+
+.inv-recipients-box {
+  display: flex;
+  // One row tall like a regular input, it grows with the chips and scrolls past three rows.
+  min-height: 40px;
+  max-height: 108px;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  overflow-y: auto;
+  border: 1px solid var(--inv-border);
+  border-radius: 4px;
+  background: var(--inv-input-bg);
+  cursor: text;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:hover {
+    border-color: var(--inv-text-secondary);
+  }
+
+  &:focus-within {
+    border-color: var(--inv-primary);
+    box-shadow: 0 0 0 3px var(--inv-primary-soft);
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--inv-danger-text);
+  }
+
+  &[data-disabled="true"] {
+    cursor: default;
+    opacity: 0.6;
+  }
+}
+
+.inv-recipients-input {
+  min-width: 180px;
+  height: 28px;
+  flex: 1 1 180px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--inv-text);
+  font-size: 14px;
+  outline: none;
+
+  &::placeholder {
+    color: var(--inv-text-faint);
+  }
+}
+
+.inv-chip {
+  display: inline-flex;
+  max-width: 100%;
+  height: 28px;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-tone-text);
+  font-size: 13px;
+  animation: inv-pop-in 120ms ease-out;
+
+  &[data-tone="neutral"] {
+    background: var(--inv-neutral-bg);
+    color: var(--inv-text);
+  }
+
+  // The tooltip wrapper is a span between the chip and its buttons, it must not break the row.
+  > span {
+    display: inline-flex;
+    min-width: 0;
+  }
+}
+
+.inv-chip-main {
+  display: inline-flex;
+  min-width: 0;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 2px 0 4px;
+  border-radius: 999px 0 0 999px;
+  color: inherit;
+  cursor: default;
+
+  &[data-editable="true"] {
+    padding-left: 8px;
+    cursor: pointer;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+.inv-chip-label {
+  overflow: hidden;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inv-chip-alert {
+  flex: none;
+}
+
+.inv-chip-remove {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin: 0 4px 0 2px;
+  border-radius: 999px;
+  color: inherit;
+  opacity: 0.65;
+  transition: background-color 120ms ease, opacity 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    opacity: 1;
+  }
+}
+
+// Keyboard highlight in the suggestion list, on top of the shared hover style.
+.inv-suggestion[data-active="true"] {
+  background: var(--inv-row-hover);
+}
+
+.inv-suggestion-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--inv-primary-soft);
+  color: var(--inv-primary);
+}
+
+.inv-suggestion-trailing {
+  flex: none;
+  color: var(--inv-text-faint);
+}
+
+// ── Invite with link ─────────────────────────────────────────────────────────
+
+.inv-link-card {
+  padding: 14px;
+  border: 1px solid var(--inv-divider);
+  border-radius: 8px;
+  background: var(--inv-subtle-bg);
+}
+
+.inv-link-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inv-link-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-tone-text);
+}
+
+.inv-link-title {
+  color: var(--inv-text);
+  font-family: var(--font-outfit);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.inv-link-detail {
+  color: var(--inv-text-secondary);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.inv-link-body {
+  margin-top: 12px;
+  animation: inv-fade-in 140ms ease-out;
+}
+
+.inv-link-row {
+  display: flex;
+  gap: 8px;
+
+  @media (max-width: 520px) {
+    flex-direction: column;
+  }
+}
+
+.inv-link-field {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.inv-link-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--inv-border);
+  border-radius: 4px;
+  background: var(--inv-card-bg);
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  outline: none;
+  text-overflow: ellipsis;
+
+  &:focus {
+    border-color: var(--inv-primary);
+    color: var(--inv-text);
+  }
+}
+
+.inv-link-copy {
+  flex: none;
+  min-width: 118px;
+  background: var(--inv-card-bg);
+
+  &[data-copied="true"] {
+    border-color: var(--inv-success-text);
+    color: var(--inv-success-text);
+  }
+}
+
+.inv-link-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+}
+
+.inv-link-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.inv-link-role-select {
+  height: 28px;
+  padding: 0 24px 0 8px;
+  background: var(--inv-card-bg);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.inv-link-info {
+  display: inline-flex;
+  color: var(--inv-text-faint);
+  border-radius: 999px;
+  outline: none;
+
+  &:hover {
+    color: var(--inv-text-secondary);
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px var(--inv-primary);
+  }
+}
+
+.inv-link-confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--inv-danger-text);
+  font-size: 12.5px;
+}
+
+.inv-link-error {
+  margin-top: 10px;
+  color: var(--inv-danger-text);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.inv-switch {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--inv-border);
+  transition: background-color 140ms ease;
+
+  &[aria-checked="true"] {
+    background: var(--inv-primary);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 2px;
+  }
+}
+
+.inv-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 140ms ease;
+
+  [aria-checked="true"] > & {
+    transform: translateX(16px);
+  }
+}
+
+// ── Result list ──────────────────────────────────────────────────────────────
+
+.inv-result-tally {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.inv-result-list {
+  overflow: hidden;
+  border: 1px solid var(--inv-divider);
+  border-radius: 8px;
+}
+
+.inv-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+
+  & + & {
+    border-top: 1px solid var(--inv-divider);
+  }
+
+  > .inv-person {
+    flex: 1 1 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-chip,
+  .inv-role-option-check,
+  .inv-link-body {
+    animation: none;
+  }
+}

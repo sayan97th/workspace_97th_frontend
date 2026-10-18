@@ -17,10 +17,11 @@ import SearchEverythingHost from "@/components/search-everything/SearchEverythin
 import RequestAccessModal, {
   type RequestAccessSubmission,
 } from "./RequestAccessModal";
-import InviteMembersModal, {
+import {
+  InviteMembersModal,
   type InviteMembersResult,
   type InviteMembersSubmission,
-} from "./InviteMembersModal";
+} from "@/components/invitations/invite-members";
 import { useWorkspaces } from "@/context/WorkspaceContext";
 import { invitationService } from "@/services/invitation.service";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -164,8 +165,9 @@ const AppTopBar: React.FC = () => {
       submission.message
     );
     return {
-      invited_count: result.data.length,
-      skipped_emails: result.skipped.map((skipped) => skipped.email),
+      invited_emails: result.data.map((invitation) => invitation.email),
+      resent_emails: result.resent_emails ?? [],
+      skipped: result.skipped,
     };
   };
 
@@ -324,6 +326,7 @@ const AppTopBar: React.FC = () => {
         is_open={is_invite_open}
         onClose={closeInvite}
         workspace_slug={active_workspace_slug}
+        workspace_name={active_workspace?.name}
         onSubmit={handleInviteSubmit}
       />
 
