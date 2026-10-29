@@ -1,7 +1,7 @@
 /*
  * Account menu, styled after monday.com's avatar menu: a white card with an
  * 8px radius, a header with the organization, two labelled columns (Account,
- * Manage) of 32px Figtree rows, a Working status footer and Log out last. Every color is an
+ * Manage) of 32px Manrope rows, a Working status footer and Log out last. Every color is an
  * `--account-menu-*` token declared on the root, so dark mode only swaps the
  * tokens, never the rules below. The theme and status flyouts reuse the same
  * tokens through `.account-menu-flyout`.

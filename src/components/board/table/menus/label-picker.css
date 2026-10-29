@@ -1,7 +1,7 @@
 /*
  * Label column picker and cell pill, styled after the monday.com pickers the
  * rest of the board already uses (Status, Dropdown, People): a white card
- * with an 8px radius, 14px Figtree, a "Search or create a label" field, the
+ * with an 8px radius, 14px Manrope, a "Search or create a label" field, the
  * labels as tinted pills with a check on the selected one, a "+ Create" row
  * while the typed name is new and a footer with "Edit labels" plus a "Clear"
  * icon. "Edit labels" swaps the card for the shared Status `EditLabelsPanel`.

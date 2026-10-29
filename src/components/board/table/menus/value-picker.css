@@ -1,7 +1,7 @@
 /*
  * Shared look of the Column Center value pickers (Country, Week, Hour, Color
  * picker): monday.com's white 8px card with a soft
- * shadow, a 32px outlined search box, 36px rows in 14px Figtree and a blue
+ * shadow, a 32px outlined search box, 36px rows in 14px Manrope and a blue
  * primary button. Every color is a `--value-picker-*` token, dark mode only
  * swaps the tokens.
  */
@@ -31,7 +31,7 @@
   background: var(--value-picker-surface);
   color: var(--value-picker-text);
   box-shadow: var(--value-picker-shadow);
-  font-family: var(--font-boardtree-sans-family, var(--font-figtree)), "Figtree", ui-sans-serif, sans-serif;
+  font-family: var(--font-outfit);
   font-size: 14px;
   line-height: 20px;
   text-align: left;

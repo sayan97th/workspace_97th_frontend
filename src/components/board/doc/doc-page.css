@@ -99,7 +99,7 @@
   margin-top: 6px;
   font-family: var(--doc-font-heading);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 1.25;
   letter-spacing: -0.01em;
   color: var(--doc-text);

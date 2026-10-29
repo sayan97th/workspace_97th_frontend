@@ -1,5 +1,5 @@
 /*
- * Column Center, after monday.com's: a large white dialog with a Poppins
+ * Column Center, after monday.com's: a large white dialog with a bold
  * title and an outlined search box in its header, a category rail on the
  * left (the active one in light blue) and scrolling sections of cards. Cards
  * carry a 64px colored icon, a bold title, a gray description and an
@@ -18,7 +18,7 @@
   --column-center-focus: #0073ea;
   --column-center-overlay: rgba(41, 47, 76, 0.7);
   --column-center-card-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --column-center-heading-font: var(--font-poppins), "Poppins", var(--font-boardtree-sans-family), sans-serif;
+  --column-center-heading-font: var(--font-heading);
 
   position: fixed;
   inset: 0;
@@ -28,7 +28,7 @@
   justify-content: center;
   padding: 10px 8px;
   background: var(--column-center-overlay);
-  font-family: var(--font-boardtree-sans-family), "Figtree", ui-sans-serif, sans-serif;
+  font-family: var(--font-outfit);
 }
 
 html.dark .column-center {
@@ -97,7 +97,7 @@ html.dark .column-center {
   margin: 0;
   font-family: var(--column-center-heading-font);
   font-size: 24px;
-  font-weight: 400;
+  font-weight: var(--font-heading-weight);
   line-height: 32px;
 }
 
@@ -223,7 +223,7 @@ html.dark .column-center {
   margin: 0 0 16px;
   font-family: var(--column-center-heading-font);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 32px;
 }
 
@@ -258,7 +258,7 @@ html.dark .column-center {
   margin: 0;
   font-family: var(--column-center-heading-font);
   font-size: 18px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 24px;
 }
 

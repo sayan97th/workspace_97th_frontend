@@ -1,7 +1,7 @@
 /*
  * Column type gallery, styled after monday.com's "add column" picker: a white
  * 8px card with a soft shadow, a 32px outlined search box, gray section
- * headings, a two column grid of 32px rows in 14px Figtree, and a centered
+ * headings, a two column grid of 32px rows in 14px Manrope, and a centered
  * "More columns" footer under a thin divider. Every color is a
  * `--column-gallery-*` token, so dark mode only swaps the tokens.
  */

@@ -89,7 +89,7 @@ const ColorPalette = ({ current_color, onPick }: ColorPaletteProps) => (
  * The board table's group "..." menu, in monday.com's own layout: view
  * actions (collapse, select, subitems), structure actions (add, duplicate,
  * move), look (rename, color), Export to Excel, Apps, then Delete and
- * Archive. Built on {@link ActionMenu}, so it shares the Figtree type, 32px
+ * Archive. Built on {@link ActionMenu}, so it shares the Manrope type, 32px
  * rows, hover submenus, keyboard navigation and dark mode tokens of the row
  * menu and every other options menu in the app.
  */

@@ -2,7 +2,7 @@
  * Progress tracking battery, monday style: a green outlined bar that fills as
  * the row's Status columns reach "Done", with the percent beside it. Used by
  * the table cell and the group summary footer. Every color is a `--progress-*`
- * token, so dark mode only swaps the tokens. Text uses Figtree, the app's
+ * token, so dark mode only swaps the tokens. Text uses Manrope, the app's
  * board typeface, with tabular numbers so percents line up down the column.
  */
 
@@ -37,7 +37,7 @@ html.dark .progress-tooltip {
   height: 100%;
   padding: 0 12px;
   cursor: default;
-  font-family: var(--font-boardtree-sans-family, var(--font-figtree)), "Figtree", ui-sans-serif, sans-serif;
+  font-family: var(--font-outfit);
 }
 
 .progress-cell__empty {
@@ -58,7 +58,7 @@ html.dark .progress-tooltip {
   gap: 10px;
   min-width: 0;
   max-width: 156px;
-  font-family: var(--font-boardtree-sans-family, var(--font-figtree)), "Figtree", ui-sans-serif, sans-serif;
+  font-family: var(--font-outfit);
 }
 
 .progress-battery__bar {

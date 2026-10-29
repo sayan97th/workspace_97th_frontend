@@ -4,7 +4,7 @@
  * outline (`.inline-search-field`, laid over the cell), and the matches show
  * under it, either as a flat outlined list (`--list`, World clock) or a
  * roomy shadowed card with a bold heading (`--card`, Location). Both read
- * 14px Figtree like the rest of the board.
+ * 14px Manrope like the rest of the board.
  *
  * They are portaled to `document.body` (see `PopoverPanel`), outside the
  * table's scoped palette, so every color is an `--inline-search-*` token

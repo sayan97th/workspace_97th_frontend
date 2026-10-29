@@ -144,7 +144,7 @@ const MyWorkView: React.FC = () => {
       <header className="px-6 pt-6 sm:px-8">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-2">
-            <h1 className="font-heading text-[32px] leading-10 font-medium tracking-[-0.5px]">My Work</h1>
+            <h1 className="font-heading text-[32px] leading-10 font-bold tracking-[-0.5px]">My Work</h1>
             <Tooltip content="Every item you're assigned to in a People column, across all your boards." placement="bottom">
               <span tabIndex={0} aria-label="About My Work" className="flex h-7 w-7 items-center justify-center rounded text-[var(--mw-text)] hover:bg-[var(--mw-hover)]">
                 <InfoIcon size={18} />

@@ -1,7 +1,7 @@
 /*
  * Shared field controls for the board toolbar panels (Filter, Sort, Group by,
  * Conditional coloring) and the Chart settings, styled after monday.com: a
- * 36px white field with a 4px radius and a #c3c6d4 border, 14px Figtree, a
+ * 36px white field with a 4px radius and a #c3c6d4 border, 14px Manrope, a
  * floating white list with an 8px radius, light blue selected rows and value
  * chips with their own remove button.
  *
@@ -33,7 +33,7 @@
   --field-menu-scroll-thumb: #c3c6d4;
   --field-menu-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 
-  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-family: var(--font-outfit);
 }
 
 html.dark .field-menu,

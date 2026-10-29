@@ -2,7 +2,7 @@
  * Invitations views (workspace "Sent invitations" page, Administration > Invitations and the
  * invite dialog), styled after monday.com's administration lists: a soft gray page, summary
  * cards that double as status filters, and one white rounded card holding the toolbar and the
- * list. Body text is Figtree (`--font-outfit`), titles are Poppins (`--font-heading`), the same
+ * list. Body text is Manrope (`--font-outfit`), titles are bold Manrope (`--font-heading`), the same
  * pairing as the board, sidebar, Profile and Administration views.
  *
  * Every color is an `--inv-*` token on `:root`, so the portaled dialogs read the same values.
@@ -366,7 +366,7 @@ html.dark {
   color: var(--inv-text);
   font-family: var(--font-heading);
   font-size: 22px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 28px;
 }
 
@@ -908,7 +908,7 @@ html.dark {
   color: var(--inv-text);
   font-family: var(--font-heading);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 22px;
 }
 

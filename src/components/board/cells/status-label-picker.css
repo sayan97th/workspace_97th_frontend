@@ -3,7 +3,7 @@
  * a white card with an 8px radius, solid 152x32 label pills laid out in
  * columns of up to six (filled top to bottom, then left to right), the blank
  * "no status" pill closing the list, and a centered footer action in 14px
- * Figtree. Edit mode swaps each pill for an outlined field with a color
+ * Manrope. Edit mode swaps each pill for an outlined field with a color
  * bucket swatch and a "..." action that shows on hover.
  *
  * Every color is a `--status-picker-*` token declared on `.status-picker`, so

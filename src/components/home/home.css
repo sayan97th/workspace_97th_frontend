@@ -1,6 +1,6 @@
 /*
  * Home, the page every user lands on after signing in. It follows the monday
- * look the rest of the app uses (Figtree text, #323338 grays, #0073ea links,
+ * look the rest of the app uses (Manrope text, #323338 grays, #0073ea links,
  * the group palette) and adds a warmer welcome: a hero card tinted with the
  * organization's primary color, stat tiles, board cards with a live snapshot
  * of each board's groups, and collapsible sections like monday's own Home.
@@ -156,7 +156,7 @@ html.dark .home-theme {
   margin-top: 2px;
   font-size: 26px;
   line-height: 34px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   color: var(--home-text);
 }
 

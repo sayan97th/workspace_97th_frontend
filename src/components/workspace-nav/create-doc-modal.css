@@ -83,7 +83,7 @@ html.dark .create-doc-theme {
 .create-doc-title {
   margin: 0 40px 24px 0;
   font-size: 32px;
-  font-weight: 400;
+  font-weight: var(--font-heading-weight);
   line-height: 40px;
   letter-spacing: -0.5px;
   color: var(--cd-text);

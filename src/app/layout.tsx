@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Figtree, Poppins, Roboto_Mono } from 'next/font/google';
+import { Manrope, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import "flatpickr/dist/flatpickr.css";
 import { SidebarProvider } from '@/context/SidebarContext';
@@ -18,20 +18,15 @@ export const metadata: Metadata = {
   },
 };
 
-// Body/UI typeface, see `src/styles/typography.css` for how these map to
-// the `--font-outfit`/`--font-heading` theme tokens (monday.com style pairing:
-// Figtree for copy, Poppins for headings). The variable classes sit on <html>
-// so they exist on `:root`, where Tailwind resolves its theme tokens.
-const figtree_font = Figtree({
-  subsets: ["latin"],
-  variable: "--font-figtree",
-  display: "swap",
-});
-
-const poppins_font = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-poppins",
+// Brand typeface, the same Manrope 97thfloor.com uses. It is a variable font
+// (200 to 800), so one self-hosted file covers every weight the app uses.
+// See `src/styles/typography.css` for how `--font-manrope` maps to the
+// `--font-brand-sans`, `--font-outfit` and `--font-heading` tokens. The
+// variable class sits on <html> so it exists on `:root`, where Tailwind
+// resolves its theme tokens.
+const manrope_font = Manrope({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-manrope",
   display: "swap",
 });
 
@@ -53,8 +48,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree_font.variable} ${poppins_font.variable} ${roboto_mono_font.variable}`} suppressHydrationWarning>
-      <body className={`${figtree_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
+    <html lang="en" className={`${manrope_font.variable} ${roboto_mono_font.variable}`} suppressHydrationWarning>
+      <body className={`${manrope_font.className} antialiased dark:bg-gray-900`} suppressHydrationWarning>
         <script dangerouslySetInnerHTML={{ __html: theme_bootstrap_script }} />
         {/* Repaints the organization's brand color before hydration, see `@/lib/brand-theme`. */}
         <script dangerouslySetInnerHTML={{ __html: brand_palette_bootstrap_script }} />

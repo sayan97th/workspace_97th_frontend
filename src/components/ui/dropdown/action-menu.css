@@ -1,6 +1,6 @@
 /*
  * ActionMenu, styled after monday.com's own option menus: a white card with
- * an 8px radius and a soft shadow, 32px rows in 14px Figtree, dark outline
+ * an 8px radius and a soft shadow, 32px rows in 14px Manrope, dark outline
  * icons, faded disabled rows and thin dividers between groups. Every color is
  * an `--action-menu-*` token declared on the root, so dark mode only swaps the
  * tokens, never the rules below.

@@ -1,28 +1,46 @@
 /*
  * Typography design tokens for the workspace shell.
  *
- * Font pairing mirrors the approach monday.com uses: Figtree carries all
- * body/UI copy and Poppins is reserved for headings, so headings read as
- * their own voice without needing extra size or weight to stand out. Both
- * are self-hosted through `next/font/google` (loaded once in
- * `src/app/layout.tsx`, exposed here as the `--font-figtree`/`--font-poppins`
- * CSS variables) rather than a Google Fonts CDN `<link>` — that avoids the
- * extra render-blocking request and lets Next.js inline the fonts' fallback
- * metrics, so there's no layout shift while the webfont loads in.
+ * The whole app uses one brand typeface, Manrope, the same face as
+ * https://97thfloor.com (its `manrope-light` to `manrope-extrabold` presets,
+ * weights 300 to 800). Titles get their own voice from weight and size
+ * (`--font-heading-weight`) instead of a second family. The font is
+ * self-hosted through `next/font/google` (loaded once in
+ * `src/app/layout.tsx`, exposed as the `--font-manrope` CSS variable) rather
+ * than a CDN `<link>` or a hotlink to the marketing site, which avoids an
+ * extra render-blocking request and lets Next.js inline fallback metrics, so
+ * there is no layout shift while the webfont loads.
+ *
+ * Components never name a family. Tailwind markup uses `font-outfit` or
+ * `font-heading`, and stylesheets use `var(--font-outfit)` or
+ * `var(--font-heading)`, so changing `--font-brand-sans` below restyles the
+ * whole app.
  */
+
+/*
+ * Plain `:root` on purpose, not `@theme`: Tailwind only emits the `@theme`
+ * variables a utility uses, and these are read from plain CSS/SCSS files.
+ */
+:root {
+  --font-brand-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  /* Weight for page, dialog, drawer and board titles. Manrope at 500 reads
+     too light for a title, so titles are bold. */
+  --font-heading-weight: 700;
+}
+
 @theme {
   --font-*: initial;
 
-  /* Base UI/body typeface. `--font-outfit` keeps its original token name —
-     six components already reference the `font-outfit` utility class — only
-     the family it resolves to has changed, from Manrope to Figtree. */
-  --font-outfit: var(--font-figtree), ui-sans-serif, sans-serif;
-  --font-heading: var(--font-poppins), var(--font-figtree), ui-sans-serif, sans-serif;
+  /* Base UI/body typeface. `--font-outfit` keeps its original token name,
+     since many components already use the `font-outfit` utility class. Both
+     tokens resolve to the brand face, titles differ only by weight. */
+  --font-outfit: var(--font-brand-sans);
+  --font-heading: var(--font-brand-sans);
   --font-mono-accent: var(--font-roboto-mono), ui-monospace, monospace;
 
-  /* Board table's own typeface (see `board-tree-font.ts`) — scoped via the
-     `boardTreeFontClassName` wrapper class, not applied app-wide. */
-  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
+  /* Board table typefaces, scoped via the `boardTreeFontClassName` wrapper
+     class (see `board-tree-font.ts`). The sans face is the brand face. */
+  --font-boardtree-sans: var(--font-brand-sans);
   --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
 
   --text-title-2xl: 72px;
@@ -43,8 +61,8 @@
    * `title-*`/`theme-*` sizes above stay exactly as they are (dozens of
    * screens already use them, and touching their values would reflow all
    * of them), while every size below bundles its own default weight and
-   * letter-spacing, so one utility class — `text-heading-lg`, `text-body-md`,
-   * etc. — is a complete, monday-style type style rather than just a size.
+   * letter-spacing, so one utility class, `text-heading-lg`, `text-body-md`,
+   * etc., is a complete, monday-style type style rather than just a size.
    */
   --text-heading-xl: 32px;
   --text-heading-xl--line-height: 40px;
@@ -76,14 +94,14 @@
   /*
    * Board chrome scale, the rows above a board body (title, view tabs and
    * toolbar), tuned to match monday.com's own board header. The title pairs
-   * with `font-heading` (Poppins at a medium weight, not bold), while tabs,
-   * header actions and toolbar controls all share one regular Figtree 14px
+   * with `font-heading` (bold Manrope), while tabs, header actions and
+   * toolbar controls all share one regular Manrope 14px
    * style, so that whole strip reads as a single calm line of navigation.
    */
   --text-board-title: 24px;
   --text-board-title--line-height: 32px;
-  --text-board-title--font-weight: 500;
-  --text-board-title--letter-spacing: -0.1px;
+  --text-board-title--font-weight: 700;
+  --text-board-title--letter-spacing: -0.01em;
 
   --text-board-nav: 14px;
   --text-board-nav--line-height: 20px;
@@ -91,13 +109,13 @@
 
   /*
    * Board table body scale, matching monday.com's table: group titles are a
-   * medium 18px in the group color, while column headers, item names and
+   * semibold 18px in the group color, while column headers, item names and
    * every cell value share one regular 14px style. `board-caption` is the
    * small print under it (summary labels, counts).
    */
   --text-board-group-title: 18px;
   --text-board-group-title--line-height: 24px;
-  --text-board-group-title--font-weight: 500;
+  --text-board-group-title--font-weight: 600;
   --text-board-group-title--letter-spacing: -0.1px;
 
   --text-board-cell: 14px;
@@ -111,8 +129,8 @@
   /*
    * App wide scale, the same voice as the sidebar, the board chrome and the
    * table, so every other screen (Home, Users, Profile, modals, drawers)
-   * reads the same. Titles pair with `font-heading` (Poppins at a medium
-   * weight, never bold), section titles and body copy stay in Figtree.
+   * reads the same. Titles pair with `font-heading` and are bold, section
+   * titles are semibold and body copy is regular, all in Manrope.
    *
    * - `page-title`: the main title of a page, same as the board title.
    * - `dialog-title`: the title of a modal, drawer or side panel.
@@ -122,13 +140,13 @@
    */
   --text-page-title: 24px;
   --text-page-title--line-height: 32px;
-  --text-page-title--font-weight: 500;
-  --text-page-title--letter-spacing: -0.1px;
+  --text-page-title--font-weight: 700;
+  --text-page-title--letter-spacing: -0.01em;
 
   --text-dialog-title: 20px;
   --text-dialog-title--line-height: 28px;
-  --text-dialog-title--font-weight: 500;
-  --text-dialog-title--letter-spacing: -0.1px;
+  --text-dialog-title--font-weight: 700;
+  --text-dialog-title--letter-spacing: -0.01em;
 
   --text-section-title: 16px;
   --text-section-title--line-height: 22px;
@@ -144,41 +162,34 @@
 }
 
 /*
-  `--font-boardtree-sans`/`-mono` (declared in the `@theme` block above) are
-  never usable as written: a custom property's value is substituted *once*,
-  at whichever element it's declared on — here that's the Tailwind-emitted
-  `:root` rule — and only then inherited down as that (possibly-invalid)
-  resolved value. `--font-boardtree-sans-family` (the real font, injected by
-  `next/font`'s module class in `board-tree-font.ts`) only exists on
-  `BoardTable`'s own wrapper div, several levels below `:root`, so at `:root`
-  it's undefined, `--font-boardtree-sans` computes to the guaranteed-invalid
-  value right there, and every descendant inherits that same invalid value —
-  redefining `--font-boardtree-sans-family` further down changes nothing,
-  since `--font-boardtree-sans` itself was already fixed at `:root`. The
-  `font-family: var(--font-boardtree-sans)` declaration is therefore always
-  invalid and silently discarded, and text falls through to the app's base
-  Figtree. Redeclaring the indirection on the *same selector* that also
-  carries the real font variable forces it to (re)resolve there instead.
+  `--font-boardtree-mono` (declared in the `@theme` block above) is never
+  usable as written: a custom property's value is substituted once, at the
+  element that declares it (Tailwind's `:root` rule), and only then inherited.
+  `--font-boardtree-mono-family` (injected by `next/font` in
+  `board-tree-font.ts`) only exists on `BoardTable`'s wrapper div, so at
+  `:root` the token resolves to the guaranteed invalid value. Redeclaring the
+  indirection on the same selector that carries the real font variable forces
+  it to resolve there instead. The sans token points at the brand face, which
+  lives on <html>, so it resolves everywhere.
 */
 .font-boardtree-sans {
-  --font-boardtree-sans: var(--font-boardtree-sans-family), ui-sans-serif, sans-serif;
+  --font-boardtree-sans: var(--font-brand-sans);
 }
 .font-boardtree-mono {
   --font-boardtree-mono: var(--font-boardtree-mono-family), ui-monospace, monospace;
 }
 
 /*
-  `--font-heading` and `--font-outfit` need no such fix: the `next/font`
-  variable classes sit on <html> (see `src/app/layout.tsx`), the same element
-  as Tailwind's `:root` theme rule, so both resolve there for the whole app.
+  `--font-heading`, `--font-outfit` and `--font-brand-sans` need no such fix:
+  the `next/font` variable class sits on <html> (see `src/app/layout.tsx`),
+  the same element as `:root`, so they resolve there for the whole app.
 */
 
 /*
- * Headings keep the Figtree body face by default, so small headings (the
- * sidebar panel title, card and section labels) read exactly like the rest
- * of the UI. Page, dialog and board titles opt into Poppins explicitly with
- * `font-heading` plus a title token (`text-page-title`, `text-dialog-title`,
- * `text-board-title`), the same voice monday.com uses for its titles.
+ * Small headings (the sidebar panel title, card and section labels) stay
+ * semibold so they read like the rest of the UI. Page, dialog and board
+ * titles opt into the bold title voice explicitly with `font-heading` plus a
+ * title token (`text-page-title`, `text-dialog-title`, `text-board-title`).
  * Declared in the `base` layer so any utility on a heading still wins.
  */
 @layer base {

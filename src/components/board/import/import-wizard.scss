@@ -1,8 +1,8 @@
 /*
  * "Import items" wizard: the full screen dialog, its stepper, the Upload, Map columns,
  * Handle matches and progress steps, and the `ImportSelect` dropdown portaled to
- * `document.body`. Styled after monday.com's import flow, with the app's Figtree body and
- * Poppins title pairing (`--font-outfit` / `--font-heading`).
+ * `document.body`. Styled after monday.com's import flow, with the app's Manrope body and
+ * bold Manrope title pairing (`--font-outfit` / `--font-heading`).
  *
  * Every color is an `--iw-*` token on `:root`, dark mode only swaps the tokens under
  * `html.dark`. Primary actions use the brand color like the rest of the app.
@@ -131,7 +131,7 @@ html.dark {
   overflow: hidden;
   font-family: var(--font-heading);
   font-size: 20px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 28px;
   letter-spacing: -0.1px;
   text-overflow: ellipsis;
@@ -276,7 +276,7 @@ html.dark {
   color: var(--iw-text);
   font-family: var(--font-heading);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 32px;
   letter-spacing: -0.1px;
   text-align: center;
@@ -463,7 +463,7 @@ html.dark {
   color: var(--iw-text);
   font-family: var(--font-heading);
   font-size: 24px;
-  font-weight: 400;
+  font-weight: 600;
   line-height: 32px;
 }
 
@@ -1111,7 +1111,7 @@ html.dark {
     color: var(--iw-text);
     font-family: var(--font-heading);
     font-size: 20px;
-    font-weight: 500;
+    font-weight: var(--font-heading-weight);
     line-height: 28px;
   }
 

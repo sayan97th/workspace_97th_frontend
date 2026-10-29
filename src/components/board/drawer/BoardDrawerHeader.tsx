@@ -20,7 +20,7 @@ export type BoardDrawerHeaderProps = {
   title_id?: string;
 };
 
-/** Header shared by every board drawer: close button, Poppins title, optional eyebrow line and actions. */
+/** Header shared by every board drawer: close button, bold title, optional eyebrow line and actions. */
 const BoardDrawerHeader: React.FC<BoardDrawerHeaderProps> = ({
   title,
   eyebrow,

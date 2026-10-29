@@ -89,7 +89,7 @@ function FilterControl<TRow>({ toolbar }: FilterControlProps<TRow>) {
       {is_summary_shown && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-[220] w-[300px] rounded-[4px] bg-[#323338] px-3 py-2.5 font-[family-name:var(--font-figtree)] text-white shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:bg-[#1e2a2b]"
+          className="pointer-events-none absolute left-0 top-[calc(100%+6px)] z-[220] w-[300px] rounded-[4px] bg-[#323338] px-3 py-2.5 font-outfit text-white shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:bg-[#1e2a2b]"
         >
           <p className="pb-1 text-[13px] font-medium">
             Showing {toolbar.visible_row_count} of {toolbar.total_row_count} items

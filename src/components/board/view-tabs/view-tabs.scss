@@ -1,7 +1,7 @@
 /*
  * Board view tabs: the tab bar, the hover info card, the "N more" menu, the description
  * popover and the "Manage views" dialog. Styled after monday.com's board chrome, with the
- * same Figtree body / Poppins title pairing as the sidebar, the board, Profile and the
+ * same Manrope body and bold Manrope title pairing as the sidebar, the board, Profile and the
  * invitations views.
  *
  * The tabs sit inside `.board-chrome-theme`, so they keep reading its `shell-*` and
@@ -523,7 +523,7 @@ button.vt-tab-glyph {
   color: var(--vt-text);
   font-family: var(--font-heading);
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -910,7 +910,7 @@ button.vt-tab-glyph {
   color: var(--vt-text);
   font-family: var(--font-heading);
   font-size: 20px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   letter-spacing: -0.1px;
   line-height: 28px;
 }

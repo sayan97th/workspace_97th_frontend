@@ -5,8 +5,8 @@
  * (Mark complete button, previous and next task, copy link, subtasks).
  *
  * Every color is a `--kim-*` token declared on `.kanban-item-modal`, so dark
- * mode only swaps the token set. Type follows the app wide scale: Poppins for
- * the item title (`font-heading`), Figtree 14px for everything else.
+ * mode only swaps the token set. Type follows the app wide scale: bold Manrope for
+ * the item title (`font-heading`), Manrope 14px for everything else.
  */
 .kanban-item-modal {
   --kim-backdrop: rgba(41, 47, 76, 0.55);

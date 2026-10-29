@@ -72,7 +72,7 @@ const InfoDropdown: React.FC<InfoDropdownProps> = ({
   <BoardPopover anchor_el={anchor_el} is_open={is_open} onClose={onClose} width={width} align={align}>
     <div className={`px-6 pb-5 pt-5 ${className}`}>
       <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1 truncate font-heading text-[18px] font-medium leading-6 text-shell-text">{title}</div>
+        <div className="min-w-0 flex-1 truncate font-heading text-[18px] font-bold leading-6 text-shell-text">{title}</div>
         {title_action}
       </div>
       {description && (

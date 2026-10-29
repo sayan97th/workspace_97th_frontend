@@ -232,7 +232,7 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
 
           <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-5 gap-y-3 pt-3 sm:pt-5">
             <div className="flex min-w-0 items-center gap-2">
-              <h1 className="m-0 truncate font-heading text-[24px] font-medium leading-[40px] tracking-[-0.2px] text-shell-text sm:text-[32px]">
+              <h1 className="m-0 truncate font-heading text-[24px] font-bold leading-[40px] tracking-[-0.2px] text-shell-text sm:text-[32px]">
                 {workspace_name}
               </h1>
               <button

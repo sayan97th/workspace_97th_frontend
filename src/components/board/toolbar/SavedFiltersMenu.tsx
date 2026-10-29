@@ -109,7 +109,7 @@ function SavedFiltersMenu<TRow>({ toolbar, actions }: SavedFiltersMenuProps<TRow
       </button>
 
       {is_open && (
-        <div className="absolute bottom-[calc(100%+6px)] left-0 z-[230] w-[300px] rounded-lg bg-boardtree-surface p-2 font-[family-name:var(--font-figtree)] text-[14px] text-boardtree-text shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 dark:shadow-[0_6px_20px_rgba(0,0,0,0.55)]">
+        <div className="absolute bottom-[calc(100%+6px)] left-0 z-[230] w-[300px] rounded-lg bg-boardtree-surface p-2 font-outfit text-[14px] text-boardtree-text shadow-[0_6px_20px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 dark:shadow-[0_6px_20px_rgba(0,0,0,0.55)]">
           <div className="px-2 pb-2 pt-1">
             <p className="text-[16px] font-medium leading-[22px] text-boardtree-text">Saved filters</p>
             <p className="text-[13px] text-boardtree-text-muted">Only you can see your saved filters</p>

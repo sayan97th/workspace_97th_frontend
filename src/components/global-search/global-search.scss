@@ -1,6 +1,6 @@
 // Top bar "Search for anything..." box and its results dropdown.
 //
-// Typography follows the rest of the app (Figtree, monday text grays, 14px
+// Typography follows the rest of the app (Manrope, monday text grays, 14px
 // body), see `typography.css`. Every color is a `--gs-*` token declared on
 // `.global-search`, so dark mode only swaps the tokens, never the rules below.
 // The accent reads `--color-brand-500`, which Organization branding can repaint.
@@ -36,7 +36,7 @@ $ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
   width: 100%;
   max-width: 560px;
   color: var(--gs-text);
-  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-family: var(--font-outfit);
   font-size: 14px;
   line-height: 20px;
 }

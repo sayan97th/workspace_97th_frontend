@@ -25,7 +25,7 @@ const TAB_ID_PREFIX = "board-item-drawer";
 
 /**
  * Slide in item detail drawer, laid out like monday.com's item drawer: close
- * button and Poppins item title, the board and group it sits in, who is
+ * button and bold item title, the board and group it sits in, who is
  * viewing it and the "..." options menu, then the Updates, Files and Info
  * Boxes tabs (plus Dependencies and Automations when given). Driven entirely
  * by {@link useBoardItemDrawer} and generic over the row type, so any board

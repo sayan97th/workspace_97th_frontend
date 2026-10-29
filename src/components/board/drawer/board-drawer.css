@@ -1,7 +1,7 @@
 /*
  * Every right edge slide over drawer on a board (item drawer, board
  * discussion, board activity log, user details) and the update threads they
- * show. Follows the app wide monday.com look: Figtree 14px copy, Poppins for
+ * show. Follows the app wide monday.com look: Manrope 14px copy, bold Manrope for
  * drawer titles (`font-heading`), monday's grays, the brand color for the
  * active tab and primary actions, and monday's blue for links and likes.
  *
@@ -10,7 +10,7 @@
  * dark mode only swaps the token set.
  */
 :root {
-  --bd-font: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --bd-font: var(--font-outfit);
   --bd-surface: #ffffff;
   --bd-surface-alt: #f6f7fb;
   --bd-surface-sunken: #f5f6f8;

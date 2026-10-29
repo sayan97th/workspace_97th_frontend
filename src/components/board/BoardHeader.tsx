@@ -75,7 +75,7 @@ export type BoardHeaderProps = {
   title_badge?: React.ReactNode;
 };
 
-// Header actions, view tabs and toolbar controls share the regular Figtree
+// Header actions, view tabs and toolbar controls share the regular Manrope
 // `text-board-nav` style (see `src/styles/typography.css`). Colors come from
 // the monday palette BoardShell scopes on the chrome (`monday-palette.css`).
 const action_button_class =

@@ -1,7 +1,7 @@
 /*
  * My Profile page, styled after monday.com's profile and administration pages: a soft gray page,
  * an identity header card with a brand cover, a left rail of sections and the active section
- * inside a white rounded card. Body text is Figtree (`--font-outfit`), titles are Poppins
+ * inside a white rounded card. Body text is Manrope (`--font-outfit`), titles are bold Manrope
  * (`--font-heading`), the same pairing as the board, sidebar and Administration view.
  *
  * Every color is a `--profile-*` token. They live on `:root` so the shared profile primitives
@@ -107,7 +107,7 @@ html:not(.dark) .profile-theme .settings-dropdown-trigger {
 @mixin title-font($size, $line) {
   font-family: var(--font-heading);
   font-size: $size;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: $line;
   letter-spacing: -0.01em;
 }

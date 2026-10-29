@@ -1,7 +1,7 @@
 /*
  * World clock, Phone and Location table cells, styled after monday.com: an
  * empty cell shows a faint "+" with the column's icon on hover, a set cell
- * reads in 14px Figtree with the value's own glyph (sun or moon, country
+ * reads in 14px Manrope with the value's own glyph (sun or moon, country
  * flag, map pin) and a grey hover "×" to empty it. The whole cell opens its
  * editor, the links and buttons inside sit above that hit area. Colors come
  * from the table's `--color-boardtree-*` palette plus `--value-cell-*`

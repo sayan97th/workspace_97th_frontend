@@ -58,7 +58,7 @@ $panel-padding: 8px;
     0 0 0 1px var(--mention-picker-outline);
   color: var(--mention-picker-text);
   // Spelled out instead of `--rt-font`, since the doc editor shows this card without loading `rich-text.css`.
-  font-family: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-outfit);
   font-size: 14px;
   line-height: 20px;
 

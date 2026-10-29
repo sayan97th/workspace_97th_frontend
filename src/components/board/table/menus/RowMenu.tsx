@@ -168,7 +168,7 @@ const RecurrenceForm = ({ recurrence, onSave, onStop }: RecurrenceFormProps) => 
 /**
  * Per-row "..." menu for a board table item or subitem, in monday.com's own
  * row menu layout: open, link and move actions, subitem actions, Apps, then
- * Archive and Delete. Built on {@link ActionMenu}, so it shares the Figtree
+ * Archive and Delete. Built on {@link ActionMenu}, so it shares the Manrope
  * type, 32px rows, hover submenus, keyboard navigation and dark mode tokens
  * of every other options menu in the app. "Move to product", AI and Agents
  * rows are left out on purpose.

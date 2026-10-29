@@ -1,7 +1,7 @@
 /*
  * Person, Sort and Hide toolbar panels, styled after monday.com. Each panel is
  * a `.filter-panel.toolbar-panel` card, so it shares the Filter panel's
- * tokens, Figtree text, 16px header, help tooltip and buttons (see
+ * tokens, Manrope text, 16px header, help tooltip and buttons (see
  * `filter-panel.css`) and its rule rows (`.filter-rule`). This file only adds
  * what those three panels need on top: a full width search, checkbox rows for
  * the column list, pill toggles and the people grid.
@@ -277,7 +277,7 @@
   border-radius: 6px;
   background: #323338;
   color: #ffffff;
-  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-family: var(--font-outfit);
   font-size: 13px;
   line-height: 18px;
   text-align: center;

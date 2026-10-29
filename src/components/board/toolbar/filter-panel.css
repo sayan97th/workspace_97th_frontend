@@ -1,6 +1,6 @@
 /*
  * Table board Filter panel (Quick filters and Advanced filters), styled after
- * monday.com: a white card with an 8px radius, Figtree text, a 16px title
+ * monday.com: a white card with an 8px radius, Manrope text, a 16px title
  * next to "Showing X of Y items" and a help icon, flat 32px value chips in
  * scrollable facet columns, Advanced rules built from 36px field controls
  * (see `field-menu.css`) and a footer separated by a light divider.
@@ -39,7 +39,7 @@
   background: var(--filter-panel-surface);
   box-shadow: var(--filter-panel-shadow);
   color: var(--filter-panel-text);
-  font-family: var(--font-figtree), "Figtree", system-ui, sans-serif;
+  font-family: var(--font-outfit);
   font-size: 14px;
   line-height: 20px;
 }

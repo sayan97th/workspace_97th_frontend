@@ -1,7 +1,7 @@
 /*
  * Manage users (`/users` list and `/users/{id}/edit`), in the same monday administration look
- * as the Invitations pages: gray page, white rounded cards, Figtree body text (`--font-outfit`)
- * and Poppins titles (`--font-heading`).
+ * as the Invitations pages: gray page, white rounded cards, Manrope body text (`--font-outfit`)
+ * and bold Manrope titles (`--font-heading`).
  *
  * It builds on the `--inv-*` tokens and `inv-*` classes from invitations.scss (page shell,
  * buttons, toolbar inputs, list grid, pills, skeletons) and only adds what Manage users needs on
@@ -149,7 +149,7 @@
   color: var(--inv-text);
   font-family: var(--font-heading);
   font-size: 20px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 28px;
 }
 

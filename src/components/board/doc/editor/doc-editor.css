@@ -1,5 +1,5 @@
 /*
- * Notion style doc editor with monday.com's doc look: Figtree copy, Poppins
+ * Notion style doc editor with monday.com's doc look: Manrope copy, bold Manrope
  * headings, monday's grays and blue, a left gutter for the block handle and
  * Notion's "/" menu. Every color is a `--doc-*` token declared on
  * `.doc-theme` (the page root and every portaled menu), so dark mode only
@@ -27,8 +27,8 @@
   --doc-inline-code: #d83a52;
   --doc-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(15, 15, 15, 0.05);
   --doc-overlay: rgba(41, 47, 76, 0.7);
-  --doc-font: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
-  --doc-font-heading: var(--font-poppins), "Poppins", var(--doc-font);
+  --doc-font: var(--font-outfit);
+  --doc-font-heading: var(--font-heading);
   --doc-font-mono: var(--font-roboto-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --doc-callout-gray: #f1f1ef;
   --doc-callout-blue: #e7f3fe;
@@ -1352,7 +1352,7 @@ html.dark .doc-media-uploading {
 .doc-dialog-title {
   font-family: var(--doc-font-heading);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   color: var(--doc-text);
 }
 

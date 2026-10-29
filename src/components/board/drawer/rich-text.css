@@ -2,7 +2,7 @@
  * Rich text for every comment surface: the composer (`RichTextComposer`
  * inside `CommentComposer`, `FeedReplyComposer`, `CommentEditForm`) and the
  * read-only body (`RichTextContent`). Follows the app wide monday.com look:
- * Figtree 14px copy, monday's grays, the brand color for focus and the send
+ * Manrope 14px copy, monday's grays, the brand color for focus and the send
  * button, and monday's blue for links and mentions.
  *
  * Every color is a `--rt-*` token declared on `:root`, so the composer, the
@@ -10,7 +10,7 @@
  * mode only swaps the token set.
  */
 :root {
-  --rt-font: var(--font-figtree), "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --rt-font: var(--font-outfit);
   --rt-font-mono: var(--font-roboto-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
   --rt-text: #323338;
   --rt-text-secondary: #676879;

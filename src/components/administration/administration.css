@@ -198,7 +198,7 @@ html:not(.dark) .administration-theme .settings-dropdown-trigger:hover {
   color: var(--admin-text);
   font-family: var(--font-heading);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: var(--font-heading-weight);
   line-height: 36px;
   letter-spacing: -0.2px;
 }
