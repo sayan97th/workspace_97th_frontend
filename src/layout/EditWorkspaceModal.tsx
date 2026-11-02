@@ -225,7 +225,7 @@ const EditWorkspaceModal: React.FC<EditWorkspaceModalProps> = ({
             className={`group relative flex h-[72px] w-[72px] flex-none cursor-pointer items-center justify-center overflow-hidden rounded-2xl text-[28px] font-extrabold text-white outline-none transition-colors duration-150 ${
               is_dragging_avatar ? "ring-2 ring-[#2B76E5] ring-offset-2 ring-offset-shell-panel" : ""
             }`}
-            style={{ backgroundColor: preview_color }}
+            style={displayed_avatar_url ? undefined : { backgroundColor: preview_color }}
           >
             {displayed_avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element

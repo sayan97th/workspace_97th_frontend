@@ -94,8 +94,17 @@ const InvitationsView: React.FC = () => {
           <div className="min-w-0">
             {target_workspace ? (
               <span className="inv-workspace-chip">
-                <span className="inv-workspace-mono" style={{ background: target_workspace.color }} aria-hidden>
-                  {target_workspace.mono}
+                <span
+                  className="inv-workspace-mono overflow-hidden"
+                  style={{ background: target_workspace.avatar_url ? undefined : target_workspace.color }}
+                  aria-hidden
+                >
+                  {target_workspace.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- avatars come from uploaded URLs, not static app assets.
+                    <img src={target_workspace.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    target_workspace.mono
+                  )}
                 </span>
                 {target_workspace.name}
               </span>

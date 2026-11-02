@@ -110,6 +110,7 @@ export type InvitationPreview = {
     name: string;
     mono: string;
     color: string;
+    avatar_url?: string | null;
   };
   inviter_name: string;
   message: string | null;
@@ -147,6 +148,7 @@ export type WorkspaceJoinLinkPreview = {
     name: string;
     mono: string;
     color: string;
+    avatar_url?: string | null;
   };
   role: WorkspaceMembershipRole;
   role_label: string;

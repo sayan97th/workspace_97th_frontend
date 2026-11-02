@@ -61,6 +61,7 @@ export type BoardInvitationPreview = {
     name: string;
     mono: string;
     color: string;
+    avatar_url?: string | null;
   };
   inviter_name: string;
   message: string | null;

@@ -11,6 +11,7 @@ import { invitationService } from "@/services/invitation.service";
 import { getValidRedirectUrl } from "@/utils/redirect";
 import type { ApiError } from "@/types/auth";
 import type { InvitationPreview } from "@/types/invitation";
+import WorkspaceBadge from "@/layout/WorkspaceBadge";
 
 type Props = {
   code: string;
@@ -161,12 +162,16 @@ export default function AcceptInvitationForm({ code }: Props) {
             !is_declined && (
               <>
                 <div className="mb-6 flex items-center gap-3 sm:mb-8">
-                  <span
-                    className="flex h-11 w-11 flex-none items-center justify-center rounded-xl text-sm font-bold text-white"
-                    style={{ backgroundColor: preview_state.preview.workspace.color }}
-                  >
-                    {preview_state.preview.workspace.mono}
-                  </span>
+                  <WorkspaceBadge
+                    workspace={{
+                      mono: preview_state.preview.workspace.mono,
+                      color: preview_state.preview.workspace.color,
+                      avatar_url: preview_state.preview.workspace.avatar_url ?? undefined,
+                      is_home: false,
+                    }}
+                    size={44}
+                    className="!rounded-xl"
+                  />
                   <div>
                     <h1 className="font-semibold text-gray-800 text-title-sm dark:text-white/90">
                       Join {preview_state.preview.workspace.name}

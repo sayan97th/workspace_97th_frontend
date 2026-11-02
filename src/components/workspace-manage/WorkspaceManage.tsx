@@ -209,7 +209,13 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
           <div className="relative -mt-9 flex-none">
             <div
               className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-[14px] border-4 border-shell-bg bg-brand-500 shadow-[0_4px_12px_rgba(0,0,0,0.16)] sm:h-[108px] sm:w-[108px] sm:rounded-[16px]"
-              style={!workspace_avatar_url && workspace_color ? { backgroundColor: workspace_color } : undefined}
+              style={
+                workspace_avatar_url
+                  ? { backgroundColor: "var(--color-shell-bg)" }
+                  : workspace_color
+                    ? { backgroundColor: workspace_color }
+                    : undefined
+              }
             >
               {workspace_avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- avatars come from arbitrary user uploaded URLs, not static app assets.

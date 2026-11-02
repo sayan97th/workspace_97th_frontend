@@ -5,6 +5,7 @@ export type PersonalWorkspaceSummary = {
   slug?: string;
   color: string | null;
   mono: string | null;
+  avatar_url?: string | null;
 };
 
 /** `GET /api/favorites`, one starred board or folder. */

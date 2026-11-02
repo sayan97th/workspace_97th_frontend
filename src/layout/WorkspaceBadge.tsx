@@ -35,7 +35,9 @@ const WorkspaceBadge: React.FC<WorkspaceBadgeProps> = ({
         width: size,
         height: size,
         fontSize: Math.round(size * 0.5),
-        backgroundColor: workspace.color || default_workspace_color,
+        // Only the monogram sits on the color: an uploaded logo can have transparent
+        // areas, and a logo in the same color as the workspace would disappear.
+        backgroundColor: workspace.avatar_url ? undefined : workspace.color || default_workspace_color,
       }}
     >
       {workspace.avatar_url ? (
