@@ -31,7 +31,6 @@ import UpdateFeedPanel from "./UpdateFeedPanel";
 import { TrashModal, type TrashTabId } from "@/components/trash";
 import { SLACK_PERSONAL_SETUP_PATH } from "@/lib/slackSetup";
 import {
-  AppsGridIcon,
   BellIcon,
   EyeIcon,
   FeedIcon,
@@ -297,10 +296,6 @@ const AppTopBar: React.FC = () => {
           aria-expanded={is_help_open}
         >
           <HelpIcon size={17} />
-        </button>
-
-        <button type="button" className={`${icon_button_class} hidden sm:flex`} aria-label="Apps">
-          <AppsGridIcon size={16} />
         </button>
 
         <button
