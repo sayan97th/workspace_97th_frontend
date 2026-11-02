@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useWorkspaces } from "@/context/WorkspaceContext";
 import { workspaceService } from "@/services/workspace.service";
 import type {
   TransferOwnershipPayload,
@@ -48,6 +49,7 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
     current_slug_ref.current = slug;
     forceRender((n) => n + 1);
   }, []);
+  const { syncWorkspace } = useWorkspaces();
   const [workspace, setWorkspace] = useState<Workspace>();
   const [is_loading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,12 +81,16 @@ export function useWorkspaceDetail(workspace_slug: string): WorkspaceDetailApi {
   }, [setCurrentSlug]);
 
   const uploadWorkspaceAvatar = useCallback(async (file: File) => {
-    setWorkspace(await workspaceService.uploadWorkspaceAvatar(current_slug_ref.current, file));
-  }, []);
+    const updated = await workspaceService.uploadWorkspaceAvatar(current_slug_ref.current, file);
+    setWorkspace(updated);
+    syncWorkspace(updated);
+  }, [syncWorkspace]);
 
   const removeWorkspaceAvatar = useCallback(async () => {
-    setWorkspace(await workspaceService.removeWorkspaceAvatar(current_slug_ref.current));
-  }, []);
+    const updated = await workspaceService.removeWorkspaceAvatar(current_slug_ref.current);
+    setWorkspace(updated);
+    syncWorkspace(updated);
+  }, [syncWorkspace]);
 
   const uploadWorkspaceCover = useCallback(async (file: File, cover_position_y?: number) => {
     setWorkspace(await workspaceService.uploadWorkspaceCover(current_slug_ref.current, file, cover_position_y));

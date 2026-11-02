@@ -2,7 +2,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { workspaceService } from "@/services/workspace.service";
 import { useAuth } from "@/context/AuthContext";
-import type { CreateWorkspacePayload, UpdateWorkspacePayload } from "@/types/workspace";
+import type { CreateWorkspacePayload, UpdateWorkspacePayload, Workspace } from "@/types/workspace";
 import type { BrowseWorkspace } from "@/data/workspace-browse-data";
 import { mapWorkspaceToBrowse } from "@/components/workspace-nav/helpers";
 
@@ -27,6 +27,8 @@ export type WorkspacesApi = {
   uploadWorkspaceAvatar: (workspace_slug: string, file: File) => Promise<BrowseWorkspace>;
   /** Removes a workspace's custom avatar, reverting it to its generated mono/color badge. Owner/admin only. */
   removeWorkspaceAvatar: (workspace_slug: string) => Promise<BrowseWorkspace>;
+  /** Puts a workspace changed elsewhere (e.g. on Manage Workspace) into the catalog, so the sidebar shows it right away. */
+  syncWorkspace: (workspace: Workspace) => void;
   /** Remove the current user from a workspace; drops it from local state on success. */
   leaveWorkspace: (workspace_slug: string) => Promise<void>;
   /** Soft-delete a workspace; drops it from local state on success. */
@@ -181,6 +183,11 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   );
 
+  const syncWorkspace = useCallback((workspace: Workspace) => {
+    const updated = mapWorkspaceToBrowse(workspace);
+    setWorkspaces((prev) => prev.map((current) => (current.id === updated.id ? updated : current)));
+  }, []);
+
   const removeWorkspaceAvatar = useCallback(
     async (workspace_slug: string) => {
       const updated = mapWorkspaceToBrowse(
@@ -244,6 +251,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       togglePriority,
       uploadWorkspaceAvatar,
       removeWorkspaceAvatar,
+      syncWorkspace,
       leaveWorkspace,
       deleteWorkspace,
       reload: load,
@@ -262,6 +270,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       togglePriority,
       uploadWorkspaceAvatar,
       removeWorkspaceAvatar,
+      syncWorkspace,
       leaveWorkspace,
       deleteWorkspace,
       load,

@@ -34,6 +34,7 @@ import WorkspaceManagePermissions from "./WorkspaceManagePermissions";
 import WorkspaceManageCollaborators from "./WorkspaceManageCollaborators";
 import TransferOwnershipModal from "./TransferOwnershipModal";
 import WorkspaceCover from "./WorkspaceCover";
+import WorkspaceAvatarEditor from "./WorkspaceAvatarEditor";
 import "./workspace-manage.css";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import type { TransferOwnershipPayload } from "@/types/workspace";
@@ -132,7 +133,7 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
   const workspace_color = workspace.color;
   const workspace_avatar_url = workspace.avatar_url ?? workspace.avatar_thumbnail_url;
   const can_manage_workspace = workspace.role?.toLowerCase() === "owner";
-  // Changing the cover follows the same gate as the avatar on the API
+  // Changing the cover or the photo uses the same gate on the API
   // (`AuthorizesWorkspaceManagement`): the owner or a privileged global role.
   const can_manage_cover = can_manage_workspace || hasAnyRole(...INVITATION_MANAGER_ROLES);
   // Inviting/removing collaborators is broader than owner-only rename/delete: it also
@@ -207,25 +208,16 @@ const WorkspaceManage: React.FC<WorkspaceManageProps> = ({
         {/* Workspace header: logo overlapping the cover, title, actions. */}
         <div className="relative flex items-start gap-4 sm:gap-6">
           <div className="relative -mt-9 flex-none">
-            <div
-              className="flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-[14px] border-4 border-shell-bg bg-brand-500 shadow-[0_4px_12px_rgba(0,0,0,0.16)] sm:h-[108px] sm:w-[108px] sm:rounded-[16px]"
-              style={
-                workspace_avatar_url
-                  ? { backgroundColor: "var(--color-shell-bg)" }
-                  : workspace_color
-                    ? { backgroundColor: workspace_color }
-                    : undefined
-              }
-            >
-              {workspace_avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- avatars come from arbitrary user uploaded URLs, not static app assets.
-                <img src={workspace_avatar_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="font-heading text-[34px] font-semibold tracking-[-0.03em] text-white sm:text-[48px]">
-                  {workspace_mono}
-                </span>
-              )}
-            </div>
+            <WorkspaceAvatarEditor
+              key={workspace.id}
+              avatar_url={workspace_avatar_url}
+              mono={workspace_mono}
+              color={workspace_color}
+              workspace_name={workspace_name}
+              can_manage={can_manage_cover}
+              onUpload={uploadWorkspaceAvatar}
+              onRemove={removeWorkspaceAvatar}
+            />
             {workspace.is_home && (
               <span
                 title="Home workspace"
