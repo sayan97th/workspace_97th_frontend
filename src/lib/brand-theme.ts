@@ -10,6 +10,9 @@
 /** The default 97th Floor red, `--color-brand-500` in `globals.css`. */
 export const DEFAULT_BRAND_COLOR = "#e53e2e";
 
+/** The tab icon used until an organization uploads its own, `src/app/icon.png`. */
+export const DEFAULT_FAVICON_URL = "/icon.png";
+
 /** localStorage key read by the root layout's bootstrap script, so a returning visitor never sees the default red flash. */
 export const BRAND_PALETTE_STORAGE_KEY = "organization_brand_palette";
 

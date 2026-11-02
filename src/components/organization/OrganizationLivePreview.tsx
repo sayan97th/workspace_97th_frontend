@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
-import { DEFAULT_BRAND_COLOR, buildBrandPalette, isHexColor } from "@/lib/brand-theme";
+import { DEFAULT_BRAND_COLOR, DEFAULT_FAVICON_URL, buildBrandPalette, isHexColor } from "@/lib/brand-theme";
 import type { OrganizationDto } from "@/types/organization";
 import AnnouncementBar from "./AnnouncementBar";
 import type { OrganizationFormValues } from "./organization-form";
@@ -64,12 +64,9 @@ const OrganizationLivePreview: React.FC<{ organization: OrganizationDto; draft: 
         {/* Browser tab */}
         <div className="flex h-7 items-end gap-1.5 bg-black/[0.06] px-2">
           <div className="flex h-[22px] max-w-[60%] items-center gap-1.5 rounded-t-md px-2" style={{ backgroundColor: colors.tab }}>
-            {organization.favicon_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={organization.favicon_url} alt="" className="h-3 w-3 flex-none object-contain" />
-            ) : (
-              <BrandLogo size={12} className="!rounded-[2px]" />
-            )}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={organization.favicon_url ?? DEFAULT_FAVICON_URL} alt="" className="h-3 w-3 flex-none object-contain" />
+
             <span className="truncate">Home | {company_name}</span>
           </div>
         </div>

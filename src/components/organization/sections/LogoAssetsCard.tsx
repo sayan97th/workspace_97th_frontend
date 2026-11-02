@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import { ImageIcon, Trash2, Upload } from "lucide-react";
 import BrandLogo from "@/components/common/BrandLogo";
+import { DEFAULT_FAVICON_URL } from "@/lib/brand-theme";
 import type { OrganizationAssetKey, OrganizationDto } from "@/types/organization";
 import { OrganizationCard, ToggleField } from "../organization-fields";
 import { assetAcceptAttribute, assetRuleLabel } from "../useOrganizationSettings";
@@ -34,12 +35,8 @@ const AssetPreview: React.FC<Pick<AssetTileProps, "asset" | "image_url" | "fallb
     return (
       <div className="flex h-[92px] items-end bg-[#dee1e6] px-3 pt-4">
         <div className="flex h-9 w-full max-w-[200px] items-center gap-2 rounded-t-lg bg-white px-3 shadow-[0_-1px_0_rgba(0,0,0,0.04)]">
-          {image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={image_url} alt="" className="h-4 w-4 flex-none object-contain" />
-          ) : (
-            <BrandLogo size={16} className="!rounded-[3px]" />
-          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={image_url ?? DEFAULT_FAVICON_URL} alt="" className="h-4 w-4 flex-none object-contain" />
           <span className="truncate text-[12px] text-[#3c4043]">{company_name}</span>
         </div>
       </div>
