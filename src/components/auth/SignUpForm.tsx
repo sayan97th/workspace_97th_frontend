@@ -7,6 +7,7 @@ import { Loader2, Lock, Mail, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { authService } from "@/services/auth.service";
 import { getValidRedirectUrl } from "@/utils/redirect";
 import type { ApiError } from "@/types/auth";
 import {
@@ -77,8 +78,7 @@ export default function SignUpForm({ callback_url }: SignUpFormProps) {
 
   const handleGoogleSignUp = () => {
     setIsGoogleLoading(true);
-    const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-    window.location.href = `${apiUrl}/api/auth/google/redirect`;
+    window.location.href = authService.getGoogleRedirectUrl({ callback_url });
   };
 
   return (

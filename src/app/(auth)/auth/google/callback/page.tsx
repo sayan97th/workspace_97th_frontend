@@ -1,45 +1,77 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import { persistSession } from "@/lib/api-client";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { AuthFormContainer } from "@/components/auth/AuthPrimitives";
+import TwoFactorChallengeCard from "@/components/auth/TwoFactorChallengeCard";
 import { authService } from "@/services/auth.service";
-import { Suspense } from "react";
+import { getValidRedirectUrl } from "@/utils/redirect";
+import type { ApiError } from "@/types/auth";
 
+type TwoFactorChallenge = {
+  two_factor_token: string;
+  callback_url: string | null;
+};
+
+/**
+ * Landing page of the Google sign in. The API sends the browser here with a one
+ * time `login_code`, which is traded for a session (or a two factor challenge)
+ * so the access token itself never shows up in a URL.
+ */
 function GoogleCallbackHandler() {
-  const searchParams = useSearchParams();
+  const search_params = useSearchParams();
   const router = useRouter();
+  const [two_factor_challenge, setTwoFactorChallenge] = useState<TwoFactorChallenge | null>(null);
+
+  // The code can only be redeemed once, and React Strict Mode runs effects twice in development.
+  const has_exchanged_code = useRef(false);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const expiresIn = searchParams.get("expires_in");
-    const error = searchParams.get("error");
+    if (has_exchanged_code.current) return;
+    has_exchanged_code.current = true;
 
-    if (error === "account_disabled") {
-      router.replace("/signin?error=account_disabled");
+    const login_code = search_params.get("login_code");
+    const error_code = search_params.get("error");
+
+    if (error_code || !login_code) {
+      router.replace(`/signin?error=${encodeURIComponent(error_code ?? "google_auth_failed")}`);
       return;
     }
 
-    if (error || !token) {
-      router.replace("/signin?error=google_auth_failed");
-      return;
-    }
-
-    persistSession({
-      access_token: token,
-      expires_in: parseInt(expiresIn ?? "3600", 10),
-      session_expires_at: searchParams.get("session_expires_at"),
-    });
+    // Drop the code from the address bar and browser history.
+    window.history.replaceState(null, "", window.location.pathname);
 
     authService
-      .getMe()
-      .then(() => {
-        window.location.replace("/");
+      .exchangeGoogleLoginCode(login_code)
+      .then((response) => {
+        if ("requires_two_factor" in response && response.requires_two_factor) {
+          setTwoFactorChallenge({
+            two_factor_token: response.two_factor_token,
+            callback_url: response.callback_url,
+          });
+          return;
+        }
+
+        // A full page load so the auth context starts from the freshly stored session.
+        window.location.replace(getValidRedirectUrl(response.callback_url));
       })
-      .catch(() => {
-        window.location.replace("/");
+      .catch((err: unknown) => {
+        const api_error = err as ApiError;
+        router.replace(`/signin?error=${encodeURIComponent(api_error.code ?? "google_auth_failed")}`);
       });
-  }, [searchParams, router]);
+  }, [search_params, router]);
+
+  if (two_factor_challenge) {
+    return (
+      <AuthFormContainer back_link={{ href: "/", label: "Back to dashboard" }}>
+        <TwoFactorChallengeCard
+          two_factor_token={two_factor_challenge.two_factor_token}
+          callback_url={two_factor_challenge.callback_url}
+          onBack={() => router.replace("/signin")}
+        />
+      </AuthFormContainer>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 items-center justify-center w-full">

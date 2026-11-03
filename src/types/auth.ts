@@ -98,6 +98,22 @@ export interface LoginChallengeResponse {
  */
 export type LoginResponse = AuthResponse | LoginChallengeResponse;
 
+/**
+ * Returned by POST /api/auth/google/exchange. Same shape as a password sign in,
+ * plus the page the user asked to return to before leaving for Google.
+ */
+export type GoogleExchangeResponse = LoginResponse & {
+  callback_url: string | null;
+};
+
+/** Options sent to GET /api/auth/google/redirect. */
+export interface GoogleRedirectOptions {
+  /** The "Keep me logged in" choice. */
+  remember?: boolean;
+  /** Relative path to land on after signing in. */
+  callback_url?: string | null;
+}
+
 /** Payload sent to POST /api/auth/two-factor-challenge. */
 export interface TwoFactorChallengeData {
   two_factor_token: string;

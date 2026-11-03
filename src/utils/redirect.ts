@@ -13,8 +13,8 @@ export function getValidRedirectUrl(callback_url: string | null): string {
   // Only allow relative paths starting with /
   if (!decoded_url.startsWith("/")) return DEFAULT_REDIRECT;
 
-  // Prevent protocol-relative URLs (e.g. //evil.com)
-  if (decoded_url.startsWith("//")) return DEFAULT_REDIRECT;
+  // Prevent protocol-relative URLs (e.g. //evil.com, browsers read /\evil.com the same way)
+  if (decoded_url.startsWith("//") || decoded_url.startsWith("/\\")) return DEFAULT_REDIRECT;
 
   // Avoid redirecting back to auth routes
   const pathname = decoded_url.split("?")[0];
