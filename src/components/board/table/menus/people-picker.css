@@ -93,6 +93,29 @@ html.dark .people-picker {
   overscroll-behavior: contain;
 }
 
+/* "People assigned" caption above the token field, with a count pill once anyone is picked. */
+.people-picker__field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  color: var(--people-picker-text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.people-picker__field-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--people-picker-chip);
+  color: var(--people-picker-text);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+}
+
 /* Token field: the assigned chips and the search input share one outlined box. */
 .people-picker__field {
   position: relative;

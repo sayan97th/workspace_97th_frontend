@@ -181,7 +181,11 @@ export default function PeopleMenu({
     <PopoverPanel onClose={onClose} unstyled className="left-1/2 top-full w-max -translate-x-1/2">
       <div onKeyDown={handleKeyDown} className="people-picker" role="dialog" aria-label="Assign people">
         <div className="people-picker__body">
-          <div className="people-picker__field" onMouseDown={focusInputFromField}>
+          <div className="people-picker__field-label" id="people-picker-field-label">
+            <span>People assigned</span>
+            {draft_people.length > 0 && <span className="people-picker__field-count">{draft_people.length}</span>}
+          </div>
+          <div className="people-picker__field" onMouseDown={focusInputFromField} role="group" aria-labelledby="people-picker-field-label">
             {visible_chips.map((person) => (
               <span
                 key={person.id}
