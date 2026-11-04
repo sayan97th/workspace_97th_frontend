@@ -141,6 +141,11 @@ export default function PeopleMenu({
     input_ref.current?.focus();
   };
 
+  const collapseChips = () => {
+    setIsChipsExpanded(false);
+    input_ref.current?.focus();
+  };
+
   const clearAll = () => {
     clearDraft();
     onQueryChange("");
@@ -186,56 +191,68 @@ export default function PeopleMenu({
             {draft_people.length > 0 && <span className="people-picker__field-count">{draft_people.length}</span>}
           </div>
           <div className="people-picker__field" onMouseDown={focusInputFromField} role="group" aria-labelledby="people-picker-field-label">
-            {visible_chips.map((person) => (
-              <span
-                key={person.id}
-                className={`people-picker__chip ${getDeactivatedClass(person.is_deactivated)}`}
-                title={getPersonTitle(person.name, person.is_deactivated)}
-              >
-                <AvatarBadge
-                  size={20}
-                  overlap={false}
-                  has_ring={false}
-                  initials={person.initials}
-                  color={person.color}
-                  avatar_url={person.avatar_url}
-                />
-                <span className="people-picker__chip-name">{person.name}</span>
+            <div className="people-picker__tokens" onMouseDown={focusInputFromField}>
+              {visible_chips.map((person) => (
+                <span
+                  key={person.id}
+                  className={`people-picker__chip ${getDeactivatedClass(person.is_deactivated)}`}
+                  title={getPersonTitle(person.name, person.is_deactivated)}
+                >
+                  <AvatarBadge
+                    size={20}
+                    overlap={false}
+                    has_ring={false}
+                    initials={person.initials}
+                    color={person.color}
+                    avatar_url={person.avatar_url}
+                  />
+                  <span className="people-picker__chip-name">{person.name}</span>
+                  <button
+                    type="button"
+                    className="people-picker__chip-remove"
+                    onClick={() => removePerson(person.id)}
+                    aria-label={`Remove ${person.name}`}
+                  >
+                    <CloseIcon size={14} />
+                  </button>
+                </span>
+              ))}
+              {hidden_chip_count > 0 && (
                 <button
                   type="button"
-                  className="people-picker__chip-remove"
-                  onClick={() => removePerson(person.id)}
-                  aria-label={`Remove ${person.name}`}
+                  className="people-picker__chip people-picker__chip--more"
+                  onClick={expandChips}
+                  title={draft_people.slice(COLLAPSED_CHIP_COUNT).map((person) => person.name).join(", ")}
+                  aria-label={`Show ${hidden_chip_count} more assigned people`}
                 >
-                  <CloseIcon size={14} />
+                  + {hidden_chip_count}
                 </button>
-              </span>
-            ))}
-            {hidden_chip_count > 0 && (
-              <button
-                type="button"
-                className="people-picker__chip people-picker__chip--more"
-                onClick={expandChips}
-                title={draft_people.slice(COLLAPSED_CHIP_COUNT).map((person) => person.name).join(", ")}
-                aria-label={`Show ${hidden_chip_count} more assigned people`}
-              >
-                + {hidden_chip_count}
-              </button>
-            )}
-            <input
-              ref={input_ref}
-              autoFocus
-              value={query}
-              onChange={(event) => {
-                onQueryChange(event.target.value);
-                setActiveIndex(event.target.value.trim() ? 0 : -1);
-              }}
-              onKeyDown={handleInputKeyDown}
-              placeholder={draft_people.length ? "" : "Search names or roles"}
-              className="people-picker__input"
-              aria-label="Search people"
-              aria-controls="people-picker-options"
-            />
+              )}
+              {is_chips_expanded && draft_people.length > COLLAPSED_CHIP_COUNT && (
+                <button
+                  type="button"
+                  className="people-picker__chip people-picker__chip--more people-picker__chip--less"
+                  onClick={collapseChips}
+                  aria-label="Show fewer assigned people"
+                >
+                  Show less
+                </button>
+              )}
+              <input
+                ref={input_ref}
+                autoFocus
+                value={query}
+                onChange={(event) => {
+                  onQueryChange(event.target.value);
+                  setActiveIndex(event.target.value.trim() ? 0 : -1);
+                }}
+                onKeyDown={handleInputKeyDown}
+                placeholder={draft_people.length ? "" : "Search names or roles"}
+                className="people-picker__input"
+                aria-label="Search people"
+                aria-controls="people-picker-options"
+              />
+            </div>
             {(draft_ids.length > 0 || query) && (
               <button type="button" className="people-picker__clear" onClick={clearAll} aria-label="Clear value" title="Clear value">
                 <CloseIcon size={16} />

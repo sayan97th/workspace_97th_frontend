@@ -93,6 +93,14 @@ html.dark .people-picker {
   overscroll-behavior: contain;
 }
 
+/*
+ * Everything above the list keeps its natural height. Without this, a height capped panel
+ * shrinks the token field down to its 36px min height and the chips spill over the list.
+ */
+.people-picker__body > * {
+  flex-shrink: 0;
+}
+
 /* "People assigned" caption above the token field, with a count pill once anyone is picked. */
 .people-picker__field-label {
   display: flex;
@@ -116,19 +124,38 @@ html.dark .people-picker {
   text-align: center;
 }
 
-/* Token field: the assigned chips and the search input share one outlined box. */
+/*
+ * Token field: the assigned chips and the search input share one outlined box. The chips
+ * wrap inside `__tokens`, which stops growing after four rows and scrolls, so 15 or more
+ * assigned people never push the list and the footer out of the card.
+ */
 .people-picker__field {
+  --people-picker-chip-row: 24px;
+  --people-picker-chip-gap: 4px;
+  --people-picker-token-rows: 4;
+
   position: relative;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
   min-height: 36px;
   padding: 5px 36px 5px 8px;
   border: 1px solid var(--people-picker-border);
   border-radius: 4px;
   cursor: text;
   transition: border-color 120ms ease;
+}
+
+.people-picker__tokens {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: var(--people-picker-chip-gap);
+  max-height: calc(
+    var(--people-picker-chip-row) * var(--people-picker-token-rows) + var(--people-picker-chip-gap) *
+      (var(--people-picker-token-rows) - 1)
+  );
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .people-picker__field:hover {
@@ -160,7 +187,8 @@ html.dark .people-picker {
   align-items: center;
   gap: 4px;
   max-width: 100%;
-  height: 24px;
+  min-width: 0;
+  height: var(--people-picker-chip-row);
   padding: 0 4px 0 2px;
   border-radius: 4px;
   background: var(--people-picker-chip);
@@ -169,6 +197,7 @@ html.dark .people-picker {
 
 .people-picker__chip-name {
   overflow: hidden;
+  min-width: 0;
   max-width: 160px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -176,6 +205,7 @@ html.dark .people-picker {
 
 .people-picker__chip-remove {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: center;
   width: 16px;
@@ -193,13 +223,19 @@ html.dark .people-picker {
   cursor: pointer;
 }
 
+.people-picker__chip--less {
+  color: var(--people-picker-text-secondary);
+  background: transparent;
+}
+
 .people-picker__chip--more:hover {
   background: var(--people-picker-chip-hover);
 }
 
+/* Pinned beside the first row, so it stays put however many rows of chips the field holds. */
 .people-picker__clear {
   position: absolute;
-  top: 50%;
+  top: 5px;
   right: 6px;
   display: flex;
   align-items: center;
@@ -208,7 +244,6 @@ html.dark .people-picker {
   height: 24px;
   border-radius: 4px;
   color: var(--people-picker-text-secondary);
-  transform: translateY(-50%);
 }
 
 .people-picker__clear:hover {
