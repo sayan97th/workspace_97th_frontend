@@ -725,6 +725,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         board_label={node.label}
         board_type={board_type}
         workspace_name={node.workspace.name}
+        can_manage={node.can_manage}
+        members={workspace_members}
         initial_access={access}
         onAccessChange={setAccess}
       />

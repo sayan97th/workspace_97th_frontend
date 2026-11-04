@@ -1,0 +1,1358 @@
+/*
+ * Board header "Invite to this board" dialog. Built on the shared invitations kit tokens
+ * (`--inv-*` and `data-tone` in invitations.scss), so it follows the same Manrope type and swaps
+ * every color for dark mode on its own. Everything here is prefixed `binv-`.
+ *
+ * Layout, top to bottom: header with the board chip, the "who can open this board" banner, a
+ * segmented control between "Workspace members" and "Invite by email", then the grouped
+ * "People with access" roster. The body scrolls, header and footer stay put.
+ */
+
+$binv-radius: 12px;
+$binv-row-radius: 8px;
+$binv-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+// ── Dialog frame ─────────────────────────────────────────────────────────────
+
+.binv-root {
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.binv-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--inv-overlay);
+  backdrop-filter: blur(2px);
+  animation: inv-fade-in 140ms ease-out;
+}
+
+.binv-dialog {
+  position: relative;
+  display: flex;
+  width: 640px;
+  max-width: 100%;
+  height: min(760px, calc(100vh - 32px));
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: $binv-radius;
+  background: var(--inv-card-bg);
+  color: var(--inv-text);
+  box-shadow: var(--inv-modal-shadow);
+  animation: binv-rise 220ms $binv-ease;
+
+  @media (max-width: 560px) {
+    height: calc(100vh - 32px);
+  }
+}
+
+// ── Header ───────────────────────────────────────────────────────────────────
+
+.binv-header {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 22px 24px 16px;
+}
+
+.binv-header-icon {
+  position: relative;
+  display: flex;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--inv-primary), color-mix(in srgb, var(--inv-primary) 55%, #ffb347));
+  color: #ffffff;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--inv-primary) 35%, transparent);
+
+  // A small plus badge so the tile reads as "add people", not just "people".
+  &::after {
+    content: "+";
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    display: flex;
+    width: 18px;
+    height: 18px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--inv-card-bg);
+    border-radius: 999px;
+    background: var(--inv-text);
+    color: var(--inv-card-bg);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1;
+  }
+}
+
+.binv-header-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.binv-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+.binv-header-meta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.binv-board-chip {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 280px;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 8px 1px 6px;
+  border-radius: 6px;
+  background: var(--inv-subtle-bg);
+  box-shadow: inset 0 0 0 1px var(--inv-divider);
+  color: var(--inv-text);
+  font-weight: 600;
+
+  svg {
+    flex: none;
+    color: var(--inv-text-faint);
+  }
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.binv-close {
+  display: inline-flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  margin: -4px -8px 0 0;
+  border-radius: 8px;
+  color: var(--inv-text-secondary);
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover {
+    background: var(--inv-hover);
+    color: var(--inv-text);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+// ── Body ─────────────────────────────────────────────────────────────────────
+
+.binv-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 18px;
+  overflow-y: auto;
+  padding: 0 24px 20px;
+  scrollbar-gutter: stable;
+}
+
+// "Who can open this board" banner, tinted by board type.
+.binv-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-text);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.binv-banner-icon {
+  display: flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--inv-card-bg);
+  color: var(--inv-tone-text);
+}
+
+.binv-banner-title {
+  display: block;
+  font-weight: 600;
+}
+
+.binv-banner-text {
+  display: block;
+  color: var(--inv-text-secondary);
+}
+
+// ── Segmented tabs ───────────────────────────────────────────────────────────
+
+.binv-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px;
+  border-radius: $binv-radius;
+  background: var(--inv-subtle-bg);
+  box-shadow: inset 0 0 0 1px var(--inv-divider);
+}
+
+.binv-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+}
+
+// The sliding white pill behind the active tab.
+.binv-tabs-thumb {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(50% - 2px);
+  border-radius: 9px;
+  background: var(--inv-card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--inv-divider);
+  transition: transform 220ms $binv-ease;
+
+  &[data-index="1"] {
+    transform: translateX(calc(100% + 4px));
+  }
+}
+
+.binv-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 9px;
+  color: var(--inv-text-secondary);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: color 160ms ease;
+
+  &:hover {
+    color: var(--inv-text);
+  }
+
+  &[aria-selected="true"] {
+    color: var(--inv-text);
+
+    svg {
+      color: var(--inv-primary);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: -2px;
+  }
+}
+
+.binv-tab-short {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .binv-tab-long {
+    display: none;
+  }
+
+  .binv-tab-short {
+    display: inline;
+  }
+}
+
+.binv-tab-count {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--inv-hover);
+  color: var(--inv-text-secondary);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+}
+
+.binv-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 12px 12px;
+  animation: binv-fade-up 200ms $binv-ease;
+}
+
+.binv-panel-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--inv-text-secondary);
+  font-size: 12.5px;
+  line-height: 18px;
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+    color: var(--inv-text-faint);
+  }
+}
+
+.binv-locked {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--inv-card-bg);
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+// ── Search field ─────────────────────────────────────────────────────────────
+
+.binv-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  > svg {
+    position: absolute;
+    left: 12px;
+    color: var(--inv-text-faint);
+    pointer-events: none;
+  }
+}
+
+.binv-search-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 36px 0 38px;
+  border: 1px solid var(--inv-border);
+  border-radius: 8px;
+  background: var(--inv-input-bg);
+  color: var(--inv-text);
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &::placeholder {
+    color: var(--inv-text-faint);
+  }
+
+  &:hover:not(:disabled) {
+    border-color: var(--inv-text-secondary);
+  }
+
+  &:focus {
+    border-color: var(--inv-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--inv-primary-soft);
+  }
+}
+
+.binv-search-clear {
+  position: absolute;
+  right: 6px;
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--inv-text-faint);
+
+  &:hover {
+    background: var(--inv-hover);
+    color: var(--inv-text);
+  }
+}
+
+// ── Member picker ────────────────────────────────────────────────────────────
+
+.binv-pick-list {
+  display: flex;
+  max-height: 264px;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -4px;
+  padding: 0 4px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.binv-list-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 8px 4px;
+  color: var(--inv-text-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.binv-text-button {
+  color: var(--inv-primary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.binv-pick-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: $binv-row-radius;
+  text-align: left;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--inv-card-bg);
+    box-shadow: 0 0 0 1px var(--inv-divider);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--inv-primary-soft);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--inv-primary) 40%, transparent);
+  }
+
+  &:disabled {
+    cursor: default;
+
+    .binv-person-name,
+    .binv-avatar-wrap {
+      opacity: 0.6;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: -2px;
+  }
+}
+
+// Round checkbox that fills with the brand color once picked.
+.binv-check {
+  display: flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--inv-border);
+  border-radius: 999px;
+  background: var(--inv-input-bg);
+  color: transparent;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms $binv-ease;
+
+  [aria-pressed="true"] > & {
+    border-color: var(--inv-primary);
+    background: var(--inv-primary);
+    color: #ffffff;
+    transform: scale(1.06);
+  }
+
+  [aria-pressed="mixed"] > & {
+    border-color: var(--inv-primary);
+    background: var(--inv-primary-soft);
+    color: var(--inv-primary);
+  }
+
+  :disabled > & {
+    border-style: dashed;
+    opacity: 0.6;
+  }
+}
+
+.binv-team-icon {
+  display: flex;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--inv-info-bg);
+  color: var(--inv-info-text);
+}
+
+.binv-empty-results {
+  padding: 18px 12px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+}
+
+// Sticky "N selected, Add to board" bar under the picker.
+.binv-selection-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 12px;
+  border-radius: 10px;
+  background: var(--inv-card-bg);
+  box-shadow: 0 0 0 1px var(--inv-divider), 0 4px 12px rgba(0, 0, 0, 0.06);
+  animation: binv-fade-up 180ms $binv-ease;
+
+  @media (max-width: 480px) {
+    flex-wrap: wrap;
+
+    .inv-button {
+      flex: 1 1 100%;
+    }
+  }
+}
+
+.binv-selection-text {
+  min-width: 0;
+  flex: 1 1 auto;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+
+  strong {
+    color: var(--inv-text);
+    font-weight: 600;
+  }
+}
+
+// ── Shared person bits ───────────────────────────────────────────────────────
+
+.binv-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.binv-pending-avatar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--inv-warning-text);
+  border-radius: 999px;
+  background: var(--inv-warning-bg);
+  color: var(--inv-warning-text);
+}
+
+.binv-person-text {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.binv-person-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-text);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+
+  > span:first-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.binv-person-meta {
+  overflow: hidden;
+  color: var(--inv-text-secondary);
+  font-size: 12.5px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.binv-you {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--inv-hover);
+  color: var(--inv-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.binv-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-tone-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 22px;
+  white-space: nowrap;
+}
+
+// ── Email invite ─────────────────────────────────────────────────────────────
+
+// Three step "how it works" strip for people without an account yet.
+.binv-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: binv-step;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.binv-step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--inv-card-bg);
+  box-shadow: 0 0 0 1px var(--inv-divider);
+  font-size: 12.5px;
+  line-height: 16px;
+
+  // Arrow between steps on wide screens.
+  &:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: -7px;
+    z-index: 1;
+    width: 8px;
+    height: 8px;
+    border-top: 1.5px solid var(--inv-text-faint);
+    border-right: 1.5px solid var(--inv-text-faint);
+    background: transparent;
+    transform: translateY(-50%) rotate(45deg);
+
+    @media (max-width: 520px) {
+      display: none;
+    }
+  }
+}
+
+.binv-step-icon {
+  display: flex;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-tone-text);
+}
+
+.binv-step-title {
+  display: block;
+  color: var(--inv-text);
+  font-weight: 600;
+}
+
+.binv-step-text {
+  display: block;
+  color: var(--inv-text-faint);
+  font-size: 11.5px;
+}
+
+.binv-field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  color: var(--inv-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.binv-field-counter {
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.binv-chips-wrap {
+  position: relative;
+}
+
+.binv-chips {
+  display: flex;
+  min-height: 44px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--inv-border);
+  border-radius: 8px;
+  background: var(--inv-input-bg);
+  cursor: text;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+
+  &:focus-within {
+    border-color: var(--inv-primary);
+    box-shadow: 0 0 0 3px var(--inv-primary-soft);
+  }
+
+  &[data-invalid="true"] {
+    border-color: var(--inv-danger-text);
+  }
+
+  &[data-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.binv-chips-input {
+  min-width: 160px;
+  height: 28px;
+  flex: 1 1 160px;
+  border: 0;
+  background: transparent;
+  color: var(--inv-text);
+  font-size: 14px;
+  outline: none;
+
+  &::placeholder {
+    color: var(--inv-text-faint);
+  }
+}
+
+.binv-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 3px;
+  border-radius: 999px;
+  background: var(--inv-tone-bg);
+  color: var(--inv-tone-text);
+  font-size: 13px;
+  line-height: 20px;
+  animation: binv-pop 160ms $binv-ease;
+
+  &[data-tone="neutral"] {
+    box-shadow: inset 0 0 0 1px var(--inv-divider);
+  }
+}
+
+.binv-chip-icon {
+  display: flex;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--inv-card-bg);
+}
+
+.binv-chip-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &[data-editable="true"] {
+    cursor: pointer;
+    text-decoration: underline dotted;
+  }
+}
+
+.binv-chip-remove {
+  display: inline-flex;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  opacity: 0.7;
+
+  &:hover {
+    background: var(--inv-hover);
+    opacity: 1;
+  }
+}
+
+.binv-suggestions {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  right: 0;
+  left: 0;
+  max-height: 260px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  border-radius: 10px;
+  background: var(--inv-card-bg);
+  box-shadow: 0 0 0 1px var(--inv-divider), 0 12px 32px rgba(0, 0, 0, 0.18);
+  list-style: none;
+  animation: binv-fade-up 140ms $binv-ease;
+}
+
+.binv-suggestion {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  text-align: left;
+
+  &[data-active="true"] {
+    background: var(--inv-hover);
+  }
+}
+
+.binv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  min-height: 18px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.binv-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+
+  &::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--inv-tone-text);
+  }
+
+  &[data-tone="danger"] {
+    color: var(--inv-danger-text);
+  }
+}
+
+.binv-add-message {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  margin-left: -6px;
+  border-radius: 6px;
+  color: var(--inv-primary);
+  font-size: 13px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--inv-primary-soft);
+  }
+}
+
+.binv-textarea {
+  width: 100%;
+  min-height: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--inv-border);
+  border-radius: 8px;
+  background: var(--inv-input-bg);
+  color: var(--inv-text);
+  font-size: 14px;
+  line-height: 20px;
+  resize: vertical;
+
+  &::placeholder {
+    color: var(--inv-text-faint);
+  }
+
+  &:focus {
+    border-color: var(--inv-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--inv-primary-soft);
+  }
+}
+
+.binv-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.binv-action-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-text-faint);
+  font-size: 12px;
+}
+
+// ── Roster ───────────────────────────────────────────────────────────────────
+
+.binv-roster-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.binv-roster-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.binv-count {
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--inv-primary-soft);
+  color: var(--inv-primary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
+.binv-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.binv-filter {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--inv-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--inv-divider);
+  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+
+  span {
+    color: var(--inv-text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  &:hover {
+    background: var(--inv-hover);
+    color: var(--inv-text);
+  }
+
+  &[aria-pressed="true"] {
+    background: var(--inv-text);
+    color: var(--inv-card-bg);
+    box-shadow: none;
+
+    span {
+      color: inherit;
+      opacity: 0.7;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+.binv-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.binv-group-label {
+  margin: 10px 0 4px;
+  color: var(--inv-text-faint);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.binv-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.binv-person {
+  position: relative;
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  margin: 0 -8px;
+  border-radius: $binv-row-radius;
+  transition: background-color 160ms ease;
+
+  &:hover {
+    background: var(--inv-row-hover);
+  }
+
+  // Freshly added rows glow once so people see where they landed.
+  &[data-fresh="true"] {
+    animation: binv-flash 1800ms ease-out;
+  }
+
+  &[data-confirming="true"] {
+    background: var(--inv-danger-bg);
+  }
+}
+
+.binv-person-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+
+  .binv-person:hover &,
+  .binv-person:focus-within &,
+  .binv-person[data-confirming="true"] & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+.binv-icon-button {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--inv-text-secondary);
+  transition: background-color 120ms ease, color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--inv-hover);
+    color: var(--inv-text);
+  }
+
+  &[data-tone="danger"]:hover:not(:disabled) {
+    background: var(--inv-danger-bg);
+    color: var(--inv-danger-text);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: 1px;
+  }
+}
+
+.binv-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--inv-danger-text);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.binv-confirm-button {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+
+  &[data-tone="danger"] {
+    background: var(--inv-danger-text);
+    color: #ffffff;
+
+    &:hover {
+      filter: brightness(1.05);
+    }
+  }
+
+  &[data-tone="neutral"] {
+    color: var(--inv-text-secondary);
+
+    &:hover {
+      background: var(--inv-hover);
+    }
+  }
+}
+
+// Everyone at {workspace}: one aggregate card that expands into the member list.
+.binv-workspace-card {
+  margin-top: 8px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--inv-divider);
+  overflow: hidden;
+}
+
+.binv-workspace-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  text-align: left;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--inv-row-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--inv-primary);
+    outline-offset: -2px;
+  }
+
+  > svg:last-child {
+    flex: none;
+    color: var(--inv-text-faint);
+    transition: transform 200ms $binv-ease;
+  }
+
+  &[aria-expanded="true"] > svg:last-child {
+    transform: rotate(180deg);
+  }
+}
+
+.binv-workspace-icon {
+  display: flex;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--inv-primary-soft);
+  color: var(--inv-primary);
+}
+
+.binv-stack {
+  display: flex;
+  flex: none;
+  align-items: center;
+
+  > * + * {
+    margin-left: -8px;
+  }
+
+  > * {
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--inv-card-bg);
+  }
+}
+
+.binv-stack-more {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  background: var(--inv-hover);
+  color: var(--inv-text-secondary);
+  font-size: 10.5px;
+  font-weight: 700;
+}
+
+.binv-workspace-list {
+  max-height: 280px;
+  padding: 4px 20px 8px;
+  overflow-y: auto;
+  border-top: 1px solid var(--inv-divider);
+  animation: binv-fade-up 180ms $binv-ease;
+}
+
+.binv-skeleton {
+  height: 52px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, var(--inv-skeleton) 0%, var(--inv-subtle-bg) 50%, var(--inv-skeleton) 100%);
+  background-size: 200% 100%;
+  animation: inv-shimmer 1.4s linear infinite;
+}
+
+.binv-roster-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 12px;
+  color: var(--inv-text-secondary);
+  font-size: 13px;
+  text-align: center;
+
+  svg {
+    color: var(--inv-text-faint);
+  }
+}
+
+// ── Footer ───────────────────────────────────────────────────────────────────
+
+.binv-footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--inv-divider);
+}
+
+.binv-copy-link {
+  &[data-copied="true"] {
+    color: var(--inv-success-text);
+  }
+}
+
+// ── Motion ───────────────────────────────────────────────────────────────────
+
+@keyframes binv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes binv-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes binv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes binv-flash {
+  0%,
+  35% {
+    background: var(--inv-success-bg);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .binv-dialog,
+  .binv-panel,
+  .binv-chip,
+  .binv-suggestions,
+  .binv-selection-bar,
+  .binv-workspace-list,
+  .binv-person[data-fresh="true"] {
+    animation: none;
+  }
+
+  .binv-tabs-thumb {
+    transition: none;
+  }
+}

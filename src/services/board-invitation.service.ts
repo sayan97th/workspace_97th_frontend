@@ -4,6 +4,7 @@ import type {
   AcceptBoardInvitationPayload,
   AddBoardCollaboratorsResult,
   BoardAccessEntry,
+  BoardAccessRoster,
   BoardInvitationPreview,
   InviteBoardViewersResult,
 } from "@/types/board-invitation";
@@ -20,6 +21,14 @@ export const boardInvitationService = {
   async listAccess(board_id: number): Promise<BoardAccessEntry[]> {
     const response = await apiClient.get<{ data: BoardAccessEntry[] }>(`/api/boards/${board_id}/invitations`);
     return response.data;
+  },
+
+  /**
+   * GET /api/boards/{id}/invitations, the whole response: the people given access plus
+   * `workspace_access`, everyone who sees the board through its workspace.
+   */
+  async listRoster(board_id: number): Promise<BoardAccessRoster> {
+    return apiClient.get<BoardAccessRoster>(`/api/boards/${board_id}/invitations`);
   },
 
   /** POST /api/boards/{id}/invitations — invite one or more emails to view the board. */

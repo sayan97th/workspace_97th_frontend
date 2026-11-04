@@ -5,8 +5,14 @@
  * the analogous, workspace-scoped shapes).
  */
 
-/** One row of a board's "who has access" roster shown in the invite dialog. */
-export type BoardAccessEntryKind = "owner" | "collaborator" | "invitation";
+/**
+ * One row of a board's "who has access" roster shown in the invite dialog. `member` rows only
+ * come in `workspace_access`, for people who see the board through its workspace.
+ */
+export type BoardAccessEntryKind = "owner" | "collaborator" | "invitation" | "member";
+
+/** Where a roster row's access comes from: owning the board, being added to it, the workspace, or a pending invite. */
+export type BoardAccessVia = "owner" | "board" | "workspace" | "invitation";
 
 /** Where a pending invitation stands, derived server-side from its timestamps. */
 export type BoardInvitationStatus = "pending" | "expired" | "accepted";
@@ -27,6 +33,31 @@ export type BoardAccessEntry = {
   status: "accepted" | "pending";
   /** False for board owners, who can't be removed from this dialog. */
   removable: boolean;
+  access_via?: BoardAccessVia;
+  /** Their role in the board's workspace, null when they are not a member of it. */
+  workspace_role?: string | null;
+  /** A workspace viewer (an accepted board invitee) or someone outside the workspace. */
+  is_guest?: boolean;
+  /** Pending invitations only: when it was last sent (a resend refreshes it). */
+  invited_at?: string | null;
+  /** Pending invitations only: when the invitation link stops working. */
+  expires_at?: string | null;
+  /** Pending invitations only: who sent it. */
+  invited_by_name?: string | null;
+};
+
+/** People who can open the board only because they belong to its workspace. Empty for a private board. */
+export type BoardWorkspaceAccess = {
+  /** False for a private board, which is never visible through a workspace role. */
+  applies: boolean;
+  total: number;
+  members: BoardAccessEntry[];
+};
+
+/** Full response of `GET /api/boards/{id}/invitations`. */
+export type BoardAccessRoster = {
+  data: BoardAccessEntry[];
+  workspace_access?: BoardWorkspaceAccess;
 };
 
 /** One email that was NOT invited, and why. */
