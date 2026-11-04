@@ -2,11 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { CloseIcon } from "@/icons/workspace-icons";
 import type { BoardType } from "@/types/workspace";
+import { getApiErrorMessage } from "@/lib/api-error";
 import BoardTypePicker from "./BoardTypePicker";
 
 export type ChangeBoardTypeModalProps = {
   is_open: boolean;
   initial_board_type: BoardType;
+  /** False for anyone other than the board's creator or owner, who can't switch it to private. Defaults to true. */
+  can_make_private?: boolean;
   onSubmit: (board_type: BoardType) => void | Promise<void>;
   onClose: () => void;
 };
@@ -19,16 +22,19 @@ export type ChangeBoardTypeModalProps = {
 const ChangeBoardTypeModal: React.FC<ChangeBoardTypeModalProps> = ({
   is_open,
   initial_board_type,
+  can_make_private = true,
   onSubmit,
   onClose,
 }) => {
   const [board_type, setBoardType] = useState<BoardType>(initial_board_type);
   const [is_saving, setIsSaving] = useState(false);
+  const [error_message, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (is_open) {
       setBoardType(initial_board_type);
       setIsSaving(false);
+      setErrorMessage(null);
     }
   }, [is_open, initial_board_type]);
 
@@ -45,9 +51,12 @@ const ChangeBoardTypeModal: React.FC<ChangeBoardTypeModalProps> = ({
 
   const handleSubmit = async () => {
     setIsSaving(true);
+    setErrorMessage(null);
     try {
       await onSubmit(board_type);
       onClose();
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error, "We couldn't change the board type."));
     } finally {
       setIsSaving(false);
     }
@@ -76,7 +85,17 @@ const ChangeBoardTypeModal: React.FC<ChangeBoardTypeModalProps> = ({
         </div>
 
         <div className="px-[22px] py-5">
-          <BoardTypePicker value={board_type} onChange={setBoardType} />
+          <BoardTypePicker
+            value={board_type}
+            onChange={setBoardType}
+            disabled_values={can_make_private || initial_board_type === "private" ? [] : ["private"]}
+            disabled_reason="Only the board creator can make it private"
+          />
+          {error_message && (
+            <p role="alert" className="mt-3 text-[12.5px] text-error-500">
+              {error_message}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-2.5 border-t border-shell-border px-[22px] py-4">

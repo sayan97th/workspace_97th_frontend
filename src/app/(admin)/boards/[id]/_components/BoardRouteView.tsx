@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { HOME_PATH } from "@/layout/sidebar-routes";
 import { getViewComponent } from "@/components/workspace-nav/view-registry";
 import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
@@ -23,19 +25,36 @@ import { BoardLoadingSpinner, CenteredMessage } from "../../_components/BoardRou
  */
 export const BoardRouteView: React.FC = () => {
   const router = useRouter();
-  const { board, has_error, breadcrumb, open_item_id, active_view_id } = useBoardRoute();
+  const { board, has_error, is_private_board, breadcrumb, open_item_id, active_view_id } = useBoardRoute();
   const is_workspace_manage = board?.view_key === "workspace_manage";
 
   // Only the states this component renders itself. Once a view mounts, it owns the title
   // (board, active view and open item), since it is the one that knows those names.
   const is_unavailable = has_error || (board !== null && board.type !== "leaf");
-  useDocumentTitle(is_unavailable ? buildPageTitle("Board unavailable") : null);
+  useDocumentTitle(is_unavailable ? buildPageTitle(is_private_board ? "Private board" : "Board unavailable") : null);
 
   useEffect(() => {
     if (board && is_workspace_manage) {
       router.replace(buildWorkspaceManagePath(board.workspace.id));
     }
   }, [board, is_workspace_manage, router]);
+
+  if (is_private_board) {
+    return (
+      <CenteredMessage
+        title="This board is private"
+        detail="Only the board creator and the people they invite can see it. Ask the creator to add you if you need access."
+        action={
+          <Link
+            href={HOME_PATH}
+            className="inline-flex rounded-lg bg-brand-500 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-600"
+          >
+            Back to Home
+          </Link>
+        }
+      />
+    );
+  }
 
   if (has_error) {
     return (

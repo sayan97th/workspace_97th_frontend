@@ -62,14 +62,24 @@ const BOARD_TYPE_LABELS: Record<BoardType, string> = {
 
 const BOARD_TYPE_ORDER: BoardType[] = ["main", "private", "shareable"];
 
-/** The "Change type" rows: every type except the current one, each with the sidebar icon it would get. */
+const PRIVATE_DISABLED_REASON = "Only the board creator can make it private";
+
+/**
+ * The "Change type" rows: every type except the current one, each with the sidebar icon it would get.
+ * "Change to Private" stays visible but disabled for anyone other than the creator or owner.
+ */
 const buildChangeTypeItems = (node: WorkspaceNavNode, actions: NavItemMenuActions): ActionMenuItem[] =>
-  BOARD_TYPE_ORDER.filter((board_type) => board_type !== (node.board_type ?? "main")).map((board_type) => ({
-    key: `type-${board_type}`,
-    label: BOARD_TYPE_LABELS[board_type],
-    icon: <NavItemIcon source={{ type: "leaf", view_key: node.view_key, display_style: node.display_style, board_type }} size={ICON_SIZE} />,
-    onClick: () => actions.onChangeType(node, board_type),
-  }));
+  BOARD_TYPE_ORDER.filter((board_type) => board_type !== (node.board_type ?? "main")).map((board_type) => {
+    const is_disabled = board_type === "private" && node.can_make_private === false;
+    return {
+      key: `type-${board_type}`,
+      label: BOARD_TYPE_LABELS[board_type],
+      icon: <NavItemIcon source={{ type: "leaf", view_key: node.view_key, display_style: node.display_style, board_type }} size={ICON_SIZE} />,
+      onClick: () => actions.onChangeType(node, board_type),
+      disabled: is_disabled,
+      disabled_reason: is_disabled ? PRIVATE_DISABLED_REASON : undefined,
+    };
+  });
 
 const buildLeafSections = (node: WorkspaceNavNode, actions: NavItemMenuActions): ActionMenuSection[] => [
   {

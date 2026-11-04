@@ -714,6 +714,7 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
       <ChangeBoardTypeModal
         is_open={is_change_type_open}
         initial_board_type={board_type}
+        can_make_private={node.can_make_private !== false}
         onSubmit={handleChangeBoardType}
         onClose={() => setIsChangeTypeOpen(false)}
       />

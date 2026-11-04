@@ -6,6 +6,8 @@ import type { BoardDetail } from "@/types/workspace";
 export type BoardResolutionState = {
   board: BoardDetail | null;
   has_error: boolean;
+  /** True when the board is private and the current user was not added to it (API code `board_private`). */
+  is_private_board: boolean;
   breadcrumb: string[];
 };
 
@@ -20,6 +22,7 @@ export function useBoardResolution(id: string): BoardResolutionState {
 
   const [board, setBoard] = useState<BoardDetail | null>(null);
   const [has_error, setHasError] = useState(false);
+  const [is_private_board, setIsPrivateBoard] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(item_id)) {
@@ -30,13 +33,16 @@ export function useBoardResolution(id: string): BoardResolutionState {
     let cancelled = false;
     setBoard(null);
     setHasError(false);
+    setIsPrivateBoard(false);
     workspaceService
       .getBoard(item_id)
       .then((data) => {
         if (!cancelled) setBoard(data);
       })
-      .catch(() => {
-        if (!cancelled) setHasError(true);
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setHasError(true);
+        setIsPrivateBoard(isPrivateBoardError(error));
       });
     return () => {
       cancelled = true;
@@ -48,5 +54,10 @@ export function useBoardResolution(id: string): BoardResolutionState {
     [board]
   );
 
-  return { board, has_error, breadcrumb };
+  return { board, has_error, is_private_board, breadcrumb };
+}
+
+/** Whether the API refused the board because it is private and the user was not added to it. */
+function isPrivateBoardError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === "board_private";
 }

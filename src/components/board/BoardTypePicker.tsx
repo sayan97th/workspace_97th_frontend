@@ -9,7 +9,7 @@ const BOARD_TYPE_OPTIONS: { value: BoardType; label: string }[] = [
 
 const BOARD_TYPE_HINTS: Record<BoardType, string> = {
   main: "Visible to everyone in the workspace",
-  private: "Only visible to people added to this board",
+  private: "Only visible to you and the people you invite to this board",
   shareable: "Visible to workspace members, and can be shared with people outside the workspace",
 };
 
@@ -17,11 +17,19 @@ type BoardTypeOptionProps = {
   value: BoardType;
   label: string;
   is_selected: boolean;
+  is_disabled: boolean;
+  disabled_reason?: string;
   onSelect: (value: BoardType) => void;
 };
 
-const BoardTypeOption: React.FC<BoardTypeOptionProps> = ({ value, label, is_selected, onSelect }) => (
-  <button type="button" onClick={() => onSelect(value)} className="flex items-center gap-2 text-left">
+const BoardTypeOption: React.FC<BoardTypeOptionProps> = ({ value, label, is_selected, is_disabled, disabled_reason, onSelect }) => (
+  <button
+    type="button"
+    onClick={() => onSelect(value)}
+    disabled={is_disabled}
+    title={is_disabled ? disabled_reason : undefined}
+    className="flex items-center gap-2 text-left disabled:cursor-not-allowed disabled:opacity-50"
+  >
     <span
       className={`flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${
         is_selected ? "border-[#2B76E5]" : "border-shell-border-strong"
@@ -38,6 +46,10 @@ export type BoardTypePickerProps = {
   onChange: (value: BoardType) => void;
   /** Optional label above the radios; omit when the caller renders its own. */
   label?: string;
+  /** Types shown faded and not selectable, e.g. "private" for someone who did not create the board. */
+  disabled_values?: BoardType[];
+  /** Tooltip on a disabled type explaining why it can't be picked. */
+  disabled_reason?: string;
 };
 
 /**
@@ -45,7 +57,13 @@ export type BoardTypePickerProps = {
  * the board-level counterpart of {@link WorkspacePrivacyPicker}, shared by the
  * "Change board type" dialog and any future board-creation flow.
  */
-const BoardTypePicker: React.FC<BoardTypePickerProps> = ({ value, onChange, label = "Board type" }) => (
+const BoardTypePicker: React.FC<BoardTypePickerProps> = ({
+  value,
+  onChange,
+  label = "Board type",
+  disabled_values = [],
+  disabled_reason,
+}) => (
   <div>
     {label && <div className="mb-[9px] text-[12.5px] font-semibold text-gray-400">{label}</div>}
     <div className="flex flex-col gap-2.5">
@@ -55,6 +73,8 @@ const BoardTypePicker: React.FC<BoardTypePickerProps> = ({ value, onChange, labe
           value={option.value}
           label={option.label}
           is_selected={value === option.value}
+          is_disabled={disabled_values.includes(option.value)}
+          disabled_reason={disabled_reason}
           onSelect={onChange}
         />
       ))}

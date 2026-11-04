@@ -49,6 +49,8 @@ export type WorkspaceNavNode = {
   href: string | null;
   display_style: string | null;
   board_type: BoardType;
+  /** Whether the current user may switch this board to private: only its creator or owner, since a private board is hidden from everyone they did not invite. */
+  can_make_private?: boolean;
   /** Custom name for the board's first (item name) column; null falls back to "Item". */
   item_column_label: string | null;
   /** Custom width (px) for the board's first (item name) column, persisted from its resize handle; null falls back to auto-sizing from the longest item name. */
