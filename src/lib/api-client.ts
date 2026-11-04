@@ -1,8 +1,12 @@
+import { IMPERSONATION_EXIT_PATH, clearImpersonationStorage, readStashedAdminSession } from "@/lib/impersonation-storage";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   responseType?: "json" | "blob";
+  /** Skip the refresh and sign in redirect on a 401 and just throw, the caller handles it. */
+  skip_auth_refresh?: boolean;
 };
 
 function getToken(): string | null {
@@ -75,6 +79,46 @@ function isPublicPage(): boolean {
   return typeof window !== "undefined" && PUBLIC_PATH_PREFIXES.some((prefix) => window.location.pathname.startsWith(prefix));
 }
 
+/**
+ * An impersonation token expired or was revoked. It can never be refreshed (the API rejects
+ * it), so instead of signing out, put the admin's own stashed session back and return them to
+ * where the impersonation started. Returns false when no impersonation is in progress.
+ */
+function restoreAdminSessionAfterImpersonation(): boolean {
+  const stashed_session = readStashedAdminSession();
+  if (!stashed_session) return false;
+
+  setToken(stashed_session.admin_token);
+  if (stashed_session.admin_expires_at) {
+    localStorage.setItem("token_expires_at", stashed_session.admin_expires_at);
+  }
+  clearImpersonationStorage();
+
+  if (typeof window !== "undefined") {
+    window.location.href = IMPERSONATION_EXIT_PATH;
+  }
+  return true;
+}
+
+/**
+ * Shared 401 handling for every request: retries once with a refreshed token, otherwise ends
+ * the session. Returns the new token to retry with, or throws.
+ */
+async function handleUnauthorized(): Promise<string> {
+  if (restoreAdminSessionAfterImpersonation()) {
+    throw new Error("Impersonation session ended");
+  }
+
+  const new_token = await tryRefreshToken();
+  if (new_token) return new_token;
+
+  removeToken();
+  if (typeof window !== "undefined" && !isPublicPage()) {
+    window.location.href = "/signin";
+  }
+  throw new Error("Session expired");
+}
+
 let isRefreshing = false;
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -115,7 +159,7 @@ async function tryRefreshToken(): Promise<string | null> {
 }
 
 async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const { body, responseType, headers: customHeaders, ...restOptions } = options;
+  const { body, responseType, skip_auth_refresh, headers: customHeaders, ...restOptions } = options;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -140,19 +184,11 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
   // If 401, try refresh and retry once
-  if (response.status === 401 && token) {
-    const new_token = await tryRefreshToken();
-    if (new_token) {
-      headers["Authorization"] = `Bearer ${new_token}`;
-      config.headers = headers;
-      response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    } else {
-      removeToken();
-      if (typeof window !== "undefined" && !isPublicPage()) {
-        window.location.href = "/signin";
-      }
-      throw new Error("Session expired");
-    }
+  if (response.status === 401 && token && !skip_auth_refresh) {
+    const new_token = await handleUnauthorized();
+    headers["Authorization"] = `Bearer ${new_token}`;
+    config.headers = headers;
+    response = await fetch(`${API_BASE_URL}${endpoint}`, config);
   }
 
   if (!response.ok) {
@@ -178,7 +214,7 @@ async function requestFormData<T>(
   form_data: FormData,
   method: string = "POST"
 ): Promise<T> {
-  // NOTE: do not set Content-Type — the browser adds the multipart boundary.
+  // NOTE: do not set Content-Type, the browser adds the multipart boundary.
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
@@ -197,18 +233,10 @@ async function requestFormData<T>(
   let response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
   if (response.status === 401 && token) {
-    const new_token = await tryRefreshToken();
-    if (new_token) {
-      headers["Authorization"] = `Bearer ${new_token}`;
-      config.headers = headers;
-      response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-    } else {
-      removeToken();
-      if (typeof window !== "undefined" && !isPublicPage()) {
-        window.location.href = "/signin";
-      }
-      throw new Error("Session expired");
-    }
+    const new_token = await handleUnauthorized();
+    headers["Authorization"] = `Bearer ${new_token}`;
+    config.headers = headers;
+    response = await fetch(`${API_BASE_URL}${endpoint}`, config);
   }
 
   if (!response.ok) {

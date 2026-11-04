@@ -88,7 +88,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
 
     // Impersonation tokens are intentionally short-lived and cannot be silently refreshed (the
-    // backend rejects it, see `AuthController::refresh()`) — `ImpersonationBanner` ends the
+    // backend rejects it, see `AuthController::refresh()`), `ImpersonationBanner` ends the
     // session on its own countdown instead of this generic timer trying and failing to renew it.
     if (impersonationService.isImpersonating()) return;
 
@@ -262,6 +262,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    // Signing out while impersonating ends the impersonation first (closing its audit row and
+    // putting the admin's token back), so the sign out below also ends the admin's own session
+    // instead of leaving it stashed and still valid.
+    if (impersonationService.isImpersonating()) {
+      await impersonationService.stop();
+    }
     await authService.logout();
     impersonationService.clear();
     setUser(null);

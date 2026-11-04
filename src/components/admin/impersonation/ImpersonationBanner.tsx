@@ -1,7 +1,8 @@
 "use client";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { impersonationService, type ImpersonationMeta } from "@/services/admin/impersonation.service";
+import { IMPERSONATION_EXIT_PATH } from "@/lib/impersonation-storage";
 import { EyeIcon } from "@/icons/workspace-icons";
 
 const formatRemaining = (ms: number): string => {
@@ -24,6 +25,9 @@ const ImpersonationBanner: React.FC = () => {
   const [meta, setMeta] = useState<ImpersonationMeta | null>(null);
   const [remaining_ms, setRemainingMs] = useState(0);
   const [is_stopping, setIsStopping] = useState(false);
+  // The countdown ticks every second, so without this guard an expiring session would fire
+  // a new stop request on every tick while the first one is still in flight.
+  const is_stopping_ref = useRef(false);
 
   useEffect(() => {
     const stored = impersonationService.getMeta();
@@ -36,9 +40,11 @@ const ImpersonationBanner: React.FC = () => {
   }, [user]);
 
   const stopImpersonation = useCallback(async () => {
+    if (is_stopping_ref.current) return;
+    is_stopping_ref.current = true;
     setIsStopping(true);
     await impersonationService.stop();
-    window.location.href = "/users";
+    window.location.href = IMPERSONATION_EXIT_PATH;
   }, []);
 
   useEffect(() => {
