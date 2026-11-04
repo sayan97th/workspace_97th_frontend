@@ -5,8 +5,7 @@ import ActionMenu, { type ActionMenuItem, type ActionMenuSection } from "@/compo
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useAuth } from "@/context/AuthContext";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
-import NavItemFormModal from "./NavItemFormModal";
-import CreateDocModal, { type CreateDocValues } from "./CreateDocModal";
+import CreateContentModal, { CREATE_CONTENT_KINDS, type CreateContentKind, type CreateContentValues } from "./CreateContentModal";
 import BoardTemplatePickerModal, { type TemplateKind } from "./BoardTemplatePickerModal";
 import { getLeafHref } from "./helpers";
 import type { CreateNavItemPayload, WorkspaceNavNode } from "@/types/workspace";
@@ -39,33 +38,46 @@ export type AddNewContentMenuProps = {
   align?: "start" | "end";
 };
 
-/** What one create row makes, collected by the name dialog before it reaches the API. */
+/** What one create row makes, collected by {@link CreateContentModal} before it reaches the API. */
 type CreateOption = {
-  dialog_title: string;
-  placeholder: string;
-  payload: Omit<CreateNavItemPayload, "label" | "parent_id">;
+  kind: CreateContentKind;
+  payload: Omit<CreateNavItemPayload, "label" | "parent_id" | "board_type">;
   /** Opens the board's import wizard once it exists ("Import data" rows). */
   opens_import?: boolean;
 };
-
-type FormState = { is_open: boolean; option: CreateOption | null };
-
-const CLOSED_FORM: FormState = { is_open: false, option: null };
 
 /** Same floor as the Administration page, where installed apps are managed. */
 const APP_ADMIN_ROLES = ["super_admin", "admin", "staff"];
 const INTEGRATIONS_HREF = "/administration?section=integrations";
 const ICON_SIZE = 16;
 
-const BOARD: CreateOption = { dialog_title: "New Board", placeholder: "Board name", payload: { type: "leaf", view_key: "board" } };
-const FORM: CreateOption = { dialog_title: "New Form", placeholder: "Form name", payload: { type: "leaf", view_key: "form" } };
+const leafOption = (kind: CreateContentKind, view_key: string, display_style?: string): CreateOption => ({
+  kind,
+  payload: { type: "leaf", view_key, ...(display_style ? { display_style } : {}) },
+});
+
+const BOARD = leafOption(CREATE_CONTENT_KINDS.board, "board");
+const MULTI_LEVEL_BOARD = leafOption(CREATE_CONTENT_KINDS.multi_level_board, "board", "multi_level");
+const DOC = leafOption(CREATE_CONTENT_KINDS.doc, "doc");
+const DASHBOARD = leafOption(CREATE_CONTENT_KINDS.dashboard, "dashboard");
+const PROJECT = leafOption(CREATE_CONTENT_KINDS.project, "project");
+const PORTFOLIO = leafOption(CREATE_CONTENT_KINDS.portfolio, "portfolio");
+const FORM = leafOption(CREATE_CONTENT_KINDS.form, "form");
+const CANVAS = leafOption(CREATE_CONTENT_KINDS.canvas, "canvas");
+const FOLDER: CreateOption = { kind: CREATE_CONTENT_KINDS.folder, payload: { type: "group" } };
+
+const importOption = (title: string): CreateOption => ({ ...BOARD, kind: { ...CREATE_CONTENT_KINDS.board, title }, opens_import: true });
+
+const IMPORT_EXCEL = importOption("Import from Excel");
+const IMPORT_CSV = importOption("Import from CSV");
 
 /**
  * The sidebar's "Add to workspace" menu, laid out like monday.com's: content
  * types first (Board and Doc are split rows, a click creates, the chevron
- * shows their variants), then Folder and More. Doc rows open
- * {@link CreateDocModal} for a name and privacy, every other create
- * row asks for a name in {@link NavItemFormModal}, creates the item through
+ * shows their variants), then Folder and More. Every create row opens
+ * {@link CreateContentModal}, the monday style "Create ..." dialog that asks
+ * for a name and, for boards, docs and dashboards, the privacy (Main, Private
+ * or Shareable), then creates the item through
  * {@link WorkspaceNavApi.createItem} and opens it. "Start with template"
  * rows open {@link BoardTemplatePickerModal} with the saved templates. Opened from the "+" next
  * to the workspace switcher and from the "+" in the Content header.
@@ -74,9 +86,8 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
   const router = useRouter();
   const toast = useToast();
   const { hasAnyRole } = useAuth();
-  const [form, setForm] = useState<FormState>(CLOSED_FORM);
+  const [create_option, setCreateOption] = useState<CreateOption | null>(null);
   const [template_kind, setTemplateKind] = useState<TemplateKind | null>(null);
-  const [is_doc_form_open, setIsDocFormOpen] = useState(false);
 
   const can_manage_apps = hasAnyRole(...APP_ADMIN_ROLES);
 
@@ -84,20 +95,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     key,
     label,
     icon,
-    onClick: () => setForm({ is_open: true, option }),
-  });
-
-  const withStyle = (option: CreateOption, display_style: string): CreateOption => ({
-    ...option,
-    payload: { ...option.payload, display_style },
-  });
-
-  /** Doc rows open the monday style "Create Doc" dialog, which also asks for the doc's privacy. */
-  const docRow = (key: string, label: string): ActionMenuItem => ({
-    key,
-    label,
-    icon: <FileIcon size={ICON_SIZE} />,
-    onClick: () => setIsDocFormOpen(true),
+    onClick: () => setCreateOption(option),
   });
 
   /** "Start with template" rows open the saved templates picker for their kind. */
@@ -117,41 +115,23 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
           split: true,
           submenu: [
             createRow("new-board", "New Board", <BoardGridIcon size={ICON_SIZE} />, BOARD),
-            createRow("multi-level-board", "New multi-level board", <MultiLevelBoardIcon size={ICON_SIZE} />, {
-              ...withStyle(BOARD, "multi_level"),
-              dialog_title: "New multi-level board",
-            }),
+            createRow("multi-level-board", "New multi-level board", <MultiLevelBoardIcon size={ICON_SIZE} />, MULTI_LEVEL_BOARD),
             templateRow("board-template", "board"),
           ],
         },
         {
-          ...docRow("doc", "Doc"),
+          ...createRow("doc", "Doc", <FileIcon size={ICON_SIZE} />, DOC),
           split: true,
-          submenu: [
-            docRow("new-doc", "New Doc"),
-            templateRow("doc-template", "doc"),
-          ],
+          submenu: [createRow("new-doc", "New Doc", <FileIcon size={ICON_SIZE} />, DOC), templateRow("doc-template", "doc")],
         },
-        createRow("dashboard", "Dashboard", <DashboardIcon size={ICON_SIZE} />, {
-          dialog_title: "New Dashboard",
-          placeholder: "Dashboard name",
-          payload: { type: "leaf", view_key: "dashboard" },
-        }),
+        createRow("dashboard", "Dashboard", <DashboardIcon size={ICON_SIZE} />, DASHBOARD),
         {
           key: "project-management",
           label: "Project management",
           icon: <ProjectManagementIcon size={ICON_SIZE} />,
           submenu: [
-            createRow("project", "Project", <FileIcon size={ICON_SIZE} />, {
-              dialog_title: "New Project",
-              placeholder: "Project name",
-              payload: { type: "leaf", view_key: "project" },
-            }),
-            createRow("portfolio", "Portfolio", <PortfolioIcon size={ICON_SIZE} />, {
-              dialog_title: "New Portfolio",
-              placeholder: "Portfolio name",
-              payload: { type: "leaf", view_key: "portfolio" },
-            }),
+            createRow("project", "Project", <FileIcon size={ICON_SIZE} />, PROJECT),
+            createRow("portfolio", "Portfolio", <PortfolioIcon size={ICON_SIZE} />, PORTFOLIO),
           ],
         },
       ],
@@ -159,11 +139,7 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     {
       key: "more",
       items: [
-        createRow("folder", "Folder", <SidebarFolderIcon size={ICON_SIZE} />, {
-          dialog_title: "New folder",
-          placeholder: "Folder name",
-          payload: { type: "group" },
-        }),
+        createRow("folder", "Folder", <SidebarFolderIcon size={ICON_SIZE} />, FOLDER),
         {
           key: "more",
           label: "More",
@@ -175,16 +151,9 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
                 {
                   ...createRow("form", "Form", <PencilIcon size={ICON_SIZE} />, FORM),
                   split: true,
-                  submenu: [
-                    createRow("new-form", "New Form", <PencilIcon size={ICON_SIZE} />, FORM),
-                    templateRow("form-template", "form"),
-                  ],
+                  submenu: [createRow("new-form", "New Form", <PencilIcon size={ICON_SIZE} />, FORM), templateRow("form-template", "form")],
                 },
-                createRow("canvas", "Canvas", <ImageIcon size={ICON_SIZE} />, {
-                  dialog_title: "New Canvas",
-                  placeholder: "Canvas name",
-                  payload: { type: "leaf", view_key: "canvas" },
-                }),
+                createRow("canvas", "Canvas", <ImageIcon size={ICON_SIZE} />, CANVAS),
               ],
             },
             {
@@ -210,8 +179,8 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
                   label: "Import data",
                   icon: <ImportIcon size={ICON_SIZE} />,
                   submenu: [
-                    createRow("import-excel", "Excel", <ImportIcon size={ICON_SIZE} />, { ...BOARD, dialog_title: "Import from Excel", opens_import: true }),
-                    createRow("import-csv", "CSV", <ImportIcon size={ICON_SIZE} />, { ...BOARD, dialog_title: "Import from CSV", opens_import: true }),
+                    createRow("import-excel", "Excel", <ImportIcon size={ICON_SIZE} />, IMPORT_EXCEL),
+                    createRow("import-csv", "CSV", <ImportIcon size={ICON_SIZE} />, IMPORT_CSV),
                   ],
                 },
               ],
@@ -222,27 +191,29 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
     },
   ];
 
-  const submitForm = async (label: string) => {
-    const option = form.option;
+  /** Creates the item, then opens it (folders only expand and confirm). Errors keep the dialog open. */
+  const submitCreate = async ({ label, board_type }: CreateContentValues) => {
+    const option = create_option;
     if (!option) return;
-    const created_item = await nav.createItem({ ...option.payload, label, parent_id });
-    if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
-    if (!created_item) return;
-    if (created_item.type === "group") {
-      toast.success(`Created folder "${created_item.label}"`);
-      return;
-    }
-    const href = getLeafHref(created_item);
-    router.push(option.opens_import ? `${href}?import=1` : href);
-  };
-
-  const submitDocForm = async ({ label, board_type }: CreateDocValues) => {
+    const is_folder = option.payload.type === "group";
     try {
-      const created_item = await nav.createItem({ type: "leaf", view_key: "doc", label, board_type, parent_id });
+      const created_item = await nav.createItem({
+        ...option.payload,
+        label,
+        parent_id,
+        ...(is_folder ? {} : { board_type }),
+      });
       if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
-      if (created_item) router.push(getLeafHref(created_item));
+      if (!created_item) return;
+      if (created_item.type === "group") {
+        toast.success(`Created folder "${created_item.label}"`);
+        return;
+      }
+      if (created_item.board_type === "private") toast.success(`Created private ${option.kind.noun} "${created_item.label}"`);
+      const href = getLeafHref(created_item);
+      router.push(option.opens_import ? `${href}?import=1` : href);
     } catch (error) {
-      toast.error(apiErrorMessage(error, "We couldn't create this doc."));
+      toast.error(apiErrorMessage(error, `We couldn't create this ${option.kind.noun}.`));
       throw error;
     }
   };
@@ -268,20 +239,12 @@ const AddNewContentMenu: React.FC<AddNewContentMenuProps> = ({ anchor_el, is_ope
         align={align}
       />
 
-      <NavItemFormModal
-        is_open={form.is_open}
-        title={form.option?.dialog_title ?? ""}
-        submit_label="Create"
-        placeholder={form.option?.placeholder}
-        onSubmit={(label) =>
-          submitForm(label).catch((error) => {
-            toast.error(apiErrorMessage(error, "We couldn't create this item."));
-          })
-        }
-        onClose={() => setForm(CLOSED_FORM)}
+      <CreateContentModal
+        is_open={create_option !== null}
+        kind={create_option?.kind ?? CREATE_CONTENT_KINDS.board}
+        onSubmit={submitCreate}
+        onClose={() => setCreateOption(null)}
       />
-
-      <CreateDocModal is_open={is_doc_form_open} onSubmit={submitDocForm} onClose={() => setIsDocFormOpen(false)} />
 
       <BoardTemplatePickerModal
         is_open={template_kind !== null}

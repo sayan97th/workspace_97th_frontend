@@ -16,14 +16,10 @@ import type { CreateNavItemPayload, Workspace, WorkspaceNavNode } from "@/types/
 import {
   ArchiveIcon,
   CloseIcon,
-  DashboardIcon,
   DeleteIcon,
-  FileIcon,
-  FolderIcon,
   MoreDotsIcon,
   MoveToIcon,
   PlusIcon,
-  SidebarFolderIcon,
   SortArrowsIcon,
   CollapseFoldersIcon,
   ExpandFoldersIcon,
@@ -33,8 +29,7 @@ import NavItemIcon from "./NavItemIcon";
 import FolderColorPopover from "./FolderColorPopover";
 import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import AddNewContentMenu from "./AddNewContentMenu";
-import NavItemFormModal from "./NavItemFormModal";
-import CreateDocModal, { type CreateDocValues } from "./CreateDocModal";
+import CreateContentModal, { CREATE_CONTENT_KINDS, type CreateContentKind, type CreateContentValues } from "./CreateContentModal";
 import MoveNavItemModal from "./MoveNavItemModal";
 import MoveToWorkspaceModal from "./MoveToWorkspaceModal";
 import NavItemMenu, { type NavItemCreateKind, type NavItemMenuActions } from "./NavItemMenu";
@@ -68,34 +63,29 @@ type MenuState = {
   target: "add" | "header" | WorkspaceNavNode | null;
 };
 
-/** What the name dialog creates: a folder or one kind of board, at the root or inside a folder. */
-type FormState = {
-  is_open: boolean;
-  title: string;
-  placeholder: string;
+/** What the create dialog makes: a folder or one kind of board, at the root or inside a folder. */
+type CreateFormState = {
+  kind: CreateContentKind;
   parent_id: number | null;
-  payload: Omit<CreateNavItemPayload, "label" | "parent_id">;
+  payload: Omit<CreateNavItemPayload, "label" | "parent_id" | "board_type">;
 };
 
 type ColorState = { anchor_el: HTMLElement | null; node: WorkspaceNavNode | null };
 
 const CLOSED_MENU: MenuState = { is_open: false, anchor_el: null, target: null };
-const CLOSED_FORM: FormState = { is_open: false, title: "", placeholder: "", parent_id: null, payload: { type: "group" } };
 
 /** Delay before a collapsed folder opens while a row is dragged over its middle, like monday.com. */
 const AUTO_EXPAND_DELAY_MS = 600;
 
-type CreateOption = { key: string; label: string; icon: React.ReactNode; placeholder: string; payload: FormState["payload"] };
-
-const CREATE_OPTIONS: CreateOption[] = [
-  { key: "board", label: "New board", icon: <FolderIcon size={15} />, placeholder: "Board name", payload: { type: "leaf", view_key: "board" } },
-  { key: "doc", label: "New doc", icon: <FileIcon size={15} />, placeholder: "Doc name", payload: { type: "leaf", view_key: "doc" } },
-  { key: "dashboard", label: "New dashboard", icon: <DashboardIcon size={15} />, placeholder: "Dashboard name", payload: { type: "leaf", view_key: "dashboard" } },
-  { key: "folder", label: "New folder", icon: <SidebarFolderIcon size={15} />, placeholder: "Folder name", payload: { type: "group" } },
-];
+type CreateOption = { kind: CreateContentKind; payload: CreateFormState["payload"] };
 
 /** The folder menu's "Add to folder" rows, by kind. */
-const CREATE_OPTION_BY_KIND = Object.fromEntries(CREATE_OPTIONS.map((option) => [option.key, option])) as Record<NavItemCreateKind, CreateOption>;
+const CREATE_OPTION_BY_KIND: Record<NavItemCreateKind, CreateOption> = {
+  board: { kind: CREATE_CONTENT_KINDS.board, payload: { type: "leaf", view_key: "board" } },
+  doc: { kind: CREATE_CONTENT_KINDS.doc, payload: { type: "leaf", view_key: "doc" } },
+  dashboard: { kind: CREATE_CONTENT_KINDS.dashboard, payload: { type: "leaf", view_key: "dashboard" } },
+  folder: { kind: CREATE_CONTENT_KINDS.folder, payload: { type: "group" } },
+};
 
 /** A static copy of a row's icon and label, floated under the pointer while it is dragged. */
 const NavRowPreview: React.FC<{ node: WorkspaceNavNode }> = ({ node }) => (
@@ -130,9 +120,8 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   const toast = useToast();
 
   const [menu, setMenu] = useState<MenuState>(CLOSED_MENU);
-  const [form, setForm] = useState<FormState>(CLOSED_FORM);
+  const [create_form, setCreateForm] = useState<CreateFormState | null>(null);
   /** Folder a new doc lands in while the "Create Doc" dialog is open, undefined while closed. */
-  const [doc_parent_id, setDocParentId] = useState<number | null | undefined>(undefined);
   const [moving_nodes, setMovingNodes] = useState<WorkspaceNavNode[]>([]);
   const [pending_delete, setPendingDelete] = useState<WorkspaceNavNode[]>([]);
   const [pending_archive, setPendingArchive] = useState<WorkspaceNavNode[]>([]);
@@ -408,11 +397,7 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
   const closeOverlay = useCallback(() => setOverlayNode(null), []);
 
   const openCreateForm = (option: CreateOption, parent_id: number | null) => {
-    if (option.key === "doc") {
-      setDocParentId(parent_id);
-      return;
-    }
-    setForm({ is_open: true, title: option.label, placeholder: option.placeholder, parent_id, payload: option.payload });
+    setCreateForm({ kind: option.kind, parent_id, payload: option.payload });
   };
 
   const buildHeaderSections = (): ActionMenuSection[] => {
@@ -492,18 +477,16 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
 
   // ── Mutations with feedback ─────────────────────────────────────────────
 
-  const submitForm = async (label: string) => {
-    await nav.createItem({ ...form.payload, label, parent_id: form.parent_id });
-    if (form.parent_id !== null) nav.setGroupsExpanded([form.parent_id], true);
-  };
-
-  const submitDocForm = async ({ label, board_type }: CreateDocValues) => {
-    const parent_id = doc_parent_id ?? null;
+  /** Creates the item inside its folder (no navigation, like the folder's other create rows). Errors keep the dialog open. */
+  const submitCreateForm = async ({ label, board_type }: CreateContentValues) => {
+    if (!create_form) return;
+    const { kind, parent_id, payload } = create_form;
+    const is_folder = payload.type === "group";
     try {
-      await nav.createItem({ type: "leaf", view_key: "doc", label, board_type, parent_id });
+      await nav.createItem({ ...payload, label, parent_id, ...(is_folder ? {} : { board_type }) });
       if (parent_id !== null) nav.setGroupsExpanded([parent_id], true);
     } catch (error) {
-      toast.error(apiErrorMessage(error, "We couldn't create this doc."));
+      toast.error(apiErrorMessage(error, `We couldn't create this ${kind.noun}.`));
       throw error;
     }
   };
@@ -709,16 +692,12 @@ const NavTree: React.FC<NavTreeProps> = ({ nav, workspace_slug, search_query = "
         onClose={() => setColorTarget({ anchor_el: null, node: null })}
       />
 
-      <NavItemFormModal
-        is_open={form.is_open}
-        title={form.title}
-        submit_label="Create"
-        placeholder={form.placeholder}
-        onSubmit={submitForm}
-        onClose={() => setForm(CLOSED_FORM)}
+      <CreateContentModal
+        is_open={create_form !== null}
+        kind={create_form?.kind ?? CREATE_CONTENT_KINDS.board}
+        onSubmit={submitCreateForm}
+        onClose={() => setCreateForm(null)}
       />
-
-      <CreateDocModal is_open={doc_parent_id !== undefined} onSubmit={submitDocForm} onClose={() => setDocParentId(undefined)} />
 
       <MoveNavItemModal
         is_open={moving_nodes.length > 0}
