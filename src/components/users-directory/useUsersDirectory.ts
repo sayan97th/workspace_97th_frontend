@@ -16,7 +16,7 @@ import type {
 } from "@/types/administration/admin-users";
 import type { DepartmentDto } from "@/types/administration/departments";
 import type { ApiError } from "@/types/auth";
-import { STAFF_TIER_ROLES, USER_MANAGER_ROLES, canManageAccount } from "./userManagementPermissions";
+import { USER_MANAGER_ROLES, canManageAccount } from "./userManagementPermissions";
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -221,24 +221,20 @@ export function useUsersDirectory(): UsersDirectoryApi {
   }, [user_pending_restore, status_filter, showToast]);
 
   /**
-   * Client-side mirror of `ImpersonationController::actorCanImpersonate()`, so an ineligible
-   * row's impersonate button never even appears: nobody impersonates themselves, an inactive
-   * account, or a super_admin, and a plain admin is further limited to client-tier accounts.
-   * The backend re-checks all of this independently, this is purely a UI convenience.
+   * Client side mirror of `ImpersonationController::actorCanImpersonate()`, so an ineligible
+   * row's impersonate button never even appears: only a super_admin may impersonate, and never
+   * themselves, an inactive account or another super_admin. The backend re-checks all of this
+   * independently, this is purely a UI convenience.
    */
   const canImpersonate = useCallback(
     (row: AdminUserDto): boolean => {
-      if (!can_manage) return false;
+      if (!is_super_admin) return false;
       if (current_user_id === row.id) return false;
       if (!row.is_active) return false;
 
-      const target_role_names = row.roles.map((role) => role.name);
-      if (target_role_names.includes("super_admin")) return false;
-      if (!is_super_admin && target_role_names.some((name) => STAFF_TIER_ROLES.includes(name))) return false;
-
-      return true;
+      return !row.roles.some((role) => role.name === "super_admin");
     },
-    [can_manage, is_super_admin, current_user_id]
+    [is_super_admin, current_user_id]
   );
 
   const requestImpersonate = useCallback((user_row: AdminUserDto) => setUserPendingImpersonate(user_row), []);
