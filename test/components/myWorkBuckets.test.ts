@@ -18,6 +18,7 @@ const makeItem = (id: number, date: string | null, overrides: Partial<MyWorkItem
   priority: null,
   people: [],
   updates_count: 0,
+  timeline: null,
   date_column: date ? { id: 9, type: "date", label: "Date" } : null,
   date: date ? { value: date, start: null } : null,
   is_done: false,

@@ -76,6 +76,8 @@ export type MyWorkItemDto = {
   /** The column the due date comes from: a Date column, or a Timeline (its end date). */
   date_column: { id: number; type: "date" | "timeline"; label: string } | null;
   date: { value: string; start: string | null } | null;
+  /** The item's first Timeline, sent even when the due date comes from a Date column. */
+  timeline: { start: string | null; end: string | null } | null;
   is_done: boolean;
   can_edit: boolean;
   updated_at: string | null;

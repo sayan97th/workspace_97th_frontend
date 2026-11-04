@@ -263,9 +263,18 @@ html.dark .home-theme {
   margin-top: 16px;
 }
 
-@media (min-width: 900px) {
+/* Five tiles: on two columns the last one spans the row instead of sitting alone. */
+.home-stat:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 1000px) {
   .home-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .home-stat:last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 
@@ -700,6 +709,148 @@ html.dark .home-theme {
 
 html.dark .home-date-pill[data-overdue="true"] {
   color: #ff8a94;
+}
+
+/* Date column of a row: the pill, then the timeline bar or "Due in 9 days". */
+.home-date-block {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  /* Fixed so the status pills line up whether a row shows a date or a range. */
+  width: 124px;
+}
+
+@media (max-width: 480px) {
+  .home-date-block {
+    width: auto;
+    min-width: 64px;
+  }
+}
+
+.home-date-pill {
+  white-space: nowrap;
+}
+
+.home-date-arrow {
+  margin: 0 4px;
+  color: var(--home-text-faint);
+}
+
+.home-range-track {
+  display: block;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--home-hover-strong);
+}
+
+.home-range-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #784bd1;
+}
+
+.home-due-in {
+  font-size: 11.5px;
+  line-height: 14px;
+  color: var(--home-text-faint);
+  white-space: nowrap;
+}
+
+/* "Starts in 5 days" or "Started Nov 2", next to the board and group. */
+.home-start-chip {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, #784bd1 12%, transparent);
+  color: #6a3fc4;
+  font-size: 11.5px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.home-start-chip[data-phase="in_progress"] {
+  background: color-mix(in srgb, #00c875 14%, transparent);
+  color: #037f4c;
+}
+
+html.dark .home-start-chip {
+  color: #c5a8ff;
+}
+
+html.dark .home-start-chip[data-phase="in_progress"] {
+  color: #5fe0a4;
+}
+
+/* ── Upcoming tab ────────────────────────────────────────────────────────── */
+
+.home-upcoming-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin: 4px 0 12px;
+}
+
+.home-segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--home-border-soft);
+  border-radius: 8px;
+  background: var(--home-hover);
+}
+
+.home-segment {
+  padding: 0 10px;
+  border-radius: 6px;
+  color: var(--home-text-secondary);
+  font-size: 13px;
+  line-height: 26px;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.home-segment:hover {
+  color: var(--home-text);
+}
+
+.home-segment[aria-checked="true"] {
+  background: var(--home-surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  color: var(--home-text);
+  font-weight: 500;
+}
+
+.home-segment:focus-visible {
+  outline: 2px solid var(--home-accent);
+  outline-offset: 1px;
+}
+
+.home-upcoming-meta {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--home-text-faint);
+}
+
+.home-upcoming-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 6px;
+  color: var(--home-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-upcoming-hint {
+  font-weight: 400;
+  color: var(--home-text-faint);
 }
 
 /* ── Side lists (inbox, favorites, workspaces) ───────────────────────────── */

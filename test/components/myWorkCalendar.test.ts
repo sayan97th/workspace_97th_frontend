@@ -14,6 +14,7 @@ const makeItem = (id: number, end: string, start: string | null = null, label = 
   priority: null,
   people: [],
   updates_count: 0,
+  timeline: null,
   date_column: { id: 9, type: start ? "timeline" : "date", label },
   date: { value: end, start },
   is_done: false,

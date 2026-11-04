@@ -37,7 +37,12 @@ const HomeView: React.FC = () => {
   const work_summary = useMemo(() => (my_work === null ? null : buildWorkSummary(my_work, today)), [my_work, today]);
   const active_tab = picked_tab ?? (work_summary ? firstBusyTab(work_summary) : "today");
   const work_counts = work_summary
-    ? { past_dates: work_summary.past_dates.length, today: work_summary.today.length, this_week: work_summary.this_week.length }
+    ? {
+        past_dates: work_summary.past_dates.length,
+        today: work_summary.today.length,
+        this_week: work_summary.this_week.length,
+        upcoming: work_summary.upcoming.length,
+      }
     : null;
   const recap =
     work_counts && unread_count !== null
@@ -111,7 +116,7 @@ const HomeView: React.FC = () => {
                   </Link>
                 }
               >
-                <HomeMyWork summary={work_summary} active_tab={active_tab} onSelectTab={setPickedTab} />
+                <HomeMyWork summary={work_summary} active_tab={active_tab} onSelectTab={setPickedTab} today={today} />
               </HomeSection>
             </div>
           </div>

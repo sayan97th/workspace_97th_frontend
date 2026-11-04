@@ -1,6 +1,6 @@
 import React from "react";
 import { BellIcon, ClockIcon, SunIcon } from "@/icons/workspace-icons";
-import { CalendarViewIcon } from "@/icons/board-icons";
+import { CalendarViewIcon, GanttViewIcon } from "@/icons/board-icons";
 import type { HomeWorkTab } from "./homeSummary";
 
 type HomeStatTilesProps = {
@@ -21,12 +21,13 @@ type StatTile = {
   onClick: () => void;
 };
 
-/** Four big numbers under the hero: overdue, due today, this week and unread notifications in the inbox. */
+/** Five big numbers under the hero: overdue, due today, this week, upcoming and unread notifications in the inbox. */
 const HomeStatTiles: React.FC<HomeStatTilesProps> = ({ counts, unread, onSelectTab, onOpenInbox }) => {
   const tiles: StatTile[] = [
     { key: "past_dates", label: "Overdue", color: "#e2445c", value: counts?.past_dates ?? null, Icon: ClockIcon, onClick: () => onSelectTab("past_dates") },
     { key: "today", label: "Due today", color: "#00c875", value: counts?.today ?? null, Icon: SunIcon, onClick: () => onSelectTab("today") },
     { key: "this_week", label: "This week", color: "#579bfc", value: counts?.this_week ?? null, Icon: CalendarViewIcon, onClick: () => onSelectTab("this_week") },
+    { key: "upcoming", label: "Upcoming", color: "#784bd1", value: counts?.upcoming ?? null, Icon: GanttViewIcon, onClick: () => onSelectTab("upcoming") },
     { key: "unread", label: "Unread", color: "#a25ddc", value: unread, Icon: BellIcon, onClick: onOpenInbox },
   ];
 
