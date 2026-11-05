@@ -14,7 +14,9 @@ import {
   isWeekValue,
 } from "../columnValueFormats";
 import { DEFAULT_DATE_DISPLAY, datePartsOfInstant, formatDateParts } from "../dateUtils";
+import { getPersonTitle } from "@/lib/deactivated-user";
 import AvatarBadge from "../menus/AvatarBadge";
+import { useCellTooltip } from "./CellTooltip";
 import DocCellModal from "../menus/DocCellModal";
 import { ColorPickerMenu, CountryMenu, HourMenu, WeekMenu } from "../menus/ValuePickers";
 import "./column-center-cells.css";
@@ -285,16 +287,35 @@ export function DocCell({ node_id, column, value, node_name, state, actions, is_
   );
 }
 
+/** Shown on a log avatar when the item has no recorded person, e.g. one added by a form or an import. */
+const UNKNOWN_STAMP_PERSON = "Unknown user";
+
+/**
+ * Creation log / Last updated: the person's avatar and the date. Like the People cell, hovering
+ * the avatar shows the person's name in the dark cell tooltip, and hovering the date shows the
+ * full date and time.
+ */
 function PersonStamp({ person, stamp, empty_label }: { person: PersonDef | undefined; stamp: { label: string; full: string } | null; empty_label: string }) {
+  const person_name = person ? getPersonTitle(person.name, person.is_deactivated) : UNKNOWN_STAMP_PERSON;
+  const avatar_tooltip = useCellTooltip<HTMLSpanElement>(person_name);
+  const date_tooltip = useCellTooltip<HTMLSpanElement>(stamp?.full ?? "");
+
   if (!stamp) return <span className="center-cell__muted">{empty_label}</span>;
   return (
-    <span className="center-cell__person" title={`${person?.name ?? "Unknown"}, ${stamp.full}`}>
-      {person ? (
-        <AvatarBadge initials={person.initials} color={person.color} size={24} name={person.name} avatar_url={person.avatar_url} is_deactivated={person.is_deactivated} />
-      ) : (
-        <span className="center-cell__avatar-placeholder" aria-hidden="true" />
-      )}
-      <span className="center-cell__text">{stamp.label}</span>
+    <span className="center-cell__person">
+      <span {...avatar_tooltip.anchor_props} className="center-cell__stamp-avatar" aria-label={person_name}>
+        {/* No `name` prop, so the native `title` never doubles the styled tooltip. */}
+        {person ? (
+          <AvatarBadge initials={person.initials} color={person.color} size={24} avatar_url={person.avatar_url} is_deactivated={person.is_deactivated} />
+        ) : (
+          <span className="center-cell__avatar-placeholder" aria-hidden="true" />
+        )}
+      </span>
+      {avatar_tooltip.tooltip}
+      <span {...date_tooltip.anchor_props} className="center-cell__text" aria-label={stamp.full}>
+        {stamp.label}
+      </span>
+      {date_tooltip.tooltip}
     </span>
   );
 }

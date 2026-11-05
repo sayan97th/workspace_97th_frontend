@@ -154,6 +154,14 @@
   min-width: 0;
 }
 
+/* Creation log / Last updated avatar: the hover target for the person's name tooltip. */
+.center-cell__stamp-avatar {
+  display: flex;
+  flex: none;
+  border-radius: 50%;
+  cursor: default;
+}
+
 .center-cell__avatar-placeholder {
   flex: none;
   width: 24px;
