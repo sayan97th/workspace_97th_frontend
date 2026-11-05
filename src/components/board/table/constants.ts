@@ -165,7 +165,12 @@ export const CHANGE_TYPE_TARGETS: Partial<Record<ColumnKind, ColumnKind[]>> = {
   text: ["longtext", "number", "email", "phone", "link", "status", "dropdown"],
   longtext: ["text"],
   number: ["text", "longtext", "rating", "progress"],
-  date: ["timeline", "text"],
+  // Creation log and Last updated are read only and show the item's own dates. A Date column's
+  // stored dates are kept while it is one of them, so changing it back brings them back.
+  date: ["timeline", "creation_log", "last_updated", "text"],
+  // Back to a Date column, the dates they showed are written into the empty cells (see `BoardDateAutoFiller`).
+  creation_log: ["date", "last_updated"],
+  last_updated: ["date", "creation_log"],
   timeline: ["date", "text"],
   people: ["text"],
   tags: ["dropdown", "text"],

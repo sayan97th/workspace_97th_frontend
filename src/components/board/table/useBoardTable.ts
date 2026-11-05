@@ -380,6 +380,8 @@ export interface UseBoardTableConfig {
     patch: ColumnSettingsPatch
   ) => void;
   onChangeColumnKind?: (group_key: string, scope: ColumnScope, column_id: string, kind: ColumnKind, default_width: number) => void;
+  /** Date columns only: "Fill empty cells" with each item's creation date. The host writes the returned dates into its rows. */
+  onFillEmptyDateCells?: (group_key: string, scope: ColumnScope, column_id: string) => void;
   /**
    * Persisted width (px) for the item-title virtual column (the "Item"/"Task"
    * header spanning the name + person cells) — undefined for the standalone
@@ -1910,6 +1912,11 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     config_ref.current.onChangeColumnKind?.(group_key, scope, column_id, kind, default_width);
   }, []);
 
+  const fillEmptyDateCells = useCallback((group_key: string, scope: ColumnScope, column_id: string) => {
+    setState((s) => ({ ...s, open_column_menu_key: null }));
+    config_ref.current.onFillEmptyDateCells?.(group_key, scope, column_id);
+  }, []);
+
   const updateColumnSettings = useCallback(
     (
       group_key: string,
@@ -1925,6 +1932,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.validation) local_patch.validation = patch.validation;
       if (patch.aggregation) local_patch.aggregation = patch.aggregation;
       if (patch.reminder) local_patch.reminder = patch.reminder;
+      if (patch.date_auto_fill) local_patch.date_auto_fill = patch.date_auto_fill;
       if (patch.button) local_patch.button = patch.button;
       if (patch.dependency) local_patch.dependency = patch.dependency;
       if (patch.description !== undefined) local_patch.description = patch.description ?? undefined;
@@ -2709,6 +2717,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       duplicateColumn,
       duplicateColumnToBoard,
       changeColumnKind,
+      fillEmptyDateCells,
       updateColumnSettings,
       resizeColumnPreview,
       resizeItemColumnPreview,
@@ -2801,7 +2810,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToIndex, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup, toggleGroupSelection,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
-      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
+      renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, fillEmptyDateCells, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,
       closeOwnerMenu, setPeopleQuery, openLabelEditor, closeLabelEditor, openConfigEditor, closeConfigEditor, addStatusDef, renameStatusDef, setStatusDefColor,
       deleteStatusDef, toggleStatusDefActive, setStatusDefDescription, reorderStatusDefs, addLabelDef, renameLabelDef, setLabelDefColor, deleteLabelDef, createLabelDefOnCell, toggleLabelDefActive, setLabelDefDescription, reorderLabelDefs, addColumnOption, createColumnOptionOnCell, renameColumnOption, recolorColumnOption, deleteColumnOption, toggleColumnOptionActive, setColumnOptionDescription, reorderColumnOptions, toggleColumnNotifyOnAssignment, updateColumnFormula, updateConnectSettings, updateColumnMirror, openTagEditor, closeTagEditor, addTagDef, createTagOnCell,
       setTagDefColor, renameTagDef, deleteTagDef, setTagQuery, ensureConnectOptions, createConnectItem, fetchConnectedBoards, addMirrorColumn, setLinkedItemValue, openLinkedItem, openBoardItem, submitFeedback, createDependencyItem, closeLinkedItem, fetchLinkedItem, deleteLinkedItem, pressButton, setUpButton, canSetUpButtons, closeAllOverlays, copyRowLink, openRowInNewTab, getRowApps, openRowApp, canExportGroup, exportGroup, openComments, openItem, requestGroupItems, undo, redo,
@@ -2834,7 +2843,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   const STRUCTURE_ACTIONS: (keyof typeof actions)[] = [
     "addGroup", "duplicateGroup", "moveGroupByKey", "moveGroupToIndex", "setGroupColor", "togglePriority", "removeGroup", "archiveGroup",
     "startGroupRename", "commitGroupRename", "addColumn", "renameColumn", "renameItemTitle", "startColumnRename",
-    "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind",
+    "commitColumnRename", "deleteColumn", "duplicateColumn", "duplicateColumnToBoard", "changeColumnKind", "fillEmptyDateCells",
     "updateColumnSettings", "onColumnDragStart", "addStatusDef", "renameStatusDef", "setStatusDefColor", "deleteStatusDef",
     "addLabelDef", "renameLabelDef", "setLabelDefColor", "deleteLabelDef", "createLabelDefOnCell", "toggleLabelDefActive", "setLabelDefDescription", "reorderLabelDefs", "addColumnOption", "createColumnOptionOnCell", "renameColumnOption",
     "recolorColumnOption", "deleteColumnOption", "toggleColumnOptionActive", "setColumnOptionDescription", "reorderColumnOptions",

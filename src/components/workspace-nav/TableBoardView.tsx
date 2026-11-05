@@ -127,6 +127,7 @@ import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
 import {
   copyColumnValuesInTree,
+  setColumnValuesInTree,
   findItemInTree,
   insertItemBelowInTree,
   mapItemInTree,
@@ -338,6 +339,10 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
         ? column.config.progress_columns.map((entry) => ({ column_id: String(entry.column_id), weight: entry.weight }))
         : undefined,
     reminder: column.config?.reminder,
+    date_auto_fill:
+      column.type === "date" && column.config?.auto_fill
+        ? { enabled: !!column.config.auto_fill.enabled, include_time: column.config.auto_fill.include_time !== false }
+        : undefined,
     dependency:
       column.type === "dependency"
         ? {
@@ -3500,7 +3505,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, date_auto_fill, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
@@ -3514,6 +3519,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           config_patch.progress_columns = progress_columns?.map((entry) => ({ column_id: Number(entry.column_id), weight: entry.weight })) ?? null;
         }
         if (reminder !== undefined) config_patch.reminder = reminder;
+        if (date_auto_fill !== undefined) config_patch.auto_fill = date_auto_fill;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;
           config_patch.dependency_mode = dependency.mode;
@@ -3528,10 +3534,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           .updateColumn(board_id, Number(column_id), body)
           .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c))));
       },
+      // Creation log / Last updated back to Date: the server writes the dates they showed into the empty cells.
       onChangeColumnKind: (_group_key, _scope, column_id, kind, default_width) =>
         void boardContentService
-          .updateColumn(board_id, Number(column_id), { type: TABLE_KIND_TO_ENGINE_KIND[kind], width: default_width })
-          .then((updated) => setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)))),
+          .changeColumnType(board_id, Number(column_id), { type: TABLE_KIND_TO_ENGINE_KIND[kind], width: default_width })
+          .then(({ column: updated, filled_values }) => {
+            setColumns((current) => current.map((c) => (c.id === updated.id ? updated : c)));
+            if (Object.keys(filled_values).length > 0) setItems((current) => setColumnValuesInTree(current, column_id, filled_values));
+          })
+          .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't change the column type. Please try again."))),
+      onFillEmptyDateCells: (_group_key, _scope, column_id) =>
+        void boardContentService
+          .fillDateColumn(board_id, Number(column_id))
+          .then((filled_values) => {
+            const filled_count = Object.keys(filled_values).length;
+            if (filled_count > 0) setItems((current) => setColumnValuesInTree(current, column_id, filled_values));
+            toast.success(filled_count === 0 ? "Every cell already has a date" : `Filled ${filled_count} empty ${filled_count === 1 ? "cell" : "cells"}`);
+          })
+          .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't fill the empty cells. Please try again."))),
       // The row's message-icon button only knows its own node id — look the
       // real row (item or subitem) up in the tree and reuse the same
       // `handleRowClick` every other view's row click already goes through,

@@ -14,6 +14,7 @@ import type {
   BoardItemMoveTargetDto,
   BoardItemValue,
   BoardTagDto,
+  FilledDateValuesDto,
   BoardViewDto,
   BoardViewsIndexDto,
   BoardViewPreferencesDto,
@@ -68,6 +69,28 @@ export const boardContentService = {
       payload
     );
     return response.column;
+  },
+
+  /**
+   * PATCH /api/boards/{board_id}/columns/{column_id} with a new `type`. Also returns the dates
+   * the server wrote into empty cells when a Creation log or Last updated column becomes a Date column.
+   */
+  async changeColumnType(
+    board_id: number,
+    column_id: number,
+    payload: UpdateBoardColumnPayload
+  ): Promise<{ column: BoardColumnDto; filled_values: FilledDateValuesDto }> {
+    const response = await apiClient.patch<{ column: BoardColumnDto; filled_values?: FilledDateValuesDto }>(
+      `/api/boards/${board_id}/columns/${column_id}`,
+      payload
+    );
+    return { column: response.column, filled_values: response.filled_values ?? {} };
+  },
+
+  /** POST /api/boards/{board_id}/columns/{column_id}/fill-dates, a Date column's "Fill empty cells" with each item's creation date. */
+  async fillDateColumn(board_id: number, column_id: number): Promise<FilledDateValuesDto> {
+    const response = await apiClient.post<{ filled_values?: FilledDateValuesDto }>(`/api/boards/${board_id}/columns/${column_id}/fill-dates`, {});
+    return response.filled_values ?? {};
   },
 
   /** PATCH /api/boards/{id}/columns/{column_id}/permissions, board owners only. */

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../constants";
-import type { ColumnKind, ColumnValidation, ProgressColumnWeight, RatingIcon } from "../types";
+import type { ColumnKind, ColumnValidation, DateAutoFill, ProgressColumnWeight, RatingIcon } from "../types";
 import { evenWeights, type ProgressStatusColumn } from "../progressTracking";
 import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
@@ -184,6 +184,56 @@ export function ReminderSettingsPanel({ reminder, onChange }: ReminderSettingsPa
         </label>
       )}
       <div className="column-menu__help">Everyone assigned in a People column of the item gets notified.</div>
+    </div>
+  );
+}
+
+interface DateAutoFillSettingsPanelProps {
+  auto_fill?: DateAutoFill;
+  onChange: (auto_fill: DateAutoFill) => void;
+  /** "Fill empty cells": writes each existing item's creation date into the cells that are still empty. */
+  onFillEmptyCells?: () => void;
+}
+
+/**
+ * A Date column's "Auto fill new items": every new item gets its creation date
+ * written into the cell by the server, while the column stays a normal,
+ * editable Date column. See `DateAutoFill`.
+ */
+export function DateAutoFillSettingsPanel({ auto_fill, onChange, onFillEmptyCells }: DateAutoFillSettingsPanelProps) {
+  const is_enabled = !!auto_fill?.enabled;
+  const include_time = auto_fill?.include_time ?? true;
+
+  return (
+    <div className="action-menu column-menu__form w-[280px]">
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={is_enabled}
+        onClick={() => onChange({ enabled: !is_enabled, include_time })}
+        className="action-menu__item"
+      >
+        <span className="action-menu__label">Fill new items with creation date</span>
+        <ToggleSwitch is_on={is_enabled} size="sm" />
+      </button>
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={include_time}
+        onClick={() => onChange({ enabled: is_enabled, include_time: !include_time })}
+        className="action-menu__item"
+      >
+        <span className="action-menu__label">Include time</span>
+        <ToggleSwitch is_on={include_time} size="sm" />
+      </button>
+      <div className="column-menu__help">
+        New items get the date they were created. Dates stay editable, and a date that is already set is never replaced.
+      </div>
+      {onFillEmptyCells && (
+        <button type="button" onClick={onFillEmptyCells} className="column-menu__primary">
+          Fill empty cells now
+        </button>
+      )}
     </div>
   );
 }

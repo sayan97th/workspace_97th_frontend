@@ -4,7 +4,15 @@ import React, { useEffect, useLayoutEffect, useRef, useState, type ReactNode } f
 import PopoverPanel from "./PopoverPanel";
 import ColumnPicker from "./ColumnPicker";
 import ColumnTypeIcon from "./ColumnTypeIcon";
-import ColumnSettingsPanel, { ButtonSettingsPanel, ColumnValidationPanel, ProgressTrackingSettingsPanel, RatingSettingsPanel, ReminderSettingsPanel, hasValidationRules } from "./ColumnSettingsPanel";
+import ColumnSettingsPanel, {
+  ButtonSettingsPanel,
+  ColumnValidationPanel,
+  DateAutoFillSettingsPanel,
+  ProgressTrackingSettingsPanel,
+  RatingSettingsPanel,
+  ReminderSettingsPanel,
+  hasValidationRules,
+} from "./ColumnSettingsPanel";
 import type { ProgressStatusColumn } from "../progressTracking";
 import { ratingIconOf, ratingMaxOf } from "../cells/VoteRatingCells";
 import BoardPickerMenu from "./BoardPickerMenu";
@@ -15,6 +23,7 @@ import {
   ChangeTypeIcon,
   CheckIcon,
   ChevronRightIcon,
+  ClockIcon,
   DeleteIcon,
   DuplicateIcon,
   EyeIcon,
@@ -42,7 +51,7 @@ import {
   ValidationIcon,
 } from "./column-menu-icons";
 import { CHANGE_TYPE_TARGETS, COLUMN_TYPE_GALLERY, QUICK_ADD_COLUMN_KINDS, type ColumnTypeDef } from "../constants";
-import type { ColumnDef, ColumnKind, ColumnSettingsPatch, ColumnValidation } from "../types";
+import type { ColumnDef, ColumnKind, ColumnSettingsPatch, ColumnValidation, DateAutoFill } from "../types";
 import "@/components/ui/dropdown/action-menu.css";
 import "./column-menu.css";
 
@@ -51,7 +60,7 @@ export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
   Partial<
     Pick<
       ColumnDef,
-      "options" | "validation" | "aggregation" | "reminder" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
+      "options" | "validation" | "aggregation" | "reminder" | "date_auto_fill" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
     >
   > & {
     /** Progress tracking columns only: the Status columns of the same table its settings can pick from. */
@@ -90,6 +99,8 @@ interface ColumnMenuProps {
   onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight: (kind: ColumnKind, label: string, default_width: number) => void;
   onChangeType: (kind: ColumnKind, default_width: number) => void;
+  /** Date columns only: "Fill empty cells now" with each item's creation date. */
+  onFillEmptyDates?: () => void;
   onDelete: () => void;
   onClose: () => void;
   /** Opens the column permissions dialog. Only passed for board owners on a real column. */
@@ -113,6 +124,17 @@ const FLYOUT_TOP_OFFSET = 8;
 const HOVER_INTENT_DELAY_MS = 250;
 
 const typeDefOf = (kind: ColumnKind): ColumnTypeDef | undefined => COLUMN_TYPE_GALLERY.find((type) => type.kind === kind);
+
+/** Shown as the tooltip of a "Change column type" row, for the changes that do more than relabel the cells. */
+const changeTypeHint = (from_kind: ColumnKind, to_kind: ColumnKind): string | undefined => {
+  if (to_kind === "creation_log") return "Read only. Shows who created each item and when. Your dates are kept if you change it back.";
+  if (to_kind === "last_updated") return "Read only. Shows who last changed each item and when. Your dates are kept if you change it back.";
+  if (to_kind === "date" && from_kind === "creation_log") return "Keeps each item's creation date and fills new items automatically. Dates become editable.";
+  if (to_kind === "date" && from_kind === "last_updated") return "Keeps each item's last update date in the cells. Dates become editable.";
+  return undefined;
+};
+
+const DEFAULT_DATE_AUTO_FILL: DateAutoFill = { enabled: false, include_time: true };
 
 /**
  * Which flyout of one menu level is open. Hover opens one right away when none
@@ -379,7 +401,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "progress" | "rating" | "reminder" | "validation" | "options";
+type SettingsSub = "button" | "progress" | "rating" | "reminder" | "auto_fill" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -392,7 +414,7 @@ type NestedSub = "board" | "more";
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
   onStartRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onDelete, onClose, onRequestPermissions, automation,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyDates, onDelete, onClose, onRequestPermissions, automation,
 }: ColumnMenuProps) {
   const main_sub = useSubmenu<MainSub>();
   const settings_sub = useSubmenu<SettingsSub>();
@@ -415,6 +437,8 @@ export default function ColumnMenu({
   const kind_label = column ? typeDefOf(column.kind)?.label ?? "this" : "this";
   const quick_add_types = QUICK_ADD_COLUMN_KINDS.map(typeDefOf).filter((type): type is ColumnTypeDef => !!type);
   const change_type_targets = column ? (CHANGE_TYPE_TARGETS[column.kind] ?? []).map(typeDefOf).filter((type): type is ColumnTypeDef => !!type) : [];
+  const date_auto_fill = column?.date_auto_fill ?? DEFAULT_DATE_AUTO_FILL;
+  const fill_empty_dates = onFillEmptyDates ? run(onFillEmptyDates) : undefined;
 
   /** "Customize ... column": whatever editor this kind has, a dialog or a nested form. */
   const renderCustomizeRow = () => {
@@ -498,6 +522,22 @@ export default function ColumnMenu({
               icon={<BellIcon size={16} />}
               label="Set due date reminder"
               renderFlyout={() => <ReminderSettingsPanel reminder={column.reminder} onChange={(reminder) => onUpdateSettings({ reminder })} />}
+            />
+          )}
+          {column.kind === "date" && (
+            <SubmenuRow
+              submenu_key="auto_fill"
+              submenu={settings_sub}
+              icon={<ClockIcon size={16} />}
+              label="Auto fill new items"
+              trailing={date_auto_fill.enabled && <span className="column-menu__badge">On</span>}
+              renderFlyout={() => (
+                <DateAutoFillSettingsPanel
+                  auto_fill={date_auto_fill}
+                  onChange={(next) => onUpdateSettings({ date_auto_fill: next })}
+                  onFillEmptyCells={fill_empty_dates}
+                />
+              )}
             />
           )}
 
@@ -662,8 +702,30 @@ export default function ColumnMenu({
       </div>
       {change_type_targets.length === 0 && <div className="column-menu__empty">This column type can&apos;t be changed.</div>}
       {change_type_targets.map((type) => (
-        <MenuRow key={type.kind} icon={<ColumnTypeChip type={type} />} label={type.label} onClick={run(() => onChangeType(type.kind, type.default_width))} />
+        <MenuRow
+          key={type.kind}
+          icon={<ColumnTypeChip type={type} />}
+          label={type.label}
+          title={column ? changeTypeHint(column.kind, type.kind) : undefined}
+          onClick={run(() => onChangeType(type.kind, type.default_width))}
+        />
       ))}
+      {column?.kind === "date" && (
+        <>
+          {/* Keeps the column a Date column (editable, filterable, on the Calendar) while new items fill themselves. */}
+          <Divider />
+          <MenuRow
+            role="menuitemcheckbox"
+            is_checked={date_auto_fill.enabled}
+            icon={<ClockIcon size={16} />}
+            label="Auto fill with creation date"
+            title="New items get the date they were created. The column stays a Date column."
+            trailing={<ToggleSwitch is_on={date_auto_fill.enabled} size="sm" />}
+            onClick={() => onUpdateSettings({ date_auto_fill: { ...date_auto_fill, enabled: !date_auto_fill.enabled } })}
+          />
+          {fill_empty_dates && <MenuRow label="Fill empty cells with creation date" onClick={fill_empty_dates} />}
+        </>
+      )}
     </MenuList>
   );
 

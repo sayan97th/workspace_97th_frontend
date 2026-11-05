@@ -36,6 +36,26 @@ export const copyColumnValuesInTree = (items: BoardItemDto[], from_column_id: st
     children: item.children.length ? copyColumnValuesInTree(item.children, from_column_id, to_column_id) : item.children,
   }));
 
+/**
+ * Writes `values_by_item_id` (item id => value) into `column_id` on the matching rows, subitems included.
+ * Rows and subitem lists with nothing to write keep their identity, so they don't re-render.
+ */
+export const setColumnValuesInTree = (items: BoardItemDto[], column_id: string, values_by_item_id: Record<string, unknown>): BoardItemDto[] => {
+  let has_changed = false;
+  const next = items.map((item) => {
+    const has_value = String(item.id) in values_by_item_id;
+    const children = item.children.length ? setColumnValuesInTree(item.children, column_id, values_by_item_id) : item.children;
+    if (!has_value && children === item.children) return item;
+    has_changed = true;
+    return {
+      ...item,
+      values: has_value ? { ...item.values, [column_id]: values_by_item_id[String(item.id)] as BoardItemDto["values"][string] } : item.values,
+      children,
+    };
+  });
+  return has_changed ? next : items;
+};
+
 export const findItemInTree = (items: BoardItemDto[], item_id: number): BoardItemDto | undefined => {
   for (const item of items) {
     if (item.id === item_id) return item;

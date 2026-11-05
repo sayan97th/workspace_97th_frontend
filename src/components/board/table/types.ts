@@ -64,6 +64,17 @@ export interface FormulaSourceColumn {
 
 /** A `mirror`-kind column's own config: which of this tab's `connect_board` columns to read through, and which column on that linked board to display. */
 /**
+ * A Date column's "Auto fill new items": the server writes each new item's
+ * creation date into the cell (the creator's time zone, with the time unless
+ * `include_time` is off). The cell stays a normal, editable date, and a date
+ * that is already set is never overwritten. Stored as `config.auto_fill`.
+ */
+export interface DateAutoFill {
+  enabled: boolean;
+  include_time: boolean;
+}
+
+/**
  * A column's settings change from its header (menu, resize, settings panels), persisted through
  * `UseBoardTableConfig.onUpdateColumnSettings`. Each key belongs to the column kinds noted.
  */
@@ -83,6 +94,8 @@ export interface ColumnSettingsPatch {
   aggregation?: ColumnDef["aggregation"];
   /** Date columns only, see `ColumnDef.reminder`. */
   reminder?: ColumnDef["reminder"];
+  /** Date columns only, see `ColumnDef.date_auto_fill`. */
+  date_auto_fill?: DateAutoFill;
   /** Button columns only, see `ColumnDef.button`. */
   button?: ColumnDef["button"];
   /** Dependency columns only, see `ColumnDef.dependency`. */
@@ -316,6 +329,8 @@ export interface ColumnDef {
   dependency_date_columns?: { id: string; title: string; kind: ColumnKind }[];
   /** Date kind only: notifies everyone assigned in a People column on the same item once the date is `days_before` days away — sent daily by the backend's `board:send-due-date-reminders` scheduled command. */
   reminder?: { enabled: boolean; days_before: number };
+  /** Date kind only, see `DateAutoFill`. Unset is off. */
+  date_auto_fill?: DateAutoFill;
   /** Hour columns only, see `HourFormat`. Unset reads as 12 hour. */
   hour_format?: HourFormat;
   /** Rating columns only: how many icons the scale has (1 to 10). Unset reads as 5. */

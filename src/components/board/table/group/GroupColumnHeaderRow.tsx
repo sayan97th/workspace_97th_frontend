@@ -145,7 +145,7 @@ export default function GroupColumnHeaderRow({
             title={col.title}
             height={header_px}
           title_lines={title_lines}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, aggregation: col.aggregation, reminder: col.reminder, date_auto_fill: col.date_auto_fill, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
             can_delete={true}
             sticky={col_index < pinned_columns.length ? { left: sticky_offsets[3 + col_index], background: HEADER_BG } : undefined}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
@@ -191,6 +191,7 @@ export default function GroupColumnHeaderRow({
             onDuplicate={(with_values) => actions.duplicateColumn(group.key, "main", col.id, with_values)}
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "main", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "main", col.id, kind, width)}
+            onFillEmptyDates={col.kind === "date" ? () => actions.fillEmptyDateCells(group.key, "main", col.id) : undefined}
             onDelete={() => actions.deleteColumn(group.key, "main", col.id)}
             is_draggable
             move_key={columnMoveKey("main", col.id)}

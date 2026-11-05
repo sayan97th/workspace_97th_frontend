@@ -6,6 +6,7 @@ import {
   mapItemInTree,
   relocateItemInTree,
   removeItemFromTree,
+  setColumnValuesInTree,
   withGroupInTree,
 } from "@/components/workspace-nav/boardItemTree";
 import { idsOf, makeItemDto, makeItemTree, makeSubDto } from "../support/boardItemFixtures";
@@ -155,5 +156,23 @@ describe("relocateItemInTree", () => {
     relocateItemInTree(tree, tree[1], makeItemDto(2, { parent_id: 1, position: 2 }));
     expect(idsOf(tree)).toEqual([1, 2, 3]);
     expect(idsOf(tree[0].children)).toEqual([11, 12]);
+  });
+});
+
+describe("setColumnValuesInTree", () => {
+  test("writes the filled dates into root rows and subitems, keeping their other values", () => {
+    const tree = makeItemTree();
+    const next = setColumnValuesInTree(tree, "7", { "2": "2026-11-05", "12": "2026-11-04T09:30" });
+    expect(findItemInTree(next, 2)?.values["7"]).toBe("2026-11-05");
+    expect(findItemInTree(next, 12)?.values["7"]).toBe("2026-11-04T09:30");
+    expect(findItemInTree(next, 1)?.values["7"]).toBeUndefined();
+    expect(findItemInTree(tree, 2)?.values["7"]).toBeUndefined();
+  });
+
+  test("leaves untouched rows as the same objects", () => {
+    const tree = makeItemTree();
+    const next = setColumnValuesInTree(tree, "7", { "2": "2026-11-05" });
+    expect(next[2]).toBe(tree[2]);
+    expect(next[0]).toBe(tree[0]);
   });
 });

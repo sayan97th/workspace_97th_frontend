@@ -95,7 +95,16 @@ export type BoardColumnConfig = {
   progress_columns?: { column_id: number; weight: number }[] | null;
   /** Date columns only: due-date reminder settings, sent daily by the backend's `board:send-due-date-reminders` command — see `ColumnDef.reminder` in `@/components/board/table/types`. */
   reminder?: { enabled: boolean; days_before: number };
+  /** Date columns only: fill each new item with its creation date, see `DateAutoFill` in `@/components/board/table/types`. */
+  auto_fill?: { enabled: boolean; include_time: boolean } | null;
 };
+
+/**
+ * Dates the server wrote into a Date column's empty cells, keyed by item id:
+ * after "Fill empty cells", or after a Creation log / Last updated column was
+ * changed back into a Date column.
+ */
+export type FilledDateValuesDto = Record<string, string>;
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */
 export type BoardColumnScope = "item" | "subitem";

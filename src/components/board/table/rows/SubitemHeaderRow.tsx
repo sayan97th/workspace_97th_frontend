@@ -77,7 +77,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             scoped_key={scope_key_of(col.id)}
             title={col.title}
             height={36}
-            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
+            column={{ id: col.id, kind: col.kind, width: col.width, options: col.options, validation: col.validation, reminder: col.reminder, date_auto_fill: col.date_auto_fill, button: col.button, dependency: col.dependency, dependency_date_columns: col.dependency_date_columns, description: col.description, linkage: col.linkage, hide_summary: col.hide_summary, rating_max: col.rating_max, rating_icon: col.rating_icon, progress_columns: col.progress_columns, progress_status_columns: col.kind === "progress_tracking" ? progress_status_columns : undefined }}
             can_delete={true}
             is_group_by_eligible={(col.kind === "status" || col.kind === "label") && !!col.options?.length}
             sort_dir={state.sort?.scope_key === sort_scope && state.sort.column_id === col.id ? state.sort.direction : null}
@@ -122,6 +122,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
             onDuplicate={(with_values) => actions.duplicateColumn(group.key, "sub", col.id, with_values)}
             onAddColumnRight={(kind, label, width) => actions.addColumn(group.key, "sub", kind, label, width, col.id)}
             onChangeType={(kind, width) => actions.changeColumnKind(group.key, "sub", col.id, kind, width)}
+            onFillEmptyDates={col.kind === "date" ? () => actions.fillEmptyDateCells(group.key, "sub", col.id) : undefined}
             onDelete={() => actions.deleteColumn(group.key, "sub", col.id)}
             is_draggable
             move_key={columnMoveKey("sub", col.id)}
