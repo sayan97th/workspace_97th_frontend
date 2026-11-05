@@ -109,6 +109,9 @@ const RecurrenceForm = ({ recurrence, onSave, onStop }: RecurrenceFormProps) => 
   return (
     <form
       className="row-menu-recurrence"
+      // The interval is clamped to 1..365 above and the summary already shows the clamped value,
+      // so native min/max validation must not silently block Start/Update on an out of range entry.
+      noValidate
       onSubmit={(event) => {
         event.preventDefault();
         onSave(frequency, interval_count);

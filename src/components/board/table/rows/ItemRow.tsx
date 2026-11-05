@@ -129,10 +129,13 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             ref={menu_btn_ref}
             type="button"
             onClick={(e) => { e.stopPropagation(); actions.openRowMenu(item.id); }}
+            aria-label="Item options"
+            aria-haspopup="menu"
+            aria-expanded={is_row_menu_open}
             className="flex h-6 w-6 items-center justify-center rounded-[5px] text-boardtree-text-muted hover:bg-boardtree-hover-strong hover:text-boardtree-accent"
             style={{ background: is_row_menu_open ? "var(--color-boardtree-hover-strong)" : "transparent", opacity: is_hovered || is_row_menu_open ? 1 : 0, pointerEvents: is_hovered || is_row_menu_open ? "auto" : "none" }}
           >
-            <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><circle cx="4" cy="8" r="1.3" fill="currentColor" /><circle cx="8" cy="8" r="1.3" fill="currentColor" /><circle cx="12" cy="8" r="1.3" fill="currentColor" /></svg>
           </button>
           {is_row_menu_open && (
             <RowMenu

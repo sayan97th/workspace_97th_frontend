@@ -26,59 +26,51 @@ const rowOf = (name: string): HTMLElement => {
   return row;
 };
 
+/** The "..." button that opens a row's menu. It only takes pointer events while its row is hovered. */
+const menuTriggerOf = (name: string): HTMLElement => within(rowOf(name)).getByRole("button", { name: /^(Item|Subitem) options$/ });
+
 const openMenuOf = async (name: string) => {
-  const row = rowOf(name);
-  fireEvent.mouseEnter(row);
-  await userEvent.click(row.querySelector("button") as HTMLButtonElement);
+  fireEvent.mouseEnter(rowOf(name));
+  await userEvent.click(menuTriggerOf(name));
 };
 
 const expandSubitemsOf = async (name: string) => {
   await userEvent.click(within(rowOf(name)).getByRole("button", { name: /^2$/ }));
 };
 
-/**
- * A row also renders a hover-only icon button titled "Open item", so a plain role query for a menu row can
- * match two buttons. Menu rows always carry visible text and the icon buttons never do.
- */
-const menuButton = (name: string | RegExp): HTMLElement => {
-  const matches = screen.getAllByRole("button", { name }).filter((button) => (button.textContent ?? "").trim() !== "");
-  if (matches.length !== 1) throw new Error(`Expected one menu button named ${String(name)}, found ${matches.length}`);
-  return matches[0];
-};
+/** A row of the open row menu. RowMenu is built on ActionMenu, so its rows are menu items, not plain buttons. */
+const menuItem = (name: string | RegExp): HTMLElement => screen.getByRole("menuitem", { name });
+const queryMenuItem = (name: string | RegExp): HTMLElement | null => screen.queryByRole("menuitem", { name });
+const clickMenu = (name: string | RegExp) => userEvent.click(menuItem(name));
 
-const queryMenuButton = (name: string | RegExp): HTMLElement | null =>
-  screen.queryAllByRole("button", { name }).find((button) => (button.textContent ?? "").trim() !== "") ?? null;
-
-const clickMenu = (name: string | RegExp) => userEvent.click(menuButton(name));
-
-/** A row inside the open submenu (Move to group, Convert to subitem, ...), which the table's own group headers could share a name with. */
-const clickFlyout = (name: string | RegExp) => {
-  const flyout = document.querySelector<HTMLElement>("[data-board-menu-flyout]");
-  if (!flyout) throw new Error("No submenu is open");
-  return userEvent.click(within(flyout).getByRole("button", { name }));
-};
+/** The side flyout a submenu row opened (named after that row), kept apart from the table's own group headers and rows. */
+const flyout = (row_name: string): HTMLElement => screen.getByRole("menu", { name: row_name });
+const clickFlyout = (row_name: string, name: string | RegExp) => userEvent.click(within(flyout(row_name)).getByRole("menuitem", { name }));
 
 describe("opening the menu", () => {
   test("shows the item menu for a root row", async () => {
     renderTable();
     await openMenuOf("Row b");
-    expect(menuButton("Open item")).toBeInTheDocument();
-    expect(menuButton("Add subitem")).toBeInTheDocument();
+    expect(screen.getByRole("menu", { name: "Item actions" })).toBeInTheDocument();
+    expect(menuItem("Open item")).toBeInTheDocument();
+    expect(menuItem("Add subitem")).toBeInTheDocument();
+    expect(menuTriggerOf("Row b")).toHaveAttribute("aria-expanded", "true");
   });
 
   test("shows the subitem menu for a subitem row", async () => {
     renderTable();
     await expandSubitemsOf("Row a");
     await openMenuOf("Row a1");
-    expect(menuButton("Open subitem")).toBeInTheDocument();
-    expect(queryMenuButton("Add subitem")).not.toBeInTheDocument();
+    expect(screen.getByRole("menu", { name: "Subitem actions" })).toBeInTheDocument();
+    expect(menuItem("Open subitem")).toBeInTheDocument();
+    expect(queryMenuItem("Add subitem")).not.toBeInTheDocument();
   });
 
   test("a read only board has no row menu button", () => {
     renderTable({}, { read_only: true });
-    expect(rowOf("Row b").querySelector("button")).not.toHaveAttribute("aria-haspopup");
     fireEvent.mouseEnter(rowOf("Row b"));
-    expect(queryMenuButton("Open item")).not.toBeInTheDocument();
+    expect(within(rowOf("Row b")).queryByRole("button", { name: "Item options" })).not.toBeInTheDocument();
+    expect(queryMenuItem("Open item")).not.toBeInTheDocument();
   });
 });
 
@@ -168,8 +160,9 @@ describe("Move to group", () => {
     const onMoveItemToGroup = vi.fn().mockResolvedValue(undefined);
     renderTable({ onMoveItemToGroup });
     await openMenuOf("Row b");
-    await clickMenu("Move to group");
-    await clickFlyout("Group g2");
+    await clickMenu("Move to");
+    expect(within(flyout("Move to")).getByText("Move to group")).toBeInTheDocument();
+    await clickFlyout("Move to", "Group g2");
     expect(onMoveItemToGroup).toHaveBeenCalledWith("b", "g2");
   });
 
@@ -177,15 +170,18 @@ describe("Move to group", () => {
     const onMoveItemToGroup = vi.fn();
     renderTable({ onMoveItemToGroup });
     await openMenuOf("Row b");
-    await clickMenu("Move to group");
-    expect(within(document.querySelector<HTMLElement>("[data-board-menu-flyout]")!).getByRole("button", { name: /Group g1/ })).toBeDisabled();
+    await clickMenu("Move to");
+    const current = within(flyout("Move to")).getByRole("menuitem", { name: /^Group g1/ });
+    expect(current).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(current);
+    expect(onMoveItemToGroup).not.toHaveBeenCalled();
   });
 
   test("without a board behind it the item moves locally", async () => {
     renderTable();
     await openMenuOf("Row b");
-    await clickMenu("Move to group");
-    await clickFlyout("Group g2");
+    await clickMenu("Move to");
+    await clickFlyout("Move to", "Group g2");
     expect(within(screen.getByText("Group g2").closest("div")!.parentElement!.parentElement!).queryByText("Row b")).not.toBeNull();
   });
 });
@@ -196,7 +192,7 @@ describe("Convert to subitem", () => {
     renderTable({ onChangeNodeParent });
     await openMenuOf("Row b");
     await clickMenu("Convert to subitem");
-    await clickFlyout("Row c");
+    await clickFlyout("Convert to subitem", "Row c");
     expect(onChangeNodeParent).toHaveBeenCalledWith("b", "c");
   });
 
@@ -204,18 +200,18 @@ describe("Convert to subitem", () => {
     renderTable({ onChangeNodeParent: vi.fn() });
     await openMenuOf("Row b");
     await clickMenu("Convert to subitem");
-    expect(screen.getByText("Make it a subitem of")).toBeInTheDocument();
-    const flyout = screen.getByText("Make it a subitem of").parentElement!;
-    expect(within(flyout).queryByRole("button", { name: "Row b" })).not.toBeInTheDocument();
-    expect(within(flyout).getByRole("button", { name: "Row a" })).toBeInTheDocument();
+    const targets = flyout("Convert to subitem");
+    expect(within(targets).getByText("Make it a subitem of")).toBeInTheDocument();
+    expect(within(targets).queryByRole("menuitem", { name: "Row b" })).not.toBeInTheDocument();
+    expect(within(targets).getByRole("menuitem", { name: "Row a" })).toBeInTheDocument();
   });
 
   test("an item that has subitems can not be converted", async () => {
     const onChangeNodeParent = vi.fn();
     renderTable({ onChangeNodeParent });
     await openMenuOf("Row a");
-    const row = menuButton("Convert to subitem");
-    expect(row).toBeDisabled();
+    const row = menuItem("Convert to subitem");
+    expect(row).toHaveAttribute("aria-disabled", "true");
     expect(row).toHaveAttribute("title", "Move or delete its subitems first");
     await userEvent.click(row);
     expect(onChangeNodeParent).not.toHaveBeenCalled();
@@ -225,7 +221,9 @@ describe("Convert to subitem", () => {
     const [first] = makeGroups();
     renderTable({}, {}, [{ ...first, items: [first.items[1]] }]);
     await openMenuOf("Row b");
-    expect(menuButton("Convert to subitem")).toBeDisabled();
+    const row = menuItem("Convert to subitem");
+    expect(row).toHaveAttribute("aria-disabled", "true");
+    expect(row).toHaveAttribute("title", "There is no other item to convert this into");
   });
 });
 
@@ -244,8 +242,9 @@ describe("Convert to item and Move to item", () => {
     renderTable({ onChangeNodeParent });
     await expandSubitemsOf("Row a");
     await openMenuOf("Row a1");
-    await clickMenu("Move to item");
-    await clickFlyout("Row c");
+    await clickMenu("Move to");
+    expect(within(flyout("Move to")).getByText("Move to item")).toBeInTheDocument();
+    await clickFlyout("Move to", "Row c");
     expect(onChangeNodeParent).toHaveBeenCalledWith("a1", "c");
   });
 
@@ -253,8 +252,9 @@ describe("Convert to item and Move to item", () => {
     renderTable({ onChangeNodeParent: vi.fn() });
     await expandSubitemsOf("Row a");
     await openMenuOf("Row a1");
-    await clickMenu("Move to item");
-    expect(within(document.querySelector<HTMLElement>("[data-board-menu-flyout]")!).getByRole("button", { name: /Row a\s*✓/ })).toBeDisabled();
+    await clickMenu("Move to");
+    const current = within(flyout("Move to")).getByRole("menuitem", { name: /^Row a\s*Current$/ });
+    expect(current).toHaveAttribute("aria-disabled", "true");
   });
 
   test("without a board behind them the conversions happen locally", async () => {
@@ -273,7 +273,7 @@ describe("Duplicate", () => {
     renderTable({ onDuplicateNode });
     await openMenuOf("Row a");
     await clickMenu("Duplicate");
-    await clickMenu("This item with subitems");
+    await clickFlyout("Duplicate", "With subitems");
     expect(onDuplicateNode).toHaveBeenCalledWith("a", true);
   });
 
@@ -283,7 +283,6 @@ describe("Duplicate", () => {
     await expandSubitemsOf("Row a");
     await openMenuOf("Row a1");
     await clickMenu("Duplicate");
-    await clickMenu("This subitem");
     expect(onDuplicateNode).toHaveBeenCalledWith("a1", false);
   });
 });
@@ -311,8 +310,8 @@ describe("Mark as priority and recurring", () => {
     const onSetItemRecurrence = vi.fn();
     renderTable({}, { onSetItemRecurrence });
     await openMenuOf("Row b");
-    await clickMenu("Set recurring...");
-    await clickMenu("Start recurring");
+    await clickMenu("Set recurring");
+    await userEvent.click(within(screen.getByRole("group", { name: "Set recurring" })).getByRole("button", { name: "Start recurring" }));
     expect(onSetItemRecurrence).toHaveBeenCalledWith("b", { frequency: "weekly", interval_count: 1 });
   });
 
@@ -320,7 +319,7 @@ describe("Mark as priority and recurring", () => {
     renderTable({}, { onSetItemRecurrence: vi.fn() });
     await expandSubitemsOf("Row a");
     await openMenuOf("Row a1");
-    expect(queryMenuButton(/recurring/i)).not.toBeInTheDocument();
+    expect(queryMenuItem(/recurring/i)).not.toBeInTheDocument();
   });
 });
 
@@ -329,6 +328,7 @@ describe("closing the menu", () => {
     renderTable({ onArchiveNode: vi.fn().mockResolvedValue(undefined) });
     await openMenuOf("Row b");
     await clickMenu("Archive");
-    expect(queryMenuButton("Open item")).not.toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: "Item actions" })).not.toBeInTheDocument();
+    expect(menuTriggerOf("Row c")).toHaveAttribute("aria-expanded", "false");
   });
 });
