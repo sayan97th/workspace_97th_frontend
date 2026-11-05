@@ -343,6 +343,10 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
       column.type === "date" && column.config?.auto_fill
         ? { enabled: !!column.config.auto_fill.enabled, include_time: column.config.auto_fill.include_time !== false }
         : undefined,
+    date_display:
+      ["date", "creation_log", "last_updated"].includes(column.type) && column.config?.date_display
+        ? { ...column.config.date_display, time_format: column.config.date_display.time_format === "24" ? "24" : "12" }
+        : undefined,
     dependency:
       column.type === "dependency"
         ? {
@@ -3505,7 +3509,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, date_auto_fill, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, date_auto_fill, date_display, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
@@ -3520,6 +3524,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         }
         if (reminder !== undefined) config_patch.reminder = reminder;
         if (date_auto_fill !== undefined) config_patch.auto_fill = date_auto_fill;
+        if (date_display !== undefined) config_patch.date_display = date_display;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;
           config_patch.dependency_mode = dependency.mode;

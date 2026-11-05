@@ -1933,6 +1933,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       if (patch.aggregation) local_patch.aggregation = patch.aggregation;
       if (patch.reminder) local_patch.reminder = patch.reminder;
       if (patch.date_auto_fill) local_patch.date_auto_fill = patch.date_auto_fill;
+      if (patch.date_display) local_patch.date_display = patch.date_display;
       if (patch.button) local_patch.button = patch.button;
       if (patch.dependency) local_patch.dependency = patch.dependency;
       if (patch.description !== undefined) local_patch.description = patch.description ?? undefined;

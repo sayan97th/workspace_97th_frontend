@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState, ButtonPressOutcome } from "../useBoardTable";
 import { contrastFg, findDef, timelineFillBackground } from "../colorUtils";
-import { encodeRangeValue, fmtDate, fmtDateWithWeekday, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
+import { encodeRangeValue, fmtDateWithWeekday, formatDateValue, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
 import { collectColumnValues, findNode } from "../treeUtils";
 import { computeFormulaOutcome, formulaResultType } from "../formulaUtils";
 import AvatarBadge from "../menus/AvatarBadge";
@@ -305,7 +305,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
         <button
           type="button"
           onClick={openMenu}
-          title={iso ? fmtDate(iso) : undefined}
+          title={iso ? formatDateValue(iso, column.date_display) : undefined}
           className="flex h-full w-full min-w-0 items-center justify-center gap-1.5 px-2 text-board-cell text-boardtree-text"
         >
           {is_menu_open && isPastDate(iso) && (
@@ -315,7 +315,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
               <circle cx="8" cy="11.1" r="0.85" fill="currentColor" />
             </svg>
           )}
-          <span className="truncate">{iso ? (is_menu_open ? fmtDateWithWeekday(iso) : fmtDate(iso)) : ""}</span>
+          <span className="truncate">{iso ? (is_menu_open ? fmtDateWithWeekday(iso) : formatDateValue(iso, column.date_display)) : ""}</span>
         </button>
         {is_menu_open && (
           <DateMenu

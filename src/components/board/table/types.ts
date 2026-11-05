@@ -75,6 +75,22 @@ export interface DateAutoFill {
 }
 
 /**
+ * How a date column (Date, Creation log, Last updated) shows its dates, picked in the column
+ * menu's Settings > "Date format". Only the display changes, never the stored value.
+ * `auto` keeps each kind's own default: "Nov 5, 2026" for Date, "Nov 5" (year only when it isn't
+ * this year) for Creation log and Last updated. Stored as `config.date_display`.
+ */
+export type DateDisplayFormat = "auto" | "month_day_year" | "day_month_year" | "weekday_month_day" | "month_day" | "us_numeric" | "eu_numeric" | "iso";
+
+export interface DateDisplay {
+  format: DateDisplayFormat;
+  /** Any time the cell shows (a Date with a time, the log stamps' tooltips): "12" is 2:30 PM, "24" is 14:30. */
+  time_format: "12" | "24";
+  /** Creation log and Last updated only: show the time in the cell too, not just in its tooltip. A Date shows its time whenever it has one. */
+  show_time?: boolean;
+}
+
+/**
  * A column's settings change from its header (menu, resize, settings panels), persisted through
  * `UseBoardTableConfig.onUpdateColumnSettings`. Each key belongs to the column kinds noted.
  */
@@ -96,6 +112,8 @@ export interface ColumnSettingsPatch {
   reminder?: ColumnDef["reminder"];
   /** Date columns only, see `ColumnDef.date_auto_fill`. */
   date_auto_fill?: DateAutoFill;
+  /** Date, Creation log and Last updated columns, see `ColumnDef.date_display`. */
+  date_display?: DateDisplay;
   /** Button columns only, see `ColumnDef.button`. */
   button?: ColumnDef["button"];
   /** Dependency columns only, see `ColumnDef.dependency`. */
@@ -331,6 +349,8 @@ export interface ColumnDef {
   reminder?: { enabled: boolean; days_before: number };
   /** Date kind only, see `DateAutoFill`. Unset is off. */
   date_auto_fill?: DateAutoFill;
+  /** Date, Creation log and Last updated kinds, see `DateDisplay`. Unset reads as `auto` with a 12 hour clock. */
+  date_display?: DateDisplay;
   /** Hour columns only, see `HourFormat`. Unset reads as 12 hour. */
   hour_format?: HourFormat;
   /** Rating columns only: how many icons the scale has (1 to 10). Unset reads as 5. */

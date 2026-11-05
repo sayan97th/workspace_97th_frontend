@@ -3,7 +3,9 @@
 import { useState } from "react";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { MAX_COLUMN_WIDTH, MIN_COLUMN_WIDTH, TEXT_FAMILY_KINDS } from "../constants";
-import type { ColumnKind, ColumnValidation, DateAutoFill, ProgressColumnWeight, RatingIcon } from "../types";
+import type { ColumnKind, ColumnValidation, DateAutoFill, DateDisplay, ProgressColumnWeight, RatingIcon } from "../types";
+import { DATE_DISPLAY_FORMATS, DEFAULT_DATE_DISPLAY, datePartsOfInstant, fmtClock, formatDateParts } from "../dateUtils";
+import { CheckIcon } from "@/icons/workspace-icons";
 import { evenWeights, type ProgressStatusColumn } from "../progressTracking";
 import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
@@ -234,6 +236,78 @@ export function DateAutoFillSettingsPanel({ auto_fill, onChange, onFillEmptyCell
           Fill empty cells now
         </button>
       )}
+    </div>
+  );
+}
+
+interface DateFormatSettingsPanelProps {
+  kind: ColumnKind;
+  date_display?: DateDisplay;
+  onChange: (date_display: DateDisplay) => void;
+}
+
+/**
+ * "Date format" for Date, Creation log and Last updated columns: how the cells show their dates
+ * (each choice previews today's date) and whether times read 12 or 24 hour. Only the display
+ * changes, the stored dates stay the same.
+ */
+export function DateFormatSettingsPanel({ kind, date_display, onChange }: DateFormatSettingsPanelProps) {
+  const current = { ...DEFAULT_DATE_DISPLAY, ...date_display };
+  const is_log_kind = kind === "creation_log" || kind === "last_updated";
+  const preview_parts = datePartsOfInstant(new Date(), false);
+  const previewOf = (format: DateDisplay["format"]) =>
+    formatDateParts(preview_parts, format === "auto" ? (is_log_kind ? "month_day" : "month_day_year") : format, current.time_format);
+  const preview_time = fmtClock(14, 30, current.time_format);
+
+  return (
+    <div className="action-menu column-menu__form w-[288px]" role="group" aria-label="Date format">
+      <div className="column-menu__label">Date format</div>
+      <div role="radiogroup" aria-label="Date format">
+        {DATE_DISPLAY_FORMATS.map(({ format, label }) => {
+          const is_selected = current.format === format;
+          return (
+            <button
+              key={format}
+              type="button"
+              role="menuitemradio"
+              aria-checked={is_selected}
+              onClick={() => onChange({ ...current, format })}
+              className="action-menu__item"
+            >
+              <span className="action-menu__label">{label}</span>
+              <span className="column-menu__preview">{previewOf(format)}</span>
+              <span className="column-menu__check column-menu__check--trailing" data-hidden={!is_selected || undefined} aria-hidden="true">
+                <CheckIcon size={14} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="action-menu__divider" role="separator" />
+      <button
+        type="button"
+        role="menuitemcheckbox"
+        aria-checked={current.time_format === "24"}
+        onClick={() => onChange({ ...current, time_format: current.time_format === "24" ? "12" : "24" })}
+        className="action-menu__item"
+      >
+        <span className="action-menu__label">24 hour time</span>
+        <span className="column-menu__preview column-menu__preview--before-switch">{preview_time}</span>
+        <ToggleSwitch is_on={current.time_format === "24"} size="sm" />
+      </button>
+      {is_log_kind && (
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={!!current.show_time}
+          onClick={() => onChange({ ...current, show_time: !current.show_time })}
+          className="action-menu__item"
+        >
+          <span className="action-menu__label">Show time in cells</span>
+          <ToggleSwitch is_on={!!current.show_time} size="sm" />
+        </button>
+      )}
+      <div className="column-menu__help">Only changes how dates look. The saved dates stay the same.</div>
     </div>
   );
 }

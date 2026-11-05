@@ -97,6 +97,12 @@ export type BoardColumnConfig = {
   reminder?: { enabled: boolean; days_before: number };
   /** Date columns only: fill each new item with its creation date, see `DateAutoFill` in `@/components/board/table/types`. */
   auto_fill?: { enabled: boolean; include_time: boolean } | null;
+  /** Date, Creation log and Last updated columns: how cells show their dates, see `DateDisplay` in `@/components/board/table/types`. */
+  date_display?: {
+    format: "auto" | "month_day_year" | "day_month_year" | "weekday_month_day" | "month_day" | "us_numeric" | "eu_numeric" | "iso";
+    time_format: "12" | "24";
+    show_time?: boolean;
+  } | null;
 };
 
 /**

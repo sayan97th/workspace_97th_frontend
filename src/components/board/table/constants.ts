@@ -158,6 +158,9 @@ export const QUICK_ADD_COLUMN_KINDS: ColumnKind[] = ["status", "text", "people",
  * while its cell values still make sense, the way monday.com only offers
  * compatible types. A kind missing here (formula, mirror, button...) can't be changed.
  */
+/** The column kinds that show dates, the only ones the column menu offers "Date format" for. */
+export const DATE_DISPLAY_KINDS: ColumnKind[] = ["date", "creation_log", "last_updated"];
+
 export const CHANGE_TYPE_TARGETS: Partial<Record<ColumnKind, ColumnKind[]>> = {
   status: ["text", "longtext", "dropdown"],
   label: ["status", "dropdown", "text", "longtext"],

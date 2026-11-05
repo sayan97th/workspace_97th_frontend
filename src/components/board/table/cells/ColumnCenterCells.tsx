@@ -13,6 +13,7 @@ import {
   isHourValue,
   isWeekValue,
 } from "../columnValueFormats";
+import { DEFAULT_DATE_DISPLAY, datePartsOfInstant, formatDateParts } from "../dateUtils";
 import AvatarBadge from "../menus/AvatarBadge";
 import DocCellModal from "../menus/DocCellModal";
 import { ColorPickerMenu, CountryMenu, HourMenu, WeekMenu } from "../menus/ValuePickers";
@@ -57,14 +58,21 @@ function findTableNode(groups: BoardTableGroup[], node_id: string) {
 }
 
 /** "Oct 13, 2026", or "Oct 13" this year, with the time on hover. */
-function formatStamp(iso: string | null | undefined): { label: string; full: string } | null {
+/**
+ * A Creation log / Last updated timestamp in the column's "Date format" (see `DateDisplay`):
+ * `label` is what the cell shows, `full` the tooltip, always with the date, year and time.
+ * The default format reads "Nov 5", adding the year only when it isn't this year.
+ */
+function formatStamp(iso: string | null | undefined, display: ColumnDef["date_display"]): { label: string; full: string } | null {
   if (!iso) return null;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
+  const { format, time_format, show_time } = display ?? DEFAULT_DATE_DISPLAY;
   const is_this_year = date.getFullYear() === new Date().getFullYear();
+  const label_format = format !== "auto" ? format : is_this_year ? "month_day" : "month_day_year";
   return {
-    label: date.toLocaleDateString("en-US", { month: "short", day: "numeric", ...(is_this_year ? {} : { year: "numeric" }) }),
-    full: date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }),
+    label: formatDateParts(datePartsOfInstant(date, !!show_time), label_format, time_format),
+    full: formatDateParts(datePartsOfInstant(date, true), format === "auto" || format === "month_day" || format === "weekday_month_day" ? "month_day_year" : format, time_format),
   };
 }
 
@@ -292,23 +300,23 @@ function PersonStamp({ person, stamp, empty_label }: { person: PersonDef | undef
 }
 
 /** Read only: who created the item and when. */
-export function CreationLogCell({ node_id, state }: ColumnCenterCellProps) {
+export function CreationLogCell({ node_id, column, state }: ColumnCenterCellProps) {
   const node = findTableNode(state.groups, node_id);
   const person = state.people.find((entry) => entry.id === node?.created_by_id);
   return (
     <div className="center-cell center-cell--static">
-      <PersonStamp person={person} stamp={formatStamp(node?.created_at)} empty_label="Not recorded" />
+      <PersonStamp person={person} stamp={formatStamp(node?.created_at, column.date_display)} empty_label="Not recorded" />
     </div>
   );
 }
 
 /** Read only: who changed the item last and when. */
-export function LastUpdatedCell({ node_id, state }: ColumnCenterCellProps) {
+export function LastUpdatedCell({ node_id, column, state }: ColumnCenterCellProps) {
   const node = findTableNode(state.groups, node_id);
   const person = state.people.find((entry) => entry.id === (node?.last_updated_by_id ?? node?.created_by_id));
   return (
     <div className="center-cell center-cell--static">
-      <PersonStamp person={person} stamp={formatStamp(node?.last_updated_at ?? node?.created_at)} empty_label="Not recorded" />
+      <PersonStamp person={person} stamp={formatStamp(node?.last_updated_at ?? node?.created_at, column.date_display)} empty_label="Not recorded" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { MONTH_LABELS } from "./constants";
+import type { DateDisplay, DateDisplayFormat } from "./types";
 
 const pad2 = (n: number) => (n < 10 ? "0" + n : String(n));
 
@@ -220,4 +221,75 @@ export function fmtDateWithWeekday(iso: string | undefined): string {
 export function isPastDate(iso: string | undefined): boolean {
   const { date_iso } = splitDateTime(iso);
   return !!date_iso && date_iso < todayIso();
+}
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+export const DEFAULT_DATE_DISPLAY: DateDisplay = { format: "auto", time_format: "12" };
+
+/** The "Date format" choices, in the order the column menu lists them. */
+export const DATE_DISPLAY_FORMATS: { format: DateDisplayFormat; label: string }[] = [
+  { format: "auto", label: "Default" },
+  { format: "month_day_year", label: "Month day, year" },
+  { format: "day_month_year", label: "Day month, year" },
+  { format: "weekday_month_day", label: "Weekday, month day" },
+  { format: "month_day", label: "Month day" },
+  { format: "us_numeric", label: "MM/DD/YYYY" },
+  { format: "eu_numeric", label: "DD/MM/YYYY" },
+  { format: "iso", label: "YYYY-MM-DD" },
+];
+
+/** A calendar day plus an optional wall clock time, what every date column format is built from. */
+export interface DateParts {
+  year: number;
+  /** 1 to 12. */
+  month: number;
+  day: number;
+  time: { hours: number; minutes: number } | null;
+}
+
+/** A time of day in the column's clock: "2:30 PM" or "14:30". */
+export function fmtClock(hours: number, minutes: number, time_format: DateDisplay["time_format"]): string {
+  if (time_format === "24") return `${pad2(hours)}:${pad2(minutes)}`;
+  const period = hours >= 12 ? "PM" : "AM";
+  return `${hours % 12 || 12}:${pad2(minutes)} ${period}`;
+}
+
+/**
+ * Formats a day (and its time, when it has one) in `format`. `auto` is resolved by the caller,
+ * since its meaning depends on the column kind, see `DateDisplayFormat`.
+ */
+export function formatDateParts(parts: DateParts, format: Exclude<DateDisplayFormat, "auto">, time_format: DateDisplay["time_format"]): string {
+  const { year, month, day, time } = parts;
+  const month_label = MONTH_LABELS[month - 1] ?? "";
+  const weekday_label = WEEKDAY_LABELS[new Date(year, month - 1, day).getDay()];
+  const date_label =
+    format === "day_month_year" ? `${day} ${month_label}, ${year}`
+    : format === "weekday_month_day" ? `${weekday_label}, ${month_label} ${day}`
+    : format === "month_day" ? `${month_label} ${day}`
+    : format === "us_numeric" ? `${pad2(month)}/${pad2(day)}/${year}`
+    : format === "eu_numeric" ? `${pad2(day)}/${pad2(month)}/${year}`
+    : format === "iso" ? `${year}-${pad2(month)}-${pad2(day)}`
+    : `${month_label} ${day}, ${year}`;
+  return time ? `${date_label}, ${fmtClock(time.hours, time.minutes, time_format)}` : date_label;
+}
+
+/** A Date column value ("YYYY-MM-DD" or "YYYY-MM-DDTHH:mm", a wall clock date) in the column's format. Empty for an unreadable value. */
+export function formatDateValue(value: string | undefined, display: DateDisplay | undefined): string {
+  const { date_iso, time } = splitDateTime(value);
+  const [year, month, day] = date_iso.split("-").map(Number);
+  if (!year || !month || !day) return "";
+  const { format, time_format } = display ?? DEFAULT_DATE_DISPLAY;
+  if (format === "auto" && time_format === "12") return fmtDate(value);
+  return formatDateParts({ year, month, day, time }, format === "auto" ? "month_day_year" : format, time_format);
+}
+
+/** The parts of a timestamp (an ISO instant like `created_at`) in the viewer's own time zone. */
+export function datePartsOfInstant(instant: Date, with_time: boolean): DateParts {
+  return {
+    year: instant.getFullYear(),
+    month: instant.getMonth() + 1,
+    day: instant.getDate(),
+    time: with_time ? { hours: instant.getHours(), minutes: instant.getMinutes() } : null,
+  };
 }

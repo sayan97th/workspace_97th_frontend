@@ -8,6 +8,7 @@ import ColumnSettingsPanel, {
   ButtonSettingsPanel,
   ColumnValidationPanel,
   DateAutoFillSettingsPanel,
+  DateFormatSettingsPanel,
   ProgressTrackingSettingsPanel,
   RatingSettingsPanel,
   ReminderSettingsPanel,
@@ -50,7 +51,8 @@ import {
   SettingsGearIcon,
   ValidationIcon,
 } from "./column-menu-icons";
-import { CHANGE_TYPE_TARGETS, COLUMN_TYPE_GALLERY, QUICK_ADD_COLUMN_KINDS, type ColumnTypeDef } from "../constants";
+import { CHANGE_TYPE_TARGETS, COLUMN_TYPE_GALLERY, DATE_DISPLAY_KINDS, QUICK_ADD_COLUMN_KINDS, type ColumnTypeDef } from "../constants";
+import { CalendarViewIcon } from "@/icons/board-icons";
 import type { ColumnDef, ColumnKind, ColumnSettingsPatch, ColumnValidation, DateAutoFill } from "../types";
 import "@/components/ui/dropdown/action-menu.css";
 import "./column-menu.css";
@@ -60,7 +62,7 @@ export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
   Partial<
     Pick<
       ColumnDef,
-      "options" | "validation" | "aggregation" | "reminder" | "date_auto_fill" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
+      "options" | "validation" | "aggregation" | "reminder" | "date_auto_fill" | "date_display" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
     >
   > & {
     /** Progress tracking columns only: the Status columns of the same table its settings can pick from. */
@@ -401,7 +403,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "progress" | "rating" | "reminder" | "auto_fill" | "validation" | "options";
+type SettingsSub = "button" | "progress" | "rating" | "reminder" | "auto_fill" | "date_format" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -522,6 +524,17 @@ export default function ColumnMenu({
               icon={<BellIcon size={16} />}
               label="Set due date reminder"
               renderFlyout={() => <ReminderSettingsPanel reminder={column.reminder} onChange={(reminder) => onUpdateSettings({ reminder })} />}
+            />
+          )}
+          {DATE_DISPLAY_KINDS.includes(column.kind) && (
+            <SubmenuRow
+              submenu_key="date_format"
+              submenu={settings_sub}
+              icon={<CalendarViewIcon size={16} />}
+              label="Date format"
+              renderFlyout={() => (
+                <DateFormatSettingsPanel kind={column.kind} date_display={column.date_display} onChange={(date_display) => onUpdateSettings({ date_display })} />
+              )}
             />
           )}
           {column.kind === "date" && (

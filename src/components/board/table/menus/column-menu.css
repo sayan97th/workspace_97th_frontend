@@ -83,6 +83,28 @@ html.dark .column-menu {
   font-size: 14px;
 }
 
+/* "Date format": what each choice looks like, today's date in that format. */
+.column-menu__preview {
+  flex: none;
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--action-menu-title);
+  font-size: 13px;
+}
+
+.column-menu__preview--before-switch {
+  padding-right: 8px;
+}
+
+.column-menu__check--trailing {
+  width: 14px;
+  margin-left: 8px;
+}
+
+.column-menu__check--trailing[data-hidden] {
+  visibility: hidden;
+}
+
 .column-menu__count {
   flex: none;
   min-width: 20px;
