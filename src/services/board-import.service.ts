@@ -7,11 +7,22 @@ import type { BoardImportAnalyzeResponse, BoardImportCommitPayload, BoardImportJ
  * {@link import("./board-content.service").boardContentService}'s style.
  */
 export const boardImportService = {
-  /** POST /api/boards/{board_id}/import/analyze, Step 1 ("Upload")'s submit. */
-  async analyze(board_id: number, file: File, view_id?: number | null): Promise<BoardImportAnalyzeResponse> {
+  /**
+   * POST /api/boards/{board_id}/import/analyze, Step 1 ("Upload")'s submit.
+   * Also reads another sheet of the same workbook (`sheet_index`), passing the
+   * previous parse's token as `discard_token` so its staged files are dropped.
+   */
+  async analyze(
+    board_id: number,
+    file: File,
+    view_id?: number | null,
+    options: { sheet_index?: number; discard_token?: string | null } = {}
+  ): Promise<BoardImportAnalyzeResponse> {
     const form_data = new FormData();
     form_data.append("file", file);
     if (view_id) form_data.append("view_id", String(view_id));
+    if (options.sheet_index !== undefined) form_data.append("sheet_index", String(options.sheet_index));
+    if (options.discard_token) form_data.append("discard_token", options.discard_token);
     return apiClient.postFormData<BoardImportAnalyzeResponse>(`/api/boards/${board_id}/import/analyze`, form_data);
   },
 

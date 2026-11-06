@@ -72,6 +72,9 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
   const [start_error, setStartError] = useState<string | null>(null);
 
   const [analysis, setAnalysis] = useState<BoardImportAnalyzeResponse | null>(null);
+  /** The uploaded file, kept so another sheet of the same workbook can be read without picking it again. */
+  const [source_file, setSourceFile] = useState<File | null>(null);
+  const [loading_sheet_index, setLoadingSheetIndex] = useState<number | null>(null);
   const [mappings, setMappings] = useState<BoardImportMapping[]>([]);
   const [target, setTarget] = useState<string>(NEW_GROUP_TARGET);
   const [new_group_name, setNewGroupName] = useState("");
@@ -94,6 +97,8 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
     setMapError(null);
     setStartError(null);
     setAnalysis(null);
+    setSourceFile(null);
+    setLoadingSheetIndex(null);
     setMappings([]);
     setTarget(NEW_GROUP_TARGET);
     setNewGroupName("");
@@ -128,22 +133,48 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
 
   if (!is_open) return null;
 
+  /** Starts the "Map columns" step over a fresh analysis, of a new file or of another sheet. */
+  const applyAnalysis = (result: BoardImportAnalyzeResponse) => {
+    const sheet_name = result.sheets.length > 1 ? result.sheets.find((sheet) => sheet.index === result.sheet_index)?.name : undefined;
+    setAnalysis(result);
+    setMappings(result.suggested_mappings);
+    setNewGroupName(sheet_name ?? suggestGroupName(result.file_name));
+    setTarget((result.file_groups ?? []).length > 0 ? FILE_GROUPS_TARGET : NEW_GROUP_TARGET);
+    setImportSubitems((result.subitem_count ?? 0) > 0);
+    setMatchBy(EMPTY_MATCH_BY);
+    setMapError(null);
+    setStep("map");
+  };
+
   const handleFileSelected = async (file: File) => {
     setUploadError(null);
     setIsAnalyzing(true);
     try {
       const result = await boardImportService.analyze(board_id, file, view_id);
-      setAnalysis(result);
-      setMappings(result.suggested_mappings);
-      setNewGroupName(suggestGroupName(result.file_name));
-      setTarget((result.file_groups ?? []).length > 0 ? FILE_GROUPS_TARGET : NEW_GROUP_TARGET);
-      setImportSubitems((result.subitem_count ?? 0) > 0);
-      setMatchBy(EMPTY_MATCH_BY);
-      setStep("map");
+      setSourceFile(file);
+      applyAnalysis(result);
     } catch (error) {
       setUploadError(importErrorMessage(error, "We couldn't read that file. Make sure it's a .csv, .xlsx or .xls file and try again."));
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  /** Reads another sheet of the same workbook. The previous sheet's parse is discarded server side. */
+  const handleSheetChange = async (sheet_index: number) => {
+    if (!source_file || !analysis || loading_sheet_index !== null) return;
+    setLoadingSheetIndex(sheet_index);
+    setMapError(null);
+    try {
+      const result = await boardImportService.analyze(board_id, source_file, view_id, {
+        sheet_index,
+        discard_token: analysis.import_token,
+      });
+      applyAnalysis(result);
+    } catch (error) {
+      setMapError(importErrorMessage(error, "We couldn't read that sheet. Try another one, or upload the file again."));
+    } finally {
+      setLoadingSheetIndex(null);
     }
   };
 
@@ -174,6 +205,7 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
     if (step === "map") {
       setStep("upload");
       setAnalysis(null);
+      setSourceFile(null);
       setMappings([]);
       setMapError(null);
     } else if (step === "match") {
@@ -326,6 +358,10 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
           {step === "map" && analysis && (
             <ImportMapColumnsStep
               file_name={analysis.file_name}
+              sheets={analysis.sheets ?? []}
+              sheet_index={analysis.sheet_index ?? 0}
+              loading_sheet_index={loading_sheet_index}
+              onChangeSheet={(index) => void handleSheetChange(index)}
               row_count={analysis.row_count}
               source_columns={analysis.source_columns}
               board_columns={analysis.board_columns}
@@ -391,7 +427,13 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
 
             <div className="iw-footer-end">
               {step === "map" ? (
-                <button type="button" className="iw-button" data-variant="primary" onClick={handleContinueFromMap}>
+                <button
+                  type="button"
+                  className="iw-button"
+                  data-variant="primary"
+                  onClick={handleContinueFromMap}
+                  disabled={loading_sheet_index !== null}
+                >
                   Continue
                 </button>
               ) : (

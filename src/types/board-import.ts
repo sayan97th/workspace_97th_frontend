@@ -19,8 +19,58 @@ export type BoardImportSourceColumn = {
   compatible_types: BoardColumnType[];
   /** The file's own columns this one was merged from (e.g. `["Timeline - Start", "Timeline - End"]`, or a checklist's repeated "Task | Status" pairs); empty for an ordinary column. */
   combined_from: string[];
-  /** How many rows actually have a value in this column. */
+  /** How many rows actually have a value (or an embedded file) in this column. */
   filled_count: number;
+  /** How many different values the column holds, case-insensitively. */
+  distinct_count: number;
+  /** The options of the spreadsheet dropdown list (data validation) the column's cells pick from, in the file's order, with the color each gets. Empty when the column has no list. */
+  declared_options: BoardImportDeclaredOption[];
+  /** `"priority"` when the column holds priorities, its labels get the board's Priority column colors. */
+  option_preset: BoardImportOptionPreset | null;
+  /** The files embedded in this column's cells (pictures, documents), null when it has none. */
+  assets: BoardImportAssetSummary | null;
+  /** How many of the column's names match a workspace user, set when it can become a People column. */
+  people_match: BoardImportPeopleMatch | null;
+};
+
+export type BoardImportOptionPreset = "priority";
+
+export type BoardImportDeclaredOption = { label: string; color: string };
+
+/** One embedded file shown in the "Map columns" step, already staged so it can be previewed. */
+export type BoardImportAssetPreview = {
+  file_name: string;
+  url: string | null;
+  mime_type: string;
+  kind: "image" | "file";
+  width: number | null;
+  height: number | null;
+};
+
+export type BoardImportAssetSummary = {
+  file_count: number;
+  image_count: number;
+  /** How many cells hold at least one file. */
+  cell_count: number;
+  total_bytes: number;
+  /** The first few files, for thumbnails. */
+  previews: BoardImportAssetPreview[];
+};
+
+export type BoardImportPeopleMatch = {
+  matched_count: number;
+  total_count: number;
+  /** A few names that match no user and would be left out of a People column. */
+  unmatched: string[];
+};
+
+/** One sheet of an uploaded workbook. */
+export type BoardImportSheet = {
+  index: number;
+  name: string;
+  /** Rows with a value below the header row. */
+  row_count: number;
+  image_count: number;
 };
 
 /** How one source column is handled on commit, mirrors the "Map columns" step's per-row picker. */
@@ -40,6 +90,10 @@ export type BoardImportMapping = {
 export type BoardImportAnalyzeResponse = {
   import_token: string;
   file_name: string;
+  /** Every sheet of the workbook (one entry for a .csv), the wizard can switch to another one. */
+  sheets: BoardImportSheet[];
+  /** The sheet these columns were read from. */
+  sheet_index: number;
   row_count: number;
   source_columns: BoardImportSourceColumn[];
   suggested_mappings: BoardImportMapping[];

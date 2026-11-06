@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import type { BoardColumnDto, BoardColumnType } from "@/types/board-content";
 import type { BoardImportMapping, BoardImportSourceColumn } from "@/types/board-import";
+import ImportAssetStrip from "./ImportAssetStrip";
+import ImportOptionChips from "./ImportOptionChips";
 import ImportSelect, { type ImportSelectGroup } from "./ImportSelect";
 import { ArrowRightIcon, ImportColumnIcon, PlusIcon, WarningIcon } from "./importIcons";
 import { IMPORT_TYPE_LABELS, IMPORT_TYPE_NOTES, READ_ONLY_COLUMN_TYPES, betterFitTypes, isTypeCompatible } from "./importWizardUtils";
@@ -26,10 +28,39 @@ export function destinationType(
   return null;
 }
 
-/** True when a row's destination can't hold every value it has. Read by the "Needs review" filter and the amber caption alike. */
+/** Names under a People (or Vote) destination that match no workspace user, and would be left out. */
+export function unmatchedPeople(type: BoardColumnType | null, source: BoardImportSourceColumn): string[] {
+  if ((type !== "people" && type !== "vote") || !source.people_match) return [];
+  return source.people_match.unmatched;
+}
+
+/**
+ * True when a row's destination can't hold every value it has: values of the
+ * wrong shape, embedded files outside a Files column, or names that match no
+ * user. Read by the "Needs review" filter and the amber caption alike.
+ */
 export function mappingNeedsReview(mapping: BoardImportMapping, source: BoardImportSourceColumn, board_columns: BoardColumnDto[]): boolean {
   const type = destinationType(mapping, source, board_columns);
-  return type !== null && source.filled_count > 0 && !isTypeCompatible(source, type);
+  if (type === null || source.filled_count === 0) return false;
+  return !isTypeCompatible(source, type) || unmatchedPeople(type, source).length > 0;
+}
+
+/** The sentence explaining what a flagged row loses, the more specific reason first. */
+function reviewMessage(type: BoardColumnType, source: BoardImportSourceColumn, better_fits: BoardColumnType[]): string {
+  const file_count = source.assets?.file_count ?? 0;
+  if (file_count > 0 && type !== "files") {
+    return `${file_count} embedded file${file_count === 1 ? "" : "s"} only import into a Files column, they will be left out here.`;
+  }
+  if (type === "files") {
+    return "Text without a link can't be kept in a Files column and will be left out. Embedded files and links are imported.";
+  }
+  const unmatched = unmatchedPeople(type, source);
+  if (unmatched.length > 0 && isTypeCompatible(source, type)) {
+    const more = (source.people_match?.total_count ?? 0) - (source.people_match?.matched_count ?? 0) - unmatched.length;
+    return `No workspace user matches ${unmatched.join(", ")}${more > 0 ? ` and ${more} more` : ""}, so they will be left empty. A Text or Status column keeps every name.`;
+  }
+  const fits = better_fits.length > 0 ? ` Better fits: ${better_fits.map((candidate) => IMPORT_TYPE_LABELS[candidate]).join(", ")}.` : "";
+  return `Some values don't fit a ${IMPORT_TYPE_LABELS[type]} column and will be left empty.${fits}`;
 }
 
 export type ImportMapColumnRowProps = {
@@ -74,7 +105,8 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
     mapping.mode === "map" && suggested_mapping?.mode === "map" && suggested_mapping.target_column_id === mapping.target_column_id;
   const [is_settings_open, setIsSettingsOpen] = useState(false);
   const new_type = mapping.new_type ?? source.suggested_type;
-  const type_note = type ? IMPORT_TYPE_NOTES[type] : undefined;
+  // A Files row with embedded files already says they are uploaded in its detection reason.
+  const type_note = type && !(type === "files" && source.assets) ? IMPORT_TYPE_NOTES[type] : undefined;
   const better_fits = betterFitTypes(source, creatable_column_types);
 
   const destination_groups = (
@@ -139,6 +171,8 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
   ).filter((group) => group.options.length > 0);
 
   const sample_text = source.sample_values.join(", ");
+  const option_count = source.declared_options.length;
+  const shows_options = option_count > 0 && (type === "status" || type === "label" || type === "dropdown" || type === null);
 
   return (
     <div className="iw-row iw-row-grid" data-review={needs_review}>
@@ -146,7 +180,11 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
         <span className="iw-row-label" title={source.label}>
           {source.label}
         </span>
-        {source.combined_from.length > 0 ? (
+        {source.assets ? (
+          <ImportAssetStrip assets={source.assets} />
+        ) : shows_options ? (
+          <ImportOptionChips options={source.declared_options} variant={type === "dropdown" ? "dropdown" : "status"} />
+        ) : source.combined_from.length > 0 ? (
           <span className="iw-row-meta" data-tone="info" title={source.combined_from.join(" + ")}>
             Merged from {source.combined_from.join(" + ")}
           </span>
@@ -192,13 +230,16 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
         {needs_review && type && (
           <span className="iw-row-note" data-tone="warning">
             <WarningIcon size={12} />
-            <span>
-              Some values don&apos;t fit a {IMPORT_TYPE_LABELS[type]} column and will be left empty.
-              {better_fits.length > 0 && ` Better fits: ${better_fits.map((candidate) => IMPORT_TYPE_LABELS[candidate]).join(", ")}.`}
-            </span>
+            <span>{reviewMessage(type, source, better_fits)}</span>
           </span>
         )}
-        {type_note && <span className="iw-row-note">{type_note}</span>}
+        {mapping.mode === "create" && option_count > 0 && (type === "status" || type === "label" || type === "dropdown") ? (
+          <span className="iw-row-note">
+            Starts with all {option_count} options of the file&apos;s list{source.option_preset === "priority" ? ", in the Priority colors" : ""}.
+          </span>
+        ) : (
+          type_note && <span className="iw-row-note">{type_note}</span>
+        )}
       </div>
 
       {mapping.mode === "create" && is_settings_open && (

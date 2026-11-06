@@ -2,11 +2,13 @@
 import React, { useState } from "react";
 import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import type { BoardColumnDto, BoardColumnType, BoardGroupDto } from "@/types/board-content";
-import type { BoardImportFileGroup, BoardImportMapping, BoardImportSourceColumn } from "@/types/board-import";
+import type { BoardImportFileGroup, BoardImportMapping, BoardImportSheet, BoardImportSourceColumn } from "@/types/board-import";
+import ImportFileSummary from "./ImportFileSummary";
 import ImportMapColumnRow, { mappingNeedsReview } from "./ImportMapColumnRow";
 import ImportSelect, { type ImportSelectGroup } from "./ImportSelect";
-import { ArrowRightIcon, ColumnsIcon, ImportItemNameIcon, InfoIcon, ResetIcon, WarningIcon } from "./importIcons";
-import { READ_ONLY_COLUMN_TYPES } from "./importWizardUtils";
+import ImportSheetTabs from "./ImportSheetTabs";
+import { ArrowRightIcon, ColumnsIcon, ImportColumnIcon, ImportItemNameIcon, InfoIcon, ResetIcon, SparkleIcon, WarningIcon } from "./importIcons";
+import { IMPORT_TYPE_LABELS, READ_ONLY_COLUMN_TYPES } from "./importWizardUtils";
 
 /** "Add items to" values that aren't a group id. */
 export const NEW_GROUP_TARGET = "new";
@@ -17,6 +19,12 @@ type UnmappedMode = "skip" | "create";
 
 export type ImportMapColumnsStepProps = {
   file_name: string;
+  /** Every sheet of the workbook, tabs are shown when there are several. */
+  sheets: BoardImportSheet[];
+  sheet_index: number;
+  /** The sheet being read after a tab was picked, null otherwise. */
+  loading_sheet_index: number | null;
+  onChangeSheet: (sheet_index: number) => void;
   row_count: number;
   source_columns: BoardImportSourceColumn[];
   board_columns: BoardColumnDto[];
@@ -62,6 +70,10 @@ const InfoTip: React.FC<{ content: string }> = ({ content }) => (
  */
 const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   file_name,
+  sheets,
+  sheet_index,
+  loading_sheet_index,
+  onChangeSheet,
   row_count,
   source_columns,
   board_columns,
@@ -107,15 +119,20 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
 
   /**
    * Only one column can feed the item's name. The column that held it before
-   * goes back to the list as "Select column", so it's never imported twice.
+   * goes back to the list with its suggested destination (or a new column
+   * typed from its values), so switching the name never drops its data.
    */
   const handleNameSourceChange = (value: string) => {
     const source_index = Number(value);
     onChangeMappings(
       mappings.map((mapping) => {
         if (mapping.source_index === source_index) return { ...mapping, mode: "name", target_column_id: null };
-        if (mapping.mode === "name") return { ...mapping, mode: "skip", target_column_id: null };
-        return mapping;
+        if (mapping.mode !== "name") return mapping;
+        const suggested = suggested_mappings.find((candidate) => candidate.source_index === mapping.source_index);
+        if (suggested && suggested.mode !== "name") return { ...suggested };
+        const source = source_columns.find((candidate) => candidate.index === mapping.source_index);
+        if (source && !READ_ONLY_COLUMN_TYPES.includes(source.suggested_type)) return { ...mapping, ...createMappingFor(source) };
+        return { ...mapping, mode: "skip", target_column_id: null };
       })
     );
   };
@@ -189,9 +206,25 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
       : []),
   ];
 
-  const name_groups: ImportSelectGroup[] = [
-    { options: source_columns.map((source) => ({ value: String(source.index), label: source.label, hint: source.filled_count === 0 ? "Empty" : undefined })) },
-  ];
+  // The column the backend picked to name the items, marked "Suggested" in the picker.
+  const suggested_name_index = suggested_mappings.find((mapping) => mapping.mode === "name")?.source_index ?? null;
+  const is_text_type = (source: BoardImportSourceColumn) => source.suggested_type === "text" || source.suggested_type === "long_text";
+  const nameOption = (source: BoardImportSourceColumn) => ({
+    value: String(source.index),
+    label: source.label,
+    icon: <ImportColumnIcon type={source.suggested_type} />,
+    hint: source.filled_count === 0 ? "Empty" : source.index === suggested_name_index ? "Suggested" : IMPORT_TYPE_LABELS[source.suggested_type],
+  });
+  const text_sources = source_columns.filter(is_text_type);
+  const other_sources = source_columns.filter((source) => !is_text_type(source));
+  const name_groups: ImportSelectGroup[] = (
+    [
+      { label: other_sources.length > 0 ? "Text columns" : undefined, options: text_sources.map(nameOption) },
+      { label: text_sources.length > 0 ? "Other columns" : undefined, options: other_sources.map(nameOption) },
+    ] as ImportSelectGroup[]
+  ).filter((group) => group.options.length > 0);
+  const name_source = name_mapping ? (source_columns.find((source) => source.index === name_mapping.source_index) ?? null) : null;
+  const name_preview = name_source?.sample_values.slice(0, 2) ?? [];
 
   const file_group_names = file_groups.map((group) => `${group.name} (${group.row_count})`).join(", ");
 
@@ -199,6 +232,9 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
     <div className="iw-map">
       <div className="iw-map-inner">
         <h2 className="iw-step-title">Map your imported file columns to your board</h2>
+
+        <ImportSheetTabs sheets={sheets} sheet_index={sheet_index} loading_index={loading_sheet_index} onChange={onChangeSheet} />
+        <ImportFileSummary source_columns={source_columns} name_source={name_source} />
 
         <div className="iw-map-controls">
           <div className="iw-control">
@@ -323,25 +359,49 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
           </div>
 
           <div className="iw-name-row iw-row-grid">
-            <div className="iw-name-source">
-              <ImportSelect
-                value={name_mapping ? String(name_mapping.source_index) : null}
-                groups={name_groups}
-                onChange={handleNameSourceChange}
-                onClear={() => name_mapping && updateMapping(name_mapping.source_index, { mode: "skip", target_column_id: null })}
-                placeholder="Select column"
-                aria_label="File column for the item name"
-                is_invalid={!name_mapping}
-                className="flex-1"
-              />
-              <InfoTip content="The file column whose values become each item's name" />
+            <div className="iw-name-cell">
+              <div className="iw-name-source">
+                <ImportSelect
+                  value={name_mapping ? String(name_mapping.source_index) : null}
+                  groups={name_groups}
+                  onChange={handleNameSourceChange}
+                  onClear={() => name_mapping && updateMapping(name_mapping.source_index, { mode: "skip", target_column_id: null })}
+                  placeholder="Select column"
+                  aria_label="File column for the item name"
+                  display_icon={name_source ? <ImportColumnIcon type={name_source.suggested_type} /> : undefined}
+                  is_invalid={!name_mapping}
+                  className="flex-1"
+                  min_menu_width={280}
+                />
+                <InfoTip content="Any file column can name the items, not only the first one. Its values become each item's name, a text column reads best." />
+              </div>
+              {name_source && (
+                <span className="iw-name-preview">
+                  {name_source.index === suggested_name_index && (
+                    <span className="iw-name-badge">
+                      <SparkleIcon size={11} />
+                      Suggested
+                    </span>
+                  )}
+                  {name_preview.length > 0 ? (
+                    <span className="iw-name-samples" title={name_preview.join(" · ")}>
+                      {name_preview.map((value) => `"${value}"`).join(", ")}
+                    </span>
+                  ) : (
+                    <span className="iw-name-samples">Empty column, items will be named &quot;Untitled item&quot;</span>
+                  )}
+                </span>
+              )}
             </div>
             <span className="iw-row-arrow" aria-hidden="true">
               <ArrowRightIcon size={18} />
             </span>
             <span className="iw-item-target">
               <ImportItemNameIcon />
-              Item
+              <span className="iw-item-target-text">
+                Item
+                <span className="iw-item-target-type">Text, first column</span>
+              </span>
             </span>
           </div>
 

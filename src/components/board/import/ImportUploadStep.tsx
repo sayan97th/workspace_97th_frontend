@@ -18,8 +18,10 @@ const ACCEPT = {
 /** What the import keeps from a file, listed under the drop zone. */
 const TIPS = [
   "Columns are matched to your board by name",
+  "Any column can become the item name",
+  "Dropdown lists become Status, Priority or Dropdown columns",
+  "Images and files in cells go into a Files column",
   "Exports keep their groups and subitems",
-  "New columns get a type that fits their values",
 ];
 
 /**
@@ -61,7 +63,7 @@ const ImportUploadStep: React.FC<ImportUploadStepProps> = ({ is_analyzing, error
               Browse
             </button>
             <p className="iw-dropzone-title">{isDragActive ? "Drop your file here" : "or drag and drop your file"}</p>
-            <p className="iw-dropzone-hint">(.csv, .xlsx, and .xls supported)</p>
+            <p className="iw-dropzone-hint">(.csv, .xlsx, and .xls supported, up to 50 MB)</p>
           </>
         )}
       </div>

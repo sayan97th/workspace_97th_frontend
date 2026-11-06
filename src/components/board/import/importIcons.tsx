@@ -137,6 +137,49 @@ export const ColumnsIcon = ({ size = 14, className }: IconProps) => (
   </svg>
 );
 
+export const SheetIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <rect x="2.5" y="2.5" width="11" height="11" rx="1.5" />
+    <path d="M2.5 6.25h11M2.5 10h11M6.25 6.25v7.25" />
+  </svg>
+);
+
+export const ImageIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
+    <circle cx="6" cy="6.5" r="1" />
+    <path d="m13.5 10.5-3-3-6 5.5" />
+  </svg>
+);
+
+export const FileIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M9 2.5H5a1.5 1.5 0 0 0-1.5 1.5v8A1.5 1.5 0 0 0 5 13.5h6a1.5 1.5 0 0 0 1.5-1.5V6L9 2.5Z" />
+    <path d="M9 2.5V6h3.5" />
+  </svg>
+);
+
+export const ListIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M6 4.5h7.5M6 8h7.5M6 11.5h7.5" />
+    <circle cx="3" cy="4.5" r=".6" />
+    <circle cx="3" cy="8" r=".6" />
+    <circle cx="3" cy="11.5" r=".6" />
+  </svg>
+);
+
+export const FlagIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M3.5 14V2.5M3.5 3h8l-1.75 3 1.75 3h-8" />
+  </svg>
+);
+
+export const SparkleIcon = ({ size = 16, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M8 2.5 9.2 6.8 13.5 8l-4.3 1.2L8 13.5 6.8 9.2 2.5 8l4.3-1.2L8 2.5Z" />
+  </svg>
+);
+
 /** A tiny inline spinner. */
 export const Spinner = () => <span className="iw-spinner" aria-hidden="true" />;
 
