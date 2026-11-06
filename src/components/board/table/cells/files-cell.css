@@ -1,0 +1,184 @@
+/*
+ * Files cell extras on top of `cell-links.css`: the image thumbnail, the
+ * drop target state while files are dragged over the cell, the upload
+ * progress bar and the image hover preview.
+ */
+
+.files-cell {
+  --files-cell-accent: #0073ea;
+  --files-cell-drop-bg: rgba(0, 115, 234, 0.1);
+  --files-cell-drop-text: #0060b9;
+  --files-cell-thumb-border: #d0d4e4;
+  --files-cell-thumb-bg: #f0f1f5;
+}
+
+html.dark .files-cell {
+  --files-cell-accent: #69a7ef;
+  --files-cell-drop-bg: rgba(105, 167, 239, 0.16);
+  --files-cell-drop-text: #a8cbf6;
+  --files-cell-thumb-border: rgba(255, 255, 255, 0.16);
+  --files-cell-thumb-bg: rgba(255, 255, 255, 0.06);
+}
+
+/* Small square image next to the name, zooms in a touch on hover. */
+.files-cell__thumb {
+  display: flex;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--files-cell-thumb-border);
+  border-radius: 4px;
+  background: var(--files-cell-thumb-bg);
+  cursor: zoom-in;
+  transition: box-shadow 120ms ease-out;
+}
+
+.files-cell__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 160ms ease-out;
+}
+
+.files-cell__thumb:hover {
+  box-shadow: 0 0 0 2px var(--files-cell-accent);
+}
+
+.files-cell__thumb:hover img {
+  transform: scale(1.12);
+}
+
+.files-cell__thumb:focus-visible {
+  outline: 2px solid var(--files-cell-accent);
+  outline-offset: 1px;
+}
+
+/* Files dragged over the cell: a dashed blue frame with a label covers it. */
+.files-cell__drop {
+  position: absolute;
+  inset: 2px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1.5px dashed var(--files-cell-accent);
+  border-radius: 4px;
+  background: var(--files-cell-drop-bg);
+  color: var(--files-cell-drop-text);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .files-cell__drop {
+    animation: files-cell-drop-enter 120ms ease-out;
+  }
+}
+
+/* An indeterminate bar along the bottom edge while an upload runs. */
+.files-cell__progress {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.files-cell__progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--files-cell-accent);
+  animation: files-cell-progress 1s ease-in-out infinite;
+}
+
+.files-cell[data-uploading] .cell-link-host__content {
+  opacity: 0.6;
+}
+
+@keyframes files-cell-drop-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@keyframes files-cell-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+/* Image hover preview, rendered inside the shared dark `.cell-link-tooltip` bubble. */
+.cell-link-tooltip:has(.files-cell-preview) {
+  max-width: none;
+  padding: 6px;
+}
+
+.files-cell-preview {
+  display: flex;
+  width: 220px;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.files-cell-preview__frame {
+  display: flex;
+  height: 150px;
+  margin-bottom: 4px;
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  /* Checkerboard, so transparent PNGs read as transparent. */
+  background-color: #2b2d3c;
+  background-image:
+    linear-gradient(45deg, #34374a 25%, transparent 25%),
+    linear-gradient(-45deg, #34374a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #34374a 75%),
+    linear-gradient(-45deg, transparent 75%, #34374a 75%);
+  background-position:
+    0 0,
+    0 6px,
+    6px -6px,
+    -6px 0;
+  background-size: 12px 12px;
+}
+
+.files-cell-preview__frame img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.files-cell-preview__name {
+  overflow: hidden;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.files-cell-preview__hint {
+  padding: 0 4px 2px;
+  font-size: 11px;
+  line-height: 14px;
+  opacity: 0.7;
+}

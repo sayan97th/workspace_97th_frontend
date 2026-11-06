@@ -56,6 +56,18 @@ export const boardItemCellFilesService = {
     return response.files;
   },
 
+  /**
+   * PATCH /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files/{file_id}, the menu's inline rename.
+   * Only the display name changes. An upload renamed without an extension keeps its original one.
+   */
+  async renameCellFile(board_id: number, item_id: number, column_id: number, file_id: string, file_name: string): Promise<BoardCellFile[]> {
+    const response = await apiClient.patch<{ files: BoardCellFile[] }>(
+      `/api/boards/${board_id}/items/${item_id}/columns/${column_id}/files/${file_id}`,
+      { file_name }
+    );
+    return response.files;
+  },
+
   /** DELETE /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files/{file_id} */
   async deleteCellFile(board_id: number, item_id: number, column_id: number, file_id: string): Promise<BoardCellFile[]> {
     const response = await apiClient.delete<{ files: BoardCellFile[] }>(

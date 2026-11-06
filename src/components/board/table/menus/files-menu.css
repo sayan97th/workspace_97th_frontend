@@ -12,8 +12,17 @@
   --files-menu-entry-hover: #f0f1f5;
   --files-menu-error-bg: rgba(226, 68, 92, 0.12);
   --files-menu-error-text: #d83a52;
+  --files-menu-thumb-bg: #f0f1f5;
+  --files-menu-thumb-border: #e1e4ec;
+  --files-menu-accent: #0073ea;
+  --files-menu-accent-soft: rgba(0, 115, 234, 0.08);
+  --files-menu-accent-softer: rgba(0, 115, 234, 0.04);
+  --files-menu-dropzone-border: #c3c6d4;
+  --files-menu-input-bg: #ffffff;
+  --files-menu-kbd-bg: #ffffff;
+  --files-menu-kbd-border: #d0d4e4;
 
-  width: 290px;
+  width: 300px;
 }
 
 html.dark .files-menu {
@@ -23,6 +32,15 @@ html.dark .files-menu {
   --files-menu-entry-hover: rgba(255, 255, 255, 0.06);
   --files-menu-error-bg: rgba(240, 100, 122, 0.16);
   --files-menu-error-text: #f0647a;
+  --files-menu-thumb-bg: rgba(255, 255, 255, 0.06);
+  --files-menu-thumb-border: rgba(255, 255, 255, 0.1);
+  --files-menu-accent: #69a7ef;
+  --files-menu-accent-soft: rgba(105, 167, 239, 0.14);
+  --files-menu-accent-softer: rgba(105, 167, 239, 0.06);
+  --files-menu-dropzone-border: rgba(255, 255, 255, 0.22);
+  --files-menu-input-bg: rgba(255, 255, 255, 0.04);
+  --files-menu-kbd-bg: rgba(255, 255, 255, 0.08);
+  --files-menu-kbd-border: rgba(255, 255, 255, 0.16);
 }
 
 .files-menu .action-menu__item[data-active="true"]:not([aria-disabled="true"]) {
@@ -39,18 +57,35 @@ html.dark .files-menu {
   background: transparent;
 }
 
+.files-menu__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.files-menu__title-count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--files-menu-thumb-bg);
+  color: var(--files-menu-entry-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
 .files-menu__entries {
-  max-height: 208px;
+  max-height: 240px;
   overflow-y: auto;
 }
 
+/* Thumbnail (or type icon), name over its type and size, then hover actions. */
 .files-menu__entry {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 8px;
-  border-radius: 4px;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 6px 4px 4px;
+  border-radius: 6px;
   color: var(--files-menu-entry-text);
   font-size: 13px;
 }
@@ -59,42 +94,273 @@ html.dark .files-menu {
   background: var(--files-menu-entry-hover);
 }
 
-.files-menu__entry-icon,
-.files-menu__entry-meta {
-  flex: none;
-  color: var(--files-menu-entry-muted);
-}
-
-.files-menu__entry-meta {
-  font-size: 11px;
-}
-
-.files-menu__entry-name {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.files-menu__entry-name:hover {
-  text-decoration: underline;
-}
-
-.files-menu__entry-remove {
+.files-menu__thumb {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 3px;
+  width: 36px;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid var(--files-menu-thumb-border);
+  border-radius: 6px;
+  background: var(--files-menu-thumb-bg);
   color: var(--files-menu-entry-muted);
 }
 
-.files-menu__entry-remove:hover {
+.files-menu__thumb--image {
+  position: relative;
+  padding: 0;
+  cursor: zoom-in;
+}
+
+.files-menu__thumb--image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 160ms ease-out;
+}
+
+.files-menu__thumb--image:hover img,
+.files-menu__thumb--image:focus-visible img {
+  transform: scale(1.08);
+}
+
+.files-menu__thumb--image:focus-visible {
+  outline: 2px solid var(--files-menu-accent);
+  outline-offset: 1px;
+}
+
+.files-menu__entry-body {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.files-menu__entry-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 18px;
+}
+
+.files-menu__entry-name:hover {
+  color: var(--files-menu-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.files-menu__entry-meta {
+  overflow: hidden;
+  color: var(--files-menu-entry-muted);
+  font-size: 11px;
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rename and remove, shown while the row is hovered or one of them has focus. */
+.files-menu__entry-action {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--files-menu-entry-muted);
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+
+.files-menu__entry:hover .files-menu__entry-action,
+.files-menu__entry-action:focus-visible {
+  opacity: 1;
+}
+
+.files-menu__entry-action:hover {
   background: var(--action-menu-hover);
   color: var(--files-menu-entry-text);
+}
+
+.files-menu__entry-action--danger:hover {
+  background: var(--files-menu-error-bg);
+  color: var(--files-menu-error-text);
+}
+
+@media (hover: none) {
+  .files-menu__entry-action {
+    opacity: 1;
+  }
+}
+
+/* Inline rename field that takes the row's place. */
+.files-menu__rename {
+  padding: 4px;
+}
+
+.files-menu__rename-field {
+  display: flex;
+  align-items: center;
+  height: 36px;
+  border: 1px solid var(--files-menu-accent);
+  border-radius: 6px;
+  background: var(--files-menu-input-bg);
+  box-shadow: 0 0 0 3px var(--files-menu-accent-soft);
+}
+
+.files-menu__rename-field[data-invalid] {
+  border-color: var(--files-menu-error-text);
+  box-shadow: 0 0 0 3px var(--files-menu-error-bg);
+}
+
+.files-menu__rename-input {
+  min-width: 0;
+  flex: 1 1 auto;
+  height: 100%;
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--files-menu-entry-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.files-menu__rename-status {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin-right: 8px;
+  color: var(--files-menu-entry-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.files-menu__rename-error {
+  padding: 4px 4px 0;
+  color: var(--files-menu-error-text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Drop zone: drag files in, click to browse, or paste an image while the menu is open. */
+.files-menu__dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin: 2px 4px 6px;
+  padding: 12px 10px 10px;
+  border: 1.5px dashed var(--files-menu-dropzone-border);
+  border-radius: 8px;
+  background: var(--files-menu-accent-softer);
+  color: var(--files-menu-entry-text);
+  text-align: center;
+  cursor: pointer;
+  outline: none;
+  transition:
+    border-color 120ms ease-out,
+    background 120ms ease-out,
+    transform 120ms ease-out;
+}
+
+.files-menu__dropzone:hover {
+  border-color: var(--files-menu-accent);
+}
+
+.files-menu__dropzone[data-drag-active] {
+  border-color: var(--files-menu-accent);
+  border-style: solid;
+  background: var(--files-menu-accent-soft);
+  transform: scale(1.01);
+}
+
+.files-menu__dropzone[data-busy],
+.files-menu__dropzone[aria-disabled="true"] {
+  cursor: progress;
+}
+
+.files-menu__dropzone-icon {
+  display: flex;
+  height: 24px;
+  align-items: center;
+  color: var(--files-menu-accent);
+}
+
+.files-menu__dropzone[data-drag-active] .files-menu__dropzone-icon {
+  animation: files-menu-bob 700ms ease-in-out infinite alternate;
+}
+
+.files-menu__dropzone-text {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.files-menu__dropzone-link {
+  color: var(--files-menu-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.files-menu__dropzone-hint {
+  color: var(--files-menu-entry-muted);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.files-menu__dropzone-hint kbd {
+  padding: 0 4px;
+  border: 1px solid var(--files-menu-kbd-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--files-menu-kbd-bg);
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.files-menu__spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--files-menu-accent-soft);
+  border-top-color: var(--files-menu-accent);
+  border-radius: 999px;
+  animation: files-menu-spin 700ms linear infinite;
+}
+
+.files-menu__spinner--small {
+  width: 12px;
+  height: 12px;
+  border-width: 1.5px;
+}
+
+@keyframes files-menu-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes files-menu-bob {
+  to {
+    transform: translateY(-3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .files-menu__spinner,
+  .files-menu__dropzone[data-drag-active] .files-menu__dropzone-icon {
+    animation-duration: 1.6s;
+  }
+
+  .files-menu__dropzone[data-drag-active] {
+    transform: none;
+  }
 }
 
 .files-menu__error {

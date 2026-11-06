@@ -101,6 +101,15 @@ const COLUMN_LIST_KEYS: Array<keyof Pick<BoardTableGroup, "base_columns" | "cust
   "sub_custom_columns",
 ];
 
+/** Whether `column_id` is a Files column, wherever it lives (item or subitem columns of any group). */
+function isFilesColumn(groups: BoardTableGroup[], column_id: string): boolean {
+  return groups.some((group) =>
+    [group.base_columns, group.custom_columns, group.sub_base_columns, group.sub_custom_columns].some((columns) =>
+      columns.some((column) => column.id === column_id && column.kind === "files")
+    )
+  );
+}
+
 /** The keys of every group currently flagged `true` in a `collapsed_groups` map — the wire format `onCollapsedGroupsChange` persists (see its own doc comment for why only the collapsed ones are sent). */
 function collapsedGroupKeys(collapsed_groups: Record<string, boolean>): string[] {
   return Object.keys(collapsed_groups).filter((key) => collapsed_groups[key]);
@@ -238,6 +247,8 @@ export interface UseBoardTableConfig {
   onAddCellFileLink?: (node_id: string, column_id: string, url: string, text: string, source: CellFileSource) => Promise<CellFile[]>;
   /** A `files`-type cell's "Doc" option, creates a new Doc and resolves with the cell's updated file list, same contract as `onUploadCellFiles`. */
   onAddCellFileDoc?: (node_id: string, column_id: string) => Promise<CellFile[]>;
+  /** A `files`-type cell's inline rename, resolves with the cell's updated file list, same contract as `onUploadCellFiles`. Rejects with the API's validation error so the menu can show it. */
+  onRenameCellFile?: (node_id: string, column_id: string, file_id: string, file_name: string) => Promise<CellFile[]>;
   /**
    * Row star / row menu's "Mark as priority" toggle for a single item or
    * subitem — the per-row counterpart of `onToggleGroupPriority`, persisted
@@ -1113,6 +1124,15 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
   /** Whether the viewer may change this cell, so a cell can hide edit only affordances (the hover "×"). The guard below narrows it. */
   const canEditCell = useCallback((_node_id: string, _column_id: string): boolean => true, []);
 
+  /** Files cell menu's inline rename (pencil or double click on an entry). Errors propagate to the caller, which keeps the field open to show them. */
+  const renameCellFile = useCallback(
+    async (node_id: string, column_id: string, file_id: string, file_name: string) => {
+      const updated = await config_ref.current.onRenameCellFile?.(node_id, column_id, file_id, file_name);
+      if (updated) setCellValueLocal(node_id, column_id, updated);
+    },
+    [setCellValueLocal]
+  );
+
   /** Files cell's per-chip delete "×". */
   const deleteCellFile = useCallback(
     async (node_id: string, column_id: string, file_id: string) => {
@@ -1289,6 +1309,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
         return;
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
+        // A Files cell takes the native `paste` event instead (see `FilesCell`), so an image
+        // copied to the OS clipboard can be uploaded. Preventing the keydown would cancel it.
+        if (isFilesColumn(s.groups, s.active_cell.column_id)) return;
         event.preventDefault();
         pasteIntoActiveCell();
         return;
@@ -2658,6 +2681,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       addCellFileLink,
       addCellFileDoc,
       canEditCell,
+      renameCellFile,
       deleteCellFile,
       setActiveCell,
       clearActiveCell,
@@ -2806,7 +2830,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [
       toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
-      clearCellValue, uploadCellFiles, addCellFileLink, addCellFileDoc, canEditCell, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
+      clearCellValue, uploadCellFiles, addCellFileLink, addCellFileDoc, canEditCell, renameCellFile, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
       moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
@@ -2901,6 +2925,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     wrap("addCellFileDoc", (node_id, column_id) => isCellEditable(node_id, column_id));
     guarded.canEditCell = isCellEditable;
     wrap("deleteCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
+    wrap("renameCellFile", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("setDependencyLinks", (node_id, column_id) => isCellEditable(node_id, column_id));
     wrap("createDependencyItem", (node_id, column_id) => can_create_items && isCellEditable(node_id, column_id));
     // Pressing a button changes no value, the API only asks that the viewer may work on the item.

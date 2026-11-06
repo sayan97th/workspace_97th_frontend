@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import type { MouseEvent, ReactNode } from "react";
 import { useCellTooltip } from "./CellTooltip";
 import "./cell-links.css";
 
 interface CellHyperlinkProps {
   href: string;
   label: string;
-  /** Text of the hover bubble, usually the full URL. */
-  tooltip: string;
+  /** Content of the hover bubble, usually the full URL, or an image preview for an uploaded image. */
+  tooltip: ReactNode;
+  /** Replaces the plain click (an image opens the lightbox instead of a new tab). Ctrl, Cmd and Shift clicks still follow `href`. */
+  onOpen?: () => void;
   /** Shows the hover "×" when set. Left out on cells the viewer may not edit. */
   onRemove?: () => void;
   remove_label?: string;
@@ -25,14 +28,19 @@ function isExternalHref(href: string): boolean {
  * a dark tooltip and an optional grey "×" that removes it. Clicks on the
  * link open it, they never reach the cell's own "open menu" hit area.
  */
-export default function CellHyperlink({ href, label, tooltip, onRemove, remove_label = "Remove" }: CellHyperlinkProps) {
+export default function CellHyperlink({ href, label, tooltip, onOpen, onRemove, remove_label = "Remove" }: CellHyperlinkProps) {
   const { anchor_props: tooltip_props, hide: hideTooltip, tooltip: tooltip_bubble } = useCellTooltip<HTMLAnchorElement>(tooltip);
   const { ref: anchor_ref, ...tooltip_handlers } = tooltip_props;
 
   const anchor_props = {
     className: "cell-link__anchor",
     ...tooltip_handlers,
-    onClick: hideTooltip,
+    onClick: (event: MouseEvent<HTMLAnchorElement>) => {
+      hideTooltip();
+      if (!onOpen || event.metaKey || event.ctrlKey || event.shiftKey) return;
+      event.preventDefault();
+      onOpen();
+    },
   };
 
   return (

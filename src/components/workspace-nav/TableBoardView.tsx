@@ -3419,6 +3419,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       onAddCellFileLink: (node_id, column_id, url, text, source) =>
         boardItemCellFilesService.addCellFileLink(board_id, Number(node_id), Number(column_id), url, text, source),
       onAddCellFileDoc: (node_id, column_id) => boardItemCellFilesService.addCellFileDoc(board_id, Number(node_id), Number(column_id)),
+      onRenameCellFile: (node_id, column_id, file_id, file_name) =>
+        boardItemCellFilesService.renameCellFile(board_id, Number(node_id), Number(column_id), file_id, file_name),
       onDeleteCellFile: (node_id, column_id, file_id) =>
         boardItemCellFilesService.deleteCellFile(board_id, Number(node_id), Number(column_id), file_id),
       initial_collapsed_groups: collapsed_group_map,

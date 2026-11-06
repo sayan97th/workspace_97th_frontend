@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CellFile, CellFileSource, CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
+import type { CellValue, ChecklistItemValue, ColumnDef, LinkValue, TimeTrackingValue } from "../types";
 import type { BoardTableActions, BoardTableState, ButtonPressOutcome } from "../useBoardTable";
 import { contrastFg, findDef, timelineFillBackground } from "../colorUtils";
 import { encodeRangeValue, fmtDateWithWeekday, formatDateValue, fmtRange, isPastDate, parseRangeValue, rangeDayCount, rangeElapsedRatio } from "../dateUtils";
@@ -23,10 +23,8 @@ import { formatTagLabel, tagSearchKey } from "../tagLabels";
 import { PlusIcon } from "@/icons/board-icons";
 import { openSearchEverything } from "@/layout/shell-events";
 import LinkMenu from "../menus/LinkMenu";
-import FilesMenu from "../menus/FilesMenu";
-import FileLinkModal from "../menus/FileLinkModal";
-import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import CellHyperlink from "./CellHyperlink";
+import FilesCell from "./FilesCell";
 import ConnectItemsCell from "./ConnectItemsCell";
 import MirrorCell from "./MirrorCell";
 import { RatingCell, VoteCell } from "./VoteRatingCells";
@@ -83,16 +81,6 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [running_since]);
-
-  // Files cell's own "Upload" and "Doc" in-flight state, so the popover can
-  // disable its options and show a progress label while a request is pending,
-  // plus the last failure's message, which link dialog is open (by source) and
-  // whether the webcam dialog is open.
-  const [is_uploading, setIsUploading] = useState(false);
-  const [is_creating_doc, setIsCreatingDoc] = useState(false);
-  const [upload_error, setUploadError] = useState<string | null>(null);
-  const [file_link_source, setFileLinkSource] = useState<CellFileSource | null>(null);
-  const [is_webcam_open, setIsWebcamOpen] = useState(false);
 
   // Text cell: whether it was clicked out of its search highlighted display into the input.
   const [is_text_editing, setIsTextEditing] = useState(false);
@@ -555,96 +543,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     );
   }
 
-  if (column.kind === "files") {
-    const files = Array.isArray(value) && value.every((f) => typeof f === "object" && f !== null) ? (value as CellFile[]) : [];
-    const can_edit = actions.canEditCell(node_id, column.id);
-    const first_file = files[0];
-    const reportFailure = (fallback: string) => (error: { errors?: Record<string, string[]>; message?: string }) => {
-      const first_field_error = error?.errors ? Object.values(error.errors).flat()[0] : undefined;
-      setUploadError(first_field_error ?? error?.message ?? fallback);
-    };
-    return (
-      <div className="cell-link-host">
-        <button type="button" onClick={openMenu} aria-label={files.length > 0 ? "Manage files" : "Add file"} className="cell-link-host__hit-area" />
-        <div className="cell-link-host__content">
-          {first_file ? (
-            <>
-              <CellHyperlink
-                href={first_file.url}
-                label={first_file.file_name}
-                // Links show their URL like monday, uploads and Docs their full name (a storage URL means nothing to people).
-                tooltip={first_file.kind === "link" ? first_file.url : first_file.file_name}
-                onRemove={can_edit ? () => void actions.deleteCellFile(node_id, column.id, first_file.id) : undefined}
-                remove_label={`Remove ${first_file.file_name}`}
-              />
-              {files.length > 1 && (
-                <button type="button" onClick={openMenu} className="cell-link-host__count" aria-label={`Show all ${files.length} files`}>
-                  +{files.length - 1}
-                </button>
-              )}
-            </>
-          ) : (
-            can_edit && <AddGlyph />
-          )}
-        </div>
-        {is_menu_open && (
-          <FilesMenu
-            files={files}
-            is_uploading={is_uploading}
-            is_creating_doc={is_creating_doc}
-            upload_error={upload_error}
-            can_edit={can_edit}
-            onUpload={(picked) => {
-              setIsUploading(true);
-              setUploadError(null);
-              // `Promise.resolve`: the read only guard returns undefined instead of a promise.
-              Promise.resolve(actions.uploadCellFiles(node_id, column.id, picked))
-                .catch(reportFailure("The file could not be uploaded."))
-                .finally(() => setIsUploading(false));
-            }}
-            onOpenWebcam={() => {
-              actions.closeCellMenu();
-              setIsWebcamOpen(true);
-            }}
-            onCreateDoc={() => {
-              setIsCreatingDoc(true);
-              setUploadError(null);
-              Promise.resolve(actions.addCellFileDoc(node_id, column.id))
-                .then(() => actions.closeCellMenu())
-                .catch(reportFailure("The doc could not be created."))
-                .finally(() => setIsCreatingDoc(false));
-            }}
-            onAddLink={(source) => {
-              actions.closeCellMenu();
-              setFileLinkSource(source);
-            }}
-            onDelete={(file_id) => void actions.deleteCellFile(node_id, column.id, file_id)}
-            onClose={() => {
-              setUploadError(null);
-              actions.closeCellMenu();
-            }}
-          />
-        )}
-        {file_link_source && (
-          <FileLinkModal
-            source={file_link_source}
-            onSave={async (url, text) => {
-              await actions.addCellFileLink(node_id, column.id, url, text, file_link_source);
-            }}
-            onClose={() => setFileLinkSource(null)}
-          />
-        )}
-        {is_webcam_open && (
-          <WebcamCaptureModal
-            onUpload={async (photo) => {
-              await actions.uploadCellFiles(node_id, column.id, [photo]);
-            }}
-            onClose={() => setIsWebcamOpen(false)}
-          />
-        )}
-      </div>
-    );
-  }
+  if (column.kind === "files") return <FilesCell {...center_props} />;
 
   if (column.kind === "time_tracking") {
     const tv = (value as TimeTrackingValue | undefined) ?? { seconds: 0, running_since: null };
@@ -828,7 +727,7 @@ export default function CellRenderer({ node_id, column, values, node_name, state
   return null;
 }
 
-/** An empty Link or Files cell's hover "+", see `.cell-link-host__add`. */
+/** An empty Link cell's hover "+", see `.cell-link-host__add`. */
 function AddGlyph() {
   return (
     <span className="cell-link-host__add" aria-hidden="true">
