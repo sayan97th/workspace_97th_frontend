@@ -12,6 +12,8 @@ const TOOLTIP_GAP = 8;
 interface UseCellTooltipOptions {
   /** Only shows the bubble when the anchor's text is cut off by an ellipsis. */
   only_when_truncated?: boolean;
+  /** Extra class on the bubble, e.g. `cell-link-tooltip--card` for a rich card (an image preview) instead of dark text. */
+  bubble_class?: string;
 }
 
 /**
@@ -20,7 +22,7 @@ interface UseCellTooltipOptions {
  * no room) and dismissed by any scroll. Spread `anchor_props` on the element to describe and
  * render `tooltip` anywhere next to it.
  */
-export function useCellTooltip<T extends HTMLElement>(text: ReactNode, { only_when_truncated = false }: UseCellTooltipOptions = {}) {
+export function useCellTooltip<T extends HTMLElement>(text: ReactNode, { only_when_truncated = false, bubble_class }: UseCellTooltipOptions = {}) {
   const anchor_ref = useRef<T>(null);
   const timer_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [anchor_rect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -63,12 +65,12 @@ export function useCellTooltip<T extends HTMLElement>(text: ReactNode, { only_wh
       onBlur: hide,
     },
     hide,
-    tooltip: anchor_rect && text && typeof document !== "undefined" ? createPortal(<CellTooltipBubble anchor_rect={anchor_rect} text={text} />, document.body) : null,
+    tooltip: anchor_rect && text && typeof document !== "undefined" ? createPortal(<CellTooltipBubble anchor_rect={anchor_rect} text={text} bubble_class={bubble_class} />, document.body) : null,
   };
 }
 
 /** Places itself above the anchor (below when there is no room), centered and kept inside the window. */
-function CellTooltipBubble({ anchor_rect, text }: { anchor_rect: DOMRect; text: ReactNode }) {
+function CellTooltipBubble({ anchor_rect, text, bubble_class }: { anchor_rect: DOMRect; text: ReactNode; bubble_class?: string }) {
   const bubble_ref = useRef<HTMLDivElement>(null);
 
   // Measured and written straight to the node, so placing it never costs a second render.
@@ -88,7 +90,7 @@ function CellTooltipBubble({ anchor_rect, text }: { anchor_rect: DOMRect; text: 
   }, [anchor_rect]);
 
   return (
-    <div ref={bubble_ref} role="tooltip" className="cell-link-tooltip" style={{ top: 0, left: 0, visibility: "hidden" }}>
+    <div ref={bubble_ref} role="tooltip" className={bubble_class ? `cell-link-tooltip ${bubble_class}` : "cell-link-tooltip"} style={{ top: 0, left: 0, visibility: "hidden" }}>
       {text}
       <span className="cell-link-tooltip__arrow" style={{ left: "var(--cell-link-arrow-left)" }} aria-hidden="true" />
     </div>

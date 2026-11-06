@@ -1,7 +1,7 @@
 /*
  * Files cell extras on top of `cell-links.css`: the image thumbnail, the
  * drop target state while files are dragged over the cell, the upload
- * progress bar and the image hover preview.
+ * progress bar. The image hover preview is `file-peek-card.scss`.
  */
 
 .files-cell {
@@ -125,63 +125,4 @@ html.dark .files-cell {
   to {
     transform: translateX(250%);
   }
-}
-
-/* Image hover preview, rendered inside the shared dark `.cell-link-tooltip` bubble. */
-.cell-link-tooltip:has(.files-cell-preview) {
-  max-width: none;
-  padding: 6px;
-}
-
-.files-cell-preview {
-  display: flex;
-  width: 220px;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.files-cell-preview__frame {
-  display: flex;
-  height: 150px;
-  margin-bottom: 4px;
-  overflow: hidden;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  /* Checkerboard, so transparent PNGs read as transparent. */
-  background-color: #2b2d3c;
-  background-image:
-    linear-gradient(45deg, #34374a 25%, transparent 25%),
-    linear-gradient(-45deg, #34374a 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #34374a 75%),
-    linear-gradient(-45deg, transparent 75%, #34374a 75%);
-  background-position:
-    0 0,
-    0 6px,
-    6px -6px,
-    -6px 0;
-  background-size: 12px 12px;
-}
-
-.files-cell-preview__frame img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-}
-
-.files-cell-preview__name {
-  overflow: hidden;
-  padding: 0 4px;
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 18px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.files-cell-preview__hint {
-  padding: 0 4px 2px;
-  font-size: 11px;
-  line-height: 14px;
-  opacity: 0.7;
 }

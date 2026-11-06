@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import type { CellFile } from "../types";
 import { thumbnailSources } from "../menus/filesCellUtils";
 
@@ -9,6 +9,8 @@ interface CellFileThumbProps {
   /** Lazy for thumbnails in the table and menu, eager for a hover preview that is already on screen. */
   loading?: "lazy" | "eager";
   className?: string;
+  /** Called once something is on screen: the image loaded, or the fallback glyph took its place. */
+  onLoad?: () => void;
 }
 
 /**
@@ -17,13 +19,19 @@ interface CellFileThumbProps {
  * a missing variant), and finally to a neutral image glyph, never a broken image icon.
  * Decoding happens off the main thread, so scrolling a table full of them stays smooth.
  */
-export default function CellFileThumb({ file, loading = "lazy", className }: CellFileThumbProps) {
+export default function CellFileThumb({ file, loading = "lazy", className, onLoad }: CellFileThumbProps) {
   const sources = thumbnailSources(file);
   // Keyed by the first source, so a renamed or replaced entry starts over from its thumbnail.
   const [failed, setFailed] = useState<{ key: string; count: number }>({ key: "", count: 0 });
   const source_key = sources[0] ?? "";
   const failed_count = failed.key === source_key ? failed.count : 0;
   const src = sources[failed_count];
+
+  // The glyph counts as loaded, so a card waiting on the image (a shimmer) settles too.
+  const notifyLoaded = useEffectEvent(() => onLoad?.());
+  useEffect(() => {
+    if (!src) notifyLoaded();
+  }, [src]);
 
   if (!src) {
     return (
@@ -44,6 +52,7 @@ export default function CellFileThumb({ file, loading = "lazy", className }: Cel
       decoding="async"
       draggable={false}
       className={className}
+      onLoad={onLoad}
       onError={() => setFailed({ key: source_key, count: failed_count + 1 })}
     />
   );

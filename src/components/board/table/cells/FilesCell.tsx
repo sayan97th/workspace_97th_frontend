@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useState, type ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import type { CellFile, CellFileSource } from "../types";
 import FilesMenu from "../menus/FilesMenu";
@@ -10,11 +10,16 @@ import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import { filesFromClipboard, isImageFile, prepareUploads } from "../menus/filesCellUtils";
 import CellHyperlink from "./CellHyperlink";
 import CellFileThumb from "./CellFileThumb";
+import FilePeekCard from "./FilePeekCard";
+import { useCellTooltip } from "./CellTooltip";
 import type { ColumnCenterCellProps } from "./ColumnCenterCells";
 import "./files-cell.css";
 
 /** Only fetched the first time someone opens a preview, the table never ships the viewer otherwise. */
 const FileImageViewer = dynamic(() => import("../menus/FileImageViewer"), { ssr: false });
+
+/** The tooltip bubble turns into the image preview card, see `file-peek-card.scss`. */
+const PEEK_BUBBLE_CLASS = "cell-link-tooltip--card";
 
 type ApiError = { errors?: Record<string, string[]>; message?: string };
 
@@ -124,20 +129,26 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
         {first_file ? (
           <>
             {first_is_image && (
-              <button
-                type="button"
-                className="files-cell__thumb"
-                onClick={() => openPreview(first_file.id)}
-                aria-label={`Preview ${first_file.file_name}`}
-              >
-                <CellFileThumb file={first_file} />
-              </button>
+              <ThumbButton
+                file={first_file}
+                peek={<FilePeekCard file={first_file} position={0} total={images.length} />}
+                onOpen={() => openPreview(first_file.id)}
+              />
             )}
             <CellHyperlink
               href={first_file.url}
               label={first_file.file_name}
               // Links show their URL like monday, images a preview, other uploads and Docs their full name.
-              tooltip={first_is_image ? <ImageTooltip file={first_file} /> : first_file.kind === "link" ? first_file.url : first_file.file_name}
+              tooltip={
+                first_is_image ? (
+                  <FilePeekCard file={first_file} position={0} total={images.length} />
+                ) : first_file.kind === "link" ? (
+                  first_file.url
+                ) : (
+                  first_file.file_name
+                )
+              }
+              tooltip_class={first_is_image ? PEEK_BUBBLE_CLASS : undefined}
               onOpen={first_is_image ? () => openPreview(first_file.id) : undefined}
               onRemove={can_edit ? () => void actions.deleteCellFile(node_id, column.id, first_file.id) : undefined}
               remove_label={`Remove ${first_file.file_name}`}
@@ -222,16 +233,25 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
   );
 }
 
-/** The hover bubble of an image entry: the picture itself over its name. Fixed size, so the bubble is placed before the image loads. */
-function ImageTooltip({ file }: { file: CellFile }) {
+/** The small square image before the name. Hovering it shows the same preview card as the name. */
+function ThumbButton({ file, peek, onOpen }: { file: CellFile; peek: ReactNode; onOpen: () => void }) {
+  const { anchor_props, hide, tooltip } = useCellTooltip<HTMLButtonElement>(peek, { bubble_class: PEEK_BUBBLE_CLASS });
   return (
-    <span className="files-cell-preview">
-      <span className="files-cell-preview__frame">
-        <CellFileThumb file={file} loading="eager" />
-      </span>
-      <span className="files-cell-preview__name">{file.file_name}</span>
-      <span className="files-cell-preview__hint">Click to view full size</span>
-    </span>
+    <>
+      <button
+        type="button"
+        {...anchor_props}
+        className="files-cell__thumb"
+        onClick={() => {
+          hide();
+          onOpen();
+        }}
+        aria-label={`Preview ${file.file_name}`}
+      >
+        <CellFileThumb file={file} />
+      </button>
+      {tooltip}
+    </>
   );
 }
 
