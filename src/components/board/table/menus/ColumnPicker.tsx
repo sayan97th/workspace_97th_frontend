@@ -14,6 +14,8 @@ interface ColumnPickerProps {
   align?: "left" | "right";
   /** Renders the gallery in place, without its own anchored popover, for a flyout that already places it (the column menu's "More columns"). */
   inline?: boolean;
+  /** Keeps the gallery at its opening height while the search filters it, see `ColumnTypeGallery`. */
+  keep_height?: boolean;
 }
 
 /**
@@ -21,7 +23,7 @@ interface ColumnPickerProps {
  * `ColumnTypeGallery`. Its "More columns" footer swaps the popover for the
  * full Column Center dialog, which closes the picker once a column is added.
  */
-export default function ColumnPicker({ query, onQueryChange, onPick, onClose, align = "right", inline = false }: ColumnPickerProps) {
+export default function ColumnPicker({ query, onQueryChange, onPick, onClose, align = "right", inline = false, keep_height = false }: ColumnPickerProps) {
   const [is_center_open, setIsCenterOpen] = useState(false);
 
   const gallery = (
@@ -35,6 +37,7 @@ export default function ColumnPicker({ query, onQueryChange, onPick, onClose, al
       }}
       onClose={onClose}
       show_all={inline}
+      keep_height={keep_height}
       onOpenColumnCenter={inline ? undefined : () => setIsCenterOpen(true)}
     />
   );

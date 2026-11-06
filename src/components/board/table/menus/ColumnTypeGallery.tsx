@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { boardTreeFontClassName } from "../../board-tree-font";
 import { COLUMN_GALLERY_SECTIONS, type ColumnTypeDef } from "../constants";
 import ColumnTypeIcon from "./ColumnTypeIcon";
@@ -20,6 +20,12 @@ interface ColumnTypeGalleryProps<T extends ColumnTypeGalleryEntry> {
   show_all?: boolean;
   /** When set, the "More columns" footer opens the Column Center instead of listing the rest in place. */
   onOpenColumnCenter?: () => void;
+  /**
+   * Holds the card at the height it opened with, so filtering the list never
+   * shrinks it. A hover flyout needs this: a card that shrinks and moves under
+   * a still cursor reads as the cursor leaving, and the flyout would close.
+   */
+  keep_height?: boolean;
 }
 
 /** Grid columns, used to move focus up and down a row with the arrow keys. */
@@ -43,8 +49,11 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
   onClose,
   show_all = false,
   onOpenColumnCenter,
+  keep_height = false,
 }: ColumnTypeGalleryProps<T>) {
   const [is_expanded, setIsExpanded] = useState(false);
+  const [locked_height, setLockedHeight] = useState<number | null>(null);
+  const root_ref = useRef<HTMLDivElement>(null);
   const grid_ref = useRef<HTMLDivElement>(null);
   const search_ref = useRef<HTMLInputElement>(null);
   const term = query.trim().toLowerCase();
@@ -59,6 +68,12 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
     [types, term, shows_every_section]
   );
   const visible_types = sections.flatMap((group) => group.items);
+
+  // Measured once, before paint, while the list is still complete and capped by its scroll limit, so the lock is never visible as a jump.
+  useLayoutEffect(() => {
+    if (!keep_height || !root_ref.current) return;
+    setLockedHeight(root_ref.current.offsetHeight);
+  }, [keep_height]);
 
   // Expanding reveals the "More columns" section below the fold, so bring it into view.
   useEffect(() => {
@@ -104,7 +119,13 @@ export default function ColumnTypeGallery<T extends ColumnTypeGalleryEntry>({
   };
 
   return (
-    <div className={`column-type-gallery ${boardTreeFontClassName}`} onKeyDown={handleKeyDown}>
+    <div
+      ref={root_ref}
+      className={`column-type-gallery ${boardTreeFontClassName}`}
+      data-keep-height={keep_height || undefined}
+      style={locked_height ? { height: locked_height } : undefined}
+      onKeyDown={handleKeyDown}
+    >
       <div className="column-type-gallery__search">
         <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" className="column-type-gallery__search-icon">
           <circle cx="7" cy="7" r="4.75" fill="none" stroke="currentColor" strokeWidth="1.4" />

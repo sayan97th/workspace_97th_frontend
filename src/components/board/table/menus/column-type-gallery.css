@@ -230,3 +230,13 @@ html.dark .column-type-gallery {
 .column-type-gallery__more:focus-visible {
   box-shadow: inset 0 0 0 1px var(--column-gallery-focus);
 }
+
+/*
+ * A height locked gallery (the column menu's "More columns" flyout) keeps the
+ * card size it opened with, list scroll limit included, while the search
+ * filters it. It never grows past the window, so the list keeps scrolling on
+ * short screens.
+ */
+.column-type-gallery[data-keep-height] {
+  max-height: calc(100vh - 16px);
+}

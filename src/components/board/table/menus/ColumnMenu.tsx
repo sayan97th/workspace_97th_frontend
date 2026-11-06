@@ -142,10 +142,16 @@ const DEFAULT_DATE_AUTO_FILL: DateAutoFill = { enabled: false, include_time: tru
  * Which flyout of one menu level is open. Hover opens one right away when none
  * is open, and switches or closes it after `HOVER_INTENT_DELAY_MS` when one is,
  * so the cursor can cross a neighboring row on its way into the open flyout.
+ *
+ * Once the user types in a flyout (the "More columns" search, a rename field)
+ * it is pinned: hover no longer switches or closes it, so a card that resizes
+ * under a still cursor can't lose the user's work. Only an explicit action
+ * (a click on a row, Escape, ArrowLeft) moves on from a pinned flyout.
  */
 function useSubmenu<K extends string>() {
   const [open_key, setOpenKey] = useState<K | null>(null);
   const timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const is_pinned_ref = useRef(false);
 
   const clearPending = () => {
     if (timeout_ref.current === null) return;
@@ -157,11 +163,12 @@ function useSubmenu<K extends string>() {
 
   const openNow = (next: K | null) => {
     clearPending();
+    is_pinned_ref.current = false;
     setOpenKey(next);
   };
 
   const requestOpen = (next: K | null) => {
-    if (open_key === next) return clearPending();
+    if (open_key === next || is_pinned_ref.current) return clearPending();
     if (open_key === null) return openNow(next);
     clearPending();
     timeout_ref.current = setTimeout(() => {
@@ -170,7 +177,13 @@ function useSubmenu<K extends string>() {
     }, HOVER_INTENT_DELAY_MS);
   };
 
-  return { open_key, openNow, requestOpen };
+  /** Keeps the open flyout open against hover, and drops a close that was already scheduled. */
+  const pin = () => {
+    clearPending();
+    is_pinned_ref.current = true;
+  };
+
+  return { open_key, openNow, requestOpen, pin };
 }
 
 const MENU_ITEM_SELECTOR = '[role^="menuitem"]:not([aria-disabled="true"])';
@@ -237,12 +250,26 @@ function MenuList({ aria_label, className = "", focus_first = false, onExitLeft,
   );
 }
 
+/** Text the user types into, as opposed to checkboxes, switches or radios. */
+const isTextEntry = (element: EventTarget | null): boolean => {
+  if (!(element instanceof HTMLElement)) return false;
+  if (element.isContentEditable || element instanceof HTMLTextAreaElement) return true;
+  return element instanceof HTMLInputElement && !["checkbox", "radio", "range", "color", "file", "button", "submit"].includes(element.type);
+};
+
+interface FlyoutProps {
+  /** Called when the user types in the flyout, so hover stops closing it. */
+  onPin?: () => void;
+  children: ReactNode;
+}
+
 /**
  * Places a flyout next to its row: to the right when it fits in the window, to
  * the left otherwise, and nudged up when it would run past the bottom edge.
- * It stays a DOM child of the row, so clicks in it count as inside the menu.
+ * It stays a DOM child of the row, so clicks in it count as inside the menu,
+ * and typing in a nested flyout bubbles up and pins every level above it too.
  */
-function Flyout({ children }: { children: ReactNode }) {
+function Flyout({ onPin, children }: FlyoutProps) {
   const flyout_ref = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<{ side: "left" | "right"; shift_y: number } | null>(null);
 
@@ -280,6 +307,9 @@ function Flyout({ children }: { children: ReactNode }) {
     <div
       ref={flyout_ref}
       className="column-menu__flyout"
+      onInput={(event) => {
+        if (onPin && isTextEntry(event.target)) onPin();
+      }}
       data-side={placement?.side ?? "right"}
       data-measured={placement !== null}
       style={placement?.shift_y ? { transform: `translateY(${placement.shift_y}px)` } : undefined}
@@ -384,7 +414,7 @@ function SubmenuRow<K extends string>({ submenu_key, submenu, renderFlyout, disa
         onArrowRight={() => open(true)}
       />
       {is_open && (
-        <Flyout>
+        <Flyout onPin={submenu.pin}>
           {renderFlyout(focus_first, () => {
             submenu.openNow(null);
             row_ref.current?.focus();
@@ -698,6 +728,7 @@ export default function ColumnMenu({
           renderFlyout={() => (
             <ColumnPicker
               inline
+              keep_height
               query={gallery_query}
               onQueryChange={setGalleryQuery}
               onPick={(type) => { onAddColumnRight(type.kind, type.label, type.default_width); onClose(); }}
