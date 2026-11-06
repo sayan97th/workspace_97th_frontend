@@ -84,7 +84,7 @@ interface ColumnHeaderCellProps {
   onAddColumnRight?: (kind: ColumnKind, label: string, default_width: number) => void;
   onChangeType?: (kind: ColumnKind, default_width: number) => void;
   /** Date columns only: the menu's "Fill empty cells with creation date". */
-  onFillEmptyDates?: () => void;
+  onFillEmptyCells?: () => void;
   onDelete: () => void;
   className?: string;
   /** Whether this cell can be picked up and dragged to reorder columns — omitted for the item-title/sub-title virtual columns, which stay pinned first. */
@@ -103,7 +103,7 @@ export default function ColumnHeaderCell({
   title, height, title_lines = 1, column, can_delete, sort_dir, is_group_by_eligible, is_menu_open, is_hovered, is_editing, draft,
   onEnter, onLeave, onOpenMenu, onCloseMenu, onStartRename, onDraftChange, onCommitRename, onCancelRename,
   onSort, onUpdateSettings, onResizePreview, resizable_width, onResizeEnd, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency,
-  onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyDates, onDelete, className,
+  onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyCells, onDelete, className,
   is_draggable, move_key, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
@@ -230,7 +230,7 @@ export default function ColumnHeaderCell({
           onDuplicateToBoard={onDuplicateToBoard}
           onAddColumnRight={onAddColumnRight ?? (() => {})}
           onChangeType={onChangeType ?? (() => {})}
-          onFillEmptyDates={onFillEmptyDates}
+          onFillEmptyCells={onFillEmptyCells}
           onDelete={onDelete}
           onClose={onCloseMenu}
           onRequestPermissions={onRequestPermissions}

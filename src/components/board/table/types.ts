@@ -112,6 +112,8 @@ export interface ColumnSettingsPatch {
   reminder?: ColumnDef["reminder"];
   /** Date columns only, see `ColumnDef.date_auto_fill`. */
   date_auto_fill?: DateAutoFill;
+  /** People columns only, see `ColumnDef.auto_assign_creator`. */
+  auto_assign_creator?: boolean;
   /** Date, Creation log and Last updated columns, see `ColumnDef.date_display`. */
   date_display?: DateDisplay;
   /** Button columns only, see `ColumnDef.button`. */
@@ -349,6 +351,12 @@ export interface ColumnDef {
   reminder?: { enabled: boolean; days_before: number };
   /** Date kind only, see `DateAutoFill`. Unset is off. */
   date_auto_fill?: DateAutoFill;
+  /**
+   * People kind only: each new item starts with the person who created it (a "Reporter" column).
+   * The server assigns it, the cell stays a normal editable People cell and people already
+   * assigned are never replaced. Stored as `config.auto_assign_creator`. Unset is off.
+   */
+  auto_assign_creator?: boolean;
   /** Date, Creation log and Last updated kinds, see `DateDisplay`. Unset reads as `auto` with a 12 hour clock. */
   date_display?: DateDisplay;
   /** Hour columns only, see `HourFormat`. Unset reads as 12 hour. */

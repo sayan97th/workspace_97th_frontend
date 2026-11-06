@@ -14,7 +14,7 @@ import type {
   BoardItemMoveTargetDto,
   BoardItemValue,
   BoardTagDto,
-  FilledDateValuesDto,
+  FilledColumnValuesDto,
   BoardViewDto,
   BoardViewsIndexDto,
   BoardViewPreferencesDto,
@@ -58,8 +58,19 @@ export const boardContentService = {
 
   /** POST /api/boards/{board_id}/columns */
   async createColumn(board_id: number, payload: CreateBoardColumnPayload): Promise<BoardColumnDto> {
-    const response = await apiClient.post<{ column: BoardColumnDto }>(`/api/boards/${board_id}/columns`, payload);
-    return response.column;
+    return (await this.createColumnWithValues(board_id, payload)).column;
+  },
+
+  /**
+   * POST /api/boards/{board_id}/columns, also returning the values the server wrote into the
+   * existing items' cells (a new Reporter column assigns each item's creator right away).
+   */
+  async createColumnWithValues(
+    board_id: number,
+    payload: CreateBoardColumnPayload
+  ): Promise<{ column: BoardColumnDto; filled_values: FilledColumnValuesDto }> {
+    const response = await apiClient.post<{ column: BoardColumnDto; filled_values?: FilledColumnValuesDto }>(`/api/boards/${board_id}/columns`, payload);
+    return { column: response.column, filled_values: response.filled_values ?? {} };
   },
 
   /** PATCH /api/boards/{board_id}/columns/{column_id} */
@@ -72,15 +83,16 @@ export const boardContentService = {
   },
 
   /**
-   * PATCH /api/boards/{board_id}/columns/{column_id} with a new `type`. Also returns the dates
-   * the server wrote into empty cells when a Creation log or Last updated column becomes a Date column.
+   * PATCH /api/boards/{board_id}/columns/{column_id} with a new `type`. Also returns the values the
+   * server wrote into empty cells: dates when a Creation log or Last updated column becomes a Date
+   * column, creators when a Creation log becomes a People column.
    */
   async changeColumnType(
     board_id: number,
     column_id: number,
     payload: UpdateBoardColumnPayload
-  ): Promise<{ column: BoardColumnDto; filled_values: FilledDateValuesDto }> {
-    const response = await apiClient.patch<{ column: BoardColumnDto; filled_values?: FilledDateValuesDto }>(
+  ): Promise<{ column: BoardColumnDto; filled_values: FilledColumnValuesDto }> {
+    const response = await apiClient.patch<{ column: BoardColumnDto; filled_values?: FilledColumnValuesDto }>(
       `/api/boards/${board_id}/columns/${column_id}`,
       payload
     );
@@ -88,8 +100,14 @@ export const boardContentService = {
   },
 
   /** POST /api/boards/{board_id}/columns/{column_id}/fill-dates, a Date column's "Fill empty cells" with each item's creation date. */
-  async fillDateColumn(board_id: number, column_id: number): Promise<FilledDateValuesDto> {
-    const response = await apiClient.post<{ filled_values?: FilledDateValuesDto }>(`/api/boards/${board_id}/columns/${column_id}/fill-dates`, {});
+  async fillDateColumn(board_id: number, column_id: number): Promise<FilledColumnValuesDto> {
+    const response = await apiClient.post<{ filled_values?: FilledColumnValuesDto }>(`/api/boards/${board_id}/columns/${column_id}/fill-dates`, {});
+    return response.filled_values ?? {};
+  },
+
+  /** POST /api/boards/{board_id}/columns/{column_id}/fill-creators, a People column's "Fill empty cells" with each item's creator. */
+  async fillCreatorColumn(board_id: number, column_id: number): Promise<FilledColumnValuesDto> {
+    const response = await apiClient.post<{ filled_values?: FilledColumnValuesDto }>(`/api/boards/${board_id}/columns/${column_id}/fill-creators`, {});
     return response.filled_values ?? {};
   },
 

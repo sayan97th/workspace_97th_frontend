@@ -7,6 +7,7 @@ import ColumnTypeIcon from "./ColumnTypeIcon";
 import ColumnSettingsPanel, {
   ButtonSettingsPanel,
   ColumnValidationPanel,
+  CreatorAutoAssignSettingsPanel,
   DateAutoFillSettingsPanel,
   DateFormatSettingsPanel,
   ProgressTrackingSettingsPanel,
@@ -32,6 +33,7 @@ import {
   FilterIcon,
   LockIcon,
   PencilIcon,
+  PersonIcon,
   PlusIcon,
   SaveAsTemplateIcon,
   SortArrowsIcon,
@@ -62,7 +64,7 @@ export type ColumnMenuColumn = Pick<ColumnDef, "id" | "kind" | "width"> &
   Partial<
     Pick<
       ColumnDef,
-      "options" | "validation" | "aggregation" | "reminder" | "date_auto_fill" | "date_display" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
+      "options" | "validation" | "aggregation" | "reminder" | "date_auto_fill" | "auto_assign_creator" | "date_display" | "button" | "dependency" | "dependency_date_columns" | "description" | "linkage" | "hide_summary" | "rating_max" | "rating_icon" | "progress_columns"
     >
   > & {
     /** Progress tracking columns only: the Status columns of the same table its settings can pick from. */
@@ -101,8 +103,8 @@ interface ColumnMenuProps {
   onDuplicateToBoard?: (target_board_id: string) => void;
   onAddColumnRight: (kind: ColumnKind, label: string, default_width: number) => void;
   onChangeType: (kind: ColumnKind, default_width: number) => void;
-  /** Date columns only: "Fill empty cells now" with each item's creation date. */
-  onFillEmptyDates?: () => void;
+  /** Date and People columns only: "Fill empty cells now" with each item's creation date (Date) or creator (People). */
+  onFillEmptyCells?: () => void;
   onDelete: () => void;
   onClose: () => void;
   /** Opens the column permissions dialog. Only passed for board owners on a real column. */
@@ -133,6 +135,7 @@ const changeTypeHint = (from_kind: ColumnKind, to_kind: ColumnKind): string | un
   if (to_kind === "last_updated") return "Read only. Shows who last changed each item and when. Your dates are kept if you change it back.";
   if (to_kind === "date" && from_kind === "creation_log") return "Keeps each item's creation date and fills new items automatically. Dates become editable.";
   if (to_kind === "date" && from_kind === "last_updated") return "Keeps each item's last update date in the cells. Dates become editable.";
+  if (to_kind === "people" && from_kind === "creation_log") return "Keeps each item's creator and assigns it on new items, like a Reporter. People become editable.";
   return undefined;
 };
 
@@ -433,7 +436,7 @@ function ColumnTypeChip({ type }: { type: ColumnTypeDef }) {
 const Divider = () => <div className="action-menu__divider" role="separator" />;
 
 type MainSub = "settings" | "sort" | "duplicate" | "add" | "type";
-type SettingsSub = "button" | "progress" | "rating" | "reminder" | "auto_fill" | "date_format" | "validation" | "options";
+type SettingsSub = "button" | "progress" | "rating" | "reminder" | "auto_fill" | "auto_assign_creator" | "date_format" | "validation" | "options";
 type NestedSub = "board" | "more";
 
 /**
@@ -446,7 +449,7 @@ type NestedSub = "board" | "more";
 export default function ColumnMenu({
   title, column, can_delete, sort_dir, is_group_by_eligible,
   onStartRename, onSort, onUpdateSettings, onEditLabels, onEditFormula, onEditMirror, onEditConnectBoard, onEditDependency, onEditDescription, has_description, onRequestFilter, onRequestGroupBy, onCollapseAll,
-  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyDates, onDelete, onClose, onRequestPermissions, automation,
+  onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyCells, onDelete, onClose, onRequestPermissions, automation,
 }: ColumnMenuProps) {
   const main_sub = useSubmenu<MainSub>();
   const settings_sub = useSubmenu<SettingsSub>();
@@ -470,7 +473,8 @@ export default function ColumnMenu({
   const quick_add_types = QUICK_ADD_COLUMN_KINDS.map(typeDefOf).filter((type): type is ColumnTypeDef => !!type);
   const change_type_targets = column ? (CHANGE_TYPE_TARGETS[column.kind] ?? []).map(typeDefOf).filter((type): type is ColumnTypeDef => !!type) : [];
   const date_auto_fill = column?.date_auto_fill ?? DEFAULT_DATE_AUTO_FILL;
-  const fill_empty_dates = onFillEmptyDates ? run(onFillEmptyDates) : undefined;
+  const fill_empty_cells = onFillEmptyCells ? run(onFillEmptyCells) : undefined;
+  const assigns_creator = column?.kind === "people" && !!column.auto_assign_creator;
 
   /** "Customize ... column": whatever editor this kind has, a dialog or a nested form. */
   const renderCustomizeRow = () => {
@@ -578,7 +582,23 @@ export default function ColumnMenu({
                 <DateAutoFillSettingsPanel
                   auto_fill={date_auto_fill}
                   onChange={(next) => onUpdateSettings({ date_auto_fill: next })}
-                  onFillEmptyCells={fill_empty_dates}
+                  onFillEmptyCells={fill_empty_cells}
+                />
+              )}
+            />
+          )}
+          {column.kind === "people" && (
+            <SubmenuRow
+              submenu_key="auto_assign_creator"
+              submenu={settings_sub}
+              icon={<PersonIcon size={16} />}
+              label="Assign item creator"
+              trailing={assigns_creator && <span className="column-menu__badge">On</span>}
+              renderFlyout={() => (
+                <CreatorAutoAssignSettingsPanel
+                  is_enabled={assigns_creator}
+                  onChange={(is_enabled) => onUpdateSettings({ auto_assign_creator: is_enabled })}
+                  onFillEmptyCells={fill_empty_cells}
                 />
               )}
             />
@@ -767,7 +787,23 @@ export default function ColumnMenu({
             trailing={<ToggleSwitch is_on={date_auto_fill.enabled} size="sm" />}
             onClick={() => onUpdateSettings({ date_auto_fill: { ...date_auto_fill, enabled: !date_auto_fill.enabled } })}
           />
-          {fill_empty_dates && <MenuRow label="Fill empty cells with creation date" onClick={fill_empty_dates} />}
+          {fill_empty_cells && <MenuRow label="Fill empty cells with creation date" onClick={fill_empty_cells} />}
+        </>
+      )}
+      {column?.kind === "people" && (
+        <>
+          {/* Keeps the column a People column (editable, filterable, in My Work) while new items get their creator, like a Reporter. */}
+          <Divider />
+          <MenuRow
+            role="menuitemcheckbox"
+            is_checked={assigns_creator}
+            icon={<PersonIcon size={16} />}
+            label="Auto assign item creator"
+            title="New items start with the person who created them. The column stays a People column."
+            trailing={<ToggleSwitch is_on={assigns_creator} size="sm" />}
+            onClick={() => onUpdateSettings({ auto_assign_creator: !assigns_creator })}
+          />
+          {fill_empty_cells && <MenuRow label="Fill empty cells with item creator" onClick={fill_empty_cells} />}
         </>
       )}
     </MenuList>

@@ -240,6 +240,37 @@ export function DateAutoFillSettingsPanel({ auto_fill, onChange, onFillEmptyCell
   );
 }
 
+interface CreatorAutoAssignSettingsPanelProps {
+  is_enabled: boolean;
+  onChange: (is_enabled: boolean) => void;
+  /** "Fill empty cells now": assigns each existing item's creator in the cells that are still empty. */
+  onFillEmptyCells?: () => void;
+}
+
+/**
+ * A People column's "Assign item creator", what makes it work like a "Reporter" column: every new
+ * item starts with the person who created it, assigned by the server, while the column stays a
+ * normal, editable People column. See `ColumnDef.auto_assign_creator`.
+ */
+export function CreatorAutoAssignSettingsPanel({ is_enabled, onChange, onFillEmptyCells }: CreatorAutoAssignSettingsPanelProps) {
+  return (
+    <div className="action-menu column-menu__form w-[280px]">
+      <button type="button" role="menuitemcheckbox" aria-checked={is_enabled} onClick={() => onChange(!is_enabled)} className="action-menu__item">
+        <span className="action-menu__label">Assign the item creator</span>
+        <ToggleSwitch is_on={is_enabled} size="sm" />
+      </button>
+      <div className="column-menu__help">
+        New items start with the person who created them, like a Reporter. Anyone can still change it, and people already assigned are never replaced.
+      </div>
+      {onFillEmptyCells && (
+        <button type="button" onClick={onFillEmptyCells} className="column-menu__primary">
+          Fill empty cells now
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface DateFormatSettingsPanelProps {
   kind: ColumnKind;
   date_display?: DateDisplay;

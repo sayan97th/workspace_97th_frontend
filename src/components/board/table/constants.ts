@@ -87,6 +87,8 @@ export interface ColumnTypeDef {
   glyph?: ColumnGlyphId;
   /** Starts the new column with these labels instead of the kind's defaults (Priority). */
   preset_options?: { label: string; color: string }[];
+  /** Starts a People column with "Assign item creator" on (Reporter), see `ColumnDef.auto_assign_creator`. */
+  preset_auto_assign_creator?: boolean;
 }
 
 /** monday.com's Priority labels, most urgent first. */
@@ -129,6 +131,7 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
   { kind: "doc", label: "Doc", description: "Document your work and increase collaboration", accent: "#5559df", section: "More columns", default_width: 170 },
   { kind: "world_clock", label: "World clock", description: "Keep track of the time anywhere in the world", accent: "#00c875", section: "More columns", default_width: 160 },
   { kind: "location", label: "Location", description: "Store an address and open it on a map", accent: "#f65f7c", section: "More columns", default_width: 200 },
+  { kind: "people", label: "Reporter", description: "Assign the person who created the item, still editable", accent: "#66ccff", section: "More columns", default_width: 140, preset_auto_assign_creator: true },
   { kind: "creation_log", label: "Creation log", description: "Add the item's creator and creation date automatically", accent: "#5559df", section: "More columns", default_width: 180 },
   { kind: "last_updated", label: "Last updated", description: "Add the person that last updated the item and the date", accent: "#f65f7c", section: "More columns", default_width: 180 },
   { kind: "item_number", label: "Auto number", description: "Number items according to their order in the group", accent: "#ffcb00", section: "More columns", default_width: 110 },
@@ -141,11 +144,17 @@ export const COLUMN_TYPE_GALLERY: ColumnTypeDef[] = [
 
 /**
  * The config a column picked from a gallery starts with, when its entry is a
- * preset (Priority is a Status column with priority labels). Looked up by kind
- * and default label, which is what every add column call carries.
+ * preset (Priority is a Status column with priority labels, Reporter a People
+ * column that assigns the item creator). Looked up by kind and default label,
+ * which is what every add column call carries.
  */
-export function presetConfigFor(kind: ColumnKind, label: string): { options: { id: string; label: string; color: string; is_active: boolean }[] } | undefined {
-  const preset = COLUMN_TYPE_GALLERY.find((type) => type.kind === kind && type.label === label)?.preset_options;
+export function presetConfigFor(
+  kind: ColumnKind,
+  label: string
+): { options?: { id: string; label: string; color: string; is_active: boolean }[]; auto_assign_creator?: boolean } | undefined {
+  const type = COLUMN_TYPE_GALLERY.find((entry) => entry.kind === kind && entry.label === label);
+  if (type?.preset_auto_assign_creator) return { auto_assign_creator: true };
+  const preset = type?.preset_options;
   if (!preset) return undefined;
   return { options: preset.map((option) => ({ id: crypto.randomUUID(), label: option.label, color: option.color, is_active: true })) };
 }
@@ -172,7 +181,8 @@ export const CHANGE_TYPE_TARGETS: Partial<Record<ColumnKind, ColumnKind[]>> = {
   // stored dates are kept while it is one of them, so changing it back brings them back.
   date: ["timeline", "creation_log", "last_updated", "text"],
   // Back to a Date column, the dates they showed are written into the empty cells (see `BoardDateAutoFiller`).
-  creation_log: ["date", "last_updated"],
+  // To a People column, each item's creator is kept and new items keep getting theirs (see `BoardPeopleAutoAssigner`).
+  creation_log: ["date", "last_updated", "people"],
   last_updated: ["date", "creation_log"],
   timeline: ["date", "text"],
   people: ["text"],

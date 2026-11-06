@@ -343,6 +343,7 @@ const toTableColumnDef = (column: BoardColumnDto): TableColumnDef | null => {
       column.type === "date" && column.config?.auto_fill
         ? { enabled: !!column.config.auto_fill.enabled, include_time: column.config.auto_fill.include_time !== false }
         : undefined,
+    auto_assign_creator: column.type === "people" && column.config?.auto_assign_creator === true ? true : undefined,
     date_display:
       ["date", "creation_log", "last_updated"].includes(column.type) && column.config?.date_display
         ? { ...column.config.date_display, time_format: column.config.date_display.time_format === "24" ? "24" : "12" }
@@ -1925,7 +1926,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     if (view_tabs.active_view_id == null) return;
     // `key` must be unique per tab and match `^[a-z0-9_]+$` — the kind plus a
     // timestamp satisfies both without a round-trip to check for collisions.
-    const created = await boardContentService.createColumn(board_id, {
+    // A new Reporter column comes back with each existing item's creator already assigned.
+    const { column: created, filled_values } = await boardContentService.createColumnWithValues(board_id, {
       view_id: view_tabs.active_view_id,
       key: `${type.kind}_${Date.now()}`,
       label: type.label,
@@ -1936,6 +1938,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       position,
     });
     setColumns((current) => insertColumnAtPosition(current, created));
+    if (Object.keys(filled_values).length > 0) setItems((current) => setColumnValuesInTree(current, String(created.id), filled_values));
     return String(created.id);
   };
 
@@ -1947,7 +1950,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // `TABLE_COLUMN_KIND`) bridges that, so `BoardTable`'s `onAddColumn` prop
   // can hand this straight to `handleAddColumn` without the Table package
   // ever needing to know the engine's own type vocabulary. ──
-  // A preset (Priority, a Status column with priority labels) brings its own starting labels.
+  // A preset brings its own starting config: Priority its labels, Reporter its auto assigned creator.
   const handleAddTableColumn = (_group_key: string, scope: TableColumnScope, kind: TableColumnKind, label: string, width: number) =>
     handleAddColumn({ kind: TABLE_KIND_TO_ENGINE_KIND[kind], label, default_width: width }, scope === "sub" ? "subitem" : "item", presetConfigFor(kind, label));
 
@@ -3509,7 +3512,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       // `pinnable`, which are real top-level `board_columns` fields — so they
       // need the same read-modify-write merge `handleUpdateColumnFormula` uses,
       // rather than being forwarded to `updateColumn` as-is.
-      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, date_auto_fill, date_display, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
+      onUpdateColumnSettings: (_group_key, _scope, column_id, { validation, aggregation, reminder, date_auto_fill, auto_assign_creator, date_display, button, dependency, description, hide_summary, hour_format, rating_max, rating_icon, progress_columns, ...rest }) => {
         const column = columns_by_id[column_id];
         const config_patch: Partial<BoardColumnConfig> = {};
         if (description !== undefined) config_patch.description = description?.trim() || null;
@@ -3524,6 +3527,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         }
         if (reminder !== undefined) config_patch.reminder = reminder;
         if (date_auto_fill !== undefined) config_patch.auto_fill = date_auto_fill;
+        if (auto_assign_creator !== undefined) config_patch.auto_assign_creator = auto_assign_creator;
         if (date_display !== undefined) config_patch.date_display = date_display;
         if (dependency !== undefined) {
           config_patch.date_column_id = dependency.date_column_id != null ? Number(dependency.date_column_id) : null;
@@ -3548,15 +3552,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             if (Object.keys(filled_values).length > 0) setItems((current) => setColumnValuesInTree(current, column_id, filled_values));
           })
           .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't change the column type. Please try again."))),
-      onFillEmptyDateCells: (_group_key, _scope, column_id) =>
-        void boardContentService
-          .fillDateColumn(board_id, Number(column_id))
+      // Date columns get each item's creation date, People columns (Reporter) each item's creator.
+      onFillEmptyCells: (_group_key, _scope, column_id) => {
+        const is_people = columns_by_id[column_id]?.type === "people";
+        const request = is_people ? boardContentService.fillCreatorColumn(board_id, Number(column_id)) : boardContentService.fillDateColumn(board_id, Number(column_id));
+        void request
           .then((filled_values) => {
             const filled_count = Object.keys(filled_values).length;
             if (filled_count > 0) setItems((current) => setColumnValuesInTree(current, column_id, filled_values));
-            toast.success(filled_count === 0 ? "Every cell already has a date" : `Filled ${filled_count} empty ${filled_count === 1 ? "cell" : "cells"}`);
+            const nothing_to_fill = is_people ? "Every item with a known creator already has someone assigned" : "Every cell already has a date";
+            toast.success(filled_count === 0 ? nothing_to_fill : `Filled ${filled_count} empty ${filled_count === 1 ? "cell" : "cells"}`);
           })
-          .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't fill the empty cells. Please try again."))),
+          .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't fill the empty cells. Please try again.")));
+      },
       // The row's message-icon button only knows its own node id — look the
       // real row (item or subitem) up in the tree and reuse the same
       // `handleRowClick` every other view's row click already goes through,

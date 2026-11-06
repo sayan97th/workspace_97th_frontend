@@ -97,6 +97,8 @@ export type BoardColumnConfig = {
   reminder?: { enabled: boolean; days_before: number };
   /** Date columns only: fill each new item with its creation date, see `DateAutoFill` in `@/components/board/table/types`. */
   auto_fill?: { enabled: boolean; include_time: boolean } | null;
+  /** People columns only: each new item starts with its creator assigned (the gallery's "Reporter"), see `ColumnDef.auto_assign_creator`. */
+  auto_assign_creator?: boolean;
   /** Date, Creation log and Last updated columns: how cells show their dates, see `DateDisplay` in `@/components/board/table/types`. */
   date_display?: {
     format: "auto" | "month_day_year" | "day_month_year" | "weekday_month_day" | "month_day" | "us_numeric" | "eu_numeric" | "iso";
@@ -106,11 +108,13 @@ export type BoardColumnConfig = {
 };
 
 /**
- * Dates the server wrote into a Date column's empty cells, keyed by item id:
- * after "Fill empty cells", or after a Creation log / Last updated column was
- * changed back into a Date column.
+ * Values the server wrote into a column's empty cells, keyed by item id: dates
+ * for a Date column (after "Fill empty cells", or a Creation log / Last updated
+ * column changed back into a Date column), user id lists for a People column
+ * that assigns item creators (after "Fill empty cells", a new Reporter column,
+ * or a Creation log column changed into a People column).
  */
-export type FilledDateValuesDto = Record<string, string>;
+export type FilledColumnValuesDto = Record<string, string | string[]>;
 
 /** Which row a column applies to: a board's own (root) items, or their subitems — two independent column sets, mirroring monday.com's implicit subitem sub-board. */
 export type BoardColumnScope = "item" | "subitem";

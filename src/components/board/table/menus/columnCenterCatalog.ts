@@ -81,6 +81,7 @@ const FILES = entry("files", "Add files & docs to your item", "#00c2e8");
 const TAGS = entry("tags", "Add tags to categorize items across multiple boards", "#a25ddc");
 const VOTE = entry("vote", "Vote on an item e.g. pick a new feature or a favorite lunch place", "#00d26a");
 const RATING = entry("rating", "Rate or rank anything visually", "#00a9ff");
+const REPORTER = entry("people", "Assign the person who created each item, and change it anytime", "#00c2e8", "Reporter");
 const CREATION_LOG = entry("creation_log", "Add the item's creator and creation date automatically", "#5559df");
 const LAST_UPDATED = entry("last_updated", "Add the person that last updated the item and the date", "#f65f7c");
 const AUTO_NUMBER = entry("item_number", "Number items according to their order in the group", "#ffcb00");
@@ -109,7 +110,7 @@ export const COLUMN_CENTER_FEATURED: ColumnCenterFeature[] = [
 export const COLUMN_CENTER_SECTIONS: Record<Exclude<ColumnCenterCategoryId, "featured" | "combos">, ColumnCenterEntry[]> = {
   essentials: [STATUS, PRIORITY, LABEL, PEOPLE, DOC, NUMBERS, TIMELINE, DATE, TEXT, LONG_TEXT, CONNECT_BOARDS, MIRROR],
   super_useful: [CHECKBOX, LINK, WORLD_CLOCK, ITEM_ID, PHONE, LOCATION, FILES],
-  team_power_up: [TAGS, VOTE, RATING, CREATION_LOG, LAST_UPDATED, AUTO_NUMBER, PROGRESS_TRACKING, CHECKLIST],
+  team_power_up: [TAGS, VOTE, RATING, REPORTER, CREATION_LOG, LAST_UPDATED, AUTO_NUMBER, PROGRESS_TRACKING, CHECKLIST],
   board_power_up: [BUTTON, DEPENDENCY, DROPDOWN, WEEK, FORMULA, COUNTRY, COLOR_PICKER, TIME_TRACKING, HOUR, EMAIL, PROGRESS],
 };
 
