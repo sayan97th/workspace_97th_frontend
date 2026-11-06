@@ -15,6 +15,7 @@ import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
+import { ITEM_NAME_MAX_LENGTH } from "../constants";
 import "./item-name-cell.scss";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
@@ -217,11 +218,11 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               onClick={() => actions.startEditName(item.id, item.name)}
               className={`item-name-cell__label max-w-full px-1.5 py-0.5 text-board-cell text-boardtree-text ${is_editing ? "invisible" : ""} ${
                 state.row_height === "quad"
-                  ? "line-clamp-4 whitespace-normal"
+                  ? "line-clamp-4 whitespace-pre-line"
                   : state.row_height === "triple"
-                    ? "line-clamp-3 whitespace-normal"
+                    ? "line-clamp-3 whitespace-pre-line"
                     : state.row_height === "double"
-                      ? "line-clamp-2 whitespace-normal"
+                      ? "line-clamp-2 whitespace-pre-line"
                       : "truncate"
               }`}
             >
@@ -238,6 +239,8 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 select_all={state.edit_select_all}
                 is_blur_suspended_ref={is_emoji_palette_open_ref}
                 aria_label="Item name"
+                allow_line_breaks
+                max_length={ITEM_NAME_MAX_LENGTH}
                 trailing={
                   <EmojiInsertButton
                     input_ref={name_input_ref}

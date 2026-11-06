@@ -252,3 +252,6 @@ export const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "A
 /** Shared clamp for a column's `width`, whether set from the header menu's numeric input or by dragging its resize handle. */
 export const MIN_COLUMN_WIDTH = 40;
 export const MAX_COLUMN_WIDTH = 600;
+
+/** Longest item or subitem name the API accepts (`board_items.name` is a `varchar(255)` column). */
+export const ITEM_NAME_MAX_LENGTH = 255;

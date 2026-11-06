@@ -107,7 +107,7 @@ export default function ExpandableTextCell({ node_id, column, value, state, acti
           onChange={setDraft}
           onCommit={commit}
           onCancel={() => setDraft(null)}
-          allow_line_breaks={is_long_text}
+          allow_line_breaks={column.kind !== "email"}
           placeholder={is_long_text ? "Add text" : undefined}
           max_width={is_long_text ? 520 : 480}
           max_height={is_long_text ? 360 : 240}

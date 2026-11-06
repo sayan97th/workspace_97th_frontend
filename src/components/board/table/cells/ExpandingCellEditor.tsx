@@ -16,7 +16,11 @@ export interface ExpandingCellEditorProps {
   onCommit: () => void;
   /** Escape. */
   onCancel: () => void;
-  /** Shift+Enter and Alt+Enter insert a line break (Long Text). Without it, pasted line breaks become spaces. */
+  /**
+   * Enter combined with Option/Alt, Shift, Command or Control inserts a line break inside the cell, like Google
+   * Sheets (Text and Long Text). Without it, pasted line
+   * breaks become spaces.
+   */
   allow_line_breaks?: boolean;
   /** Selects the whole value on open instead of placing the caret at the end. */
   select_all?: boolean;
@@ -25,6 +29,8 @@ export interface ExpandingCellEditorProps {
   max_width?: number;
   /** Tallest the editor grows (px) before it scrolls. */
   max_height?: number;
+  /** Hard character cap (item names are `varchar(255)` in the API). A small counter shows under the field once the value gets close. */
+  max_length?: number;
   /** Lets the caller reach the textarea, for example to splice an emoji in at the caret. */
   textarea_ref?: RefObject<HTMLTextAreaElement | null>;
   /** Pinned to the editor's top right corner (an emoji button). Space is reserved so text never runs under it. */
@@ -58,6 +64,7 @@ export default function ExpandingCellEditor({
   placeholder,
   max_width = 560,
   max_height = 320,
+  max_length,
   textarea_ref,
   trailing,
   is_blur_suspended_ref,
@@ -67,6 +74,7 @@ export default function ExpandingCellEditor({
   const frame_ref = useRef<HTMLDivElement>(null);
   const own_textarea_ref = useRef<HTMLTextAreaElement>(null);
   const measure_ref = useRef<HTMLSpanElement>(null);
+  const footer_ref = useRef<HTMLDivElement>(null);
   // Enter/Escape already settled the edit, so the blur that follows the unmount must not commit again.
   const is_settled_ref = useRef(false);
 
@@ -105,17 +113,19 @@ export default function ExpandingCellEditor({
     frame_el.style.width = `${width}px`;
     frame_el.style.left = `${left}px`;
 
-    // Height follows the wrapped content, measured after the width is applied.
+    // Height follows the wrapped content, measured after the width is applied. The length counter, when shown, sits under it.
+    const footer_height = footer_ref.current?.offsetHeight ?? 0;
     textarea_el.style.height = "auto";
-    const height_limit = Math.max(rect.height, Math.min(max_height, viewport_height - VIEWPORT_MARGIN_PX * 2));
+    const height_limit = Math.max(rect.height, Math.min(max_height, viewport_height - VIEWPORT_MARGIN_PX * 2 - footer_height));
     const content_height = textarea_el.scrollHeight;
     const height = Math.min(Math.max(content_height, rect.height), height_limit);
     textarea_el.style.height = `${height}px`;
     textarea_el.style.overflowY = content_height > height_limit ? "auto" : "hidden";
 
     // Grows down from the cell, and shifts up only when the window bottom would cut it off.
+    const total_height = height + footer_height;
     let top = rect.top;
-    if (top + height > viewport_height - VIEWPORT_MARGIN_PX) top = viewport_height - VIEWPORT_MARGIN_PX - height;
+    if (top + total_height > viewport_height - VIEWPORT_MARGIN_PX) top = viewport_height - VIEWPORT_MARGIN_PX - total_height;
     top = Math.max(VIEWPORT_MARGIN_PX, top);
     frame_el.style.top = `${top}px`;
   }, [anchor_ref, max_height, max_width, placeholder]);
@@ -156,11 +166,19 @@ export default function ExpandingCellEditor({
     };
   }, [anchor_ref, layout]);
 
+  /**
+   * Inserts the line break in the DOM first, so the caret moves with it right away and keys typed right after
+   * land after the break. Updating only React state would reset the caret to the end on the next render.
+   * `insertText` also keeps the browser's own Cmd/Ctrl+Z history, `setRangeText` is the fallback.
+   */
   const insertLineBreak = (textarea_el: HTMLTextAreaElement) => {
-    const { selectionStart, selectionEnd } = textarea_el;
-    const next_value = `${value.slice(0, selectionStart)}\n${value.slice(selectionEnd)}`;
-    onChange(next_value);
-    requestAnimationFrame(() => textarea_el.setSelectionRange(selectionStart + 1, selectionStart + 1));
+    // A full field takes no more characters, the same as the browser's own `maxLength` does for typing.
+    const selected_length = textarea_el.selectionEnd - textarea_el.selectionStart;
+    if (max_length !== undefined && textarea_el.value.length - selected_length >= max_length) return;
+    const is_inserted = typeof document.execCommand === "function" && document.execCommand("insertText", false, "\n");
+    if (is_inserted) return; // Fires `input`, so `onChange` runs through the textarea's own handler.
+    textarea_el.setRangeText("\n", textarea_el.selectionStart, textarea_el.selectionEnd, "end");
+    onChange(textarea_el.value);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -174,9 +192,11 @@ export default function ExpandingCellEditor({
       return;
     }
     if (event.key !== "Enter") return;
-    if (allow_line_breaks && (event.shiftKey || event.altKey)) {
-      // Shift+Enter is a native line break in a textarea, Alt+Enter is not, so it is inserted by hand.
-      if (event.altKey) {
+    // Google Sheets takes every modifier for a line break, so whichever one a Mac or Windows user reaches for works:
+    // Option/Alt+Enter, Shift+Enter, Command+Enter and Control+Enter.
+    if (allow_line_breaks && (event.altKey || event.shiftKey || event.metaKey || event.ctrlKey)) {
+      // Only Shift+Enter is a native line break in a textarea, the others are inserted by hand.
+      if (!event.shiftKey) {
         event.preventDefault();
         insertLineBreak(event.currentTarget);
       }
@@ -204,6 +224,7 @@ export default function ExpandingCellEditor({
         spellCheck
         aria-label={aria_label}
         placeholder={placeholder}
+        maxLength={max_length}
         onChange={(event) => onChange(allow_line_breaks ? event.target.value : event.target.value.replace(/\r?\n/g, " "))}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
@@ -216,6 +237,14 @@ export default function ExpandingCellEditor({
         className={`expanding-cell-editor__field expanding-cell-editor__measure ${trailing ? "expanding-cell-editor__field--with-trailing" : ""}`}
       />
       {trailing && <span className="expanding-cell-editor__trailing">{trailing}</span>}
+      {/* Only near the cap, so a user whose typing stops at the limit can see why. */}
+      {max_length !== undefined && value.length >= max_length * 0.8 && (
+        <div ref={footer_ref} className="expanding-cell-editor__footer" aria-live="polite">
+          <span className={`expanding-cell-editor__counter ${value.length >= max_length ? "expanding-cell-editor__counter--full" : ""}`}>
+            {value.length}/{max_length}
+          </span>
+        </div>
+      )}
     </div>,
     document.body
   );

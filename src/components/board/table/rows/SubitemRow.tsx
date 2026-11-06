@@ -9,6 +9,7 @@ import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
+import { ITEM_NAME_MAX_LENGTH } from "../constants";
 import "./item-name-cell.scss";
 import TreeHook from "./TreeHook";
 import { isValueInvalid } from "../validationUtils";
@@ -176,6 +177,8 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 select_all={state.edit_select_all}
                 is_blur_suspended_ref={is_emoji_palette_open_ref}
                 aria_label="Subitem name"
+                allow_line_breaks
+                max_length={ITEM_NAME_MAX_LENGTH}
                 trailing={
                   <EmojiInsertButton
                     input_ref={name_input_ref}

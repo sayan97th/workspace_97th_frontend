@@ -63,3 +63,23 @@
 .expanding-cell-editor__field--secondary {
   color: var(--color-boardtree-text-secondary);
 }
+
+/* Length counter under a capped field (item names), shown only near the cap. */
+.expanding-cell-editor__footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--color-boardtree-grid, rgb(0 0 0 / 0.08));
+  padding: 3px 12px;
+  color: var(--color-boardtree-text-faint);
+  font-size: 11px;
+  line-height: 16px;
+  user-select: none;
+}
+
+.expanding-cell-editor__counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.expanding-cell-editor__counter--full {
+  color: #e2445c;
+}
