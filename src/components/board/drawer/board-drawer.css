@@ -197,6 +197,52 @@ html.dark {
   color: var(--bd-text);
   overflow-wrap: anywhere;
   text-wrap: pretty;
+  /* Item names can carry line breaks (Option+Enter in the table), keep them. */
+  white-space: pre-line;
+}
+
+/* Longer item names step down in size, see `titleLengthTier` in BoardDrawerHeader.tsx. */
+.board-drawer__title[data-length="medium"] {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.board-drawer__title[data-length="long"] {
+  font-size: 18px;
+  line-height: 26px;
+  letter-spacing: 0;
+}
+
+/* At most 4 lines until "Show more", so the tabs and the feed stay in view. */
+.board-drawer__title[data-clamped] {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.board-drawer__title-toggle {
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--bd-link);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  cursor: pointer;
+}
+
+.board-drawer__title-toggle:hover {
+  color: var(--bd-link-hover);
+  text-decoration: underline;
+}
+
+.board-drawer__title-toggle:focus-visible {
+  outline: 2px solid var(--bd-focus-ring);
+  outline-offset: 2px;
+  border-radius: 3px;
 }
 
 .board-drawer__eyebrow {
