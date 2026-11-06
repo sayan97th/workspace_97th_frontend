@@ -96,8 +96,6 @@ export default function ExpandableTextCell({ node_id, column, value, state, acti
           <span className={`min-w-0 ${is_long_text || state.row_height !== "single" ? "whitespace-pre-wrap break-words" : ""} ${clamp_class}`}>
             {highlightSearchMatches(text, state.search_query)}
           </span>
-        ) : is_long_text ? (
-          <span className="truncate text-boardtree-text-faint">Add text</span>
         ) : null}
       </button>
       {is_editing && (
