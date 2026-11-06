@@ -1,11 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import type { BoardColumnDto, BoardColumnType } from "@/types/board-content";
 import type { BoardImportMapping, BoardImportSourceColumn } from "@/types/board-import";
 import ImportAssetStrip from "./ImportAssetStrip";
 import ImportOptionChips from "./ImportOptionChips";
 import ImportSelect, { type ImportSelectGroup } from "./ImportSelect";
-import { ArrowRightIcon, ImportColumnIcon, PlusIcon, WarningIcon } from "./importIcons";
+import { ArrowRightIcon, CopyIcon, ImportColumnIcon, PlusIcon, TrashIcon, WarningIcon } from "./importIcons";
 import { IMPORT_TYPE_LABELS, IMPORT_TYPE_NOTES, READ_ONLY_COLUMN_TYPES, betterFitTypes, isTypeCompatible } from "./importWizardUtils";
 
 /** Encodes a mapping's mode+target into one picker value. */
@@ -75,6 +76,12 @@ export type ImportMapColumnRowProps = {
   used_column_ids: Set<number>;
   onChangeDestination: (value: string) => void;
   onChangeMapping: (patch: Partial<BoardImportMapping>) => void;
+  /** Adds another row importing this same file column, right below this one. */
+  onDuplicate: () => void;
+  /** Leaves the column out of the import (a copy is deleted outright). */
+  onRemove: () => void;
+  /** True right after the row was added, it scrolls into view, flashes and opens its settings. */
+  is_fresh?: boolean;
 };
 
 /**
@@ -84,7 +91,9 @@ export type ImportMapColumnRowProps = {
  * "Select column" isn't imported. Under the picker it says why a destination
  * was chosen, how the less obvious types store their values, and warns
  * whenever the destination can't hold every value. A "+ Create new column"
- * row opens a settings line for the new column's name and type.
+ * row opens a settings line for the new column's name and type. Hovering
+ * the row shows "Duplicate" (import the column again) and "Remove" (leave it
+ * out, or delete it when the row is a copy).
  */
 const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
   source,
@@ -96,14 +105,24 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
   used_column_ids,
   onChangeDestination,
   onChangeMapping,
+  onDuplicate,
+  onRemove,
+  is_fresh = false,
 }) => {
+  const row_ref = useRef<HTMLDivElement>(null);
+  const is_copy = mapping.is_copy === true;
   const target_column = mapping.mode === "map" ? board_columns.find((column) => column.id === mapping.target_column_id) : undefined;
   const type = destinationType(mapping, source, board_columns);
   const needs_review = mappingNeedsReview(mapping, source, board_columns);
   const is_empty = source.filled_count === 0;
   const is_auto_matched =
     mapping.mode === "map" && suggested_mapping?.mode === "map" && suggested_mapping.target_column_id === mapping.target_column_id;
-  const [is_settings_open, setIsSettingsOpen] = useState(false);
+  const [is_settings_open, setIsSettingsOpen] = useState(is_fresh && mapping.mode === "create");
+
+  useEffect(() => {
+    if (!is_fresh) return;
+    row_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [is_fresh]);
   const new_type = mapping.new_type ?? source.suggested_type;
   // A Files row with embedded files already says they are uploaded in its detection reason.
   const type_note = type && !(type === "files" && source.assets) ? IMPORT_TYPE_NOTES[type] : undefined;
@@ -175,11 +194,37 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
   const shows_options = option_count > 0 && (type === "status" || type === "label" || type === "dropdown" || type === null);
 
   return (
-    <div className="iw-row iw-row-grid" data-review={needs_review}>
+    <div ref={row_ref} className="iw-row iw-row-grid" data-review={needs_review} data-copy={is_copy} data-fresh={is_fresh}>
       <div className="iw-row-source">
-        <span className="iw-row-label" title={source.label}>
-          {source.label}
-        </span>
+        <div className="iw-row-head">
+          <span className="iw-row-label" title={source.label}>
+            {source.label}
+          </span>
+          {is_copy && (
+            <span className="iw-row-badge">
+              <CopyIcon size={11} />
+              Copy
+            </span>
+          )}
+          <div className="iw-row-actions">
+            <PortalTooltip content="Import this column again into another board column">
+              <button type="button" className="iw-row-action" aria-label={`Duplicate ${source.label}`} onClick={onDuplicate}>
+                <CopyIcon size={14} />
+              </button>
+            </PortalTooltip>
+            <PortalTooltip content={is_copy ? "Remove this copy" : "Don't import this column"}>
+              <button
+                type="button"
+                className="iw-row-action"
+                data-tone="danger"
+                aria-label={is_copy ? `Remove copy of ${source.label}` : `Don't import ${source.label}`}
+                onClick={onRemove}
+              >
+                <TrashIcon size={14} />
+              </button>
+            </PortalTooltip>
+          </div>
+        </div>
         {source.assets ? (
           <ImportAssetStrip assets={source.assets} />
         ) : shows_options ? (
@@ -209,7 +254,7 @@ const ImportMapColumnRow: React.FC<ImportMapColumnRowProps> = ({
           value={mapping.mode === "map" || mapping.mode === "create" ? destinationValue(mapping) : null}
           groups={destination_groups}
           onChange={onChangeDestination}
-          onClear={() => onChangeDestination("skip")}
+          onClear={onRemove}
           aria_label={`Board column for ${source.label}`}
           display_label={mapping.mode === "create" ? `New: ${mapping.new_label || source.label}` : undefined}
           display_icon={mapping.mode === "create" ? <ImportColumnIcon type={new_type} /> : undefined}

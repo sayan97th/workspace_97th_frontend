@@ -130,6 +130,27 @@ export const ResetIcon = ({ size = 14, className }: IconProps) => (
   </svg>
 );
 
+export const CopyIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <rect x="5.5" y="5.5" width="8" height="8" rx="1.5" />
+    <path d="M10.5 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 4v5A1.5 1.5 0 0 0 4 10.5h1.5" />
+  </svg>
+);
+
+export const TrashIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M2.75 4.25h10.5M6.25 4.25V3a.75.75 0 0 1 .75-.75h2a.75.75 0 0 1 .75.75v1.25" />
+    <path d="M4 4.25l.6 8.4a1.25 1.25 0 0 0 1.25 1.1h4.3a1.25 1.25 0 0 0 1.25-1.1l.6-8.4M6.75 7v4M9.25 7v4" />
+  </svg>
+);
+
+export const EyeOffIcon = ({ size = 14, className }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
+    <path d="M6.6 3.65A6.6 6.6 0 0 1 8 3.5c3.5 0 5.75 3.25 6.25 4.5a7.9 7.9 0 0 1-1.7 2.4M4.1 4.95C2.75 5.95 1.95 7.3 1.75 8c.5 1.25 2.75 4.5 6.25 4.5a6.2 6.2 0 0 0 3.05-.8" />
+    <path d="M6.6 6.65a2 2 0 0 0 2.75 2.75M2.5 2.5l11 11" />
+  </svg>
+);
+
 export const ColumnsIcon = ({ size = 14, className }: IconProps) => (
   <svg width={size} height={size} viewBox="0 0 16 16" className={className} aria-hidden="true" {...strokeProps}>
     <rect x="2.5" y="3" width="11" height="10" rx="1.5" />

@@ -28,7 +28,14 @@ import {
   Spinner,
   XCircleIcon,
 } from "./importIcons";
-import { READ_ONLY_COLUMN_TYPES, importErrorMessage, suggestGroupName } from "./importWizardUtils";
+import {
+  READ_ONLY_COLUMN_TYPES,
+  findDuplicateNewLabel,
+  importErrorMessage,
+  newColumnLabel,
+  suggestGroupName,
+  toCommitMappings,
+} from "./importWizardUtils";
 import "./import-wizard.scss";
 
 export type ImportItemsModalProps = {
@@ -187,6 +194,15 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       setMapError("Pick a board column for every mapped row, or clear it.");
       return;
     }
+    if (analysis && mappings.some((mapping) => mapping.mode === "create" && newColumnLabel(mapping, analysis.source_columns) === null)) {
+      setMapError("Give every new column a name.");
+      return;
+    }
+    const duplicate_label = analysis ? findDuplicateNewLabel(mappings, analysis.source_columns) : null;
+    if (duplicate_label) {
+      setMapError(`Two new columns are named "${duplicate_label}", rename one of them.`);
+      return;
+    }
     if (target === NEW_GROUP_TARGET && new_group_name.trim() === "") {
       setMapError("Give the new group a name before continuing.");
       return;
@@ -230,7 +246,7 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
         new_group_name: target === NEW_GROUP_TARGET ? new_group_name.trim() || suggestGroupName(analysis.file_name) : null,
         group_mode: target === FILE_GROUPS_TARGET ? "file" : "single",
         import_subitems: import_subitems && analysis.subitem_count > 0,
-        mappings,
+        mappings: toCommitMappings(mappings),
         duplicate_mode,
         match_source_index,
       });
@@ -268,9 +284,13 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
         disabled_reason: "Choose the file column for the item name first",
       },
     ];
+    // Several rows may import the same file column, it's offered once, under the first column it fills.
+    const offered = new Set(options.filter((option) => !option.is_disabled).map((option) => option.value));
     for (const column of analysis.board_columns) {
       if (READ_ONLY_COLUMN_TYPES.includes(column.type)) continue;
       const mapping = mappings.find((candidate) => candidate.mode === "map" && candidate.target_column_id === column.id);
+      if (mapping && offered.has(String(mapping.source_index))) continue;
+      if (mapping) offered.add(String(mapping.source_index));
       options.push({
         value: mapping ? String(mapping.source_index) : `unmapped:${column.id}`,
         label: column.label,
@@ -280,6 +300,8 @@ const ImportItemsModal: React.FC<ImportItemsModalProps> = ({ is_open, onClose, b
       });
     }
     for (const mapping of mappings.filter((candidate) => candidate.mode === "create")) {
+      if (offered.has(String(mapping.source_index))) continue;
+      offered.add(String(mapping.source_index));
       const source = analysis.source_columns.find((column) => column.index === mapping.source_index);
       options.push({
         value: String(mapping.source_index),

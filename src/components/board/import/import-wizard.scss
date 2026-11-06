@@ -904,6 +904,270 @@ html.dark {
   text-align: center;
 }
 
+/* ── Row actions, copies, "Add column from file" and the "Not imported" tray ── */
+
+.iw-row-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.iw-row-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--iw-primary-soft);
+  color: var(--iw-primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.iw-row-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+
+  .iw-row:hover &,
+  .iw-row:focus-within & {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+}
+
+.iw-row-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: var(--iw-text-secondary);
+  transition: background-color 0.15s ease, color 0.15s ease;
+
+  &:hover {
+    background: var(--iw-hover);
+    color: var(--iw-text);
+  }
+
+  &[data-tone="danger"]:hover {
+    background: var(--iw-danger-soft);
+    color: var(--iw-danger);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+/* A copy is tied to the row above it by a brand colored rail. */
+.iw-row[data-copy="true"] {
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--iw-primary) 55%, transparent);
+}
+
+.iw-row[data-fresh="true"] {
+  animation: iw-row-flash 1.4s ease-out;
+}
+
+@keyframes iw-row-flash {
+  0%,
+  35% {
+    background: var(--iw-primary-soft);
+  }
+
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iw-row[data-fresh="true"] {
+    animation: none;
+  }
+}
+
+.iw-add-column {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  padding: 14px 40px;
+}
+
+.iw-add-column-select {
+  flex: none;
+
+  .iw-select-trigger {
+    padding-right: 34px;
+    border-style: dashed;
+    border-color: color-mix(in srgb, var(--iw-primary) 50%, var(--iw-border));
+    background: transparent;
+    color: var(--iw-primary);
+    font-weight: 600;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      border-color: var(--iw-primary);
+      background: var(--iw-primary-faint);
+    }
+  }
+
+  .iw-select-chevron {
+    color: var(--iw-primary);
+  }
+}
+
+.iw-add-column-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--iw-primary);
+  color: #ffffff;
+}
+
+.iw-add-column-hint {
+  min-width: 0;
+  color: var(--iw-text-faint);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.iw-removed {
+  padding: 12px 40px 16px;
+  border-top: 1px solid var(--iw-divider);
+  background: var(--iw-surface-alt);
+}
+
+.iw-removed-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.iw-removed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
+  border-radius: 4px;
+  color: var(--iw-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+
+  &:hover {
+    color: var(--iw-text);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &[aria-expanded="false"] .iw-removed-chevron {
+    transform: rotate(-90deg);
+  }
+}
+
+.iw-removed-chevron {
+  transition: transform 0.15s ease;
+}
+
+.iw-removed-count {
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9px;
+  background: var(--iw-hover);
+  color: var(--iw-text);
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+.iw-removed-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.iw-removed-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  height: 30px;
+  padding: 0 4px 0 8px;
+  border: 1px solid var(--iw-card-border);
+  border-radius: 15px;
+  background: var(--iw-surface);
+  color: var(--iw-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+
+  /* The column icon reads muted, the column isn't imported. */
+  > svg,
+  > span:first-child {
+    flex: none;
+    opacity: 0.6;
+    filter: grayscale(0.6);
+  }
+}
+
+.iw-removed-label {
+  overflow: hidden;
+  max-width: 220px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in srgb, var(--iw-text-secondary) 45%, transparent);
+}
+
+.iw-removed-meta {
+  flex: none;
+  color: var(--iw-text-faint);
+  font-size: 11px;
+}
+
+.iw-removed-restore {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--iw-primary);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--iw-primary-soft);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
 /* ── Handle matches step ─────────────────────────────────────────────── */
 
 .iw-matches {
@@ -1821,6 +2085,16 @@ html.dark {
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+  }
+
+  .iw-add-column,
+  .iw-removed {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .iw-add-column-hint {
+    display: none;
   }
 
   .iw-row-create {

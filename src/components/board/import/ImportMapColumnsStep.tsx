@@ -3,12 +3,14 @@ import React, { useState } from "react";
 import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
 import type { BoardColumnDto, BoardColumnType, BoardGroupDto } from "@/types/board-content";
 import type { BoardImportFileGroup, BoardImportMapping, BoardImportSheet, BoardImportSourceColumn } from "@/types/board-import";
+import ImportAddColumnButton from "./ImportAddColumnButton";
 import ImportFileSummary from "./ImportFileSummary";
 import ImportMapColumnRow, { mappingNeedsReview } from "./ImportMapColumnRow";
+import ImportRemovedColumns from "./ImportRemovedColumns";
 import ImportSelect, { type ImportSelectGroup } from "./ImportSelect";
 import ImportSheetTabs from "./ImportSheetTabs";
-import { ArrowRightIcon, ColumnsIcon, ImportColumnIcon, ImportItemNameIcon, InfoIcon, ResetIcon, SparkleIcon, WarningIcon } from "./importIcons";
-import { IMPORT_TYPE_LABELS, READ_ONLY_COLUMN_TYPES } from "./importWizardUtils";
+import { ArrowRightIcon, ColumnsIcon, CopyIcon, ImportColumnIcon, ImportItemNameIcon, InfoIcon, ResetIcon, SparkleIcon, WarningIcon } from "./importIcons";
+import { IMPORT_TYPE_LABELS, READ_ONLY_COLUMN_TYPES, insertCopyMapping, mappingRowKey } from "./importWizardUtils";
 
 /** "Add items to" values that aren't a group id. */
 export const NEW_GROUP_TARGET = "new";
@@ -67,6 +69,12 @@ const InfoTip: React.FC<{ content: string }> = ({ content }) => (
  * (a Timeline's "- Start"/"- End" pair, a checklist's repeated "Task |
  * Status" pairs) arrive merged into one row. Rows whose destination can't
  * hold every value are flagged, and "Needs review" narrows the list to them.
+ *
+ * The list only shows what will be imported. A removed column moves to the
+ * "Not imported" tray under the rows, where it can be restored, and any file
+ * column can be imported again into another board column ("Duplicate" on a
+ * row, or "Add column from file" at the end of the list). Rows are keyed by
+ * {@link mappingRowKey} since several rows may share one source column.
  */
 const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   file_name,
@@ -92,9 +100,13 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
   onChangeImportSubitems,
 }) => {
   const [is_review_only, setIsReviewOnly] = useState(false);
+  /** The row just added by "Duplicate" or "Add column from file", it scrolls into view and opens its settings. */
+  const [fresh_row_key, setFreshRowKey] = useState<string | null>(null);
 
-  const updateMapping = (source_index: number, patch: Partial<BoardImportMapping>) => {
-    onChangeMappings(mappings.map((mapping) => (mapping.source_index === source_index ? { ...mapping, ...patch } : mapping)));
+  const findSource = (source_index: number) => source_columns.find((candidate) => candidate.index === source_index);
+
+  const updateMapping = (row_key: string, patch: Partial<BoardImportMapping>) => {
+    onChangeMappings(mappings.map((mapping) => (mappingRowKey(mapping) === row_key ? { ...mapping, ...patch } : mapping)));
   };
 
   /** A "+ Create new column" mapping for `source`, typed from its values. */
@@ -105,63 +117,134 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
     new_type: creatable_column_types.includes(source.suggested_type) ? source.suggested_type : "text",
   });
 
-  const handleDestinationChange = (source: BoardImportSourceColumn, value: string) => {
+  const can_create = (source: BoardImportSourceColumn) => !READ_ONLY_COLUMN_TYPES.includes(source.suggested_type);
+
+  /**
+   * What a removed column comes back as: its suggested destination, or a new
+   * column typed from its values. A column whose values the board computes
+   * (an exported Item ID or formula) waits for a board column to be picked.
+   * A suggested board column another row took in the meantime isn't reused.
+   */
+  const restoredMappingFor = (mapping: BoardImportMapping, source: BoardImportSourceColumn): BoardImportMapping => {
+    const suggested = suggested_mappings.find((candidate) => candidate.source_index === mapping.source_index);
+    const is_taken = suggested?.mode === "map" && suggested.target_column_id != null && used_column_ids.has(suggested.target_column_id);
+    if (suggested && !is_taken && (suggested.mode === "map" || suggested.mode === "create")) return { ...mapping, ...suggested };
+    if (can_create(source)) return { ...mapping, ...createMappingFor(source) };
+    return { ...mapping, mode: "map", target_column_id: null };
+  };
+
+  const handleDestinationChange = (mapping: BoardImportMapping, source: BoardImportSourceColumn, value: string) => {
+    const row_key = mappingRowKey(mapping);
     if (value === "skip") {
-      updateMapping(source.index, { mode: "skip", target_column_id: null });
+      removeRow(mapping);
       return;
     }
     if (value === "create") {
-      updateMapping(source.index, createMappingFor(source));
+      updateMapping(row_key, { ...createMappingFor(source), new_label: mapping.is_copy ? (mapping.new_label ?? source.label) : source.label });
       return;
     }
-    updateMapping(source.index, { mode: "map", target_column_id: Number(value.slice("map:".length)) });
+    updateMapping(row_key, { mode: "map", target_column_id: Number(value.slice("map:".length)) });
+  };
+
+  /** A copy is deleted outright, the file's own row is left out and moves to the "Not imported" tray. */
+  const removeRow = (mapping: BoardImportMapping) => {
+    const row_key = mappingRowKey(mapping);
+    if (mapping.is_copy) {
+      onChangeMappings(mappings.filter((candidate) => mappingRowKey(candidate) !== row_key));
+      return;
+    }
+    updateMapping(row_key, { mode: "skip", target_column_id: null });
+  };
+
+  const addCopyOf = (source: BoardImportSourceColumn) => {
+    const result = insertCopyMapping(
+      mappings,
+      source,
+      creatable_column_types,
+      source_columns,
+      board_columns.map((column) => column.label)
+    );
+    setIsReviewOnly(false);
+    setFreshRowKey(result.row_key);
+    onChangeMappings(result.mappings);
+  };
+
+  const restoreSource = (source: BoardImportSourceColumn) => {
+    const row_key = `source-${source.index}`;
+    onChangeMappings(
+      mappings.map((mapping) => (mappingRowKey(mapping) === row_key && mapping.mode === "skip" ? restoredMappingFor(mapping, source) : mapping))
+    );
+    setFreshRowKey(row_key);
+  };
+
+  const restoreAll = () => {
+    onChangeMappings(
+      mappings.map((mapping) => {
+        const source = findSource(mapping.source_index);
+        return mapping.mode === "skip" && source ? restoredMappingFor(mapping, source) : mapping;
+      })
+    );
+    setFreshRowKey(null);
+  };
+
+  /** "Add column from file": brings back a column left out of the import, or imports one again as a copy. */
+  const handleAddColumn = (source: BoardImportSourceColumn) => {
+    const is_left_out = mappings.some((mapping) => mappingRowKey(mapping) === `source-${source.index}` && mapping.mode === "skip");
+    if (is_left_out) restoreSource(source);
+    else addCopyOf(source);
   };
 
   /**
    * Only one column can feed the item's name. The column that held it before
    * goes back to the list with its suggested destination (or a new column
    * typed from its values), so switching the name never drops its data.
+   * Copies of the picked column stay as they are.
    */
   const handleNameSourceChange = (value: string) => {
-    const source_index = Number(value);
+    const name_row_key = `source-${Number(value)}`;
     onChangeMappings(
       mappings.map((mapping) => {
-        if (mapping.source_index === source_index) return { ...mapping, mode: "name", target_column_id: null };
+        if (mappingRowKey(mapping) === name_row_key) return { ...mapping, mode: "name", target_column_id: null };
         if (mapping.mode !== "name") return mapping;
         const suggested = suggested_mappings.find((candidate) => candidate.source_index === mapping.source_index);
         if (suggested && suggested.mode !== "name") return { ...suggested };
-        const source = source_columns.find((candidate) => candidate.index === mapping.source_index);
-        if (source && !READ_ONLY_COLUMN_TYPES.includes(source.suggested_type)) return { ...mapping, ...createMappingFor(source) };
+        const source = findSource(mapping.source_index);
+        if (source && can_create(source)) return { ...mapping, ...createMappingFor(source) };
         return { ...mapping, mode: "skip", target_column_id: null };
       })
     );
   };
 
   const name_mapping = mappings.find((mapping) => mapping.mode === "name");
-  const rows = source_columns
-    .map((source) => ({ source, mapping: mappings.find((candidate) => candidate.source_index === source.index) }))
-    .filter((row): row is { source: BoardImportSourceColumn; mapping: BoardImportMapping } => row.mapping !== undefined && row.mapping.mode !== "name");
+  // Rows follow the mappings' own order, so a copy sits right under the row it was made from.
+  const rows = mappings
+    .filter((mapping) => mapping.mode !== "name")
+    .map((mapping) => ({ mapping, source: findSource(mapping.source_index) }))
+    .filter((row): row is { mapping: BoardImportMapping; source: BoardImportSourceColumn } => row.source !== undefined);
+  const imported_rows = rows.filter((row) => row.mapping.mode !== "skip");
+  const removed_sources = rows.filter((row) => row.mapping.mode === "skip").map((row) => row.source);
 
-  const review_rows = rows.filter((row) => mappingNeedsReview(row.mapping, row.source, board_columns));
-  const visible_rows = is_review_only ? review_rows : rows;
+  const review_rows = imported_rows.filter((row) => mappingNeedsReview(row.mapping, row.source, board_columns));
+  const visible_rows = is_review_only ? review_rows : imported_rows;
   const used_column_ids = new Set(
     mappings.filter((mapping) => mapping.mode === "map" && mapping.target_column_id != null).map((mapping) => mapping.target_column_id as number)
   );
 
   const empty_indexes = new Set(source_columns.filter((source) => source.filled_count === 0).map((source) => source.index));
-  const importable_empty_count = rows.filter((row) => empty_indexes.has(row.source.index) && row.mapping.mode !== "skip").length;
+  const importable_empty_count = imported_rows.filter((row) => empty_indexes.has(row.source.index)).length;
 
   const skipEmptyColumns = () => {
     onChangeMappings(
-      mappings.map((mapping) =>
-        empty_indexes.has(mapping.source_index) && mapping.mode !== "name" ? { ...mapping, mode: "skip", target_column_id: null } : mapping
-      )
+      mappings
+        .filter((mapping) => !(mapping.is_copy && empty_indexes.has(mapping.source_index)))
+        .map((mapping) =>
+          empty_indexes.has(mapping.source_index) && mapping.mode !== "name" ? { ...mapping, mode: "skip", target_column_id: null } : mapping
+        )
     );
   };
 
   // "Unmapped columns" covers every row that doesn't land in an existing board column.
   const unmapped_rows = rows.filter((row) => row.mapping.mode === "create" || row.mapping.mode === "skip");
-  const can_create = (source: BoardImportSourceColumn) => !READ_ONLY_COLUMN_TYPES.includes(source.suggested_type);
   const unmapped_mode: UnmappedMode | null =
     unmapped_rows.length === 0
       ? null
@@ -172,14 +255,18 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
           : null;
 
   const applyUnmappedMode = (mode: string) => {
-    const unmapped_indexes = new Set(unmapped_rows.map((row) => row.source.index));
+    const unmapped_keys = new Set(unmapped_rows.map((row) => mappingRowKey(row.mapping)));
     onChangeMappings(
-      mappings.map((mapping) => {
-        if (!unmapped_indexes.has(mapping.source_index)) return mapping;
-        const source = source_columns.find((candidate) => candidate.index === mapping.source_index);
-        if (mode === "create" && source && can_create(source)) return { ...mapping, ...createMappingFor(source) };
-        return { ...mapping, mode: "skip", target_column_id: null };
-      })
+      mappings
+        // Leaving unmapped columns out drops the copies too, they only exist to create a column.
+        .filter((mapping) => !(mode === "skip" && mapping.is_copy && unmapped_keys.has(mappingRowKey(mapping))))
+        .map((mapping) => {
+          if (!unmapped_keys.has(mappingRowKey(mapping))) return mapping;
+          if (mapping.mode === "create") return mode === "create" ? mapping : { ...mapping, mode: "skip", target_column_id: null };
+          const source = findSource(mapping.source_index);
+          if (mode === "create" && source && can_create(source)) return { ...mapping, ...createMappingFor(source) };
+          return { ...mapping, mode: "skip", target_column_id: null };
+        })
     );
   };
 
@@ -365,7 +452,7 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
                   value={name_mapping ? String(name_mapping.source_index) : null}
                   groups={name_groups}
                   onChange={handleNameSourceChange}
-                  onClear={() => name_mapping && updateMapping(name_mapping.source_index, { mode: "skip", target_column_id: null })}
+                  onClear={() => name_mapping && updateMapping(mappingRowKey(name_mapping), { mode: "skip", target_column_id: null })}
                   placeholder="Select column"
                   aria_label="File column for the item name"
                   display_icon={name_source ? <ImportColumnIcon type={name_source.suggested_type} /> : undefined}
@@ -374,6 +461,18 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
                   min_menu_width={280}
                 />
                 <InfoTip content="Any file column can name the items, not only the first one. Its values become each item's name, a text column reads best." />
+                {name_source && (
+                  <PortalTooltip content="Also import this column into a board column">
+                    <button
+                      type="button"
+                      className="iw-row-action"
+                      aria-label={`Duplicate ${name_source.label}`}
+                      onClick={() => addCopyOf(name_source)}
+                    >
+                      <CopyIcon size={14} />
+                    </button>
+                  </PortalTooltip>
+                )}
               </div>
               {name_source && (
                 <span className="iw-name-preview">
@@ -407,23 +506,38 @@ const ImportMapColumnsStep: React.FC<ImportMapColumnsStepProps> = ({
 
           <div className="iw-rows">
             {visible_rows.length === 0 ? (
-              <p className="iw-empty">{is_review_only ? "Nothing left to review." : "This file has no other columns."}</p>
+              <p className="iw-empty">
+                {is_review_only
+                  ? "Nothing left to review."
+                  : removed_sources.length > 0
+                    ? "Every other column is left out, restore one below or add a column from the file."
+                    : "This file has no other columns."}
+              </p>
             ) : (
-              visible_rows.map(({ source, mapping }) => (
-                <ImportMapColumnRow
-                  key={source.index}
-                  source={source}
-                  mapping={mapping}
-                  suggested_mapping={suggested_mappings.find((candidate) => candidate.source_index === source.index)}
-                  row_count={row_count}
-                  board_columns={board_columns}
-                  creatable_column_types={creatable_column_types}
-                  used_column_ids={used_column_ids}
-                  onChangeDestination={(value) => handleDestinationChange(source, value)}
-                  onChangeMapping={(patch) => updateMapping(source.index, patch)}
-                />
-              ))
+              visible_rows.map(({ source, mapping }) => {
+                const row_key = mappingRowKey(mapping);
+                return (
+                  <ImportMapColumnRow
+                    key={row_key}
+                    source={source}
+                    mapping={mapping}
+                    suggested_mapping={mapping.is_copy ? undefined : suggested_mappings.find((candidate) => candidate.source_index === source.index)}
+                    row_count={row_count}
+                    board_columns={board_columns}
+                    creatable_column_types={creatable_column_types}
+                    used_column_ids={used_column_ids}
+                    onChangeDestination={(value) => handleDestinationChange(mapping, source, value)}
+                    onChangeMapping={(patch) => updateMapping(row_key, patch)}
+                    onDuplicate={() => addCopyOf(source)}
+                    onRemove={() => removeRow(mapping)}
+                    is_fresh={row_key === fresh_row_key}
+                  />
+                );
+              })
             )}
+
+            {!is_review_only && <ImportAddColumnButton source_columns={source_columns} mappings={mappings} onAdd={handleAddColumn} />}
+            <ImportRemovedColumns sources={removed_sources} onRestore={restoreSource} onRestoreAll={restoreAll} />
           </div>
         </div>
       </div>

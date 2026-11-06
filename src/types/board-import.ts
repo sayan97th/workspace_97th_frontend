@@ -85,6 +85,14 @@ export type BoardImportMapping = {
   new_label?: string | null;
   /** `"create"` only, defaults to `suggested_type` when omitted. */
   new_type?: BoardColumnType | null;
+  /**
+   * Wizard only, never sent: tells apart several rows importing the same
+   * source column (the "Duplicate" action). The row the backend suggested
+   * has none, see `mappingRowKey()`.
+   */
+  row_key?: string;
+  /** Wizard only, never sent: true on a row added by "Duplicate" or "Add column from file". */
+  is_copy?: boolean;
 };
 
 export type BoardImportAnalyzeResponse = {
