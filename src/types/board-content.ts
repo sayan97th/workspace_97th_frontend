@@ -199,6 +199,14 @@ export type BoardCellFile = {
   url: string;
   mime_type: string;
   size_bytes: number;
+  /** Uploaded images only: real size (after EXIF rotation), so the viewer lays it out without downloading it first. */
+  width?: number;
+  height?: number;
+  /** Uploaded images only: WebP copy of at most 480px, for thumbnails, hover previews and the viewer placeholder. */
+  thumb_url?: string | null;
+  /** Uploaded images only, when the original is big or heavy: WebP copy of at most 2048px the viewer opens on. */
+  preview_url?: string | null;
+  preview_width?: number | null;
 };
 
 /** A cell value, shaped per the owning column's type — see {@link BoardColumnType}. */

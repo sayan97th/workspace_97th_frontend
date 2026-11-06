@@ -39,6 +39,14 @@ export function isImageFile(file: CellFile): boolean {
   return IMAGE_EXTENSIONS.has(splitFileName(file.file_name).extension.toLowerCase());
 }
 
+/**
+ * The sources to try, lightest first, for a small rendering of an image entry. Images uploaded
+ * before thumbnails existed (or whose thumbnail failed) only have their original.
+ */
+export function thumbnailSources(file: CellFile): string[] {
+  return [file.thumb_url, file.url].filter((src, index, all): src is string => !!src && all.indexOf(src) === index);
+}
+
 /** Whether an entry can be renamed. A Doc is named after the Doc itself, so it is renamed from there. */
 export function canRenameFile(file: CellFile): boolean {
   return file.kind !== "doc";

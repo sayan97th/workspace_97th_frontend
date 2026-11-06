@@ -26,7 +26,10 @@ html.dark .files-cell {
   flex: none;
   width: 24px;
   height: 24px;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
+  color: var(--cell-link-add);
   padding: 0;
   border: 1px solid var(--files-cell-thumb-border);
   border-radius: 4px;

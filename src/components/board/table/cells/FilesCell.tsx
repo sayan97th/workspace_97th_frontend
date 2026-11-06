@@ -9,11 +9,12 @@ import FileLinkModal from "../menus/FileLinkModal";
 import WebcamCaptureModal from "../menus/WebcamCaptureModal";
 import { filesFromClipboard, isImageFile, prepareUploads } from "../menus/filesCellUtils";
 import CellHyperlink from "./CellHyperlink";
+import CellFileThumb from "./CellFileThumb";
 import type { ColumnCenterCellProps } from "./ColumnCenterCells";
 import "./files-cell.css";
 
 /** Only fetched the first time someone opens a preview, the table never ships the viewer otherwise. */
-const FileImageLightbox = dynamic(() => import("../menus/FileImageLightbox"), { ssr: false });
+const FileImageViewer = dynamic(() => import("../menus/FileImageViewer"), { ssr: false });
 
 type ApiError = { errors?: Record<string, string[]>; message?: string };
 
@@ -32,7 +33,7 @@ function isTextTarget(target: EventTarget | null): boolean {
 /**
  * A Files column's cell. The first entry shows as monday style hyperlink text,
  * with a small thumbnail when it is an image (hover shows a larger preview,
- * click opens the full size lightbox), plus "+N" for the rest. Three quick ways
+ * click opens the full screen viewer where it can be zoomed and moved around), plus "+N" for the rest. Three quick ways
  * to add files besides the menu:
  * - drag files from the desktop onto the cell, it lights up as a drop target;
  * - Ctrl/Cmd+V while the cell is the active (selected) cell uploads a copied image;
@@ -129,8 +130,7 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
                 onClick={() => openPreview(first_file.id)}
                 aria-label={`Preview ${first_file.file_name}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element -- user uploads on the API's storage disk, not optimizable assets */}
-                <img src={first_file.url} alt="" loading="lazy" draggable={false} />
+                <CellFileThumb file={first_file} />
               </button>
             )}
             <CellHyperlink
@@ -216,7 +216,7 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
         />
       )}
       {preview_index !== null && images.length > 0 && (
-        <FileImageLightbox images={images} index={Math.min(preview_index, images.length - 1)} onClose={() => setPreviewIndex(null)} />
+        <FileImageViewer images={images} index={Math.min(preview_index, images.length - 1)} onClose={() => setPreviewIndex(null)} />
       )}
     </div>
   );
@@ -227,8 +227,7 @@ function ImageTooltip({ file }: { file: CellFile }) {
   return (
     <span className="files-cell-preview">
       <span className="files-cell-preview__frame">
-        {/* eslint-disable-next-line @next/next/no-img-element -- user uploads on the API's storage disk */}
-        <img src={file.url} alt="" />
+        <CellFileThumb file={file} loading="eager" />
       </span>
       <span className="files-cell-preview__name">{file.file_name}</span>
       <span className="files-cell-preview__hint">Click to view full size</span>

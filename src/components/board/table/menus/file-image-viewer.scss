@@ -1,0 +1,359 @@
+// Full screen image viewer of a Files cell, on top of PhotoSwipe's own styles
+// (`photoswipe/style.css`). A Fancybox like look: a deep blurred backdrop,
+// round glass buttons in a floating toolbar, a counter pill, the file name
+// under the image, a thumbnail strip and grab cursors while moving the image.
+// Every color is a `--file-viewer-*` token on `.file-viewer`.
+
+$glass: rgba(255, 255, 255, 0.1);
+$glass-hover: rgba(255, 255, 255, 0.2);
+$button-size: 40px;
+$ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
+
+@mixin glass-pill {
+  border-radius: 999px;
+  background: var(--file-viewer-glass);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.file-viewer {
+  --pswp-bg: #0f111a;
+  --pswp-placeholder-bg: transparent;
+  --pswp-icon-color: #ffffff;
+  --pswp-error-text-color: #e6e8f0;
+  --pswp-preloader-color: rgba(255, 255, 255, 0.15);
+  --pswp-preloader-color-secondary: #ffffff;
+
+  --file-viewer-glass: #{$glass};
+  --file-viewer-glass-hover: #{$glass-hover};
+  --file-viewer-text: #ffffff;
+  --file-viewer-text-muted: rgba(255, 255, 255, 0.6);
+  --file-viewer-accent: #579bfc;
+
+  font-family: var(--font-brand-sans, inherit);
+
+  // A soft radial glow behind the image, so it does not float on flat black.
+  .pswp__bg {
+    background:
+      radial-gradient(ellipse at 50% 40%, rgba(87, 155, 252, 0.12), transparent 60%),
+      var(--pswp-bg);
+  }
+
+  .pswp__img {
+    border-radius: 6px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  }
+
+  // Moving the image: an open hand when it can be dragged, a closed one while it is.
+  &.pswp--zoom-allowed .pswp__img {
+    cursor: zoom-in;
+  }
+
+  &.pswp--zoomed-in .pswp__img {
+    cursor: grab;
+  }
+
+  &.pswp--zoomed-in .pswp__img:active,
+  &.pswp--dragging .pswp__img {
+    cursor: grabbing;
+  }
+
+  // ---- toolbar ----
+
+  .pswp__top-bar {
+    top: 14px;
+    right: 14px;
+    left: 14px;
+    width: auto;
+    height: $button-size;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .pswp__button:not(.pswp__button--arrow) {
+    display: flex;
+    width: $button-size;
+    height: $button-size;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: var(--file-viewer-glass);
+    opacity: 1;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+      background 140ms ease-out,
+      transform 140ms $ease-out;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--file-viewer-glass-hover);
+    }
+
+    &:active {
+      transform: scale(0.94);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--file-viewer-accent);
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      background: var(--file-viewer-glass);
+      transform: none;
+    }
+
+    &.is-active {
+      background: var(--file-viewer-accent);
+    }
+  }
+
+  .pswp__button--close {
+    margin-right: 0;
+    margin-left: 6px;
+  }
+
+  // Our icons are outlines drawn with `stroke`, PhotoSwipe's own rule would fill them.
+  .file-viewer__icn {
+    position: static;
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    fill: none;
+    color: var(--file-viewer-text);
+  }
+
+  // "2 / 5", a pill on the left of the toolbar.
+  .pswp__counter {
+    @include glass-pill;
+
+    height: auto;
+    margin: 0 auto 0 0;
+    padding: 6px 12px;
+    color: var(--file-viewer-text);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+    opacity: 1;
+    text-shadow: none;
+  }
+
+  .pswp__preloader {
+    order: -1;
+    width: 28px;
+    height: $button-size;
+    margin-right: 0;
+
+    .pswp__icn {
+      top: 6px;
+      left: 0;
+    }
+  }
+
+  // ---- side arrows ----
+
+  .pswp__button--arrow {
+    width: 56px;
+    height: 56px;
+    margin-top: -28px;
+    border-radius: 999px;
+    background: var(--file-viewer-glass);
+    opacity: 1;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition:
+      background 140ms ease-out,
+      transform 160ms $ease-out;
+
+    &:hover {
+      background: var(--file-viewer-glass-hover);
+    }
+
+    // Absolute again: the toolbar icons above are static, centered by their flex button.
+    .pswp__icn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 24px;
+      height: 24px;
+      margin: -12px 0 0 -12px;
+    }
+  }
+
+  .pswp__button--arrow--prev {
+    left: 20px;
+
+    &:hover {
+      transform: translateX(-3px);
+    }
+  }
+
+  .pswp__button--arrow--next {
+    right: 20px;
+
+    &:hover {
+      transform: translateX(3px);
+    }
+
+    .pswp__icn {
+      right: auto;
+    }
+  }
+
+  // ---- caption, hint and thumbnails ----
+
+  .file-viewer__caption {
+    @include glass-pill;
+
+    position: absolute;
+    bottom: 22px;
+    left: 50%;
+    z-index: 10;
+    display: flex;
+    max-width: min(640px, calc(100vw - 48px));
+    align-items: baseline;
+    gap: 10px;
+    padding: 6px 16px;
+    color: var(--file-viewer-text);
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  &.file-viewer--many .file-viewer__caption {
+    bottom: 96px;
+  }
+
+  .file-viewer__caption-name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-viewer__caption-meta {
+    flex: none;
+    color: var(--file-viewer-text-muted);
+    font-size: 12px;
+  }
+
+  .file-viewer__hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 10;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.6);
+    color: var(--file-viewer-text);
+    font-size: 13px;
+    line-height: 18px;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    animation: file-viewer-hint 2.8s ease-in-out forwards;
+  }
+
+  .file-viewer__thumbs {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    z-index: 10;
+    display: flex;
+    max-width: calc(100vw - 32px);
+    gap: 8px;
+    overflow-x: auto;
+    padding: 6px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.35);
+    transform: translateX(-50%);
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  .file-viewer__thumb {
+    flex: none;
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+    padding: 0;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    background: var(--file-viewer-glass);
+    cursor: pointer;
+    opacity: 0.55;
+    transition:
+      opacity 140ms ease-out,
+      border-color 140ms ease-out,
+      transform 160ms $ease-out;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    &:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    &[aria-current] {
+      border-color: var(--file-viewer-accent);
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--file-viewer-accent);
+      outline-offset: 2px;
+    }
+  }
+
+  // Phones: smaller chrome, the arrows give way to swiping.
+  @media (max-width: 640px) {
+    .pswp__button--arrow {
+      display: none;
+    }
+
+    .file-viewer__thumb {
+      width: 44px;
+      height: 44px;
+    }
+  }
+}
+
+@keyframes file-viewer-hint {
+  0%,
+  10% {
+    opacity: 0;
+  }
+
+  20%,
+  75% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-viewer {
+    .file-viewer__hint {
+      animation-duration: 0.01s;
+    }
+
+    .pswp__button,
+    .file-viewer__thumb {
+      transition: none;
+    }
+  }
+}

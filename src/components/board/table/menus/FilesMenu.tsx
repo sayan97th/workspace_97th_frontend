@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import PopoverPanel from "./PopoverPanel";
+import CellFileThumb from "../cells/CellFileThumb";
 import { CameraIcon, DocIcon, FILE_SOURCES, LinkIcon, PaperclipIcon, PROVIDER_SOURCES, SOURCE_ICONS } from "./fileSources";
 import { ACCEPTED_FILE_TYPES, canRenameFile, filesFromClipboard, formatSize, isImageFile, splitFileName } from "./filesCellUtils";
 import type { CellFile, CellFileSource } from "../types";
@@ -283,8 +284,7 @@ function EntryRow({ file, can_edit, onPreview, onStartRename, onDelete }: EntryR
     <div className="files-menu__entry" onDoubleClick={can_rename ? onStartRename : undefined}>
       {is_image ? (
         <button type="button" onClick={onPreview} className="files-menu__thumb files-menu__thumb--image" aria-label={`Preview ${file.file_name}`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- user uploads on the API's storage disk, not optimizable assets */}
-          <img src={file.url} alt="" loading="lazy" draggable={false} />
+          <CellFileThumb file={file} />
         </button>
       ) : (
         <span className="files-menu__thumb" aria-hidden="true">
