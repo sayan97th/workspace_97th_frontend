@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { HOME_PATH } from "@/layout/sidebar-routes";
 import { getViewComponent } from "@/components/workspace-nav/view-registry";
 import { buildWorkspaceManagePath } from "@/components/workspace-manage/tab-routing";
+import { useAuth } from "@/context/AuthContext";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { buildPageTitle } from "@/lib/page-title";
 import { useBoardRoute } from "../_context/BoardRouteContext";
@@ -25,6 +26,7 @@ import { BoardLoadingSpinner, CenteredMessage } from "../../_components/BoardRou
  */
 export const BoardRouteView: React.FC = () => {
   const router = useRouter();
+  const { user } = useAuth();
   const { board, has_error, is_private_board, breadcrumb, open_item_id, active_view_id } = useBoardRoute();
   const is_workspace_manage = board?.view_key === "workspace_manage";
 
@@ -43,7 +45,11 @@ export const BoardRouteView: React.FC = () => {
     return (
       <CenteredMessage
         title="This board is private"
-        detail="Only the board creator and the people they invite can see it. Ask the creator to add you if you need access."
+        detail={
+          user?.email
+            ? `Only the board creator and the people they invite can see it. You are signed in as ${user.email}. If you were invited with another email, sign in with that account, or ask the creator to add this one.`
+            : "Only the board creator and the people they invite can see it. Ask the creator to add you if you need access."
+        }
         action={
           <Link
             href={HOME_PATH}

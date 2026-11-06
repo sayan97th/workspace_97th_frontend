@@ -4,7 +4,7 @@ import React from "react";
 export const CenteredMessage: React.FC<{ title: string; detail: string; action?: React.ReactNode }> = ({ title, detail, action }) => (
   <div className="flex h-full flex-col items-center justify-center gap-2 bg-shell-bg px-6 text-center">
     <h2 className="text-lg font-semibold text-shell-text">{title}</h2>
-    <p className="max-w-sm text-[13.5px] text-shell-text-muted">{detail}</p>
+    <p className="max-w-md text-[13.5px] text-shell-text-muted">{detail}</p>
     {action ? <div className="mt-2">{action}</div> : null}
   </div>
 );
