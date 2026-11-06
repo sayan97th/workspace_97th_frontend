@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
+import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import "./item-name-cell.scss";
 import TreeHook from "./TreeHook";
 import { isValueInvalid } from "../validationUtils";
@@ -40,7 +41,8 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const row_apps = actions.getRowApps();
   const sub_tpl = subGridTemplate(name_col_width, group.sub_base_columns, group.sub_custom_columns);
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
-  const name_input_ref = useRef<HTMLInputElement>(null);
+  const name_input_ref = useRef<HTMLTextAreaElement>(null);
+  const name_box_ref = useRef<HTMLDivElement>(null);
   // Picking an emoji blurs the name input (the picker's grid is a portaled
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the edit out from under it.
@@ -53,10 +55,6 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const fill_handle_mousedown_ref = useRef(false);
   const grid_ref = useRef<HTMLDivElement>(null);
   const { is_text_entry_focused, shouldCancelDrag, lock_handlers } = useTextEntryDragLock(grid_ref);
-  // A freshly created row opens with its placeholder name selected, so typing replaces it.
-  useEffect(() => {
-    if (is_editing && state.edit_select_all) name_input_ref.current?.select();
-  }, [is_editing, state.edit_select_all]);
   useEffect(() => {
     const clear = () => { fill_handle_mousedown_ref.current = false; };
     window.addEventListener("mouseup", clear);
@@ -159,34 +157,38 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             outlineOffset: is_editing ? "-1px" : undefined,
           }}
         >
-          <div className="flex min-w-0 flex-1 items-center">
-            {is_editing ? (
-              <span className="relative flex min-w-0 flex-1 items-center">
-                <input
-                  ref={name_input_ref}
-                  autoFocus
-                  value={state.edit_draft}
-                  onChange={(e) => actions.updateEditDraft(e.target.value)}
-                  onBlur={() => { if (!is_emoji_palette_open_ref.current) actions.commitEditName(); }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-                    if (e.key === "Escape") actions.cancelEditName();
-                  }}
-                  className="h-[28px] w-full min-w-0 border-0 bg-transparent py-0 pl-1.5 pr-6 text-board-cell text-boardtree-text outline-none"
-                />
-                <EmojiInsertButton
-                  input_ref={name_input_ref}
-                  value={state.edit_draft}
-                  onChange={actions.updateEditDraft}
-                  onOpenChange={(is_open) => { is_emoji_palette_open_ref.current = is_open; }}
-                  size={12}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2"
-                />
-              </span>
-            ) : (
-              <span onClick={() => actions.startEditName(sub.id, sub.name)} className="item-name-cell__label max-w-full truncate px-1.5 py-0.5 text-board-cell text-boardtree-text">
-                {highlightSearchMatches(sub.name, state.search_query)}
-              </span>
+          {/* See `ItemRow`: renaming opens `ExpandingCellEditor` over this box, which grows to show the whole name. */}
+          <div ref={name_box_ref} className="flex min-w-0 flex-1 items-center self-stretch">
+            <span
+              onClick={() => actions.startEditName(sub.id, sub.name)}
+              className={`item-name-cell__label max-w-full truncate px-1.5 py-0.5 text-board-cell text-boardtree-text ${is_editing ? "invisible" : ""}`}
+            >
+              {highlightSearchMatches(sub.name, state.search_query)}
+            </span>
+            {is_editing && (
+              <ExpandingCellEditor
+                anchor_ref={name_box_ref}
+                textarea_ref={name_input_ref}
+                value={state.edit_draft}
+                onChange={actions.updateEditDraft}
+                onCommit={actions.commitEditName}
+                onCancel={actions.cancelEditName}
+                select_all={state.edit_select_all}
+                is_blur_suspended_ref={is_emoji_palette_open_ref}
+                aria_label="Subitem name"
+                trailing={
+                  <EmojiInsertButton
+                    input_ref={name_input_ref}
+                    value={state.edit_draft}
+                    onChange={actions.updateEditDraft}
+                    onOpenChange={(is_open) => {
+                      is_emoji_palette_open_ref.current = is_open;
+                      if (!is_open) requestAnimationFrame(() => name_input_ref.current?.focus());
+                    }}
+                    size={12}
+                  />
+                }
+              />
             )}
           </div>
           {/* See `ItemRow`: the hover icons step aside while editing and only take width while they show. */}

@@ -7,7 +7,7 @@ import EmojiPalette from "./drawer/EmojiPalette";
 
 export type EmojiInsertButtonProps = {
   /** The controlled text input this button inserts an emoji into. */
-  input_ref: React.RefObject<HTMLInputElement | null>;
+  input_ref: React.RefObject<HTMLInputElement | HTMLTextAreaElement | null>;
   value: string;
   onChange: (next_value: string) => void;
   /**

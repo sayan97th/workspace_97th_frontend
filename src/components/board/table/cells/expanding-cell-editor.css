@@ -1,0 +1,65 @@
+/* Google Sheets style in place cell editor, see `ExpandingCellEditor.tsx`.
+   Position and size are written by the component, this file only owns the look. */
+
+.expanding-cell-editor {
+  position: fixed;
+  z-index: 900; /* Above sticky table chrome, below popovers (z 1000) such as the emoji palette. */
+  box-sizing: border-box;
+  border-radius: 2px;
+  background: var(--color-boardtree-surface);
+  outline: 2px solid var(--color-boardtree-accent);
+  outline-offset: -1px;
+  box-shadow: 0 6px 20px rgb(15 23 42 / 0.18), 0 1px 3px rgb(15 23 42 / 0.12);
+}
+
+.expanding-cell-editor__field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--color-boardtree-text);
+  font-family: inherit;
+  font-size: var(--text-board-cell, 14px);
+  line-height: var(--text-board-cell--line-height, 20px);
+  font-weight: var(--text-board-cell--font-weight, 400);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: none;
+  outline: none;
+  overflow-y: hidden;
+}
+
+.expanding-cell-editor__field::placeholder {
+  color: var(--color-boardtree-text-faint);
+}
+
+.expanding-cell-editor__field--with-trailing {
+  padding-right: 32px;
+}
+
+/* One line twin used to read the natural width of the longest line. */
+.expanding-cell-editor__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: auto;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre;
+}
+
+.expanding-cell-editor__trailing {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  height: 20px;
+  align-items: center;
+}
+
+.expanding-cell-editor__field--secondary {
+  color: var(--color-boardtree-text-secondary);
+}

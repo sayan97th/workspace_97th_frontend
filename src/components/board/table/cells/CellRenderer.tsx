@@ -30,8 +30,8 @@ import MirrorCell from "./MirrorCell";
 import { RatingCell, VoteCell } from "./VoteRatingCells";
 import { ProgressTrackingCell } from "./ProgressTrackingCells";
 import DependencyCell from "./DependencyCell";
+import ExpandableTextCell from "./ExpandableTextCell";
 import ChecklistMenu from "../menus/ChecklistMenu";
-import { containsSearchQuery, highlightSearchMatches } from "../searchHighlight";
 import {
   ColorPickerCell,
   CountryCell,
@@ -82,9 +82,6 @@ export default function CellRenderer({ node_id, column, values, node_name, state
     return () => clearInterval(id);
   }, [running_since]);
 
-  // Text cell: whether it was clicked out of its search highlighted display into the input.
-  const [is_text_editing, setIsTextEditing] = useState(false);
-
   // Button cell: in flight while its press runs, then the result flashes on it for a moment.
   const [is_pressing, setIsPressing] = useState(false);
   const [press_feedback, setPressFeedback] = useState<string | null>(null);
@@ -123,43 +120,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
       return <ProgressTrackingCell node_id={node_id} column={column} values={values} state={state} />;
   }
 
-  if (column.kind === "text" || column.kind === "email") {
-    // While the board is searched, a matching cell shows its text with the match highlighted
-    // (an input can't), and turns back into the input as soon as it is clicked.
-    if (!is_text_editing && containsSearchQuery(asString(value), state.search_query)) {
-      return (
-        <button
-          type="button"
-          onClick={() => setIsTextEditing(true)}
-          title={asString(value)}
-          className="h-full w-full min-w-0 truncate px-3 text-left font-[inherit] text-board-cell text-boardtree-text"
-        >
-          {highlightSearchMatches(asString(value), state.search_query)}
-        </button>
-      );
-    }
-    return (
-      <input
-        autoFocus={is_text_editing}
-        value={asString(value)}
-        onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
-        onBlur={() => setIsTextEditing(false)}
-        title={asString(value)}
-        className="h-full w-full min-w-0 truncate bg-transparent px-3 font-[inherit] text-board-cell text-boardtree-text outline-none"
-      />
-    );
-  }
-
-  if (column.kind === "longtext") {
-    return (
-      <textarea
-        value={asString(value)}
-        onChange={(e) => actions.setCellValue(node_id, column.id, e.target.value)}
-        placeholder="Add text"
-        title={asString(value)}
-        className="box-border h-full w-full min-w-0 resize-none overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words bg-transparent px-3 py-1.5 font-[inherit] text-board-cell leading-[15px] text-boardtree-text-secondary outline-none"
-      />
-    );
+  if (column.kind === "text" || column.kind === "email" || column.kind === "longtext") {
+    // Clicked (or Enter/F2) into a Google Sheets style editor that grows to show the whole value.
+    return <ExpandableTextCell node_id={node_id} column={column} value={value} state={state} actions={actions} />;
   }
 
   if (column.kind === "number") {
