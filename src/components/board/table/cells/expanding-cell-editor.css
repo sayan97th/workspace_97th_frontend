@@ -60,10 +60,6 @@
   align-items: center;
 }
 
-.expanding-cell-editor__field--secondary {
-  color: var(--color-boardtree-text-secondary);
-}
-
 /* Length counter under a capped field (item names), shown only near the cap. */
 .expanding-cell-editor__footer {
   display: flex;

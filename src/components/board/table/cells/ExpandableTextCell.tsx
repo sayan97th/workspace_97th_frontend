@@ -88,9 +88,9 @@ export default function ExpandableTextCell({ node_id, column, value, state, acti
         onClick={openEditor}
         title={text || undefined}
         aria-label={`Edit ${column.title}`}
-        className={`flex h-full w-full min-w-0 items-center px-3 text-left font-[inherit] text-board-cell ${
-          is_long_text ? "text-boardtree-text-secondary" : "text-boardtree-text"
-        } ${is_editing ? "invisible" : ""}`}
+        className={`flex h-full w-full min-w-0 items-center px-3 text-left font-[inherit] text-board-cell text-boardtree-text ${
+          is_editing ? "invisible" : ""
+        }`}
       >
         {text ? (
           <span className={`min-w-0 ${is_long_text || state.row_height !== "single" ? "whitespace-pre-wrap break-words" : ""} ${clamp_class}`}>
@@ -112,7 +112,6 @@ export default function ExpandableTextCell({ node_id, column, value, state, acti
           max_width={is_long_text ? 520 : 480}
           max_height={is_long_text ? 360 : 240}
           aria_label={column.title}
-          text_class_name={is_long_text ? "expanding-cell-editor__field--secondary" : ""}
         />
       )}
     </div>
