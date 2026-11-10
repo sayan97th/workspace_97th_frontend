@@ -30,9 +30,13 @@ const manrope_font = Manrope({
   display: "swap",
 });
 
+// Accent monospace (`--font-mono-accent` in typography.css). Loaded as the
+// variable font on purpose: do not pass a `weight` list. Static weights make
+// Google answer with `/l/font?kit=...&skey=...` URLs, and Turbopack's font
+// loader splits that `&` and fails with "next/font/google queries have exactly
+// one entry". The variable file covers 400 and 500 (and every other weight).
 const roboto_mono_font = Roboto_Mono({
   subsets: ["latin"],
-  weight: ["400", "500"],
   variable: "--font-roboto-mono",
   display: "swap",
 });
