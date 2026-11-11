@@ -402,6 +402,77 @@ export function useNotifications() {
     [notifications, setNotificationUnread, showToast]
   );
 
+  /**
+   * The card's one click Like: toggles the viewer's like on the comment behind
+   * the notification (the same like the item drawer and the Update feed show).
+   * Every card about that comment flips at once, the server's answer settles
+   * the final state, and a failure puts the cards back with a toast.
+   */
+  const toggleNotificationLike = useCallback(
+    (id: string) => {
+      const notification = notifications.find((item) => item.id === id);
+      const reply_to = notification?.reply_to;
+      if (!notification || !reply_to) return;
+
+      const applyLiked = (value: boolean) =>
+        setNotifications((previous) => previous.map((item) => (item.reply_to === reply_to ? { ...item, is_liked: value } : item)));
+
+      applyLiked(!notification.is_liked);
+      feedService
+        .toggleLike(reply_to)
+        .then((update) => applyLiked(update.liked_by_me ?? !notification.is_liked))
+        .catch((error) => {
+          applyLiked(notification.is_liked);
+          showToast({ variant: "error", title: getApiErrorMessage(error, "Couldn't like that update. Please try again.") });
+        });
+    },
+    [notifications, showToast]
+  );
+
+  /**
+   * The card's one click "Save for later": keeps the notification in the Saved
+   * tab (and out of "Mark all as read") until it is removed from there.
+   * Unsaving from inside the Saved tab takes the card out of the list. Saving
+   * raises a toast with an Undo, a failure restores the card.
+   */
+  const toggleNotificationSaved = useCallback(
+    (id: string) => {
+      const notification = notifications.find((item) => item.id === id);
+      if (!notification) return;
+
+      const is_saved = !notification.is_saved;
+      const removes_card = !is_saved && filters_ref.current.tab === "saved";
+
+      setNotifications((previous) =>
+        removes_card ? previous.filter((item) => item.id !== id) : previous.map((item) => (item.id === id ? { ...item, is_saved } : item))
+      );
+
+      const request = is_saved ? notificationsService.save(id) : notificationsService.unsave(id);
+      request
+        .then(() => {
+          if (!is_saved) return;
+          showToast({
+            variant: "success",
+            title: "Saved for later",
+            description: "Find it any time in the Saved tab.",
+            action_text: "Undo",
+            onAction: () => {
+              setNotifications((previous) => previous.map((item) => (item.id === id ? { ...item, is_saved: false } : item)));
+              notificationsService.unsave(id).catch(() => loadNotifications(filters_ref.current));
+            },
+            dedupe_key: `notification-save-${id}`,
+          });
+        })
+        .catch((error) => {
+          // A card that left the Saved tab comes back through a reload, one still in the list just flips back.
+          if (removes_card) loadNotifications(filters_ref.current);
+          else setNotifications((previous) => previous.map((item) => (item.id === id ? { ...item, is_saved: !is_saved } : item)));
+          showToast({ variant: "error", title: getApiErrorMessage(error, "Couldn't update that notification. Please try again.") });
+        });
+    },
+    [notifications, showToast, loadNotifications]
+  );
+
   useTabBadge(unread_count, user?.tab_badge_enabled ?? true);
 
   return {
@@ -424,6 +495,8 @@ export function useNotifications() {
     muteNotificationItem,
     unmuteNotificationItem,
     replyToNotification,
+    toggleNotificationLike,
+    toggleNotificationSaved,
     bulkAction,
     deleteAllNotifications,
   };

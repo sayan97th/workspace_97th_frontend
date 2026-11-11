@@ -16,7 +16,12 @@ import SlideOverDrawer from "./SlideOverDrawer";
 import NotificationItem from "./NotificationItem";
 import NotificationPersonFilter from "./NotificationPersonFilter";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
-import { NotificationCheckCircleGlyph, NotificationSettingsGlyph, NotificationTrashGlyph } from "./NotificationTypeIcon";
+import {
+  NotificationBookmarkGlyph,
+  NotificationCheckCircleGlyph,
+  NotificationSettingsGlyph,
+  NotificationTrashGlyph,
+} from "./NotificationTypeIcon";
 import "./notifications-panel.scss";
 
 type NotificationsPanelProps = {
@@ -41,6 +46,10 @@ type NotificationsPanelProps = {
   onMarkAsRead?: (id: string) => void;
   onMarkAsUnread?: (id: string) => void;
   onSnoozeNotification?: (id: string, preset: NotificationSnoozePresetId) => void;
+  /** One click Like on the comment behind a notification, and back. */
+  onToggleLikeNotification?: (id: string) => void;
+  /** One click "Save for later", and back. Saved notifications live in the Saved tab. */
+  onToggleSaveNotification?: (id: string) => void;
   /** Posts an inline reply from a notification card, without opening the update. Rejects with the reason it failed. */
   onReplyToNotification?: (id: string, body: string) => Promise<void>;
   /** Mutes or unmutes the item a notification is about. */
@@ -69,7 +78,7 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
  * "Filter by person", and a flat newest first list of cards. Filtering happens
  * server-side and the list pages in as it is scrolled, both driven by
  * `useNotifications`, this component only renders them. j and k move between
- * cards, o opens, e deletes and u toggles read.
+ * cards, o opens, e deletes, u toggles read, l likes and s saves for later.
  */
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   is_open,
@@ -90,6 +99,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   onMarkAsRead,
   onMarkAsUnread,
   onSnoozeNotification,
+  onToggleLikeNotification,
+  onToggleSaveNotification,
   onReplyToNotification,
   onMuteNotificationItem,
   onUnmuteNotificationItem,
@@ -161,6 +172,12 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
       } else if (event.key === "u" && onBulkAction) {
         event.preventDefault();
         onBulkAction(focused.is_unread ? "read" : "unread", [focused.id]);
+      } else if (event.key === "l" && onToggleLikeNotification && focused.reply_to) {
+        event.preventDefault();
+        onToggleLikeNotification(focused.id);
+      } else if (event.key === "s" && onToggleSaveNotification) {
+        event.preventDefault();
+        onToggleSaveNotification(focused.id);
       } else if (event.key === "e" && onBulkAction) {
         event.preventDefault();
         // Leave the cursor on the neighbour that takes its place.
@@ -172,7 +189,7 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [is_open, notifications, focused_id, onBulkAction, onSelectNotification]);
+  }, [is_open, notifications, focused_id, onBulkAction, onSelectNotification, onToggleLikeNotification, onToggleSaveNotification]);
 
   const closeMoreMenu = () => {
     setIsMoreMenuOpen(false);
@@ -183,6 +200,17 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
 
   const renderEmptyState = () => {
     if (is_loading) return <p className="nc-list__status">Loading notifications...</p>;
+    if (filters.tab === "saved" && filters.search.trim() === "" && filters.actor_id === null) {
+      return (
+        <div className="nc-empty">
+          <span className="nc-empty__icon is-saved">
+            <NotificationBookmarkGlyph size={24} />
+          </span>
+          <span className="nc-empty__title">Nothing saved yet</span>
+          <span>Hover a notification and click the bookmark to keep it here for later.</span>
+        </div>
+      );
+    }
     const is_filtered = filters.tab !== "all" || filters.search.trim() !== "" || filters.actor_id !== null;
     return (
       <div className="nc-empty">
@@ -344,6 +372,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
                     onMarkRead={onMarkAsRead}
                     onMarkUnread={onMarkAsUnread}
                     onSnooze={onSnoozeNotification}
+                    onToggleLike={onToggleLikeNotification}
+                    onToggleSave={onToggleSaveNotification}
                     onReply={onReplyToNotification}
                     onMuteItem={onMuteNotificationItem}
                     onUnmuteItem={onUnmuteNotificationItem}

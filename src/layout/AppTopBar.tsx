@@ -74,6 +74,8 @@ const AppTopBar: React.FC = () => {
     muteNotificationItem,
     unmuteNotificationItem,
     replyToNotification,
+    toggleNotificationLike,
+    toggleNotificationSaved,
     bulkAction,
     deleteAllNotifications,
   } = useNotifications();
@@ -344,6 +346,8 @@ const AppTopBar: React.FC = () => {
         onMarkAsRead={markAsRead}
         onMarkAsUnread={markAsUnread}
         onSnoozeNotification={snoozeNotification}
+        onToggleLikeNotification={toggleNotificationLike}
+        onToggleSaveNotification={toggleNotificationSaved}
         onReplyToNotification={replyToNotification}
         onMuteNotificationItem={muteNotificationItem}
         onUnmuteNotificationItem={unmuteNotificationItem}

@@ -100,6 +100,44 @@ export const NotificationTrashGlyph: React.FC<GlyphProps> = ({ size = 16, classN
   </Glyph>
 );
 
+type FillableGlyphProps = GlyphProps & { filled?: boolean };
+
+/** A thumbs up, the card's one click Like. Filled once the viewer liked it. */
+export const NotificationLikeGlyph: React.FC<FillableGlyphProps> = ({ size = 18, className, filled = false }) => (
+  <Glyph size={size} className={className}>
+    <path d="M7 10v12" />
+    <path
+      d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"
+      fill={filled ? "currentColor" : "none"}
+    />
+  </Glyph>
+);
+
+/** A ribbon, the card's one click "Save for later". Filled while saved. */
+export const NotificationBookmarkGlyph: React.FC<FillableGlyphProps> = ({ size = 18, className, filled = false }) => (
+  <Glyph size={size} className={className}>
+    <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" fill={filled ? "currentColor" : "none"} />
+  </Glyph>
+);
+
+/** A circle with a dot, the card's "Mark as unread" once it was read. */
+export const NotificationMarkUnreadGlyph: React.FC<GlyphProps> = ({ size = 18, className }) => (
+  <Glyph size={size} className={className}>
+    <path d="M21 12a9 9 0 1 1-6.2-8.55" />
+    <circle cx="19" cy="5" r="2.5" fill="currentColor" stroke="none" />
+  </Glyph>
+);
+
+/** A crossed out bell, the "Mute this item" menu row. */
+export const NotificationBellOffGlyph: React.FC<GlyphProps> = ({ size = 16, className }) => (
+  <Glyph size={size} className={className}>
+    <path d="M8.7 3A6 6 0 0 1 18 8a21.3 21.3 0 0 0 .6 5" />
+    <path d="M17 17H3s3-2 3-9a4.67 4.67 0 0 1 .3-1.7" />
+    <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    <path d="m2 2 20 20" />
+  </Glyph>
+);
+
 const TYPE_GLYPHS: Record<string, React.FC<GlyphProps>> = {
   mentioned: AtGlyph,
   assigned: PersonGlyph,

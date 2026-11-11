@@ -29,6 +29,15 @@ $tokens: (
   "primary": (#0073ea, #3d8ff0),
   "danger": (#d83a52, #e2445c),
   "danger-hover": (#b63546, #c93a50),
+  "danger-soft": (#fbe9ec, rgba(226, 68, 92, 0.18)),
+  // The floating quick action bar.
+  "quick-bg": (#ffffff, #30324e),
+  "quick-border": (#e7e9ef, rgba(255, 255, 255, 0.1)),
+  "quick-shadow": (0 6px 20px -4px rgba(0, 0, 0, 0.16), 0 6px 20px -4px rgba(0, 0, 0, 0.5)),
+  "like": (#0073ea, #579bfc),
+  "like-soft": (#e5f1ff, rgba(87, 155, 252, 0.18)),
+  "save": (#d17a00, #fdab3d),
+  "save-soft": (#fff3e0, rgba(253, 171, 61, 0.18)),
 );
 
 @mixin token-set($index) {
@@ -373,6 +382,11 @@ html.dark {
   color: var(--nc-primary);
 }
 
+.nc-empty__icon.is-saved {
+  background: var(--nc-save-soft);
+  color: var(--nc-save);
+}
+
 .nc-empty__title {
   font-size: 16px;
   font-weight: 600;
@@ -535,51 +549,168 @@ html.dark {
   color: var(--nc-text-secondary);
 }
 
-// Hover actions in the top corner, on the card's own background.
-.nc-card__actions {
+.nc-card__badge.is-saved {
+  background: var(--nc-save-soft);
+  color: var(--nc-save);
+}
+
+// ── Quick actions bar ─────────────────────────────────────────────────────
+//
+// monday's floating pill of one click actions (Like, Mark as read, Save for
+// later, Delete, "..."), anchored to the bottom corner of the card. It
+// glides up into place on hover or keyboard focus and stays while its "..."
+// menu is open. Touch screens, which cannot hover, always show it.
+
+.nc-quick {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  right: 12px;
+  bottom: 10px;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 2px;
-  border-radius: 6px;
-  background: var(--nc-card-bg-hover);
+  padding: 4px;
+  border: 1px solid var(--nc-quick-border);
+  border-radius: 8px;
+  background: var(--nc-quick-bg);
+  box-shadow: var(--nc-quick-shadow);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.15s ease;
+  transform: translateY(4px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
 
   .nc-card:hover > &,
   .nc-card:focus-within > &,
-  &.is-open {
+  .nc-card.is-focused > &,
+  &.is-pinned {
     opacity: 1;
     pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  @media (hover: none) {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.16s ease;
+    transform: none;
   }
 }
 
-.nc-card__action-button {
+.nc-quick__divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+  background: var(--nc-border);
+}
+
+.nc-quick__button {
+  --nc-quick-tone: var(--nc-text);
+  --nc-quick-tone-soft: var(--nc-hover);
+
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--nc-text-secondary);
   transition:
     background-color 0.15s ease,
     color 0.15s ease;
 
-  &:hover,
-  &[aria-expanded="true"] {
-    background: var(--nc-hover);
-    color: var(--nc-text);
+  &.is-like {
+    --nc-quick-tone: var(--nc-like);
+    --nc-quick-tone-soft: var(--nc-like-soft);
   }
 
-  &.is-active {
-    color: var(--nc-link);
+  &.is-read {
+    --nc-quick-tone: var(--nc-primary);
+    --nc-quick-tone-soft: var(--nc-like-soft);
+  }
+
+  &.is-save {
+    --nc-quick-tone: var(--nc-save);
+    --nc-quick-tone-soft: var(--nc-save-soft);
+  }
+
+  &.is-danger {
+    --nc-quick-tone: var(--nc-danger);
+    --nc-quick-tone-soft: var(--nc-danger-soft);
+  }
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--nc-quick-tone-soft);
+    color: var(--nc-quick-tone);
+  }
+
+  &:active svg {
+    transform: scale(0.88);
+  }
+
+  svg {
+    transition: transform 0.12s ease;
+  }
+
+  // Liked and saved stay colored, and pop once when switched on.
+  &.is-like.is-active,
+  &.is-save.is-active {
+    color: var(--nc-quick-tone);
+
+    svg {
+      animation: nc-quick-pop 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
   }
 
   @include focus-ring(-2px);
+
+  @media (prefers-reduced-motion: reduce) {
+    svg,
+    &.is-active svg {
+      animation: none;
+      transition: none;
+    }
+  }
+}
+
+@keyframes nc-quick-pop {
+  0% {
+    transform: scale(0.6);
+  }
+  60% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.nc-quick__tooltip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.nc-quick__kbd {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.16);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 // ── Menus and confirm ─────────────────────────────────────────────────────
@@ -625,6 +756,12 @@ html.dark {
   font-size: 12px;
   font-weight: 600;
   color: var(--nc-text-secondary);
+
+  &.is-first {
+    margin-top: 0;
+    padding-top: 4px;
+    border-top: 0;
+  }
 }
 
 .nc-confirm {

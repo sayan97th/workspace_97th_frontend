@@ -59,6 +59,8 @@ export type WorkspaceNotification = {
   is_unread: boolean;
   /** Kept in the Saved tab, and out of "Mark all as read", until the person removes it. */
   is_saved: boolean;
+  /** The viewer liked the comment behind it, what the card's Like button shows. Only meaningful when `reply_to` is set. */
+  is_liked: boolean;
   category: NotificationCategory;
   /** Frontend route to navigate to on click, e.g. `/boards/12`. */
   link?: string;
@@ -140,6 +142,7 @@ export const notification_tabs: NotificationTab[] = [
   { id: "unread", label: "Unread" },
   { id: "mentioned", label: "I was mentioned" },
   { id: "assigned", label: "Assigned to me" },
+  { id: "saved", label: "Saved" },
 ];
 
 /** Placeholder for the search input in the drawer header. */

@@ -29,6 +29,8 @@ export type NotificationDto = {
   reply_to: string | null;
   is_unread: boolean;
   is_saved: boolean;
+  /** The viewer liked the comment behind it. Only the list endpoint sends it, a live push is never liked yet. */
+  is_liked?: boolean;
   category: NotificationCategory;
   created_at: string;
   group_key: string;
@@ -104,6 +106,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     time_label: formatNotificationTime(dto.created_at),
     is_unread: dto.is_unread,
     is_saved: dto.is_saved ?? false,
+    is_liked: dto.is_liked ?? false,
     category: dto.category,
     link: dto.link ?? undefined,
     preview: dto.preview?.trim() || undefined,
