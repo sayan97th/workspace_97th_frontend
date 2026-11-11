@@ -2,9 +2,9 @@
 // notification center: a large title with "..." and close, underlined tabs,
 // "Search all notifications" next to "Filter by person", and a flat list of
 // cards (soft blue while unread) with a large avatar, the message and a
-// "22m · Board name" footer. The type scale is compact on purpose: one
-// 20px title, 14px for tabs and the sentence, 13px for the message and 12px
-// for the footer, so a card reads as headline, body and meta at a glance.
+// "22m · Board name" footer. The type scale follows the client's reference
+// screenshot: a 24px medium title, 15px tabs, 14px for the sentence and the
+// message and 13px for the footer, on 32px avatars and spaced out cards.
 //
 // Colors are `--nc-*` custom properties generated from `$tokens` for light
 // (`:root`) and dark (`html.dark`), the same pattern as `update-feed-card.scss`.
@@ -92,10 +92,10 @@ html.dark {
 
 .nc-header__title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
-  letter-spacing: -0.1px;
+  font-size: 24px;
+  font-weight: 500;
+  line-height: 32px;
+  letter-spacing: -0.2px;
   color: var(--nc-text);
 }
 
@@ -135,7 +135,7 @@ html.dark {
 
 .nc-tabs {
   display: flex;
-  margin-top: 10px;
+  margin-top: 12px;
   overflow-x: auto;
   border-bottom: 2px solid var(--nc-border);
   scrollbar-width: none;
@@ -148,9 +148,9 @@ html.dark {
 .nc-tab {
   position: relative;
   flex: none;
-  padding: 4px 12px 6px;
-  font-size: 14px;
-  line-height: 20px;
+  padding: 4px 16px 8px;
+  font-size: 15px;
+  line-height: 22px;
   white-space: nowrap;
   color: var(--nc-text);
   border-radius: 4px 4px 0 0;
@@ -187,7 +187,7 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 
 .nc-search {
@@ -395,7 +395,7 @@ html.dark {
 .nc-list__items {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 8px;
 }
 
 .nc-empty {
@@ -465,7 +465,7 @@ html.dark {
   --nc-card-bg-hover: var(--nc-card-hover);
 
   position: relative;
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--nc-card-bg);
   transition:
     background-color 0.15s ease,
@@ -489,8 +489,8 @@ html.dark {
 .nc-card__main {
   display: flex;
   width: 100%;
-  gap: 12px;
-  padding: 12px 12px 12px 10px;
+  gap: 10px;
+  padding: 12px 16px 12px 10px;
   border-radius: inherit;
   text-align: left;
 
@@ -542,10 +542,10 @@ html.dark {
 // The message itself, clamped so a long update never buries the list.
 .nc-card__preview {
   display: -webkit-box;
-  margin-top: 2px;
+  margin-top: 6px;
   overflow: hidden;
-  font-size: 13px;
-  line-height: 19px;
+  font-size: 14px;
+  line-height: 20px;
   color: var(--nc-text);
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -559,9 +559,9 @@ html.dark {
   min-width: 0;
   align-items: center;
   gap: 6px;
-  margin-top: 6px;
-  font-size: 12px;
-  line-height: 16px;
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 18px;
   color: var(--nc-text-secondary);
 }
 

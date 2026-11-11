@@ -48,11 +48,11 @@ type NotificationItemProps = {
 };
 
 /** Large enough to recognise the sender, small enough to leave the message most of the row. */
-const AVATAR_SIZE = 40;
+const AVATAR_SIZE = 32;
 
 /**
  * A single notification card, a one to one take on monday's current
- * notification center on a compact scale: a 40px avatar (the app logo when "Automations" sent
+ * notification center on a compact scale: a 32px avatar (the app logo when "Automations" sent
  * it), "Name @ Mentioned you in an update", the message itself underneath and
  * a "22m · Board name" footer. Unread cards sit on a soft blue background. On
  * hover a floating bar of one click actions appears in the bottom corner (Like,
@@ -101,7 +101,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
         <button type="button" onClick={() => onSelect?.(id)} className="nc-card__main">
           {actor.is_system ? (
             <span className="nc-card__system-avatar" style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }} aria-hidden="true">
-              <BrandLogo size={20} />
+              <BrandLogo size={18} />
             </span>
           ) : (
             <PersonAvatar person={notificationActorToPerson(actor)} size={AVATAR_SIZE} className="nc-card__avatar" />
