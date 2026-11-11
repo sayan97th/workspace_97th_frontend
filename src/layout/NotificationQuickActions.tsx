@@ -89,7 +89,7 @@ const NotificationQuickActions: React.FC<NotificationQuickActionsProps> = ({
   <div role="toolbar" aria-label="Notification actions" className={`nc-quick ${is_pinned ? "is-pinned" : ""}`}>
     {onToggleLike && (
       <QuickActionButton label={is_liked ? "Unlike" : "Like"} shortcut="L" tone="like" is_active={is_liked} onClick={onToggleLike}>
-        <NotificationLikeGlyph filled={is_liked} />
+        <NotificationLikeGlyph size={16} filled={is_liked} />
       </QuickActionButton>
     )}
 
@@ -101,7 +101,7 @@ const NotificationQuickActions: React.FC<NotificationQuickActionsProps> = ({
         is_active={!is_unread}
         onClick={onToggleRead}
       >
-        {is_unread ? <NotificationCheckCircleGlyph size={18} /> : <NotificationMarkUnreadGlyph />}
+        {is_unread ? <NotificationCheckCircleGlyph size={16} /> : <NotificationMarkUnreadGlyph size={16} />}
       </QuickActionButton>
     )}
 
@@ -113,13 +113,13 @@ const NotificationQuickActions: React.FC<NotificationQuickActionsProps> = ({
         is_active={is_saved}
         onClick={onToggleSave}
       >
-        <NotificationBookmarkGlyph filled={is_saved} />
+        <NotificationBookmarkGlyph size={16} filled={is_saved} />
       </QuickActionButton>
     )}
 
     {onDelete && (
       <QuickActionButton label="Delete" shortcut="E" tone="danger" onClick={onDelete}>
-        <NotificationTrashGlyph size={18} />
+        <NotificationTrashGlyph size={16} />
       </QuickActionButton>
     )}
 
@@ -133,7 +133,7 @@ const NotificationQuickActions: React.FC<NotificationQuickActionsProps> = ({
           aria-haspopup="menu"
           aria-expanded={is_more_open}
         >
-          <MoreDotsIcon size={18} />
+          <MoreDotsIcon size={16} />
         </QuickActionButton>
       </>
     )}

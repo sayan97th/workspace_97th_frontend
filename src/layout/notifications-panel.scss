@@ -2,7 +2,9 @@
 // notification center: a large title with "..." and close, underlined tabs,
 // "Search all notifications" next to "Filter by person", and a flat list of
 // cards (soft blue while unread) with a large avatar, the message and a
-// "22m · Board name" footer. Sizes were measured from monday screenshots.
+// "22m · Board name" footer. The type scale is compact on purpose: one
+// 20px title, 14px for tabs and the sentence, 13px for the message and 12px
+// for the footer, so a card reads as headline, body and meta at a glance.
 //
 // Colors are `--nc-*` custom properties generated from `$tokens` for light
 // (`:root`) and dark (`html.dark`), the same pattern as `update-feed-card.scss`.
@@ -78,7 +80,7 @@ html.dark {
 
 .nc-header {
   flex: none;
-  padding: 12px 16px 20px;
+  padding: 14px 16px 12px;
 }
 
 .nc-header__top {
@@ -90,10 +92,10 @@ html.dark {
 
 .nc-header__title {
   margin: 0;
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 600;
-  line-height: 36px;
-  letter-spacing: -0.2px;
+  line-height: 28px;
+  letter-spacing: -0.1px;
   color: var(--nc-text);
 }
 
@@ -105,15 +107,15 @@ html.dark {
 
 .nc-header__divider {
   width: 1px;
-  height: 22px;
-  margin: 0 8px;
+  height: 20px;
+  margin: 0 6px;
   background: var(--nc-divider);
 }
 
 .nc-icon-button {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -133,7 +135,7 @@ html.dark {
 
 .nc-tabs {
   display: flex;
-  margin-top: 18px;
+  margin-top: 10px;
   overflow-x: auto;
   border-bottom: 2px solid var(--nc-border);
   scrollbar-width: none;
@@ -146,9 +148,9 @@ html.dark {
 .nc-tab {
   position: relative;
   flex: none;
-  padding: 4px 16px 8px;
-  font-size: 15px;
-  line-height: 22px;
+  padding: 4px 12px 6px;
+  font-size: 14px;
+  line-height: 20px;
   white-space: nowrap;
   color: var(--nc-text);
   border-radius: 4px 4px 0 0;
@@ -156,6 +158,10 @@ html.dark {
 
   &:hover {
     background: var(--nc-hover);
+  }
+
+  &.is-active {
+    font-weight: 500;
   }
 
   &::after {
@@ -180,8 +186,8 @@ html.dark {
 .nc-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .nc-search {
@@ -191,7 +197,7 @@ html.dark {
   flex: 1;
   align-items: center;
   gap: 8px;
-  padding: 0 12px 0 16px;
+  padding: 0 10px 0 12px;
   border: 1px solid var(--nc-border-strong);
   border-radius: 4px;
   color: var(--nc-text-secondary);
@@ -210,7 +216,7 @@ html.dark {
     width: 100%;
     min-width: 0;
     background: transparent;
-    font-size: 14px;
+    font-size: 13px;
     color: var(--nc-text);
     outline: none;
 
@@ -231,9 +237,9 @@ html.dark {
   flex: none;
   align-items: center;
   gap: 6px;
-  padding: 0 4px;
+  padding: 0 6px;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--nc-text);
   transition: background-color 0.15s ease;
 
@@ -383,21 +389,21 @@ html.dark {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 0 8px 24px;
+  padding: 4px 8px 16px;
 }
 
 .nc-list__items {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nc-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 64px 24px 24px;
+  gap: 8px;
+  padding: 48px 24px 24px;
   text-align: center;
   font-size: 14px;
   color: var(--nc-text-secondary);
@@ -405,8 +411,8 @@ html.dark {
 
 .nc-empty__icon {
   display: flex;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -420,7 +426,7 @@ html.dark {
 }
 
 .nc-empty__title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--nc-text);
 }
@@ -484,7 +490,7 @@ html.dark {
   display: flex;
   width: 100%;
   gap: 12px;
-  padding: 16px 16px 20px 10px;
+  padding: 12px 12px 12px 10px;
   border-radius: inherit;
   text-align: left;
 
@@ -514,7 +520,7 @@ html.dark {
 .nc-card__sentence {
   display: block;
   font-size: 14px;
-  line-height: 22px;
+  line-height: 20px;
   color: var(--nc-text);
   overflow-wrap: anywhere;
 }
@@ -528,7 +534,7 @@ html.dark {
 
   svg {
     display: inline-block;
-    margin: -3px 4px 0 2px;
+    margin: -2px 3px 0 2px;
     vertical-align: middle;
   }
 }
@@ -536,10 +542,10 @@ html.dark {
 // The message itself, clamped so a long update never buries the list.
 .nc-card__preview {
   display: -webkit-box;
-  margin-top: 6px;
+  margin-top: 2px;
   overflow: hidden;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 13px;
+  line-height: 19px;
   color: var(--nc-text);
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -552,16 +558,16 @@ html.dark {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: 14px;
-  line-height: 20px;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
   color: var(--nc-text-secondary);
 }
 
 .nc-card__footer-separator {
   flex: none;
-  font-size: 10px;
+  font-size: 8px;
 }
 
 .nc-card__footer-target {
@@ -573,10 +579,11 @@ html.dark {
 
 .nc-card__badge {
   flex: none;
-  padding: 1px 6px;
+  padding: 0 6px;
   border-radius: 4px;
   background: var(--nc-hover);
   font-size: 11px;
+  line-height: 16px;
   font-weight: 600;
   color: var(--nc-text-secondary);
 }
@@ -595,13 +602,13 @@ html.dark {
 
 .nc-quick {
   position: absolute;
-  right: 12px;
-  bottom: 10px;
+  right: 10px;
+  bottom: 8px;
   z-index: 1;
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px;
+  padding: 3px;
   border: 1px solid var(--nc-quick-border);
   border-radius: 8px;
   background: var(--nc-quick-bg);
@@ -646,8 +653,8 @@ html.dark {
   --nc-quick-tone-soft: var(--nc-hover);
 
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 6px;
@@ -759,8 +766,8 @@ html.dark {
   padding: 6px 8px;
   border-radius: 4px;
   text-align: left;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 13px;
+  line-height: 20px;
   color: var(--nc-text);
   transition: background-color 0.15s ease;
 
