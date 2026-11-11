@@ -1,3 +1,4 @@
+import { publishAutomationEffectsFromResponse } from "@/lib/automation-effects";
 import { IMPERSONATION_EXIT_PATH, clearImpersonationStorage, readStashedAdminSession } from "@/lib/impersonation-storage";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -206,7 +207,17 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     return response.blob() as Promise<T>;
   }
 
-  return response.json();
+  return readJsonBody<T>(response);
+}
+
+/**
+ * Parses a JSON body and hands its `automation_effects` (what the automations this request set
+ * off changed) to whichever board is open, see `lib/automation-effects.ts`.
+ */
+async function readJsonBody<T>(response: Response): Promise<T> {
+  const body = (await response.json()) as T;
+  publishAutomationEffectsFromResponse(body);
+  return body;
 }
 
 async function requestFormData<T>(
@@ -250,7 +261,7 @@ async function requestFormData<T>(
     return undefined as T;
   }
 
-  return response.json();
+  return readJsonBody<T>(response);
 }
 
 export const apiClient = {

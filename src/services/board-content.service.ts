@@ -289,12 +289,15 @@ export const boardContentService = {
     view_id?: number | null,
     search?: string,
     group_ids?: number[],
-    filter?: BoardItemsServerFilter
+    filter?: BoardItemsServerFilter,
+    item_ids?: number[]
   ): Promise<BoardItemDto[]> {
     const params = new URLSearchParams();
     if (view_id) params.set("view_id", String(view_id));
     if (search) params.set("search", search);
     group_ids?.forEach((group_id) => params.append("group_ids[]", String(group_id)));
+    // Only these root rows, how the board reloads what an automation just changed.
+    item_ids?.forEach((item_id) => params.append("item_ids[]", String(item_id)));
     // Server-side filtering (`BoardItemFilterService::applyFilterState()`): only
     // the rows matching the toolbar's Person/Quick/Advanced filters come back.
     // `today` keeps relative dates ("This week") in the viewer's own time zone.

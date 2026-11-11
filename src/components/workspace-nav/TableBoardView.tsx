@@ -147,6 +147,13 @@ import type { BoardAutomationDto, CreateBoardAutomationPayload, UpdateBoardAutom
 import type { AutomationColumn } from "../board/automations/builder/automationCatalog";
 import type { BoardActivityLogEntry } from "@/types/board-options";
 import AutomationsModal from "../board/automations/AutomationsModal";
+import AutomationActivityToasts, {
+  undoableRunLogIds,
+  useAutomationActivityToasts,
+  type AutomationActivityEntry,
+} from "../board/automations/activity/AutomationActivityToasts";
+import { flashAutomationRows, placeAutomationRows } from "../board/automations/activity/automationRowPlacement";
+import { useBoardAutomationEffects } from "@/hooks/useBoardAutomationEffects";
 import type { IntegrationPage } from "../board/automations/center/centerNav";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { automationSource } from "../board/integrations/manage/manageFormat";
@@ -2847,6 +2854,64 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     router.push(view_tabs.active_view ? buildViewUrl(view_tabs.active_view) : `/boards/${board_id}`);
   };
 
+  // ── Automations, instant: what an automation changed shows right away, with no page refresh.
+  // The viewer's own requests carry `automation_effects`, everyone else's arrive over the
+  // `board-automations.{id}` socket (see `useBoardAutomationEffects`). The changed rows are read
+  // again and put in place, rows that do not come back (archived, deleted, moved to another
+  // board or tab) are dropped, and the viewer's own runs get an "Automation ran" card. ──
+  const automation_toasts = useAutomationActivityToasts();
+  const loaded_group_ids_ref = useRef(loaded_group_ids);
+  loaded_group_ids_ref.current = loaded_group_ids;
+
+  const reloadAutomationRows = useCallback(
+    async (item_ids: number[]) => {
+      if (item_ids.length === 0) return;
+      const fetched = await boardContentService.getItems(board_id, view_tabs.active_view_id, undefined, undefined, undefined, item_ids);
+      const fetched_ids = new Set(fetched.map((row) => row.id));
+      const gone_ids = new Set(item_ids.filter((id) => !fetched_ids.has(id)));
+      setItems((current) => placeAutomationRows(current, fetched, gone_ids));
+      flashAutomationRows(fetched.map((row) => row.id));
+    },
+    [board_id, view_tabs.active_view_id]
+  );
+
+  // Groups were created, archived or sorted: reload them, then every table that was already loaded.
+  const reloadAutomationStructure = useCallback(async () => {
+    const groups_index = await boardContentService.getGroups(board_id, view_tabs.active_view_id);
+    setGroups(groups_index.groups);
+    const loaded_ids = Array.from(loaded_group_ids_ref.current);
+    if (loaded_ids.length === 0) return;
+    const fetched = await boardContentService.getItems(board_id, view_tabs.active_view_id, undefined, loaded_ids);
+    const reloaded = new Set(loaded_ids);
+    setItems((current) => [...current.filter((row) => !reloaded.has(row.group_id)), ...fetched]);
+  }, [board_id, view_tabs.active_view_id]);
+
+  useBoardAutomationEffects(board_id, (effect) => {
+    const reload = effect.needs_structure_refresh ? reloadAutomationStructure() : reloadAutomationRows(effect.item_ids);
+    reload.catch(() => {});
+    if (effect.source === "self") automation_toasts.push(effect.runs, effect.item_ids);
+    // The Automations dialog shows run counts and the last run, keep them current while it is open.
+    if (is_automations_modal_open) refreshAutomations();
+  });
+
+  const handleUndoAutomationActivity = async (entry: AutomationActivityEntry) => {
+    automation_toasts.setUndoState(entry.id, "undoing");
+    try {
+      const results = await Promise.all(undoableRunLogIds(entry.runs).map((run_log_id) => boardAutomationService.undoRun(board_id, run_log_id)));
+      automation_toasts.setUndoState(entry.id, "undone");
+      await reloadAutomationRows(entry.item_ids);
+      toast.success(results.length === 1 ? results[0].message : "Undid the changes of the automations.");
+    } catch (error) {
+      automation_toasts.setUndoState(entry.id, "idle");
+      toast.error(getApiErrorMessage(error, "Couldn't undo the automation. Please try again."));
+    }
+  };
+
+  const handleOpenAutomationItem = (item_id: number) => {
+    const row = findItemInTree(items, item_id);
+    if (row) handleRowClick(row);
+  };
+
   // Keeps the drawer in sync with `initial_open_item_id` (the board's
   // `/pulses/{item_id}` URL, read from `BoardRouteContext`) rather than only
   // opening it once on mount — since the board/view no longer remounts
@@ -4951,6 +5016,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       ) : (
         <BoardItemDrawer drawer={{ ...drawer, close: handleDrawerClose }} />
       )}
+
+      <AutomationActivityToasts
+        entries={automation_toasts.entries}
+        onDismiss={automation_toasts.dismiss}
+        onUndo={node.can_edit ? handleUndoAutomationActivity : undefined}
+        onOpenItem={handleOpenAutomationItem}
+        onOpenAutomations={active_view_type === "table" ? () => openAutomationCenter() : undefined}
+      />
 
       {/* A Doc tab shows the board's discussion as its inline Comments panel instead. */}
       {!(active_view_type === "doc" && active_doc_view) && <BoardDiscussionDrawer drawer={discussion_drawer} />}
