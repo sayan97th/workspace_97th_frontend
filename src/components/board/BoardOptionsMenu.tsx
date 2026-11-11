@@ -36,6 +36,7 @@ import BoardTrashModal from "./BoardTrashModal";
 import ShareViewModal, { isShareableViewKind } from "./ShareViewModal";
 import GiveFeedbackModal from "./GiveFeedbackModal";
 import ImportItemsModal from "./import/ImportItemsModal";
+import ExportBoardModal from "./export/ExportBoardModal";
 import RenameBoardModal from "./RenameBoardModal";
 
 export type BoardOptionsMenuProps = {
@@ -131,6 +132,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
   const [is_trash_open, setIsTrashOpen] = useState(false);
   const [is_feedback_open, setIsFeedbackOpen] = useState(false);
   const [is_import_open, setIsImportOpen] = useState(false);
+  const [is_export_open, setIsExportOpen] = useState(false);
   const [confirm_kind, setConfirmKind] = useState<ConfirmKind>(null);
   const [is_duplicating, setIsDuplicating] = useState(false);
   const [is_fullscreen, setIsFullscreen] = useState(false);
@@ -160,18 +162,6 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
     } else {
       void document.documentElement.requestFullscreen();
     }
-  };
-
-  const handleExport = async () => {
-    const blob = await boardOptionsService.exportToExcel(board_id, view_id);
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${board_label.replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_export.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const handleDuplicate = async () => {
@@ -221,7 +211,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
       submenu: [
         { key: "save-template", label: "Save as a template", icon: <ReportIcon />, onClick: () => { }, disabled: true },
         { key: "build-report", label: "Build a report from board", icon: <ReportIcon />, onClick: () => { }, disabled: true },
-        { key: "export-excel", label: "Export board to Excel", icon: <DownloadIcon />, onClick: () => void handleExport() },
+        { key: "export-excel", label: "Export board to Excel", icon: <DownloadIcon />, onClick: () => setIsExportOpen(true) },
         { key: "import-items", label: "Import items", icon: <ImportIcon />, onClick: () => setIsImportOpen(true) },
         {
           key: "duplicate-board",
@@ -302,6 +292,14 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
         board_id={board_id}
         view_id={view_id ?? null}
         onImported={onImportItems}
+      />
+
+      <ExportBoardModal
+        is_open={is_export_open}
+        onClose={() => setIsExportOpen(false)}
+        board_id={board_id}
+        board_label={board_label}
+        view_id={view_id ?? null}
       />
 
       <ConfirmActionModal

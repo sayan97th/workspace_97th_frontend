@@ -1,0 +1,963 @@
+/*
+ * "Export to Excel" dialog (board options menu > More actions > Export board to Excel, and the
+ * group menu's Export to Excel). monday style: a compact centered card with a file badge, the
+ * counts of what will be exported, two layout cards with a small spreadsheet preview, option
+ * switches, then a live progress view and a "file is ready" view in the same card.
+ *
+ * Every color is a `--bx-*` token on `:root`, dark mode only swaps the tokens under `html.dark`.
+ * Actions use the brand color, the file badge and success state use Excel green.
+ */
+
+:root {
+  --bx-surface: #ffffff;
+  --bx-surface-alt: #f6f7fb;
+  --bx-text: #323338;
+  --bx-text-secondary: #676879;
+  --bx-text-faint: #9699a6;
+  --bx-divider: #e7e9ef;
+  --bx-card-border: #d0d4e4;
+  --bx-hover: #dcdfec;
+  --bx-primary: var(--color-brand-500);
+  --bx-primary-hover: var(--color-brand-600);
+  --bx-primary-soft: color-mix(in srgb, var(--color-brand-500) 9%, transparent);
+  --bx-excel: #1d6f42;
+  --bx-excel-light: #21a366;
+  --bx-excel-soft: #e3f4ea;
+  --bx-success: #00854d;
+  --bx-danger: #d83a52;
+  --bx-danger-soft: #fbe9ec;
+  --bx-track: #e6e9ef;
+  --bx-sheet-line: #d5d8e3;
+  --bx-sheet-fill: #f1f3f8;
+  --bx-overlay: rgba(41, 47, 76, 0.7);
+  --bx-shadow: 0 15px 50px rgba(0, 0, 0, 0.28);
+  --bx-skeleton: linear-gradient(90deg, #eef0f5 0%, #f8f9fc 50%, #eef0f5 100%);
+}
+
+html.dark {
+  --bx-surface: #0f1c1c;
+  --bx-surface-alt: rgba(255, 255, 255, 0.035);
+  --bx-text: #e9eded;
+  --bx-text-secondary: #9aa4a5;
+  --bx-text-faint: #6f7b7c;
+  --bx-divider: rgba(255, 255, 255, 0.1);
+  --bx-card-border: rgba(255, 255, 255, 0.14);
+  --bx-hover: rgba(255, 255, 255, 0.08);
+  --bx-primary-soft: color-mix(in srgb, var(--color-brand-500) 18%, transparent);
+  --bx-excel-soft: rgba(33, 163, 102, 0.16);
+  --bx-success: #4fd18b;
+  --bx-danger: #ff7a8c;
+  --bx-danger-soft: rgba(216, 58, 82, 0.18);
+  --bx-track: rgba(255, 255, 255, 0.1);
+  --bx-sheet-line: rgba(255, 255, 255, 0.16);
+  --bx-sheet-fill: rgba(255, 255, 255, 0.05);
+  --bx-overlay: rgba(0, 0, 0, 0.66);
+  --bx-shadow: 0 15px 50px rgba(0, 0, 0, 0.55);
+  --bx-skeleton: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05) 100%);
+}
+
+@mixin focus-ring {
+  outline: 2px solid color-mix(in srgb, var(--bx-primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+.bx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 430;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.bx-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--bx-overlay);
+  animation: bx-fade-in 0.18s ease-out;
+}
+
+.bx-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 580px;
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--bx-surface);
+  color: var(--bx-text);
+  box-shadow: var(--bx-shadow);
+  font-family: var(--font-outfit), sans-serif;
+  animation: bx-pop-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+// ── Header ──────────────────────────────────────────────────────────
+
+.bx-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 24px 18px;
+}
+
+.bx-file-badge {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, var(--bx-excel-light), var(--bx-excel));
+  color: #fff;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--bx-excel) 35%, transparent);
+
+  &::after {
+    content: "XLSX";
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    padding: 1px 5px;
+    border: 2px solid var(--bx-surface);
+    border-radius: 6px;
+    background: var(--bx-excel);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+}
+
+.bx-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.bx-title {
+  margin: 0;
+  font-family: var(--font-heading, inherit);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.bx-subtitle {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--bx-text-secondary);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  strong {
+    color: var(--bx-text);
+    font-weight: 600;
+  }
+}
+
+.bx-icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--bx-text-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:hover {
+    background: var(--bx-hover);
+    color: var(--bx-text);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+// ── Body ────────────────────────────────────────────────────────────
+
+.bx-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 24px 22px;
+}
+
+.bx-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 22px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.bx-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bx-surface-alt);
+
+  &__value {
+    font-size: 18px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  &__label {
+    color: var(--bx-text-secondary);
+    font-size: 12px;
+  }
+
+  &__skeleton {
+    width: 42px;
+    height: 20px;
+    border-radius: 6px;
+    background: var(--bx-skeleton);
+    background-size: 200% 100%;
+    animation: bx-shimmer 1.2s linear infinite;
+  }
+}
+
+.bx-section-label {
+  margin: 0 0 10px;
+  color: var(--bx-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.bx-layouts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+
+  @media (max-width: 520px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bx-layout-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--bx-card-border);
+  border-radius: 12px;
+  background: var(--bx-surface);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--bx-primary) 45%, var(--bx-card-border));
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &.is-selected {
+    border-color: var(--bx-primary);
+    box-shadow: 0 0 0 1px var(--bx-primary), 0 6px 18px var(--bx-primary-soft);
+  }
+
+  &__check {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border: 1.5px solid var(--bx-card-border);
+    border-radius: 50%;
+    background: var(--bx-surface);
+    color: #fff;
+    transition: background-color 0.15s, border-color 0.15s;
+
+    svg {
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 0.15s, transform 0.2s;
+    }
+  }
+
+  &.is-selected &__check {
+    border-color: var(--bx-primary);
+    background: var(--bx-primary);
+
+    svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  &__preview {
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--bx-surface-alt);
+    line-height: 0;
+
+    svg {
+      width: 100%;
+      height: auto;
+
+      @media (max-width: 520px) {
+        height: 72px;
+      }
+    }
+  }
+
+  &__name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__hint {
+    margin-top: 2px;
+    color: var(--bx-text-secondary);
+    font-size: 12px;
+    line-height: 1.45;
+  }
+}
+
+// The little spreadsheets inside the layout cards.
+.bx-sheet {
+  &__line {
+    fill: var(--bx-sheet-line);
+  }
+
+  &__cell {
+    fill: var(--bx-sheet-fill);
+  }
+
+  &__header {
+    fill: var(--bx-sheet-line);
+    opacity: 0.75;
+  }
+}
+
+.bx-options {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--bx-divider);
+  border-radius: 12px;
+}
+
+.bx-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+
+  & + & {
+    border-top: 1px solid var(--bx-divider);
+  }
+
+  &:hover:not(.is-disabled) {
+    background: var(--bx-surface-alt);
+  }
+
+  &.is-disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  &__icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--bx-surface-alt);
+    color: var(--bx-text-secondary);
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  &__hint {
+    color: var(--bx-text-secondary);
+    font-size: 12px;
+  }
+}
+
+.bx-switch {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--bx-card-border);
+  cursor: pointer;
+  transition: background-color 0.18s;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 0.18s cubic-bezier(0.3, 0.7, 0.4, 1.2);
+  }
+
+  &[aria-checked="true"] {
+    background: var(--bx-primary);
+
+    &::after {
+      transform: translateX(16px);
+    }
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.bx-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bx-danger-soft);
+  color: var(--bx-danger);
+  font-size: 13px;
+  line-height: 1.45;
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+  }
+}
+
+// ── Progress ────────────────────────────────────────────────────────
+
+.bx-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 8px 6px;
+  text-align: center;
+}
+
+.bx-progress-art {
+  position: relative;
+  width: 112px;
+  height: 92px;
+  margin-bottom: 16px;
+
+  &__sheet {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border: 1.5px solid var(--bx-card-border);
+    border-radius: 10px;
+    background: var(--bx-surface);
+  }
+
+  &__bar {
+    height: 8px;
+    background: linear-gradient(145deg, var(--bx-excel-light), var(--bx-excel));
+  }
+
+  &__row {
+    display: flex;
+    gap: 5px;
+    margin: 7px 9px 0;
+    opacity: 0;
+    animation: bx-row-in 2.4s ease-in-out infinite;
+
+    span {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--bx-sheet-line);
+
+      &:first-child {
+        width: 34%;
+        background: color-mix(in srgb, var(--bx-excel-light) 55%, var(--bx-sheet-line));
+      }
+
+      &:nth-child(2) {
+        width: 26%;
+      }
+
+      &:nth-child(3) {
+        flex: 1;
+      }
+    }
+
+    @for $i from 1 through 5 {
+      &:nth-child(#{$i + 1}) {
+        animation-delay: #{($i - 1) * 0.28}s;
+      }
+    }
+  }
+
+  &__arrow {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    border: 3px solid var(--bx-surface);
+    border-radius: 50%;
+    background: var(--bx-primary);
+    color: #fff;
+
+    svg {
+      animation: bx-bounce 1.1s ease-in-out infinite;
+    }
+  }
+}
+
+.bx-percent {
+  font-family: var(--font-heading, inherit);
+  font-size: 34px;
+
+  &--label {
+    font-size: 22px;
+  }
+
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.bx-progress-label {
+  margin-top: 4px;
+  color: var(--bx-text-secondary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bx-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  margin: 18px 0 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--bx-track);
+
+  &__fill {
+    position: relative;
+    height: 100%;
+    overflow: hidden;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--bx-excel-light), var(--bx-excel));
+    transition: width 0.45s ease-out;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.45) 50%, transparent 80%);
+      background-size: 200% 100%;
+      animation: bx-sheen 1.4s linear infinite;
+    }
+  }
+
+  &.is-indeterminate &__fill {
+    position: absolute;
+    width: 38% !important;
+    animation: bx-indeterminate 1.3s ease-in-out infinite;
+  }
+}
+
+.bx-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  color: var(--bx-text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.bx-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bx-surface-alt);
+  color: var(--bx-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.45;
+  text-align: left;
+
+  svg {
+    flex: none;
+  }
+}
+
+// ── Done and failed ─────────────────────────────────────────────────
+
+.bx-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 8px 4px;
+  text-align: center;
+
+  &__title {
+    margin: 14px 0 4px;
+    font-family: var(--font-heading, inherit);
+    font-size: 19px;
+    font-weight: 700;
+  }
+
+  &__text {
+    max-width: 400px;
+    margin: 0;
+    color: var(--bx-text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+}
+
+.bx-check {
+  width: 64px;
+  height: 64px;
+
+  circle {
+    fill: var(--bx-excel-soft);
+    stroke: var(--bx-excel-light);
+    stroke-width: 2;
+    animation: bx-scale-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.3) both;
+    transform-origin: center;
+  }
+
+  path {
+    fill: none;
+    stroke: var(--bx-excel);
+    stroke-width: 3.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: bx-draw 0.4s 0.25s ease-out forwards;
+  }
+
+  &.is-error circle {
+    fill: var(--bx-danger-soft);
+    stroke: var(--bx-danger);
+  }
+
+  &.is-error path {
+    stroke: var(--bx-danger);
+  }
+}
+
+.bx-file-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--bx-card-border);
+  border-radius: 12px;
+  text-align: left;
+
+  &__icon {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    background: var(--bx-excel-soft);
+    color: var(--bx-excel);
+  }
+
+  &__text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__name {
+    overflow: hidden;
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta {
+    color: var(--bx-text-secondary);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// ── Footer and buttons ──────────────────────────────────────────────
+
+.bx-footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--bx-divider);
+
+  &__hint {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    color: var(--bx-text-faint);
+    font-size: 12px;
+
+    @media (max-width: 520px) {
+      display: none;
+    }
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+}
+
+.bx-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  &--primary {
+    background: var(--bx-primary);
+    color: #fff;
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--bx-primary) 30%, transparent);
+
+    &:hover:not(:disabled) {
+      background: var(--bx-primary-hover);
+    }
+  }
+
+  &--secondary {
+    border-color: var(--bx-card-border);
+    background: transparent;
+    color: var(--bx-text);
+
+    &:hover:not(:disabled) {
+      background: var(--bx-surface-alt);
+    }
+  }
+
+  &--ghost {
+    background: transparent;
+    color: var(--bx-text);
+
+    &:hover:not(:disabled) {
+      background: var(--bx-hover);
+    }
+  }
+
+  &--danger {
+    background: transparent;
+    color: var(--bx-danger);
+
+    &:hover:not(:disabled) {
+      background: var(--bx-danger-soft);
+    }
+  }
+
+  &--link {
+    height: auto;
+    padding: 0;
+    background: none;
+    color: var(--bx-primary);
+    font-weight: 600;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+  }
+}
+
+.bx-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: bx-spin 0.7s linear infinite;
+}
+
+// ── Motion ──────────────────────────────────────────────────────────
+
+@keyframes bx-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes bx-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@keyframes bx-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes bx-sheen {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes bx-indeterminate {
+  from {
+    left: -40%;
+  }
+
+  to {
+    left: 100%;
+  }
+}
+
+@keyframes bx-row-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+
+  15%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bx-bounce {
+  0%,
+  100% {
+    transform: translateY(-2px);
+  }
+
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes bx-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes bx-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes bx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bx-dialog,
+  .bx-backdrop,
+  .bx-progress-art__row,
+  .bx-progress-art__arrow svg,
+  .bx-track__fill::after,
+  .bx-check circle,
+  .bx-check path {
+    animation: none;
+  }
+
+  .bx-progress-art__row {
+    opacity: 1;
+  }
+
+  .bx-check path {
+    stroke-dashoffset: 0;
+  }
+}

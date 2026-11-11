@@ -160,7 +160,6 @@ import { isAssignablePerson } from "@/lib/assignable-person";
 import { boardDocService } from "@/services/board-doc.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
-import { downloadBlob } from "@/lib/download-blob";
 import { personalService } from "@/services/personal.service";
 import { peopleService } from "@/services/people.service";
 import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
@@ -187,6 +186,7 @@ import type { BoardAccessEntry, BoardMember } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import ImportItemsModal from "@/components/board/import/ImportItemsModal";
+import ExportBoardModal from "@/components/board/export/ExportBoardModal";
 import { buildBoardPath } from "./helpers";
 
 export type WorkspaceViewProps = {
@@ -981,6 +981,9 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [selected_item_ids, setSelectedItemIds] = useState<number[]>([]);
   /** The toolbar's "New item" chevron menu > "Import items" wizard. */
   const [is_toolbar_import_open, setIsToolbarImportOpen] = useState(false);
+  // Group menu's "Export to Excel": the group the export dialog is scoped to, kept after closing so a running export still finishes.
+  const [group_export_target, setGroupExportTarget] = useState<{ id: number; name: string } | null>(null);
+  const [is_group_export_open, setIsGroupExportOpen] = useState(false);
   /** The toolbar's "New item" row, opened for name editing in the table once it renders. */
   const [new_item_edit_request, setNewItemEditRequest] = useState<{ item_id: string; nonce: number } | null>(null);
   const [is_bulk_action_busy, setIsBulkActionBusy] = useState(false);
@@ -3301,14 +3304,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       });
   };
 
-  /** Group menu's "Export to Excel", downloads only that group's items of the open tab. */
+  /** Group menu's "Export to Excel", opens the export dialog scoped to that group of the open tab. */
   const handleExportTableGroup = (group_key: string) => {
     const group = groups.find((g) => String(g.id) === group_key);
     if (!group) return;
-    void boardOptionsService
-      .exportToExcel(board_id, view_tabs.active_view_id, group.id)
-      .then((blob) => downloadBlob(blob, `${`${board_label} ${group.name}`.replace(/[^a-z0-9]+/gi, "_").toLowerCase()}_export.xlsx`))
-      .catch((error) => toast.error(getApiErrorMessage(error, "Couldn't export the group. Please try again.")));
+    setGroupExportTarget({ id: group.id, name: group.name });
+    setIsGroupExportOpen(true);
   };
 
   /** "Delete group" is confirmed first (see `ConfirmActionModal` below), the group is only removed once the server has deleted it. */
@@ -5054,6 +5055,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         view_id={view_tabs.active_view_id ?? null}
         onImported={handleImportItems}
       />
+
+      {/* Stays mounted once used, so an export keeps running (and still downloads) after "Hide". */}
+      {group_export_target && (
+        <ExportBoardModal
+          is_open={is_group_export_open}
+          onClose={() => setIsGroupExportOpen(false)}
+          board_id={board_id}
+          board_label={board_label}
+          view_id={view_tabs.active_view_id ?? null}
+          group={group_export_target}
+        />
+      )}
     </BoardShell>
   );
 };

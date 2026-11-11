@@ -58,15 +58,6 @@ export const boardOptionsService = {
     await apiClient.delete(`/api/boards/${board_id}/trash/groups/${group_id}`);
   },
 
-  /** GET /api/boards/{id}/export, downloads the active tab (or only one of its groups, the group menu's "Export to Excel") as an .xlsx workbook. */
-  async exportToExcel(board_id: number, view_id?: number | null, group_id?: number | null): Promise<Blob> {
-    const params = new URLSearchParams();
-    if (view_id) params.set("view_id", String(view_id));
-    if (group_id) params.set("group_id", String(group_id));
-    const query = params.toString() ? `?${params.toString()}` : "";
-    return apiClient.get<Blob>(`/api/boards/${board_id}/export${query}`, { responseType: "blob" });
-  },
-
   /** POST /api/feedback — board options menu's "Give feedback". */
   async submitFeedback(message: string, board_id?: number): Promise<void> {
     await apiClient.post("/api/feedback", {

@@ -273,4 +273,7 @@ export const apiClient = {
     requestFormData<T>(endpoint, form_data, "POST"),
 };
 
+/** Turns an API path (e.g. a signed download link the API returned) into an absolute URL the browser can open. */
+export const toApiUrl = (path: string): string => (/^https?:\/\//i.test(path) ? path : `${API_BASE_URL.replace(/\/$/, "")}${path.startsWith("/") ? "" : "/"}${path}`);
+
 export { setToken, removeToken, getToken, getSessionExpiresAt, persistSession };
