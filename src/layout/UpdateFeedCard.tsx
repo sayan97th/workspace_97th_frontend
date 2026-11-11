@@ -2,6 +2,7 @@
 import React, { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PersonAvatar from "@/components/board/PersonAvatar";
+import BrandLogo from "@/components/common/BrandLogo";
 import RichTextContent from "@/components/board/drawer/RichTextContent";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import FeedActivityTimeline from "@/components/feed/FeedActivityTimeline";
@@ -259,7 +260,11 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
       <article className="uf-card" data-unread={is_thread_unread ? "true" : undefined} aria-label={`Update by ${actor.name}`}>
         {/* Header: avatar, name, breadcrumb, age, bell and menu */}
         <header className="uf-card__header">
-          {actor.id ? (
+          {actor.is_system ? (
+            <span className="uf-card__system-avatar" aria-hidden="true">
+              <BrandLogo size={20} />
+            </span>
+          ) : actor.id ? (
             <PersonHoverCard person={author_person} className="flex-none">
               <PersonAvatar person={{ ...actor, id: actor.id }} size={32} />
             </PersonHoverCard>
@@ -269,14 +274,16 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
 
           <div className="uf-card__heading">
             <div className="uf-card__author">
-              {actor.id ? (
+              {actor.is_system ? (
+                <span className="uf-card__name">{actor.name}</span>
+              ) : actor.id ? (
                 <PersonHoverCard person={author_person}>
                   <span className={`uf-card__name ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</span>
                 </PersonHoverCard>
               ) : (
                 <span className={`uf-card__name ${getDeactivatedClass(true)}`}>{actor.name}</span>
               )}
-              <DeactivatedBadge is_deactivated={actor.id ? actor.is_deactivated : false} />
+              {!actor.is_system && <DeactivatedBadge is_deactivated={actor.id ? actor.is_deactivated : false} />}
             </div>
             <nav className="uf-card__breadcrumb" aria-label="Where this update lives">
               {breadcrumb.crumbs.map((crumb, index) => {

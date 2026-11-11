@@ -86,6 +86,19 @@ html.dark {
   padding: 14px 14px 0 18px;
 }
 
+// "Automations": the app logo on a soft disc in place of a person's avatar, as in monday.
+.uf-card__system-avatar {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--uf-border);
+  border-radius: 9999px;
+  background: var(--uf-card);
+}
+
 .uf-card__heading {
   display: flex;
   min-width: 0;

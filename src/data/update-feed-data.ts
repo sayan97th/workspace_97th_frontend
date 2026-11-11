@@ -129,6 +129,8 @@ export type FeedActor = {
   avatar_url?: string;
   /** The author's account was disabled or deleted, so their avatar and name are shown faded. */
   is_deactivated?: boolean;
+  /** "Automations": an automation posted the update, shown with the app logo instead of a person. */
+  is_system?: boolean;
 };
 
 /** Someone `@mentioned` in an update, so hovering the mention can show who they are. */

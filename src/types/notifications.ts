@@ -14,6 +14,8 @@ export type NotificationDto = {
   actor: { name: string; id: number | null; avatar_url?: string | null; is_deactivated?: boolean; is_system?: boolean };
   /** `user` (the actor is the sender) or `automations` (sent by an automation or a reminder). */
   sender_type?: "user" | "automations";
+  /** monday's notification `title`: the whole sentence, stored when the notification was sent. */
+  title?: string | null;
   action_label: string;
   action_target: string;
   board: { id: number; name: string } | null;
@@ -22,6 +24,11 @@ export type NotificationDto = {
   preview?: string | null;
   /** Name of the item it is about, shown after the time in the card footer. */
   item_name?: string | null;
+  /** monday's board > group > item trail, as it was when the notification was sent. */
+  item?: { id: number; name: string | null } | null;
+  group?: { id: number | null; name: string } | null;
+  /** monday's `Notification.update`: the update or reply it is about and the top level update of its thread (feed ids). */
+  update?: { id: string; thread_id: string } | null;
   /** The item the notification is about, what "Mute this item" targets. Null for a board level notification. */
   board_item_id: number | null;
   is_item_muted: boolean;
@@ -111,6 +118,10 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     link: dto.link ?? undefined,
     preview: dto.preview?.trim() || undefined,
     item_name: dto.item_name ?? undefined,
+    title: dto.title ?? undefined,
+    group_name: dto.group?.name ?? undefined,
+    update_id: dto.update?.id,
+    thread_id: dto.update?.thread_id,
     board_item_id: dto.board_item_id ?? undefined,
     is_item_muted: dto.is_item_muted ?? false,
     reply_to: dto.reply_to ?? undefined,

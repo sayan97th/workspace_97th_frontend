@@ -13,12 +13,20 @@ export type FeedUpdateDto = {
   id: string;
   /** The card this update shows in: its own id for a top-level update, its parent's for a reply. */
   thread_id?: string;
-  actor: { id: number | null; name: string; avatar_url: string | null; is_deactivated?: boolean };
+  /** monday's `creator`: a person, or "Automations" (`is_system`) for what an automation posted. */
+  actor: { id: number | null; name: string; avatar_url: string | null; is_deactivated?: boolean; is_system?: boolean };
+  /** `user`, or `automations` when an automation posted the update. */
+  sender_type?: "user" | "automations";
+  automation_id?: number | null;
   body: string;
+  /** monday's `text_body`, the plain text twin of `body`. */
+  text_body?: string | null;
   created_at: string;
   edited_at?: string | null;
   board: { id: number; name: string; parent_name: string | null };
   item: { id: number; name: string } | null;
+  /** The group the item sits in, the middle crumb of monday's board > group > item trail. */
+  group?: { id: number; name: string } | null;
   link: string;
   view_count: number;
   /** A reply to another update rather than a top-level one. */
@@ -103,13 +111,15 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
       avatar_seed: actor_seed,
       avatar_url: dto.actor.avatar_url ?? undefined,
       is_deactivated: dto.actor.is_deactivated ?? false,
+      is_system: dto.actor.is_system ?? false,
     },
     date_label: formatDistanceToNowStrict(new Date(dto.created_at), { addSuffix: true }),
     created_at: dto.created_at,
     edited_at: dto.edited_at ?? undefined,
     breadcrumb: {
       board_color: BOARD_CONDITIONAL_COLOR_PALETTE[board_seed % BOARD_CONDITIONAL_COLOR_PALETTE.length],
-      crumbs: [dto.board.parent_name, dto.board.name, dto.item?.name].filter((crumb): crumb is string => Boolean(crumb)),
+      // monday's trail: board > group > item (a board discussion update shows just the board).
+      crumbs: [dto.board.name, dto.group?.name, dto.item?.name].filter((crumb): crumb is string => Boolean(crumb)),
     },
     body: dto.body,
     mentions: dto.mentions.map((mention) => ({

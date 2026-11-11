@@ -68,6 +68,13 @@ export type WorkspaceNotification = {
   preview?: string;
   /** Name of the item it is about, the card footer reads "11m · Task 1" (the board name when there is no item). */
   item_name?: string;
+  /** monday's notification `title`, the full sentence as it was sent. */
+  title?: string;
+  /** The group the item sat in when it was sent, the middle crumb of board > group > item. */
+  group_name?: string;
+  /** Feed id of the update or reply it is about, and of the top level update of its thread (the Update feed card). */
+  update_id?: string;
+  thread_id?: string;
   /** The item the notification is about, what "Mute this item" targets. Absent for a board level notification. */
   board_item_id?: number;
   /** The viewer muted that item, so nothing new about it arrives. */
