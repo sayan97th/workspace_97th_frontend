@@ -186,6 +186,12 @@ export const feedService = {
     return response.data;
   },
 
+  /** POST /api/feed/updates/{id}/reactions, adds the emoji, or removes it when the viewer already reacted with it. */
+  async toggleReaction(id: string, emoji: string): Promise<FeedUpdateDto> {
+    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/reactions`, { emoji });
+    return response.data;
+  },
+
   /** POST /api/feed/updates/{id}/pin */
   async togglePin(id: string): Promise<FeedUpdateDto> {
     const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/pin`);

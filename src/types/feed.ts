@@ -2,6 +2,8 @@ import { formatDistanceToNowStrict } from "date-fns";
 import { BOARD_CONDITIONAL_COLOR_PALETTE } from "@/components/board/toolbar/types";
 import { getUserInitials } from "@/lib/user";
 import type { FeedUpdate } from "@/data/update-feed-data";
+import { mapLikerDto, mapReactionDto } from "@/components/board/drawer/commentMapping";
+import type { BoardItemCommentReactionDto, CommentLikerDto } from "@/types/board-comments";
 
 /**
  * Shape returned by `App\Http\Resources\FeedUpdateResource` (workspace_97th_api),
@@ -28,6 +30,12 @@ export type FeedUpdateDto = {
   is_following_board: boolean;
   activity: FeedActivityEntryDto[];
   activity_total: number;
+  like_count: number;
+  liked_by_me: boolean;
+  /** Who liked and when, oldest first, the same shape the item drawer reads. */
+  likers: CommentLikerDto[];
+  /** Emoji reactions grouped by emoji, with who reacted and when. */
+  reactions: BoardItemCommentReactionDto[];
 };
 
 /** One item change under an update, as `FeedUpdateResource::activityPayload()` sends it. */
@@ -126,9 +134,24 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
       time_label: formatDistanceToNowStrict(new Date(entry.created_at), { addSuffix: true }),
     })),
     activity_total: dto.activity_total,
+    ...mapFeedReactionsDto(dto),
     categories,
     link: dto.link,
     show_actions: true,
     show_composer: true,
+  };
+}
+
+/**
+ * The like and reaction part of a feed card, on its own so a Like or React
+ * response can refresh just these fields without touching the rest of the
+ * card. Older payloads without these fields read as "nobody reacted yet".
+ */
+export function mapFeedReactionsDto(dto: FeedUpdateDto): Pick<FeedUpdate, "like_count" | "liked_by_me" | "likers" | "reactions"> {
+  return {
+    like_count: dto.like_count ?? 0,
+    liked_by_me: dto.liked_by_me ?? false,
+    likers: (dto.likers ?? []).map(mapLikerDto),
+    reactions: (dto.reactions ?? []).map(mapReactionDto),
   };
 }

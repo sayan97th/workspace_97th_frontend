@@ -94,6 +94,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     loadMore,
     bookmarkUpdate,
     likeUpdate,
+    reactToUpdate,
     pinUpdate,
     follows,
     loadFollows,
@@ -129,6 +130,17 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
           }
         : { id: "0", name: "You", initials: "Y", avatar_seed: 0 },
     [user]
+  );
+
+  // Like and React update the card at once, the hook rolls a failed request back, this only says so.
+  const likeCard = useCallback(
+    (id: string) => void likeUpdate(id).catch(() => toastError("Couldn't update your like. Please try again.")),
+    [likeUpdate, toastError]
+  );
+  const reactToCard = useCallback(
+    (id: string, emoji: string) =>
+      void reactToUpdate(id, emoji).catch(() => toastError("Couldn't update that reaction. Please try again.")),
+    [reactToUpdate, toastError]
   );
 
   const sentinel_ref = useInfiniteScroll({
@@ -393,7 +405,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   key={update.id}
                   update={update}
                   current_user={current_user}
-                  onLike={likeUpdate}
+                  onLike={likeCard}
+                  onReact={reactToCard}
                   onBookmark={bookmarkUpdate}
                   onPin={pinUpdate}
                   onReply={replyToUpdate}

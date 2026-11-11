@@ -10,7 +10,12 @@ import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
 import DeactivatedBadge from "@/components/board/DeactivatedBadge";
+import EmojiPalette from "@/components/board/drawer/EmojiPalette";
+import LikeButton from "@/components/board/drawer/LikeButton";
+import ReactionPill from "@/components/board/drawer/ReactionPill";
+import ReactionsSummary from "@/components/board/drawer/ReactionsSummary";
 import { PinIcon } from "@/icons/board-icons";
+import { ReactSmileyIcon } from "@/icons/drawer-icons";
 import {
   BookmarkIcon,
   ChevronRightIcon,
@@ -18,17 +23,19 @@ import {
   LinkIcon,
   MoreDotsIcon,
   ReplyIcon,
-  ThumbsUpIcon,
   ViewsIcon,
 } from "@/icons/workspace-icons";
 import { feed_reply_placeholder, type FeedUpdate } from "@/data/update-feed-data";
+import "./update-feed-card.scss";
 
 type UpdateFeedCardProps = {
   update: FeedUpdate;
   /** The signed-in user, shown beside the reply box. */
   current_user: BoardPersonOption;
-  /** Fired when the Like action is pressed. */
+  /** Fired when the Like action is pressed, toggles the viewer's like. */
   onLike?: (id: string) => void;
+  /** Fired when an emoji is picked or a reaction pill is clicked, toggles the viewer's reaction with that emoji. */
+  onReact?: (id: string, emoji: string) => void;
   /** Fired when the Bookmark action is pressed. */
   onBookmark?: (id: string) => void;
   /** Fired when the Pin action is pressed. */
@@ -56,7 +63,9 @@ const SEEN_VISIBLE_MIN_HEIGHT_PX = 240;
  * A single update card in the feed: the author's avatar (with a profile hover
  * card), date, an "Unread" marker until it has been on screen for a moment
  * (the accent bar stays for the rest of the session), the board breadcrumb it is scoped to, the message body, an
- * optional view count and the Like / Reply footer with an inline rich text
+ * reactions row (emoji pills, a "+" for another emoji and the "You, Haley
+ * and 2 others" summary) beside the view count, the Like / React / Reply bar
+ * (hovering Like or a pill lists who did it) and an inline rich text
  * reply composer (`@mentions`, emoji, and a "schedule for later" option). Backed by real `App\Models\BoardItemComment` /
  * `App\Models\BoardComment` rows via `useFeedUpdates` — mention highlighting
  * reuses `renderMentionText`, the same helper board comment threads use.
@@ -65,6 +74,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   update,
   current_user,
   onLike,
+  onReact,
   onBookmark,
   onPin,
   onReply,
@@ -102,6 +112,8 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   const article_ref = useRef<HTMLElement>(null);
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const reply_composer_ref = useRef<HTMLDivElement>(null);
+  // The React button, or the "+" once the card has reactions, whichever opened the emoji palette.
+  const [palette_anchor, setPaletteAnchor] = useState<HTMLElement | null>(null);
   // Read through a ref so a parent re-render never restarts the dwell timer below.
   const mark_seen_ref = useRef(onMarkSeen);
   const is_own = actor.id !== undefined && actor.id === current_user.id;
@@ -160,6 +172,19 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     if (type === "board") onFollow?.("board", Number(board_id), !is_following_board);
   };
   const is_following = is_following_item || is_following_board;
+
+  const has_reactions = update.reactions.length > 0;
+  const has_reaction_row = has_reactions || update.like_count > 0;
+  const has_views = typeof view_count === "number";
+
+  const togglePalette = (event: React.MouseEvent<HTMLElement>) => {
+    const trigger = event.currentTarget;
+    setPaletteAnchor((current) => (current === trigger ? null : trigger));
+  };
+  const react = (emoji: string) => {
+    setPaletteAnchor(null);
+    onReact?.(id, emoji);
+  };
 
   return (
     <article
@@ -338,36 +363,71 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
         {/* Item changes behind this update */}
         <FeedActivityTimeline entries={activity} total={activity_total} />
 
-        {/* View count */}
-        {typeof view_count === "number" && (
-          <div className="mt-3.5 flex items-center justify-end gap-[5px] text-xs text-shell-text-muted">
-            <ViewsIcon size={14} />
-            {view_count}
+        {/* Reactions and view count */}
+        {((show_actions && has_reaction_row) || has_views) && (
+          <div className="feed-card__meta">
+            {show_actions && has_reaction_row && (
+              <div className="feed-card__reactions">
+                {update.reactions.map((reaction) => (
+                  <ReactionPill
+                    key={reaction.emoji}
+                    reaction={reaction}
+                    source={update}
+                    current_user={current_user}
+                    onToggle={() => onReact?.(id, reaction.emoji)}
+                  />
+                ))}
+                {has_reactions && onReact && (
+                  <button
+                    type="button"
+                    onClick={togglePalette}
+                    aria-label="Add another reaction"
+                    aria-expanded={palette_anchor !== null && palette_anchor.dataset.trigger === "add"}
+                    data-trigger="add"
+                    title="Add another reaction"
+                    className="feed-card__add-reaction"
+                  >
+                    <ReactSmileyIcon size={13} />
+                  </button>
+                )}
+                <ReactionsSummary source={update} current_user={current_user} />
+              </div>
+            )}
+            {has_views && (
+              <span className="feed-card__views" title={`Seen by ${view_count}`}>
+                <ViewsIcon size={14} />
+                {view_count}
+              </span>
+            )}
           </div>
         )}
       </div>
 
-      {/* Like / Reply actions */}
+      {/* Like / React / Reply actions */}
       {show_actions && (
-        <div className="flex gap-[22px] border-t border-shell-border px-5 py-3">
-          <button
-            type="button"
-            onClick={() => onLike?.(id)}
-            className="flex items-center gap-[7px] text-[13px] font-medium text-shell-text-muted transition-colors hover:text-shell-text"
-          >
-            <ThumbsUpIcon size={15} />
-            Like
-          </button>
-          <button
-            type="button"
-            onClick={focusReplyComposer}
-            className="flex items-center gap-[7px] text-[13px] font-medium text-shell-text-muted transition-colors hover:text-shell-text"
-          >
+        <div className="feed-card__actions">
+          <LikeButton entry={update} current_user={current_user} onToggle={() => onLike?.(id)} class_name="feed-card__action" />
+          {!has_reactions && onReact && (
+            <span className="feed-card__action-wrap">
+              <button
+                type="button"
+                onClick={togglePalette}
+                aria-expanded={palette_anchor !== null && palette_anchor.dataset.trigger === "react"}
+                data-trigger="react"
+                className="feed-card__action"
+              >
+                <ReactSmileyIcon />
+                React
+              </button>
+            </span>
+          )}
+          <button type="button" onClick={focusReplyComposer} className="feed-card__action">
             <ReplyIcon size={15} />
             Reply
           </button>
         </div>
       )}
+      <EmojiPalette anchor_el={palette_anchor} is_open={palette_anchor !== null} onClose={() => setPaletteAnchor(null)} onPick={react} mode="react" />
 
       {/* Inline reply composer */}
       {show_composer && (

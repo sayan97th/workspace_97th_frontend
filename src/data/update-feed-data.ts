@@ -1,3 +1,5 @@
+import type { DrawerLiker, DrawerReaction } from "@/components/board/drawer/types";
+
 /**
  * Types and copy backing the Update feed drawer opened from the AppTopBar
  * feed button. Entries themselves come from the API (see `src/types/feed.ts`
@@ -181,6 +183,13 @@ export type FeedUpdate = {
   activity: FeedActivityEntry[];
   /** How many changes there were in total, which can exceed the entries sent. */
   activity_total: number;
+  /** How many people liked it, and whether the viewer is one of them. */
+  like_count: number;
+  liked_by_me: boolean;
+  /** Everyone who liked it, oldest first, for the Like hover card. */
+  likers?: DrawerLiker[];
+  /** One pill per emoji, with who reacted, for the reactions row. */
+  reactions: DrawerReaction[];
   /** Which tabs (beyond the catch-all "all") this update belongs to. */
   categories: UpdateFeedTabId[];
   /** Frontend route to navigate to when the card (or its breadcrumb) is opened. */

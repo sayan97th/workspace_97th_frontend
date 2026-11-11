@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getToken } from "@/lib/api-client";
 import { listenOnPrivateChannel } from "@/lib/echo";
 import { feedService } from "@/services/feed.service";
-import { mapFeedUpdateDto, type FeedFollowsDto, type FeedUpdateDto } from "@/types/feed";
+import { mapFeedReactionsDto, mapFeedUpdateDto, type FeedFollowsDto, type FeedUpdateDto } from "@/types/feed";
+import { flipLike } from "@/components/board/drawer/likeToggle";
+import { bumpReaction } from "@/components/board/drawer/reactionToggle";
+import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import { getUserInitials } from "@/lib/user";
 import {
   default_feed_filters,
   feed_page_size,
@@ -224,10 +228,32 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     setPendingUpdates([]);
   }, [pending_updates]);
 
+  /**
+   * Swaps a card for the server's copy after an action. The action endpoints
+   * do not send the item changes timeline, so the one already on the card is
+   * kept instead of disappearing.
+   */
   const applyUpdate = useCallback((dto: FeedUpdateDto) => {
     const mapped = mapFeedUpdateDto(dto);
-    setUpdates((previous) => previous.map((update) => (update.id === mapped.id ? mapped : update)));
+    setUpdates((previous) =>
+      previous.map((update) => {
+        if (update.id !== mapped.id) return update;
+        const keeps_activity = mapped.activity.length === 0 && update.activity.length > 0;
+        return keeps_activity ? { ...mapped, activity: update.activity, activity_total: update.activity_total } : mapped;
+      })
+    );
   }, []);
+
+  /** Changes one card in place, used by the optimistic Like and React toggles. */
+  const patchUpdate = useCallback((id: string, transform: (update: FeedUpdate) => FeedUpdate) => {
+    setUpdates((previous) => previous.map((update) => (update.id === id ? transform(update) : update)));
+  }, []);
+
+  /** Only the like and reaction fields of a server response, so a slower reply never undoes other changes to the card. */
+  const applyServerReactions = useCallback(
+    (dto: FeedUpdateDto) => patchUpdate(dto.id, (update) => ({ ...update, ...mapFeedReactionsDto(dto) })),
+    [patchUpdate]
+  );
 
   const bookmarkUpdate = useCallback(
     async (id: string) => {
@@ -265,12 +291,58 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     [updates, tab, loadFollows]
   );
 
+  /** The viewer as the Like card and the reactions summary show them. */
+  const current_person = useMemo<BoardPersonOption | null>(
+    () =>
+      user
+        ? {
+            id: String(user.id),
+            name: user.full_name,
+            initials: getUserInitials(user),
+            avatar_seed: user.id,
+            avatar_url: user.profile_photo_url ?? undefined,
+          }
+        : null,
+    [user]
+  );
+
+  /**
+   * Likes or unlikes a card. The count, the blue thumb and the "who liked"
+   * list change at once, then the server's answer replaces them. A failed
+   * request flips the like back and rethrows so the panel can say so.
+   */
   const likeUpdate = useCallback(
     async (id: string) => {
-      const dto = await feedService.toggleLike(id);
-      applyUpdate(dto);
+      if (!current_person) return;
+      const flip = (update: FeedUpdate) => flipLike(update, current_person);
+      patchUpdate(id, flip);
+      try {
+        applyServerReactions(await feedService.toggleLike(id));
+      } catch (error) {
+        patchUpdate(id, flip);
+        throw error;
+      }
     },
-    [applyUpdate]
+    [current_person, patchUpdate, applyServerReactions]
+  );
+
+  /**
+   * Adds the viewer's emoji reaction to a card, or removes it when they
+   * already reacted with it. Optimistic like {@link likeUpdate}, rolled back
+   * and rethrown when the request fails.
+   */
+  const reactToUpdate = useCallback(
+    async (id: string, emoji: string) => {
+      const bump = (update: FeedUpdate) => ({ ...update, reactions: bumpReaction(update.reactions, emoji) });
+      patchUpdate(id, bump);
+      try {
+        applyServerReactions(await feedService.toggleReaction(id, emoji));
+      } catch (error) {
+        patchUpdate(id, bump);
+        throw error;
+      }
+    },
+    [patchUpdate, applyServerReactions]
   );
 
   const pinUpdate = useCallback(
@@ -344,6 +416,7 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     loadMore,
     bookmarkUpdate,
     likeUpdate,
+    reactToUpdate,
     pinUpdate,
     follows,
     loadFollows,

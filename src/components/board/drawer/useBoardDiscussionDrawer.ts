@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { bumpReaction } from "./reactionToggle";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { boardDiscussionService } from "@/services/board-discussion.service";
 import { boardMuteService } from "@/services/board-mute.service";
@@ -29,24 +30,6 @@ const MENTION_TRIGGER = /@([\w]*)$/;
 
 /** A rich text composer's Markdown body counts as empty when it's got no visible text and no inline image (`![alt](url)`). */
 const isRichTextEmpty = (markdown: string): boolean => markdown.trim().length === 0 && !markdown.includes("![");
-
-/** Bumps (or removes) a single emoji's reaction pill, toggling whether the current user reacted with it — a comment can carry any number of these in parallel, one per distinct emoji. */
-const bumpReaction = (reactions: DrawerReaction[], emoji: string): DrawerReaction[] => {
-  const index = reactions.findIndex((reaction) => reaction.emoji === emoji);
-  if (index === -1) return [...reactions, { emoji, count: 1, reacted_by_me: true, reactor_names: ["You"] }];
-  const current = reactions[index];
-  const next_reacted_by_me = !current.reacted_by_me;
-  const next_count = current.count + (next_reacted_by_me ? 1 : -1);
-  if (next_count <= 0) return reactions.filter((_, existing_index) => existing_index !== index);
-  const next_reactor_names = next_reacted_by_me
-    ? [...current.reactor_names, "You"]
-    : current.reactor_names.filter((name) => name !== "You");
-  return reactions.map((reaction, existing_index) =>
-    existing_index === index
-      ? { ...reaction, count: next_count, reacted_by_me: next_reacted_by_me, reactor_names: next_reactor_names, reactors: undefined }
-      : reaction
-  );
-};
 
 type ComposerAttachmentDraft = { attachment: DrawerAttachment; file: File };
 
