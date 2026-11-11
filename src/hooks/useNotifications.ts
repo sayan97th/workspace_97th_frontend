@@ -19,7 +19,6 @@ import {
   type NotificationFilterOptions,
   type NotificationFilters,
   type NotificationSnoozePresetId,
-  type NotificationSummary,
   type WorkspaceNotification,
 } from "@/data/notifications-data";
 import { useToast } from "@/components/ui/toast/ToastProvider";
@@ -38,8 +37,7 @@ const BULK_BATCH_SIZE = 100;
  * one unless the user's quiet hours are active (with a short chime when they
  * turned the sound on), prefixes the tab title with the unread count when they
  * left that on, and exposes the drawer's actions: open, mark as (un)read,
- * snooze, save for later, dismiss, and the same on a multi-selection. Also
- * loads the summary card's counts of what is waiting for the person.
+ * snooze, dismiss, delete all, and the same on a multi-selection.
  */
 export function useNotifications() {
   const { user } = useAuth();
@@ -52,7 +50,6 @@ export function useNotifications() {
   const [next_cursor, setNextCursor] = useState<string | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [is_loading_more, setIsLoadingMore] = useState(false);
-  const [summary, setSummary] = useState<NotificationSummary | null>(null);
 
   // The websocket listener and the paging callbacks read these through refs, so
   // a filter change or a fresh profile never tears down the live subscription.
@@ -82,14 +79,6 @@ export function useNotifications() {
       setUnreadCount(await notificationsService.getUnreadCount());
     } catch {
       // The bell keeps its last known count.
-    }
-  }, []);
-
-  const loadSummary = useCallback(async () => {
-    try {
-      setSummary(await notificationsService.getSummary());
-    } catch {
-      // The card keeps its last known counts.
     }
   }, []);
 
@@ -144,7 +133,12 @@ export function useNotifications() {
       const options = await notificationsService.getFilterOptions();
       setFilterOptions({
         boards: options.boards.map((board) => ({ id: String(board.id), name: board.name })),
-        actors: options.actors.map((actor) => ({ id: String(actor.id), name: actor.name })),
+        actors: options.actors.map((actor) => ({
+          id: String(actor.id),
+          name: actor.name,
+          avatar_url: actor.avatar_url ?? undefined,
+          is_deactivated: actor.is_deactivated ?? false,
+        })),
       });
     } catch {
       // The menus keep whatever options they already had.
@@ -250,43 +244,30 @@ export function useNotifications() {
   const markAsUnread = useCallback((id: string) => setNotificationUnread(id, true), [setNotificationUnread]);
   const markAsRead = useCallback((id: string) => setNotificationUnread(id, false), [setNotificationUnread]);
 
-  // Notifications saved for later stay unread, saving one is how a person keeps it out of a bulk clear.
   const markAllAsRead = useCallback(() => {
-    setNotifications((previous) => previous.map((item) => (item.is_saved ? item : { ...item, is_unread: false })));
+    setNotifications((previous) =>
+      filters_ref.current.tab === "unread" ? [] : previous.map((item) => ({ ...item, is_unread: false }))
+    );
+    setUnreadCount(0);
     notificationsService
       .markAllAsRead()
       .catch(() => {})
-      .finally(() => {
-        loadUnreadCount();
-        loadSummary();
-      });
-  }, [loadUnreadCount, loadSummary]);
+      .finally(loadUnreadCount);
+  }, [loadUnreadCount]);
 
-  /** "Save for later": flags one notification saved (or removes the flag), optimistically. Removing it on the Saved tab takes it out of the list. */
-  const setNotificationSaved = useCallback(
-    (id: string, is_saved: boolean) => {
-      const notification = notifications.find((item) => item.id === id);
-      if (!notification || notification.is_saved === is_saved) return;
-
-      const applyState = (value: boolean) =>
-        setNotifications((previous) =>
-          value === false && filters_ref.current.tab === "saved"
-            ? previous.filter((item) => item.id !== id)
-            : previous.map((item) => (item.id === id ? { ...item, is_saved: value } : item))
-        );
-
-      applyState(is_saved);
-      const request = is_saved ? notificationsService.save(id) : notificationsService.unsave(id);
-      request.then(loadSummary).catch(() => {
+  /** "Delete all": empties the drawer right away, a failure reloads the list and the count from the server. */
+  const deleteAllNotifications = useCallback(() => {
+    setNotifications([]);
+    setNextCursor(null);
+    setUnreadCount(0);
+    notificationsService
+      .dismissAll()
+      .then((result) => setUnreadCount(result.unread_count))
+      .catch(() => {
         loadNotifications(filters_ref.current);
-        loadSummary();
+        loadUnreadCount();
       });
-    },
-    [notifications, loadNotifications, loadSummary]
-  );
-
-  const saveNotification = useCallback((id: string) => setNotificationSaved(id, true), [setNotificationSaved]);
-  const unsaveNotification = useCallback((id: string) => setNotificationSaved(id, false), [setNotificationSaved]);
+  }, [loadNotifications, loadUnreadCount]);
 
   const dismissNotification = useCallback(
     (id: string) => {
@@ -352,14 +333,13 @@ export function useNotifications() {
         .reduce((chain, batch) => chain.then(() => notificationsService.bulk(action, batch)), Promise.resolve<{ unread_count: number } | null>(null))
         .then((result) => {
           if (result) setUnreadCount(result.unread_count);
-          loadSummary();
         })
         .catch(() => {
           loadNotifications(filters_ref.current);
           loadUnreadCount();
         });
     },
-    [notifications, loadNotifications, loadUnreadCount, loadSummary]
+    [notifications, loadNotifications, loadUnreadCount]
   );
 
   /**
@@ -442,13 +422,10 @@ export function useNotifications() {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
-    saveNotification,
-    unsaveNotification,
     muteNotificationItem,
     unmuteNotificationItem,
     replyToNotification,
     bulkAction,
-    summary,
-    loadSummary,
+    deleteAllNotifications,
   };
 }

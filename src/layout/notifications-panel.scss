@@ -1,7 +1,7 @@
-// The bell's Notifications drawer in monday's notification center look: a
-// large title with gear, "..." and close, underlined tabs, a search box next
-// to the "Unread only" switch, bold date sections and soft blue cards for
-// unread notifications with the message preview under the sentence.
+// The bell's Notifications drawer, a one to one take on monday's
+// notification center: a large title with "..." and close, underlined tabs,
+// "Search all notifications" next to "Filter by person", and a flat list of
+// cards (blue while unread) with the message and a "11m · Task 1" footer.
 //
 // Colors are `--nc-*` custom properties generated from `$tokens` for light
 // (`:root`) and dark (`html.dark`), the same pattern as `update-feed-card.scss`.
@@ -16,16 +16,18 @@ $tokens: (
   "text": (#323338, var(--color-shell-text)),
   "text-secondary": (#676879, var(--color-shell-text-secondary)),
   "text-faint": (#9699a6, var(--color-shell-text-faint)),
-  "border": (#e7e9ef, var(--color-shell-border)),
+  "border": (#e6e9ef, var(--color-shell-border)),
   "border-strong": (#c3c6d4, var(--color-shell-border-strong)),
   "hover": (rgba(103, 104, 121, 0.1), var(--color-shell-hover)),
-  "card-hover": (#f5f6f8, rgba(255, 255, 255, 0.04)),
-  "unread-bg": (#ecf3fd, rgba(61, 143, 240, 0.13)),
-  "unread-hover": (#e2edfc, rgba(61, 143, 240, 0.19)),
+  "card-hover": (#f5f6f8, rgba(255, 255, 255, 0.05)),
+  "unread-bg": (#cce5ff, rgba(61, 143, 240, 0.2)),
+  "unread-hover": (#bcdcfc, rgba(61, 143, 240, 0.27)),
+  "selected": (#cce5ff, rgba(61, 143, 240, 0.2)),
   "link": (#1f76c2, #69a7ff),
   "primary": (#0073ea, #3d8ff0),
-  "dot": (#0073ea, #69a7ff),
-  "switch-off": (#c3c6d4, var(--color-shell-hover-strong)),
+  "danger": (#d83a52, #e2445c),
+  "danger-hover": (#b63546, #c93a50),
+  "menu-shadow": (0 6px 20px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.5)),
 );
 
 @mixin token-set($index) {
@@ -42,6 +44,13 @@ html.dark {
   @include token-set(2);
 }
 
+@mixin focus-ring($offset: 1px) {
+  &:focus-visible {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: $offset;
+  }
+}
+
 // ── Drawer shell ──────────────────────────────────────────────────────────
 
 .nc-panel {
@@ -55,7 +64,7 @@ html.dark {
 
 .nc-header {
   flex: none;
-  padding: 20px 24px 0;
+  padding: 20px 24px 16px;
 }
 
 .nc-header__top {
@@ -83,7 +92,7 @@ html.dark {
 .nc-header__divider {
   width: 1px;
   height: 24px;
-  margin: 0 6px;
+  margin: 0 8px;
   background: var(--nc-border-strong);
 }
 
@@ -103,17 +112,14 @@ html.dark {
     background: var(--nc-hover);
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--nc-primary);
-    outline-offset: 1px;
-  }
+  @include focus-ring;
 }
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
 .nc-tabs {
   display: flex;
-  margin-top: 12px;
+  margin-top: 16px;
   overflow-x: auto;
   border-bottom: 1px solid var(--nc-border);
   scrollbar-width: none;
@@ -126,7 +132,7 @@ html.dark {
 .nc-tab {
   position: relative;
   flex: none;
-  padding: 8px 12px 10px;
+  padding: 6px 18px 10px;
   font-size: 15px;
   line-height: 22px;
   white-space: nowrap;
@@ -152,32 +158,30 @@ html.dark {
     background: var(--nc-primary);
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--nc-primary);
-    outline-offset: -2px;
-  }
+  @include focus-ring(-2px);
 }
 
-// ── Search and "Unread only" ──────────────────────────────────────────────
+// ── Search and "Filter by person" ─────────────────────────────────────────
 
 .nc-toolbar {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 20px;
 }
 
 .nc-search {
   display: flex;
   min-width: 0;
-  height: 36px;
+  height: 40px;
   flex: 1;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
+  padding: 0 12px 0 16px;
   border: 1px solid var(--nc-border-strong);
   border-radius: 4px;
   color: var(--nc-text-secondary);
+  cursor: text;
   transition: border-color 0.15s ease;
 
   &:hover {
@@ -192,7 +196,7 @@ html.dark {
     width: 100%;
     min-width: 0;
     background: transparent;
-    font-size: 14px;
+    font-size: 15px;
     color: var(--nc-text);
     outline: none;
 
@@ -200,100 +204,136 @@ html.dark {
       color: var(--nc-text-secondary);
     }
   }
+
+  svg {
+    flex: none;
+  }
 }
 
-.nc-switch {
+.nc-person-filter {
   display: inline-flex;
+  max-width: 200px;
+  height: 40px;
   flex: none;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--nc-text);
-  cursor: pointer;
-}
-
-.nc-switch__track {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  flex: none;
-  border-radius: 999px;
-  background: var(--nc-switch-off);
-  transition: background-color 0.2s ease;
-
-  .nc-switch[aria-checked="true"] & {
-    background: var(--nc-primary);
-  }
-
-  .nc-switch:focus-visible & {
-    outline: 2px solid var(--nc-primary);
-    outline-offset: 2px;
-  }
-}
-
-.nc-switch__thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  transition: transform 0.2s ease;
-
-  .nc-switch[aria-checked="true"] & {
-    transform: translateX(16px);
-  }
-}
-
-.nc-filters {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.nc-bulk-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  margin-top: 12px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: var(--nc-unread-bg);
-}
-
-.nc-bulk-bar__count {
-  padding: 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--nc-text);
-}
-
-.nc-text-button {
-  padding: 4px 10px;
+  gap: 6px;
+  padding: 0 8px;
   border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
+  font-size: 15px;
   color: var(--nc-text);
   transition: background-color 0.15s ease;
 
-  &:hover:not(:disabled) {
+  &:hover,
+  &[aria-expanded="true"] {
     background: var(--nc-hover);
   }
 
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
+  &.is-active {
+    background: var(--nc-selected);
   }
 
-  &.is-primary {
-    color: var(--nc-link);
+  svg {
+    flex: none;
   }
+
+  @include focus-ring;
+}
+
+.nc-person-filter__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nc-person-menu {
+  padding: 16px 12px 12px;
+}
+
+.nc-person-menu__search {
+  display: flex;
+  height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--nc-border-strong);
+  border-radius: 4px;
+  color: var(--nc-text-secondary);
+  cursor: text;
+
+  &:focus-within {
+    border-color: var(--nc-primary);
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    font-size: 14px;
+    color: var(--nc-text);
+    outline: none;
+  }
+
+  svg {
+    flex: none;
+  }
+}
+
+.nc-person-menu__label {
+  margin: 16px 0 6px;
+  font-size: 14px;
+  color: var(--nc-text-secondary);
+}
+
+.nc-person-menu__list {
+  display: flex;
+  max-height: 240px;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.nc-person-menu__option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--nc-text);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--nc-hover);
+  }
+
+  &.is-selected {
+    background: var(--nc-selected);
+    color: var(--nc-text);
+  }
+
+  > svg {
+    flex: none;
+    color: var(--nc-primary);
+  }
+
+  @include focus-ring(-2px);
+}
+
+.nc-person-menu__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nc-person-menu__empty {
+  padding: 8px;
+  font-size: 13px;
+  color: var(--nc-text-secondary);
 }
 
 // ── List ──────────────────────────────────────────────────────────────────
@@ -302,30 +342,15 @@ html.dark {
   min-height: 0;
   flex: 1;
   overflow-y: auto;
-  padding: 8px 24px 24px;
+  padding: 0 8px 24px;
+  border-top: 1px solid var(--nc-border);
 }
 
-.nc-section + .nc-section {
-  margin-top: 8px;
-}
-
-.nc-section__title {
-  position: sticky;
-  top: -8px;
-  z-index: 2;
-  margin: 0;
-  padding: 12px 0 10px;
-  background: var(--nc-panel);
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 24px;
-  color: var(--nc-text);
-}
-
-.nc-section__items {
+.nc-list__items {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
+  padding-top: 4px;
 }
 
 .nc-empty {
@@ -333,7 +358,7 @@ html.dark {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  padding: 56px 16px 24px;
+  padding: 64px 24px 24px;
   text-align: center;
   font-size: 14px;
   color: var(--nc-text-secondary);
@@ -346,7 +371,7 @@ html.dark {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--nc-unread-bg);
+  background: var(--nc-selected);
   color: var(--nc-primary);
 }
 
@@ -357,27 +382,40 @@ html.dark {
 }
 
 .nc-list__status {
-  padding-top: 12px;
+  padding-top: 24px;
   text-align: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--nc-text-secondary);
 }
 
-.nc-list__hint {
-  margin-top: 20px;
-  text-align: center;
-  font-size: 12px;
-  color: var(--nc-text-faint);
+.nc-list__spinner {
+  display: flex;
+  justify-content: center;
+  padding: 24px 0 8px;
+
+  span {
+    width: 22px;
+    height: 22px;
+    border: 2px dotted var(--nc-text);
+    border-radius: 999px;
+    animation: nc-spin 1s linear infinite;
+  }
+}
+
+@keyframes nc-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 // ── Notification card ─────────────────────────────────────────────────────
 
 .nc-card {
-  --nc-card-bg: transparent;
+  --nc-card-bg: var(--nc-panel);
   --nc-card-bg-hover: var(--nc-card-hover);
 
   position: relative;
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--nc-card-bg);
   transition:
     background-color 0.15s ease,
@@ -393,7 +431,6 @@ html.dark {
     background: var(--nc-card-bg-hover);
   }
 
-  &.is-selected,
   &.is-focused {
     box-shadow: inset 0 0 0 2px var(--nc-primary);
   }
@@ -402,61 +439,34 @@ html.dark {
 .nc-card__main {
   display: flex;
   width: 100%;
-  gap: 12px;
-  padding: 16px;
+  gap: 16px;
+  padding: 16px 16px 20px 12px;
   border-radius: inherit;
   text-align: left;
 
-  .nc-card.is-nested & {
-    padding: 12px;
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--nc-primary);
-    outline-offset: -2px;
-  }
+  @include focus-ring(-2px);
 }
 
 .nc-card__avatar {
   flex: none;
 }
 
-.nc-card__avatars {
-  display: flex;
-  flex: none;
-  align-items: flex-start;
-
-  > * + * {
-    margin-left: -10px;
-  }
-
-  > * {
-    box-shadow: 0 0 0 2px var(--nc-panel);
-  }
-}
-
 .nc-card__body {
   min-width: 0;
   flex: 1;
-}
-
-.nc-card__head {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  padding-top: 2px;
 }
 
 .nc-card__sentence {
-  min-width: 0;
-  flex: 1;
-  font-size: 14px;
-  line-height: 22px;
+  display: block;
+  font-size: 15px;
+  line-height: 24px;
   color: var(--nc-text);
   overflow-wrap: anywhere;
 }
 
 .nc-card__actor {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .nc-card__action {
@@ -464,85 +474,43 @@ html.dark {
 
   svg {
     display: inline-block;
-    margin: -2px 4px 0 2px;
+    margin: -3px 4px 0 2px;
     vertical-align: middle;
   }
 }
 
-.nc-card__meta {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 8px;
-  height: 22px;
-  font-size: 14px;
-  color: var(--nc-text-faint);
-  white-space: nowrap;
-}
-
-.nc-card__saved {
-  color: var(--nc-link);
-}
-
-.nc-card__dot {
-  width: 10px;
-  height: 10px;
-  flex: none;
-  border-radius: 999px;
-  background: var(--nc-dot);
-}
-
-.nc-card__count {
-  display: inline-flex;
-  min-width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--nc-dot);
-  font-size: 12px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-// The message itself, two lines and an ellipsis like monday.
+// The message itself, clamped so a long update never buries the list.
 .nc-card__preview {
   display: -webkit-box;
   margin-top: 6px;
   overflow: hidden;
-  font-size: 14px;
-  line-height: 22px;
+  font-size: 15px;
+  line-height: 24px;
   color: var(--nc-text);
   white-space: pre-line;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 
-.nc-card__board {
+.nc-card__footer {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 8px;
   font-size: 14px;
   line-height: 20px;
   color: var(--nc-text-secondary);
 }
 
-.nc-card__board-icon {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
+.nc-card__footer-separator {
   flex: none;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: #ffffff;
+  font-size: 10px;
 }
 
-.nc-card__board-name {
+.nc-card__footer-target {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -559,7 +527,7 @@ html.dark {
   color: var(--nc-text-secondary);
 }
 
-// Hover actions sit over the time, on the card's own background.
+// Hover actions in the top corner, on the card's own background.
 .nc-card__actions {
   position: absolute;
   top: 12px;
@@ -567,7 +535,6 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 2px;
   border-radius: 6px;
   background: var(--nc-card-bg-hover);
   opacity: 0;
@@ -579,11 +546,6 @@ html.dark {
   &.is-open {
     opacity: 1;
     pointer-events: auto;
-  }
-
-  .nc-card.is-nested > & {
-    top: 8px;
-    right: 8px;
   }
 }
 
@@ -609,51 +571,13 @@ html.dark {
     color: var(--nc-link);
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--nc-primary);
-    outline-offset: -2px;
-  }
+  @include focus-ring(-2px);
 }
 
-// Group card footer and its expanded list.
-.nc-card__toggle {
-  display: flex;
-  width: 100%;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px 12px 60px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--nc-link);
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  svg {
-    transition: transform 0.15s ease;
-  }
-
-  &[aria-expanded="true"] svg {
-    transform: rotate(180deg);
-  }
-}
-
-.nc-card__nested {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 0 8px 8px;
-
-  .nc-card {
-    --nc-card-bg: var(--nc-panel);
-  }
-}
-
-// ── Menus ─────────────────────────────────────────────────────────────────
+// ── Menus and confirm ─────────────────────────────────────────────────────
 
 .nc-menu {
-  padding: 6px;
+  padding: 8px;
 }
 
 .nc-menu__item {
@@ -661,10 +585,11 @@ html.dark {
   width: 100%;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
+  padding: 6px 8px;
   border-radius: 4px;
   text-align: left;
   font-size: 14px;
+  line-height: 22px;
   color: var(--nc-text);
   transition: background-color 0.15s ease;
 
@@ -681,13 +606,70 @@ html.dark {
     flex: none;
     color: var(--nc-text-secondary);
   }
+
+  @include focus-ring(-2px);
 }
 
 .nc-menu__label {
   margin-top: 4px;
-  padding: 8px 10px 4px;
+  padding: 8px 8px 4px;
   border-top: 1px solid var(--nc-border);
   font-size: 12px;
   font-weight: 600;
   color: var(--nc-text-secondary);
+}
+
+.nc-confirm {
+  padding: 16px;
+}
+
+.nc-confirm__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nc-text);
+}
+
+.nc-confirm__text {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--nc-text-secondary);
+}
+
+.nc-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.nc-text-button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--nc-text);
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--nc-hover);
+  }
+
+  @include focus-ring;
+}
+
+.nc-danger-button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--nc-danger);
+  font-size: 14px;
+  color: #ffffff;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--nc-danger-hover);
+  }
+
+  @include focus-ring;
 }

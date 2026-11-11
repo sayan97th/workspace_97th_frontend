@@ -18,6 +18,8 @@ export type NotificationDto = {
   link: string | null;
   /** Plain text excerpt of the comment behind the notification (a mention, reply, reaction or notify). Null when there is none. */
   preview?: string | null;
+  /** Name of the item it is about, shown after the time in the card footer. */
+  item_name?: string | null;
   /** The item the notification is about, what "Mute this item" targets. Null for a board level notification. */
   board_item_id: number | null;
   is_item_muted: boolean;
@@ -49,7 +51,7 @@ export type NotificationsLatestDto = {
 /** `GET /api/notifications/filters`. */
 export type NotificationFiltersDto = {
   boards: { id: number; name: string }[];
-  actors: { id: number; name: string }[];
+  actors: { id: number; name: string; avatar_url?: string | null; is_deactivated?: boolean }[];
 };
 
 const MINUTE_MS = 60_000;
@@ -57,13 +59,13 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 /**
- * monday style relative time for a notification card: "now", "32m" and "18h"
+ * monday style relative time for a notification card: "just now", "32m" and "18h"
  * while it is fresh, then the long form ("3 days", "5 months").
  */
 export function formatNotificationTime(created_at: string, now: Date = new Date()): string {
   const date = new Date(created_at);
   const elapsed_ms = now.getTime() - date.getTime();
-  if (elapsed_ms < MINUTE_MS) return "now";
+  if (elapsed_ms < MINUTE_MS) return "just now";
   if (elapsed_ms < HOUR_MS) return `${Math.floor(elapsed_ms / MINUTE_MS)}m`;
   if (elapsed_ms < DAY_MS) return `${Math.floor(elapsed_ms / HOUR_MS)}h`;
   return formatDistanceToNowStrict(date);
@@ -103,6 +105,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
     category: dto.category,
     link: dto.link ?? undefined,
     preview: dto.preview?.trim() || undefined,
+    item_name: dto.item_name ?? undefined,
     board_item_id: dto.board_item_id ?? undefined,
     is_item_muted: dto.is_item_muted ?? false,
     reply_to: dto.reply_to ?? undefined,

@@ -9,7 +9,7 @@
 export type NotificationCategory = "mentioned" | "assigned" | "replies" | "reactions" | "subscribed";
 
 /** Identifier of a tab in the drawer header. */
-export type NotificationTabId = "all" | "mentioned" | "assigned" | "replies" | "reactions" | "saved";
+export type NotificationTabId = "all" | "unread" | "mentioned" | "assigned" | "replies" | "reactions" | "saved";
 
 /** A tab shown in the drawer header. */
 export type NotificationTab = {
@@ -62,6 +62,8 @@ export type WorkspaceNotification = {
   link?: string;
   /** Plain text excerpt of the message behind it, shown under the sentence like monday's notification center. */
   preview?: string;
+  /** Name of the item it is about, the card footer reads "11m · Task 1" (the board name when there is no item). */
+  item_name?: string;
   /** The item the notification is about, what "Mute this item" targets. Absent for a board level notification. */
   board_item_id?: number;
   /** The viewer muted that item, so nothing new about it arrives. */
@@ -96,6 +98,9 @@ export const default_notification_filters: NotificationFilters = {
 export type NotificationFilterOption = {
   id: string;
   name: string;
+  /** Profile photo of a person option, the "Filter by person" list shows it next to the name. */
+  avatar_url?: string;
+  is_deactivated?: boolean;
 };
 
 /** Boards and people that appear somewhere in the user's notifications. */
@@ -162,16 +167,14 @@ export const notification_date_groups: { id: NotificationDateGroup; label: strin
 /** Tabs shown in the drawer header, in display order. */
 export const notification_tabs: NotificationTab[] = [
   { id: "all", label: "All" },
-  { id: "mentioned", label: "Mentioned" },
+  { id: "unread", label: "Unread" },
+  { id: "mentioned", label: "I was mentioned" },
   { id: "assigned", label: "Assigned to me" },
-  { id: "replies", label: "Replies" },
-  { id: "reactions", label: "Reactions" },
-  { id: "saved", label: "Saved" },
 ];
 
 /** Placeholder for the search input in the drawer header. */
 export const notification_search_placeholder =
-  "Search notifications by people, boards, and more...";
+  "Search all notifications";
 
 /**
  * Whether a notification that just arrived over the websocket belongs in the
@@ -181,6 +184,8 @@ export const notification_search_placeholder =
 export function matchesNotificationFilters(notification: WorkspaceNotification, filters: NotificationFilters): boolean {
   if (filters.tab === "saved") {
     if (!notification.is_saved) return false;
+  } else if (filters.tab === "unread") {
+    if (!notification.is_unread) return false;
   } else if (filters.tab !== "all" && notification.category !== filters.tab) return false;
   if (filters.unread_only && !notification.is_unread) return false;
   if (filters.board_id && notification.board.id !== filters.board_id) return false;
@@ -191,17 +196,3 @@ export function matchesNotificationFilters(notification: WorkspaceNotification, 
   const haystack = [notification.actor.name, notification.board.name, notification.action_target, notification.preview ?? ""].join(" ").toLowerCase();
   return needle.split(/\s+/).every((term) => haystack.includes(term));
 }
-
-/** What is waiting for the person, shown as the summary card at the top of the drawer. */
-export type NotificationSummary = {
-  unread_count: number;
-  mentions: number;
-  replies: number;
-  assigned: number;
-  reactions: number;
-  due_reminders: number;
-  today_count: number;
-  saved_count: number;
-  snoozed_count: number;
-  top_actors: { id: number; name: string; avatar_url: string | null; is_deactivated?: boolean; count: number }[];
-};

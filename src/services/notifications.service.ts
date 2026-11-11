@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api-client";
-import type { NotificationFilters, NotificationSummary } from "@/data/notifications-data";
+import type { NotificationFilters } from "@/data/notifications-data";
 import type { NotificationFiltersDto, NotificationsLatestDto, NotificationsPageDto } from "@/types/notifications";
 
 /** What a multi-select toolbar can do to a batch of notifications. */
@@ -19,8 +19,9 @@ export const notificationsService = {
   /** GET /api/notifications, one cursor-paginated page with every drawer filter applied server-side. */
   async listNotifications({ filters, cursor, limit }: ListNotificationsOptions): Promise<NotificationsPageDto> {
     const params = new URLSearchParams();
-    if (filters.tab !== "all") params.set("tab", filters.tab);
-    if (filters.unread_only) params.set("unread", "1");
+    // "Unread" is a tab in the drawer but a flag on the API, over every type.
+    if (filters.tab !== "all" && filters.tab !== "unread") params.set("tab", filters.tab);
+    if (filters.unread_only || filters.tab === "unread") params.set("unread", "1");
     if (filters.board_id) params.set("board_id", filters.board_id);
     if (filters.actor_id) params.set("actor_id", filters.actor_id);
     if (filters.search.trim()) params.set("q", filters.search.trim());
@@ -69,6 +70,12 @@ export const notificationsService = {
     await apiClient.patch("/api/notifications/read-all");
   },
 
+  /** DELETE /api/notifications, "Delete all": dismisses every notification the user has, snoozed ones included. */
+  async dismissAll(): Promise<{ dismissed_count: number; unread_count: number }> {
+    const response = await apiClient.delete<{ data: { dismissed_count: number; unread_count: number } }>("/api/notifications");
+    return response.data;
+  },
+
   /** POST /api/notifications/bulk, applies one action to up to 100 notifications and returns the fresh unread count. */
   async bulk(action: NotificationBulkAction, ids: string[]): Promise<{ ids: string[]; unread_count: number }> {
     const response = await apiClient.post<{ data: { ids: string[]; unread_count: number } }>("/api/notifications/bulk", {
@@ -91,12 +98,6 @@ export const notificationsService = {
   /** DELETE /api/notifications/{id}/save */
   async unsave(id: string): Promise<void> {
     await apiClient.delete(`/api/notifications/${id}/save`);
-  },
-
-  /** GET /api/notifications/summary, what is waiting for the person, for the summary card. */
-  async getSummary(): Promise<NotificationSummary> {
-    const response = await apiClient.get<{ data: NotificationSummary }>("/api/notifications/summary");
-    return response.data;
   },
 
   /** DELETE /api/notifications/{id} */

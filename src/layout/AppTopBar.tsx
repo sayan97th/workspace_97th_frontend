@@ -71,14 +71,11 @@ const AppTopBar: React.FC = () => {
     markAllAsRead,
     dismissNotification,
     snoozeNotification,
-    saveNotification,
-    unsaveNotification,
     muteNotificationItem,
     unmuteNotificationItem,
     replyToNotification,
     bulkAction,
-    summary: notification_summary,
-    loadSummary: loadNotificationSummary,
+    deleteAllNotifications,
   } = useNotifications();
   const { unread_count: feed_unread_count } = useFeedUpdates({ tab: "all", load_updates: false });
   const [is_account_open, setIsAccountOpen] = useState(false);
@@ -341,23 +338,15 @@ const AppTopBar: React.FC = () => {
           const selected = selectNotification(id);
           if (selected?.link) router.push(selected.link);
         }}
-        onSelectGroup={(ids) => {
-          // Every notification in the group counts as read, the newest one decides where to go.
-          const [newest] = ids.map((id) => selectNotification(id));
-          if (newest?.link) router.push(newest.link);
-        }}
         onMarkAllAsRead={markAllAsRead}
+        onDeleteAll={deleteAllNotifications}
         onDismissNotification={dismissNotification}
         onMarkAsRead={markAsRead}
         onMarkAsUnread={markAsUnread}
         onSnoozeNotification={snoozeNotification}
-        onSaveNotification={saveNotification}
-        onUnsaveNotification={unsaveNotification}
         onReplyToNotification={replyToNotification}
         onMuteNotificationItem={muteNotificationItem}
         onUnmuteNotificationItem={unmuteNotificationItem}
-        summary={notification_summary}
-        onLoadSummary={loadNotificationSummary}
         onBulkAction={bulkAction}
       />
 

@@ -76,12 +76,28 @@ export const NotificationSettingsGlyph: React.FC<GlyphProps> = ({ size = 20, cla
   </Glyph>
 );
 
-/** The board glyph in front of the board name, a table with a header row and a name column. */
-export const NotificationBoardGlyph: React.FC<GlyphProps> = ({ size = 12, className }) => (
-  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
-    <rect x="1.75" y="2.25" width="12.5" height="11.5" rx="1.75" stroke="currentColor" strokeWidth="1.5" />
-    <path d="M1.75 6.25h12.5M6 6.25v7.5" stroke="currentColor" strokeWidth="1.5" />
-  </svg>
+/** The person in a circle on the "Filter by person" button. */
+export const NotificationPersonCircleGlyph: React.FC<GlyphProps> = ({ size = 18, className }) => (
+  <Glyph size={size} className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="10" r="3" />
+    <path d="M7 20.66V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.66" />
+  </Glyph>
+);
+
+/** A tick in a circle, the "Mark all as read" menu row. */
+export const NotificationCheckCircleGlyph: React.FC<GlyphProps> = ({ size = 16, className }) => (
+  <Glyph size={size} className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="m9 12 2 2 4-4" />
+  </Glyph>
+);
+
+/** A bin, the "Delete all" menu row. */
+export const NotificationTrashGlyph: React.FC<GlyphProps> = ({ size = 16, className }) => (
+  <Glyph size={size} className={className}>
+    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" />
+  </Glyph>
 );
 
 const TYPE_GLYPHS: Record<string, React.FC<GlyphProps>> = {
