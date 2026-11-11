@@ -49,6 +49,20 @@ const DoubleCheckIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
   </svg>
 );
 
+/** monday's curved back arrow on the green "Undo" button. */
+const UndoArrowIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M9 5L4.5 9.5 9 14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 9.5h9.5a5 5 0 0 1 0 10H11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** The last update closed with the blue check, the only one "Undo" can bring back. */
+type LastClosedUpdate = {
+  id: string;
+  undo: () => Promise<void>;
+};
+
 /** The briefcase in front of "All account updates". */
 const BriefcaseIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -94,7 +108,9 @@ const EMPTY_TAB_MESSAGES: Record<string, { title: string; description: string }>
  * with "Close All" and "Hide board updates from inbox"), and a light gray
  * content pane with the four monday tabs, the "Show Unread updates" picker,
  * "Mark all updates as read" and one card per thread, each with the big blue
- * check that reads it (with Undo). Backed by real `BoardItemComment` /
+ * check that closes it. Right after a close, a green "Undo" button shows at
+ * the top, bringing back only the last update closed, as in monday.com.
+ * Backed by real `BoardItemComment` /
  * `BoardComment` rows via {@link useFeedUpdates}: pages in as it scrolls and
  * stays live over the `feed.{user_id}` Reverb channel.
  */
@@ -106,6 +122,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const [is_help_open, setIsHelpOpen] = useState(false);
   const [is_settings_open, setIsSettingsOpen] = useState(false);
   const [board_menu, setBoardMenu] = useState<{ board: FeedBoardFilter; anchor: HTMLElement } | null>(null);
+  const [last_closed, setLastClosed] = useState<LastClosedUpdate | null>(null);
+  const [is_undoing, setIsUndoing] = useState(false);
 
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -174,6 +192,11 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     };
   }, [is_open, onClose]);
 
+  // "Undo" only covers the last close in the list it happened in, so it goes away when the view changes or the inbox closes.
+  useEffect(() => {
+    setLastClosed(null);
+  }, [active_tab, active_board, show_mode, is_open]);
+
   useEffect(() => {
     if (is_settings_open) loadHiddenBoards();
   }, [is_settings_open, loadHiddenBoards]);
@@ -206,27 +229,41 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     [bookmarkUpdate, toastError]
   );
 
-  /** The blue check: reads the thread with an Undo, or brings a read thread back as unread. */
+  /**
+   * The blue check: closes the thread and keeps it as the one "Undo" can
+   * bring back (replacing any earlier close), or brings a read thread back as
+   * unread.
+   */
   const toggleCardRead = useCallback(
     async (id: string, is_unread: boolean) => {
       try {
         if (!is_unread) {
           await markThreadUnread(id);
+          setLastClosed((current) => (current?.id === id ? null : current));
           return;
         }
         const undo = await markThreadRead(id);
-        if (!undo) return;
-        toastSuccess("Update marked as read", {
-          dedupe_key: "feed-read",
-          action_text: "Undo",
-          onAction: () => void undo().catch(() => toastError("Couldn't undo. Please try again.")),
-        });
+        if (undo) setLastClosed({ id, undo });
       } catch {
         toastError("Couldn't update this update. Please try again.");
       }
     },
-    [markThreadRead, markThreadUnread, toastSuccess, toastError]
+    [markThreadRead, markThreadUnread, toastError]
   );
+
+  /** The green "Undo": returns the last closed update to the feed, once. */
+  const undoLastClose = useCallback(async () => {
+    if (!last_closed || is_undoing) return;
+    setIsUndoing(true);
+    try {
+      await last_closed.undo();
+      setLastClosed((current) => (current === last_closed ? null : current));
+    } catch (error) {
+      toastError(getApiErrorMessage(error, "Couldn't undo. Please try again."));
+    } finally {
+      setIsUndoing(false);
+    }
+  }, [last_closed, is_undoing, toastError]);
 
   const editCard = useCallback(
     async (id: string, body: string) => {
@@ -270,6 +307,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const markEverythingRead = async () => {
     try {
       await markAllSeen();
+      setLastClosed(null);
       toastSuccess("All updates marked as read");
     } catch {
       toastError("Couldn't mark the updates as read. Please try again.");
@@ -279,6 +317,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const closeBoardUpdates = async (board: FeedBoardFilter) => {
     try {
       const marked = await markBoardRead(board.id);
+      setLastClosed(null);
       toastSuccess(marked === 1 ? "1 update marked as read" : `${marked} updates marked as read`);
     } catch {
       toastError("Couldn't mark the board updates as read. Please try again.");
@@ -479,7 +518,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
 
           <div ref={scroll_area_ref} className="uf-main__scroll">
             <div className="uf-main__inner">
-              <div className="uf-toolbar">
+              <div className="uf-toolbar" data-has-undo={last_closed ? "true" : undefined}>
                 <button
                   ref={show_trigger_ref}
                   type="button"
@@ -502,12 +541,30 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   align="start"
                   class_name="action-menu--selectable"
                 />
-                {active_tab !== "bookmarked" && (
-                  <button type="button" onClick={() => void markEverythingRead()} className="uf-toolbar__mark-all">
-                    <DoubleCheckIcon size={17} />
-                    Mark all updates as read
-                  </button>
-                )}
+                <div className="uf-toolbar__actions">
+                  {active_tab !== "bookmarked" && (
+                    <button type="button" onClick={() => void markEverythingRead()} className="uf-toolbar__mark-all">
+                      <DoubleCheckIcon size={17} />
+                      Mark all updates as read
+                    </button>
+                  )}
+                  {last_closed && (
+                    <button
+                      type="button"
+                      onClick={() => void undoLastClose()}
+                      disabled={is_undoing}
+                      aria-busy={is_undoing}
+                      title="Return the last update you closed to your feed"
+                      className="uf-toolbar__undo"
+                    >
+                      <UndoArrowIcon size={18} />
+                      Undo
+                    </button>
+                  )}
+                </div>
+                <span className="sr-only" role="status" aria-live="polite">
+                  {last_closed ? "Update closed. Use Undo to return it to your feed." : ""}
+                </span>
               </div>
 
               {/* Live banner: updates other people posted while the inbox is open, held back so the cards being read do not jump. */}

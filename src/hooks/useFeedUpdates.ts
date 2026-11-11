@@ -433,10 +433,11 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   }, []);
 
   /**
-   * The inbox's blue check: reads the whole thread. While the inbox shows
-   * unread updates only, the card leaves the list at once, as in monday.com.
-   * Resolves to an undo that brings the card back unread, or null when there
-   * was nothing to read.
+   * The inbox's blue check, monday's "close": reads the whole thread. While
+   * the inbox shows unread updates only, the card leaves the list at once, as
+   * in monday.com. Resolves to an undo that brings the card back where it was,
+   * unread again for exactly the rows this close read (replies read earlier
+   * stay read), or null when there was nothing to close.
    */
   const markThreadRead = useCallback(
     async (id: string): Promise<(() => Promise<void>) | null> => {
@@ -456,8 +457,9 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
       );
       setUnreadCount((previous) => Math.max(0, previous - unread_in_thread));
 
+      let closed_comment_ids: number[];
       try {
-        await feedService.markSeen(id, true);
+        ({ closed_comment_ids } = await feedService.closeThread(id, true));
       } catch (error) {
         putCardBack(target, index);
         setUnreadCount((previous) => previous + unread_in_thread);
@@ -467,12 +469,22 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
 
       return async () => {
         putCardBack(target, index);
-        await feedService.markUnseen(id, true);
         setUnreadCount((previous) => previous + unread_in_thread);
-        scheduleCountsRefresh();
+        try {
+          const dto = closed_comment_ids.length > 0 ? await feedService.reopenClosed(id, closed_comment_ids) : await feedService.markUnseen(id, true);
+          applyUpdate(dto);
+        } catch (error) {
+          setUpdates((previous) =>
+            filters.unread_only ? previous.filter((update) => update.id !== id) : previous.map((update) => (update.id === id ? read(update) : update))
+          );
+          setUnreadCount((previous) => Math.max(0, previous - unread_in_thread));
+          throw error;
+        } finally {
+          scheduleCountsRefresh();
+        }
       };
     },
-    [updates, filters.unread_only, putCardBack, scheduleCountsRefresh]
+    [updates, filters.unread_only, putCardBack, applyUpdate, scheduleCountsRefresh]
   );
 
   /** The check on a card already read: brings the whole thread back as unread. */

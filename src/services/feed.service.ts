@@ -129,6 +129,15 @@ export const feedService = {
     return response.data;
   },
 
+  /**
+   * DELETE /api/feed/updates/{id}/seen with `comment_ids`, the inbox "Undo the
+   * last close": only the rows that close marked as seen come back as unread.
+   */
+  async reopenClosed(id: string, comment_ids: number[]): Promise<FeedUpdateDto> {
+    const response = await apiClient.delete<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`, { thread: true, comment_ids });
+    return response.data;
+  },
+
   /** GET /api/feed/hidden-boards, the boards the viewer hid from their inbox. */
   async listHiddenBoards(): Promise<FeedHiddenBoard[]> {
     const response = await apiClient.get<{ data: FeedHiddenBoard[] }>("/api/feed/hidden-boards");
@@ -235,8 +244,21 @@ export const feedService = {
 
   /** POST /api/feed/updates/{id}/seen, with `whole_thread` an update is marked seen together with every reply under it. */
   async markSeen(id: string, whole_thread = false): Promise<FeedUpdateDto> {
-    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`, whole_thread ? { thread: true } : undefined);
-    return response.data;
+    const { data } = await feedService.closeThread(id, whole_thread);
+    return data;
+  },
+
+  /**
+   * POST /api/feed/updates/{id}/seen, also returning `closed_comment_ids`:
+   * the rows this call marked as seen, which an undo hands back to
+   * {@link reopenClosed}.
+   */
+  async closeThread(id: string, whole_thread = true): Promise<{ data: FeedUpdateDto; closed_comment_ids: number[] }> {
+    const response = await apiClient.post<{ data: FeedUpdateDto; meta?: { closed_comment_ids?: number[] } }>(
+      `/api/feed/updates/${id}/seen`,
+      whole_thread ? { thread: true } : undefined
+    );
+    return { data: response.data, closed_comment_ids: response.meta?.closed_comment_ids ?? [] };
   },
 
   /** POST /api/feed/updates/{id}/reply */
