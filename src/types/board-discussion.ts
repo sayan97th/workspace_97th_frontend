@@ -7,7 +7,7 @@
  * single row).
  */
 
-import type { CommentReactorDto } from "@/types/board-comments";
+import type { CommentLikerDto, CommentReactorDto } from "@/types/board-comments";
 
 export type BoardDiscussionCommentAuthorDto = {
   id: number;
@@ -53,6 +53,8 @@ export type BoardDiscussionCommentDto = {
   edited_at: string | null;
   like_count: number;
   liked_by_me: boolean;
+  /** Everyone who liked it and when, oldest first. */
+  likers?: CommentLikerDto[];
   view_count: number;
   seen_by_me: boolean;
   seen_by: BoardDiscussionCommentSeenByDto[];

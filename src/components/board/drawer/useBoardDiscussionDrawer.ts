@@ -8,6 +8,7 @@ import type { BoardPersonOption } from "../toolbar/types";
 import { mapAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { mapDiscussionCommentDtoToDrawerComment, mapDiscussionCommentDtoToDrawerReply } from "./discussionCommentMapping";
 import { classifyAttachment } from "./drawerAttachments";
+import { flipLike, updateLikeTarget, withServerLikes } from "./likeToggle";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
 import { useCommentEditAttachments } from "./useCommentEditAttachments";
@@ -471,31 +472,21 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   /** Applies (or reverts, by calling it again) the local like toggle for a comment or reply. */
   const applyLikeToggle = (comment_id: string, reply_id?: string) =>
-    setComments((current) =>
-      current.map((comment) => {
-        if (comment.id !== comment_id) return comment;
-        if (!reply_id) {
-          const liked_by_me = !comment.liked_by_me;
-          return { ...comment, liked_by_me, like_count: Math.max(0, comment.like_count + (liked_by_me ? 1 : -1)) };
-        }
-        return {
-          ...comment,
-          replies: comment.replies.map((reply) => {
-            if (reply.id !== reply_id) return reply;
-            const liked_by_me = !reply.liked_by_me;
-            return { ...reply, liked_by_me, like_count: Math.max(0, reply.like_count + (liked_by_me ? 1 : -1)) };
-          }),
-        };
-      })
-    );
+    setComments((current) => updateLikeTarget(current, comment_id, reply_id, (entry) => flipLike(entry, config.current_user)));
 
   const toggleLike = (comment_id: string, reply_id?: string) => {
     applyLikeToggle(comment_id, reply_id);
 
-    boardDiscussionService.toggleLike(board_id, Number(reply_id ?? comment_id)).catch(() => {
-      applyLikeToggle(comment_id, reply_id);
-      setCommentsError("Couldn't update that like. Please try again.");
-    });
+    boardDiscussionService
+      .toggleLike(board_id, Number(reply_id ?? comment_id))
+      .then((dto) => {
+        const server = mapDiscussionCommentDtoToDrawerReply(dto);
+        setComments((current) => updateLikeTarget(current, comment_id, reply_id, withServerLikes(server)));
+      })
+      .catch(() => {
+        applyLikeToggle(comment_id, reply_id);
+        setCommentsError("Couldn't update that like. Please try again.");
+      });
   };
 
   /** Removes a comment (or, when `reply_id` is given, just that reply) from local state. */

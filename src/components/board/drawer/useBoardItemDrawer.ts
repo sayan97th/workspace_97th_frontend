@@ -8,6 +8,7 @@ import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
 import { mapAttachmentDto, mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
 import { classifyAttachment } from "./drawerAttachments";
+import { flipLike, updateLikeTarget, withServerLikes } from "./likeToggle";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
 import { useCommentEditAttachments } from "./useCommentEditAttachments";
@@ -518,23 +519,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   /** Applies (or reverts, by calling it again) the local like toggle for a comment or reply. */
   const applyLikeToggle = (row_id: string, comment_id: string, reply_id?: string) =>
-    updateComments(row_id, (comments) =>
-      comments.map((comment) => {
-        if (comment.id !== comment_id) return comment;
-        if (!reply_id) {
-          const liked_by_me = !comment.liked_by_me;
-          return { ...comment, liked_by_me, like_count: Math.max(0, comment.like_count + (liked_by_me ? 1 : -1)) };
-        }
-        return {
-          ...comment,
-          replies: comment.replies.map((reply) => {
-            if (reply.id !== reply_id) return reply;
-            const liked_by_me = !reply.liked_by_me;
-            return { ...reply, liked_by_me, like_count: Math.max(0, reply.like_count + (liked_by_me ? 1 : -1)) };
-          }),
-        };
-      })
-    );
+    updateComments(row_id, (comments) => updateLikeTarget(comments, comment_id, reply_id, (entry) => flipLike(entry, config.current_user)));
 
   const toggleLike = (comment_id: string, reply_id?: string) => {
     if (!open_row_id) return;
@@ -544,6 +529,10 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     const item_id = Number(open_row_id);
     boardCommentsService
       .toggleLike(board_id, item_id, Number(reply_id ?? comment_id))
+      .then((dto) => {
+        const server = mapCommentDtoToDrawerReply(dto);
+        updateComments(open_row_id, (comments) => updateLikeTarget(comments, comment_id, reply_id, withServerLikes(server)));
+      })
       .catch(() => {
         applyLikeToggle(open_row_id, comment_id, reply_id);
         setCommentsError("Couldn't update that like. Please try again.");

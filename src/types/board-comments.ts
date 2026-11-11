@@ -51,6 +51,15 @@ export type BoardItemCommentSeenByDto = {
   seen_at?: string | null;
 };
 
+/** One person who liked a comment or reply. Shared by the item and board discussion endpoints. */
+export type CommentLikerDto = {
+  id: number;
+  full_name: string;
+  profile_photo_url: string | null;
+  is_deactivated?: boolean;
+  liked_at?: string | null;
+};
+
 /** A top-level comment ("update"), or a reply when `parent_id` is set. Replies never nest further. */
 export type BoardItemCommentDto = {
   id: number;
@@ -64,6 +73,8 @@ export type BoardItemCommentDto = {
   edited_at: string | null;
   like_count: number;
   liked_by_me: boolean;
+  /** Everyone who liked it and when, oldest first. */
+  likers?: CommentLikerDto[];
   view_count: number;
   seen_by_me: boolean;
   seen_by: BoardItemCommentSeenByDto[];

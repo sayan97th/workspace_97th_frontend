@@ -1,6 +1,6 @@
 import type { BoardPersonOption } from "../toolbar/types";
 import { classifyAttachment } from "./drawerAttachments";
-import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerReaction, DrawerReply, DrawerScheduledComment, DrawerSeenBy } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerLiker, DrawerReaction, DrawerReply, DrawerScheduledComment, DrawerSeenBy } from "./types";
 import type { BoardItemAttachmentDto } from "@/types/board-attachments";
 import type {
   BoardItemCommentAttachmentDto,
@@ -8,6 +8,7 @@ import type {
   BoardItemCommentDto,
   BoardItemCommentReactionDto,
   BoardItemCommentSeenByDto,
+  CommentLikerDto,
   CommentRevisionDto,
 } from "@/types/board-comments";
 
@@ -63,6 +64,12 @@ export const mapReactionDto = (dto: BoardItemCommentReactionDto): DrawerReaction
   })),
 });
 
+/** Maps the server's "who liked" list into the same person shape the avatars use. */
+export const mapLikerDto = (dto: CommentLikerDto): DrawerLiker => ({
+  ...mapAuthorToPerson({ id: dto.id, full_name: dto.full_name, profile_photo_url: dto.profile_photo_url, is_deactivated: dto.is_deactivated }),
+  liked_at: dto.liked_at ?? undefined,
+});
+
 export const mapAttachmentDto = (dto: BoardItemCommentAttachmentDto): DrawerAttachment => ({
   id: String(dto.id),
   file_name: dto.file_name,
@@ -91,6 +98,7 @@ export const mapCommentDtoToDrawerReply = (dto: BoardItemCommentDto): DrawerRepl
   view_count: dto.view_count,
   liked_by_me: dto.liked_by_me,
   like_count: dto.like_count,
+  likers: dto.likers?.map(mapLikerDto),
   reactions: dto.reactions.map(mapReactionDto),
   bookmarked_by_me: dto.bookmarked_by_me,
 });

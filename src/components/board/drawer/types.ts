@@ -8,6 +8,12 @@ export type DrawerReactor = BoardPersonOption & {
   reacted_at?: string;
 };
 
+/** One person who liked a comment or reply, for the "who liked" popover on the Like button. */
+export type DrawerLiker = BoardPersonOption & {
+  /** ISO time they liked it, absent on client-side-only mock data and on a fresh optimistic like. */
+  liked_at?: string;
+};
+
 /** A single emoji reaction pill on a comment or reply, with its live tally. */
 export type DrawerReaction = {
   emoji: string;
@@ -49,6 +55,8 @@ export type DrawerReply = {
   view_count: number;
   liked_by_me: boolean;
   like_count: number;
+  /** Everyone who liked it, oldest first. Absent on client-side-only mock data. */
+  likers?: DrawerLiker[];
   reactions: DrawerReaction[];
   /** True once the viewer bookmarked it, which also lists it in the Update Feed's Bookmarked tab. Absent on client-side-only mock data. */
   bookmarked_by_me?: boolean;

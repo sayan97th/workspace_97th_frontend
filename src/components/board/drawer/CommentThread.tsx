@@ -8,7 +8,7 @@ import { getDeactivatedClass } from "@/lib/deactivated-user";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import type { AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import { PinIcon } from "@/icons/board-icons";
-import { LikeIcon, QuoteIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
+import { QuoteIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
 import { BookmarkIcon, LinkIcon } from "@/icons/workspace-icons";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import { useCommentCollaborationContext } from "./CommentCollaborationContext";
@@ -20,9 +20,11 @@ import EditedMarker from "./EditedMarker";
 import EmojiPalette from "./EmojiPalette";
 import type { MentionOption } from "./mentionOptions";
 import ReactionPill from "./ReactionPill";
+import LikeButton from "./LikeButton";
+import ReactionsSummary from "./ReactionsSummary";
 import RichTextContent from "./RichTextContent";
 import SeenByList from "./SeenByList";
-import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReaction, DrawerReferenceItem, DrawerReply } from "./types";
+import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReferenceItem, DrawerReply } from "./types";
 import "./board-drawer.css";
 
 export type CommentThreadProps = {
@@ -79,7 +81,9 @@ const VISIBLE_REPLY_TAIL = 2;
 const RESOLVED_EXCERPT_LENGTH = 120;
 
 type ReactionsRowProps = {
-  reactions: DrawerReaction[];
+  /** The comment or reply, its reaction pills plus its likes for the summary. */
+  entry: DrawerReply;
+  current_user: BoardPersonOption;
   is_palette_open: boolean;
   onToggleOpen: () => void;
   onClosePalette: () => void;
@@ -95,16 +99,20 @@ type ReactionsRowProps = {
  * user's own reaction for that emoji, so a comment can carry any number of
  * different emoji, each from any number of people, at once.
  */
-const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open, onToggleOpen, onClosePalette, onToggle }) => {
+const ReactionsRow: React.FC<ReactionsRowProps> = ({ entry, current_user, is_palette_open, onToggleOpen, onClosePalette, onToggle }) => {
   const add_trigger_ref = useRef<HTMLButtonElement>(null);
+  const { reactions } = entry;
+  const has_reactions = reactions.length > 0;
 
-  if (reactions.length === 0) return null;
+  if (!has_reactions && entry.like_count === 0) return null;
 
   return (
     <div className="update-card__reactions">
       {reactions.map((reaction) => (
-        <ReactionPill key={reaction.emoji} reaction={reaction} onToggle={() => onToggle(reaction.emoji)} />
+        <ReactionPill key={reaction.emoji} reaction={reaction} source={entry} current_user={current_user} onToggle={() => onToggle(reaction.emoji)} />
       ))}
+      {has_reactions && (
+        <>
       <button
         ref={add_trigger_ref}
         type="button"
@@ -117,6 +125,9 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ reactions, is_palette_open,
         <ReactSmileyIcon size={13} />
       </button>
       <EmojiPalette anchor_el={add_trigger_ref.current} is_open={is_palette_open} onClose={onClosePalette} onPick={onToggle} mode="react" />
+        </>
+      )}
+      <ReactionsSummary source={entry} current_user={current_user} />
     </div>
   );
 };
@@ -130,7 +141,7 @@ type ReplyRowProps = {
   reply: DrawerReply;
   people?: BoardPersonOption[];
   is_new?: boolean;
-  current_user_id: string;
+  current_user: BoardPersonOption;
   onLike: () => void;
   onDelete: () => void;
   onStartEditing: () => void;
@@ -158,7 +169,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   reply,
   people,
   is_new,
-  current_user_id,
+  current_user,
   onLike,
   onDelete,
   onStartEditing,
@@ -199,8 +210,8 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
               {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
             </div>
             <CommentOptionsMenu
-              onEdit={reply.author.id === current_user_id ? onStartEditing : undefined}
-              onDelete={reply.author.id === current_user_id ? onDelete : undefined}
+              onEdit={reply.author.id === current_user.id ? onStartEditing : undefined}
+              onDelete={reply.author.id === current_user.id ? onDelete : undefined}
               extra_items={extra_menu_items}
               kind="reply"
               confirm_delete={!has_undo}
@@ -212,7 +223,8 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
             <RichTextContent html={reply.body} people={people} className="mt-1" />
           )}
           <ReactionsRow
-            reactions={reply.reactions}
+            entry={reply}
+            current_user={current_user}
             is_palette_open={is_palette_open}
             onToggleOpen={() => onToggleReactionPalette(reaction_palette_key)}
             onClosePalette={onCloseReactionPalette}
@@ -220,16 +232,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
           />
         </div>
         <div className="update-card__reply-actions">
-          <button
-            type="button"
-            onClick={onLike}
-            aria-pressed={reply.liked_by_me}
-            data-active={reply.liked_by_me ? "liked" : undefined}
-            className="update-card__reply-action"
-          >
-            <LikeIcon size={14} filled={reply.liked_by_me} />
-            Like{reply.like_count > 0 ? ` · ${reply.like_count}` : ""}
-          </button>
+          <LikeButton entry={reply} current_user={current_user} onToggle={onLike} class_name="update-card__reply-action" icon_size={14} />
           {reply.reactions.length === 0 && (
             <>
               <button
@@ -528,7 +531,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         )}
 
         <ReactionsRow
-          reactions={comment.reactions}
+          entry={comment}
+          current_user={current_user}
           is_palette_open={is_palette_open}
           onToggleOpen={() => onToggleReactionPalette(comment.id)}
           onClosePalette={onCloseReactionPalette}
@@ -538,16 +542,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       </div>
 
       <div className="update-card__actions">
-        <button
-          type="button"
-          onClick={() => onToggleLike(comment.id)}
-          aria-pressed={comment.liked_by_me}
-          data-active={comment.liked_by_me ? "liked" : undefined}
-          className="update-card__action"
-        >
-          <LikeIcon filled={comment.liked_by_me} />
-          Like{comment.like_count > 0 ? ` · ${comment.like_count}` : ""}
-        </button>
+        <LikeButton entry={comment} current_user={current_user} onToggle={() => onToggleLike(comment.id)} class_name="update-card__action" />
         {comment.reactions.length === 0 && (
           <span className="update-card__action-wrap">
             <button
@@ -603,7 +598,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               reply={reply}
               people={mentionable_people}
               is_new={fresh_comment_ids.includes(reply.id)}
-              current_user_id={current_user.id}
+              current_user={current_user}
               onLike={() => onToggleLike(comment.id, reply.id)}
               onDelete={() => onDeleteComment(comment.id, reply.id)}
               onStartEditing={() => onStartEditing(comment.id, reply.id)}

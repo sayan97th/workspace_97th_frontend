@@ -1,0 +1,453 @@
+// "Who liked and who reacted" card (`ReactionsPeopleCard`) and the avatar
+// stack summary under a comment (`ReactionsSummary`), in monday's look: a
+// white card with a soft shadow, a row of filter tabs (All, Like, each
+// emoji) with a blue underline on the selected one, and one row per person
+// with a 32px photo, a badge of what they did and a "You" tag.
+//
+// Colors are `--rx-*` custom properties generated from `$tokens` for light
+// (`:root`) and dark (`html.dark`). The card is portalled to the body, so
+// the tokens live on the root instead of on a drawer wrapper.
+
+@use "sass:list";
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+
+// Each token as (light, dark).
+$tokens: (
+  "surface": (#ffffff, #142222),
+  "surface-raised": (#f6f7fb, #1b2c2c),
+  "text": (#323338, #e9eded),
+  "text-secondary": (#676879, #b7c0c1),
+  "text-faint": (#9699a6, #8e999a),
+  "hover": (#f0f1f6, rgba(255, 255, 255, 0.06)),
+  "divider": (#e7e9ef, rgba(255, 255, 255, 0.1)),
+  "accent": (#0073ea, #4d9cff),
+  "accent-soft": (#e6f1fd, rgba(77, 156, 255, 0.18)),
+  "you-row": (#f5f9ff, rgba(77, 156, 255, 0.08)),
+  "ring": (#ffffff, #142222),
+  "outline": (rgba(15, 15, 15, 0.06), rgba(255, 255, 255, 0.08)),
+  "shadow": (rgba(15, 23, 42, 0.18), rgba(0, 0, 0, 0.6)),
+);
+
+@mixin token-set($index) {
+  @each $name, $pair in $tokens {
+    --rx-#{$name}: #{list.nth($pair, $index)};
+  }
+}
+
+:root {
+  @include token-set(1);
+}
+
+html.dark {
+  @include token-set(2);
+}
+
+$radius: 12px;
+$row-height: 52px;
+$avatar-size: 32px;
+$badge-size: 18px;
+$ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+@mixin focus-ring {
+  outline: 2px solid var(--rx-accent);
+  outline-offset: 1px;
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────
+
+.reactions-card {
+  position: fixed;
+  z-index: 1200;
+  display: flex;
+  max-height: 340px;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: $radius;
+  background: var(--rx-surface);
+  box-shadow:
+    0 12px 32px var(--rx-shadow),
+    0 2px 6px var(--rx-shadow),
+    0 0 0 1px var(--rx-outline);
+  color: var(--rx-text);
+  font-family: var(--font-brand-sans, inherit);
+  animation: reactions-card-in 160ms $ease-out both;
+  transform-origin: top left;
+
+  &[data-placement="above"] {
+    transform-origin: bottom left;
+    animation-name: reactions-card-in-above;
+  }
+
+  &:focus {
+    outline: none;
+  }
+}
+
+@keyframes reactions-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+@keyframes reactions-card-in-above {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+
+.reactions-card__tabs {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  padding: 6px 8px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--rx-divider);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.reactions-card__tab {
+  position: relative;
+  display: inline-flex;
+  height: 36px;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-radius: 6px 6px 0 0;
+  color: var(--rx-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  // The selected tab's underline, grows from the center.
+  &::after {
+    position: absolute;
+    right: 8px;
+    bottom: -1px;
+    left: 8px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--rx-accent);
+    content: "";
+    transform: scaleX(0);
+    transition: transform 180ms $ease-out;
+  }
+
+  &:hover {
+    background: var(--rx-hover);
+    color: var(--rx-text);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+
+  &[aria-selected="true"] {
+    color: var(--rx-text);
+    font-weight: 600;
+
+    &::after {
+      transform: scaleX(1);
+    }
+
+    .reactions-card__tab-count {
+      background: var(--rx-accent-soft);
+      color: var(--rx-accent);
+    }
+  }
+}
+
+.reactions-card__tab-emoji {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.reactions-card__tab-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--rx-hover);
+  color: var(--rx-text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+// The Like action's own glyph, a white thumb on a blue disc, so it never
+// reads as the 👍 emoji reaction.
+.reactions-card__like-glyph {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--rx-accent);
+  color: #ffffff;
+}
+
+// ── People list ───────────────────────────────────────────────────────────
+
+.reactions-card__list {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rx-divider) transparent;
+}
+
+.reactions-card__row {
+  display: flex;
+  min-height: $row-height;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  animation: reactions-row-in 180ms $ease-out both;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--rx-hover);
+  }
+
+  &[data-you] {
+    background: var(--rx-you-row);
+
+    &:hover {
+      background: var(--rx-hover);
+    }
+  }
+
+  // A short stagger so switching tabs feels alive without slowing anyone down.
+  @for $index from 2 through 6 {
+    &:nth-child(#{$index}) {
+      animation-delay: #{($index - 1) * 18}ms;
+    }
+  }
+}
+
+@keyframes reactions-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+.reactions-card__avatar {
+  position: relative;
+  display: inline-flex;
+  width: $avatar-size;
+  height: $avatar-size;
+  flex: none;
+}
+
+// What the person did, pinned to the avatar's bottom right corner.
+.reactions-card__badge {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  display: inline-flex;
+  width: $badge-size;
+  height: $badge-size;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--rx-surface);
+  box-shadow: 0 0 0 2px var(--rx-ring);
+  font-size: 11px;
+  line-height: 1;
+  animation: reactions-badge-pop 260ms $ease-out 80ms both;
+
+  &[data-kind="like"] {
+    background: var(--rx-accent);
+    color: #ffffff;
+  }
+}
+
+@keyframes reactions-badge-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  70% {
+    transform: scale(1.12);
+  }
+}
+
+.reactions-card__who {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.reactions-card__name-line {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.reactions-card__name {
+  overflow: hidden;
+  color: var(--rx-text);
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reactions-card__you {
+  flex: none;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--rx-accent-soft);
+  color: var(--rx-accent);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.reactions-card__detail {
+  overflow: hidden;
+  color: var(--rx-text-faint);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// Everything the person did, on the All tab.
+.reactions-card__marks {
+  display: inline-flex;
+  max-width: 45%;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.reactions-card__mark {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--rx-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--rx-divider);
+  font-size: 13px;
+  line-height: 1;
+
+  &[data-kind="like"] {
+    background: var(--rx-accent);
+    box-shadow: none;
+    color: #ffffff;
+  }
+}
+
+// ── Summary under a comment ───────────────────────────────────────────────
+
+// "[avatars] You, Haley and 2 others", opens the card on its All tab.
+.reactions-summary {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0 10px 0 4px;
+  border-radius: 999px;
+  color: var(--rx-text-secondary);
+  font-size: 12.5px;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  // Only likes, no emoji pills before it, so it starts the row instead of floating right.
+  &:first-child {
+    margin-left: -4px;
+  }
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--rx-hover);
+    color: var(--rx-text);
+  }
+
+  &:focus-visible {
+    @include focus-ring;
+  }
+}
+
+.reactions-summary__stack {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+
+  > * + * {
+    margin-left: -6px;
+  }
+
+  > * {
+    border-radius: 999px;
+    box-shadow: 0 0 0 2px var(--rx-ring);
+  }
+}
+
+.reactions-summary__more {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  background: var(--rx-surface-raised);
+  color: var(--rx-text-secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.reactions-summary__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  strong {
+    color: var(--rx-text);
+    font-weight: 600;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reactions-card,
+  .reactions-card__row,
+  .reactions-card__badge {
+    animation: none;
+  }
+
+  .reactions-card__tab::after {
+    transition: none;
+  }
+}
