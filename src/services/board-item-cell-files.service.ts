@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type UploadProgress } from "@/lib/api-client";
 import type { BoardCellFile } from "@/types/board-content";
 import { notifyNavItemChanged } from "./workspace.service";
 
@@ -11,14 +11,24 @@ import { notifyNavItemChanged } from "./workspace.service";
  * list, which `TableBoardView` writes straight back as that column's value.
  */
 export const boardItemCellFilesService = {
-  /** POST /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files — multipart, one or more files. */
-  async uploadCellFiles(board_id: number, item_id: number, column_id: number, files: File[]): Promise<BoardCellFile[]> {
+  /**
+   * POST /api/boards/{board_id}/items/{item_id}/columns/{column_id}/files, multipart, one or more files.
+   * `onProgress` hears the bytes sent, so the cell can draw a real progress ring.
+   */
+  async uploadCellFiles(
+    board_id: number,
+    item_id: number,
+    column_id: number,
+    files: File[],
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<BoardCellFile[]> {
     const form_data = new FormData();
     files.forEach((file) => form_data.append("files[]", file));
 
-    const response = await apiClient.postFormData<{ files: BoardCellFile[] }>(
+    const response = await apiClient.postFormDataWithProgress<{ files: BoardCellFile[] }>(
       `/api/boards/${board_id}/items/${item_id}/columns/${column_id}/files`,
-      form_data
+      form_data,
+      onProgress
     );
     return response.files;
   },

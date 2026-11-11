@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import FilesMenu from "@/components/board/table/menus/FilesMenu";
 import { canRenameFile, filesFromClipboard, isImageFile, prepareUploads, splitFileName } from "@/components/board/table/menus/filesCellUtils";
 import type { CellFile } from "@/components/board/table/types";
+import type { PendingUpload } from "@/components/board/table/cells/useCellFileUploads";
 
 const image_file: CellFile = {
   id: "img-1",
@@ -20,7 +21,10 @@ const doc_file: CellFile = { id: "doc-1", kind: "doc", doc_id: 4, file_name: "Sp
 const renderMenu = (overrides: Partial<Parameters<typeof FilesMenu>[0]> = {}) => {
   const props = {
     files: [image_file, pdf_file, link_file, doc_file],
-    is_uploading: false,
+    pending_uploads: [] as PendingUpload[],
+    fresh_ids: new Set<string>() as ReadonlySet<string>,
+    onRetryUpload: vi.fn(),
+    onDismissUpload: vi.fn(),
     is_creating_doc: false,
     upload_error: null,
     can_edit: true,
@@ -150,5 +154,52 @@ describe("FilesMenu", () => {
     const zone = screen.getByLabelText(/Upload files/);
     fireEvent.drop(zone, { dataTransfer: { files: [dropped], items: [{ kind: "file", type: dropped.type, getAsFile: () => dropped }], types: ["Files"] } });
     await waitFor(() => expect(props.onUpload).toHaveBeenCalledWith([dropped]));
+  });
+});
+
+describe("FilesMenu pending uploads", () => {
+  const pending = (overrides: Partial<PendingUpload>): PendingUpload => ({
+    id: "upload-1",
+    batch_id: "batch-1",
+    file_name: "report.pdf",
+    size_bytes: 2 * 1024 * 1024,
+    mime_type: "application/pdf",
+    preview_url: null,
+    status: "uploading",
+    progress: 0.42,
+    error: null,
+    ...overrides,
+  });
+
+  test("lists a file on its way with its progress, and keeps the add options usable", () => {
+    renderMenu({ files: [], pending_uploads: [pending({})] });
+    expect(screen.getByText("report.pdf")).toBeInTheDocument();
+    expect(screen.getByText("42% · 860.2 KB of 2.0 MB")).toBeInTheDocument();
+    expect(screen.getByText("Uploading")).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "From Computer" })).not.toHaveAttribute("aria-disabled");
+  });
+
+  test("a failed upload shows its error with Retry and Dismiss", async () => {
+    const props = renderMenu({ pending_uploads: [pending({ status: "failed", error: "The files.0 must be a file." })] });
+    expect(screen.getByRole("alert")).toHaveTextContent("The files.0 must be a file.");
+    await userEvent.click(screen.getByRole("button", { name: "Retry uploading report.pdf" }));
+    expect(props.onRetryUpload).toHaveBeenCalledWith("batch-1");
+    await userEvent.click(screen.getByRole("button", { name: "Dismiss report.pdf" }));
+    expect(props.onDismissUpload).toHaveBeenCalledWith("batch-1");
+  });
+
+  test("a waiting upload can be cancelled, a running one cannot", () => {
+    renderMenu({
+      files: [],
+      pending_uploads: [pending({}), pending({ id: "upload-2", batch_id: "batch-2", file_name: "next.pdf", status: "queued", progress: 0 })],
+    });
+    expect(screen.getByRole("button", { name: "Cancel next.pdf" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancel report.pdf" })).not.toBeInTheDocument();
+  });
+
+  test("an entry that just landed is highlighted", () => {
+    renderMenu({ fresh_ids: new Set([pdf_file.id]) });
+    expect(screen.getByText("brief.pdf").closest(".files-menu__entry")).toHaveAttribute("data-fresh", "true");
+    expect(screen.getByText("Figma").closest(".files-menu__entry")).not.toHaveAttribute("data-fresh");
   });
 });

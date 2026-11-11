@@ -264,6 +264,73 @@ async function requestFormData<T>(
   return readJsonBody<T>(response);
 }
 
+/** How far a multipart upload got: `loaded` of `total` bytes sent, `total` is 0 when the browser cannot tell. */
+export interface UploadProgress {
+  loaded: number;
+  total: number;
+}
+
+type XhrResult = { status: number; body: string };
+
+function sendFormDataXhr(
+  endpoint: string,
+  form_data: FormData,
+  method: string,
+  token: string | null,
+  onProgress?: (progress: UploadProgress) => void
+): Promise<XhrResult> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, `${API_BASE_URL}${endpoint}`);
+    xhr.setRequestHeader("Accept", "application/json");
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    if (onProgress) {
+      xhr.upload.onprogress = (event) => onProgress({ loaded: event.loaded, total: event.lengthComputable ? event.total : 0 });
+    }
+    xhr.onload = () => resolve({ status: xhr.status, body: xhr.responseText });
+    xhr.onerror = () => reject({ message: "The connection was lost while uploading. Please try again.", status_code: 0 });
+    xhr.onabort = () => reject({ message: "The upload was cancelled.", status_code: 0 });
+    xhr.send(form_data);
+  });
+}
+
+/**
+ * Same contract as `requestFormData` (token refresh on a 401, the API's error payload on failure,
+ * `automation_effects` published), but sent with XMLHttpRequest so the caller hears how many bytes
+ * went out. `fetch` has no upload progress.
+ */
+async function requestFormDataWithProgress<T>(
+  endpoint: string,
+  form_data: FormData,
+  onProgress?: (progress: UploadProgress) => void,
+  method: string = "POST"
+): Promise<T> {
+  const token = getToken();
+  let result = await sendFormDataXhr(endpoint, form_data, method, token, onProgress);
+
+  if (result.status === 401 && token) {
+    const new_token = await handleUnauthorized();
+    result = await sendFormDataXhr(endpoint, form_data, method, new_token, onProgress);
+  }
+
+  const parseBody = (): unknown => {
+    try {
+      return result.body ? JSON.parse(result.body) : undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  if (result.status < 200 || result.status >= 300) {
+    const error_data = (parseBody() as Record<string, unknown> | undefined) ?? { message: "An unexpected error occurred" };
+    throw { ...error_data, status_code: result.status };
+  }
+
+  const body = parseBody() as T;
+  if (body !== undefined) publishAutomationEffectsFromResponse(body);
+  return body;
+}
+
 export const apiClient = {
   get: <T>(endpoint: string, options?: RequestOptions) =>
     request<T>(endpoint, { ...options, method: "GET" }),
@@ -282,6 +349,10 @@ export const apiClient = {
 
   postFormData: <T>(endpoint: string, form_data: FormData) =>
     requestFormData<T>(endpoint, form_data, "POST"),
+
+  /** `postFormData` that reports the bytes sent, for uploads that show a progress bar. */
+  postFormDataWithProgress: <T>(endpoint: string, form_data: FormData, onProgress?: (progress: UploadProgress) => void) =>
+    requestFormDataWithProgress<T>(endpoint, form_data, onProgress, "POST"),
 };
 
 /** Turns an API path (e.g. a signed download link the API returned) into an absolute URL the browser can open. */

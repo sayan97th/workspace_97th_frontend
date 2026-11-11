@@ -1,9 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useRef, useState, type ClipboardEvent, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useCallback, useRef, useState, type ClipboardEvent, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import PopoverPanel from "./PopoverPanel";
 import CellFileThumb from "../cells/CellFileThumb";
+import { PendingThumb } from "../cells/FileUploadStatus";
+import type { PendingUpload } from "../cells/useCellFileUploads";
 import { CameraIcon, DocIcon, FILE_SOURCES, LinkIcon, PaperclipIcon, PROVIDER_SOURCES, SOURCE_ICONS } from "./fileSources";
 import { ACCEPTED_FILE_TYPES, canRenameFile, filesFromClipboard, formatSize, isImageFile, splitFileName } from "./filesCellUtils";
 import type { CellFile, CellFileSource } from "../types";
@@ -12,7 +14,13 @@ import "./files-menu.css";
 
 interface FilesMenuProps {
   files: CellFile[];
-  is_uploading: boolean;
+  /** Files still on their way (queued, uploading, saving or failed), listed under the saved ones. */
+  pending_uploads: PendingUpload[];
+  /** Entries that just landed, highlighted for a moment. */
+  fresh_ids: ReadonlySet<string>;
+  onRetryUpload: (batch_id: string) => void;
+  /** Forgets a failed or still waiting batch. */
+  onDismissUpload: (batch_id: string) => void;
   is_creating_doc: boolean;
   /** Last failed action's message (upload or Doc), shown above the options until the next attempt. */
   upload_error: string | null;
@@ -69,7 +77,10 @@ function readErrorMessage(error: unknown): string {
  */
 export default function FilesMenu({
   files,
-  is_uploading,
+  pending_uploads,
+  fresh_ids,
+  onRetryUpload,
+  onDismissUpload,
   is_creating_doc,
   upload_error,
   can_edit,
@@ -85,7 +96,9 @@ export default function FilesMenu({
   const [active_index, setActiveIndex] = useState(0);
   const [renaming_id, setRenamingId] = useState<string | null>(null);
 
-  const is_busy = is_uploading || is_creating_doc;
+  // Uploads never block the menu, more files simply queue behind them. Only a Doc being created does.
+  const is_uploading = pending_uploads.some((upload) => upload.status !== "failed");
+  const is_busy = is_creating_doc;
 
   const { getRootProps, getInputProps, isDragActive, open: openFilePicker } = useDropzone({
     onDrop: (dropped) => dropped.length && onUpload(dropped),
@@ -100,7 +113,7 @@ export default function FilesMenu({
     ? [
         {
           key: "computer",
-          label: is_uploading ? "Uploading…" : "From Computer",
+          label: "From Computer",
           icon: <PaperclipIcon />,
           disabled: is_busy,
           onSelect: openFilePicker,
@@ -165,11 +178,12 @@ export default function FilesMenu({
   return (
     <PopoverPanel onClose={onClose} unstyled className="left-1/2 top-full w-max -translate-x-1/2">
       <div ref={focusMenu} tabIndex={-1} onKeyDown={handleKeyDown} onPaste={handlePaste} className="action-menu files-menu outline-none">
-        {files.length > 0 && (
+        {files.length + pending_uploads.length > 0 && (
           <>
             <div className="action-menu__title files-menu__title">
               Files in this cell
-              <span className="files-menu__title-count">{files.length}</span>
+              {files.length > 0 && <span className="files-menu__title-count">{files.length}</span>}
+              {is_uploading && <span className="files-menu__title-uploading">Uploading</span>}
             </div>
             <div className="files-menu__entries">
               {files.map((file) =>
@@ -187,6 +201,7 @@ export default function FilesMenu({
                   <EntryRow
                     key={file.id}
                     file={file}
+                    is_fresh={fresh_ids.has(file.id)}
                     can_edit={can_edit}
                     onPreview={() => onPreview(file.id)}
                     onStartRename={() => setRenamingId(file.id)}
@@ -194,6 +209,14 @@ export default function FilesMenu({
                   />
                 )
               )}
+              {pending_uploads.map((upload) => (
+                <PendingRow
+                  key={upload.id}
+                  upload={upload}
+                  onRetry={() => onRetryUpload(upload.batch_id)}
+                  onDismiss={() => onDismissUpload(upload.batch_id)}
+                />
+              ))}
             </div>
             {options.length > 0 && <div className="action-menu__divider" role="separator" />}
           </>
@@ -213,24 +236,21 @@ export default function FilesMenu({
                 "aria-label": "Upload files: drop them here, paste or click to browse",
               })}
               data-drag-active={isDragActive || undefined}
-              data-busy={is_uploading || undefined}
             >
               <input {...getInputProps({ accept: ACCEPTED_FILE_TYPES })} />
               <span className="files-menu__dropzone-icon" aria-hidden="true">
-                {is_uploading ? <span className="files-menu__spinner" /> : <UploadCloudIcon />}
+                <UploadCloudIcon />
               </span>
               <span className="files-menu__dropzone-text">
-                {is_uploading ? (
-                  "Uploading…"
-                ) : isDragActive ? (
-                  "Drop to upload"
+                {isDragActive ? (
+                  is_uploading ? "Drop to add to the queue" : "Drop to upload"
                 ) : (
                   <>
                     Drag files here or <span className="files-menu__dropzone-link">browse</span>
                   </>
                 )}
               </span>
-              {!is_uploading && !isDragActive && (
+              {!isDragActive && (
                 <span className="files-menu__dropzone-hint">
                   or paste an image with <kbd>{PASTE_SHORTCUT}</kbd>
                 </span>
@@ -266,6 +286,8 @@ export default function FilesMenu({
 
 interface EntryRowProps {
   file: CellFile;
+  /** Just landed, drawn with a short green highlight. */
+  is_fresh: boolean;
   can_edit: boolean;
   onPreview: () => void;
   onStartRename: () => void;
@@ -273,7 +295,7 @@ interface EntryRowProps {
 }
 
 /** One entry: thumbnail (or type icon), name over its type and size, then the hover rename and remove buttons. */
-function EntryRow({ file, can_edit, onPreview, onStartRename, onDelete }: EntryRowProps) {
+function EntryRow({ file, is_fresh, can_edit, onPreview, onStartRename, onDelete }: EntryRowProps) {
   const { icon, meta } = describeEntry(file);
   const is_image = isImageFile(file);
   // A Doc opens inside the app, uploads and links open in a new tab, images open the lightbox.
@@ -281,7 +303,7 @@ function EntryRow({ file, can_edit, onPreview, onStartRename, onDelete }: EntryR
   const can_rename = can_edit && canRenameFile(file);
 
   return (
-    <div className="files-menu__entry" onDoubleClick={can_rename ? onStartRename : undefined}>
+    <div className="files-menu__entry" data-fresh={is_fresh || undefined} onDoubleClick={can_rename ? onStartRename : undefined}>
       {is_image ? (
         <button type="button" onClick={onPreview} className="files-menu__thumb files-menu__thumb--image" aria-label={`Preview ${file.file_name}`}>
           <CellFileThumb file={file} />
@@ -322,6 +344,71 @@ function EntryRow({ file, can_edit, onPreview, onStartRename, onDelete }: EntryR
           </svg>
         </button>
       )}
+    </div>
+  );
+}
+
+function pendingMeta(upload: PendingUpload): string {
+  const total = formatSize(upload.size_bytes);
+  switch (upload.status) {
+    case "queued":
+      return `Waiting · ${total}`;
+    case "uploading":
+      return `${Math.round(upload.progress * 100)}% · ${formatSize(Math.round(upload.size_bytes * upload.progress))} of ${total}`;
+    case "processing":
+      return `Saving · ${total}`;
+    case "failed":
+      return upload.error ?? "The file could not be uploaded.";
+  }
+}
+
+interface PendingRowProps {
+  upload: PendingUpload;
+  onRetry: () => void;
+  onDismiss: () => void;
+}
+
+/**
+ * A file on its way: its local preview (or type badge), name, live progress and a bar along the
+ * row. A failed one offers Retry and "×", one still waiting can be dropped with "×".
+ */
+function PendingRow({ upload, onRetry, onDismiss }: PendingRowProps) {
+  const style = { "--upload-progress": upload.status === "processing" ? 1 : upload.progress } as CSSProperties;
+  return (
+    <div className="files-menu__entry files-menu__pending" data-status={upload.status} style={style}>
+      <span className="files-menu__thumb files-menu__pending-thumb" aria-hidden="true">
+        <PendingThumb upload={upload} />
+      </span>
+      <div className="files-menu__entry-body">
+        <span className="files-menu__entry-name files-menu__pending-name" title={upload.file_name}>
+          {upload.file_name}
+        </span>
+        <span className="files-menu__entry-meta files-menu__pending-meta" role={upload.status === "failed" ? "alert" : undefined}>
+          {upload.status === "processing" && <span className="files-menu__spinner files-menu__spinner--small" aria-hidden="true" />}
+          {pendingMeta(upload)}
+        </span>
+      </div>
+      {upload.status === "failed" && (
+        <button type="button" onClick={onRetry} aria-label={`Retry uploading ${upload.file_name}`} title="Retry" className="files-menu__entry-action files-menu__pending-action">
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="none" aria-hidden="true">
+            <path d="M13 8 A5 5 0 1 1 11.5 4.4 M13 2.5 V5 H10.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+      )}
+      {(upload.status === "failed" || upload.status === "queued") && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label={upload.status === "failed" ? `Dismiss ${upload.file_name}` : `Cancel ${upload.file_name}`}
+          title={upload.status === "failed" ? "Dismiss" : "Cancel"}
+          className="files-menu__entry-action files-menu__pending-action files-menu__entry-action--danger"
+        >
+          <svg viewBox="0 0 14 14" width="10" height="10" aria-hidden="true">
+            <path d="M3 3 L11 11 M11 3 L3 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
+      <span className="files-menu__pending-bar" aria-hidden="true" />
     </div>
   );
 }

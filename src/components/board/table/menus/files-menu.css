@@ -21,6 +21,8 @@
   --files-menu-input-bg: #ffffff;
   --files-menu-kbd-bg: #ffffff;
   --files-menu-kbd-border: #d0d4e4;
+  --files-menu-fresh-bg: rgba(0, 200, 117, 0.12);
+  --files-menu-fresh-ring: rgba(0, 200, 117, 0.45);
 
   width: 300px;
 }
@@ -41,6 +43,8 @@ html.dark .files-menu {
   --files-menu-input-bg: rgba(255, 255, 255, 0.04);
   --files-menu-kbd-bg: rgba(255, 255, 255, 0.08);
   --files-menu-kbd-border: rgba(255, 255, 255, 0.16);
+  --files-menu-fresh-bg: rgba(51, 211, 145, 0.14);
+  --files-menu-fresh-ring: rgba(51, 211, 145, 0.4);
 }
 
 .files-menu .action-menu__item[data-active="true"]:not([aria-disabled="true"]) {
@@ -196,6 +200,176 @@ html.dark .files-menu {
   }
 }
 
+.files-menu__title-uploading {
+  margin-left: auto;
+  color: var(--files-menu-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.files-menu__title-uploading::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+
+/* An entry that just landed: a green wash that fades, the thumbnail rings once. */
+@media (prefers-reduced-motion: no-preference) {
+  .files-menu__entry[data-fresh] {
+    animation: files-menu-fresh 2.2s ease-out;
+  }
+
+  .files-menu__entry[data-fresh] .files-menu__thumb {
+    animation: files-menu-fresh-ring 1.2s ease-out;
+  }
+
+  .files-menu__title-uploading::before {
+    animation: files-menu-pulse 1s ease-in-out infinite alternate;
+  }
+}
+
+/* A file on its way: muted name, live meta line, a bar along the bottom of the row. */
+.files-menu__pending {
+  position: relative;
+  overflow: hidden;
+}
+
+.files-menu__pending-thumb {
+  position: relative;
+}
+
+.files-menu__pending-thumb img,
+.files-menu__pending-thumb .file-type-badge {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  font-size: 9px;
+}
+
+/* Lifts from the bottom up with the bytes sent, like the cell's own preview. */
+.files-menu__pending-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--files-menu-pending-veil, rgba(255, 255, 255, 0.7));
+  clip-path: inset(0 0 calc(var(--upload-progress, 0) * 100%) 0);
+  transition: clip-path 220ms ease-out;
+}
+
+html.dark .files-menu__pending-thumb::after {
+  --files-menu-pending-veil: rgba(24, 27, 52, 0.66);
+}
+
+.files-menu__pending[data-status="processing"] .files-menu__pending-thumb::after,
+.files-menu__pending[data-status="failed"] .files-menu__pending-thumb::after {
+  opacity: 0;
+}
+
+.files-menu__pending-name {
+  color: var(--files-menu-entry-muted);
+}
+
+.files-menu__pending-name:hover {
+  color: var(--files-menu-entry-muted);
+  text-decoration: none;
+}
+
+.files-menu__pending-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.files-menu__pending[data-status="uploading"] .files-menu__pending-meta,
+.files-menu__pending[data-status="processing"] .files-menu__pending-meta {
+  color: var(--files-menu-accent);
+}
+
+.files-menu__pending[data-status="failed"] .files-menu__pending-meta {
+  color: var(--files-menu-error-text);
+  white-space: normal;
+}
+
+/* Retry and "×" on a failed or waiting row stay visible, they are the only way forward. */
+.files-menu__pending-action {
+  opacity: 1;
+}
+
+.files-menu__pending-bar {
+  position: absolute;
+  right: 6px;
+  bottom: 2px;
+  left: 50px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--files-menu-accent-soft);
+}
+
+.files-menu__pending-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--upload-progress, 0) * 100%);
+  border-radius: 2px;
+  background: var(--files-menu-accent);
+  transition: width 220ms ease-out;
+}
+
+.files-menu__pending[data-status="processing"] .files-menu__pending-bar::after {
+  background: linear-gradient(90deg, var(--files-menu-accent) 30%, var(--files-menu-accent-soft) 50%, var(--files-menu-accent) 70%);
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .files-menu__pending[data-status="processing"] .files-menu__pending-bar::after {
+    animation: files-menu-sweep 1.1s linear infinite;
+  }
+}
+
+.files-menu__pending[data-status="failed"] .files-menu__pending-bar {
+  display: none;
+}
+
+@keyframes files-menu-fresh {
+  0%,
+  35% {
+    background: var(--files-menu-fresh-bg);
+  }
+}
+
+@keyframes files-menu-fresh-ring {
+  0% {
+    box-shadow: 0 0 0 0 var(--files-menu-fresh-ring);
+  }
+  100% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+@keyframes files-menu-pulse {
+  to {
+    opacity: 0.35;
+  }
+}
+
+@keyframes files-menu-sweep {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 /* Inline rename field that takes the row's place. */
 .files-menu__rename {
   padding: 4px;
@@ -279,7 +453,6 @@ html.dark .files-menu {
   transform: scale(1.01);
 }
 
-.files-menu__dropzone[data-busy],
 .files-menu__dropzone[aria-disabled="true"] {
   cursor: progress;
 }

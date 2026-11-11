@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useEffectEvent, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 import { useDropzone } from "react-dropzone";
 import type { CellFile, CellFileSource } from "../types";
 import FilesMenu from "../menus/FilesMenu";
@@ -12,6 +12,8 @@ import CellHyperlink from "./CellHyperlink";
 import CellFileThumb from "./CellFileThumb";
 import FilePeekCard from "./FilePeekCard";
 import { useCellTooltip } from "./CellTooltip";
+import FileUploadStatus from "./FileUploadStatus";
+import { readUploadError, useCellFileUploads } from "./useCellFileUploads";
 import type { ColumnCenterCellProps } from "./ColumnCenterCells";
 import "./files-cell.css";
 
@@ -21,13 +23,8 @@ const FileImageViewer = dynamic(() => import("../menus/FileImageViewer"), { ssr:
 /** The tooltip bubble turns into the image preview card, see `file-peek-card.scss`. */
 const PEEK_BUBBLE_CLASS = "cell-link-tooltip--card";
 
-type ApiError = { errors?: Record<string, string[]>; message?: string };
-
-function readApiError(error: unknown, fallback: string): string {
-  const payload = error as ApiError | undefined;
-  const first_field_error = payload?.errors ? Object.values(payload.errors).flat()[0] : undefined;
-  return first_field_error ?? payload?.message ?? fallback;
-}
+/** How long a just added entry keeps its "Uploaded" mark and highlight. */
+const FRESH_DISPLAY_MS = 2200;
 
 /** Whether the paste lands in something that takes text itself (a rename field, a comment box), which keeps its own paste. */
 function isTextTarget(target: EventTarget | null): boolean {
@@ -43,6 +40,10 @@ function isTextTarget(target: EventTarget | null): boolean {
  * - drag files from the desktop onto the cell, it lights up as a drop target;
  * - Ctrl/Cmd+V while the cell is the active (selected) cell uploads a copied image;
  * - the menu's own drop zone, which also takes a paste while it is open.
+ *
+ * An upload shows in the cell the moment it starts (`FileUploadStatus`, real progress), more
+ * files can be added while it runs (they queue, see `useCellFileUploads`), and the saved entry
+ * takes over with a short green "Uploaded" mark, so nobody uploads the same file twice.
  */
 export default function FilesCell({ node_id, column, value, state, actions, is_menu_open, openMenu }: ColumnCenterCellProps) {
   const files = Array.isArray(value) && value.every((f) => typeof f === "object" && f !== null) ? (value as CellFile[]) : [];
@@ -50,9 +51,8 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
   const first_file = files[0];
   const images = files.filter(isImageFile);
 
-  // The in flight "Upload" and "Doc" state, the last failure's message, which link dialog is
+  // The in flight "Doc" state, the last failure's message, which link dialog is
   // open (by source), whether the webcam dialog is open and which image the lightbox shows.
-  const [is_uploading, setIsUploading] = useState(false);
   const [is_creating_doc, setIsCreatingDoc] = useState(false);
   const [upload_error, setUploadError] = useState<string | null>(null);
   const [file_link_source, setFileLinkSource] = useState<CellFileSource | null>(null);
@@ -65,19 +65,46 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
     if (!is_menu_open) openMenu();
   };
 
-  /** Every way in (picker, drop, paste) lands here: unsupported or oversized files are named, the rest upload. */
+  // `Promise.resolve`: the read only guard returns undefined instead of a promise.
+  const uploads = useCellFileUploads((batch, onProgress) => Promise.resolve(actions.uploadCellFiles(node_id, column.id, batch, onProgress)));
+
+  /**
+   * Every way in (picker, drop, paste) lands here: unsupported or oversized files are named, the
+   * rest show in the cell at once and upload behind anything already going. A failure stays on
+   * the cell with Retry, so it is not reported a second time here.
+   */
   const uploadFiles = (incoming: File[]) => {
-    if (is_uploading || incoming.length === 0) return;
+    if (incoming.length === 0) return;
     const { accepted, error } = prepareUploads(incoming);
     setUploadError(null);
     if (error) reportError(error);
     if (accepted.length === 0) return;
-    setIsUploading(true);
-    // `Promise.resolve`: the read only guard returns undefined instead of a promise.
-    Promise.resolve(actions.uploadCellFiles(node_id, column.id, accepted))
-      .catch((caught) => reportError(readApiError(caught, "The file could not be uploaded.")))
-      .finally(() => setIsUploading(false));
+    uploads.enqueue(accepted).done.catch(() => undefined);
   };
+
+  // Entries that just appeared (an upload, a link or a Doc landed) get a short highlight, so the
+  // change is noticed even when the cell keeps showing its first file and only "+N" moves.
+  const [fresh_ids, setFreshIds] = useState<ReadonlySet<string>>(() => new Set());
+  const known_ids_ref = useRef<Set<string> | null>(null);
+  const fresh_timer_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const file_ids_key = files.map((file) => file.id).join("|");
+  useEffect(() => {
+    const ids = file_ids_key ? file_ids_key.split("|") : [];
+    const known = known_ids_ref.current;
+    known_ids_ref.current = new Set(ids);
+    // The first list the cell sees is what was already there, nothing is new.
+    if (!known) return;
+    const added = ids.filter((id) => !known.has(id));
+    if (added.length === 0) return;
+    setFreshIds(new Set(added));
+    if (fresh_timer_ref.current) clearTimeout(fresh_timer_ref.current);
+    fresh_timer_ref.current = setTimeout(() => setFreshIds(new Set()), FRESH_DISPLAY_MS);
+  }, [file_ids_key]);
+  useEffect(() => () => {
+    if (fresh_timer_ref.current) clearTimeout(fresh_timer_ref.current);
+  }, []);
+  const fresh_files = files.filter((file) => fresh_ids.has(file.id));
+  const fresh_label = fresh_files.length === 0 ? null : fresh_files.every((file) => !file.kind || file.kind === "file") ? "Uploaded" : "Added";
 
   const openPreview = (file_id: string) => {
     const index = images.findIndex((image) => image.id === file_id);
@@ -116,15 +143,20 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
   }, [is_active, can_edit]);
 
   const first_is_image = !!first_file && isImageFile(first_file);
+  const upload_summary = uploads.summary;
 
   return (
     <div
       {...getRootProps({ className: "cell-link-host files-cell" })}
       data-drag-active={isDragActive || undefined}
-      data-uploading={is_uploading || undefined}
+      data-uploading={uploads.is_uploading || undefined}
+      data-fresh={fresh_label ? true : undefined}
       data-paste-ready={is_active && can_edit && !is_menu_open ? true : undefined}
     >
       <button type="button" onClick={openMenu} aria-label={files.length > 0 ? "Manage files" : "Add file"} className="cell-link-host__hit-area" />
+      {upload_summary ? (
+        <FileUploadStatus summary={upload_summary} onRetry={uploads.retry} onDismiss={uploads.dismiss} />
+      ) : (
       <div className="cell-link-host__content">
         {first_file ? (
           <>
@@ -154,15 +186,32 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
               remove_label={`Remove ${first_file.file_name}`}
             />
             {files.length > 1 && (
-              <button type="button" onClick={openMenu} className="cell-link-host__count" aria-label={`Show all ${files.length} files`}>
+              <button
+                // A new key replays the bump animation when the count changes.
+                key={files.length}
+                type="button"
+                onClick={openMenu}
+                className="cell-link-host__count files-cell__count"
+                aria-label={`Show all ${files.length} files`}
+              >
                 +{files.length - 1}
               </button>
+            )}
+            {fresh_label && (
+              <span className="files-cell__fresh" role="status" title={fresh_label}>
+                <svg viewBox="0 0 12 12" width="9" height="9" fill="none" aria-hidden="true">
+                  <path d="M2.5 6.2 L5 8.5 L9.5 3.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                {/* Narrow cells keep only the check, the name needs the room. */}
+                <span className="files-cell__fresh-text">{fresh_label}</span>
+              </span>
             )}
           </>
         ) : (
           can_edit && <AddGlyph />
         )}
       </div>
+      )}
 
       {isDragActive && (
         <div className="files-cell__drop" aria-hidden="true">
@@ -172,12 +221,14 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
           Drop to upload
         </div>
       )}
-      {is_uploading && <div className="files-cell__progress" role="progressbar" aria-label="Uploading files" />}
 
       {is_menu_open && (
         <FilesMenu
           files={files}
-          is_uploading={is_uploading}
+          pending_uploads={uploads.pending}
+          fresh_ids={fresh_ids}
+          onRetryUpload={uploads.retry}
+          onDismissUpload={uploads.dismiss}
           is_creating_doc={is_creating_doc}
           upload_error={upload_error}
           can_edit={can_edit}
@@ -191,7 +242,7 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
             setUploadError(null);
             Promise.resolve(actions.addCellFileDoc(node_id, column.id))
               .then(() => actions.closeCellMenu())
-              .catch((caught) => setUploadError(readApiError(caught, "The doc could not be created.")))
+              .catch((caught) => setUploadError(readUploadError(caught, "The doc could not be created.")))
               .finally(() => setIsCreatingDoc(false));
           }}
           onAddLink={(source) => {
@@ -220,8 +271,16 @@ export default function FilesCell({ node_id, column, value, state, actions, is_m
       )}
       {is_webcam_open && (
         <WebcamCaptureModal
+          // Goes through the same queue, so the cell shows it. The dialog shows a failure itself,
+          // so a failed photo does not also stay on the cell.
           onUpload={async (photo) => {
-            await actions.uploadCellFiles(node_id, column.id, [photo]);
+            const { batch_id, done } = uploads.enqueue([photo]);
+            try {
+              await done;
+            } catch (caught) {
+              uploads.dismiss(batch_id);
+              throw caught;
+            }
           }}
           onClose={() => setIsWebcamOpen(false)}
         />

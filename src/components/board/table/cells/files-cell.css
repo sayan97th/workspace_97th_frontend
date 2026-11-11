@@ -1,15 +1,21 @@
 /*
  * Files cell extras on top of `cell-links.css`: the image thumbnail, the
- * drop target state while files are dragged over the cell, the upload
- * progress bar. The image hover preview is `file-peek-card.scss`.
+ * drop target state while files are dragged over the cell, and the short
+ * "Uploaded" mark when an entry lands. The upload in progress is
+ * `file-upload-status.scss`, the image hover preview `file-peek-card.scss`.
  */
 
 .files-cell {
+  /* The upload status and the "Uploaded" mark shorten themselves in narrow columns. */
+  container: files-cell / inline-size;
   --files-cell-accent: #0073ea;
   --files-cell-drop-bg: rgba(0, 115, 234, 0.1);
   --files-cell-drop-text: #0060b9;
   --files-cell-thumb-border: #d0d4e4;
   --files-cell-thumb-bg: #f0f1f5;
+  --files-cell-fresh-bg: #e3f6ec;
+  --files-cell-fresh-text: #00854d;
+  --files-cell-fresh-glow: rgba(0, 200, 117, 0.45);
 }
 
 html.dark .files-cell {
@@ -18,6 +24,9 @@ html.dark .files-cell {
   --files-cell-drop-text: #a8cbf6;
   --files-cell-thumb-border: rgba(255, 255, 255, 0.16);
   --files-cell-thumb-bg: rgba(255, 255, 255, 0.06);
+  --files-cell-fresh-bg: rgba(51, 211, 145, 0.16);
+  --files-cell-fresh-text: #6fdcaa;
+  --files-cell-fresh-glow: rgba(51, 211, 145, 0.4);
 }
 
 /* Small square image next to the name, zooms in a touch on hover. */
@@ -84,31 +93,54 @@ html.dark .files-cell {
   }
 }
 
-/* An indeterminate bar along the bottom edge while an upload runs. */
-.files-cell__progress {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  overflow: hidden;
+/* An entry just landed: the content settles in, the thumbnail glows once, a green mark fades. */
+.files-cell__fresh {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 0 7px 0 5px;
+  border-radius: 999px;
+  background: var(--files-cell-fresh-bg);
+  color: var(--files-cell-fresh-text);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.files-cell__progress::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 40%;
-  border-radius: 2px;
-  background: var(--files-cell-accent);
-  animation: files-cell-progress 1s ease-in-out infinite;
+/* Narrow columns: only a round green check, the file name keeps the room. */
+@container files-cell (max-width: 240px) {
+  .files-cell__fresh {
+    width: 18px;
+    height: 18px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .files-cell__fresh-text {
+    display: none;
+  }
 }
 
-.files-cell[data-uploading] .cell-link-host__content {
-  opacity: 0.6;
+@media (prefers-reduced-motion: no-preference) {
+  .files-cell[data-fresh] .cell-link-host__content {
+    animation: files-cell-arrive 260ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+
+  .files-cell[data-fresh] .files-cell__thumb {
+    animation: files-cell-glow 1.2s ease-out;
+  }
+
+  .files-cell__fresh {
+    animation: files-cell-fresh 2.2s ease-in-out forwards;
+  }
+
+  .files-cell__count {
+    animation: files-cell-count-bump 320ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
 }
 
 @keyframes files-cell-drop-enter {
@@ -118,11 +150,51 @@ html.dark .files-cell {
   }
 }
 
-@keyframes files-cell-progress {
+
+@keyframes files-cell-arrive {
   from {
-    transform: translateX(-100%);
+    opacity: 0;
+    transform: translateY(4px);
   }
-  to {
-    transform: translateX(250%);
+}
+
+@keyframes files-cell-glow {
+  0% {
+    box-shadow: 0 0 0 0 var(--files-cell-fresh-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+
+@keyframes files-cell-fresh {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  12% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  20% {
+    transform: scale(1);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes files-cell-count-bump {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
   }
 }

@@ -2178,6 +2178,19 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     );
   }, []);
 
+  // ── Files cell: every Files endpoint (upload, link, Doc, rename, remove) answers with the
+  // cell's whole list. It is written into `items` as well, not only into the table's own copy:
+  // the table re-syncs from `items` whenever they change, which would otherwise put the old
+  // list back and make a finished upload look lost until the page is reloaded. ──
+  const applyCellFiles = useCallback(
+    (item_id: number, column_id: string) =>
+      (files: BoardCellFile[]): BoardCellFile[] => {
+        setItems((current) => mapItemInTree(current, item_id, (item) => ({ ...item, values: { ...item.values, [column_id]: files } })));
+        return files;
+      },
+    []
+  );
+
   // ── Inline cell edit: optimistically writes the new value, then persists it,
   // reverting the whole item list if the request fails. Items whose dates
   // moved because they depend on this one come back with the response. ──
@@ -3524,15 +3537,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       canEditNode: is_assigned_only ? canEditTableNode : undefined,
       canEditColumn: canEditTableColumn,
       current_user_id: user ? String(user.id) : undefined,
-      onUploadCellFiles: (node_id, column_id, files) =>
-        boardItemCellFilesService.uploadCellFiles(board_id, Number(node_id), Number(column_id), files),
+      onUploadCellFiles: (node_id, column_id, files, onProgress) =>
+        boardItemCellFilesService
+          .uploadCellFiles(board_id, Number(node_id), Number(column_id), files, onProgress)
+          .then(applyCellFiles(Number(node_id), column_id)),
       onAddCellFileLink: (node_id, column_id, url, text, source) =>
-        boardItemCellFilesService.addCellFileLink(board_id, Number(node_id), Number(column_id), url, text, source),
-      onAddCellFileDoc: (node_id, column_id) => boardItemCellFilesService.addCellFileDoc(board_id, Number(node_id), Number(column_id)),
+        boardItemCellFilesService
+          .addCellFileLink(board_id, Number(node_id), Number(column_id), url, text, source)
+          .then(applyCellFiles(Number(node_id), column_id)),
+      onAddCellFileDoc: (node_id, column_id) =>
+        boardItemCellFilesService.addCellFileDoc(board_id, Number(node_id), Number(column_id)).then(applyCellFiles(Number(node_id), column_id)),
       onRenameCellFile: (node_id, column_id, file_id, file_name) =>
-        boardItemCellFilesService.renameCellFile(board_id, Number(node_id), Number(column_id), file_id, file_name),
+        boardItemCellFilesService
+          .renameCellFile(board_id, Number(node_id), Number(column_id), file_id, file_name)
+          .then(applyCellFiles(Number(node_id), column_id)),
       onDeleteCellFile: (node_id, column_id, file_id) =>
-        boardItemCellFilesService.deleteCellFile(board_id, Number(node_id), Number(column_id), file_id),
+        boardItemCellFilesService
+          .deleteCellFile(board_id, Number(node_id), Number(column_id), file_id)
+          .then(applyCellFiles(Number(node_id), column_id)),
       initial_collapsed_groups: collapsed_group_map,
       // Tables (groups) are scoped per tab, so the viewer's collapsed set is
       // saved against the active tab rather than the board as a whole — see

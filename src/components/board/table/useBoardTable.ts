@@ -2,6 +2,7 @@
 
 import { reorderByIds } from "../cells/optionOrder";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { UploadProgress } from "@/lib/api-client";
 import type {
   ActiveCell,
   CellFile,
@@ -239,8 +240,9 @@ export interface UseBoardTableConfig {
    * state directly (unlike `onCellValueChange`, this is the one write of
    * that value, so it isn't fired again for the same change). Omitted, the
    * cell's Upload button still opens the file picker but silently no-ops.
+   * `onProgress` hears the bytes sent so far, for the cell's progress ring.
    */
-  onUploadCellFiles?: (node_id: string, column_id: string, files: File[]) => Promise<CellFile[]>;
+  onUploadCellFiles?: (node_id: string, column_id: string, files: File[], onProgress?: (progress: UploadProgress) => void) => Promise<CellFile[]>;
   /** A `files`-type cell's per-chip delete "×" — resolves with the cell's updated file list, same contract as `onUploadCellFiles`. */
   onDeleteCellFile?: (node_id: string, column_id: string, file_id: string) => Promise<CellFile[]>;
   /** A `files`-type cell's "From Link" dialog, resolves with the cell's updated file list, same contract as `onUploadCellFiles`. Rejects with the API's validation error so the dialog can show it. */
@@ -1094,10 +1096,10 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     [setDependencyLinks]
   );
 
-  /** Files cell's "Upload" button. */
+  /** Files cell's uploads (picker, drop, paste, webcam). Errors propagate to the caller, which shows them on the cell. */
   const uploadCellFiles = useCallback(
-    async (node_id: string, column_id: string, files: File[]) => {
-      const updated = await config_ref.current.onUploadCellFiles?.(node_id, column_id, files);
+    async (node_id: string, column_id: string, files: File[], onProgress?: (progress: UploadProgress) => void) => {
+      const updated = await config_ref.current.onUploadCellFiles?.(node_id, column_id, files, onProgress);
       if (updated) setCellValueLocal(node_id, column_id, updated);
     },
     [setCellValueLocal]
