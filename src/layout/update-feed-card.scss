@@ -59,7 +59,7 @@ html.dark {
 .uf-row {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 12px;
 }
 
 .uf-card {
@@ -82,8 +82,8 @@ html.dark {
 .uf-card__header {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 20px 20px 0 24px;
+  gap: 10px;
+  padding: 14px 14px 0 18px;
 }
 
 .uf-card__heading {
@@ -91,8 +91,8 @@ html.dark {
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
-  padding-top: 1px;
+  gap: 2px;
+  padding-top: 0;
 }
 
 .uf-card__author {
@@ -105,9 +105,9 @@ html.dark {
 .uf-card__name {
   overflow: hidden;
   color: var(--uf-text);
-  font-size: 16px;
-  font-weight: 500;
-  line-height: 22px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -119,13 +119,13 @@ html.dark {
   align-items: center;
   gap: 4px;
   color: var(--uf-text-secondary);
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 13px;
+  line-height: 18px;
 }
 
 .uf-card__crumb {
   overflow: hidden;
-  max-width: 260px;
+  max-width: 240px;
   text-overflow: ellipsis;
   white-space: nowrap;
 
@@ -159,16 +159,16 @@ html.dark {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  margin-right: 4px;
+  margin-right: 2px;
   color: var(--uf-text-secondary);
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
 }
 
 .uf-card__tool {
   display: inline-flex;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
@@ -198,15 +198,35 @@ html.dark {
 // ── Message ───────────────────────────────────────────────────────────────
 
 .uf-card__content {
-  padding: 18px 24px 12px;
+  padding: 12px 18px 8px;
 }
 
 .uf-card__body {
   position: relative;
   color: var(--uf-text);
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 14px;
+  line-height: 1.55;
   overflow-wrap: anywhere;
+
+  // Headings inside a message stay modest, the card name leads.
+  :is(h1, h2, h3, h4) {
+    margin-top: 0.8em;
+    margin-bottom: 0.35em;
+    line-height: 1.35;
+  }
+
+  h1 {
+    font-size: 17px;
+  }
+
+  h2 {
+    font-size: 15.5px;
+  }
+
+  h3,
+  h4 {
+    font-size: 14.5px;
+  }
 
   // Long messages stop at the fold with a soft fade, "Read More" opens them.
   &[data-folded="true"] {
@@ -230,11 +250,11 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 10px auto 0;
-  padding: 4px 8px;
+  margin: 6px auto 0;
+  padding: 3px 8px;
   border-radius: 4px;
   color: var(--uf-primary);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
   transition: background-color 150ms ease;
 
@@ -255,8 +275,8 @@ html.dark {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 28px;
-  margin-top: 14px;
+  min-height: 24px;
+  margin-top: 6px;
 }
 
 .uf-card__reactions {
@@ -272,8 +292,8 @@ html.dark {
 .uf-card__add-reaction,
 .feed-card__add-reaction {
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   flex: none;
   align-items: center;
   justify-content: center;
@@ -312,8 +332,8 @@ html.dark {
   align-items: center;
   gap: 4px;
   margin-left: auto;
-  color: var(--uf-text);
-  font-size: 14px;
+  color: var(--uf-text-secondary);
+  font-size: 13px;
 }
 
 // ── Like | Reply ──────────────────────────────────────────────────────────
@@ -330,13 +350,13 @@ html.dark {
   flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 48px;
-  margin: 4px;
+  gap: 6px;
+  height: 34px;
+  margin: 3px;
   padding: 0 8px;
   border-radius: 4px;
   color: var(--uf-text);
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 400;
   white-space: nowrap;
   transition:
@@ -370,9 +390,9 @@ html.dark {
 
   &::before {
     position: absolute;
-    top: -4px;
-    bottom: -4px;
-    left: -5px;
+    top: -3px;
+    bottom: -3px;
+    left: -4px;
     width: 1px;
     background: var(--uf-border-strong);
     content: "";
@@ -394,16 +414,16 @@ html.dark {
 // ── Thread and reply box ──────────────────────────────────────────────────
 
 .uf-card__thread {
-  padding: 20px 24px 4px;
+  padding: 14px 18px 2px;
   border-top: 1px solid var(--uf-border-strong);
 }
 
 .uf-card__composer {
-  padding: 16px 24px 20px;
+  padding: 12px 18px 14px;
   border-top: 1px solid var(--uf-border-strong);
 
   .uf-card__thread + & {
-    padding-top: 8px;
+    padding-top: 4px;
     border-top: 0;
   }
 }
@@ -411,19 +431,19 @@ html.dark {
 .uf-card__reply-pill-row {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 
 .uf-card__reply-pill {
   min-width: 0;
   flex: 1;
-  height: 40px;
-  padding: 0 20px;
+  height: 34px;
+  padding: 0 16px;
   border: 1px solid var(--uf-border-strong);
   border-radius: 9999px;
   background: var(--uf-card);
   color: var(--uf-text-secondary);
-  font-size: 15px;
+  font-size: 14px;
   text-align: left;
   transition:
     border-color 150ms ease,
@@ -441,7 +461,7 @@ html.dark {
 .feed-composer {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 10px;
 }
 
 .feed-composer__avatar {
@@ -456,13 +476,13 @@ html.dark {
 }
 
 .feed-composer__box {
-  min-height: 112px;
-  padding: 10px 14px;
+  min-height: 80px;
+  padding: 6px 12px;
   border: 1px solid var(--uf-primary);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--uf-card);
   color: var(--uf-text);
-  font-size: 15px;
+  font-size: 14px;
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease;
@@ -476,8 +496,8 @@ html.dark {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 6px;
 }
 
 .feed-composer__tools {
@@ -489,13 +509,13 @@ html.dark {
 
 .feed-composer__tool {
   display: inline-flex;
-  height: 32px;
+  height: 28px;
   align-items: center;
-  gap: 6px;
-  padding: 0 8px;
+  gap: 5px;
+  padding: 0 6px;
   border-radius: 4px;
   color: var(--uf-text);
-  font-size: 15px;
+  font-size: 13px;
   transition: background-color 150ms ease;
 
   &:hover,
@@ -519,10 +539,10 @@ html.dark {
 
 .feed-composer__send,
 .feed-composer__cancel {
-  height: 40px;
-  padding: 0 16px;
+  height: 32px;
+  padding: 0 14px;
   border-radius: 4px;
-  font-size: 15px;
+  font-size: 14px;
   transition:
     background-color 150ms ease,
     opacity 150ms ease;
@@ -556,12 +576,12 @@ html.dark {
 
 .uf-check {
   display: inline-flex;
-  width: 56px;
-  height: 56px;
+  width: 36px;
+  height: 36px;
   flex: none;
   align-items: center;
   justify-content: center;
-  margin-top: 10px;
+  margin-top: 8px;
   border: 1.5px solid transparent;
   border-radius: 4px;
   transition:
@@ -605,19 +625,19 @@ html.dark {
   }
 
   .uf-check {
-    width: 40px;
-    height: 40px;
+    width: 32px;
+    height: 32px;
   }
 
   .uf-card__header {
-    padding: 16px 14px 0;
+    padding: 12px 12px 0;
   }
 
   .uf-card__content,
   .uf-card__thread,
   .uf-card__composer {
-    padding-right: 14px;
-    padding-left: 14px;
+    padding-right: 12px;
+    padding-left: 12px;
   }
 }
 

@@ -164,7 +164,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
 
   return (
     <div className="feed-composer" onFocusCapture={ensurePeopleLoaded}>
-      {!hide_avatar && <PersonAvatar person={current_user} size={34} className="feed-composer__avatar" />}
+      {!hide_avatar && <PersonAvatar person={current_user} size={28} className="feed-composer__avatar" />}
 
       <div className="feed-composer__main">
         <div className="feed-composer__box">
@@ -175,7 +175,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             value={value}
             onChange={handleChange}
             placeholder={placeholder}
-            min_height_class="min-h-[92px]"
+            min_height_class="min-h-[64px]"
             // Command/Control + Enter sends, plain Enter adds a new line. Not while the
             // mention list is open: there Enter picks the highlighted person.
             onSubmitShortcut={is_picker_open ? undefined : submit}
@@ -194,7 +194,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
               aria-expanded={is_emoji_open}
               className="feed-composer__tool"
             >
-              <ReactSmileyIcon size={17} />
+              <ReactSmileyIcon size={15} />
               Emoji
             </button>
             <EmojiPalette
@@ -208,7 +208,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
               mode="insert"
             />
             <button type="button" onClick={startMention} className="feed-composer__tool">
-              <MentionIcon size={16} />
+              <MentionIcon size={14} />
               Mention
             </button>
           </div>

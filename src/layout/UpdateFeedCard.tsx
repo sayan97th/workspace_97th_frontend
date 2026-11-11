@@ -261,10 +261,10 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
         <header className="uf-card__header">
           {actor.id ? (
             <PersonHoverCard person={author_person} className="flex-none">
-              <PersonAvatar person={{ ...actor, id: actor.id }} size={40} />
+              <PersonAvatar person={{ ...actor, id: actor.id }} size={32} />
             </PersonHoverCard>
           ) : (
-            <PersonAvatar person={{ ...actor, id: "0", is_deactivated: true }} size={40} />
+            <PersonAvatar person={{ ...actor, id: "0", is_deactivated: true }} size={32} />
           )}
 
           <div className="uf-card__heading">
@@ -299,7 +299,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
 
           <div className="uf-card__tools">
             <span className="uf-card__age" title={formatFullDate(update.created_at)}>
-              <ClockIcon size={15} />
+              <ClockIcon size={13} />
               {short_age}
             </span>
             {show_actions && onFollow && (
@@ -312,7 +312,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                 className="uf-card__tool"
                 data-active={is_following ? "true" : undefined}
               >
-                <BellIcon size={16} />
+                <BellIcon size={15} />
               </button>
             )}
             {show_actions && (
@@ -326,7 +326,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                   aria-label="Update options"
                   className="uf-card__tool"
                 >
-                  <MoreDotsIcon size={16} />
+                  <MoreDotsIcon size={15} />
                 </button>
                 <ActionMenu
                   anchor_el={menu_trigger_ref.current}
@@ -371,7 +371,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
               {is_body_long && (
                 <button type="button" onClick={() => setIsBodyExpanded((expanded) => !expanded)} className="uf-card__read-more" aria-expanded={is_body_expanded}>
                   {is_body_expanded ? "Read Less" : "Read More"}
-                  <ChevronDownIcon size={14} className={is_body_expanded ? "rotate-180" : undefined} />
+                  <ChevronDownIcon size={13} className={is_body_expanded ? "rotate-180" : undefined} />
                 </button>
               )}
             </>
@@ -401,14 +401,14 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                     className="uf-card__add-reaction"
                     data-empty={has_reactions ? undefined : "true"}
                   >
-                    <ReactSmileyIcon size={14} />
+                    <ReactSmileyIcon size={13} />
                   </button>
                 )}
                 {show_actions && (has_reactions || update.like_count > 0) && <ReactionsSummary source={update} current_user={current_user} />}
               </div>
               {has_views && (
                 <span className="uf-card__seen" title={`Seen by ${view_count}`}>
-                  <ViewsIcon size={15} />
+                  <ViewsIcon size={14} />
                   {view_count} Seen
                 </span>
               )}
@@ -421,7 +421,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
           <div className="uf-card__actions">
             <LikeButton entry={update} current_user={current_user} onToggle={() => onLike?.(id)} class_name="uf-card__action" />
             <button type="button" onClick={openComposer} className="uf-card__action" aria-expanded={is_composer_open}>
-              <ReplyIcon size={16} />
+              <ReplyIcon size={14} />
               Reply
             </button>
           </div>
@@ -469,7 +469,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
               />
             ) : (
               <div className="uf-card__reply-pill-row">
-                <PersonAvatar person={current_user} size={34} />
+                <PersonAvatar person={current_user} size={28} />
                 <button type="button" onClick={openComposer} className="uf-card__reply-pill">
                   Write a reply...
                 </button>
@@ -489,7 +489,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
           aria-label={is_thread_unread ? "Mark as read" : "Mark as unread"}
           title={is_thread_unread ? "Mark as read" : "Mark as unread"}
         >
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>

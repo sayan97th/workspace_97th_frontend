@@ -72,9 +72,9 @@ const GearIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
 
 /** Resolves a tab's leading glyph. */
 const renderTabIcon = (tab: UpdateFeedTab) => {
-  if (tab.icon === "mention") return <MentionIcon size={18} />;
-  if (tab.icon === "bookmark") return <BookmarkIcon size={17} />;
-  if (tab.icon === "account") return <BriefcaseIcon size={18} />;
+  if (tab.icon === "mention") return <MentionIcon size={15} />;
+  if (tab.icon === "bookmark") return <BookmarkIcon size={15} />;
+  if (tab.icon === "account") return <BriefcaseIcon size={16} />;
   return null;
 };
 
@@ -303,14 +303,14 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
         {
           key: "board",
           items: [
-            { key: "close-all", label: "Close All", icon: <DoubleCheckIcon size={18} />, onClick: () => void closeBoardUpdates(board_menu.board) },
+            { key: "close-all", label: "Close All", icon: <DoubleCheckIcon size={16} />, onClick: () => void closeBoardUpdates(board_menu.board) },
             ...(board_menu.board.id === feed_default_board_filter
               ? []
               : [
                   {
                     key: "hide",
                     label: "Hide board updates from inbox",
-                    icon: <EyeOffIcon size={18} />,
+                    icon: <EyeOffIcon size={16} />,
                     onClick: () => void hideBoardUpdates(board_menu.board),
                   },
                 ]),
@@ -343,7 +343,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
 
       <div ref={dialog_ref} role="dialog" aria-modal="true" aria-labelledby="update-feed-title" tabIndex={-1} className="uf-modal">
         <button type="button" onClick={onClose} className="uf-modal__close" aria-label="Close update feed">
-          <CloseIcon size={22} />
+          <CloseIcon size={18} />
         </button>
 
         {/* Left column: title, help, Feed settings and the board filter */}
@@ -352,7 +352,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
             Update feed (Inbox)
           </h2>
           <div className="uf-side__help">
-            <InfoIcon size={18} />
+            <InfoIcon size={15} />
             <span>{feed_helper_prompt}</span>
             <button
               ref={help_trigger_ref}
@@ -388,7 +388,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
               aria-expanded={is_settings_open}
               className="uf-side__settings"
             >
-              <GearIcon size={19} />
+              <GearIcon size={16} />
               Feed settings
             </button>
           </div>
@@ -504,7 +504,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                 />
                 {active_tab !== "bookmarked" && (
                   <button type="button" onClick={() => void markEverythingRead()} className="uf-toolbar__mark-all">
-                    <DoubleCheckIcon size={20} />
+                    <DoubleCheckIcon size={17} />
                     Mark all updates as read
                   </button>
                 )}
