@@ -1,0 +1,693 @@
+// The bell's Notifications drawer in monday's notification center look: a
+// large title with gear, "..." and close, underlined tabs, a search box next
+// to the "Unread only" switch, bold date sections and soft blue cards for
+// unread notifications with the message preview under the sentence.
+//
+// Colors are `--nc-*` custom properties generated from `$tokens` for light
+// (`:root`) and dark (`html.dark`), the same pattern as `update-feed-card.scss`.
+
+@use "sass:list";
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+
+// Each token as (light, dark).
+$tokens: (
+  "panel": (#ffffff, var(--color-shell-panel)),
+  "text": (#323338, var(--color-shell-text)),
+  "text-secondary": (#676879, var(--color-shell-text-secondary)),
+  "text-faint": (#9699a6, var(--color-shell-text-faint)),
+  "border": (#e7e9ef, var(--color-shell-border)),
+  "border-strong": (#c3c6d4, var(--color-shell-border-strong)),
+  "hover": (rgba(103, 104, 121, 0.1), var(--color-shell-hover)),
+  "card-hover": (#f5f6f8, rgba(255, 255, 255, 0.04)),
+  "unread-bg": (#ecf3fd, rgba(61, 143, 240, 0.13)),
+  "unread-hover": (#e2edfc, rgba(61, 143, 240, 0.19)),
+  "link": (#1f76c2, #69a7ff),
+  "primary": (#0073ea, #3d8ff0),
+  "dot": (#0073ea, #69a7ff),
+  "switch-off": (#c3c6d4, var(--color-shell-hover-strong)),
+);
+
+@mixin token-set($index) {
+  @each $name, $pair in $tokens {
+    --nc-#{$name}: #{list.nth($pair, $index)};
+  }
+}
+
+:root {
+  @include token-set(1);
+}
+
+html.dark {
+  @include token-set(2);
+}
+
+// ── Drawer shell ──────────────────────────────────────────────────────────
+
+.nc-panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--nc-panel);
+  color: var(--nc-text);
+}
+
+.nc-header {
+  flex: none;
+  padding: 20px 24px 0;
+}
+
+.nc-header__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nc-header__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 500;
+  line-height: 36px;
+  letter-spacing: -0.2px;
+  color: var(--nc-text);
+}
+
+.nc-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.nc-header__divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 6px;
+  background: var(--nc-border-strong);
+}
+
+.nc-icon-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--nc-text);
+  transition: background-color 0.15s ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--nc-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: 1px;
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+
+.nc-tabs {
+  display: flex;
+  margin-top: 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--nc-border);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.nc-tab {
+  position: relative;
+  flex: none;
+  padding: 8px 12px 10px;
+  font-size: 15px;
+  line-height: 22px;
+  white-space: nowrap;
+  color: var(--nc-text);
+  border-radius: 4px 4px 0 0;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background: var(--nc-hover);
+  }
+
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: transparent;
+    content: "";
+  }
+
+  &.is-active::after {
+    background: var(--nc-primary);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: -2px;
+  }
+}
+
+// ── Search and "Unread only" ──────────────────────────────────────────────
+
+.nc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.nc-search {
+  display: flex;
+  min-width: 0;
+  height: 36px;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border: 1px solid var(--nc-border-strong);
+  border-radius: 4px;
+  color: var(--nc-text-secondary);
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--nc-text);
+  }
+
+  &:focus-within {
+    border-color: var(--nc-primary);
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+    font-size: 14px;
+    color: var(--nc-text);
+    outline: none;
+
+    &::placeholder {
+      color: var(--nc-text-secondary);
+    }
+  }
+}
+
+.nc-switch {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--nc-text);
+  cursor: pointer;
+}
+
+.nc-switch__track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--nc-switch-off);
+  transition: background-color 0.2s ease;
+
+  .nc-switch[aria-checked="true"] & {
+    background: var(--nc-primary);
+  }
+
+  .nc-switch:focus-visible & {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: 2px;
+  }
+}
+
+.nc-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s ease;
+
+  .nc-switch[aria-checked="true"] & {
+    transform: translateX(16px);
+  }
+}
+
+.nc-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.nc-bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--nc-unread-bg);
+}
+
+.nc-bulk-bar__count {
+  padding: 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--nc-text);
+}
+
+.nc-text-button {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--nc-text);
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--nc-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+  }
+
+  &.is-primary {
+    color: var(--nc-link);
+  }
+}
+
+// ── List ──────────────────────────────────────────────────────────────────
+
+.nc-list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 24px 24px;
+}
+
+.nc-section + .nc-section {
+  margin-top: 8px;
+}
+
+.nc-section__title {
+  position: sticky;
+  top: -8px;
+  z-index: 2;
+  margin: 0;
+  padding: 12px 0 10px;
+  background: var(--nc-panel);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+  color: var(--nc-text);
+}
+
+.nc-section__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nc-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 16px 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--nc-text-secondary);
+}
+
+.nc-empty__icon {
+  display: flex;
+  width: 56px;
+  height: 56px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--nc-unread-bg);
+  color: var(--nc-primary);
+}
+
+.nc-empty__title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--nc-text);
+}
+
+.nc-list__status {
+  padding-top: 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--nc-text-secondary);
+}
+
+.nc-list__hint {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--nc-text-faint);
+}
+
+// ── Notification card ─────────────────────────────────────────────────────
+
+.nc-card {
+  --nc-card-bg: transparent;
+  --nc-card-bg-hover: var(--nc-card-hover);
+
+  position: relative;
+  border-radius: 8px;
+  background: var(--nc-card-bg);
+  transition:
+    background-color 0.15s ease,
+    box-shadow 0.15s ease;
+
+  &.is-unread {
+    --nc-card-bg: var(--nc-unread-bg);
+    --nc-card-bg-hover: var(--nc-unread-hover);
+  }
+
+  &:hover,
+  &:focus-within {
+    background: var(--nc-card-bg-hover);
+  }
+
+  &.is-selected,
+  &.is-focused {
+    box-shadow: inset 0 0 0 2px var(--nc-primary);
+  }
+}
+
+.nc-card__main {
+  display: flex;
+  width: 100%;
+  gap: 12px;
+  padding: 16px;
+  border-radius: inherit;
+  text-align: left;
+
+  .nc-card.is-nested & {
+    padding: 12px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: -2px;
+  }
+}
+
+.nc-card__avatar {
+  flex: none;
+}
+
+.nc-card__avatars {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+
+  > * + * {
+    margin-left: -10px;
+  }
+
+  > * {
+    box-shadow: 0 0 0 2px var(--nc-panel);
+  }
+}
+
+.nc-card__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.nc-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.nc-card__sentence {
+  min-width: 0;
+  flex: 1;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--nc-text);
+  overflow-wrap: anywhere;
+}
+
+.nc-card__actor {
+  font-weight: 600;
+}
+
+.nc-card__action {
+  color: var(--nc-link);
+
+  svg {
+    display: inline-block;
+    margin: -2px 4px 0 2px;
+    vertical-align: middle;
+  }
+}
+
+.nc-card__meta {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 22px;
+  font-size: 14px;
+  color: var(--nc-text-faint);
+  white-space: nowrap;
+}
+
+.nc-card__saved {
+  color: var(--nc-link);
+}
+
+.nc-card__dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--nc-dot);
+}
+
+.nc-card__count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--nc-dot);
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+// The message itself, two lines and an ellipsis like monday.
+.nc-card__preview {
+  display: -webkit-box;
+  margin-top: 6px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 22px;
+  color: var(--nc-text);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.nc-card__board {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--nc-text-secondary);
+}
+
+.nc-card__board-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.nc-card__board-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nc-card__badge {
+  flex: none;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--nc-hover);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nc-text-secondary);
+}
+
+// Hover actions sit over the time, on the card's own background.
+.nc-card__actions {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--nc-card-bg-hover);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+
+  .nc-card:hover > &,
+  .nc-card:focus-within > &,
+  &.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .nc-card.is-nested > & {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+.nc-card__action-button {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--nc-text-secondary);
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--nc-hover);
+    color: var(--nc-text);
+  }
+
+  &.is-active {
+    color: var(--nc-link);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--nc-primary);
+    outline-offset: -2px;
+  }
+}
+
+// Group card footer and its expanded list.
+.nc-card__toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px 12px 60px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--nc-link);
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  svg {
+    transition: transform 0.15s ease;
+  }
+
+  &[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+}
+
+.nc-card__nested {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 8px 8px;
+
+  .nc-card {
+    --nc-card-bg: var(--nc-panel);
+  }
+}
+
+// ── Menus ─────────────────────────────────────────────────────────────────
+
+.nc-menu {
+  padding: 6px;
+}
+
+.nc-menu__item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 4px;
+  text-align: left;
+  font-size: 14px;
+  color: var(--nc-text);
+  transition: background-color 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: var(--nc-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  svg {
+    flex: none;
+    color: var(--nc-text-secondary);
+  }
+}
+
+.nc-menu__label {
+  margin-top: 4px;
+  padding: 8px 10px 4px;
+  border-top: 1px solid var(--nc-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nc-text-secondary);
+}

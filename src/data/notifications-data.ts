@@ -44,6 +44,8 @@ export type NotificationBoard = {
 /** A single notification entry rendered as a card in the list. */
 export type WorkspaceNotification = {
   id: string;
+  /** Backend notification type (`mentioned`, `assigned`, `replied_thread`...), picks the icon in front of the action. */
+  type: string;
   actor: NotificationActor;
   /** Highlighted action phrase, e.g. "Subscribed you". */
   action_label: string;
@@ -58,6 +60,8 @@ export type WorkspaceNotification = {
   category: NotificationCategory;
   /** Frontend route to navigate to on click, e.g. `/boards/12`. */
   link?: string;
+  /** Plain text excerpt of the message behind it, shown under the sentence like monday's notification center. */
+  preview?: string;
   /** The item the notification is about, what "Mute this item" targets. Absent for a board level notification. */
   board_item_id?: number;
   /** The viewer muted that item, so nothing new about it arrives. */
@@ -130,8 +134,8 @@ export type NotificationDateGroup = "today" | "yesterday" | "this_week" | "older
 const NOTIFICATION_DATE_GROUP_LABELS: Record<NotificationDateGroup, string> = {
   today: "Today",
   yesterday: "Yesterday",
-  this_week: "This week",
-  older: "Older",
+  this_week: "Last 7 days",
+  older: "Older notifications",
 };
 
 /** Buckets a notification's raw `created_at` into a date section for the drawer's grouped list. */
@@ -159,7 +163,7 @@ export const notification_date_groups: { id: NotificationDateGroup; label: strin
 export const notification_tabs: NotificationTab[] = [
   { id: "all", label: "All" },
   { id: "mentioned", label: "Mentioned" },
-  { id: "assigned", label: "Assigned" },
+  { id: "assigned", label: "Assigned to me" },
   { id: "replies", label: "Replies" },
   { id: "reactions", label: "Reactions" },
   { id: "saved", label: "Saved" },
@@ -167,7 +171,7 @@ export const notification_tabs: NotificationTab[] = [
 
 /** Placeholder for the search input in the drawer header. */
 export const notification_search_placeholder =
-  "Search notifications by people, boards…";
+  "Search notifications by people, boards, and more...";
 
 /**
  * Whether a notification that just arrived over the websocket belongs in the
@@ -184,7 +188,7 @@ export function matchesNotificationFilters(notification: WorkspaceNotification, 
 
   const needle = filters.search.trim().toLowerCase();
   if (!needle) return true;
-  const haystack = `${notification.actor.name} ${notification.board.name}`.toLowerCase();
+  const haystack = [notification.actor.name, notification.board.name, notification.action_target, notification.preview ?? ""].join(" ").toLowerCase();
   return needle.split(/\s+/).every((term) => haystack.includes(term));
 }
 

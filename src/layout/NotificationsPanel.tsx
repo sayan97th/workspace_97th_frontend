@@ -8,8 +8,11 @@ import NotificationGroupCard from "./NotificationGroupCard";
 import NotificationItem from "./NotificationItem";
 import NotificationPreferencesPanel from "./NotificationPreferencesPanel";
 import NotificationSummaryCard from "./NotificationSummaryCard";
+import { NotificationSettingsGlyph } from "./NotificationTypeIcon";
 import type { NotificationBulkAction } from "@/services/notifications.service";
-import { CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
+import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import { BellIcon, CheckCircleIcon, CheckIcon, CloseIcon, MoreDotsIcon, SearchIcon, SunIcon } from "@/icons/workspace-icons";
+import "./notifications-panel.scss";
 import {
   notification_date_groups,
   notificationDateGroupOf,
@@ -69,8 +72,8 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
   return target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 };
 
-const BULK_BUTTON_CLASS =
-  "rounded-[7px] px-2.5 py-1 text-[12px] font-semibold text-shell-text-secondary transition-colors hover:bg-shell-hover-strong hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-40";
+/** monday's notification center drawer is wider than the other slide overs, so the message preview has room. */
+const DRAWER_WIDTH = 580;
 
 /**
  * Buckets a date section's notifications by thread: notifications sharing a
@@ -128,6 +131,8 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   const [search_text, setSearchText] = useState(filters.search);
   const [is_preferences_open, setIsPreferencesOpen] = useState(false);
   const preferences_trigger_ref = useRef<HTMLButtonElement>(null);
+  const [is_more_menu_open, setIsMoreMenuOpen] = useState(false);
+  const more_menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
   const [is_selecting, setIsSelecting] = useState(false);
   const [selected_ids, setSelectedIds] = useState<Set<string>>(new Set());
@@ -265,257 +270,291 @@ const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [is_open, threads, focused_key, onBulkAction, onSelectGroup, onSelectNotification]);
 
-  const header_icon_button =
-    "flex h-[30px] w-[30px] items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover";
+  const runMoreMenuAction = (action: () => void) => () => {
+    action();
+    setIsMoreMenuOpen(false);
+  };
+
+  const renderEmptyState = () => {
+    if (is_loading) return <p className="nc-list__status">Loading notifications...</p>;
+    const is_saved_tab = filters.tab === "saved";
+    return (
+      <div className="nc-empty">
+        <span className="nc-empty__icon">
+          <BellIcon size={24} />
+        </span>
+        <span className="nc-empty__title">{is_saved_tab ? "Nothing saved yet" : "You're all caught up"}</span>
+        <span>
+          {is_saved_tab
+            ? "Use the bookmark on a notification to keep it here."
+            : "New mentions, replies and assignments will show up here."}
+        </span>
+      </div>
+    );
+  };
 
   return (
-    <SlideOverDrawer is_open={is_open} onClose={onClose} aria_label="Notifications">
-      {/* Sticky header: title, actions, tabs, search + toggle */}
-      <div className="flex-none px-5 pt-5">
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-dialog-title">Notifications</h2>
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={header_icon_button}
-              aria-label={resolved_theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
-            >
-              <SunIcon size={16} />
-            </button>
-            <button
-              ref={preferences_trigger_ref}
-              type="button"
-              onClick={() => setIsPreferencesOpen((previous) => !previous)}
-              className={header_icon_button}
-              aria-label="Notification settings"
-            >
-              <MoreDotsIcon size={16} />
-            </button>
-            <NotificationPreferencesPanel
-              anchor_el={preferences_trigger_ref.current}
-              is_open={is_preferences_open}
-              onClose={() => setIsPreferencesOpen(false)}
-            />
-            <button
-              type="button"
-              onClick={onClose}
-              className={header_icon_button}
-              aria-label="Close notifications"
-            >
-              <CloseIcon size={16} />
-            </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="shell-scrollbar mt-4 flex gap-[10px] overflow-x-auto border-b border-shell-border">
-          {notification_tabs.map((tab) => {
-            const is_active = tab.id === filters.tab;
-            return (
+    <SlideOverDrawer is_open={is_open} onClose={onClose} aria_label="Notifications" width={DRAWER_WIDTH}>
+      <div className="nc-panel">
+        {/* Sticky header: title, actions, tabs, search + toggle */}
+        <div className="nc-header">
+          <div className="nc-header__top">
+            <h2 className="nc-header__title">Notifications</h2>
+            <div className="nc-header__actions">
               <button
-                key={tab.id}
+                ref={preferences_trigger_ref}
                 type="button"
-                onClick={() => onFiltersChange({ tab: tab.id })}
-                className={`-mb-px flex-none cursor-pointer whitespace-nowrap border-b-2 pb-[11px] text-[13px] transition-colors ${
-                  is_active
-                    ? "border-brand-500 font-semibold text-shell-text"
-                    : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
-                }`}
+                onClick={() => setIsPreferencesOpen((previous) => !previous)}
+                className="nc-icon-button"
+                aria-label="Notification settings"
+                aria-expanded={is_preferences_open}
+                title="Notification settings"
               >
-                {tab.label}
+                <NotificationSettingsGlyph size={19} />
               </button>
-            );
-          })}
-        </div>
-
-        {/* Search + unread toggle */}
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex flex-1 items-center gap-[9px] rounded-[9px] border border-shell-border bg-shell-panel-alt px-3 py-[9px] text-shell-text-muted focus-within:border-brand-500">
-            <SearchIcon size={14} />
-            <input
-              type="text"
-              value={search_text}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder={notification_search_placeholder}
-              className="w-full bg-transparent text-[12.5px] text-shell-text placeholder:text-shell-text-muted focus:outline-none"
-            />
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={filters.unread_only}
-            onClick={() => onFiltersChange({ unread_only: !filters.unread_only })}
-            className="flex flex-none items-center gap-2 text-[12.5px] font-medium text-shell-text-secondary"
-          >
-            <span
-              className={`relative h-[19px] w-[34px] flex-none rounded-full transition-colors ${
-                filters.unread_only ? "bg-brand-500" : "bg-shell-hover-strong"
-              }`}
-            >
-              <span
-                className={`absolute top-[2px] h-[15px] w-[15px] rounded-full transition-all ${
-                  filters.unread_only ? "left-[17px] bg-white" : "left-[2px] bg-shell-text-muted"
-                }`}
+              <NotificationPreferencesPanel
+                anchor_el={preferences_trigger_ref.current}
+                is_open={is_preferences_open}
+                onClose={() => setIsPreferencesOpen(false)}
               />
-            </span>
-            Unread only
-          </button>
-        </div>
-
-        {/* Board and person filters */}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <FilterMenu
-            label="Board"
-            all_label="All boards"
-            options={filter_options.boards}
-            selected_id={filters.board_id}
-            onSelect={(board_id) => onFiltersChange({ board_id })}
-          />
-          <FilterMenu
-            label="Person"
-            all_label="Everyone"
-            options={filter_options.actors}
-            selected_id={filters.actor_id}
-            onSelect={(actor_id) => onFiltersChange({ actor_id })}
-          />
-          <span className="ml-auto flex items-center gap-1">
-            {onBulkAction && notifications.length > 0 && (
               <button
+                ref={more_menu_trigger_ref}
                 type="button"
-                onClick={() => (is_selecting ? stopSelecting() : setIsSelecting(true))}
-                aria-pressed={is_selecting}
-                className={`whitespace-nowrap rounded-[7px] px-2 py-1 text-[12px] font-semibold transition-colors hover:bg-shell-hover hover:text-shell-text ${
-                  is_selecting ? "text-shell-text" : "text-shell-text-muted"
-                }`}
+                onClick={() => setIsMoreMenuOpen((previous) => !previous)}
+                className="nc-icon-button"
+                aria-label="More actions"
+                aria-haspopup="menu"
+                aria-expanded={is_more_menu_open}
+                title="More actions"
               >
-                {is_selecting ? "Done" : "Select"}
+                <MoreDotsIcon size={20} />
               </button>
-            )}
-            {onMarkAllAsRead && has_unread && (
-              <button
-                type="button"
-                onClick={onMarkAllAsRead}
-                className="whitespace-nowrap rounded-[7px] px-2 py-1 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
+              <BoardPopover
+                anchor_el={more_menu_trigger_ref.current}
+                is_open={is_more_menu_open}
+                onClose={() => setIsMoreMenuOpen(false)}
+                width={232}
               >
+                <div role="menu" className="nc-menu">
+                  {onMarkAllAsRead && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={!has_unread}
+                      onClick={runMoreMenuAction(onMarkAllAsRead)}
+                      className="nc-menu__item"
+                    >
+                      <CheckIcon size={15} />
+                      Mark all as read
+                    </button>
+                  )}
+                  {onBulkAction && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={notifications.length === 0}
+                      onClick={runMoreMenuAction(() => (is_selecting ? stopSelecting() : setIsSelecting(true)))}
+                      className="nc-menu__item"
+                    >
+                      <CheckCircleIcon size={15} />
+                      {is_selecting ? "Stop selecting" : "Select notifications"}
+                    </button>
+                  )}
+                  <button type="button" role="menuitem" onClick={runMoreMenuAction(toggleTheme)} className="nc-menu__item">
+                    <SunIcon size={15} />
+                    {resolved_theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+                  </button>
+                </div>
+              </BoardPopover>
+              <span className="nc-header__divider" aria-hidden="true" />
+              <button type="button" onClick={onClose} className="nc-icon-button" aria-label="Close notifications" title="Close">
+                <CloseIcon size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div role="tablist" aria-label="Notification types" className="nc-tabs">
+            {notification_tabs.map((tab) => {
+              const is_active = tab.id === filters.tab;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={is_active}
+                  onClick={() => onFiltersChange({ tab: tab.id })}
+                  className={`nc-tab ${is_active ? "is-active" : ""}`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search + unread toggle */}
+          <div className="nc-toolbar">
+            <label className="nc-search">
+              <SearchIcon size={16} />
+              <span className="sr-only">Search notifications</span>
+              <input
+                type="text"
+                value={search_text}
+                onChange={(event) => setSearchText(event.target.value)}
+                placeholder={notification_search_placeholder}
+              />
+            </label>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={filters.unread_only}
+              onClick={() => onFiltersChange({ unread_only: !filters.unread_only })}
+              className="nc-switch"
+            >
+              <span className="nc-switch__track">
+                <span className="nc-switch__thumb" />
+              </span>
+              Unread only
+            </button>
+          </div>
+
+          {/* Board and person filters */}
+          <div className="nc-filters">
+            <FilterMenu
+              label="Board"
+              all_label="All boards"
+              options={filter_options.boards}
+              selected_id={filters.board_id}
+              onSelect={(board_id) => onFiltersChange({ board_id })}
+            />
+            <FilterMenu
+              label="Person"
+              all_label="Everyone"
+              options={filter_options.actors}
+              selected_id={filters.actor_id}
+              onSelect={(actor_id) => onFiltersChange({ actor_id })}
+            />
+            {onMarkAllAsRead && has_unread && (
+              <button type="button" onClick={onMarkAllAsRead} className="nc-text-button is-primary ml-auto">
                 Mark all as read
               </button>
             )}
-          </span>
-        </div>
+          </div>
 
-        {/* Multi-select toolbar */}
-        {is_selecting && (
-          <div role="toolbar" aria-label="Selected notifications" className="mt-3 flex flex-wrap items-center gap-1 rounded-[9px] bg-shell-hover px-2 py-1.5">
-            <span className="px-1.5 text-[12.5px] font-semibold text-shell-text">{selected_ids.size} selected</span>
-            <button
-              type="button"
-              onClick={() =>
-                setSelectedIds(selected_ids.size === notifications.length ? new Set() : new Set(notifications.map((notification) => notification.id)))
-              }
-              className={BULK_BUTTON_CLASS}
-            >
-              {selected_ids.size === notifications.length ? "Select none" : "Select all"}
-            </button>
-            <span className="ml-auto flex items-center gap-1">
-              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("read")} className={BULK_BUTTON_CLASS}>
-                Mark read
-              </button>
-              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("unread")} className={BULK_BUTTON_CLASS}>
-                Mark unread
-              </button>
+          {/* Multi-select toolbar */}
+          {is_selecting && (
+            <div role="toolbar" aria-label="Selected notifications" className="nc-bulk-bar">
+              <span className="nc-bulk-bar__count">{selected_ids.size} selected</span>
               <button
                 type="button"
-                disabled={selected_ids.size === 0}
-                onClick={() => runBulkAction(filters.tab === "saved" ? "unsave" : "save")}
-                className={BULK_BUTTON_CLASS}
+                onClick={() =>
+                  setSelectedIds(
+                    selected_ids.size === notifications.length ? new Set() : new Set(notifications.map((notification) => notification.id))
+                  )
+                }
+                className="nc-text-button"
               >
-                {filters.tab === "saved" ? "Unsave" : "Save"}
+                {selected_ids.size === notifications.length ? "Select none" : "Select all"}
               </button>
-              <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("dismiss")} className={BULK_BUTTON_CLASS}>
-                Dismiss
-              </button>
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Scrollable list, grouped by date and then by thread */}
-      <div ref={scroll_area_ref} className="shell-scrollbar flex-1 overflow-y-auto px-5 pb-6 pt-[18px]">
-        {summary && is_unfiltered_all && <NotificationSummaryCard summary={summary} onOpenTab={openSummaryTab} />}
-
-        {notifications.length === 0 ? (
-          <p className="pt-6 text-center text-[13px] text-shell-text-muted">
-            {is_loading
-              ? "Loading notifications…"
-              : filters.tab === "saved"
-                ? "Nothing saved yet. Use the bookmark on a notification to keep it here."
-                : "You're all caught up."}
-          </p>
-        ) : (
-          grouped_notifications.map((group) => (
-            <div key={group.id} className="mb-4 last:mb-0">
-              <div className="mb-3 text-[12.5px] font-semibold text-shell-text-muted">{group.label}</div>
-              <div className="flex flex-col gap-2.5">
-                {group.threads.map((thread) => {
-                  const ids = thread.map((notification) => notification.id);
-                  const row_props = {
-                    is_focused: thread[0].id === focused_key,
-                    is_selecting,
-                    is_selected: ids.every((id) => selected_ids.has(id)),
-                  };
-                  return (
-                    <div key={thread[0].group_key} data-row-key={thread[0].id}>
-                      {thread.length > 1 ? (
-                        <NotificationGroupCard
-                          notifications={thread}
-                          onSelectGroup={onSelectGroup}
-                          onSelect={onSelectNotification}
-                          onDismiss={onDismissNotification}
-                          onMarkRead={onMarkAsRead}
-                          onMarkUnread={onMarkAsUnread}
-                          onSnooze={onSnoozeNotification}
-                          onSave={onSaveNotification}
-                          onUnsave={onUnsaveNotification}
-                          onReply={onReplyToNotification}
-                          onMuteItem={onMuteNotificationItem}
-                          onUnmuteItem={onUnmuteNotificationItem}
-                          onToggleSelect={toggleSelection}
-                          {...row_props}
-                        />
-                      ) : (
-                        <NotificationItem
-                          notification={thread[0]}
-                          onSelect={onSelectNotification}
-                          onDismiss={onDismissNotification}
-                          onMarkRead={onMarkAsRead}
-                          onMarkUnread={onMarkAsUnread}
-                          onSnooze={onSnoozeNotification}
-                          onSave={onSaveNotification}
-                          onUnsave={onUnsaveNotification}
-                          onReply={onReplyToNotification}
-                          onMuteItem={onMuteNotificationItem}
-                          onUnmuteItem={onUnmuteNotificationItem}
-                          onToggleSelect={(id) => toggleSelection([id])}
-                          {...row_props}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <span className="ml-auto flex flex-wrap items-center gap-1">
+                <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("read")} className="nc-text-button">
+                  Mark read
+                </button>
+                <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("unread")} className="nc-text-button">
+                  Mark unread
+                </button>
+                <button
+                  type="button"
+                  disabled={selected_ids.size === 0}
+                  onClick={() => runBulkAction(filters.tab === "saved" ? "unsave" : "save")}
+                  className="nc-text-button"
+                >
+                  {filters.tab === "saved" ? "Unsave" : "Save"}
+                </button>
+                <button type="button" disabled={selected_ids.size === 0} onClick={() => runBulkAction("dismiss")} className="nc-text-button">
+                  Dismiss
+                </button>
+                <button type="button" onClick={stopSelecting} className="nc-text-button is-primary">
+                  Done
+                </button>
+              </span>
             </div>
-          ))
-        )}
+          )}
+        </div>
 
-        {/* Sentinel: reaching it loads the next page. */}
-        <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
-        {is_loading_more && <p className="pt-3 text-center text-[12.5px] text-shell-text-muted">Loading more…</p>}
-        {onBulkAction && notifications.length > 0 && (
-          <p className="mt-4 hidden text-center text-[11.5px] text-shell-text-faint md:block">
-            Keyboard: j and k move, o opens, e dismisses, u marks read or unread, s saves, x selects.
-          </p>
-        )}
+        {/* Scrollable list, grouped by date and then by thread */}
+        <div ref={scroll_area_ref} className="nc-list shell-scrollbar">
+          {summary && is_unfiltered_all && (
+            <div className="pt-4">
+              <NotificationSummaryCard summary={summary} onOpenTab={openSummaryTab} />
+            </div>
+          )}
+
+          {notifications.length === 0
+            ? renderEmptyState()
+            : grouped_notifications.map((group) => (
+                <section key={group.id} className="nc-section" aria-label={group.label}>
+                  <h3 className="nc-section__title">{group.label}</h3>
+                  <div className="nc-section__items">
+                    {group.threads.map((thread) => {
+                      const ids = thread.map((notification) => notification.id);
+                      const row_props = {
+                        is_focused: thread[0].id === focused_key,
+                        is_selecting,
+                        is_selected: ids.every((id) => selected_ids.has(id)),
+                      };
+                      return (
+                        <div key={thread[0].group_key} data-row-key={thread[0].id}>
+                          {thread.length > 1 ? (
+                            <NotificationGroupCard
+                              notifications={thread}
+                              onSelectGroup={onSelectGroup}
+                              onSelect={onSelectNotification}
+                              onDismiss={onDismissNotification}
+                              onMarkRead={onMarkAsRead}
+                              onMarkUnread={onMarkAsUnread}
+                              onSnooze={onSnoozeNotification}
+                              onSave={onSaveNotification}
+                              onUnsave={onUnsaveNotification}
+                              onReply={onReplyToNotification}
+                              onMuteItem={onMuteNotificationItem}
+                              onUnmuteItem={onUnmuteNotificationItem}
+                              onToggleSelect={toggleSelection}
+                              {...row_props}
+                            />
+                          ) : (
+                            <NotificationItem
+                              notification={thread[0]}
+                              onSelect={onSelectNotification}
+                              onDismiss={onDismissNotification}
+                              onMarkRead={onMarkAsRead}
+                              onMarkUnread={onMarkAsUnread}
+                              onSnooze={onSnoozeNotification}
+                              onSave={onSaveNotification}
+                              onUnsave={onUnsaveNotification}
+                              onReply={onReplyToNotification}
+                              onMuteItem={onMuteNotificationItem}
+                              onUnmuteItem={onUnmuteNotificationItem}
+                              onToggleSelect={(id) => toggleSelection([id])}
+                              {...row_props}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+
+          {/* Sentinel: reaching it loads the next page. */}
+          <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
+          {is_loading_more && <p className="nc-list__status">Loading more...</p>}
+          {onBulkAction && notifications.length > 0 && (
+            <p className="nc-list__hint hidden md:block">
+              Keyboard: j and k move, o opens, e dismisses, u marks read or unread, s saves, x selects.
+            </p>
+          )}
+        </div>
       </div>
     </SlideOverDrawer>
   );

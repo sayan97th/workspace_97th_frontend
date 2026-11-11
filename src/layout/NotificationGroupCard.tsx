@@ -3,7 +3,8 @@ import React, { useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import type { NotificationSnoozePresetId, WorkspaceNotification } from "@/data/notifications-data";
 import { ChevronDownIcon, CloseIcon } from "@/icons/workspace-icons";
-import NotificationItem, { NotificationSelectBox, notificationActorToPerson } from "./NotificationItem";
+import NotificationItem, { NotificationBoardLine, NotificationSelectBox, notificationActorToPerson } from "./NotificationItem";
+import NotificationTypeIcon from "./NotificationTypeIcon";
 
 type NotificationGroupCardProps = {
   /** Two or more notifications of the same type on the same thread, newest first. */
@@ -41,7 +42,8 @@ const summarizeActors = (names: string[]): string => {
 
 /**
  * Collapses several notifications about the same thread (for example three
- * people replying to one update) into a single card, with a toggle that
+ * people replying to one update) into a single card, showing the newest
+ * message preview, with a toggle that
  * expands the individual notifications underneath. Keeps a busy thread from
  * burying everything else in the drawer.
  */
@@ -73,107 +75,101 @@ const NotificationGroupCard: React.FC<NotificationGroupCardProps> = ({
   );
   const stacked_actors = distinct_actors.slice(0, MAX_STACKED_AVATARS);
 
-  return (
-    <div className="group relative">
-      <div
-        className={`rounded-[11px] border bg-shell-panel-alt transition-colors hover:border-shell-border-strong ${
-          is_selected ? "border-brand-500" : "border-shell-border"
-        } ${is_focused ? "ring-2 ring-brand-500/60" : ""}`}
-      >
-        <button
-          type="button"
-          onClick={() => {
-            const ids = notifications.map((notification) => notification.id);
-            if (is_selecting) onToggleSelect?.(ids);
-            else onSelectGroup(ids);
-          }}
-          aria-pressed={is_selecting ? is_selected : undefined}
-          className="flex w-full gap-3 p-[13px] text-left"
-        >
-          {is_selecting && <NotificationSelectBox is_selected={is_selected} />}
-          <span className="flex flex-none items-start -space-x-2">
-            {stacked_actors.map((notification) => (
-              <PersonAvatar
-                key={notification.actor.name}
-                person={notificationActorToPerson(notification.actor)}
-                size={30}
-                className="ring-2 ring-shell-panel-alt"
-              />
-            ))}
-          </span>
+  const card_class = ["nc-card", unread_count > 0 && "is-unread", is_selected && "is-selected", is_focused && "is-focused"]
+    .filter(Boolean)
+    .join(" ");
 
-          <span className="min-w-0 flex-1">
-            <span className="block text-[13px] leading-[1.5] text-shell-text-secondary">
-              <strong className="font-bold text-shell-text">
+  return (
+    <div className={card_class}>
+      <button
+        type="button"
+        onClick={() => {
+          const ids = notifications.map((notification) => notification.id);
+          if (is_selecting) onToggleSelect?.(ids);
+          else onSelectGroup(ids);
+        }}
+        aria-pressed={is_selecting ? is_selected : undefined}
+        className="nc-card__main"
+      >
+        {is_selecting && <NotificationSelectBox is_selected={is_selected} />}
+        <span className="nc-card__avatars">
+          {stacked_actors.map((notification) => (
+            <PersonAvatar key={notification.actor.name} person={notificationActorToPerson(notification.actor)} size={32} />
+          ))}
+        </span>
+
+        <span className="nc-card__body">
+          <span className="nc-card__head">
+            <span className="nc-card__sentence">
+              <strong className="nc-card__actor">
                 {summarizeActors(distinct_actors.map((notification) => notification.actor.name))}
               </strong>{" "}
-              <span className="text-[#7fb2ff]">{lowerFirst(latest.action_label)}</span> {latest.action_target}
+              {latest.action_label && (
+                <span className="nc-card__action">
+                  <NotificationTypeIcon type={latest.type} size={15} />
+                  {lowerFirst(latest.action_label)}
+                </span>
+              )}{" "}
+              {latest.action_target}
             </span>
-            {latest.board.name && (
-              <span className="mt-2 flex items-center gap-[7px] text-xs text-shell-text-muted">
-                <span
-                  className="h-[15px] w-[15px] flex-none rounded"
-                  style={{ backgroundColor: latest.board.color }}
-                  aria-hidden="true"
-                />
-                {latest.board.name}
-              </span>
-            )}
+            <span className="nc-card__meta">
+              <time dateTime={latest.created_at}>{latest.time_label}</time>
+              {unread_count > 0 && (
+                <span className="nc-card__count" aria-label={`${unread_count} unread`}>
+                  {unread_count}
+                </span>
+              )}
+            </span>
           </span>
-
-          <span className="flex flex-none flex-col items-end gap-2">
-            <span className="text-[11.5px] text-shell-text-faint">{latest.time_label}</span>
-            {unread_count > 0 && (
-              <span className="flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-[#3b82f6] px-1 text-[10px] font-bold text-white">
-                {unread_count}
-              </span>
-            )}
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setIsExpanded((previous) => !previous)}
-          aria-expanded={is_expanded}
-          className="flex w-full items-center gap-1.5 border-t border-shell-border px-[13px] py-2 text-[12px] font-semibold text-shell-text-muted transition-colors hover:text-shell-text"
-        >
-          <ChevronDownIcon size={11} className={`transition-transform ${is_expanded ? "rotate-180" : ""}`} />
-          {is_expanded ? "Hide" : `Show all ${notifications.length}`}
-        </button>
-
-        {is_expanded && (
-          <div className="flex flex-col gap-2 border-t border-shell-border p-2.5">
-            {notifications.map((notification) => (
-              <NotificationItem
-                key={notification.id}
-                notification={notification}
-                onSelect={onSelect}
-                onDismiss={onDismiss}
-                onMarkRead={onMarkRead}
-                onMarkUnread={onMarkUnread}
-                onSnooze={onSnooze}
-                onSave={onSave}
-                onUnsave={onUnsave}
-                onReply={onReply}
-                onMuteItem={onMuteItem}
-                onUnmuteItem={onUnmuteItem}
-                is_nested
-              />
-            ))}
-          </div>
-        )}
-      </div>
+          {latest.preview && <span className="nc-card__preview">{latest.preview}</span>}
+          {latest.board.name && <NotificationBoardLine board={latest.board} />}
+        </span>
+      </button>
 
       {!is_selecting && onDismiss && (
-        <button
-          type="button"
-          onClick={() => notifications.forEach((notification) => onDismiss(notification.id))}
-          aria-label="Dismiss all notifications in this group"
-          title="Dismiss all"
-          className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-md bg-shell-panel-alt text-shell-text-faint opacity-0 transition-opacity hover:bg-shell-hover hover:text-shell-text focus:opacity-100 group-hover:opacity-100"
-        >
-          <CloseIcon size={11} />
-        </button>
+        <div className="nc-card__actions">
+          <button
+            type="button"
+            onClick={() => notifications.forEach((notification) => onDismiss(notification.id))}
+            aria-label="Dismiss all notifications in this group"
+            title="Dismiss all"
+            className="nc-card__action-button"
+          >
+            <CloseIcon size={13} />
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setIsExpanded((previous) => !previous)}
+        aria-expanded={is_expanded}
+        className="nc-card__toggle"
+      >
+        <ChevronDownIcon size={11} />
+        {is_expanded ? "Hide" : `Show all ${notifications.length}`}
+      </button>
+
+      {is_expanded && (
+        <div className="nc-card__nested">
+          {notifications.map((notification) => (
+            <NotificationItem
+              key={notification.id}
+              notification={notification}
+              onSelect={onSelect}
+              onDismiss={onDismiss}
+              onMarkRead={onMarkRead}
+              onMarkUnread={onMarkUnread}
+              onSnooze={onSnooze}
+              onSave={onSave}
+              onUnsave={onUnsave}
+              onReply={onReply}
+              onMuteItem={onMuteItem}
+              onUnmuteItem={onUnmuteItem}
+              is_nested
+            />
+          ))}
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,8 @@ export type NotificationDto = {
   action_target: string;
   board: { id: number; name: string } | null;
   link: string | null;
+  /** Plain text excerpt of the comment behind the notification (a mention, reply, reaction or notify). Null when there is none. */
+  preview?: string | null;
   /** The item the notification is about, what "Mute this item" targets. Null for a board level notification. */
   board_item_id: number | null;
   is_item_muted: boolean;
@@ -50,6 +52,23 @@ export type NotificationFiltersDto = {
   actors: { id: number; name: string }[];
 };
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 60 * MINUTE_MS;
+const DAY_MS = 24 * HOUR_MS;
+
+/**
+ * monday style relative time for a notification card: "now", "32m" and "18h"
+ * while it is fresh, then the long form ("3 days", "5 months").
+ */
+export function formatNotificationTime(created_at: string, now: Date = new Date()): string {
+  const date = new Date(created_at);
+  const elapsed_ms = now.getTime() - date.getTime();
+  if (elapsed_ms < MINUTE_MS) return "now";
+  if (elapsed_ms < HOUR_MS) return `${Math.floor(elapsed_ms / MINUTE_MS)}m`;
+  if (elapsed_ms < DAY_MS) return `${Math.floor(elapsed_ms / HOUR_MS)}h`;
+  return formatDistanceToNowStrict(date);
+}
+
 /**
  * Maps an API notification into the presentational `WorkspaceNotification`
  * shape `NotificationItem`/`NotificationsPanel` already render. The backend
@@ -62,6 +81,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
 
   return {
     id: dto.id,
+    type: dto.type,
     actor: {
       id: dto.actor.id !== null ? String(dto.actor.id) : undefined,
       name: dto.actor.name,
@@ -77,11 +97,12 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
       name: dto.board?.name ?? "",
       color: BOARD_CONDITIONAL_COLOR_PALETTE[board_seed % BOARD_CONDITIONAL_COLOR_PALETTE.length],
     },
-    time_label: formatDistanceToNowStrict(new Date(dto.created_at)),
+    time_label: formatNotificationTime(dto.created_at),
     is_unread: dto.is_unread,
     is_saved: dto.is_saved ?? false,
     category: dto.category,
     link: dto.link ?? undefined,
+    preview: dto.preview?.trim() || undefined,
     board_item_id: dto.board_item_id ?? undefined,
     is_item_muted: dto.is_item_muted ?? false,
     reply_to: dto.reply_to ?? undefined,
