@@ -32,7 +32,7 @@ export const notificationsService = {
     return apiClient.get<NotificationsPageDto>(`/api/notifications${query ? `?${query}` : ""}`);
   },
 
-  /** GET /api/notifications/filters, the boards and people the filter menus offer. */
+  /** GET /api/notifications/filters, the people "Filter by person" offers. */
   async getFilterOptions(): Promise<NotificationFiltersDto> {
     const response = await apiClient.get<{ data: NotificationFiltersDto }>("/api/notifications/filters");
     return response.data;

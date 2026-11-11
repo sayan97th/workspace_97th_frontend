@@ -1,7 +1,8 @@
-// The bell's Notifications drawer, a one to one take on monday's
+// The bell's Notifications drawer, a one to one take on monday's current
 // notification center: a large title with "..." and close, underlined tabs,
 // "Search all notifications" next to "Filter by person", and a flat list of
-// cards (blue while unread) with the message and a "11m · Task 1" footer.
+// cards (soft blue while unread) with a large avatar, the message and a
+// "22m · Board name" footer. Sizes were measured from monday screenshots.
 //
 // Colors are `--nc-*` custom properties generated from `$tokens` for light
 // (`:root`) and dark (`html.dark`), the same pattern as `update-feed-card.scss`.
@@ -15,19 +16,19 @@ $tokens: (
   "panel": (#ffffff, var(--color-shell-panel)),
   "text": (#323338, var(--color-shell-text)),
   "text-secondary": (#676879, var(--color-shell-text-secondary)),
-  "text-faint": (#9699a6, var(--color-shell-text-faint)),
-  "border": (#e6e9ef, var(--color-shell-border)),
+  "border": (#e7e9ef, var(--color-shell-border)),
   "border-strong": (#c3c6d4, var(--color-shell-border-strong)),
+  "divider": (#d0d4e4, var(--color-shell-border-strong)),
   "hover": (rgba(103, 104, 121, 0.1), var(--color-shell-hover)),
   "card-hover": (#f5f6f8, rgba(255, 255, 255, 0.05)),
-  "unread-bg": (#cce5ff, rgba(61, 143, 240, 0.2)),
-  "unread-hover": (#bcdcfc, rgba(61, 143, 240, 0.27)),
-  "selected": (#cce5ff, rgba(61, 143, 240, 0.2)),
+  "unread-bg": (#ecf3fd, rgba(61, 143, 240, 0.14)),
+  "unread-hover": (#e1ecfb, rgba(61, 143, 240, 0.2)),
+  "selected": (#cce5ff, rgba(61, 143, 240, 0.22)),
+  "system-avatar": (#ffffff, rgba(255, 255, 255, 0.92)),
   "link": (#1f76c2, #69a7ff),
   "primary": (#0073ea, #3d8ff0),
   "danger": (#d83a52, #e2445c),
   "danger-hover": (#b63546, #c93a50),
-  "menu-shadow": (0 6px 20px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.5)),
 );
 
 @mixin token-set($index) {
@@ -64,7 +65,7 @@ html.dark {
 
 .nc-header {
   flex: none;
-  padding: 20px 24px 16px;
+  padding: 12px 16px 20px;
 }
 
 .nc-header__top {
@@ -77,7 +78,7 @@ html.dark {
 .nc-header__title {
   margin: 0;
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 36px;
   letter-spacing: -0.2px;
   color: var(--nc-text);
@@ -91,9 +92,9 @@ html.dark {
 
 .nc-header__divider {
   width: 1px;
-  height: 24px;
+  height: 22px;
   margin: 0 8px;
-  background: var(--nc-border-strong);
+  background: var(--nc-divider);
 }
 
 .nc-icon-button {
@@ -119,9 +120,9 @@ html.dark {
 
 .nc-tabs {
   display: flex;
-  margin-top: 16px;
+  margin-top: 18px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--nc-border);
+  border-bottom: 2px solid var(--nc-border);
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
@@ -132,7 +133,7 @@ html.dark {
 .nc-tab {
   position: relative;
   flex: none;
-  padding: 6px 18px 10px;
+  padding: 4px 16px 8px;
   font-size: 15px;
   line-height: 22px;
   white-space: nowrap;
@@ -147,7 +148,7 @@ html.dark {
   &::after {
     position: absolute;
     right: 0;
-    bottom: -1px;
+    bottom: -2px;
     left: 0;
     height: 2px;
     background: transparent;
@@ -166,14 +167,14 @@ html.dark {
 .nc-toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   margin-top: 20px;
 }
 
 .nc-search {
   display: flex;
   min-width: 0;
-  height: 40px;
+  height: 32px;
   flex: 1;
   align-items: center;
   gap: 8px;
@@ -196,7 +197,7 @@ html.dark {
     width: 100%;
     min-width: 0;
     background: transparent;
-    font-size: 15px;
+    font-size: 14px;
     color: var(--nc-text);
     outline: none;
 
@@ -212,14 +213,14 @@ html.dark {
 
 .nc-person-filter {
   display: inline-flex;
-  max-width: 200px;
-  height: 40px;
+  max-width: 180px;
+  height: 32px;
   flex: none;
   align-items: center;
   gap: 6px;
-  padding: 0 8px;
+  padding: 0 4px;
   border-radius: 4px;
-  font-size: 15px;
+  font-size: 14px;
   color: var(--nc-text);
   transition: background-color 0.15s ease;
 
@@ -311,7 +312,6 @@ html.dark {
 
   &.is-selected {
     background: var(--nc-selected);
-    color: var(--nc-text);
   }
 
   > svg {
@@ -343,14 +343,12 @@ html.dark {
   flex: 1;
   overflow-y: auto;
   padding: 0 8px 24px;
-  border-top: 1px solid var(--nc-border);
 }
 
 .nc-list__items {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding-top: 4px;
 }
 
 .nc-empty {
@@ -371,7 +369,7 @@ html.dark {
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--nc-selected);
+  background: var(--nc-unread-bg);
   color: var(--nc-primary);
 }
 
@@ -439,8 +437,8 @@ html.dark {
 .nc-card__main {
   display: flex;
   width: 100%;
-  gap: 16px;
-  padding: 16px 16px 20px 12px;
+  gap: 12px;
+  padding: 16px 16px 20px 10px;
   border-radius: inherit;
   text-align: left;
 
@@ -451,22 +449,32 @@ html.dark {
   flex: none;
 }
 
+// "Automations": the app logo on a white disc, like monday's own logo avatar.
+.nc-card__system-avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--nc-system-avatar);
+  box-shadow: 0 0 0 1px var(--nc-border);
+}
+
 .nc-card__body {
   min-width: 0;
   flex: 1;
-  padding-top: 2px;
 }
 
 .nc-card__sentence {
   display: block;
-  font-size: 15px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 22px;
   color: var(--nc-text);
   overflow-wrap: anywhere;
 }
 
 .nc-card__actor {
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .nc-card__action {
@@ -484,8 +492,8 @@ html.dark {
   display: -webkit-box;
   margin-top: 6px;
   overflow: hidden;
-  font-size: 15px;
-  line-height: 24px;
+  font-size: 14px;
+  line-height: 22px;
   color: var(--nc-text);
   white-space: pre-line;
   overflow-wrap: anywhere;
@@ -499,7 +507,7 @@ html.dark {
   min-width: 0;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 10px;
   font-size: 14px;
   line-height: 20px;
   color: var(--nc-text-secondary);
@@ -530,8 +538,8 @@ html.dark {
 // Hover actions in the top corner, on the card's own background.
 .nc-card__actions {
   position: absolute;
-  top: 12px;
-  right: 12px;
+  top: 10px;
+  right: 10px;
   display: flex;
   align-items: center;
   gap: 2px;

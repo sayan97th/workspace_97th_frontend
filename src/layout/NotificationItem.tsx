@@ -1,5 +1,6 @@
 "use client";
 import React, { useRef, useState } from "react";
+import BrandLogo from "@/components/common/BrandLogo";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
@@ -42,13 +43,13 @@ type NotificationItemProps = {
   is_focused?: boolean;
 };
 
-const AVATAR_SIZE = 44;
+const AVATAR_SIZE = 56;
 
 /**
- * A single notification card, a one to one take on monday's notification
- * center: a large avatar, "Name @ Mentioned you in a reply", the message
- * itself underneath, and a "11m · Task 1" footer naming the item (or the
- * board when there is no item). Unread cards sit on a blue background. On
+ * A single notification card, a one to one take on monday's current
+ * notification center: a large avatar (the app logo when "Automations" sent
+ * it), "Name @ Mentioned you in an update", the message itself underneath and
+ * a "22m · Board name" footer. Unread cards sit on a soft blue background. On
  * hover a reply button, a "..." menu (mark as read or unread, mute the item,
  * remind me later, delete) and a quick delete "×" appear in the top corner.
  */
@@ -65,6 +66,7 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   is_focused = false,
 }) => {
   const { id, actor, action_label, action_target, board, item_name, preview, time_label, is_unread, is_item_muted } = notification;
+  const footer_target = board.name || item_name;
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const [is_menu_open, setIsMenuOpen] = useState(false);
   const [is_replying, setIsReplying] = useState(false);
@@ -72,7 +74,6 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
   const can_reply = Boolean(onReply && notification.reply_to);
   const can_mute_item = notification.board_item_id !== undefined && Boolean(is_item_muted ? onUnmuteItem : onMuteItem);
   const has_menu = Boolean(onMarkRead || onMarkUnread || onSnooze || onDismiss || can_reply || can_mute_item);
-  const footer_target = item_name || board.name;
   const closeMenu = () => setIsMenuOpen(false);
   const toggleItemMuted = () => (is_item_muted ? onUnmuteItem?.(id) : onMuteItem?.(id));
 
@@ -87,18 +88,27 @@ const NotificationItem: React.FC<NotificationItemProps> = ({
     <div>
       <div className={card_class}>
         <button type="button" onClick={() => onSelect?.(id)} className="nc-card__main">
-          <PersonAvatar person={notificationActorToPerson(actor)} size={AVATAR_SIZE} className="nc-card__avatar" />
+          {actor.is_system ? (
+            <span className="nc-card__system-avatar" style={{ width: AVATAR_SIZE, height: AVATAR_SIZE }} aria-hidden="true">
+              <BrandLogo size={26} />
+            </span>
+          ) : (
+            <PersonAvatar person={notificationActorToPerson(actor)} size={AVATAR_SIZE} className="nc-card__avatar" />
+          )}
 
           <span className="nc-card__body">
             <span className="nc-card__sentence">
-              <strong className={`nc-card__actor ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</strong>{" "}
+              <strong className={`nc-card__actor ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</strong>
               {action_label && (
-                <span className="nc-card__action">
-                  <NotificationTypeIcon type={notification.type} size={15} />
-                  {action_label}
-                </span>
-              )}{" "}
-              {action_target}
+                <>
+                  {" "}
+                  <span className="nc-card__action">
+                    <NotificationTypeIcon type={notification.type} size={16} />
+                    {action_label}
+                  </span>
+                </>
+              )}
+              {action_target && <> {action_target}</>}
             </span>
             {preview && <span className="nc-card__preview">{preview}</span>}
             <span className="nc-card__footer">

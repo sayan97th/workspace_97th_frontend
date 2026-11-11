@@ -30,6 +30,8 @@ export type NotificationActor = {
   avatar_url?: string;
   /** The actor's account was disabled or deleted, so their avatar and name are shown faded. */
   is_deactivated?: boolean;
+  /** Sent by "Automations" (an automation or a reminder), shown with the app logo instead of a person. */
+  is_system?: boolean;
 };
 
 /** The board a notification is scoped to. */
@@ -94,18 +96,17 @@ export const default_notification_filters: NotificationFilters = {
   actor_id: null,
 };
 
-/** A board or person offered by the drawer's filter menus. */
+/** A person offered by the drawer's "Filter by person" menu. */
 export type NotificationFilterOption = {
   id: string;
   name: string;
-  /** Profile photo of a person option, the "Filter by person" list shows it next to the name. */
+  /** Profile photo, shown next to the name in the list. */
   avatar_url?: string;
   is_deactivated?: boolean;
 };
 
-/** Boards and people that appear somewhere in the user's notifications. */
+/** People that appear somewhere in the user's notifications. */
 export type NotificationFilterOptions = {
-  boards: NotificationFilterOption[];
   actors: NotificationFilterOption[];
 };
 
@@ -132,37 +133,6 @@ export function resolveSnoozeDate(preset: NotificationSnoozePresetId, now: Date 
   if (preset === "tomorrow" || preset === "next_week") result.setHours(SNOOZE_MORNING_HOUR, 0, 0, 0);
   return result;
 }
-
-/** One of the list's date-grouped sections. */
-export type NotificationDateGroup = "today" | "yesterday" | "this_week" | "older";
-
-const NOTIFICATION_DATE_GROUP_LABELS: Record<NotificationDateGroup, string> = {
-  today: "Today",
-  yesterday: "Yesterday",
-  this_week: "Last 7 days",
-  older: "Older notifications",
-};
-
-/** Buckets a notification's raw `created_at` into a date section for the drawer's grouped list. */
-export function notificationDateGroupOf(created_at: string): NotificationDateGroup {
-  const date = new Date(created_at);
-  const now = new Date();
-  const start_of_today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const start_of_yesterday = new Date(start_of_today);
-  start_of_yesterday.setDate(start_of_yesterday.getDate() - 1);
-  const start_of_week = new Date(start_of_today);
-  start_of_week.setDate(start_of_week.getDate() - 7);
-
-  if (date >= start_of_today) return "today";
-  if (date >= start_of_yesterday) return "yesterday";
-  if (date >= start_of_week) return "this_week";
-  return "older";
-}
-
-/** Display order + label for each date group. */
-export const notification_date_groups: { id: NotificationDateGroup; label: string }[] = (
-  ["today", "yesterday", "this_week", "older"] as const
-).map((id) => ({ id, label: NOTIFICATION_DATE_GROUP_LABELS[id] }));
 
 /** Tabs shown in the drawer header, in display order. */
 export const notification_tabs: NotificationTab[] = [

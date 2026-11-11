@@ -52,8 +52,8 @@ type NotificationsPanelProps = {
 
 const SEARCH_DEBOUNCE_MS = 300;
 
-/** Wide enough for two lines of message preview, like monday's notification center. */
-const DRAWER_WIDTH = 600;
+/** monday's notification center width. */
+const DRAWER_WIDTH = 576;
 
 /** Whether a key press comes from somewhere the person is typing, where the drawer's shortcuts must stay out of the way. */
 const isTypingTarget = (target: EventTarget | null): boolean => {
@@ -63,13 +63,13 @@ const isTypingTarget = (target: EventTarget | null): boolean => {
 
 /**
  * Notifications drawer opened from the AppTopBar bell, built to match
- * monday's notification center: the title with a "..." menu (Mark all as
- * read, Delete all, Settings) and close, the All, Unread, I was mentioned and
- * Assigned to me tabs, "Search all notifications" next to "Filter by person",
- * and a flat newest first list of cards. Filtering happens server-side and the
- * list pages in as it is scrolled, both driven by `useNotifications`, this
- * component only renders them. j and k move between cards, o opens, e deletes
- * and u toggles read.
+ * monday's current notification center: the title with a "..." menu (Mark
+ * all as read, Delete all, Settings) and close, the All, Unread, I was
+ * mentioned and Assigned to me tabs, "Search all notifications" next to
+ * "Filter by person", and a flat newest first list of cards. Filtering happens
+ * server-side and the list pages in as it is scrolled, both driven by
+ * `useNotifications`, this component only renders them. j and k move between
+ * cards, o opens, e deletes and u toggles read.
  */
 const NotificationsPanel: React.FC<NotificationsPanelProps> = ({
   is_open,

@@ -46,7 +46,7 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<WorkspaceNotification[]>([]);
   const [unread_count, setUnreadCount] = useState(0);
   const [filters, setFilters] = useState<NotificationFilters>(default_notification_filters);
-  const [filter_options, setFilterOptions] = useState<NotificationFilterOptions>({ boards: [], actors: [] });
+  const [filter_options, setFilterOptions] = useState<NotificationFilterOptions>({ actors: [] });
   const [next_cursor, setNextCursor] = useState<string | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [is_loading_more, setIsLoadingMore] = useState(false);
@@ -132,7 +132,6 @@ export function useNotifications() {
     try {
       const options = await notificationsService.getFilterOptions();
       setFilterOptions({
-        boards: options.boards.map((board) => ({ id: String(board.id), name: board.name })),
         actors: options.actors.map((actor) => ({
           id: String(actor.id),
           name: actor.name,
@@ -141,7 +140,7 @@ export function useNotifications() {
         })),
       });
     } catch {
-      // The menus keep whatever options they already had.
+      // The menu keeps whatever people it already had.
     }
   }, []);
 

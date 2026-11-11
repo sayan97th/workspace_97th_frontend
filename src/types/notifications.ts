@@ -11,7 +11,9 @@ import type { NotificationCategory, WorkspaceNotification } from "@/data/notific
 export type NotificationDto = {
   id: string;
   type: string;
-  actor: { name: string; id: number | null; avatar_url?: string | null; is_deactivated?: boolean };
+  actor: { name: string; id: number | null; avatar_url?: string | null; is_deactivated?: boolean; is_system?: boolean };
+  /** `user` (the actor is the sender) or `automations` (sent by an automation or a reminder). */
+  sender_type?: "user" | "automations";
   action_label: string;
   action_target: string;
   board: { id: number; name: string } | null;
@@ -48,9 +50,8 @@ export type NotificationsLatestDto = {
   meta: { latest_id: string };
 };
 
-/** `GET /api/notifications/filters`. */
+/** `GET /api/notifications/filters`, only the people are used by the drawer. */
 export type NotificationFiltersDto = {
-  boards: { id: number; name: string }[];
   actors: { id: number; name: string; avatar_url?: string | null; is_deactivated?: boolean }[];
 };
 
@@ -91,6 +92,7 @@ export function mapNotificationDto(dto: NotificationDto): WorkspaceNotification 
       avatar_gradient: AVATAR_GRADIENTS[actor_seed % AVATAR_GRADIENTS.length],
       avatar_url: dto.actor.avatar_url ?? undefined,
       is_deactivated: dto.actor.is_deactivated ?? false,
+      is_system: dto.actor.is_system ?? false,
     },
     action_label: dto.action_label,
     action_target: dto.action_target,
