@@ -1,7 +1,7 @@
 import type { DrawerLiker, DrawerReaction } from "@/components/board/drawer/types";
 
 /**
- * Types and copy backing the Update feed drawer opened from the AppTopBar
+ * Types and copy backing the Update feed (Inbox) modal opened from the AppTopBar
  * feed button. Entries themselves come from the API (see `src/types/feed.ts`
  * and `useFeedUpdates`); this module only holds the shared shapes and static
  * tab/copy strings, mirroring `src/data/notifications-data.ts`.
@@ -18,7 +18,7 @@ export type UpdateFeedTabId =
   | "scheduled";
 
 /** Optional leading glyph for a tab, resolved to an icon in the panel. */
-export type UpdateFeedTabIcon = "mention" | "bookmark" | "following" | "pin";
+export type UpdateFeedTabIcon = "mention" | "bookmark" | "following" | "pin" | "account";
 
 /** A tab shown in the feed content header. */
 export type UpdateFeedTab = {
@@ -37,6 +37,12 @@ export type FeedBoardFilter = {
   count: number;
   /** Updates on the board the viewer has not seen yet and that concern them. */
   unread_count: number;
+};
+
+/** A board the viewer hid from their inbox, listed in Feed settings so it can be shown again. */
+export type FeedHiddenBoard = {
+  id: string;
+  name: string;
 };
 
 /** Whether the feed lists top-level updates or only replies. */
@@ -212,15 +218,31 @@ export type FeedUpdate = {
   replies: FeedUpdate[];
 };
 
-/** Tabs shown in the feed content header, in display order. */
+/** Tabs shown in the inbox header, in display order, the same four monday.com offers. */
 export const update_feed_tabs: UpdateFeedTab[] = [
   { id: "all", label: "All updates" },
   { id: "mentioned", label: "I was mentioned", icon: "mention" },
   { id: "bookmarked", label: "Bookmarked", icon: "bookmark" },
-  { id: "account", label: "All account" },
-  { id: "following", label: "Following", icon: "following" },
-  { id: "pinned", label: "Pinned", icon: "pin" },
-  { id: "scheduled", label: "Scheduled" },
+  { id: "account", label: "All account updates", icon: "account" },
+];
+
+/** What the "Show" picker above the cards offers: only unread threads, or every thread. */
+export type FeedShowMode = "unread" | "all";
+
+export const feed_show_options: { id: FeedShowMode; label: string }[] = [
+  { id: "unread", label: "Unread updates" },
+  { id: "all", label: "All updates" },
+];
+
+/** The inbox opens on unread updates, as in monday.com. */
+export const feed_default_show_mode: FeedShowMode = "unread";
+
+/** What each tab lists, for the "What goes in my update feed?" card. */
+export const feed_tab_help: { title: string; description: string }[] = [
+  { title: "All updates", description: "Updates from boards you are subscribed to." },
+  { title: "I was mentioned", description: "Only updates you were @mentioned in." },
+  { title: "Bookmarked", description: "All updates that you bookmarked for later." },
+  { title: "All account updates", description: "Updates from every board in your account, even if you are not subscribed." },
 ];
 
 /** Tab shown selected when the drawer first opens. */
@@ -230,10 +252,10 @@ export const update_feed_default_tab: UpdateFeedTabId = "all";
 export const feed_default_board_filter = "all-boards";
 
 /** Small helper copy shown under the drawer title. */
-export const feed_helper_prompt = "What goes in my feed?";
+export const feed_helper_prompt = "What goes in my update feed?";
 
 /** Placeholder for the inline reply composer. */
-export const feed_reply_placeholder = "Write a reply and mention others with @";
+export const feed_reply_placeholder = "Write a reply...";
 
 /** How many updates a feed page holds. */
 export const feed_page_size = 20;

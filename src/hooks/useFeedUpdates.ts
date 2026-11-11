@@ -25,6 +25,7 @@ import {
   type FeedAuthorOption,
   type FeedBoardFilter,
   type FeedFilters,
+  type FeedHiddenBoard,
   type FeedUpdate,
   type UpdateFeedTabId,
 } from "@/data/update-feed-data";
@@ -107,6 +108,7 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   const [is_loading, setIsLoading] = useState(load_updates);
   const [is_loading_more, setIsLoadingMore] = useState(false);
   const [follows, setFollows] = useState<FeedFollowsDto | null>(null);
+  const [hidden_boards, setHiddenBoards] = useState<FeedHiddenBoard[]>([]);
 
   // Only the newest list request may write its result, so switching tabs
   // quickly can never leave the previous tab's cards on screen.
@@ -402,15 +404,178 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   const markAllSeen = useCallback(async () => {
     const result = await feedService.markAllSeen(tab, board_id, filters);
     setUpdates((previous) =>
-      previous.map((update) => ({
-        ...update,
-        is_unread: false,
-        replies: update.replies.map((reply) => ({ ...reply, is_unread: false })),
-      }))
+      filters.unread_only
+        ? []
+        : previous.map((update) => ({
+            ...update,
+            is_unread: false,
+            replies: update.replies.map((reply) => ({ ...reply, is_unread: false })),
+          }))
     );
     setUnreadCount(result.unread_count);
     loadBoards();
   }, [tab, board_id, filters, loadBoards]);
+
+  /**
+   * Puts a card back where it was, used by every "Undo": a card that left the
+   * list returns at its old position, one that is still there is swapped for
+   * the earlier copy.
+   */
+  const putCardBack = useCallback((card: FeedUpdate, index: number) => {
+    setUpdates((previous) => {
+      if (previous.some((update) => update.id === card.id)) {
+        return previous.map((update) => (update.id === card.id ? card : update));
+      }
+      const next = [...previous];
+      next.splice(Math.min(index, next.length), 0, card);
+      return next;
+    });
+  }, []);
+
+  /**
+   * The inbox's blue check: reads the whole thread. While the inbox shows
+   * unread updates only, the card leaves the list at once, as in monday.com.
+   * Resolves to an undo that brings the card back unread, or null when there
+   * was nothing to read.
+   */
+  const markThreadRead = useCallback(
+    async (id: string): Promise<(() => Promise<void>) | null> => {
+      const index = updates.findIndex((update) => update.id === id);
+      const target = updates[index];
+      if (!target || !isThreadUnread(target)) return null;
+
+      const unread_in_thread = countThreadUnread(target);
+      const read = (update: FeedUpdate): FeedUpdate => ({
+        ...update,
+        is_unread: false,
+        replies: update.replies.map((reply) => ({ ...reply, is_unread: false })),
+      });
+
+      setUpdates((previous) =>
+        filters.unread_only ? previous.filter((update) => update.id !== id) : previous.map((update) => (update.id === id ? read(update) : update))
+      );
+      setUnreadCount((previous) => Math.max(0, previous - unread_in_thread));
+
+      try {
+        await feedService.markSeen(id, true);
+      } catch (error) {
+        putCardBack(target, index);
+        setUnreadCount((previous) => previous + unread_in_thread);
+        throw error;
+      }
+      scheduleCountsRefresh();
+
+      return async () => {
+        putCardBack(target, index);
+        await feedService.markUnseen(id, true);
+        setUnreadCount((previous) => previous + unread_in_thread);
+        scheduleCountsRefresh();
+      };
+    },
+    [updates, filters.unread_only, putCardBack, scheduleCountsRefresh]
+  );
+
+  /** The check on a card already read: brings the whole thread back as unread. */
+  const markThreadUnread = useCallback(
+    async (id: string) => {
+      const dto = await feedService.markUnseen(id, true);
+      applyUpdate(dto);
+      scheduleCountsRefresh();
+    },
+    [applyUpdate, scheduleCountsRefresh]
+  );
+
+  /** The board row's "Close All": reads every update the open tab shows for that board. */
+  const markBoardRead = useCallback(
+    async (target_board_id: string) => {
+      const result = await feedService.markAllSeen(tab, target_board_id, filters);
+      const on_board = (update: FeedUpdate) => target_board_id === "all-boards" || update.board_id === target_board_id;
+      setUpdates((previous) =>
+        filters.unread_only
+          ? previous.filter((update) => !on_board(update))
+          : previous.map((update) =>
+              on_board(update)
+                ? { ...update, is_unread: false, replies: update.replies.map((reply) => ({ ...reply, is_unread: false })) }
+                : update
+            )
+      );
+      setUnreadCount(result.unread_count);
+      loadBoards();
+      return result.marked_count;
+    },
+    [tab, filters, loadBoards]
+  );
+
+  const loadHiddenBoards = useCallback(async () => {
+    try {
+      setHiddenBoards(await feedService.listHiddenBoards());
+    } catch {
+      // Feed settings keeps whatever it already listed.
+    }
+  }, []);
+
+  /** "Hide board updates from inbox": the board's cards and its row leave the inbox. */
+  const hideBoard = useCallback(
+    async (target_board_id: string) => {
+      const hidden = await feedService.hideBoard(target_board_id);
+      setHiddenBoards((previous) => [hidden, ...previous.filter((board) => board.id !== hidden.id)]);
+      setBoards((previous) => previous.filter((board) => board.id !== target_board_id));
+      if (tab !== "bookmarked") setUpdates((previous) => previous.filter((update) => update.board_id !== target_board_id));
+      loadBoards();
+      loadUnreadCount();
+    },
+    [tab, loadBoards, loadUnreadCount]
+  );
+
+  /** Feed settings' "Show in inbox": brings a hidden board's updates back. */
+  const showBoard = useCallback(
+    async (target_board_id: string) => {
+      await feedService.showBoard(target_board_id);
+      setHiddenBoards((previous) => previous.filter((board) => board.id !== target_board_id));
+      loadBoards();
+      loadUnreadCount();
+      loadUpdates();
+    },
+    [loadBoards, loadUnreadCount, loadUpdates]
+  );
+
+  /** "Edit update": saves the new body, the card shows it with its "Edited" mark. */
+  const editUpdate = useCallback(
+    async (id: string, body: string) => {
+      applyUpdate(await feedService.editUpdate(id, body));
+    },
+    [applyUpdate]
+  );
+
+  /**
+   * "Delete update for everyone": the update (with its replies) or the single
+   * reply leaves the inbox at once. Resolves to an undo that restores it on
+   * the server and puts the card back as it was.
+   */
+  const deleteUpdate = useCallback(
+    async (id: string): Promise<() => Promise<void>> => {
+      const index = updates.findIndex((update) => update.id === id || update.replies.some((reply) => reply.id === id));
+      const card = updates[index];
+      const remove = (previous: FeedUpdate[]) =>
+        card?.id === id
+          ? previous.filter((update) => update.id !== id)
+          : previous.map((update) => (update.id === card?.id ? { ...update, replies: update.replies.filter((reply) => reply.id !== id) } : update));
+
+      setUpdates(remove);
+      try {
+        await feedService.deleteUpdate(id);
+      } catch (error) {
+        if (card) putCardBack(card, index);
+        throw error;
+      }
+
+      return async () => {
+        await feedService.restoreUpdate(id);
+        if (card) putCardBack(card, index);
+      };
+    },
+    [updates, putCardBack]
+  );
 
   /** Posts a reply, which shows up at the end of its thread's card, never as a card of its own. */
   const replyToUpdate = useCallback(
@@ -454,6 +619,15 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     markSeen,
     markUnread,
     markAllSeen,
+    markThreadRead,
+    markThreadUnread,
+    markBoardRead,
+    hidden_boards,
+    loadHiddenBoards,
+    hideBoard,
+    showBoard,
+    editUpdate,
+    deleteUpdate,
     replyToUpdate,
     scheduleReply,
   };

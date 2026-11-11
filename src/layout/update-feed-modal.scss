@@ -1,0 +1,701 @@
+// The Update feed (Inbox) modal in monday.com's look: a large centered white
+// dialog, a left column with the big "Update feed (Inbox)" title and the
+// "Filter by Board" list, and a light gray content pane with underlined tabs,
+// the "Show Unread updates" picker and the thread cards
+// (`update-feed-card.scss`).
+//
+// Colors are `--ufm-*` custom properties generated from `$tokens` for light
+// (`:root`) and dark (`html.dark`).
+
+@use "sass:list";
+
+// ── Tokens ────────────────────────────────────────────────────────────────
+
+// Each token as (light, dark).
+$tokens: (
+  "surface": (#ffffff, var(--color-shell-panel)),
+  "pane": (#f6f7fb, var(--color-shell-bg)),
+  "border": (#e6e9ef, var(--color-shell-border)),
+  "border-strong": (#d0d4e4, var(--color-shell-border-strong)),
+  "text": (#323338, var(--color-shell-text)),
+  "text-secondary": (#676879, var(--color-shell-text-secondary)),
+  "text-faint": (#9699a6, var(--color-shell-text-faint)),
+  "hover": (#dcdfec, var(--color-shell-hover)),
+  "primary": (#0073ea, #3d8ff0),
+  "primary-hover": (#0060b9, #69a7ff),
+  "selected": (#cce5ff, rgba(61, 143, 240, 0.22)),
+  "selected-hover": (#aed4fc, rgba(61, 143, 240, 0.3)),
+  "badge": (#dcdfec, var(--color-shell-hover-strong)),
+  "badge-on-selected": (#c3d8f1, rgba(61, 143, 240, 0.3)),
+  "backdrop": (rgba(41, 47, 76, 0.55), rgba(0, 0, 0, 0.6)),
+  "shadow": (0 15px 50px rgba(0, 0, 0, 0.3), 0 18px 60px rgba(0, 0, 0, 0.6)),
+  "skeleton": (#eceef5, var(--color-shell-hover)),
+);
+
+@mixin token-set($index) {
+  @each $name, $pair in $tokens {
+    --ufm-#{$name}: #{list.nth($pair, $index)};
+  }
+}
+
+:root {
+  @include token-set(1);
+}
+
+html.dark {
+  @include token-set(2);
+}
+
+@mixin focus-ring($offset: 2px) {
+  &:focus-visible {
+    outline: 2px solid var(--ufm-primary);
+    outline-offset: $offset;
+  }
+}
+
+// ── Shell ─────────────────────────────────────────────────────────────────
+
+.uf-modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+
+  &[data-open="false"] {
+    pointer-events: none;
+    visibility: hidden;
+    transition: visibility 0s linear 220ms;
+  }
+}
+
+.uf-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--ufm-backdrop);
+  opacity: 0;
+  transition: opacity 220ms ease;
+
+  [data-open="true"] > & {
+    opacity: 1;
+  }
+}
+
+.uf-modal {
+  position: relative;
+  display: flex;
+  width: min(1680px, 100%);
+  height: min(1040px, 100%);
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--ufm-surface);
+  box-shadow: var(--ufm-shadow);
+  color: var(--ufm-text);
+  opacity: 0;
+  transform: translateY(12px) scale(0.985);
+  transition:
+    opacity 220ms ease,
+    transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  &:focus {
+    outline: none;
+  }
+
+  [data-open="true"] > & {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.uf-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  display: inline-flex;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--ufm-hover);
+  }
+
+  @include focus-ring(0);
+}
+
+// ── Left column ───────────────────────────────────────────────────────────
+
+.uf-side {
+  display: flex;
+  width: clamp(300px, 27%, 500px);
+  flex: none;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 36px 24px 24px 32px;
+  border-right: 1px solid var(--ufm-border-strong);
+  background: var(--ufm-surface);
+}
+
+.uf-side__title {
+  color: var(--ufm-text);
+  font-family: var(--font-heading, inherit);
+  font-size: clamp(26px, 2.1vw, 40px);
+  white-space: nowrap;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.uf-side__help {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--ufm-text);
+  font-size: 16px;
+
+  svg {
+    flex: none;
+    color: var(--ufm-text);
+  }
+}
+
+.uf-side__see-more {
+  margin-left: auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--ufm-text-secondary);
+  font-size: 16px;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--ufm-hover);
+    color: var(--ufm-text);
+  }
+
+  @include focus-ring;
+}
+
+.uf-side__filters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 72px;
+  margin-bottom: 18px;
+}
+
+.uf-side__subtitle {
+  color: var(--ufm-text);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.uf-side__settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  font-size: 16px;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--ufm-hover);
+  }
+
+  @include focus-ring;
+}
+
+.uf-side__boards {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -10px 0 -20px;
+}
+
+// A board row: the name selects it, the count turns into a "..." menu on hover.
+.uf-board {
+  position: relative;
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  border-radius: 4px;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--ufm-hover);
+  }
+
+  &[data-active="true"] {
+    background: var(--ufm-selected);
+
+    &:hover {
+      background: var(--ufm-selected-hover);
+    }
+
+    .uf-board__count {
+      background: var(--ufm-badge-on-selected);
+    }
+  }
+}
+
+.uf-board__select {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-self: stretch;
+  align-items: center;
+  padding: 0 64px 0 20px;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  font-size: 16px;
+  text-align: left;
+
+  @include focus-ring(-2px);
+}
+
+.uf-board__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uf-board__count {
+  position: absolute;
+  right: 16px;
+  display: inline-flex;
+  min-width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: var(--ufm-badge);
+  color: var(--ufm-text);
+  font-size: 15px;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+.uf-board__menu {
+  position: absolute;
+  right: 14px;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    background-color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: rgba(255, 255, 255, 0.55);
+  }
+
+  @include focus-ring(0);
+}
+
+.uf-board:hover,
+.uf-board[data-menu-open="true"],
+.uf-board:focus-within {
+  .uf-board__menu {
+    opacity: 1;
+  }
+
+  .uf-board__count {
+    opacity: 0;
+  }
+}
+
+// ── Popovers (help and Feed settings) ────────────────────────────────────
+
+.uf-popover {
+  padding: 16px;
+  color: var(--ufm-text);
+  font-size: 14px;
+}
+
+.uf-popover__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.uf-popover__text {
+  margin-top: 6px;
+  color: var(--ufm-text-secondary);
+  line-height: 1.5;
+}
+
+.uf-popover__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.45;
+  }
+
+  span {
+    color: var(--ufm-text-secondary);
+  }
+}
+
+.uf-popover__boards {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-height: 36px;
+  }
+
+  button {
+    flex: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--ufm-primary);
+    font-size: 14px;
+    transition: background-color 150ms ease;
+
+    &:hover {
+      background: var(--ufm-hover);
+    }
+
+    @include focus-ring;
+  }
+}
+
+// ── Content pane ──────────────────────────────────────────────────────────
+
+.uf-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  background: var(--ufm-pane);
+}
+
+.uf-tabs {
+  display: flex;
+  flex: none;
+  align-items: flex-end;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 24px 72px 0 52px;
+  border-bottom: 1px solid var(--ufm-border-strong);
+  background: var(--ufm-surface);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.uf-tab {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 52px;
+  padding: 0 22px;
+  border-radius: 4px 4px 0 0;
+  color: var(--ufm-text);
+  font-size: 18px;
+  white-space: nowrap;
+  transition: background-color 150ms ease;
+
+  svg {
+    color: var(--ufm-text-secondary);
+  }
+
+  &::after {
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 3px;
+    border-radius: 2px 2px 0 0;
+    background: transparent;
+    content: "";
+    transition: background-color 150ms ease;
+  }
+
+  &:hover {
+    background: var(--ufm-hover);
+  }
+
+  &[aria-selected="true"]::after {
+    background: var(--ufm-primary);
+  }
+
+  @include focus-ring(-2px);
+}
+
+.uf-main__scroll {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 52px 48px;
+}
+
+.uf-main__inner {
+  max-width: 1120px;
+}
+
+.uf-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-right: 72px;
+  margin-bottom: 18px;
+}
+
+.uf-toolbar__show {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  font-size: 17px;
+  transition: background-color 150ms ease;
+
+  strong {
+    font-weight: 600;
+  }
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--ufm-hover);
+  }
+
+  @include focus-ring;
+}
+
+.uf-toolbar__mark-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 4px;
+  color: var(--ufm-text);
+  font-size: 17px;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--ufm-hover);
+  }
+
+  @include focus-ring;
+}
+
+.uf-banner-slot {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  margin-right: 72px;
+}
+
+.uf-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+  padding: 7px 14px;
+  border-radius: 9999px;
+  background: var(--ufm-primary);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--ufm-primary-hover);
+  }
+}
+
+.uf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.uf-loading-more {
+  padding-top: 16px;
+  margin-right: 72px;
+  color: var(--ufm-text-secondary);
+  font-size: 14px;
+  text-align: center;
+}
+
+// ── Empty and loading states ─────────────────────────────────────────────
+
+.uf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 72px;
+  padding: 72px 24px;
+  border: 1px dashed var(--ufm-border-strong);
+  border-radius: 8px;
+  background: var(--ufm-surface);
+  text-align: center;
+}
+
+.uf-empty__icon {
+  display: inline-flex;
+  width: 64px;
+  height: 64px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--ufm-selected);
+  color: var(--ufm-primary);
+}
+
+.uf-empty__title {
+  margin-top: 18px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.uf-empty__text {
+  max-width: 420px;
+  margin-top: 6px;
+  color: var(--ufm-text-secondary);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.uf-empty__action {
+  margin-top: 18px;
+  padding: 8px 16px;
+  border: 1px solid var(--ufm-border-strong);
+  border-radius: 4px;
+  color: var(--ufm-text);
+  font-size: 15px;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--ufm-hover);
+  }
+
+  @include focus-ring;
+}
+
+.uf-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  margin-right: 72px;
+}
+
+.uf-skeleton {
+  height: 260px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, var(--ufm-skeleton) 25%, var(--ufm-surface) 50%, var(--ufm-skeleton) 75%);
+  background-size: 200% 100%;
+  animation: uf-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes uf-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+// ── Smaller screens ───────────────────────────────────────────────────────
+
+@media (max-width: 1100px) {
+  .uf-tab {
+    padding: 0 14px;
+    font-size: 16px;
+  }
+
+  .uf-main__scroll,
+  .uf-tabs {
+    padding-left: 28px;
+  }
+}
+
+@media (max-width: 860px) {
+  .uf-modal-root {
+    padding: 0;
+  }
+
+  .uf-modal {
+    border-radius: 0;
+  }
+
+  .uf-side {
+    display: none;
+  }
+
+  .uf-main__scroll {
+    padding: 16px 16px 32px;
+  }
+
+  .uf-tabs {
+    padding: 56px 16px 0;
+  }
+
+  .uf-toolbar,
+  .uf-banner-slot,
+  .uf-empty,
+  .uf-skeletons,
+  .uf-loading-more {
+    margin-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .uf-modal,
+  .uf-modal-backdrop {
+    transition: none;
+  }
+
+  .uf-skeleton {
+    animation: none;
+  }
+}

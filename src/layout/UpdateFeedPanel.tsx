@@ -1,94 +1,127 @@
 "use client";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
+import BoardPopover from "@/components/board/toolbar/BoardPopover";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { useAuth } from "@/context/AuthContext";
 import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { downloadBlob } from "@/lib/download-blob";
 import { getUserInitials } from "@/lib/user";
-import { feedService } from "@/services/feed.service";
-import FeedFilterBar from "@/components/feed/FeedFilterBar";
-import FeedSavedViewsMenu from "@/components/feed/FeedSavedViewsMenu";
-import SlideOverDrawer from "./SlideOverDrawer";
 import UpdateFeedCard from "./UpdateFeedCard";
-import { useFeedSavedViews } from "@/hooks/useFeedSavedViews";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";
-import { DownloadIcon, PinIcon } from "@/icons/board-icons";
 import {
   BookmarkIcon,
-  ChatBubbleIcon,
+  ChevronDownIcon,
   CloseIcon,
-  EyeIcon,
-  FeedSettingsIcon,
+  EyeOffIcon,
+  InfoIcon,
   MentionIcon,
+  MoreDotsIcon,
 } from "@/icons/workspace-icons";
 import {
-  countActiveFeedFilters,
   default_feed_filters,
   feed_default_board_filter,
+  feed_default_show_mode,
   feed_helper_prompt,
+  feed_show_options,
+  feed_tab_help,
   update_feed_default_tab,
   update_feed_tabs,
+  type FeedBoardFilter,
   type FeedFilters,
-  type FeedSavedView,
+  type FeedShowMode,
   type UpdateFeedTab,
   type UpdateFeedTabId,
 } from "@/data/update-feed-data";
+import "./update-feed-modal.scss";
 
 type UpdateFeedPanelProps = {
   is_open: boolean;
   onClose: () => void;
 };
 
-/** Resolves a tab's optional leading glyph. */
+/** monday's double check, used by "Mark all updates as read" and "Close All". */
+const DoubleCheckIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M2.5 12.5l4.5 4.5L17 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 16l1 1L22.5 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** The briefcase in front of "All account updates". */
+const BriefcaseIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" strokeWidth="1.6" />
+    <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18M10.5 12.5v2h3v-2" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+  </svg>
+);
+
+/** monday's gear in front of "Feed settings". */
+const GearIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M10.3 3.6a1.7 1.7 0 0 1 3.4 0l.1.7a1.7 1.7 0 0 0 2.5 1l.6-.3a1.7 1.7 0 0 1 2.4 2.4l-.3.6a1.7 1.7 0 0 0 1 2.5l.7.1a1.7 1.7 0 0 1 0 3.4l-.7.1a1.7 1.7 0 0 0-1 2.5l.3.6a1.7 1.7 0 0 1-2.4 2.4l-.6-.3a1.7 1.7 0 0 0-2.5 1l-.1.7a1.7 1.7 0 0 1-3.4 0l-.1-.7a1.7 1.7 0 0 0-2.5-1l-.6.3a1.7 1.7 0 0 1-2.4-2.4l.3-.6a1.7 1.7 0 0 0-1-2.5l-.7-.1a1.7 1.7 0 0 1 0-3.4l.7-.1a1.7 1.7 0 0 0 1-2.5l-.3-.6a1.7 1.7 0 0 1 2.4-2.4l.6.3a1.7 1.7 0 0 0 2.5-1z"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.5" />
+  </svg>
+);
+
+/** Resolves a tab's leading glyph. */
 const renderTabIcon = (tab: UpdateFeedTab) => {
-  if (tab.icon === "mention") return <MentionIcon size={14} />;
-  if (tab.icon === "bookmark") return <BookmarkIcon size={13} />;
-  if (tab.icon === "following") return <EyeIcon size={13} />;
-  if (tab.icon === "pin") return <PinIcon size={12} />;
+  if (tab.icon === "mention") return <MentionIcon size={18} />;
+  if (tab.icon === "bookmark") return <BookmarkIcon size={17} />;
+  if (tab.icon === "account") return <BriefcaseIcon size={18} />;
   return null;
 };
 
-/** What each tab shows when it has nothing to list, so an empty Following or Pinned tab says how to fill it. */
-const EMPTY_TAB_MESSAGES: Partial<Record<UpdateFeedTabId, string>> = {
-  following: "You are not following anything with updates yet. Use the menu on an update to follow its item or board.",
-  pinned: "No pinned updates. Pin an update to keep it here.",
-  bookmarked: "No bookmarks yet. Use the bookmark on an update to keep it here.",
-  scheduled: "Nothing scheduled. Schedule a reply from the reply box to send it later.",
+/** What a tab says when it has nothing to list. */
+const EMPTY_TAB_MESSAGES: Record<string, { title: string; description: string }> = {
+  all: { title: "Your update feed is empty", description: "Updates from the boards you are subscribed to will show up here." },
+  mentioned: { title: "No mentions yet", description: "Updates where someone @mentions you will show up here." },
+  bookmarked: { title: "No bookmarks yet", description: "Use \"Bookmark this update to inbox\" in an update's menu to keep it here." },
+  account: { title: "No updates yet", description: "Updates from every board in your account will show up here." },
 };
 
 /**
- * Wide update-feed drawer opened from the AppTopBar feed button. A left sidebar
- * filters by board (with per-board unread badges) while the content pane shows
- * the "All updates", "I was mentioned", "Bookmarked", "All account",
- * "Following", "Pinned" and "Scheduled" tabs (following a board or item is done
- * from a card's menu), a filter row (search, person, kind, dates, unread only),
- * saved views, "Mark all as read" and the feed cards, one card per thread with
- * its replies inline, as in monday.com's inbox. Backed by real `BoardItemComment`/
- * `BoardComment` rows via {@link useFeedUpdates}: pages in as it is scrolled,
- * and stays live over the `feed.{user_id}` Reverb channel, announcing what
- * other people post with an "N new updates" banner.
+ * The Update feed (Inbox), a large centered modal opened from the AppTopBar
+ * feed button, rebuilt to match monday.com: a white left column with the
+ * "Update feed (Inbox)" title, the "What goes in my update feed?" help, Feed
+ * settings and the "Filter by Board" list (each board row has a "..." menu
+ * with "Close All" and "Hide board updates from inbox"), and a light gray
+ * content pane with the four monday tabs, the "Show Unread updates" picker,
+ * "Mark all updates as read" and one card per thread, each with the big blue
+ * check that reads it (with Undo). Backed by real `BoardItemComment` /
+ * `BoardComment` rows via {@link useFeedUpdates}: pages in as it scrolls and
+ * stays live over the `feed.{user_id}` Reverb channel.
  */
 const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) => {
-  const [active_tab, setActiveTab] =
-    useState<UpdateFeedTabId>(update_feed_default_tab);
+  const [active_tab, setActiveTab] = useState<UpdateFeedTabId>(update_feed_default_tab);
   const [active_board, setActiveBoard] = useState(feed_default_board_filter);
-  const [filters, setFilters] = useState<FeedFilters>(default_feed_filters);
+  const [show_mode, setShowMode] = useState<FeedShowMode>(feed_default_show_mode);
+  const [is_show_menu_open, setIsShowMenuOpen] = useState(false);
+  const [is_help_open, setIsHelpOpen] = useState(false);
+  const [is_settings_open, setIsSettingsOpen] = useState(false);
+  const [board_menu, setBoardMenu] = useState<{ board: FeedBoardFilter; anchor: HTMLElement } | null>(null);
 
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
-  const [is_exporting, setIsExporting] = useState(false);
+  const dialog_ref = useRef<HTMLDivElement>(null);
   const scroll_area_ref = useRef<HTMLDivElement>(null);
+  const show_trigger_ref = useRef<HTMLButtonElement>(null);
+  const help_trigger_ref = useRef<HTMLButtonElement>(null);
+  const settings_trigger_ref = useRef<HTMLButtonElement>(null);
+
+  const filters = useMemo<FeedFilters>(() => ({ ...default_feed_filters, unread_only: show_mode === "unread" }), [show_mode]);
 
   const {
     updates,
     pending_count,
     showPendingUpdates,
     boards,
-    authors,
-    loadAuthors,
-    unread_count,
     is_loading,
     is_loading_more,
     has_more,
@@ -96,28 +129,19 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     bookmarkUpdate,
     likeUpdate,
     reactToUpdate,
-    pinUpdate,
-    follows,
-    loadFollows,
     setFollowing,
     replyToUpdate,
-    scheduleReply,
-    markSeen,
-    markUnread,
     markAllSeen,
+    markThreadRead,
+    markThreadUnread,
+    markBoardRead,
+    hidden_boards,
+    loadHiddenBoards,
+    hideBoard,
+    showBoard,
+    editUpdate,
+    deleteUpdate,
   } = useFeedUpdates({ tab: active_tab, board_id: active_board, filters });
-  const { saved_views, saveView, deleteView } = useFeedSavedViews();
-
-  const updateFilters = useCallback((patch: Partial<FeedFilters>) => setFilters((previous) => ({ ...previous, ...patch })), []);
-  const clearFilters = useCallback(() => setFilters(default_feed_filters), []);
-  const active_filter_count = countActiveFeedFilters(filters);
-  const is_scheduled_tab = active_tab === "scheduled";
-  const is_following_tab = active_tab === "following";
-
-  // The Following tab lists what is followed, so the header can offer to unfollow each one.
-  useEffect(() => {
-    if (is_open && is_following_tab) loadFollows();
-  }, [is_open, is_following_tab, loadFollows]);
 
   const current_user: BoardPersonOption = useMemo(
     () =>
@@ -133,12 +157,43 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     [user]
   );
 
-  // Like and React update the card at once, the hook rolls a failed request back, this only says so.
+  // Escape closes the inbox (a menu open inside it handles Escape first), the page behind stops scrolling.
+  useEffect(() => {
+    if (!is_open) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    const previous_overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const frame = requestAnimationFrame(() => dialog_ref.current?.focus());
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previous_overflow;
+      cancelAnimationFrame(frame);
+    };
+  }, [is_open, onClose]);
+
+  useEffect(() => {
+    if (is_settings_open) loadHiddenBoards();
+  }, [is_settings_open, loadHiddenBoards]);
+
+  // A board that was hidden can not stay selected.
+  useEffect(() => {
+    if (active_board !== feed_default_board_filter && boards.length > 0 && !boards.some((board) => board.id === active_board)) {
+      setActiveBoard(feed_default_board_filter);
+    }
+  }, [boards, active_board]);
+
   const likeCard = useCallback(
     (id: string) => void likeUpdate(id).catch(() => toastError("Couldn't update your like. Please try again.")),
     [likeUpdate, toastError]
   );
-  // A reply lands inside its thread's card once the server has it, a failure says so.
+  const reactToCard = useCallback(
+    (id: string, emoji: string) =>
+      void reactToUpdate(id, emoji).catch(() => toastError("Couldn't update that reaction. Please try again.")),
+    [reactToUpdate, toastError]
+  );
   const replyToCard = useCallback(
     (id: string, body: string, mentioned_user_ids: number[]) =>
       void replyToUpdate(id, body, mentioned_user_ids).catch((error) =>
@@ -146,10 +201,58 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
       ),
     [replyToUpdate, toastError]
   );
-  const reactToCard = useCallback(
-    (id: string, emoji: string) =>
-      void reactToUpdate(id, emoji).catch(() => toastError("Couldn't update that reaction. Please try again.")),
-    [reactToUpdate, toastError]
+  const bookmarkCard = useCallback(
+    (id: string) => void bookmarkUpdate(id).catch(() => toastError("Couldn't update the bookmark. Please try again.")),
+    [bookmarkUpdate, toastError]
+  );
+
+  /** The blue check: reads the thread with an Undo, or brings a read thread back as unread. */
+  const toggleCardRead = useCallback(
+    async (id: string, is_unread: boolean) => {
+      try {
+        if (!is_unread) {
+          await markThreadUnread(id);
+          return;
+        }
+        const undo = await markThreadRead(id);
+        if (!undo) return;
+        toastSuccess("Update marked as read", {
+          dedupe_key: "feed-read",
+          action_text: "Undo",
+          onAction: () => void undo().catch(() => toastError("Couldn't undo. Please try again.")),
+        });
+      } catch {
+        toastError("Couldn't update this update. Please try again.");
+      }
+    },
+    [markThreadRead, markThreadUnread, toastSuccess, toastError]
+  );
+
+  const editCard = useCallback(
+    async (id: string, body: string) => {
+      try {
+        await editUpdate(id, body);
+      } catch (error) {
+        toastError(getApiErrorMessage(error, "Couldn't save your changes. Please try again."));
+        throw error;
+      }
+    },
+    [editUpdate, toastError]
+  );
+
+  const deleteCard = useCallback(
+    async (id: string) => {
+      try {
+        const undo = await deleteUpdate(id);
+        toastSuccess("Update deleted", {
+          action_text: "Undo",
+          onAction: () => void undo().catch((error) => toastError(getApiErrorMessage(error, "Couldn't restore the update."))),
+        });
+      } catch (error) {
+        toastError(getApiErrorMessage(error, "Couldn't delete the update. Please try again."));
+      }
+    },
+    [deleteUpdate, toastSuccess, toastError]
   );
 
   const sentinel_ref = useInfiniteScroll({
@@ -159,281 +262,316 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     watch: updates.length,
   });
 
-  /** Downloads the open tab, board and filters as an Excel workbook. */
-  const exportFeed = async () => {
-    if (is_exporting) return;
-    setIsExporting(true);
-    try {
-      const blob = await feedService.exportUpdates(active_tab, active_board, filters);
-      downloadBlob(blob, `update_feed_${new Date().toISOString().slice(0, 10)}.xlsx`);
-      toastSuccess("Update feed exported");
-    } catch (error) {
-      toastError(getApiErrorMessage(error, "Couldn't export the update feed. Please try again."));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
   const showNewUpdates = () => {
     showPendingUpdates();
     scroll_area_ref.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const applySavedView = (view: FeedSavedView) => {
-    setActiveTab(view.tab);
-    setActiveBoard(view.board_id);
-    setFilters(view.filters);
+  const markEverythingRead = async () => {
+    try {
+      await markAllSeen();
+      toastSuccess("All updates marked as read");
+    } catch {
+      toastError("Couldn't mark the updates as read. Please try again.");
+    }
   };
 
-  const saveCurrentView = async (name: string) => {
-    await saveView(name, active_tab, active_board, filters);
+  const closeBoardUpdates = async (board: FeedBoardFilter) => {
+    try {
+      const marked = await markBoardRead(board.id);
+      toastSuccess(marked === 1 ? "1 update marked as read" : `${marked} updates marked as read`);
+    } catch {
+      toastError("Couldn't mark the board updates as read. Please try again.");
+    }
   };
+
+  const hideBoardUpdates = async (board: FeedBoardFilter) => {
+    try {
+      await hideBoard(board.id);
+      if (active_board === board.id) setActiveBoard(feed_default_board_filter);
+      toastSuccess(`${board.name} updates hidden from your inbox`, {
+        action_text: "Undo",
+        onAction: () => void showBoard(board.id).catch(() => toastError("Couldn't show the board again. Please try again.")),
+      });
+    } catch {
+      toastError("Couldn't hide the board updates. Please try again.");
+    }
+  };
+
+  const board_menu_sections: ActionMenuSection[] = board_menu
+    ? [
+        {
+          key: "board",
+          items: [
+            { key: "close-all", label: "Close All", icon: <DoubleCheckIcon size={18} />, onClick: () => void closeBoardUpdates(board_menu.board) },
+            ...(board_menu.board.id === feed_default_board_filter
+              ? []
+              : [
+                  {
+                    key: "hide",
+                    label: "Hide board updates from inbox",
+                    icon: <EyeOffIcon size={18} />,
+                    onClick: () => void hideBoardUpdates(board_menu.board),
+                  },
+                ]),
+          ],
+        },
+      ]
+    : [];
+
+  const show_sections: ActionMenuSection[] = [
+    {
+      key: "show",
+      items: feed_show_options.map((option) => ({
+        key: option.id,
+        label: option.label,
+        is_selected: option.id === show_mode,
+        onClick: () => setShowMode(option.id),
+      })),
+    },
+  ];
+  const show_label = feed_show_options.find((option) => option.id === show_mode)?.label ?? "";
+
+  const empty_state =
+    show_mode === "unread"
+      ? { title: "You're all caught up", description: "There are no unread updates here." }
+      : (EMPTY_TAB_MESSAGES[active_tab] ?? EMPTY_TAB_MESSAGES.all);
 
   return (
-    <SlideOverDrawer
-      is_open={is_open}
-      onClose={onClose}
-      aria_label="Update feed"
-      orientation="horizontal"
-      width={1040}
-    >
-      {/* Feed sidebar: title, board filters */}
-      <aside className="hidden w-[262px] flex-none flex-col gap-[26px] border-r border-shell-border px-[22px] py-[26px] sm:flex">
-        <div>
-          <div className="flex items-center gap-[9px]">
-            <h2 className="font-heading text-dialog-title">
-              Update feed
-            </h2>
-            <ChatBubbleIcon size={18} className="text-[#7fb2ff]" />
-          </div>
-          <p className="mt-1.5 text-[12.5px] text-shell-text-muted">
-            {feed_helper_prompt}{" "}
+    <div className="uf-modal-root" data-open={is_open ? "true" : "false"} aria-hidden={!is_open}>
+      <div className="uf-modal-backdrop" onClick={onClose} />
+
+      <div ref={dialog_ref} role="dialog" aria-modal="true" aria-labelledby="update-feed-title" tabIndex={-1} className="uf-modal">
+        <button type="button" onClick={onClose} className="uf-modal__close" aria-label="Close update feed">
+          <CloseIcon size={22} />
+        </button>
+
+        {/* Left column: title, help, Feed settings and the board filter */}
+        <aside className="uf-side">
+          <h2 id="update-feed-title" className="uf-side__title">
+            Update feed (Inbox)
+          </h2>
+          <div className="uf-side__help">
+            <InfoIcon size={18} />
+            <span>{feed_helper_prompt}</span>
             <button
+              ref={help_trigger_ref}
               type="button"
-              className="text-[#7fb2ff] transition-colors hover:text-[#9cc4ff]"
+              onClick={() => setIsHelpOpen((open) => !open)}
+              aria-expanded={is_help_open}
+              className="uf-side__see-more"
             >
               See more
             </button>
-          </p>
-        </div>
+          </div>
+          <BoardPopover anchor_el={help_trigger_ref.current} is_open={is_help_open} onClose={() => setIsHelpOpen(false)} width={340} align="start">
+            <div className="uf-popover">
+              <p className="uf-popover__title">Update feed view options</p>
+              <p className="uf-popover__text">Filter the updates you see with the tabs at the top of your Update feed.</p>
+              <ul className="uf-popover__list">
+                {feed_tab_help.map((entry) => (
+                  <li key={entry.title}>
+                    <strong>{entry.title}</strong>
+                    <span>{entry.description}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </BoardPopover>
 
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[15px] font-bold">Filter by Board</span>
+          <div className="uf-side__filters-head">
+            <h3 className="uf-side__subtitle">Filter by Board</h3>
             <button
+              ref={settings_trigger_ref}
               type="button"
-              className="flex items-center gap-[5px] text-[11.5px] text-shell-text-muted transition-colors hover:text-shell-text"
+              onClick={() => setIsSettingsOpen((open) => !open)}
+              aria-expanded={is_settings_open}
+              className="uf-side__settings"
             >
-              <FeedSettingsIcon size={13} />
+              <GearIcon size={19} />
               Feed settings
             </button>
           </div>
+          <BoardPopover anchor_el={settings_trigger_ref.current} is_open={is_settings_open} onClose={() => setIsSettingsOpen(false)} width={320} align="end">
+            <div className="uf-popover">
+              <p className="uf-popover__title">Hidden boards</p>
+              {hidden_boards.length === 0 ? (
+                <p className="uf-popover__text">
+                  You are not hiding any board. Use the &quot;...&quot; menu of a board to hide its updates from your inbox.
+                </p>
+              ) : (
+                <ul className="uf-popover__boards">
+                  {hidden_boards.map((board) => (
+                    <li key={board.id}>
+                      <span className="truncate">{board.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => void showBoard(board.id).catch(() => toastError("Couldn't show the board again. Please try again."))}
+                      >
+                        Show in inbox
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </BoardPopover>
 
-          {boards.map((board) => {
-            const is_active = board.id === active_board;
-            return (
-              <button
-                key={board.id}
-                type="button"
-                onClick={() => setActiveBoard(board.id)}
-                className={`mb-1.5 flex w-full items-center justify-between rounded-[9px] px-3 py-2.5 text-[13.5px] transition-colors ${
-                  is_active
-                    ? "border border-shell-border-strong bg-shell-hover-strong font-semibold text-shell-text"
-                    : "font-medium text-shell-text-secondary hover:bg-shell-hover"
-                }`}
-              >
-                <span className="truncate">{board.name}</span>
-                <span className="ml-2 flex flex-none items-center gap-1.5 text-shell-text-muted">
-                  {board.unread_count > 0 && (
-                    <span
-                      className="rounded-full bg-brand-500 px-1.5 py-px text-[10.5px] font-bold text-white"
-                      aria-label={`${board.unread_count} unread`}
-                    >
-                      {board.unread_count}
-                    </span>
-                  )}
-                  {board.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </aside>
+          <ul className="uf-side__boards" aria-label="Filter by board">
+            {boards.map((board) => {
+              const is_active = board.id === active_board;
+              const badge = show_mode === "unread" ? board.unread_count : board.count;
+              const is_menu_open = board_menu?.board.id === board.id;
+              return (
+                <li key={board.id} className="uf-board" data-active={is_active ? "true" : undefined} data-menu-open={is_menu_open ? "true" : undefined}>
+                  <button type="button" onClick={() => setActiveBoard(board.id)} className="uf-board__select" aria-pressed={is_active}>
+                    <span className="uf-board__name">{board.name}</span>
+                  </button>
+                  {badge > 0 && <span className="uf-board__count">{badge}</span>}
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      const anchor = event.currentTarget;
+                      setBoardMenu((current) => (current?.board.id === board.id ? null : { board, anchor }));
+                    }}
+                    aria-haspopup="menu"
+                    aria-expanded={is_menu_open}
+                    aria-label={`${board.name} options`}
+                    className="uf-board__menu"
+                  >
+                    <MoreDotsIcon size={16} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <ActionMenu
+            anchor_el={board_menu?.anchor ?? null}
+            is_open={board_menu !== null}
+            onClose={() => setBoardMenu(null)}
+            sections={board_menu_sections}
+            aria_label="Board options"
+            width={300}
+            align="start"
+          />
+        </aside>
 
-      {/* Feed content: tabs, read filter, list */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        {/* Tabs + close */}
-        <div className="relative flex flex-none items-end border-b border-shell-border pr-4">
-          <div className="shell-scrollbar flex min-w-0 flex-1 items-center gap-4 overflow-x-auto px-5 pt-[18px]">
+        {/* Content: tabs, Show picker, Mark all and the cards */}
+        <section className="uf-main" aria-label="Updates">
+          <nav className="uf-tabs" role="tablist" aria-label="Update feed views">
             {update_feed_tabs.map((tab) => {
               const is_active = tab.id === active_tab;
-              const icon = renderTabIcon(tab);
               return (
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={is_active}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`-mb-px flex flex-none items-center gap-1.5 whitespace-nowrap border-b-2 pb-3.5 text-[13.5px] transition-colors ${
-                    is_active
-                      ? "border-brand-500 font-semibold text-shell-text"
-                      : "border-transparent font-medium text-shell-text-muted hover:text-shell-text"
-                  }`}
+                  className="uf-tab"
                 >
-                  {icon}
+                  {renderTabIcon(tab)}
                   {tab.label}
-                  {tab.is_new && (
-                    <span className="rounded-[5px] border border-[#3a5a80] px-[5px] py-px text-[9.5px] font-bold text-[#7fb2ff]">
-                      New
-                    </span>
-                  )}
                 </button>
               );
             })}
-          </div>
+          </nav>
 
-          <button
-            type="button"
-            onClick={onClose}
-            className="mb-2 ml-2 flex h-[30px] w-[30px] flex-none items-center justify-center rounded-[7px] text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-            aria-label="Close update feed"
-          >
-            <CloseIcon size={16} />
-          </button>
-        </div>
-
-        {/* Scrollable list */}
-        <div ref={scroll_area_ref} className="shell-scrollbar relative flex-1 overflow-y-auto px-6 pb-8 pt-5">
-          {/* Live banner: updates other people posted while the feed is open, held back so the cards being read do not jump. */}
-          <div role="status" aria-live="polite" className="sticky top-0 z-[3] flex justify-center">
-            {pending_count > 0 && (
-              <button
-                type="button"
-                onClick={showNewUpdates}
-                className="mb-3 flex items-center gap-1.5 rounded-full bg-brand-500 px-3.5 py-1.5 text-[12.5px] font-bold text-white shadow-[0_6px_20px_rgba(0,0,0,0.35)] transition-colors hover:bg-brand-600"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <path d="M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                {pending_count} new {pending_count === 1 ? "update" : "updates"}
-              </button>
-            )}
-          </div>
-
-          {/* Filters and saved views. Scheduled updates are the viewer's own drafts, so filtering them makes no sense. */}
-          {!is_scheduled_tab && (
-            <>
-              <div className="mb-2.5 flex items-center gap-2">
-                <FeedSavedViewsMenu
-                  saved_views={saved_views}
-                  onApply={applySavedView}
-                  onDelete={(id) => void deleteView(id)}
-                  onSave={saveCurrentView}
-                  can_save={active_filter_count > 0 || active_tab !== update_feed_default_tab || active_board !== feed_default_board_filter}
-                />
+          <div ref={scroll_area_ref} className="uf-main__scroll">
+            <div className="uf-main__inner">
+              <div className="uf-toolbar">
                 <button
+                  ref={show_trigger_ref}
                   type="button"
-                  onClick={() => void exportFeed()}
-                  disabled={is_exporting || updates.length === 0}
-                  title={active_filter_count > 0 ? "Export the filtered updates to Excel" : "Export these updates to Excel"}
-                  className="ml-auto flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text disabled:cursor-not-allowed disabled:opacity-40"
+                  onClick={() => setIsShowMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={is_show_menu_open}
+                  className="uf-toolbar__show"
                 >
-                  <DownloadIcon size={13} />
-                  {is_exporting ? "Exporting..." : "Export"}
+                  <strong>Show</strong>
+                  <span>{show_label}</span>
+                  <ChevronDownIcon size={16} />
                 </button>
-                {unread_count > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => void markAllSeen()}
-                    className="whitespace-nowrap rounded-[7px] px-2 py-1.5 text-[12px] font-semibold text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-                  >
-                    Mark all as read
+                <ActionMenu
+                  anchor_el={show_trigger_ref.current}
+                  is_open={is_show_menu_open}
+                  onClose={() => setIsShowMenuOpen(false)}
+                  sections={show_sections}
+                  aria_label="Show"
+                  width={220}
+                  align="start"
+                  class_name="action-menu--selectable"
+                />
+                {active_tab !== "bookmarked" && (
+                  <button type="button" onClick={() => void markEverythingRead()} className="uf-toolbar__mark-all">
+                    <DoubleCheckIcon size={20} />
+                    Mark all updates as read
                   </button>
                 )}
               </div>
-              <FeedFilterBar
-                filters={filters}
-                onChange={updateFilters}
-                onClear={clearFilters}
-                authors={authors}
-                onLoadAuthors={loadAuthors}
-              />
-            </>
-          )}
 
-          {is_following_tab && follows && (follows.boards.length > 0 || follows.items.length > 0) && (
-            <div className="mb-4 flex flex-wrap items-center gap-1.5" aria-label="What you follow">
-              <span className="text-[12px] font-semibold text-shell-text-muted">Following</span>
-              {follows.boards.map((board) => (
-                <span
-                  key={`board-${board.id}`}
-                  className="flex items-center gap-1 rounded-full border border-shell-border-strong px-2.5 py-0.5 text-[12px] font-medium text-shell-text-secondary"
-                >
-                  {board.name}
-                  <button
-                    type="button"
-                    onClick={() => void setFollowing("board", board.id, false)}
-                    aria-label={`Unfollow board ${board.name}`}
-                    className="text-shell-text-faint hover:text-shell-text"
-                  >
-                    ×
+              {/* Live banner: updates other people posted while the inbox is open, held back so the cards being read do not jump. */}
+              <div role="status" aria-live="polite" className="uf-banner-slot">
+                {pending_count > 0 && (
+                  <button type="button" onClick={showNewUpdates} className="uf-banner">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M6 10V2m0 0L2.5 5.5M6 2l3.5 3.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    {pending_count} new {pending_count === 1 ? "update" : "updates"}
                   </button>
-                </span>
-              ))}
-              {follows.items.map((item) => (
-                <span
-                  key={`item-${item.id}`}
-                  title={item.board_name ?? undefined}
-                  className="flex items-center gap-1 rounded-full border border-shell-border px-2.5 py-0.5 text-[12px] font-medium text-shell-text-muted"
-                >
-                  {item.name}
-                  <button
-                    type="button"
-                    onClick={() => void setFollowing("item", item.id, false)}
-                    aria-label={`Unfollow item ${item.name}`}
-                    className="text-shell-text-faint hover:text-shell-text"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
+                )}
+              </div>
 
-          {updates.length === 0 && !has_more ? (
-            <p className="pt-6 text-center text-[13px] text-shell-text-muted">
-              {is_loading
-                ? "Loading updates…"
-                : active_filter_count > 0
-                  ? "No updates match these filters."
-                  : (EMPTY_TAB_MESSAGES[active_tab] ?? "You're all caught up.")}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-5">
-              {updates.map((update) => (
-                <UpdateFeedCard
-                  key={update.id}
-                  update={update}
-                  current_user={current_user}
-                  onLike={likeCard}
-                  onReact={reactToCard}
-                  onBookmark={bookmarkUpdate}
-                  onPin={pinUpdate}
-                  onReply={replyToCard}
-                  onSchedule={scheduleReply}
-                  onMarkSeen={markSeen}
-                  onMarkUnread={markUnread}
-                  onFollow={setFollowing}
-                />
-              ))}
-            </div>
-          )}
+              {updates.length === 0 && !has_more ? (
+                is_loading ? (
+                  <div className="uf-skeletons" aria-label="Loading updates">
+                    {[0, 1].map((index) => (
+                      <div key={index} className="uf-skeleton" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="uf-empty">
+                    <span className="uf-empty__icon" aria-hidden="true">
+                      <DoubleCheckIcon size={30} />
+                    </span>
+                    <p className="uf-empty__title">{empty_state.title}</p>
+                    <p className="uf-empty__text">{empty_state.description}</p>
+                    {show_mode === "unread" && (
+                      <button type="button" onClick={() => setShowMode("all")} className="uf-empty__action">
+                        Show all updates
+                      </button>
+                    )}
+                  </div>
+                )
+              ) : (
+                <div className="uf-list">
+                  {updates.map((update) => (
+                    <UpdateFeedCard
+                      key={update.id}
+                      update={update}
+                      current_user={current_user}
+                      onLike={likeCard}
+                      onReact={reactToCard}
+                      onBookmark={bookmarkCard}
+                      onReply={replyToCard}
+                      onToggleRead={(id, is_unread) => void toggleCardRead(id, is_unread)}
+                      onFollow={setFollowing}
+                      onEdit={editCard}
+                      onDelete={(id) => void deleteCard(id)}
+                      onNavigate={onClose}
+                    />
+                  ))}
+                </div>
+              )}
 
-          {/* Sentinel: reaching it loads the next page. */}
-          <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
-          {is_loading_more && <p className="pt-4 text-center text-[12.5px] text-shell-text-muted">Loading more…</p>}
-        </div>
+              {/* Sentinel: reaching it loads the next page. */}
+              <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
+              {is_loading_more && <p className="uf-loading-more">Loading more...</p>}
+            </div>
+          </div>
+        </section>
       </div>
-    </SlideOverDrawer>
+    </div>
   );
 };
 

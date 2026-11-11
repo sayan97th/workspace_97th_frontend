@@ -4,6 +4,7 @@ import type {
   FeedAuthorOption,
   FeedBoardFilter,
   FeedFilters,
+  FeedHiddenBoard,
   FeedSavedView,
   UpdateFeedTabId,
 } from "@/data/update-feed-data";
@@ -122,9 +123,43 @@ export const feedService = {
     return response.data;
   },
 
-  /** DELETE /api/feed/updates/{id}/seen, "Mark as unread". */
-  async markUnseen(id: string): Promise<FeedUpdateDto> {
-    const response = await apiClient.delete<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`);
+  /** DELETE /api/feed/updates/{id}/seen, "Mark as unread". With `whole_thread` the replies under the update come back as unread too. */
+  async markUnseen(id: string, whole_thread = false): Promise<FeedUpdateDto> {
+    const response = await apiClient.delete<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`, whole_thread ? { thread: true } : undefined);
+    return response.data;
+  },
+
+  /** GET /api/feed/hidden-boards, the boards the viewer hid from their inbox. */
+  async listHiddenBoards(): Promise<FeedHiddenBoard[]> {
+    const response = await apiClient.get<{ data: FeedHiddenBoard[] }>("/api/feed/hidden-boards");
+    return response.data;
+  },
+
+  /** POST /api/feed/hidden-boards, "Hide board updates from inbox". */
+  async hideBoard(board_id: string): Promise<FeedHiddenBoard> {
+    const response = await apiClient.post<{ data: FeedHiddenBoard }>("/api/feed/hidden-boards", { board_id: Number(board_id) });
+    return response.data;
+  },
+
+  /** DELETE /api/feed/hidden-boards/{board_id}, shows a hidden board in the inbox again. */
+  async showBoard(board_id: string): Promise<void> {
+    await apiClient.delete(`/api/feed/hidden-boards/${board_id}`);
+  },
+
+  /** PATCH /api/feed/updates/{id}, "Edit update" (author only). */
+  async editUpdate(id: string, body: string): Promise<FeedUpdateDto> {
+    const response = await apiClient.patch<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}`, { body });
+    return response.data;
+  },
+
+  /** DELETE /api/feed/updates/{id}, "Delete update for everyone" (author only, soft delete). */
+  async deleteUpdate(id: string): Promise<void> {
+    await apiClient.delete(`/api/feed/updates/${id}`);
+  },
+
+  /** POST /api/feed/updates/{id}/restore, the "Undo" after a delete. */
+  async restoreUpdate(id: string): Promise<FeedUpdateDto> {
+    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/restore`);
     return response.data;
   },
 

@@ -1,5 +1,5 @@
 "use client";
-import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import EmojiPalette from "@/components/board/drawer/EmojiPalette";
@@ -13,8 +13,8 @@ import {
 } from "@/components/board/drawer/mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "@/components/board/drawer/RichTextComposer";
 import { useMentionPickerNavigation } from "@/components/board/drawer/useMentionPickerNavigation";
-import { FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
-import { ClockIcon } from "@/icons/workspace-icons";
+import { ReactSmileyIcon } from "@/icons/drawer-icons";
+import { MentionIcon } from "@/icons/workspace-icons";
 import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 
 type FeedReplyComposerProps = {
@@ -24,8 +24,17 @@ type FeedReplyComposerProps = {
   /** Resolves the account teams that can be group `@mentioned`, loaded together with the people. Optional: without it only Everyone and individuals are offered. */
   loadTeams?: () => Promise<MentionTeam[]>;
   onSubmit: (body: string, mentioned_user_ids: number[]) => void;
-  onSchedule: (body: string, mentioned_user_ids: number[], scheduled_at: string) => void;
   placeholder: string;
+  /** Body the box starts with, used by "Edit update". */
+  initial_value?: string;
+  /** Label of the blue send button, "Reply" by default. */
+  submit_label?: string;
+  /** Shows a Cancel button next to the send button, for "Edit update". */
+  onCancel?: () => void;
+  /** Focuses the box as soon as it mounts, used when the Reply button opens it. */
+  auto_focus?: boolean;
+  /** Hides the viewer's avatar, for the edit box that replaces the update body. */
+  hide_avatar?: boolean;
 };
 
 /** What a feed card can ask of its reply box. */
@@ -42,13 +51,16 @@ type MentionPick = { name: string; user_ids: string[] };
 const isBodyEmpty = (markdown: string): boolean => markdown.trim().length === 0 && !markdown.includes("![");
 
 /**
- * The Update feed card's inline reply box: the same Markdown editor the item
- * drawer uses (formatting, emoji, `@mentions` including the "Everyone" group and teams)
- * plus "schedule for later". People come from the update's board, loaded the
- * first time the box is focused rather than for every card up front.
+ * The Update feed card's reply box, laid out like monday.com's inbox: the
+ * viewer's avatar beside a roomy rounded box, and under it the Emoji and
+ * Mention tools on the left and the blue Reply button on the right. It is
+ * the same Markdown editor the item drawer uses (`@mentions` including the
+ * "Everyone" group and teams). People come from the update's board, loaded
+ * the first time the box is focused rather than for every card up front.
+ * Command/Control + Enter sends, plain Enter adds a new line.
  */
 const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProps>(function FeedReplyComposer(
-  { current_user, loadPeople, loadTeams, onSubmit, onSchedule, placeholder },
+  { current_user, loadPeople, loadTeams, onSubmit, placeholder, initial_value = "", submit_label = "Reply", onCancel, auto_focus = false, hide_avatar = false },
   ref
 ) {
   const mod_key_label = useModKeyLabel();
@@ -56,15 +68,12 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
   const has_requested_people_ref = useRef(false);
 
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initial_value);
   const [people, setPeople] = useState<BoardPersonOption[]>([]);
   const [teams, setTeams] = useState<MentionTeam[]>([]);
   const [mention_query, setMentionQuery] = useState<string | null>(null);
   const [mention_picks, setMentionPicks] = useState<MentionPick[]>([]);
   const [is_emoji_open, setIsEmojiOpen] = useState(false);
-  const [is_toolbar_visible, setIsToolbarVisible] = useState(false);
-  const [is_scheduling, setIsScheduling] = useState(false);
-  const [scheduled_at, setScheduledAt] = useState("");
 
   const has_draft = !isBodyEmpty(value);
 
@@ -88,6 +97,13 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
         // Without teams the picker still offers Everyone and every person.
       });
   };
+
+  useEffect(() => {
+    if (!auto_focus) return;
+    // The editor mounts a frame after this box, so focus waits for it.
+    const frame = requestAnimationFrame(() => rich_text_ref.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [auto_focus]);
 
   const handleChange = (next_value: string) => {
     setValue(next_value);
@@ -129,42 +145,37 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
     return Array.from(new Set(ids));
   };
 
-  const reset = () => {
+  const submit = () => {
+    const body = value.trim();
+    if (isBodyEmpty(body)) return;
+    onSubmit(body, collectMentionedIds(body));
     setValue("");
     setMentionPicks([]);
     setMentionQuery(null);
-    setScheduledAt("");
-    setIsScheduling(false);
   };
 
-  const submit = () => {
-    const body = value.trim();
-    if (isBodyEmpty(body) || is_scheduling) return;
-    onSubmit(body, collectMentionedIds(body));
-    reset();
-  };
-
-  const submitSchedule = () => {
-    const body = value.trim();
-    if (isBodyEmpty(body) || !scheduled_at) return;
-    onSchedule(body, collectMentionedIds(body), new Date(scheduled_at).toISOString());
-    reset();
+  /** The Mention tool types "@" so the people picker opens, the same as typing it. */
+  const startMention = () => {
+    ensurePeopleLoaded();
+    rich_text_ref.current?.focus();
+    const needs_space = value.length > 0 && !/\s$/.test(value);
+    rich_text_ref.current?.insertText(needs_space ? " @" : "@");
   };
 
   return (
-    <div className="flex gap-[11px]" onFocusCapture={ensurePeopleLoaded}>
-      <PersonAvatar person={current_user} size={30} className="mt-0.5" />
+    <div className="feed-composer" onFocusCapture={ensurePeopleLoaded}>
+      {!hide_avatar && <PersonAvatar person={current_user} size={34} className="feed-composer__avatar" />}
 
-      <div className="relative min-w-0 flex-1">
-        <div className="rich-text-box">
+      <div className="feed-composer__main">
+        <div className="feed-composer__box">
           <RichTextComposer
             ref={rich_text_ref}
             embedded
-            show_toolbar={is_toolbar_visible}
+            show_toolbar={false}
             value={value}
             onChange={handleChange}
             placeholder={placeholder}
-            min_height_class="min-h-10"
+            min_height_class="min-h-[92px]"
             // Command/Control + Enter sends, plain Enter adds a new line. Not while the
             // mention list is open: there Enter picks the highlighted person.
             onSubmitShortcut={is_picker_open ? undefined : submit}
@@ -172,65 +183,51 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             can_mention
             onOpenEmojiPalette={() => setIsEmojiOpen(true)}
           />
+        </div>
 
-          <div className="rich-text-actions">
-            <div className="rich-text-actions__group">
-              <button
-                type="button"
-                onClick={() => setIsToolbarVisible((visible) => !visible)}
-                aria-label={is_toolbar_visible ? "Hide formatting options" : "Show formatting options"}
-                aria-pressed={is_toolbar_visible}
-                title={is_toolbar_visible ? "Hide formatting options" : "Show formatting options"}
-                data-active={is_toolbar_visible ? "true" : undefined}
-                className="rich-text-tool"
-              >
-                <FormatToggleIcon size={15} />
-              </button>
-              <span className="relative">
-                <button
-                  ref={emoji_trigger_ref}
-                  type="button"
-                  onClick={() => setIsEmojiOpen((open) => !open)}
-                  aria-label="Add an emoji"
-                  title="Add an emoji"
-                  className="rich-text-tool"
-                >
-                  <ReactSmileyIcon size={16} />
-                </button>
-                <EmojiPalette
-                  anchor_el={emoji_trigger_ref.current}
-                  is_open={is_emoji_open}
-                  onClose={() => setIsEmojiOpen(false)}
-                  onPick={(emoji) => {
-                    rich_text_ref.current?.insertText(emoji);
-                    setIsEmojiOpen(false);
-                  }}
-                  mode="insert"
-                />
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsScheduling((previous) => !previous)}
-                aria-label="Schedule this update for later"
-                aria-pressed={is_scheduling}
-                title="Schedule for later"
-                data-active={is_scheduling ? "true" : undefined}
-                className="rich-text-tool"
-              >
-                <ClockIcon size={15} />
-              </button>
-            </div>
+        <div className="feed-composer__footer">
+          <div className="feed-composer__tools">
+            <button
+              ref={emoji_trigger_ref}
+              type="button"
+              onClick={() => setIsEmojiOpen((open) => !open)}
+              aria-expanded={is_emoji_open}
+              className="feed-composer__tool"
+            >
+              <ReactSmileyIcon size={17} />
+              Emoji
+            </button>
+            <EmojiPalette
+              anchor_el={emoji_trigger_ref.current}
+              is_open={is_emoji_open}
+              onClose={() => setIsEmojiOpen(false)}
+              onPick={(emoji) => {
+                rich_text_ref.current?.insertText(emoji);
+                setIsEmojiOpen(false);
+              }}
+              mode="insert"
+            />
+            <button type="button" onClick={startMention} className="feed-composer__tool">
+              <MentionIcon size={16} />
+              Mention
+            </button>
+          </div>
 
+          <div className="feed-composer__buttons">
+            {onCancel && (
+              <button type="button" onClick={onCancel} className="feed-composer__cancel">
+                Cancel
+              </button>
+            )}
             <button
               type="button"
               onClick={submit}
-              disabled={!has_draft || is_scheduling}
-              aria-label="Reply"
+              disabled={!has_draft}
               aria-keyshortcuts="Meta+Enter Control+Enter"
-              title={`Reply (${mod_key_label} + Enter)`}
-              className="rich-text-send rich-text-send--sm"
+              title={`${submit_label} (${mod_key_label} + Enter)`}
+              className="feed-composer__send"
             >
-              <SendIcon size={14} />
+              {submit_label}
             </button>
           </div>
         </div>
@@ -243,26 +240,6 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             active_index={mention_navigation.active_index}
             onHover={mention_navigation.setActiveIndex}
           />
-        )}
-
-        {is_scheduling && (
-          <div className="mt-2.5 flex items-center gap-2">
-            <input
-              type="datetime-local"
-              value={scheduled_at}
-              onChange={(event) => setScheduledAt(event.target.value)}
-              aria-label="Send at"
-              className="rounded-[8px] border border-shell-border bg-shell-panel-alt px-2.5 py-1.5 text-[12.5px] text-shell-text focus:border-brand-500 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={submitSchedule}
-              disabled={!has_draft || !scheduled_at}
-              className="rounded-[8px] bg-brand-500 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Schedule
-            </button>
-          </div>
         )}
       </div>
     </div>

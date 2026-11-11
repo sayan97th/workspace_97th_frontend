@@ -1,7 +1,8 @@
-// Like, React and Reply on an Update Feed card, plus the reactions row above
-// them, in monday's look: a full width bar of equal buttons split by thin
-// dividers, a blue thumb once liked, emoji pills with a dashed "+" and the
-// "[avatars] You, Haley and 2 others" summary (`ReactionsSummary`).
+// An Update feed (Inbox) thread card in monday.com's look: a white card with
+// a soft border, the author and board breadcrumb on top, the age, bell and
+// "..." on the right, the message folded behind "Read More", reactions with
+// "N Seen", a full width Like | Reply bar, replies in soft bubbles, the reply
+// box, and the big blue check beside the card.
 //
 // Colors are `--uf-*` custom properties generated from `$tokens` for light
 // (`:root`) and dark (`html.dark`), the same pattern as
@@ -13,15 +14,23 @@
 
 // Each token as (light, dark).
 $tokens: (
-  "border": (#e7e9ef, var(--color-shell-border)),
+  "card": (#ffffff, var(--color-shell-panel)),
+  "border": (#e6e9ef, var(--color-shell-border)),
   "border-strong": (#d0d4e4, var(--color-shell-border-strong)),
   "text": (#323338, var(--color-shell-text)),
   "text-secondary": (#676879, var(--color-shell-text-secondary)),
   "text-faint": (#9699a6, var(--color-shell-text-faint)),
-  "hover": (rgba(103, 104, 121, 0.1), var(--color-shell-hover)),
+  "hover": (#dcdfec, var(--color-shell-hover)),
+  "hover-soft": (rgba(103, 104, 121, 0.08), var(--color-shell-hover)),
+  "primary": (#0073ea, #3d8ff0),
+  "primary-hover": (#0060b9, #69a7ff),
+  "primary-soft": (#cce5ff, rgba(61, 143, 240, 0.2)),
   "liked": (#0073ea, #69a7ff),
   "liked-soft": (rgba(0, 115, 234, 0.08), rgba(61, 143, 240, 0.16)),
   "focus": (#0073ea, #69a7ff),
+  "pill": (#ffffff, var(--color-shell-panel-alt)),
+  "shadow": (0 4px 8px rgba(0, 0, 0, 0.06), 0 6px 16px rgba(0, 0, 0, 0.35)),
+  "check-shadow": (0 4px 10px rgba(0, 115, 234, 0.32), 0 4px 12px rgba(0, 0, 0, 0.45)),
 );
 
 @mixin token-set($index) {
@@ -38,94 +47,132 @@ html.dark {
   @include token-set(2);
 }
 
-// ── Reactions row ─────────────────────────────────────────────────────────
-
-.feed-card__meta {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  min-height: 26px;
-}
-
-.feed-card__reactions {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.feed-card__add-reaction {
-  display: inline-flex;
-  width: 26px;
-  height: 26px;
-  flex: none;
-  align-items: center;
-  justify-content: center;
-  border: 1px dashed var(--uf-border-strong);
-  border-radius: 9999px;
-  color: var(--uf-text-faint);
-  transition:
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease;
-
-  &:hover,
-  &[aria-expanded="true"] {
-    border-style: solid;
-    background: var(--uf-hover);
-    color: var(--uf-text-secondary);
-  }
-
+@mixin focus-ring($offset: 2px) {
   &:focus-visible {
     outline: 2px solid var(--uf-focus);
-    outline-offset: 2px;
+    outline-offset: $offset;
   }
 }
 
-.feed-card__views {
-  display: inline-flex;
+// ── Row: the card plus the check beside it ────────────────────────────────
+
+.uf-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.uf-card {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid var(--uf-border-strong);
+  border-radius: 8px;
+  background: var(--uf-card);
+  color: var(--uf-text);
+  transition: box-shadow 200ms ease;
+
+  &:hover {
+    box-shadow: var(--uf-shadow);
+  }
+}
+
+// ── Header ────────────────────────────────────────────────────────────────
+
+.uf-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 20px 0 24px;
+}
+
+.uf-card__heading {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 1px;
+}
+
+.uf-card__author {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.uf-card__name {
+  overflow: hidden;
+  color: var(--uf-text);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uf-card__breadcrumb {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  color: var(--uf-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.uf-card__crumb {
+  overflow: hidden;
+  max-width: 260px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &--link {
+    border-radius: 3px;
+    color: inherit;
+    transition: color 150ms ease;
+
+    &:hover {
+      color: var(--uf-primary);
+      text-decoration: underline;
+    }
+
+    @include focus-ring;
+  }
+}
+
+.uf-card__crumb-separator {
+  flex: none;
+  color: var(--uf-text-faint);
+}
+
+.uf-card__tools {
+  display: flex;
   flex: none;
   align-items: center;
-  gap: 5px;
-  margin-left: auto;
-  color: var(--uf-text-secondary);
-  font-size: 12px;
+  gap: 2px;
 }
 
-// ── Action bar ────────────────────────────────────────────────────────────
-
-.feed-card__actions {
-  display: flex;
-  align-items: stretch;
-  border-top: 1px solid var(--uf-border);
-}
-
-.feed-card__action-wrap {
-  display: flex;
-  min-width: 0;
-  flex: 1;
-
-  > .feed-card__action {
-    width: 100%;
-  }
-}
-
-.feed-card__action {
+.uf-card__age {
   display: inline-flex;
-  min-width: 0;
-  flex: 1;
+  align-items: center;
+  gap: 4px;
+  margin-right: 4px;
+  color: var(--uf-text-secondary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.uf-card__tool {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  height: 42px;
-  padding: 0 8px;
+  border-radius: 4px;
   color: var(--uf-text-secondary);
-  font-size: 13.5px;
-  font-weight: 500;
-  white-space: nowrap;
   transition:
     background-color 150ms ease,
     color 150ms ease;
@@ -136,10 +183,172 @@ html.dark {
     color: var(--uf-text);
   }
 
-  &:focus-visible {
-    outline: 2px solid var(--uf-focus);
-    outline-offset: -2px;
+  &[aria-expanded="true"] {
+    background: var(--uf-primary-soft);
+    color: var(--uf-primary);
   }
+
+  &[data-active="true"] {
+    color: var(--uf-primary);
+  }
+
+  @include focus-ring(0);
+}
+
+// ── Message ───────────────────────────────────────────────────────────────
+
+.uf-card__content {
+  padding: 18px 24px 12px;
+}
+
+.uf-card__body {
+  position: relative;
+  color: var(--uf-text);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+
+  // Long messages stop at the fold with a soft fade, "Read More" opens them.
+  &[data-folded="true"] {
+    max-height: var(--uf-fold-height, 280px);
+    overflow: hidden;
+
+    &::after {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 72px;
+      background: linear-gradient(to bottom, transparent, var(--uf-card));
+      content: "";
+      pointer-events: none;
+    }
+  }
+}
+
+.uf-card__read-more {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 10px auto 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--uf-primary);
+  font-size: 16px;
+  font-weight: 400;
+  transition: background-color 150ms ease;
+
+  &:hover {
+    background: var(--uf-hover-soft);
+  }
+
+  svg {
+    transition: transform 200ms ease;
+  }
+
+  @include focus-ring;
+}
+
+// ── Reactions and "N Seen" ────────────────────────────────────────────────
+
+.uf-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+  margin-top: 14px;
+}
+
+.uf-card__reactions {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+// The smiley for a first reaction only shows while the card is hovered, so a quiet card stays clean.
+.uf-card__add-reaction,
+.feed-card__add-reaction {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--uf-border-strong);
+  border-radius: 9999px;
+  color: var(--uf-text-faint);
+  transition:
+    opacity 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    border-style: solid;
+    background: var(--uf-hover-soft);
+    color: var(--uf-text-secondary);
+  }
+
+  @include focus-ring;
+}
+
+.uf-card__add-reaction[data-empty="true"] {
+  opacity: 0;
+}
+
+.uf-card:hover .uf-card__add-reaction[data-empty="true"],
+.uf-card__add-reaction[data-empty="true"]:focus-visible,
+.uf-card__add-reaction[data-empty="true"][aria-expanded="true"] {
+  opacity: 1;
+}
+
+.uf-card__seen {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  color: var(--uf-text);
+  font-size: 14px;
+}
+
+// ── Like | Reply ──────────────────────────────────────────────────────────
+
+.uf-card__actions {
+  display: flex;
+  align-items: stretch;
+  border-top: 1px solid var(--uf-border-strong);
+}
+
+.uf-card__action {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  margin: 4px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--uf-text);
+  font-size: 16px;
+  font-weight: 400;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--uf-hover);
+  }
+
+  @include focus-ring(-2px);
 
   &[data-active="liked"] {
     color: var(--uf-liked);
@@ -150,19 +359,27 @@ html.dark {
 
     // The thumb gives a short pop the moment a like lands.
     svg {
-      animation: feed-card-like-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: uf-like-pop 360ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
   }
 }
 
-// Thin dividers between neighbors, as in monday.
-.feed-card__action + .feed-card__action,
-.feed-card__action-wrap + .feed-card__action,
-.feed-card__action + .feed-card__action-wrap {
-  border-left: 1px solid var(--uf-border);
+// The thin divider between Like and Reply, drawn as a line that stops short of the edges.
+.uf-card__action + .uf-card__action {
+  position: relative;
+
+  &::before {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: -5px;
+    width: 1px;
+    background: var(--uf-border-strong);
+    content: "";
+  }
 }
 
-@keyframes feed-card-like-pop {
+@keyframes uf-like-pop {
   0% {
     transform: scale(1);
   }
@@ -174,26 +391,242 @@ html.dark {
   }
 }
 
-// ── Thread (replies inline under the update) ─────────────────────────────
+// ── Thread and reply box ──────────────────────────────────────────────────
 
-.feed-card__thread {
-  padding: 18px 20px 6px;
-  border-top: 1px solid var(--uf-border);
+.uf-card__thread {
+  padding: 20px 24px 4px;
+  border-top: 1px solid var(--uf-border-strong);
 }
 
-.feed-card__composer {
-  padding: 14px 20px;
-  border-top: 1px solid var(--uf-border);
+.uf-card__composer {
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--uf-border-strong);
 
-  // Under the replies the box simply continues the thread, no extra divider.
-  &--after-replies {
-    padding-top: 12px;
+  .uf-card__thread + & {
+    padding-top: 8px;
     border-top: 0;
   }
 }
 
+.uf-card__reply-pill-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.uf-card__reply-pill {
+  min-width: 0;
+  flex: 1;
+  height: 40px;
+  padding: 0 20px;
+  border: 1px solid var(--uf-border-strong);
+  border-radius: 9999px;
+  background: var(--uf-card);
+  color: var(--uf-text-secondary);
+  font-size: 15px;
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &:hover {
+    border-color: var(--uf-text-secondary);
+  }
+
+  @include focus-ring;
+}
+
+// ── Reply and edit box (FeedReplyComposer) ────────────────────────────────
+
+.feed-composer {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.feed-composer__avatar {
+  margin-top: 2px;
+  flex: none;
+}
+
+.feed-composer__main {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+
+.feed-composer__box {
+  min-height: 112px;
+  padding: 10px 14px;
+  border: 1px solid var(--uf-primary);
+  border-radius: 8px;
+  background: var(--uf-card);
+  color: var(--uf-text);
+  font-size: 15px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+
+  &:focus-within {
+    box-shadow: 0 0 0 1px var(--uf-primary);
+  }
+}
+
+.feed-composer__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.feed-composer__tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.feed-composer__tool {
+  display: inline-flex;
+  height: 32px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--uf-text);
+  font-size: 15px;
+  transition: background-color 150ms ease;
+
+  &:hover,
+  &[aria-expanded="true"] {
+    background: var(--uf-hover);
+  }
+
+  svg {
+    color: var(--uf-text-secondary);
+  }
+
+  @include focus-ring(0);
+}
+
+.feed-composer__buttons {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.feed-composer__send,
+.feed-composer__cancel {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font-size: 15px;
+  transition:
+    background-color 150ms ease,
+    opacity 150ms ease;
+
+  @include focus-ring;
+}
+
+.feed-composer__send {
+  background: var(--uf-primary);
+  color: #ffffff;
+
+  &:hover:not(:disabled) {
+    background: var(--uf-primary-hover);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+.feed-composer__cancel {
+  color: var(--uf-text);
+
+  &:hover {
+    background: var(--uf-hover);
+  }
+}
+
+// ── The check beside the card ─────────────────────────────────────────────
+
+.uf-check {
+  display: inline-flex;
+  width: 56px;
+  height: 56px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  border: 1.5px solid transparent;
+  border-radius: 4px;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
+
+  &[data-state="unread"] {
+    background: var(--uf-primary);
+    box-shadow: var(--uf-check-shadow);
+    color: #ffffff;
+
+    &:hover {
+      background: var(--uf-primary-hover);
+    }
+  }
+
+  &[data-state="read"] {
+    border-color: var(--uf-border-strong);
+    background: var(--uf-card);
+    color: var(--uf-text-faint);
+
+    &:hover {
+      border-color: var(--uf-primary);
+      color: var(--uf-primary);
+    }
+  }
+
+  &:active {
+    transform: scale(0.94);
+  }
+
+  @include focus-ring;
+}
+
+@media (max-width: 640px) {
+  .uf-row {
+    gap: 8px;
+  }
+
+  .uf-check {
+    width: 40px;
+    height: 40px;
+  }
+
+  .uf-card__header {
+    padding: 16px 14px 0;
+  }
+
+  .uf-card__content,
+  .uf-card__thread,
+  .uf-card__composer {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .feed-card__action[data-active="liked"] svg {
+  .uf-card__action[data-active="liked"] svg {
     animation: none;
+  }
+
+  .uf-check {
+    transition: none;
   }
 }

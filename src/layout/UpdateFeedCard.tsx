@@ -1,14 +1,14 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
 import PersonAvatar from "@/components/board/PersonAvatar";
-import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import RichTextContent from "@/components/board/drawer/RichTextContent";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import FeedActivityTimeline from "@/components/feed/FeedActivityTimeline";
 import FeedReplyComposer, { type FeedReplyComposerRef } from "@/components/feed/FeedReplyComposer";
 import FeedThreadReply from "@/components/feed/FeedThreadReply";
 import { useFoldedReplies } from "@/components/board/drawer/useFoldedReplies";
-import { countThreadUnread, isThreadUnread } from "@/hooks/feedThreads";
+import { isThreadUnread } from "@/hooks/feedThreads";
 import type { FeedActor } from "@/data/update-feed-data";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
@@ -18,14 +18,21 @@ import EmojiPalette from "@/components/board/drawer/EmojiPalette";
 import LikeButton from "@/components/board/drawer/LikeButton";
 import ReactionPill from "@/components/board/drawer/ReactionPill";
 import ReactionsSummary from "@/components/board/drawer/ReactionsSummary";
-import { PinIcon } from "@/icons/board-icons";
+import ActionMenu, { type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
+import CopyLinkModal from "@/components/ui/modal/CopyLinkModal";
+import { useToast } from "@/components/ui/toast/ToastProvider";
 import { ReactSmileyIcon } from "@/icons/drawer-icons";
 import {
+  BellIcon,
   BookmarkIcon,
+  ChevronDownIcon,
   ChevronRightIcon,
-  EyeIcon,
+  ClockIcon,
+  DeleteIcon,
   LinkIcon,
+  MailIcon,
   MoreDotsIcon,
+  PencilIcon,
   ReplyIcon,
   ViewsIcon,
 } from "@/icons/workspace-icons";
@@ -39,44 +46,59 @@ type UpdateFeedCardProps = {
   current_user: BoardPersonOption;
   /** Fired when the Like action is pressed on the update or one of its replies (`id` says which), toggles the viewer's like. */
   onLike?: (id: string) => void;
-  /** Fired when an emoji is picked or a reaction pill is clicked, on the update or one of its replies, toggles the viewer's reaction with that emoji. */
+  /** Fired when an emoji is picked or a reaction pill is clicked, on the update or one of its replies. */
   onReact?: (id: string, emoji: string) => void;
-  /** Fired when the Bookmark action is pressed. */
+  /** Fired by the menu's "Bookmark this update to inbox". */
   onBookmark?: (id: string) => void;
-  /** Fired when the Pin action is pressed. */
-  onPin?: (id: string) => void;
   /** Fired when a reply is submitted from the inline composer, with the ids of everyone it `@mentions`. */
   onReply?: (id: string, body: string, mentioned_user_ids: number[]) => void;
-  /** Fired when a reply is scheduled for a later time from the inline composer. */
-  onSchedule?: (id: string, body: string, scheduled_at: string, mentioned_user_ids: number[]) => void;
-  /** Fired once an unread card has stayed on screen for a moment, so scrolling past it does not count as reading it. */
-  onMarkSeen?: (id: string) => void;
-  /** Fired by the card menu's "Mark as unread". */
-  onMarkUnread?: (id: string) => void;
-  /** Fired by the card menu's follow and unfollow entries, for the update's item or its board. */
+  /** Fired by the blue check beside the card: reads the thread when it is unread, brings it back as unread otherwise. */
+  onToggleRead?: (id: string, is_unread: boolean) => void;
+  /** Fired by the bell: subscribes to (or leaves) the update's item, or its board for a board update. */
   onFollow?: (type: "board" | "item", id: number, following: boolean) => void;
+  /** Fired by the menu's "Edit update" once the new body is saved. */
+  onEdit?: (id: string, body: string) => Promise<void>;
+  /** Fired by the menu's "Delete update for everyone". */
+  onDelete?: (id: string) => void;
+  /** Fired when the breadcrumb opens the item, so the inbox can close. */
+  onNavigate?: () => void;
 };
 
-/** How long an unread card must stay mostly on screen before it counts as read. */
-const SEEN_DWELL_MS = 1200;
+/** Height past which the body folds behind "Read More", as in monday.com. */
+const BODY_FOLD_HEIGHT_PX = 280;
 
-/** A card counts as on screen when most of it shows, or (for a very tall card) a good slice of it does. */
-const SEEN_VISIBLE_RATIO = 0.6;
-const SEEN_VISIBLE_MIN_HEIGHT_PX = 240;
+/** "Nov 10, 2026, 3:42 PM", the full date behind the short time. */
+const formatFullDate = (iso: string): string | undefined => {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+};
+
+/** monday's compact age: "now", "5m", "3h", "24d", "2mo", "1y". */
+export const formatShortAge = (iso: string, now: number = Date.now()): string => {
+  const time = new Date(iso).getTime();
+  if (Number.isNaN(time)) return "";
+  const minutes = Math.max(0, Math.floor((now - time) / 60000));
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  return `${Math.floor(days / 365)}y`;
+};
 
 /**
- * A single update thread in the feed, laid out like monday.com's inbox: the
- * update itself, then every reply inline under it in soft bubbles
- * (`FeedThreadReply`), then the reply box, so answering a thread never adds a
- * card of its own. The update shows the author's avatar (with a profile hover
- * card), date, an "Unread" marker (or "N new replies") until it has been on screen for a moment
- * (the accent bar stays for the rest of the session), the board breadcrumb it is scoped to, the message body, an
- * reactions row (emoji pills, a "+" for another emoji and the "You, Haley
- * and 2 others" summary) beside the view count, the Like / React / Reply bar
- * (hovering Like or a pill lists who did it) and an inline rich text
- * reply composer (`@mentions`, emoji, and a "schedule for later" option). Backed by real `App\Models\BoardItemComment` /
- * `App\Models\BoardComment` rows via `useFeedUpdates` — mention highlighting
- * reuses `renderMentionText`, the same helper board comment threads use.
+ * One thread in the Update feed (Inbox), laid out like monday.com: the
+ * author's avatar and name over the board breadcrumb, the age, a bell to
+ * subscribe to the item and the "..." menu on the right, the message (folded
+ * behind "Read More" when long), reactions with the "N Seen" count, the
+ * Like | Reply bar, every reply inline in soft bubbles and the reply box.
+ * Beside the card sits the big blue check that marks the thread as read.
+ * Backed by real `BoardItemComment` / `BoardComment` rows via `useFeedUpdates`.
  */
 const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   update,
@@ -84,25 +106,22 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   onLike,
   onReact,
   onBookmark,
-  onPin,
   onReply,
-  onSchedule,
-  onMarkSeen,
-  onMarkUnread,
+  onToggleRead,
   onFollow,
+  onEdit,
+  onDelete,
+  onNavigate,
 }) => {
   const {
     id,
     actor,
-    date_label,
     breadcrumb,
     body,
     mentions,
     board_id,
     view_count,
-    is_unread,
     is_bookmarked,
-    pinned,
     item_id,
     is_following_item,
     is_following_board,
@@ -114,39 +133,55 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     replies,
   } = update;
 
-  // The card reads as unread while the update or any reply in it is.
+  const { success: toastSuccess } = useToast();
   const is_thread_unread = isThreadUnread(update);
-  const unread_reply_count = countThreadUnread(update) - Number(is_unread);
+  const is_own = actor.id !== undefined && actor.id === current_user.id;
+  const is_following = item_id ? is_following_item : is_following_board;
 
-  const [link_copied, setLinkCopied] = useState(false);
   const [is_menu_open, setIsMenuOpen] = useState(false);
-  // Whether the card arrived unread, kept so its accent bar survives being marked read while the viewer reads it.
-  const [was_unread] = useState(is_thread_unread);
-  const article_ref = useRef<HTMLElement>(null);
+  const [is_share_open, setIsShareOpen] = useState(false);
+  const [is_editing, setIsEditing] = useState(false);
+  const [is_composer_open, setIsComposerOpen] = useState(false);
+  const [is_body_expanded, setIsBodyExpanded] = useState(false);
+  const [is_body_long, setIsBodyLong] = useState(false);
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
+  const body_ref = useRef<HTMLDivElement>(null);
   const reply_composer_ref = useRef<HTMLDivElement>(null);
   const reply_box_ref = useRef<FeedReplyComposerRef>(null);
-  // The React button, or the "+" once the card has reactions, whichever opened the emoji palette.
+  // The "+" or the reactions smiley, whichever opened the emoji palette.
   const [palette_anchor, setPaletteAnchor] = useState<HTMLElement | null>(null);
-  // Read through a ref so a parent re-render never restarts the dwell timer below.
-  const mark_seen_ref = useRef(onMarkSeen);
-  const is_own = actor.id !== undefined && actor.id === current_user.id;
 
-  useEffect(() => {
-    mark_seen_ref.current = onMarkSeen;
-  });
+  // A long body folds behind "Read More". Re-measured when images load or the width changes.
+  useLayoutEffect(() => {
+    const node = body_ref.current;
+    if (!node || typeof ResizeObserver === "undefined") return;
+    const measure = () => setIsBodyLong(node.scrollHeight > BODY_FOLD_HEIGHT_PX + 24);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [body, is_editing]);
 
-  const focusReplyComposer = () =>
-    (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
+  // The reply box is opened by Reply, and a reply under a reply opens it too.
+  const openComposer = () => {
+    setIsComposerOpen(true);
+    requestAnimationFrame(() => {
+      reply_box_ref.current?.focus();
+      reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
+  };
 
   // Reply under a reply answers this same thread and `@mentions` the reply's author, as in monday.
   const replyTo = (person: FeedActor) => {
-    if (person.id && person.id !== current_user.id) {
-      reply_box_ref.current?.mentionPerson({ id: person.id, name: person.name });
-    } else {
-      focusReplyComposer();
-    }
-    requestAnimationFrame(() => reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+    setIsComposerOpen(true);
+    requestAnimationFrame(() => {
+      if (person.id && person.id !== current_user.id) {
+        reply_box_ref.current?.mentionPerson({ id: person.id, name: person.name });
+      } else {
+        reply_box_ref.current?.focus();
+      }
+      reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    });
   };
 
   // A long thread keeps its newest replies in view, an unread one is never folded away.
@@ -155,57 +190,57 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     new Set(replies.filter((reply) => reply.is_unread).map((reply) => reply.id))
   );
 
+  const absolute_link = link && typeof window !== "undefined" ? `${window.location.origin}${link}` : "";
+
   const copyLink = () => {
-    if (!link) return;
-    navigator.clipboard.writeText(`${window.location.origin}${link}`).then(() => {
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 1500);
-    });
+    if (!absolute_link) return;
+    navigator.clipboard.writeText(absolute_link).then(() => toastSuccess("Link copied to clipboard"));
   };
 
-  // An unread card is marked seen once it has stayed mostly on screen for a moment.
-  useEffect(() => {
-    const node = article_ref.current;
-    if (!is_thread_unread || !node || typeof IntersectionObserver === "undefined") return;
-
-    let timeout_id: ReturnType<typeof setTimeout> | null = null;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const is_visible =
-          entry.isIntersecting &&
-          (entry.intersectionRatio >= SEEN_VISIBLE_RATIO || entry.intersectionRect.height >= SEEN_VISIBLE_MIN_HEIGHT_PX);
-        if (is_visible && timeout_id === null) {
-          timeout_id = setTimeout(() => mark_seen_ref.current?.(id), SEEN_DWELL_MS);
-        } else if (!is_visible && timeout_id !== null) {
-          clearTimeout(timeout_id);
-          timeout_id = null;
-        }
-      },
-      { threshold: [0, 0.25, SEEN_VISIBLE_RATIO, 1] }
-    );
-    observer.observe(node);
-
-    return () => {
-      observer.disconnect();
-      if (timeout_id !== null) clearTimeout(timeout_id);
-    };
-  }, [id, is_thread_unread]);
-
-  const markUnread = () => {
-    setIsMenuOpen(false);
-    onMarkUnread?.(id);
+  const toggleFollow = () => {
+    if (item_id) onFollow?.("item", Number(item_id), !is_following_item);
+    else onFollow?.("board", Number(board_id), !is_following_board);
   };
 
-  const toggleFollow = (type: "board" | "item") => {
-    setIsMenuOpen(false);
-    if (type === "item" && item_id) onFollow?.("item", Number(item_id), !is_following_item);
-    if (type === "board") onFollow?.("board", Number(board_id), !is_following_board);
+  const saveEdit = async (next_body: string) => {
+    await onEdit?.(id, next_body);
+    setIsEditing(false);
   };
-  const is_following = is_following_item || is_following_board;
+
+  const menu_sections: ActionMenuSection[] = [
+    {
+      key: "update",
+      items: [
+        { key: "copy", label: "Copy link to update", icon: <LinkIcon size={16} />, onClick: copyLink, disabled: !link },
+        {
+          key: "edit",
+          label: "Edit update",
+          icon: <PencilIcon size={16} />,
+          onClick: () => setIsEditing(true),
+          disabled: !is_own || !onEdit,
+          disabled_reason: "Only the author can edit this update",
+        },
+        {
+          key: "delete",
+          label: "Delete update for everyone",
+          icon: <DeleteIcon size={16} />,
+          onClick: () => onDelete?.(id),
+          disabled: !is_own || !onDelete,
+          disabled_reason: "Only the author can delete this update",
+        },
+        { key: "share", label: "Share update", icon: <MailIcon size={16} />, onClick: () => setIsShareOpen(true), disabled: !link },
+        {
+          key: "bookmark",
+          label: is_bookmarked ? "Remove bookmark" : "Bookmark this update to inbox",
+          icon: <BookmarkIcon size={16} filled={is_bookmarked} />,
+          onClick: () => onBookmark?.(id),
+        },
+      ],
+    },
+  ];
 
   const has_reactions = update.reactions.length > 0;
-  const has_reaction_row = has_reactions || update.like_count > 0;
-  const has_views = typeof view_count === "number";
+  const has_views = typeof view_count === "number" && view_count > 0;
 
   const togglePalette = (event: React.MouseEvent<HTMLElement>) => {
     const trigger = event.currentTarget;
@@ -216,292 +251,260 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     onReact?.(id, emoji);
   };
 
+  const author_person = { id: actor.id ?? "0", name: actor.name, avatar_url: actor.avatar_url, is_deactivated: actor.id ? actor.is_deactivated : true };
+  const short_age = formatShortAge(update.created_at);
+
   return (
-    <article
-      ref={article_ref}
-      className={`overflow-hidden rounded-[14px] border ${pinned ? "border-[#f5a623]" : "border-shell-border-strong"} ${
-        was_unread ? "border-l-[3px] border-l-brand-500" : ""
-      }`}
-    >
-      <div className="p-5">
-        {pinned && (
-          <div className="mb-2.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-[#f5a623]">
-            <PinIcon size={11} />
-            Pinned
-          </div>
-        )}
-        {/* Author row */}
-        <div className="flex items-center gap-[11px]">
+    <div className="uf-row">
+      <article className="uf-card" data-unread={is_thread_unread ? "true" : undefined} aria-label={`Update by ${actor.name}`}>
+        {/* Header: avatar, name, breadcrumb, age, bell and menu */}
+        <header className="uf-card__header">
           {actor.id ? (
-            <>
-              <PersonHoverCard
-                person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url, is_deactivated: actor.is_deactivated }}
-                className="flex-none"
+            <PersonHoverCard person={author_person} className="flex-none">
+              <PersonAvatar person={{ ...actor, id: actor.id }} size={40} />
+            </PersonHoverCard>
+          ) : (
+            <PersonAvatar person={{ ...actor, id: "0", is_deactivated: true }} size={40} />
+          )}
+
+          <div className="uf-card__heading">
+            <div className="uf-card__author">
+              {actor.id ? (
+                <PersonHoverCard person={author_person}>
+                  <span className={`uf-card__name ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</span>
+                </PersonHoverCard>
+              ) : (
+                <span className={`uf-card__name ${getDeactivatedClass(true)}`}>{actor.name}</span>
+              )}
+              <DeactivatedBadge is_deactivated={actor.id ? actor.is_deactivated : false} />
+            </div>
+            <nav className="uf-card__breadcrumb" aria-label="Where this update lives">
+              {breadcrumb.crumbs.map((crumb, index) => {
+                const is_last = index === breadcrumb.crumbs.length - 1;
+                return (
+                  <React.Fragment key={`${crumb}-${index}`}>
+                    {is_last && link ? (
+                      <Link href={link} onClick={onNavigate} className="uf-card__crumb uf-card__crumb--link">
+                        {crumb}
+                      </Link>
+                    ) : (
+                      <span className="uf-card__crumb">{crumb}</span>
+                    )}
+                    {!is_last && <ChevronRightIcon size={9} className="uf-card__crumb-separator" />}
+                  </React.Fragment>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="uf-card__tools">
+            <span className="uf-card__age" title={formatFullDate(update.created_at)}>
+              <ClockIcon size={15} />
+              {short_age}
+            </span>
+            {show_actions && onFollow && (
+              <button
+                type="button"
+                onClick={toggleFollow}
+                aria-pressed={is_following}
+                aria-label={is_following ? "Stop getting updates on this item" : "Get updates on this item"}
+                title={is_following ? "You are subscribed to this item. Click to unsubscribe" : "Subscribe to this item"}
+                className="uf-card__tool"
+                data-active={is_following ? "true" : undefined}
               >
-                <PersonAvatar person={{ ...actor, id: actor.id }} size={34} />
-              </PersonHoverCard>
-              <PersonHoverCard person={{ id: actor.id, name: actor.name, avatar_url: actor.avatar_url, is_deactivated: actor.is_deactivated }}>
-                <span className={`text-sm font-bold text-shell-text ${getDeactivatedClass(actor.is_deactivated)}`}>{actor.name}</span>
-              </PersonHoverCard>
-              <DeactivatedBadge is_deactivated={actor.is_deactivated} />
-            </>
+                <BellIcon size={16} />
+              </button>
+            )}
+            {show_actions && (
+              <>
+                <button
+                  ref={menu_trigger_ref}
+                  type="button"
+                  onClick={() => setIsMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={is_menu_open}
+                  aria-label="Update options"
+                  className="uf-card__tool"
+                >
+                  <MoreDotsIcon size={16} />
+                </button>
+                <ActionMenu
+                  anchor_el={menu_trigger_ref.current}
+                  is_open={is_menu_open}
+                  onClose={() => setIsMenuOpen(false)}
+                  sections={menu_sections}
+                  aria_label="Update options"
+                  width={272}
+                  align="end"
+                />
+              </>
+            )}
+          </div>
+        </header>
+
+        {/* Message, folded behind Read More when long, or the edit box */}
+        <div className="uf-card__content">
+          {is_editing ? (
+            <FeedReplyComposer
+              current_user={current_user}
+              loadPeople={() => loadFeedBoardPeople(board_id)}
+              loadTeams={() => loadFeedBoardTeams(board_id)}
+              onSubmit={(next_body) => void saveEdit(next_body)}
+              onCancel={() => setIsEditing(false)}
+              initial_value={body}
+              submit_label="Save"
+              placeholder="Edit your update..."
+              auto_focus
+              hide_avatar
+            />
           ) : (
             <>
-              <PersonAvatar person={{ ...actor, id: "0", is_deactivated: true }} size={34} />
-              <span className={`text-sm font-bold text-shell-text ${getDeactivatedClass(true)}`}>{actor.name}</span>
+              <div
+                ref={body_ref}
+                className="uf-card__body"
+                data-folded={is_body_long && !is_body_expanded ? "true" : undefined}
+                style={{ "--uf-fold-height": `${BODY_FOLD_HEIGHT_PX}px` } as React.CSSProperties}
+              >
+                <RichTextContent html={body} people={mentions} />
+                <FeedActivityTimeline entries={activity} total={activity_total} />
+              </div>
+              {is_body_long && (
+                <button type="button" onClick={() => setIsBodyExpanded((expanded) => !expanded)} className="uf-card__read-more" aria-expanded={is_body_expanded}>
+                  {is_body_expanded ? "Read Less" : "Read More"}
+                  <ChevronDownIcon size={14} className={is_body_expanded ? "rotate-180" : undefined} />
+                </button>
+              )}
             </>
           )}
-          <span className="text-[12.5px] text-shell-text-muted">{date_label}</span>
-          {is_thread_unread && (
-            <span className="flex items-center gap-1 text-[11px] font-bold text-brand-500">
-              <span className="h-[7px] w-[7px] rounded-full bg-brand-500" aria-hidden="true" />
-              {is_unread ? "Unread" : `${unread_reply_count} new ${unread_reply_count === 1 ? "reply" : "replies"}`}
-            </span>
-          )}
-          {show_actions && (
-            <div className="ml-auto flex items-center gap-1">
-              {link && (
-                <button
-                  type="button"
-                  onClick={copyLink}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-                  aria-label="Copy link to this update"
-                  title={link_copied ? "Link copied!" : "Copy link to this update"}
-                >
-                  <LinkIcon size={13} />
-                </button>
+
+          {/* Reactions and the "N Seen" count */}
+          {(show_actions || has_views) && (
+            <div className="uf-card__meta">
+              <div className="uf-card__reactions">
+                {show_actions &&
+                  update.reactions.map((reaction) => (
+                    <ReactionPill
+                      key={reaction.emoji}
+                      reaction={reaction}
+                      source={update}
+                      current_user={current_user}
+                      onToggle={() => onReact?.(id, reaction.emoji)}
+                    />
+                  ))}
+                {show_actions && onReact && (
+                  <button
+                    type="button"
+                    onClick={togglePalette}
+                    aria-label={has_reactions ? "Add another reaction" : "React"}
+                    aria-expanded={palette_anchor !== null}
+                    title={has_reactions ? "Add another reaction" : "React"}
+                    className="uf-card__add-reaction"
+                    data-empty={has_reactions ? undefined : "true"}
+                  >
+                    <ReactSmileyIcon size={14} />
+                  </button>
+                )}
+                {show_actions && (has_reactions || update.like_count > 0) && <ReactionsSummary source={update} current_user={current_user} />}
+              </div>
+              {has_views && (
+                <span className="uf-card__seen" title={`Seen by ${view_count}`}>
+                  <ViewsIcon size={15} />
+                  {view_count} Seen
+                </span>
               )}
-              {onPin && (
-                <button
-                  type="button"
-                  onClick={() => onPin(id)}
-                  className="flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-shell-hover"
-                  style={{ color: pinned ? "#f5a623" : "var(--color-shell-text-muted)" }}
-                  aria-label={pinned ? "Unpin update" : "Pin update"}
-                  aria-pressed={pinned}
-                >
-                  <PinIcon size={13} />
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => onBookmark?.(id)}
-                className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-shell-hover ${
-                  is_bookmarked ? "text-[#7fb2ff]" : "text-shell-text-muted hover:text-shell-text"
-                }`}
-                aria-label={is_bookmarked ? "Remove bookmark" : "Bookmark this update"}
-                aria-pressed={is_bookmarked}
-              >
-                <BookmarkIcon size={13} filled={is_bookmarked} />
-              </button>
-              <button
-                ref={menu_trigger_ref}
-                type="button"
-                onClick={() => setIsMenuOpen((previous) => !previous)}
-                aria-haspopup="menu"
-                aria-expanded={is_menu_open}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-shell-text-muted transition-colors hover:bg-shell-hover hover:text-shell-text"
-                aria-label="Update options"
-              >
-                <MoreDotsIcon size={15} />
-              </button>
-              <BoardPopover anchor_el={menu_trigger_ref.current} is_open={is_menu_open} onClose={() => setIsMenuOpen(false)} width={190} align="end">
-                <div role="menu" className="p-1.5">
-                  {!is_own && !is_thread_unread && onMarkUnread && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={markUnread}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
-                    >
-                      Mark as unread
-                    </button>
-                  )}
-                  {onFollow && item_id && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => toggleFollow("item")}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
-                    >
-                      {is_following_item ? "Unfollow this item" : "Follow this item"}
-                    </button>
-                  )}
-                  {onFollow && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => toggleFollow("board")}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
-                    >
-                      {is_following_board ? "Unfollow this board" : "Follow this board"}
-                    </button>
-                  )}
-                  {link && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        copyLink();
-                        setIsMenuOpen(false);
-                      }}
-                      className="flex w-full items-center rounded-lg px-3 py-2 text-left text-[12.5px] font-medium text-shell-text-secondary transition-colors hover:bg-shell-hover"
-                    >
-                      Copy link
-                    </button>
-                  )}
-                </div>
-              </BoardPopover>
             </div>
           )}
         </div>
 
-        {/* Board breadcrumb */}
-        <div className="mt-3 flex flex-wrap items-center gap-[7px] text-[12.5px] text-shell-text-muted">
-          <span
-            className="h-[15px] w-[15px] flex-none rounded"
-            style={{ backgroundColor: breadcrumb.board_color }}
-            aria-hidden="true"
-          />
-          {breadcrumb.crumbs.map((crumb, index) => {
-            const is_last = index === breadcrumb.crumbs.length - 1;
-            return (
-              <React.Fragment key={`${crumb}-${index}`}>
-                <span className={is_last ? "font-medium text-shell-text-secondary" : ""}>
-                  {crumb}
-                </span>
-                {!is_last && (
-                  <ChevronRightIcon size={9} className="text-shell-text-faint" />
-                )}
-              </React.Fragment>
-            );
-          })}
-          {is_following && (
-            <span
-              className="ml-1 flex items-center gap-1 rounded-full border border-shell-border-strong px-2 py-px text-[10.5px] font-semibold text-[#7fb2ff]"
-              title={is_following_item ? "You follow this item" : "You follow this board"}
-            >
-              <EyeIcon size={11} />
-              Following
-            </span>
-          )}
-        </div>
+        {/* Like | Reply */}
+        {show_actions && (
+          <div className="uf-card__actions">
+            <LikeButton entry={update} current_user={current_user} onToggle={() => onLike?.(id)} class_name="uf-card__action" />
+            <button type="button" onClick={openComposer} className="uf-card__action" aria-expanded={is_composer_open}>
+              <ReplyIcon size={16} />
+              Reply
+            </button>
+          </div>
+        )}
+        <EmojiPalette anchor_el={palette_anchor} is_open={palette_anchor !== null} onClose={() => setPaletteAnchor(null)} onPick={react} mode="react" />
 
-        {/* Message body */}
-        <RichTextContent html={body} people={mentions} className="mt-3.5" />
-
-        {/* Item changes behind this update */}
-        <FeedActivityTimeline entries={activity} total={activity_total} />
-
-        {/* Reactions and view count */}
-        {((show_actions && has_reaction_row) || has_views) && (
-          <div className="feed-card__meta">
-            {show_actions && has_reaction_row && (
-              <div className="feed-card__reactions">
-                {update.reactions.map((reaction) => (
-                  <ReactionPill
-                    key={reaction.emoji}
-                    reaction={reaction}
-                    source={update}
-                    current_user={current_user}
-                    onToggle={() => onReact?.(id, reaction.emoji)}
-                  />
-                ))}
-                {has_reactions && onReact && (
-                  <button
-                    type="button"
-                    onClick={togglePalette}
-                    aria-label="Add another reaction"
-                    aria-expanded={palette_anchor !== null && palette_anchor.dataset.trigger === "add"}
-                    data-trigger="add"
-                    title="Add another reaction"
-                    className="feed-card__add-reaction"
-                  >
-                    <ReactSmileyIcon size={13} />
-                  </button>
-                )}
-                <ReactionsSummary source={update} current_user={current_user} />
-              </div>
+        {/* Replies, inline under the update like monday's inbox */}
+        {replies.length > 0 && (
+          <section className="uf-card__thread thread-replies" aria-label={`${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}>
+            {folded_replies.is_folded && (
+              <button type="button" onClick={folded_replies.expand} className="thread-replies__toggle">
+                View {folded_replies.hidden_count} earlier {folded_replies.hidden_count === 1 ? "reply" : "replies"}
+              </button>
             )}
-            {has_views && (
-              <span className="feed-card__views" title={`Seen by ${view_count}`}>
-                <ViewsIcon size={14} />
-                {view_count}
-              </span>
+            {folded_replies.can_fold && (
+              <button type="button" onClick={folded_replies.collapse} className="thread-replies__toggle">
+                Show fewer replies
+              </button>
+            )}
+            {folded_replies.visible.map((reply) => (
+              <FeedThreadReply
+                key={reply.id}
+                reply={reply}
+                current_user={current_user}
+                onLike={onLike}
+                onReact={onReact}
+                onReplyTo={() => replyTo(reply.actor)}
+              />
+            ))}
+          </section>
+        )}
+
+        {/* Reply box: a "Write a reply..." pill under the replies, the full box once opened */}
+        {show_composer && (is_composer_open || replies.length > 0) && (
+          <div ref={reply_composer_ref} className="uf-card__composer">
+            {is_composer_open ? (
+              <FeedReplyComposer
+                ref={reply_box_ref}
+                current_user={current_user}
+                loadPeople={() => loadFeedBoardPeople(board_id)}
+                loadTeams={() => loadFeedBoardTeams(board_id)}
+                onSubmit={(reply_body, mentioned_user_ids) => onReply?.(id, reply_body, mentioned_user_ids)}
+                placeholder={feed_reply_placeholder}
+                auto_focus
+              />
+            ) : (
+              <div className="uf-card__reply-pill-row">
+                <PersonAvatar person={current_user} size={34} />
+                <button type="button" onClick={openComposer} className="uf-card__reply-pill">
+                  Write a reply...
+                </button>
+              </div>
             )}
           </div>
         )}
-      </div>
+      </article>
 
-      {/* Like / React / Reply actions */}
-      {show_actions && (
-        <div className="feed-card__actions">
-          <LikeButton entry={update} current_user={current_user} onToggle={() => onLike?.(id)} class_name="feed-card__action" />
-          {!has_reactions && onReact && (
-            <span className="feed-card__action-wrap">
-              <button
-                type="button"
-                onClick={togglePalette}
-                aria-expanded={palette_anchor !== null && palette_anchor.dataset.trigger === "react"}
-                data-trigger="react"
-                className="feed-card__action"
-              >
-                <ReactSmileyIcon />
-                React
-              </button>
-            </span>
-          )}
-          <button type="button" onClick={focusReplyComposer} className="feed-card__action">
-            <ReplyIcon size={15} />
-            Reply
-          </button>
-        </div>
-      )}
-      <EmojiPalette anchor_el={palette_anchor} is_open={palette_anchor !== null} onClose={() => setPaletteAnchor(null)} onPick={react} mode="react" />
-
-      {/* Replies, inline under the update like monday's inbox, never as cards of their own */}
-      {replies.length > 0 && (
-        <section className="feed-card__thread thread-replies" aria-label={`${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}>
-          {folded_replies.is_folded && (
-            <button type="button" onClick={folded_replies.expand} className="thread-replies__toggle">
-              View {folded_replies.hidden_count} earlier {folded_replies.hidden_count === 1 ? "reply" : "replies"}
-            </button>
-          )}
-          {folded_replies.can_fold && (
-            <button type="button" onClick={folded_replies.collapse} className="thread-replies__toggle">
-              Show fewer replies
-            </button>
-          )}
-          {folded_replies.visible.map((reply) => (
-            <FeedThreadReply
-              key={reply.id}
-              reply={reply}
-              current_user={current_user}
-              onLike={onLike}
-              onReact={onReact}
-              onReplyTo={() => replyTo(reply.actor)}
-            />
-          ))}
-        </section>
+      {/* The big check beside the card: blue while unread, outlined once read */}
+      {onToggleRead && (
+        <button
+          type="button"
+          onClick={() => onToggleRead(id, is_thread_unread)}
+          className="uf-check"
+          data-state={is_thread_unread ? "unread" : "read"}
+          aria-label={is_thread_unread ? "Mark as read" : "Mark as unread"}
+          title={is_thread_unread ? "Mark as read" : "Mark as unread"}
+        >
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       )}
 
-      {/* Inline reply composer */}
-      {show_composer && (
-        <div ref={reply_composer_ref} className={`feed-card__composer ${replies.length > 0 ? "feed-card__composer--after-replies" : ""}`}>
-          <FeedReplyComposer
-            ref={reply_box_ref}
-            current_user={current_user}
-            loadPeople={() => loadFeedBoardPeople(board_id)}
-            loadTeams={() => loadFeedBoardTeams(board_id)}
-            onSubmit={(reply_body, mentioned_user_ids) => onReply?.(id, reply_body, mentioned_user_ids)}
-            onSchedule={(reply_body, mentioned_user_ids, scheduled_at) =>
-              onSchedule?.(id, reply_body, scheduled_at, mentioned_user_ids)
-            }
-            placeholder={feed_reply_placeholder}
-          />
-        </div>
+      {absolute_link && (
+        <CopyLinkModal
+          is_open={is_share_open}
+          title="Share update"
+          description={`Anyone with access to ${breadcrumb.crumbs[breadcrumb.crumbs.length - 1] ?? "this board"} can open this update with the link.`}
+          link={absolute_link}
+          onClose={() => setIsShareOpen(false)}
+        />
       )}
-    </article>
+    </div>
   );
 };
 
