@@ -9,8 +9,17 @@ const TOOLTIP_DELAY_MS = 250;
 /** Gap between the anchor and the bubble, and between the bubble and the window edges. */
 const TOOLTIP_GAP = 8;
 
+/**
+ * True when the element hides part of its text: a one line ellipsis cuts it on the right, a
+ * `line-clamp` cuts it at the bottom. One pixel of slack absorbs subpixel font metrics, which
+ * can report a fully visible line as 1px taller than its box.
+ */
+function isTextCutOff(element: HTMLElement): boolean {
+  return element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1;
+}
+
 interface UseCellTooltipOptions {
-  /** Only shows the bubble when the anchor's text is cut off by an ellipsis. */
+  /** Only shows the bubble when the anchor's text is cut off, by an ellipsis or a line clamp. */
   only_when_truncated?: boolean;
   /** Extra class on the bubble, e.g. `cell-link-tooltip--card` for a rich card (an image preview) instead of dark text. */
   bubble_class?: string;
@@ -37,7 +46,7 @@ export function useCellTooltip<T extends HTMLElement>(text: ReactNode, { only_wh
     timer_ref.current = setTimeout(() => {
       const anchor = anchor_ref.current;
       if (!anchor) return;
-      if (only_when_truncated && anchor.scrollWidth <= anchor.clientWidth) return;
+      if (only_when_truncated && !isTextCutOff(anchor)) return;
       setAnchorRect(anchor.getBoundingClientRect());
     }, TOOLTIP_DELAY_MS);
   };

@@ -9,6 +9,7 @@ import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
+import ItemNameLabel from "./ItemNameLabel";
 import { ITEM_NAME_MAX_LENGTH } from "../constants";
 import "./item-name-cell.scss";
 import TreeHook from "./TreeHook";
@@ -160,12 +161,13 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         >
           {/* See `ItemRow`: renaming opens `ExpandingCellEditor` over this box, which grows to show the whole name. */}
           <div ref={name_box_ref} className="flex min-w-0 flex-1 items-center self-stretch">
-            <span
-              onClick={() => actions.startEditName(sub.id, sub.name)}
+            <ItemNameLabel
+              name={sub.name}
+              onStartEdit={() => actions.startEditName(sub.id, sub.name)}
               className={`item-name-cell__label max-w-full truncate px-1.5 py-0.5 text-board-cell text-boardtree-text ${is_editing ? "invisible" : ""}`}
             >
               {highlightSearchMatches(sub.name, state.search_query)}
-            </span>
+            </ItemNameLabel>
             {is_editing && (
               <ExpandingCellEditor
                 anchor_ref={name_box_ref}

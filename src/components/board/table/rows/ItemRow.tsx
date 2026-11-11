@@ -15,6 +15,7 @@ import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
+import ItemNameLabel from "./ItemNameLabel";
 import { ITEM_NAME_MAX_LENGTH } from "../constants";
 import "./item-name-cell.scss";
 
@@ -214,8 +215,9 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           {/* `data-filter-cell` feeds the table's right-click "Filter by this value" menu (see `BoardTable`). */}
           {/* While renaming, `ExpandingCellEditor` opens over this box and grows to show the whole name, like Google Sheets. */}
           <div ref={name_box_ref} className="flex min-w-0 flex-1 items-center self-stretch" data-filter-cell="true" data-item-id={item.id} data-column-id="__name">
-            <span
-              onClick={() => actions.startEditName(item.id, item.name)}
+            <ItemNameLabel
+              name={item.name}
+              onStartEdit={() => actions.startEditName(item.id, item.name)}
               className={`item-name-cell__label max-w-full px-1.5 py-0.5 text-board-cell text-boardtree-text ${is_editing ? "invisible" : ""} ${
                 state.row_height === "quad"
                   ? "line-clamp-4 whitespace-pre-line"
@@ -227,7 +229,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
               }`}
             >
               {highlightSearchMatches(item.name, state.search_query, is_active_name_match)}
-            </span>
+            </ItemNameLabel>
             {is_editing && (
               <ExpandingCellEditor
                 anchor_ref={name_box_ref}

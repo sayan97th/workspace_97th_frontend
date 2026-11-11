@@ -28,6 +28,20 @@ $toggle-easing: cubic-bezier(0.2, 0.9, 0.3, 1);
   }
 }
 
+// Full item name bubble (`ItemNameLabel`), shown on hover only when the name
+// is cut off. It sits on the shared dark `.cell-link-tooltip` (same delay,
+// placement, arrow and dark mode tokens as the Files and Link cells) and only
+// widens it for sentence length names: roomier width, left aligned lines,
+// and the line breaks typed with Option+Enter kept.
+.cell-link-tooltip.item-name-tooltip {
+  max-width: min(420px, calc(100vw - 16px));
+  padding: 8px 14px;
+  text-align: start;
+  white-space: pre-line;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
 // Expand arrow that shows and hides subitems. One right pointing chevron
 // rotates down when open, so open and close are one smooth turn instead of
 // an icon swap.
