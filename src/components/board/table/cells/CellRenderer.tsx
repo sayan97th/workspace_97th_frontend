@@ -328,10 +328,9 @@ export default function CellRenderer({ node_id, column, values, node_name, state
             selected={owner_ids}
             query={state.people_query}
             onQueryChange={actions.setPeopleQuery}
-            onSave={(person_ids) => {
-              // One write (and one undo step) for the whole confirmed selection, instead of one per tick.
+            onChange={(person_ids) => {
+              // Saved on every pick or removal (one undo step each), the picker stays open for more picks.
               actions.setCellValue(node_id, column.id, person_ids.length ? person_ids : null);
-              actions.closeCellMenu();
             }}
             onClose={actions.closeCellMenu}
             notify_on_assignment={column.notify_on_assignment}

@@ -11,8 +11,7 @@ import PersonAvatar from "../PersonAvatar";
 import DeactivatedBadge from "../DeactivatedBadge";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
 import BoardPopover from "../toolbar/BoardPopover";
-import PeopleSelectionFooter from "../PeopleSelectionFooter";
-import { usePeopleSelectionDraft } from "../usePeopleSelectionDraft";
+import { usePeopleSelection } from "../usePeopleSelection";
 import DateCalendarPanel from "./DateCalendarPanel";
 import OptionPicker, { type BoardCellOption, type BoardOptionActions } from "./OptionPicker";
 import StatusOptionGrid from "./StatusOptionGrid";
@@ -679,17 +678,14 @@ const PeopleCell: React.FC<{
     .map((id) => people.find((p) => String(p.id) === id))
     .filter((p): p is BoardCellPerson => Boolean(p));
 
-  // Ticks only edit this draft, "Save" commits it in one call (see `usePeopleSelectionDraft`).
-  const { draft_ids, has_changes, togglePerson, resetDraft } = usePeopleSelectionDraft(selected_ids);
+  // Every tick is saved at once, there is no "Save" step (see `usePeopleSelection`).
+  const { selected_ids: picked_ids, togglePerson, resetSelection } = usePeopleSelection(selected_ids, (person_ids) =>
+    onCommit(person_ids.length ? person_ids : null)
+  );
 
   const openPicker = (event: React.MouseEvent) => {
-    resetDraft(selected_ids);
+    resetSelection(selected_ids);
     popover.open(event);
-  };
-
-  const saveDraft = () => {
-    if (has_changes) onCommit(draft_ids.length ? draft_ids : null);
-    popover.close();
   };
 
   return (
@@ -716,7 +712,7 @@ const PeopleCell: React.FC<{
               <p className="px-1.5 pb-1 text-[11px] font-medium text-boardtree-text-faint">Suggested people</p>
             )}
             {people.map((person, index) => {
-              const is_selected = draft_ids.includes(String(person.id));
+              const is_selected = picked_ids.includes(String(person.id));
               // A deactivated person can't be newly assigned, but stays listed (faded) while assigned so they can be removed.
               if (person.is_deactivated && !selected_ids.includes(String(person.id))) return null;
               return (
@@ -750,11 +746,6 @@ const PeopleCell: React.FC<{
               );
             })}
           </div>
-          {people.length > 0 && (
-            <div className="border-t border-boardtree-border-soft px-2 py-2">
-              <PeopleSelectionFooter has_changes={has_changes} onCancel={popover.close} onSave={saveDraft} />
-            </div>
-          )}
         </div>
       </BoardPopover>
     </>

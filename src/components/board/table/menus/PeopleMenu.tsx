@@ -6,8 +6,7 @@ import { getDeactivatedClass, getPersonTitle } from "@/lib/deactivated-user";
 import PopoverPanel from "./PopoverPanel";
 import AvatarBadge from "./AvatarBadge";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
-import PeopleSelectionFooter from "../../PeopleSelectionFooter";
-import { usePeopleSelectionDraft } from "../../usePeopleSelectionDraft";
+import { usePeopleSelection } from "../../usePeopleSelection";
 import { isAssignablePerson } from "@/lib/assignable-person";
 import "./people-picker.css";
 
@@ -16,17 +15,17 @@ const COLLAPSED_CHIP_COUNT = 1;
 
 interface PeopleMenuProps {
   people: PersonDef[];
-  /** The cell's stored people, the starting point of the picker's unsaved draft. */
+  /** The cell's stored people, the picker's starting selection. */
   selected: string[];
   query: string;
   onQueryChange: (value: string) => void;
-  /** Commits the drafted selection in one go, an empty list clears the cell. Only called from the "Save" button. */
-  onSave: (person_ids: string[]) => void;
-  /** Closes the picker and drops any unsaved draft. */
+  /** Commits the new selection right away, on every pick, removal or clear. An empty list clears the cell. */
+  onChange: (person_ids: string[]) => void;
+  /** Closes the picker. Every change is already saved, so nothing is lost. */
   onClose: () => void;
   /** Whether assigning someone on this column currently notifies them. Undefined hides the toggle entirely (the mock demo, which has no backing notification pipeline). */
   notify_on_assignment?: boolean;
-  /** Flips this column's `notify_on_assignment` preference, omitted alongside `notify_on_assignment` for the mock demo. It is a column setting, so it applies right away instead of waiting for "Save". */
+  /** Flips this column's `notify_on_assignment` preference, omitted alongside `notify_on_assignment` for the mock demo. It is a column setting, so it applies right away. */
   onToggleNotifyOnAssignment?: () => void;
 }
 
@@ -68,8 +67,8 @@ function BellIcon() {
 
 /**
  * The table's People cell picker, monday style. Assigned people sit as chips inside the search
- * field and leave the list, everyone else is listed as "Name (Job title)". Picking only edits a
- * local draft (see `usePeopleSelectionDraft`) that "Save" commits in one write. The card draws
+ * field and leave the list, everyone else is listed as "Name (Job title)". Every pick or removal
+ * is saved at once (see `usePeopleSelection`), there is no "Save" step, like monday.com. The card draws
  * its own chrome (`people-picker.css`), so the panel is `unstyled`.
  */
 export default function PeopleMenu({
@@ -77,13 +76,13 @@ export default function PeopleMenu({
   selected,
   query,
   onQueryChange,
-  onSave,
+  onChange,
   onClose,
   notify_on_assignment,
   onToggleNotifyOnAssignment,
 }: PeopleMenuProps) {
-  // The menu mounts fresh on every open, so the draft always starts from the stored value.
-  const { draft_ids, has_changes, togglePerson, clearDraft } = usePeopleSelectionDraft(selected);
+  // The menu mounts fresh on every open, so the selection always starts from the stored value.
+  const { selected_ids, togglePerson, clearSelection } = usePeopleSelection(selected, onChange);
   const [is_chips_expanded, setIsChipsExpanded] = useState(false);
   // -1 until the person types or uses the arrows, so no row looks pre picked on open.
   const [active_index, setActiveIndex] = useState(-1);
@@ -93,16 +92,16 @@ export default function PeopleMenu({
   const people_by_id = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
 
   // Chips follow the order people were picked in, ids missing from the roster are skipped.
-  const draft_people = useMemo(
-    () => draft_ids.map((id) => people_by_id.get(id)).filter((person): person is PersonDef => Boolean(person)),
-    [draft_ids, people_by_id]
+  const selected_people = useMemo(
+    () => selected_ids.map((id) => people_by_id.get(id)).filter((person): person is PersonDef => Boolean(person)),
+    [selected_ids, people_by_id]
   );
 
   // Assigned people live in the chips, and only active people added to the board can be newly assigned.
   const normalized_query = query.trim().toLowerCase();
   const options = useMemo(
-    () => people.filter((person) => isAssignablePerson(person) && !draft_ids.includes(person.id) && matchesQuery(person, normalized_query)),
-    [people, draft_ids, normalized_query]
+    () => people.filter((person) => isAssignablePerson(person) && !selected_ids.includes(person.id) && matchesQuery(person, normalized_query)),
+    [people, selected_ids, normalized_query]
   );
   const highlighted_index = Math.min(active_index, options.length - 1);
 
@@ -111,12 +110,8 @@ export default function PeopleMenu({
     list_ref.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({ block: "nearest" });
   }, [highlighted_index]);
 
-  const visible_chips = is_chips_expanded ? draft_people : draft_people.slice(0, COLLAPSED_CHIP_COUNT);
-  const hidden_chip_count = draft_people.length - visible_chips.length;
-
-  const saveDraft = () => {
-    if (has_changes) onSave(draft_ids);
-  };
+  const visible_chips = is_chips_expanded ? selected_people : selected_people.slice(0, COLLAPSED_CHIP_COUNT);
+  const hidden_chip_count = selected_people.length - visible_chips.length;
 
   const pickPerson = (person_id: string) => {
     togglePerson(person_id);
@@ -148,20 +143,17 @@ export default function PeopleMenu({
   };
 
   const clearAll = () => {
-    clearDraft();
+    clearSelection();
     onQueryChange("");
     setIsChipsExpanded(false);
     input_ref.current?.focus();
   };
 
-  // Escape cancels, Ctrl/Cmd + Enter saves, so keyboard users never need the mouse to confirm.
+  // Escape closes the picker, the selection is already saved.
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") {
       event.stopPropagation();
       onClose();
-    } else if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      saveDraft();
     }
   };
 
@@ -173,13 +165,13 @@ export default function PeopleMenu({
       const step = event.key === "ArrowDown" ? 1 : -1;
       const start_index = highlighted_index < 0 ? (step === 1 ? -1 : 0) : highlighted_index;
       setActiveIndex((start_index + step + options.length) % options.length);
-    } else if (event.key === "Enter" && !event.metaKey && !event.ctrlKey) {
+    } else if (event.key === "Enter") {
       event.preventDefault();
       const person = options[highlighted_index];
       if (person) pickPerson(person.id);
-    } else if (event.key === "Backspace" && query === "" && draft_ids.length > 0) {
+    } else if (event.key === "Backspace" && query === "" && selected_ids.length > 0) {
       event.preventDefault();
-      togglePerson(draft_ids[draft_ids.length - 1]);
+      togglePerson(selected_ids[selected_ids.length - 1]);
     }
   };
 
@@ -189,7 +181,7 @@ export default function PeopleMenu({
         <div className="people-picker__body">
           <div className="people-picker__field-label" id="people-picker-field-label">
             <span>People assigned</span>
-            {draft_people.length > 0 && <span className="people-picker__field-count">{draft_people.length}</span>}
+            {selected_people.length > 0 && <span className="people-picker__field-count">{selected_people.length}</span>}
           </div>
           <div className="people-picker__field" onMouseDown={focusInputFromField} role="group" aria-labelledby="people-picker-field-label">
             <div className="people-picker__tokens" onMouseDown={focusInputFromField}>
@@ -223,13 +215,13 @@ export default function PeopleMenu({
                   type="button"
                   className="people-picker__chip people-picker__chip--more"
                   onClick={expandChips}
-                  title={draft_people.slice(COLLAPSED_CHIP_COUNT).map((person) => person.name).join(", ")}
+                  title={selected_people.slice(COLLAPSED_CHIP_COUNT).map((person) => person.name).join(", ")}
                   aria-label={`Show ${hidden_chip_count} more assigned people`}
                 >
                   + {hidden_chip_count}
                 </button>
               )}
-              {is_chips_expanded && draft_people.length > COLLAPSED_CHIP_COUNT && (
+              {is_chips_expanded && selected_people.length > COLLAPSED_CHIP_COUNT && (
                 <button
                   type="button"
                   className="people-picker__chip people-picker__chip--more people-picker__chip--less"
@@ -248,13 +240,13 @@ export default function PeopleMenu({
                   setActiveIndex(event.target.value.trim() ? 0 : -1);
                 }}
                 onKeyDown={handleInputKeyDown}
-                placeholder={draft_people.length ? "" : "Search names or roles"}
+                placeholder={selected_people.length ? "" : "Search names or roles"}
                 className="people-picker__input"
                 aria-label="Search people"
                 aria-controls="people-picker-options"
               />
             </div>
-            {(draft_ids.length > 0 || query) && (
+            {(selected_ids.length > 0 || query) && (
               <button type="button" className="people-picker__clear" onClick={clearAll} aria-label="Clear value" title="Clear value">
                 <CloseIcon size={16} />
               </button>
@@ -309,8 +301,6 @@ export default function PeopleMenu({
             <ToggleSwitch is_on={notify_on_assignment} size="sm" />
           </button>
         )}
-        <div className="people-picker__divider" />
-        <PeopleSelectionFooter variant="monday" has_changes={has_changes} onCancel={onClose} onSave={saveDraft} />
       </div>
     </PopoverPanel>
   );

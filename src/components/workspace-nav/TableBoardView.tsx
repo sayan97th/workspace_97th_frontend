@@ -2195,13 +2195,31 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // ── Inline cell edit: optimistically writes the new value, then persists it,
   // reverting the whole item list if the request fails. Items whose dates
   // moved because they depend on this one come back with the response. ──
+  // Writes to the same cell run one at a time. Pickers that save on every click (People) can
+  // fire several PATCHes in a row, each carrying the full value, so the last click must land last.
+  const cell_write_queue_ref = useRef(new Map<string, Promise<unknown>>());
+
+  const queueCellWrite = <T,>(queue_key: string, write: () => Promise<T>): Promise<T> => {
+    const queue = cell_write_queue_ref.current;
+    const previous_write = queue.get(queue_key) ?? Promise.resolve();
+    const next_write = previous_write.catch(() => undefined).then(write);
+    queue.set(queue_key, next_write);
+    const releaseQueue = () => {
+      if (queue.get(queue_key) === next_write) queue.delete(queue_key);
+    };
+    next_write.then(releaseQueue, releaseQueue);
+    return next_write;
+  };
+
   const handleUpdateCellValue = async (item_id: number, column_id: string, value: BoardItemValue) => {
     const previous = items;
     setItems((current) =>
       mapItemInTree(current, item_id, (item) => ({ ...item, values: { ...item.values, [column_id]: value } }))
     );
     try {
-      const { item, moved_items } = await boardContentService.updateItemValuesWithMoves(board_id, item_id, { [column_id]: value });
+      const { item, moved_items } = await queueCellWrite(`${item_id}:${column_id}`, () =>
+        boardContentService.updateItemValuesWithMoves(board_id, item_id, { [column_id]: value })
+      );
       // Only the links of the edited row: its values stay as typed, a later keystroke may already be in flight.
       setItems((current) => mapItemInTree(current, item_id, (row) => ({ ...row, dependency_links: item.dependency_links ?? row.dependency_links })));
       applyServerItems(moved_items);
@@ -4061,7 +4079,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             <KanbanCardMembers
               people={roster_members}
               selected={members}
-              onSave={(person_ids) => {
+              onChange={(person_ids) => {
                 void handleUpdateCellValue(row.id, String(board_member_column.id), person_ids.length ? person_ids : null);
               }}
             />

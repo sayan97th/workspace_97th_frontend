@@ -8,8 +8,8 @@ export type KanbanPeopleFieldProps = {
   /** Everyone the picker can assign, the same roster the board table's People cells use. */
   people: PersonDef[];
   selected_ids: string[];
-  /** Commits the picker's confirmed selection, an empty list clears the field. */
-  onSave: (person_ids: string[]) => void;
+  /** Commits the selection on every pick or removal, an empty list clears the field. */
+  onChange: (person_ids: string[]) => void;
   /** Whether assigning someone on this column notifies them. Omit to hide the toggle. */
   notify_on_assignment?: boolean;
   onToggleNotifyOnAssignment?: () => void;
@@ -25,10 +25,10 @@ const REOPEN_GUARD_MS = 300;
  * The item card's People field. Shows the assigned people as the board
  * table's avatar stack and opens the table's own monday style picker
  * (`PeopleMenu`: chips in the search field, "Name (Job title)" rows, the
- * "Notify assigned people" switch and Cancel/Save), so assigning people
+ * "Notify assigned people" switch, every pick saved at once), so assigning people
  * looks and works the same in the table and in the Kanban card.
  */
-function KanbanPeopleField({ people, selected_ids, onSave, notify_on_assignment, onToggleNotifyOnAssignment }: KanbanPeopleFieldProps) {
+function KanbanPeopleField({ people, selected_ids, onChange, notify_on_assignment, onToggleNotifyOnAssignment }: KanbanPeopleFieldProps) {
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const last_closed_at_ref = useRef(0);
@@ -97,10 +97,7 @@ function KanbanPeopleField({ people, selected_ids, onSave, notify_on_assignment,
           selected={selected_ids}
           query={query}
           onQueryChange={setQuery}
-          onSave={(person_ids) => {
-            onSave(person_ids);
-            close();
-          }}
+          onChange={onChange}
           onClose={close}
           notify_on_assignment={notify_on_assignment}
           onToggleNotifyOnAssignment={onToggleNotifyOnAssignment}

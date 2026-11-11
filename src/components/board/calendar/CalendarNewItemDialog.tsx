@@ -226,7 +226,7 @@ const CalendarNewItemDialog: React.FC<CalendarNewItemDialogProps> = ({
                       <KanbanPeopleField
                         people={people_picker.people}
                         selected_ids={toIdList(values[field.id])}
-                        onSave={(person_ids) => setValue(field.id, person_ids.length ? person_ids : null)}
+                        onChange={(person_ids) => setValue(field.id, person_ids.length ? person_ids : null)}
                         notify_on_assignment={people_picker.getNotifyOnAssignment(field.id)}
                         onToggleNotifyOnAssignment={() => people_picker.onToggleNotifyOnAssignment(field.id)}
                       />

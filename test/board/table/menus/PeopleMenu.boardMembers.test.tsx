@@ -16,7 +16,7 @@ const people: PersonDef[] = [
 
 const renderMenu = (selected: string[] = []) =>
   render(
-    <PeopleMenu people={people} selected={selected} query="" onQueryChange={vi.fn()} onSave={vi.fn()} onClose={vi.fn()} />
+    <PeopleMenu people={people} selected={selected} query="" onQueryChange={vi.fn()} onChange={vi.fn()} onClose={vi.fn()} />
   );
 
 describe("PeopleMenu board members", () => {

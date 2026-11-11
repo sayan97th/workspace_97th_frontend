@@ -560,7 +560,7 @@ function KanbanItemModal<TRow>(props: KanbanItemModalProps<TRow>) {
                             <KanbanPeopleField
                               people={fields.people_picker.people}
                               selected_ids={toIdList(fields.getValue(column.id))}
-                              onSave={(person_ids) => fields.onCommit(column.id, person_ids.length ? person_ids : null)}
+                              onChange={(person_ids) => fields.onCommit(column.id, person_ids.length ? person_ids : null)}
                               notify_on_assignment={fields.people_picker.getNotifyOnAssignment(column.id)}
                               onToggleNotifyOnAssignment={() => fields.people_picker.onToggleNotifyOnAssignment(column.id)}
                             />
