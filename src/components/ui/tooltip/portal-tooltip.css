@@ -34,7 +34,8 @@ html.dark {
 .portal-tooltip::after {
   content: "";
   position: absolute;
-  left: 50%;
+  /* Follows the trigger when the bubble had to slide away from a window edge. */
+  left: calc(50% + var(--portal-tooltip-arrow-shift, 0px));
   width: 8px;
   height: 8px;
   background: inherit;
