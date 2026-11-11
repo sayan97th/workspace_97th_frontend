@@ -5,6 +5,7 @@ import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { BellIcon, ClockIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
+import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
@@ -105,6 +106,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   quote_request,
   mention_request,
 }) => {
+  const mod_key_label = useModKeyLabel();
   const file_input_ref = useRef<HTMLInputElement>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
   const notify_trigger_ref = useRef<HTMLButtonElement>(null);
@@ -286,11 +288,10 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             onChange={onChange}
             placeholder={placeholder}
             min_height_class={is_update ? "min-h-16" : has_draft ? "min-h-[52px]" : "min-h-10"}
-            // Enter sends, matching Slack's own convention, except while a
-            // picker is open: the mention picker claims Enter to pick its
-            // highlighted row, and the Notify picker (click only) leaves
-            // Enter to its default behavior instead of firing a submit mid-pick.
-            onEnterSubmit={show_mention_picker || show_notify_picker ? undefined : onSubmit}
+            // Command/Control + Enter sends, plain Enter adds a new line. Not while a
+            // picker is open: the mention picker claims Enter to pick its highlighted
+            // row, and the Notify picker (click only) must not fire a submit mid-pick.
+            onSubmitShortcut={show_mention_picker || show_notify_picker ? undefined : onSubmit}
             onTriggerChange={handleTriggerChange}
             onSuggestionKeyDown={handleSuggestionKeyDown}
             can_mention
@@ -379,14 +380,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
               </div>
               <div className="flex items-center gap-3">
                 <span className="rich-text-hint max-sm:!hidden">
-                  <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line
+                  <kbd>{mod_key_label}</kbd>+<kbd>Enter</kbd> to send
                 </span>
                 <button
                   type="button"
                   onClick={onSubmit}
                   disabled={!has_draft}
                   aria-label={effective_submit_label}
-                  title={effective_submit_label}
+                  aria-keyshortcuts="Meta+Enter Control+Enter"
+                  title={`${effective_submit_label} (${mod_key_label} + Enter)`}
                   className={`rich-text-send ${is_update ? "" : "rich-text-send--sm"}`}
                 >
                   <SendIcon size={is_update ? 16 : 15} />

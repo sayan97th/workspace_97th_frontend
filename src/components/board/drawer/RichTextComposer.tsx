@@ -7,6 +7,7 @@ import TiptapImage from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "@tiptap/markdown";
 import { useSavedReplies } from "@/hooks/useSavedReplies";
+import { isSubmitShortcut } from "@/lib/keyboard";
 import { inlineUploadService } from "@/services/inline-upload.service";
 import { SafeHistory } from "../doc/editor/extensions/safe-history";
 import { createSuggestionStore } from "../doc/editor/suggestion-store";
@@ -70,13 +71,13 @@ export type RichTextComposerProps = {
   placeholder: string;
   min_height_class?: string;
   /**
-   * When set, plain Enter fires this instead of splitting a new paragraph.
-   * Slack's own convention: Enter sends, Shift+Enter (or Alt+Enter) inserts
-   * a line break instead. Suspended while the cursor sits inside a list
-   * item, blockquote, or code block, where Enter keeps its native
-   * block-continuation behavior so those stay usable.
+   * When set, Command + Enter (macOS) or Control + Enter fires this, the only
+   * keyboard way to send. Plain Enter never sends: it starts a new line (or a
+   * new list item, quote line, table cell...) like any text editor, so a draft
+   * can't be posted by accident. Shift + Enter and Option/Alt + Enter add a
+   * line break inside the same paragraph.
    */
-  onEnterSubmit?: () => void;
+  onSubmitShortcut?: () => void;
   /** When set, Escape fires this, `CommentEditForm`'s "Cancel". */
   onEscape?: () => void;
   /** Fired as the caret moves or the text changes, with the `/command` or `#item` being typed there, or null when there is none. */
@@ -123,9 +124,6 @@ const deleteTriggerText = (current_editor: Editor): void => {
   current_editor.chain().focus().deleteRange({ from: from - match.text.length, to: from }).run();
 };
 
-/** Blocks where Enter keeps its editing meaning (a new item, line or cell) instead of sending the draft. */
-const MULTILINE_BLOCKS = ["bulletList", "orderedList", "taskList", "blockquote", "codeBlock", "callout", "details", "table"];
-
 /**
  * Tiptap-backed rich text editor used by `CommentComposer` in place of a
  * plain `<textarea>`, with Slack's formatting row (`RichTextToolbar`: undo
@@ -153,7 +151,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onPlainTextChange,
       placeholder,
       min_height_class = "min-h-16",
-      onEnterSubmit,
+      onSubmitShortcut,
       onEscape,
       onTriggerChange,
       onSuggestionKeyDown,
@@ -170,6 +168,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // Read through refs, so the editor (created once) always calls the parent's latest callbacks.
     const trigger_change_ref = useRef(onTriggerChange);
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
+    const submit_shortcut_ref = useRef(onSubmitShortcut);
+    const escape_ref = useRef(onEscape);
     // The latest `value` prop, read when the editor blurs, see `onBlur` below.
     const latest_value_ref = useRef(value);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
@@ -188,6 +188,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     useEffect(() => {
       trigger_change_ref.current = onTriggerChange;
       suggestion_key_down_ref.current = onSuggestionKeyDown;
+      submit_shortcut_ref.current = onSubmitShortcut;
+      escape_ref.current = onEscape;
       slash_items_ref.current = (query: string) => {
         ensureSavedRepliesLoaded();
         const features = {
@@ -251,7 +253,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       },
       onBlur: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(null);
-        // Enter to send blurs through Tiptap's `blur()`, which only takes effect a frame later, so the
+        // Sending with Cmd/Ctrl+Enter blurs through Tiptap's `blur()`, which only takes effect a frame later, so the
         // parent's reset to "" arrives while the editor still has focus and the sync effect skips it.
         // Applying a pending clear once the blur lands keeps the sent text from staying in the box.
         if (latest_value_ref.current === "" && !current_editor.isEmpty) {
@@ -267,26 +269,39 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             event.preventDefault();
             return true;
           }
-          // The "/" menu's own plugin handles the arrows, Enter, Tab and Escape
-          // while it is open. Enter with no matching row still sends.
+          // The "/" menu's own plugin handles the arrows, Enter, Tab and Escape while it has rows to pick.
           const slash_state = slash_store.getState();
-          if (slash_state.is_open && (event.key !== "Enter" || slash_state.items.length > 0)) return false;
+          if (slash_state.is_open && slash_state.items.length > 0) return false;
           // Ctrl/Cmd+K opens the link dialog, the shortcut every other editor uses for it.
           if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
             event.preventDefault();
             open_link_modal_ref.current();
             return true;
           }
-          if (event.key !== "Enter") {
-            if (event.key === "Escape" && onEscape) {
-              event.preventDefault();
-              onEscape();
-              return true;
-            }
-            return false;
+          const handleEscape = escape_ref.current;
+          if (event.key === "Escape" && handleEscape) {
+            event.preventDefault();
+            handleEscape();
+            return true;
           }
-          // Slack's own line-break chord, honored on both Windows and macOS
-          // (Alt on Windows, Option on Mac, both surface as `event.altKey`).
+          if (event.key !== "Enter") return false;
+          // Command/Control + Enter sends from anywhere in the draft, lists, quotes and code included.
+          // Handled here, ahead of the editor's own keymaps, where Mod-Enter would add a line break.
+          if (isSubmitShortcut(event)) {
+            event.preventDefault();
+            const submitDraft = submit_shortcut_ref.current;
+            if (!submitDraft) return true;
+            submitDraft();
+            // Blurs so the post-submit external reset (parent clearing `value`
+            // back to "") is picked up by the sync effect below, which only
+            // applies while unfocused, the same way a mouse click on the send
+            // button already blurs before that reset arrives.
+            editor?.commands.blur();
+            return true;
+          }
+          if (event.metaKey || event.ctrlKey) return false;
+          // Shift + Enter and Option/Alt + Enter (Alt on Windows, Option on Mac, both
+          // surface as `event.altKey`) add a line break inside the same paragraph.
           if (event.altKey || event.shiftKey) {
             // A title holds one line, so a new line after it starts normal text below instead.
             if (editor?.isActive("heading")) {
@@ -308,16 +323,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             if (!editor.commands.goToNextCell()) editor.chain().addRowAfter().goToNextCell().run();
             return true;
           }
-          if (!onEnterSubmit) return false;
-          if (MULTILINE_BLOCKS.some((block) => editor?.isActive(block))) return false;
-          event.preventDefault();
-          onEnterSubmit();
-          // Blurs so the post-submit external reset (parent clearing `value`
-          // back to "") is picked up by the sync effect below, which only
-          // applies while unfocused, the same way a mouse click on the send
-          // button already blurs before that reset arrives.
-          editor?.commands.blur();
-          return true;
+          // Plain Enter: the editor's own behavior, a new paragraph (or list item, quote line...). Never sends.
+          return false;
         },
         handlePaste: (_view, event) => {
           const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));

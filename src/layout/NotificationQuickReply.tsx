@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useId, useRef, useState } from "react";
+import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { isSubmitShortcut } from "@/lib/keyboard";
 
 type NotificationQuickReplyProps = {
   /** Who the reply goes to, for the placeholder and the label. */
@@ -14,12 +16,13 @@ type NotificationQuickReplyProps = {
 const MAX_REPLY_LENGTH = 5000;
 
 /**
- * The small reply box that opens under a notification card. Enter sends,
- * Shift+Enter adds a line and Escape cancels, so a quick answer never needs the
+ * The small reply box that opens under a notification card. Command/Control +
+ * Enter sends, plain Enter adds a new line and Escape cancels, so a quick answer never needs the
  * drawer of the update it belongs to. It stops key presses from reaching the
  * bell drawer's own j, k, o and e shortcuts while somebody types.
  */
 const NotificationQuickReply: React.FC<NotificationQuickReplyProps> = ({ actor_name, onSend, onClose }) => {
+  const mod_key_label = useModKeyLabel();
   const [text, setText] = useState("");
   const [is_sending, setIsSending] = useState(false);
   const [error_message, setErrorMessage] = useState<string | null>(null);
@@ -64,7 +67,8 @@ const NotificationQuickReply: React.FC<NotificationQuickReplyProps> = ({ actor_n
           if (event.key === "Escape") {
             event.preventDefault();
             onClose();
-          } else if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+          } else if (isSubmitShortcut(event)) {
+            // Plain Enter keeps its native new line, only Command/Control + Enter sends.
             event.preventDefault();
             void send();
           }
@@ -77,7 +81,7 @@ const NotificationQuickReply: React.FC<NotificationQuickReplyProps> = ({ actor_n
         </p>
       )}
       <div className="mt-2 flex items-center gap-2">
-        <span className="hidden text-[11px] text-shell-text-faint sm:inline">Enter to send, Shift+Enter for a new line</span>
+        <span className="hidden text-[11px] text-shell-text-faint sm:inline">{mod_key_label} + Enter to send</span>
         <button
           type="button"
           onClick={onClose}
@@ -89,6 +93,8 @@ const NotificationQuickReply: React.FC<NotificationQuickReplyProps> = ({ actor_n
         <button
           type="button"
           onClick={() => void send()}
+          aria-keyshortcuts="Meta+Enter Control+Enter"
+          title={`Reply (${mod_key_label} + Enter)`}
           disabled={is_sending || text.trim() === ""}
           className="rounded-lg bg-brand-500 px-3 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
         >

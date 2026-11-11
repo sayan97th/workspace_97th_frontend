@@ -2,6 +2,7 @@
 import React, { useRef, useState } from "react";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon } from "@/icons/drawer-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
+import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 import CommentAttachmentChip from "./CommentAttachmentChip";
 import { COMMENT_ATTACHMENT_ACCEPT } from "./drawerAttachments";
 import EmojiPalette from "./EmojiPalette";
@@ -45,6 +46,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
   onAddFiles,
   onRemoveAttachment,
 }) => {
+  const mod_key_label = useModKeyLabel();
   const editor_root_ref = useRef<HTMLDivElement>(null);
   const rich_text_ref = useRef<RichTextComposerRef>(null);
   const file_input_ref = useRef<HTMLInputElement>(null);
@@ -77,7 +79,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
           onChange={onChange}
           placeholder="Edit your update"
           min_height_class="min-h-10"
-          onEnterSubmit={can_save ? onSave : undefined}
+          onSubmitShortcut={can_save ? onSave : undefined}
           onEscape={onCancel}
           autoFocus={autoFocus}
           onOpenEmojiPalette={toggleEmojiPalette}
@@ -150,7 +152,8 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
               type="button"
               onClick={onSave}
               disabled={!can_save}
-              title="Save (Enter)"
+              aria-keyshortcuts="Meta+Enter Control+Enter"
+              title={`Save (${mod_key_label} + Enter)`}
               className="rich-text-button rich-text-button--primary rich-text-button--sm"
             >
               Save

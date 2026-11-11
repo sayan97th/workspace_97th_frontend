@@ -183,7 +183,7 @@ html.dark {
   gap: 2px;
 }
 
-/* "Shift + Enter for a new line", with the keys drawn as small keycaps. */
+/* "⌘ + Enter to send" (Ctrl on Windows), with the keys drawn as small keycaps. */
 .rich-text-hint {
   display: inline-flex;
   align-items: center;

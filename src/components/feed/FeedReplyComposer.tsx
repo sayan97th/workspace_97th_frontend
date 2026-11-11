@@ -15,6 +15,7 @@ import RichTextComposer, { type RichTextComposerRef } from "@/components/board/d
 import { useMentionPickerNavigation } from "@/components/board/drawer/useMentionPickerNavigation";
 import { FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
 import { ClockIcon } from "@/icons/workspace-icons";
+import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 
 type FeedReplyComposerProps = {
   current_user: BoardPersonOption;
@@ -50,6 +51,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   { current_user, loadPeople, loadTeams, onSubmit, onSchedule, placeholder },
   ref
 ) {
+  const mod_key_label = useModKeyLabel();
   const rich_text_ref = useRef<RichTextComposerRef>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
   const has_requested_people_ref = useRef(false);
@@ -163,8 +165,9 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             onChange={handleChange}
             placeholder={placeholder}
             min_height_class="min-h-10"
-            // Enter sends, except while the mention list is open: there it picks the highlighted person.
-            onEnterSubmit={is_picker_open ? undefined : submit}
+            // Command/Control + Enter sends, plain Enter adds a new line. Not while the
+            // mention list is open: there Enter picks the highlighted person.
+            onSubmitShortcut={is_picker_open ? undefined : submit}
             onSuggestionKeyDown={mention_navigation.handleKeyDown}
             can_mention
             onOpenEmojiPalette={() => setIsEmojiOpen(true)}
@@ -223,7 +226,8 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
               onClick={submit}
               disabled={!has_draft || is_scheduling}
               aria-label="Reply"
-              title="Reply"
+              aria-keyshortcuts="Meta+Enter Control+Enter"
+              title={`Reply (${mod_key_label} + Enter)`}
               className="rich-text-send rich-text-send--sm"
             >
               <SendIcon size={14} />
