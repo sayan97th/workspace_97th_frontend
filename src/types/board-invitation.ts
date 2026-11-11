@@ -108,3 +108,17 @@ export type AcceptBoardInvitationPayload = {
   first_name?: string;
   last_name?: string;
 };
+
+/**
+ * Someone added to a board, from `GET /api/boards/{id}/members`: the board's creator, owner and
+ * invited collaborators, plus the whole workspace unless the board is private. Disabled or deleted
+ * accounts never appear. Only these people can be assigned in the board's People columns or
+ * `@mentioned` and notified in its updates and discussion.
+ */
+export type BoardMember = {
+  id: number;
+  full_name: string;
+  email: string;
+  profile_photo_url: string | null;
+  job_title: string | null;
+};

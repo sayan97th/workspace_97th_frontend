@@ -6,6 +6,7 @@ import type {
   BoardAccessEntry,
   BoardAccessRoster,
   BoardInvitationPreview,
+  BoardMember,
   InviteBoardViewersResult,
 } from "@/types/board-invitation";
 
@@ -29,6 +30,15 @@ export const boardInvitationService = {
    */
   async listRoster(board_id: number): Promise<BoardAccessRoster> {
     return apiClient.get<BoardAccessRoster>(`/api/boards/${board_id}/invitations`);
+  },
+
+  /**
+   * GET /api/boards/{id}/members, the people added to the board. The only ones its People,
+   * mention and Notify pickers offer, the API refuses everyone else too.
+   */
+  async listMembers(board_id: number): Promise<BoardMember[]> {
+    const response = await apiClient.get<{ data: BoardMember[] }>(`/api/boards/${board_id}/members`);
+    return response.data;
   },
 
   /** POST /api/boards/{id}/invitations — invite one or more emails to view the board. */

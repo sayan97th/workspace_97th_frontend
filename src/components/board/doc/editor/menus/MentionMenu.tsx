@@ -20,7 +20,7 @@ const toPersonOption = (member: DocMember): BoardPersonOption => ({
 /**
  * The "@" people menu: workspace members filtered by what was typed after
  * "@". Drawn by the comment composer's `MentionPicker`, so a doc and an update
- * offer the same card ("People in this account", "Name (Job title)" rows),
+ * offer the same card ("People on this board", "Name (Job title)" rows),
  * anchored under the typed `@`. The Tiptap mention plugin owns the keyboard
  * through `mention_store`, this only maps the rows and forwards the pick.
  */

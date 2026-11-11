@@ -53,7 +53,7 @@ function MentionPicker<TOption extends MentionOption = BoardPersonOption>({
   active_index,
   onHover,
   panel_ref,
-  people_title = "People in this account",
+  people_title = "People on this board",
 }: MentionPickerProps<TOption>) {
   const list_ref = useRef<HTMLDivElement>(null);
 

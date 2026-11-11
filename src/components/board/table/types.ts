@@ -562,6 +562,8 @@ export interface PersonDef {
   job_title?: string | null;
   /** The account was disabled or deleted: shown faded on items already assigned to them, and left out of the picker. */
   is_deactivated?: boolean;
+  /** Not added to the board: still shown on items already assigned to them, but left out of the picker. */
+  is_outside_board?: boolean;
 }
 
 export type SortDirection = "asc" | "desc" | null;

@@ -8,6 +8,7 @@ import AvatarBadge from "./AvatarBadge";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import PeopleSelectionFooter from "../../PeopleSelectionFooter";
 import { usePeopleSelectionDraft } from "../../usePeopleSelectionDraft";
+import { isAssignablePerson } from "@/lib/assignable-person";
 import "./people-picker.css";
 
 /** Assigned people shown as chips before the rest fold into a "+ N" chip, like monday.com. */
@@ -97,10 +98,10 @@ export default function PeopleMenu({
     [draft_ids, people_by_id]
   );
 
-  // Assigned people live in the chips, and a deactivated person can never be newly assigned.
+  // Assigned people live in the chips, and only active people added to the board can be newly assigned.
   const normalized_query = query.trim().toLowerCase();
   const options = useMemo(
-    () => people.filter((person) => !person.is_deactivated && !draft_ids.includes(person.id) && matchesQuery(person, normalized_query)),
+    () => people.filter((person) => isAssignablePerson(person) && !draft_ids.includes(person.id) && matchesQuery(person, normalized_query)),
     [people, draft_ids, normalized_query]
   );
   const highlighted_index = Math.min(active_index, options.length - 1);
@@ -260,7 +261,7 @@ export default function PeopleMenu({
             )}
           </div>
 
-          <div className="people-picker__section-title">People in this account</div>
+          <div className="people-picker__section-title">People on this board</div>
           <div ref={list_ref} id="people-picker-options" className="people-picker__list shell-scrollbar" role="listbox" aria-label="People">
             {options.map((person, index) => {
               const is_active = index === highlighted_index;

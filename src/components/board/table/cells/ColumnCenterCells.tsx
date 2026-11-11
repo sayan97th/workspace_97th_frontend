@@ -1,5 +1,6 @@
 "use client";
 
+import { isAssignablePerson } from "@/lib/assignable-person";
 import type { BoardTableGroup, CellValue, ColumnDef, DocCellValue, PersonDef } from "../types";
 import type { BoardTableActions, BoardTableState, ColumnScope } from "../useBoardTable";
 import {
@@ -248,7 +249,8 @@ const isDocValue = (value: CellValue): value is DocCellValue =>
 export function DocCell({ node_id, column, value, node_name, state, actions, is_menu_open, openMenu }: ColumnCenterCellProps) {
   const doc = isDocValue(value) ? value : null;
   const can_edit = actions.canEditCell(node_id, column.id);
-  const members = state.people.map((person) => ({ id: Number(person.id), full_name: person.name, profile_photo_url: person.avatar_url ?? null, job_title: person.job_title }));
+  // The doc's "@" menu only offers people who can be mentioned on this board.
+  const members = state.people.filter(isAssignablePerson).map((person) => ({ id: Number(person.id), full_name: person.name, profile_photo_url: person.avatar_url ?? null, job_title: person.job_title }));
   return (
     <div className="relative flex h-full w-full min-w-0">
       <button

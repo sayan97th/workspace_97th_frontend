@@ -155,6 +155,8 @@ import ItemDependenciesPanel from "../board/dependencies/ItemDependenciesPanel";
 import { buildItemDependencySections } from "../board/dependencies/buildItemDependencySections";
 import { countAutomationsByColumn } from "../board/automations/builder/automationColumns";
 import { boardInvitationService } from "@/services/board-invitation.service";
+import { useBoardMembers } from "@/hooks/useBoardMembers";
+import { isAssignablePerson } from "@/lib/assignable-person";
 import { boardDocService } from "@/services/board-doc.service";
 import { boardItemCellFilesService } from "@/services/board-item-cell-files.service";
 import { boardOptionsService } from "@/services/board-options.service";
@@ -181,7 +183,7 @@ import type {
   BoardViewPersonalStateDto,
   ReorderBoardItemsPayload,
 } from "@/types/board-content";
-import type { BoardAccessEntry } from "@/types/board-invitation";
+import type { BoardAccessEntry, BoardMember } from "@/types/board-invitation";
 import type { BoardDetail, BoardEditPermission, BoardType, WorkspaceMember } from "@/types/workspace";
 import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_components/BoardRouteStates";
 import ImportItemsModal from "@/components/board/import/ImportItemsModal";
@@ -400,6 +402,20 @@ const findParentInTree = (items: BoardItemDto[], item_id: number): BoardItemDto 
   return undefined;
 };
 
+/** A board guest who is not in the workspace roster, in the roster's shape so cells and pickers can show them. */
+const toRosterMember = (member: BoardMember): WorkspaceMember => ({
+  id: member.id,
+  full_name: member.full_name,
+  email: member.email,
+  profile_photo_url: member.profile_photo_url,
+  job_title: member.job_title,
+  role: null,
+  is_recent: false,
+  invited_by: null,
+  joined_at: null,
+  is_creator: false,
+});
+
 const getInitials = (full_name: string): string =>
   full_name
     .split(" ")
@@ -566,8 +582,26 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
   }, [node.workspace.slug]);
 
   // Deactivated (disabled or deleted) accounts stay in `roster_members` so the items they were assigned to
-  // still show them, faded. `workspace_members` is the subset that can be newly assigned or mentioned.
+  // still show them, faded. `workspace_members` is everyone active in the workspace, who can be invited.
   const workspace_members = useMemo(() => roster_members.filter((member) => !member.is_deactivated), [roster_members]);
+
+  // Only the people added to the board can be assigned, mentioned or notified on it (client request,
+  // monday.com parity). Fetched again whenever who has access changes, see `useBoardMembers`.
+  const board_members_reload_key = useMemo(
+    () => `${board_type}|${access.map((entry) => entry.key).join(",")}`,
+    [board_type, access]
+  );
+  const { members: loaded_board_members } = useBoardMembers(node.id, board_members_reload_key);
+  const board_members: WorkspaceMember[] = useMemo(() => {
+    const workspace_by_id = new Map(workspace_members.map((member) => [member.id, member]));
+    return (loaded_board_members ?? []).map((member) => workspace_by_id.get(member.id) ?? toRosterMember(member));
+  }, [loaded_board_members, workspace_members]);
+  // Guests added to the board without joining its workspace still need a name and avatar on their cells.
+  const display_roster_members = useMemo(() => {
+    const known_ids = new Set(roster_members.map((member) => member.id));
+    const guests = board_members.filter((member) => !known_ids.has(member.id));
+    return guests.length ? [...roster_members, ...guests] : roster_members;
+  }, [roster_members, board_members]);
 
   const [loaded, setLoaded] = useState<{
     columns: BoardColumnDto[];
@@ -705,7 +739,8 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
         access={access}
         onAccessChange={setAccess}
         workspace_members={workspace_members}
-        roster_members={roster_members}
+        board_members={board_members}
+        roster_members={display_roster_members}
         onInviteClick={() => setIsInviteOpen(true)}
         initial_tags={tags}
         initial_columns={loaded.columns}
@@ -759,7 +794,10 @@ type TableBoardBodyProps = {
   access: BoardAccessEntry[];
   onAccessChange: (access: BoardAccessEntry[]) => void;
   /** The full workspace roster, assignable to People columns (Assignee row, People cells, Calendar members, etc), see the fetch in `TableBoardView`. */
+  /** Everyone active in the workspace, who can be invited to the board. Not for People, mention or Notify pickers. */
   workspace_members: WorkspaceMember[];
+  /** The people added to the board (`GET /api/boards/{id}/members`), the only ones People, mention and Notify pickers offer. */
+  board_members: WorkspaceMember[];
   /** `workspace_members` plus the deactivated accounts, so items assigned to them still resolve their name and avatar. Not for pickers. */
   roster_members: WorkspaceMember[];
   /** The Tags column's board-wide option list — see the fetch in `TableBoardView` and `BoardTag`'s own doc comment server-side. */
@@ -827,6 +865,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   access,
   onAccessChange,
   workspace_members,
+  board_members,
   roster_members,
   initial_tags,
   initial_columns,
@@ -1149,9 +1188,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [people_column_ids]
   );
 
+  // Mention, Notify and Person filter options: only the people added to the board.
   const persons: BoardPersonOption[] = useMemo(
     () =>
-      workspace_members.map((member, index) => ({
+      board_members.map((member, index) => ({
         id: String(member.id),
         name: member.full_name,
         initials: getInitials(member.full_name),
@@ -1159,7 +1199,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         avatar_url: member.profile_photo_url ?? undefined,
         job_title: member.job_title?.trim() || undefined,
       })),
-    [workspace_members]
+    [board_members]
   );
 
   // Sort, Group by and filter descriptions per column type, see `boardToolbarFields.ts`.
@@ -2888,7 +2928,10 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const filtered_rows = useMemo(() => toolbar.groups.flatMap((g) => g.rows), [toolbar.groups]);
 
 
-  // Active people first, so their avatar colors do not shift when someone is deactivated.
+  // Active people first, so their avatar colors do not shift when someone is deactivated. Everyone in
+  // the roster keeps resolving on cells they are already assigned to, but the pickers only offer the
+  // people added to the board (`is_outside_board`).
+  const board_member_ids = useMemo(() => new Set(board_members.map((member) => String(member.id))), [board_members]);
   const table_people: TablePersonDef[] = useMemo(
     () =>
       [...roster_members.filter((member) => !member.is_deactivated), ...roster_members.filter((member) => member.is_deactivated)].map(
@@ -2900,12 +2943,13 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           avatar_url: member.profile_photo_url,
           job_title: member.job_title,
           is_deactivated: member.is_deactivated,
+          is_outside_board: !board_member_ids.has(String(member.id)),
         })
       ),
-    [roster_members]
+    [roster_members, board_member_ids]
   );
-  // Bulk edit and automations only ever assign people, so they never see the deactivated ones.
-  const assignable_table_people = useMemo(() => table_people.filter((person) => !person.is_deactivated), [table_people]);
+  // Bulk edit and automations only ever assign or notify people, so they only see the ones who can be.
+  const assignable_table_people = useMemo(() => table_people.filter(isAssignablePerson), [table_people]);
 
   // Automations read every column of the tab, hidden ones and subitem ones included, since hiding a
   // column never turns off the automations that use it. Tags columns take the board wide tag list.
@@ -4811,7 +4855,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           is_header_collapsed={is_doc_header_collapsed}
           onToggleHeaderCollapsed={() => setIsDocHeaderCollapsed((current) => !current)}
           onUploadFile={(file) => boardDocService.uploadFile(board_id, file)}
-          members={workspace_members}
+          members={board_members}
           editable={node.permission_level === "full" || node.permission_level === "content"}
         />
       ) : active_view_type === "file_gallery" && active_doc_view ? (
@@ -4977,7 +5021,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         onClose={() => setPermissionsColumnId(null)}
         board_id={board_id}
         column={columns.find((column) => column.id === permissions_column_id) ?? null}
-        people={workspace_members}
+        people={board_members}
         onSave={async (payload) => {
           if (permissions_column_id === null) return;
           const updated = await boardContentService.updateColumnPermissions(board_id, permissions_column_id, payload);

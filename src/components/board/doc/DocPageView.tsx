@@ -27,6 +27,7 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
 import type { WorkspaceViewProps } from "@/components/workspace-nav/TableBoardView";
 import { useAuth } from "@/context/AuthContext";
 import { useBranding } from "@/context/BrandingContext";
+import { useBoardMembers } from "@/hooks/useBoardMembers";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import { getUserInitials } from "@/lib/user";
 import { buildPageTitle } from "@/lib/page-title";
@@ -36,7 +37,7 @@ import { boardOptionsService } from "@/services/board-options.service";
 import { personalService } from "@/services/personal.service";
 import { notifyNavItemChanged, workspaceService } from "@/services/workspace.service";
 import type { BoardDocDto } from "@/types/board-doc";
-import type { BoardAccessEntry } from "@/types/board-invitation";
+import type { BoardAccessEntry, BoardMember } from "@/types/board-invitation";
 import type { BoardEditPermission, WorkspaceMember } from "@/types/workspace";
 import { DocEditorProvider, DocEditorSurface, DocOutline, DocToolbar, useDocEditor } from "./editor";
 import { serializeDocContent } from "./editor/doc-content";
@@ -66,6 +67,9 @@ const DocPageView: React.FC<WorkspaceViewProps> = ({ node }) => {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [access, setAccess] = useState<BoardAccessEntry[]>([]);
   const [label, setLabel] = useState(node.label);
+  // Mentions only offer the people added to the doc. `members` (the whole workspace) is for inviting.
+  const { members: doc_members } = useBoardMembers(node.id, `${node.board_type}|${access.map((entry) => entry.key).join(",")}`);
+  const mention_members = useMemo(() => doc_members ?? [], [doc_members]);
 
   const can_edit = node.can_edit && (node.permission_level === "full" || node.permission_level === "content");
 
@@ -138,7 +142,7 @@ const DocPageView: React.FC<WorkspaceViewProps> = ({ node }) => {
         onChange={queueSave}
         onBlur={flushSave}
         editable={can_edit}
-        members={members}
+        members={mention_members}
         onUploadFile={(file) => boardDocService.uploadFile(node.id, file)}
       >
         <DocPageBody
@@ -148,6 +152,7 @@ const DocPageView: React.FC<WorkspaceViewProps> = ({ node }) => {
           label={label}
           can_edit={can_edit}
           members={members}
+          mention_members={mention_members}
           access={access}
           onAccessChange={setAccess}
           onRename={handleRename}
@@ -167,7 +172,10 @@ type DocPageBodyProps = {
   onDocChange: (doc: BoardDocDto) => void;
   label: string;
   can_edit: boolean;
+  /** Everyone in the workspace, for the Share dialog. */
   members: WorkspaceMember[];
+  /** The people added to the doc, the only ones its comments can `@mention` or notify. */
+  mention_members: BoardMember[];
   access: BoardAccessEntry[];
   onAccessChange: (access: BoardAccessEntry[]) => void;
   onRename: (label: string) => Promise<void>;
@@ -183,6 +191,7 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({
   label,
   can_edit,
   members,
+  mention_members,
   access,
   onAccessChange,
   onRename,
@@ -207,15 +216,15 @@ const DocPageBody: React.FC<DocPageBodyProps> = ({
   );
   const mentionable_people: BoardPersonOption[] = useMemo(
     () =>
-      members.map((member, index) => ({
+      mention_members.map((member, index) => ({
         id: String(member.id),
         name: member.full_name,
         initials: getUserInitials(member),
         avatar_seed: index,
         avatar_url: member.profile_photo_url ?? undefined,
-        is_deactivated: member.is_deactivated,
+        job_title: member.job_title?.trim() || undefined,
       })),
-    [members]
+    [mention_members]
   );
 
   // The doc's comments are its navigation item's own discussion thread.
