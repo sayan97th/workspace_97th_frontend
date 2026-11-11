@@ -503,6 +503,13 @@ html.dark {
   &:focus-within {
     box-shadow: 0 0 0 1px var(--uf-primary);
   }
+
+  // The drawer's formatting toolbar, edge to edge across the top of the box.
+  .rich-text-toolbar {
+    margin: -6px -12px 6px;
+    padding: 4px 6px;
+    border-radius: 5px 5px 0 0;
+  }
 }
 
 .feed-composer__footer {
@@ -532,7 +539,8 @@ html.dark {
   transition: background-color 150ms ease;
 
   &:hover,
-  &[aria-expanded="true"] {
+  &[aria-expanded="true"],
+  &[aria-pressed="true"] {
     background: var(--uf-hover);
   }
 
@@ -540,7 +548,59 @@ html.dark {
     color: var(--uf-text-secondary);
   }
 
+  &[aria-pressed="true"] svg {
+    color: var(--uf-primary);
+  }
+
   @include focus-ring(0);
+}
+
+// The Markdown mark at the end of the tools, its tooltip lists the syntax the editor understands.
+.feed-composer__md-badge {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--uf-text-secondary);
+  cursor: help;
+
+  &:hover {
+    color: var(--uf-text);
+  }
+
+  @include focus-ring(0);
+}
+
+// Rendered inside the portaled `.portal-tooltip` bubble.
+.feed-composer__md-help {
+  display: grid;
+  gap: 3px;
+  min-width: 196px;
+  text-align: left;
+}
+
+.feed-composer__md-help-title {
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+
+.feed-composer__md-help-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  code {
+    font-family: var(--font-roboto-mono, ui-monospace, monospace);
+    font-size: 12px;
+    opacity: 0.85;
+  }
+}
+
+.feed-composer__md-help-note {
+  margin-top: 2px;
+  font-size: 12px;
+  opacity: 0.75;
 }
 
 .feed-composer__buttons {

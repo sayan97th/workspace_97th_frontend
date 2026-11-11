@@ -12,6 +12,7 @@ import { inlineUploadService } from "@/services/inline-upload.service";
 import { SafeHistory } from "../doc/editor/extensions/safe-history";
 import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
+import { getPastedMarkdown } from "./markdown/markdownPaste";
 import { MentionHighlight } from "./mentionHighlight";
 import { buildRichTextBlockExtensions } from "./richTextBlocks";
 import { RichTextSlashCommand } from "./richTextSlashCommand";
@@ -129,7 +130,8 @@ const deleteTriggerText = (current_editor: Editor): void => {
  * plain `<textarea>`, with Slack's formatting row (`RichTextToolbar`: undo
  * and redo, the doc's title dropdown, bold, italic, underline, strikethrough,
  * links, lists, quotes and code), plus uploading a pasted/dropped image
- * straight into the body via `inlineUploadService`.
+ * straight into the body via `inlineUploadService`. Pasted Markdown text is
+ * converted into formatting (see `getPastedMarkdown`), Shift + paste keeps it literal.
  * Typing "/" opens the block menu the doc editor has (`RichTextSlashMenu`):
  * titles, lists, to-dos, toggles, callouts, quotes, tables, dividers, code,
  * images, links, mentions, emoji, the date and the user's saved replies.
@@ -326,11 +328,21 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           // Plain Enter: the editor's own behavior, a new paragraph (or list item, quote line...). Never sends.
           return false;
         },
-        handlePaste: (_view, event) => {
+        handlePaste: (view, event) => {
           const files = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith("image/"));
-          if (files.length === 0) return false;
+          if (files.length > 0) {
+            event.preventDefault();
+            files.forEach((file) => void uploadAndInsert(file));
+            return true;
+          }
+          // Pasted Markdown becomes formatting, except inside a code block (kept literal)
+          // and on Shift + paste, the "paste as plain text" chord, which ProseMirror tracks.
+          const is_plain_paste = (view as unknown as { input?: { shiftKey?: boolean } }).input?.shiftKey === true;
+          if (!editor || is_plain_paste || editor.isActive("codeBlock")) return false;
+          const markdown = getPastedMarkdown(event.clipboardData);
+          if (markdown === null) return false;
           event.preventDefault();
-          files.forEach((file) => void uploadAndInsert(file));
+          editor.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();
           return true;
         },
         handleDrop: (_view, event) => {

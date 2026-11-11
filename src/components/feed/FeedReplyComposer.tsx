@@ -12,10 +12,14 @@ import {
   type MentionTeam,
 } from "@/components/board/drawer/mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "@/components/board/drawer/RichTextComposer";
+import SavedRepliesMenu from "@/components/board/drawer/SavedRepliesMenu";
+import { markdownToPlainText } from "@/components/board/drawer/commentFilters";
 import { useMentionPickerNavigation } from "@/components/board/drawer/useMentionPickerNavigation";
-import { ReactSmileyIcon } from "@/icons/drawer-icons";
+import PortalTooltip from "@/components/ui/tooltip/PortalTooltip";
+import { FormatToggleIcon, ReactSmileyIcon } from "@/icons/drawer-icons";
 import { MentionIcon } from "@/icons/workspace-icons";
 import { useModKeyLabel } from "@/hooks/useModKeyLabel";
+import { useFeedComposerToolbar } from "./useFeedComposerToolbar";
 
 type FeedReplyComposerProps = {
   current_user: BoardPersonOption;
@@ -47,17 +51,57 @@ export type FeedReplyComposerRef = {
 /** A picked mention, kept with its display name so it only counts while `@Name` is still in the body. */
 type MentionPick = { name: string; user_ids: string[] };
 
-/** A rich text body counts as empty when it has no visible text and no inline image (`![alt](url)`). */
-const isBodyEmpty = (markdown: string): boolean => markdown.trim().length === 0 && !markdown.includes("![");
+/** An inline image (`![alt](url)`), which is content on its own even without text. */
+const INLINE_IMAGE_PATTERN = /!\[[^\]]*\]\([^)]+\)/;
+
+/**
+ * A draft counts as empty when the editor shows no text and holds no inline
+ * image. Read from the editor's plain text, so a body made only of Markdown
+ * syntax (an empty bullet, a bare quote) is empty too, as the API rules.
+ */
+const isDraftEmpty = (markdown: string, plain_text: string): boolean =>
+  plain_text.trim().length === 0 && !INLINE_IMAGE_PATTERN.test(markdown);
+
+/** Markdown the editor turns into formatting as it is typed, listed in the "Markdown" hint. */
+const MARKDOWN_SHORTCUTS: { syntax: string; result: string }[] = [
+  { syntax: "**bold**", result: "Bold" },
+  { syntax: "*italic*", result: "Italic" },
+  { syntax: "~~strike~~", result: "Strikethrough" },
+  { syntax: "`code`", result: "Inline code" },
+  { syntax: "# Title", result: "Title" },
+  { syntax: "- item", result: "Bulleted list" },
+  { syntax: "1. item", result: "Numbered list" },
+  { syntax: "[ ] task", result: "To do" },
+  { syntax: "> quote", result: "Quote" },
+  { syntax: "```", result: "Code block" },
+  { syntax: "/", result: "All blocks" },
+];
+
+const markdown_help = (
+  <span className="feed-composer__md-help">
+    <span className="feed-composer__md-help-title">Markdown is supported</span>
+    {MARKDOWN_SHORTCUTS.map((shortcut) => (
+      <span key={shortcut.syntax} className="feed-composer__md-help-row">
+        <code>{shortcut.syntax}</code>
+        <span>{shortcut.result}</span>
+      </span>
+    ))}
+    <span className="feed-composer__md-help-note">Pasted Markdown is formatted too.</span>
+  </span>
+);
 
 /**
  * The Update feed card's reply box, laid out like monday.com's inbox: the
- * viewer's avatar beside a roomy rounded box, and under it the Emoji and
- * Mention tools on the left and the blue Reply button on the right. It is
- * the same Markdown editor the item drawer uses (`@mentions` including the
- * "Everyone" group and teams). People come from the update's board, loaded
- * the first time the box is focused rather than for every card up front.
- * Command/Control + Enter sends, plain Enter adds a new line.
+ * viewer's avatar beside a roomy rounded box, and under it the Format,
+ * Emoji, Mention and Saved replies tools on the left and the blue Reply
+ * button on the right. It is the same Markdown editor the item drawer uses:
+ * the formatting toolbar (shown or hidden with Format, remembered per
+ * browser), Markdown typed or pasted as formatting, the "/" block menu,
+ * links, pasted images and `@mentions` including the "Everyone" group and
+ * teams. The body is sent as Markdown and rendered by `RichTextContent`.
+ * People come from the update's board, loaded the first time the box is
+ * focused rather than for every card up front.
+ * Command/Control + Enter sends, plain Enter adds a new line, Escape cancels an edit.
  */
 const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProps>(function FeedReplyComposer(
   { current_user, loadPeople, loadTeams, onSubmit, placeholder, initial_value = "", submit_label = "Reply", onCancel, auto_focus = false, hide_avatar = false },
@@ -69,13 +113,16 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   const has_requested_people_ref = useRef(false);
 
   const [value, setValue] = useState(initial_value);
+  // The editor's own text, without any Markdown syntax, for the empty check.
+  const [plain_text, setPlainText] = useState(() => markdownToPlainText(initial_value));
+  const { is_toolbar_shown, toggleToolbar } = useFeedComposerToolbar();
   const [people, setPeople] = useState<BoardPersonOption[]>([]);
   const [teams, setTeams] = useState<MentionTeam[]>([]);
   const [mention_query, setMentionQuery] = useState<string | null>(null);
   const [mention_picks, setMentionPicks] = useState<MentionPick[]>([]);
   const [is_emoji_open, setIsEmojiOpen] = useState(false);
 
-  const has_draft = !isBodyEmpty(value);
+  const has_draft = !isDraftEmpty(value, plain_text);
 
   const mention_matches = useMemo(
     () => (mention_query === null ? [] : buildMentionMatches(people, mention_query, current_user.id, undefined, teams)),
@@ -147,9 +194,10 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
 
   const submit = () => {
     const body = value.trim();
-    if (isBodyEmpty(body)) return;
+    if (isDraftEmpty(body, plain_text)) return;
     onSubmit(body, collectMentionedIds(body));
     setValue("");
+    setPlainText("");
     setMentionPicks([]);
     setMentionQuery(null);
   };
@@ -167,15 +215,17 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
       {!hide_avatar && <PersonAvatar person={current_user} size={28} className="feed-composer__avatar" />}
 
       <div className="feed-composer__main">
-        <div className="feed-composer__box">
+        <div className="feed-composer__box" data-toolbar={is_toolbar_shown ? "true" : undefined}>
           <RichTextComposer
             ref={rich_text_ref}
             embedded
-            show_toolbar={false}
+            show_toolbar={is_toolbar_shown}
             value={value}
             onChange={handleChange}
+            onPlainTextChange={setPlainText}
             placeholder={placeholder}
             min_height_class="min-h-[64px]"
+            onEscape={onCancel}
             // Command/Control + Enter sends, plain Enter adds a new line. Not while the
             // mention list is open: there Enter picks the highlighted person.
             onSubmitShortcut={is_picker_open ? undefined : submit}
@@ -187,6 +237,16 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
 
         <div className="feed-composer__footer">
           <div className="feed-composer__tools">
+            <button
+              type="button"
+              onClick={toggleToolbar}
+              aria-pressed={is_toolbar_shown}
+              title={is_toolbar_shown ? "Hide formatting options" : "Show formatting options"}
+              className="feed-composer__tool"
+            >
+              <FormatToggleIcon size={16} />
+              Format
+            </button>
             <button
               ref={emoji_trigger_ref}
               type="button"
@@ -211,6 +271,12 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
               <MentionIcon size={14} />
               Mention
             </button>
+            <SavedRepliesMenu draft={value} onInsert={(reply) => rich_text_ref.current?.insertMarkdown(reply.body)} icon_size={16} />
+            <PortalTooltip content={markdown_help} className="max-sm:!hidden">
+              <span className="feed-composer__md-badge" tabIndex={0} aria-label="Markdown is supported">
+                <MarkdownMarkIcon />
+              </span>
+            </PortalTooltip>
           </div>
 
           <div className="feed-composer__buttons">
@@ -245,5 +311,13 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
     </div>
   );
 });
+
+/** The Markdown mark ("M" and a down arrow in a rounded box). */
+const MarkdownMarkIcon: React.FC = () => (
+  <svg width="22" height="14" viewBox="0 0 208 128" fill="none" aria-hidden="true">
+    <rect x="5" y="5" width="198" height="118" rx="15" stroke="currentColor" strokeWidth="10" />
+    <path d="M30 98V30h20l20 25 20-25h20v68H90V59L70 84 50 59v39H30zm125 0l-30-33h20V30h20v35h20l-30 33z" fill="currentColor" />
+  </svg>
+);
 
 export default FeedReplyComposer;
