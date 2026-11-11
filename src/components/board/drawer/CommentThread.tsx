@@ -24,7 +24,17 @@ import LikeButton from "./LikeButton";
 import ReactionsSummary from "./ReactionsSummary";
 import RichTextContent from "./RichTextContent";
 import SeenByList from "./SeenByList";
-import type { DrawerAttachment, DrawerComment, DrawerCommentRevision, DrawerComposerTarget, DrawerReferenceItem, DrawerReply } from "./types";
+import ThreadReply, { ThreadReplyAction, ThreadReplyBody, ThreadReplyButton, ThreadReplyViews, thread_reply_action_class } from "./ThreadReply";
+import type {
+  CommentMentionRequest,
+  DrawerAttachment,
+  DrawerComment,
+  DrawerCommentRevision,
+  DrawerComposerTarget,
+  DrawerReferenceItem,
+  DrawerReply,
+} from "./types";
+import { useFoldedReplies } from "./useFoldedReplies";
 import "./board-drawer.css";
 
 export type CommentThreadProps = {
@@ -73,10 +83,6 @@ export type CommentThreadProps = {
   reference_items?: DrawerReferenceItem[];
 };
 
-/** A thread with more replies than this folds its older ones behind a "View N earlier replies" button. */
-const COLLAPSE_REPLIES_OVER = 3;
-/** How many of the newest replies stay visible while the older ones are folded. */
-const VISIBLE_REPLY_TAIL = 2;
 /** How much of an update's text the collapsed "Resolved" row quotes. */
 const RESOLVED_EXCERPT_LENGTH = 120;
 
@@ -132,6 +138,15 @@ const ReactionsRow: React.FC<ReactionsRowProps> = ({ entry, current_user, is_pal
   );
 };
 
+/** "Nov 10, 2026, 3:42 PM", the full date behind a reply's relative time. */
+const formatFullDate = (iso?: string): string | undefined => {
+  if (!iso) return undefined;
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+};
+
 /** Small marker on an update that arrived live while the drawer was open. */
 const NewBadge: React.FC = () => (
   <span className="update-card__badge">New</span>
@@ -163,6 +178,8 @@ type ReplyRowProps = {
   is_highlighted?: boolean;
   /** The drawer offers "Undo" after a delete, so the confirm dialog is skipped. */
   has_undo?: boolean;
+  /** Reply under the bubble: answers the thread and `@mentions` the reply's author. */
+  onReplyTo?: () => void;
 };
 
 const ReplyRow: React.FC<ReplyRowProps> = ({
@@ -188,40 +205,33 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   onToggleBookmark,
   is_highlighted = false,
   has_undo = false,
+  onReplyTo,
 }) => {
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === reaction_palette_key;
+  const has_reaction_row = reply.reactions.length > 0 || reply.like_count > 0;
+  const is_bookmarked = reply.bookmarked_by_me ?? false;
 
   return (
-    <div id={`comment-${reply.id}`} className="update-card__reply" data-highlighted={is_highlighted || undefined}>
-      <PersonHoverCard person={reply.author} className="flex-none">
-        <PersonAvatar person={reply.author} size={30} />
-      </PersonHoverCard>
-      <div className="update-card__reply-bubble">
-        <div className="update-card__reply-box">
-          <div className="flex items-center gap-2">
-            <div className="update-card__byline">
-              <PersonHoverCard person={reply.author}>
-                <span className={`update-card__author ${getDeactivatedClass(reply.author.is_deactivated)}`}>{reply.author.name}</span>
-              </PersonHoverCard>
-              <DeactivatedBadge is_deactivated={reply.author.is_deactivated} />
-              <span className="update-card__time">{reply.posted_at}</span>
-              {is_new && <NewBadge />}
-              {reply.is_edited && <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />}
-            </div>
-            <CommentOptionsMenu
-              onEdit={reply.author.id === current_user.id ? onStartEditing : undefined}
-              onDelete={reply.author.id === current_user.id ? onDelete : undefined}
-              extra_items={extra_menu_items}
-              kind="reply"
-              confirm_delete={!has_undo}
-            />
-          </div>
-          {is_editing ? (
-            <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
-          ) : (
-            <RichTextContent html={reply.body} people={people} className="mt-1" />
-          )}
+    <ThreadReply
+      dom_id={`comment-${reply.id}`}
+      author={reply.author}
+      time_label={reply.posted_at}
+      time_title={formatFullDate(reply.posted_at_iso)}
+      header_extra={is_new ? <NewBadge /> : undefined}
+      is_highlighted={is_highlighted}
+      is_editing={is_editing}
+      menu={
+        <CommentOptionsMenu
+          onEdit={reply.author.id === current_user.id ? onStartEditing : undefined}
+          onDelete={reply.author.id === current_user.id ? onDelete : undefined}
+          extra_items={extra_menu_items}
+          kind="reply"
+          confirm_delete={!has_undo}
+        />
+      }
+      reactions={
+        has_reaction_row ? (
           <ReactionsRow
             entry={reply}
             current_user={current_user}
@@ -230,21 +240,23 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
             onClosePalette={onCloseReactionPalette}
             onToggle={onToggleReaction}
           />
-        </div>
-        <div className="update-card__reply-actions">
-          <LikeButton entry={reply} current_user={current_user} onToggle={onLike} class_name="update-card__reply-action" icon_size={14} />
+        ) : undefined
+      }
+      footer={
+        <>
+          {reply.view_count > 0 && <ThreadReplyViews count={reply.view_count} />}
+          <LikeButton entry={reply} current_user={current_user} onToggle={onLike} class_name={thread_reply_action_class} icon_size={15} compact />
           {reply.reactions.length === 0 && (
             <>
-              <button
+              <ThreadReplyAction
                 ref={react_trigger_ref}
-                type="button"
                 onClick={() => onToggleReactionPalette(reaction_palette_key)}
                 aria-expanded={is_palette_open}
-                className="update-card__reply-action"
+                aria-label="React"
+                title="React"
               >
-                <ReactSmileyIcon size={14} />
-                React
-              </button>
+                <ReactSmileyIcon size={15} />
+              </ThreadReplyAction>
               <EmojiPalette
                 anchor_el={react_trigger_ref.current}
                 is_open={is_palette_open}
@@ -255,20 +267,33 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
             </>
           )}
           {onToggleBookmark && (
-            <button
-              type="button"
+            <ThreadReplyAction
               onClick={onToggleBookmark}
-              aria-pressed={reply.bookmarked_by_me ?? false}
-              data-active={reply.bookmarked_by_me ? "bookmarked" : undefined}
-              className="update-card__reply-action"
+              is_active={is_bookmarked}
+              aria-pressed={is_bookmarked}
+              aria-label={is_bookmarked ? "Remove bookmark" : "Bookmark reply"}
+              title={is_bookmarked ? "Remove bookmark" : "Bookmark reply"}
             >
-              <BookmarkIcon size={14} filled={reply.bookmarked_by_me ?? false} />
-              {reply.bookmarked_by_me ? "Bookmarked" : "Bookmark"}
-            </button>
+              <BookmarkIcon size={14} filled={is_bookmarked} />
+            </ThreadReplyAction>
           )}
-        </div>
-      </div>
-    </div>
+          {reply.is_edited && (
+            <span className="thread-reply__edited">
+              <EditedMarker onLoadRevisions={onLoadRevisions} edited_at={reply.edited_at} />
+            </span>
+          )}
+          {onReplyTo && <ThreadReplyButton author_name={reply.author.name} onClick={onReplyTo} />}
+        </>
+      }
+    >
+      {is_editing ? (
+        <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+      ) : (
+        <ThreadReplyBody>
+          <RichTextContent html={reply.body} people={people} />
+        </ThreadReplyBody>
+      )}
+    </ThreadReply>
   );
 };
 
@@ -320,10 +345,20 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const collaboration = useCommentCollaborationContext();
   // A resolved thread stays folded to one row until it is opened, and a long one keeps only its newest replies in view.
   const [is_resolved_open, setIsResolvedOpen] = useState(false);
-  const [are_replies_expanded, setAreRepliesExpanded] = useState(false);
+  const [mention_request, setMentionRequest] = useState<CommentMentionRequest | undefined>(undefined);
 
   const focusReplyComposer = () =>
     (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
+
+  // Reply under a reply answers the same thread and `@mentions` its author, as in monday.
+  const replyTo = (person: BoardPersonOption) => {
+    if (person.id === current_user.id) {
+      focusReplyComposer();
+    } else {
+      setMentionRequest((previous) => ({ key: (previous?.key ?? 0) + 1, person }));
+    }
+    requestAnimationFrame(() => reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  };
 
   // Copy link and quote for a comment (or one of its replies), offered to everyone.
   const buildExtraItems = (reply_id?: string): AnchoredMenuItem[] =>
@@ -361,15 +396,12 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   const can_resolve = collaboration !== null && collaboration.can_edit;
 
   // Replies are folded when there are many, unless something in the hidden part needs to be seen.
-  const is_collapsible = comment.replies.length > COLLAPSE_REPLIES_OVER;
-  const hidden_reply_count = comment.replies.length - VISIBLE_REPLY_TAIL;
-  const hidden_replies = comment.replies.slice(0, hidden_reply_count);
-  const is_hidden_reply_needed =
-    is_collapsible &&
-    (hidden_replies.some((reply) => reply.id === highlighted_id || `${comment.id}:${reply.id}` === editing_key) ||
-      hidden_replies.some((reply) => fresh_comment_ids.includes(reply.id)));
-  const are_replies_folded = is_collapsible && !are_replies_expanded && !is_hidden_reply_needed;
-  const visible_replies = are_replies_folded ? comment.replies.slice(hidden_reply_count) : comment.replies;
+  const must_show_reply_ids = new Set(
+    comment.replies
+      .filter((reply) => reply.id === highlighted_id || `${comment.id}:${reply.id}` === editing_key || fresh_comment_ids.includes(reply.id))
+      .map((reply) => reply.id)
+  );
+  const folded_replies = useFoldedReplies(comment.replies, must_show_reply_ids);
 
   // A deep link into a resolved thread, or editing it, opens it.
   const is_edited_here = editing_key !== null && (editing_key === comment.id || editing_key.startsWith(`${comment.id}:`));
@@ -581,18 +613,18 @@ const CommentThread: React.FC<CommentThreadProps> = ({
       </div>
 
       {comment.replies.length > 0 && (
-        <div className="update-card__replies">
-          {are_replies_folded && (
-            <button type="button" onClick={() => setAreRepliesExpanded(true)} className="update-card__replies-toggle">
-              View {hidden_reply_count} earlier {hidden_reply_count === 1 ? "reply" : "replies"}
+        <div className="update-card__replies thread-replies">
+          {folded_replies.is_folded && (
+            <button type="button" onClick={folded_replies.expand} className="thread-replies__toggle">
+              View {folded_replies.hidden_count} earlier {folded_replies.hidden_count === 1 ? "reply" : "replies"}
             </button>
           )}
-          {is_collapsible && are_replies_expanded && (
-            <button type="button" onClick={() => setAreRepliesExpanded(false)} className="update-card__replies-toggle">
+          {folded_replies.can_fold && (
+            <button type="button" onClick={folded_replies.collapse} className="thread-replies__toggle">
               Show fewer replies
             </button>
           )}
-          {visible_replies.map((reply) => (
+          {folded_replies.visible.map((reply) => (
             <ReplyRow
               key={reply.id}
               reply={reply}
@@ -617,6 +649,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               onToggleBookmark={collaboration ? () => collaboration.toggleBookmark(comment.id, reply.id) : undefined}
               is_highlighted={highlighted_id === reply.id}
               has_undo={collaboration !== null}
+              onReplyTo={() => replyTo(reply.author)}
             />
           ))}
         </div>
@@ -648,6 +681,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           onInsertEmoji={onInsertEmoji}
           reference_items={reference_items}
           quote_request={collaboration?.quote_requests[comment.id]}
+          mention_request={mention_request}
         />
       </div>
     </div>

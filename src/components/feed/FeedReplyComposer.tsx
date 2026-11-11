@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useRef, useState } from "react";
+import React, { forwardRef, useImperativeHandle, useMemo, useRef, useState } from "react";
 import PersonAvatar from "@/components/board/PersonAvatar";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import EmojiPalette from "@/components/board/drawer/EmojiPalette";
@@ -27,6 +27,13 @@ type FeedReplyComposerProps = {
   placeholder: string;
 };
 
+/** What a feed card can ask of its reply box. */
+export type FeedReplyComposerRef = {
+  /** Focuses the box and `@mentions` the person at the end of the draft (Reply under a reply), so they are notified too. */
+  mentionPerson: (person: { id: string; name: string }) => void;
+  focus: () => void;
+};
+
 /** A picked mention, kept with its display name so it only counts while `@Name` is still in the body. */
 type MentionPick = { name: string; user_ids: string[] };
 
@@ -39,14 +46,10 @@ const isBodyEmpty = (markdown: string): boolean => markdown.trim().length === 0 
  * plus "schedule for later". People come from the update's board, loaded the
  * first time the box is focused rather than for every card up front.
  */
-const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
-  current_user,
-  loadPeople,
-  loadTeams,
-  onSubmit,
-  onSchedule,
-  placeholder,
-}) => {
+const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProps>(function FeedReplyComposer(
+  { current_user, loadPeople, loadTeams, onSubmit, onSchedule, placeholder },
+  ref
+) {
   const rich_text_ref = useRef<RichTextComposerRef>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
   const has_requested_people_ref = useRef(false);
@@ -95,6 +98,23 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
     setMentionPicks((current) => [...current, { name: option.name, user_ids: mentionOptionUserIds(option) }]);
     setMentionQuery(null);
   };
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      mentionPerson: (person) => {
+        ensurePeopleLoaded();
+        rich_text_ref.current?.mentionAtEnd(person.name);
+        setMentionPicks((current) =>
+          current.some((pick) => pick.name === person.name) ? current : [...current, { name: person.name, user_ids: [person.id] }]
+        );
+      },
+      focus: () => rich_text_ref.current?.focus(),
+    }),
+    // ensurePeopleLoaded only reads refs and stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const mention_navigation = useMentionPickerNavigation(mention_matches, handlePickMention);
   const is_picker_open = mention_navigation.is_open;
@@ -243,6 +263,6 @@ const FeedReplyComposer: React.FC<FeedReplyComposerProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default FeedReplyComposer;

@@ -64,7 +64,8 @@ const EMPTY_TAB_MESSAGES: Partial<Record<UpdateFeedTabId, string>> = {
  * the "All updates", "I was mentioned", "Bookmarked", "All account",
  * "Following", "Pinned" and "Scheduled" tabs (following a board or item is done
  * from a card's menu), a filter row (search, person, kind, dates, unread only),
- * saved views, "Mark all as read" and the feed cards. Backed by real `BoardItemComment`/
+ * saved views, "Mark all as read" and the feed cards, one card per thread with
+ * its replies inline, as in monday.com's inbox. Backed by real `BoardItemComment`/
  * `BoardComment` rows via {@link useFeedUpdates}: pages in as it is scrolled,
  * and stays live over the `feed.{user_id}` Reverb channel, announcing what
  * other people post with an "N new updates" banner.
@@ -136,6 +137,14 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const likeCard = useCallback(
     (id: string) => void likeUpdate(id).catch(() => toastError("Couldn't update your like. Please try again.")),
     [likeUpdate, toastError]
+  );
+  // A reply lands inside its thread's card once the server has it, a failure says so.
+  const replyToCard = useCallback(
+    (id: string, body: string, mentioned_user_ids: number[]) =>
+      void replyToUpdate(id, body, mentioned_user_ids).catch((error) =>
+        toastError(getApiErrorMessage(error, "Couldn't post your reply. Please try again."))
+      ),
+    [replyToUpdate, toastError]
   );
   const reactToCard = useCallback(
     (id: string, emoji: string) =>
@@ -409,7 +418,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                   onReact={reactToCard}
                   onBookmark={bookmarkUpdate}
                   onPin={pinUpdate}
-                  onReply={replyToUpdate}
+                  onReply={replyToCard}
                   onSchedule={scheduleReply}
                   onMarkSeen={markSeen}
                   onMarkUnread={markUnread}

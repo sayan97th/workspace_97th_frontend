@@ -16,7 +16,7 @@ import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from
 import SavedRepliesMenu from "./SavedRepliesMenu";
 import { formatScheduledTime } from "./scheduleFormat";
 import { filterReferenceItems } from "./itemReferences";
-import type { CommentQuoteRequest, DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
+import type { CommentMentionRequest, CommentQuoteRequest, DrawerAttachment, DrawerComposerTarget, DrawerReferenceItem } from "./types";
 
 export type CommentComposerProps = {
   /** Identifies this composer among the drawer's shared mention/emoji palette state: "composer" for the top-level update box, or the parent comment id for a reply box. */
@@ -38,7 +38,7 @@ export type CommentComposerProps = {
   variant?: "update" | "reply";
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
-  onPickMention: (option: MentionOption) => void;
+  onPickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
   /** All people who could be flagged via "Notify", same roster as `mention_matches` draws from, unfiltered. */
   mentionable_people?: BoardPersonOption[];
   notify_target?: DrawerComposerTarget | null;
@@ -61,6 +61,8 @@ export type CommentComposerProps = {
   onScheduleChange?: (scheduled_at: string | null) => void;
   /** A comment to quote into this box, appended below whatever is already typed. */
   quote_request?: CommentQuoteRequest;
+  /** Someone to `@mention` at the end of the draft, sent by Reply under a reply. */
+  mention_request?: CommentMentionRequest;
 };
 
 /**
@@ -101,6 +103,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   schedule_at = null,
   onScheduleChange,
   quote_request,
+  mention_request,
 }) => {
   const file_input_ref = useRef<HTMLInputElement>(null);
   const emoji_trigger_ref = useRef<HTMLButtonElement>(null);
@@ -112,6 +115,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const effective_submit_label = schedule_at ? "Schedule" : submit_label;
   // Only quote requests that arrive after this box mounted count, so remounting a thread never replays an old one.
   const handled_quote_key_ref = useRef(quote_request?.key ?? 0);
+  const handled_mention_key_ref = useRef(mention_request?.key ?? 0);
   // An update can also be submitted with only an attachment and no text
   // (mirrors the `isRichTextEmpty(body) && attachments.length === 0` guard
   // in `useBoardItemDrawer`'s `postComment`), so the send button shouldn't
@@ -150,6 +154,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     handled_quote_key_ref.current = quote_request.key;
     rich_text_ref.current?.appendMarkdownBlock(quote_request.markdown);
   }, [quote_request]);
+
+  useEffect(() => {
+    if (!mention_request || mention_request.key === handled_mention_key_ref.current) return;
+    handled_mention_key_ref.current = mention_request.key;
+    rich_text_ref.current?.mentionAtEnd(mention_request.person.name);
+    onPickMention(mention_request.person, target);
+    // Only a new request runs this, the handler changing identity on re-render must not replay it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mention_request]);
 
   const handlePickMention = (option: MentionOption) => {
     rich_text_ref.current?.insertMentionText(option.name);

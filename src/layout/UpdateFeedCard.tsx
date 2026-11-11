@@ -5,7 +5,11 @@ import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import RichTextContent from "@/components/board/drawer/RichTextContent";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import FeedActivityTimeline from "@/components/feed/FeedActivityTimeline";
-import FeedReplyComposer from "@/components/feed/FeedReplyComposer";
+import FeedReplyComposer, { type FeedReplyComposerRef } from "@/components/feed/FeedReplyComposer";
+import FeedThreadReply from "@/components/feed/FeedThreadReply";
+import { useFoldedReplies } from "@/components/board/drawer/useFoldedReplies";
+import { countThreadUnread, isThreadUnread } from "@/hooks/feedThreads";
+import type { FeedActor } from "@/data/update-feed-data";
 import PersonHoverCard from "@/components/people/PersonHoverCard";
 import { loadFeedBoardPeople, loadFeedBoardTeams } from "@/lib/feed-people";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
@@ -26,15 +30,16 @@ import {
   ViewsIcon,
 } from "@/icons/workspace-icons";
 import { feed_reply_placeholder, type FeedUpdate } from "@/data/update-feed-data";
+import "@/components/board/drawer/thread-reply.scss";
 import "./update-feed-card.scss";
 
 type UpdateFeedCardProps = {
   update: FeedUpdate;
   /** The signed-in user, shown beside the reply box. */
   current_user: BoardPersonOption;
-  /** Fired when the Like action is pressed, toggles the viewer's like. */
+  /** Fired when the Like action is pressed on the update or one of its replies (`id` says which), toggles the viewer's like. */
   onLike?: (id: string) => void;
-  /** Fired when an emoji is picked or a reaction pill is clicked, toggles the viewer's reaction with that emoji. */
+  /** Fired when an emoji is picked or a reaction pill is clicked, on the update or one of its replies, toggles the viewer's reaction with that emoji. */
   onReact?: (id: string, emoji: string) => void;
   /** Fired when the Bookmark action is pressed. */
   onBookmark?: (id: string) => void;
@@ -60,8 +65,11 @@ const SEEN_VISIBLE_RATIO = 0.6;
 const SEEN_VISIBLE_MIN_HEIGHT_PX = 240;
 
 /**
- * A single update card in the feed: the author's avatar (with a profile hover
- * card), date, an "Unread" marker until it has been on screen for a moment
+ * A single update thread in the feed, laid out like monday.com's inbox: the
+ * update itself, then every reply inline under it in soft bubbles
+ * (`FeedThreadReply`), then the reply box, so answering a thread never adds a
+ * card of its own. The update shows the author's avatar (with a profile hover
+ * card), date, an "Unread" marker (or "N new replies") until it has been on screen for a moment
  * (the accent bar stays for the rest of the session), the board breadcrumb it is scoped to, the message body, an
  * reactions row (emoji pills, a "+" for another emoji and the "You, Haley
  * and 2 others" summary) beside the view count, the Like / React / Reply bar
@@ -103,15 +111,21 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     link,
     show_actions,
     show_composer,
+    replies,
   } = update;
+
+  // The card reads as unread while the update or any reply in it is.
+  const is_thread_unread = isThreadUnread(update);
+  const unread_reply_count = countThreadUnread(update) - Number(is_unread);
 
   const [link_copied, setLinkCopied] = useState(false);
   const [is_menu_open, setIsMenuOpen] = useState(false);
   // Whether the card arrived unread, kept so its accent bar survives being marked read while the viewer reads it.
-  const [was_unread] = useState(is_unread);
+  const [was_unread] = useState(is_thread_unread);
   const article_ref = useRef<HTMLElement>(null);
   const menu_trigger_ref = useRef<HTMLButtonElement>(null);
   const reply_composer_ref = useRef<HTMLDivElement>(null);
+  const reply_box_ref = useRef<FeedReplyComposerRef>(null);
   // The React button, or the "+" once the card has reactions, whichever opened the emoji palette.
   const [palette_anchor, setPaletteAnchor] = useState<HTMLElement | null>(null);
   // Read through a ref so a parent re-render never restarts the dwell timer below.
@@ -125,6 +139,22 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   const focusReplyComposer = () =>
     (reply_composer_ref.current?.querySelector(".ProseMirror") as HTMLElement | null)?.focus();
 
+  // Reply under a reply answers this same thread and `@mentions` the reply's author, as in monday.
+  const replyTo = (person: FeedActor) => {
+    if (person.id && person.id !== current_user.id) {
+      reply_box_ref.current?.mentionPerson({ id: person.id, name: person.name });
+    } else {
+      focusReplyComposer();
+    }
+    requestAnimationFrame(() => reply_composer_ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+  };
+
+  // A long thread keeps its newest replies in view, an unread one is never folded away.
+  const folded_replies = useFoldedReplies(
+    replies,
+    new Set(replies.filter((reply) => reply.is_unread).map((reply) => reply.id))
+  );
+
   const copyLink = () => {
     if (!link) return;
     navigator.clipboard.writeText(`${window.location.origin}${link}`).then(() => {
@@ -136,7 +166,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
   // An unread card is marked seen once it has stayed mostly on screen for a moment.
   useEffect(() => {
     const node = article_ref.current;
-    if (!is_unread || !node || typeof IntersectionObserver === "undefined") return;
+    if (!is_thread_unread || !node || typeof IntersectionObserver === "undefined") return;
 
     let timeout_id: ReturnType<typeof setTimeout> | null = null;
     const observer = new IntersectionObserver(
@@ -159,7 +189,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
       observer.disconnect();
       if (timeout_id !== null) clearTimeout(timeout_id);
     };
-  }, [id, is_unread]);
+  }, [id, is_thread_unread]);
 
   const markUnread = () => {
     setIsMenuOpen(false);
@@ -222,10 +252,10 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
             </>
           )}
           <span className="text-[12.5px] text-shell-text-muted">{date_label}</span>
-          {is_unread && (
+          {is_thread_unread && (
             <span className="flex items-center gap-1 text-[11px] font-bold text-brand-500">
               <span className="h-[7px] w-[7px] rounded-full bg-brand-500" aria-hidden="true" />
-              Unread
+              {is_unread ? "Unread" : `${unread_reply_count} new ${unread_reply_count === 1 ? "reply" : "replies"}`}
             </span>
           )}
           {show_actions && (
@@ -277,7 +307,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
               </button>
               <BoardPopover anchor_el={menu_trigger_ref.current} is_open={is_menu_open} onClose={() => setIsMenuOpen(false)} width={190} align="end">
                 <div role="menu" className="p-1.5">
-                  {!is_own && !is_unread && onMarkUnread && (
+                  {!is_own && !is_thread_unread && onMarkUnread && (
                     <button
                       type="button"
                       role="menuitem"
@@ -429,10 +459,37 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
       )}
       <EmojiPalette anchor_el={palette_anchor} is_open={palette_anchor !== null} onClose={() => setPaletteAnchor(null)} onPick={react} mode="react" />
 
+      {/* Replies, inline under the update like monday's inbox, never as cards of their own */}
+      {replies.length > 0 && (
+        <section className="feed-card__thread thread-replies" aria-label={`${replies.length} ${replies.length === 1 ? "reply" : "replies"}`}>
+          {folded_replies.is_folded && (
+            <button type="button" onClick={folded_replies.expand} className="thread-replies__toggle">
+              View {folded_replies.hidden_count} earlier {folded_replies.hidden_count === 1 ? "reply" : "replies"}
+            </button>
+          )}
+          {folded_replies.can_fold && (
+            <button type="button" onClick={folded_replies.collapse} className="thread-replies__toggle">
+              Show fewer replies
+            </button>
+          )}
+          {folded_replies.visible.map((reply) => (
+            <FeedThreadReply
+              key={reply.id}
+              reply={reply}
+              current_user={current_user}
+              onLike={onLike}
+              onReact={onReact}
+              onReplyTo={() => replyTo(reply.actor)}
+            />
+          ))}
+        </section>
+      )}
+
       {/* Inline reply composer */}
       {show_composer && (
-        <div ref={reply_composer_ref} className="border-t border-shell-border px-5 py-3.5">
+        <div ref={reply_composer_ref} className={`feed-card__composer ${replies.length > 0 ? "feed-card__composer--after-replies" : ""}`}>
           <FeedReplyComposer
+            ref={reply_box_ref}
             current_user={current_user}
             loadPeople={() => loadFeedBoardPeople(board_id)}
             loadTeams={() => loadFeedBoardTeams(board_id)}

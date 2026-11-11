@@ -11,9 +11,12 @@ import type { BoardItemCommentReactionDto, CommentLikerDto } from "@/types/board
  */
 export type FeedUpdateDto = {
   id: string;
+  /** The card this update shows in: its own id for a top-level update, its parent's for a reply. */
+  thread_id?: string;
   actor: { id: number | null; name: string; avatar_url: string | null; is_deactivated?: boolean };
   body: string;
   created_at: string;
+  edited_at?: string | null;
   board: { id: number; name: string; parent_name: string | null };
   item: { id: number; name: string } | null;
   link: string;
@@ -36,6 +39,10 @@ export type FeedUpdateDto = {
   likers: CommentLikerDto[];
   /** Emoji reactions grouped by emoji, with who reacted and when. */
   reactions: BoardItemCommentReactionDto[];
+  /** The thread's replies, oldest first, on a top-level update. Empty on a reply. */
+  replies?: FeedUpdateDto[];
+  /** Only on a live `new_feed_update` for a reply: the card of its whole thread, so the reply lands inline under its update. */
+  thread?: FeedUpdateDto;
 };
 
 /** One item change under an update, as `FeedUpdateResource::activityPayload()` sends it. */
@@ -88,6 +95,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
 
   return {
     id: dto.id,
+    thread_id: dto.thread_id ?? dto.id,
     actor: {
       id: dto.actor.id !== null ? String(dto.actor.id) : undefined,
       name: dto.actor.name,
@@ -97,6 +105,8 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
       is_deactivated: dto.actor.is_deactivated ?? false,
     },
     date_label: formatDistanceToNowStrict(new Date(dto.created_at), { addSuffix: true }),
+    created_at: dto.created_at,
+    edited_at: dto.edited_at ?? undefined,
     breadcrumb: {
       board_color: BOARD_CONDITIONAL_COLOR_PALETTE[board_seed % BOARD_CONDITIONAL_COLOR_PALETTE.length],
       crumbs: [dto.board.parent_name, dto.board.name, dto.item?.name].filter((crumb): crumb is string => Boolean(crumb)),
@@ -139,6 +149,7 @@ export function mapFeedUpdateDto(dto: FeedUpdateDto): FeedUpdate {
     link: dto.link,
     show_actions: true,
     show_composer: true,
+    replies: (dto.replies ?? []).map(mapFeedUpdateDto),
   };
 }
 

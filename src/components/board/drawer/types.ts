@@ -85,6 +85,12 @@ export type CommentQuoteRequest = {
   markdown: string;
 };
 
+/** Asks a reply composer to `@mention` someone at the end of the draft (Reply under a reply). `key` changes on every request so asking twice still fires. */
+export type CommentMentionRequest = {
+  key: number;
+  person: BoardPersonOption;
+};
+
 /** One earlier version of an edited comment or reply, for the "(edited)" history popover. */
 export type DrawerCommentRevision = {
   id: string;
@@ -344,7 +350,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
 
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
-  pickMention: (option: MentionOption) => void;
+  /** Records a picked `@mention` for the composer the picker is open in, or for `target` when given (a mention added by Reply under a reply). */
+  pickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
   notify_target: DrawerComposerTarget | null;

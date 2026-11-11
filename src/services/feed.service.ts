@@ -198,9 +198,9 @@ export const feedService = {
     return response.data;
   },
 
-  /** POST /api/feed/updates/{id}/seen */
-  async markSeen(id: string): Promise<FeedUpdateDto> {
-    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`);
+  /** POST /api/feed/updates/{id}/seen, with `whole_thread` an update is marked seen together with every reply under it. */
+  async markSeen(id: string, whole_thread = false): Promise<FeedUpdateDto> {
+    const response = await apiClient.post<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}/seen`, whole_thread ? { thread: true } : undefined);
     return response.data;
   },
 

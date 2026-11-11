@@ -11,9 +11,11 @@ type LikeButtonProps = {
   entry: ReactionSource;
   current_user: BoardPersonOption;
   onToggle: () => void;
-  /** `update-card__action` on a top-level update, `update-card__reply-action` on a reply. */
+  /** `update-card__action` on a top-level update, `thread-reply__action` (see `ThreadReply`) under a reply. */
   class_name: string;
   icon_size?: number;
+  /** Icon and count only, no "Like" word, for the small footer under a reply bubble. */
+  compact?: boolean;
 };
 
 /**
@@ -22,7 +24,7 @@ type LikeButtonProps = {
  * Reactions card on its Like tab, so everyone who liked it is listed with
  * when they did.
  */
-const LikeButton: React.FC<LikeButtonProps> = ({ entry, current_user, onToggle, class_name, icon_size }) => {
+const LikeButton: React.FC<LikeButtonProps> = ({ entry, current_user, onToggle, class_name, icon_size, compact = false }) => {
   const has_likes = entry.like_count > 0;
   const { anchor, guardClick, trigger_props, card_handlers } = usePeopleHoverList<HTMLButtonElement>(has_likes);
 
@@ -43,7 +45,7 @@ const LikeButton: React.FC<LikeButtonProps> = ({ entry, current_user, onToggle, 
         className={class_name}
       >
         <LikeIcon size={icon_size} filled={entry.liked_by_me} />
-        Like{has_likes ? ` · ${entry.like_count}` : ""}
+        {compact ? has_likes && <span>{entry.like_count}</span> : `Like${has_likes ? ` · ${entry.like_count}` : ""}`}
       </button>
       {anchor && has_likes && <ReactionsPeopleCard source={entry} current_user={current_user} initial_tab={LIKE_TAB} anchor={anchor} {...card_handlers} />}
     </>

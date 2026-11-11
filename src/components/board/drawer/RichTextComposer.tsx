@@ -40,6 +40,12 @@ export type RichTextComposerRef = {
   /** Replaces an in-progress trailing `@partial` token with `@Full Name `, or appends it if there's none. */
   insertMentionText: (name: string) => void;
   /**
+   * Puts the caret at the end of the draft and adds `@Full Name ` there, for
+   * replying to someone inside a thread. Only focuses when the draft already
+   * mentions them.
+   */
+  mentionAtEnd: (name: string) => void;
+  /**
    * Screen rectangle of the `@` (or `#`) that opens the word in front of the
    * caret, or of the caret itself when there is none, so the mention and item
    * pickers open right under what is being typed instead of over it.
@@ -164,6 +170,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // Read through refs, so the editor (created once) always calls the parent's latest callbacks.
     const trigger_change_ref = useRef(onTriggerChange);
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
+    // The latest `value` prop, read when the editor blurs, see `onBlur` below.
+    const latest_value_ref = useRef(value);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
     const open_link_modal_ref = useRef<() => void>(() => {});
     const image_input_ref = useRef<HTMLInputElement>(null);
@@ -241,7 +249,15 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onSelectionUpdate: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(detectTrigger(current_editor));
       },
-      onBlur: () => trigger_change_ref.current?.(null),
+      onBlur: ({ editor: current_editor }) => {
+        trigger_change_ref.current?.(null);
+        // Enter to send blurs through Tiptap's `blur()`, which only takes effect a frame later, so the
+        // parent's reset to "" arrives while the editor still has focus and the sync effect skips it.
+        // Applying a pending clear once the blur lands keeps the sent text from staying in the box.
+        if (latest_value_ref.current === "" && !current_editor.isEmpty) {
+          current_editor.commands.setContent("", { contentType: "markdown", emitUpdate: false });
+        }
+      },
       editorProps: {
         attributes: {
           class: `shell-rich-text-editor ${min_height_class} w-full`,
@@ -338,6 +354,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     // successful submit) into the live document, skipped while focused so
     // a live keystroke can never be clobbered by a stale `value` prop.
     useEffect(() => {
+      latest_value_ref.current = value;
       if (!editor || editor.isFocused) return;
       if (value === editor.getMarkdown()) return;
       editor.commands.setContent(value || "", { contentType: "markdown", emitUpdate: false });
@@ -361,6 +378,16 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           } else {
             editor.chain().focus().insertContent(`@${name} `).run();
           }
+        },
+        mentionAtEnd: (name: string) => {
+          if (!editor) return;
+          const text = editor.getText();
+          if (text.includes(`@${name}`)) {
+            editor.commands.focus("end");
+            return;
+          }
+          const separator = text.length > 0 && !/\s$/.test(text) ? " " : "";
+          editor.chain().focus("end").insertContent(`${separator}@${name} `).run();
         },
         getTriggerAnchorRect: (trigger_char: "@" | "#") => {
           if (!editor || editor.isDestroyed) return null;

@@ -11,6 +11,15 @@ import { bumpReaction } from "@/components/board/drawer/reactionToggle";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import { getUserInitials } from "@/lib/user";
 import {
+  appendReply,
+  collectFeedIds,
+  countThreadUnread,
+  isThreadUnread,
+  mergeThread,
+  patchFeedEntry,
+  replaceFeedEntry,
+} from "./feedThreads";
+import {
   default_feed_filters,
   feed_page_size,
   type FeedAuthorOption,
@@ -41,7 +50,8 @@ function matchesActiveTab(dto: FeedUpdateDto, tab: UpdateFeedTabId, viewer_id: n
   if (tab === "account") return true;
   if (tab === "following") return dto.is_following_item || dto.is_following_board;
   if (tab === "pinned") return dto.pinned;
-  return dto.is_mentioned || dto.is_bookmarked || dto.actor.id === viewer_id;
+  // A reply to the viewer's own update reaches them too, as the server's "all" reach says.
+  return dto.is_mentioned || dto.is_bookmarked || dto.actor.id === viewer_id || dto.thread?.actor.id === viewer_id;
 }
 
 /** Local `YYYY-MM-DD` of an ISO timestamp, the same day the date pickers speak. */
@@ -75,10 +85,16 @@ export function matchesFeedFilters(dto: FeedUpdateDto, filters: FeedFilters): bo
  * Fetches the current user's Update Feed for the given tab/board filter, one
  * cursor page at a time, keeps it live via the `feed.{user_id}` Reverb
  * channel, and exposes the card actions (bookmark, like, reply, schedule, mark
- * seen, follow and unfollow a board or item). Updates other people post while the feed is open are held back in
+ * seen, follow and unfollow a board or item).
+ *
+ * The feed is a list of threads, as in monday.com's inbox: one card per
+ * top-level update with its replies inline under it. A reply, the viewer's
+ * own included, joins its thread's card instead of becoming a card of its
+ * own. Like, React and the other actions take either a card id or a reply id.
+ * New threads other people start while the feed is open are held back in
  * `pending_updates` (the "N new updates" banner) instead of shoving the cards
- * the viewer is reading around, the viewer's own posts show up straight away.
- * Mirrors `useNotifications`.
+ * the viewer is reading around, a new reply to a thread already on screen
+ * shows up inside it in place. Mirrors `useNotifications`.
  */
 export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, load_updates = true }: UseFeedUpdatesOptions) {
   const { user } = useAuth();
@@ -100,7 +116,7 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   const counts_refresh_timeout_ref = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    known_ids_ref.current = new Set([...updates, ...pending_updates].map((update) => update.id));
+    known_ids_ref.current = collectFeedIds([...updates, ...pending_updates]);
   }, [updates, pending_updates]);
 
   const loadUpdates = useCallback(async () => {
@@ -206,15 +222,26 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
 
       if (!load_updates) return;
       if (board_id && board_id !== "all-boards" && String(payload.board.id) !== board_id) return;
-      if (!matchesActiveTab(payload, tab, user.id)) return;
-      if (!matchesFeedFilters(payload, filters)) return;
       if (known_ids_ref.current.has(payload.id)) return;
 
-      const update = mapFeedUpdateDto(payload);
+      // A reply arrives with its whole thread, the card it belongs in.
+      const card = mapFeedUpdateDto(payload.thread ?? payload);
+
+      // The thread is already on screen (or waiting behind the banner): the reply shows up inside it, in place.
+      if (known_ids_ref.current.has(card.id)) {
+        const refresh = (cards: FeedUpdate[]) => cards.map((current) => (current.id === card.id ? mergeThread(current, card) : current));
+        setUpdates(refresh);
+        setPendingUpdates(refresh);
+        return;
+      }
+
+      if (!matchesActiveTab(payload, tab, user.id)) return;
+      if (!matchesFeedFilters(payload, filters)) return;
+
       if (payload.actor.id === user.id) {
-        setUpdates((previous) => [update, ...previous]);
+        setUpdates((previous) => [card, ...previous]);
       } else {
-        setPendingUpdates((previous) => [update, ...previous]);
+        setPendingUpdates((previous) => [card, ...previous.filter((pending) => pending.id !== card.id)]);
       }
     });
   }, [user, tab, board_id, filters, load_updates]);
@@ -229,24 +256,18 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   }, [pending_updates]);
 
   /**
-   * Swaps a card for the server's copy after an action. The action endpoints
-   * do not send the item changes timeline, so the one already on the card is
-   * kept instead of disappearing.
+   * Swaps a card, or one reply inside its card, for the server's copy after
+   * an action. The action endpoints do not send the item changes timeline, so
+   * the one already on the card is kept instead of disappearing.
    */
   const applyUpdate = useCallback((dto: FeedUpdateDto) => {
     const mapped = mapFeedUpdateDto(dto);
-    setUpdates((previous) =>
-      previous.map((update) => {
-        if (update.id !== mapped.id) return update;
-        const keeps_activity = mapped.activity.length === 0 && update.activity.length > 0;
-        return keeps_activity ? { ...mapped, activity: update.activity, activity_total: update.activity_total } : mapped;
-      })
-    );
+    setUpdates((previous) => replaceFeedEntry(previous, mapped));
   }, []);
 
-  /** Changes one card in place, used by the optimistic Like and React toggles. */
+  /** Changes one card or one reply in place, used by the optimistic Like and React toggles. */
   const patchUpdate = useCallback((id: string, transform: (update: FeedUpdate) => FeedUpdate) => {
-    setUpdates((previous) => previous.map((update) => (update.id === id ? transform(update) : update)));
+    setUpdates((previous) => patchFeedEntry(previous, id, transform));
   }, []);
 
   /** Only the like and reaction fields of a server response, so a slower reply never undoes other changes to the card. */
@@ -353,14 +374,15 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     [applyUpdate]
   );
 
+  /** Reading a card reads the whole thread: the update and every reply in it are marked seen at once. */
   const markSeen = useCallback(
     async (id: string) => {
       const target = updates.find((update) => update.id === id);
-      if (!target?.is_unread) return;
+      if (!target || !isThreadUnread(target)) return;
 
-      const dto = await feedService.markSeen(id);
+      const dto = await feedService.markSeen(id, true);
       applyUpdate(dto);
-      setUnreadCount((previous) => Math.max(0, previous - 1));
+      setUnreadCount((previous) => Math.max(0, previous - countThreadUnread(target)));
       scheduleCountsRefresh();
     },
     [updates, applyUpdate, scheduleCountsRefresh]
@@ -379,14 +401,22 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
   /** "Mark all as read": marks everything the current tab, board and filters match as seen. */
   const markAllSeen = useCallback(async () => {
     const result = await feedService.markAllSeen(tab, board_id, filters);
-    setUpdates((previous) => previous.map((update) => ({ ...update, is_unread: false })));
+    setUpdates((previous) =>
+      previous.map((update) => ({
+        ...update,
+        is_unread: false,
+        replies: update.replies.map((reply) => ({ ...reply, is_unread: false })),
+      }))
+    );
     setUnreadCount(result.unread_count);
     loadBoards();
   }, [tab, board_id, filters, loadBoards]);
 
+  /** Posts a reply, which shows up at the end of its thread's card, never as a card of its own. */
   const replyToUpdate = useCallback(
     async (id: string, body: string, mentioned_user_ids: number[] = []) => {
-      await feedService.reply(id, body, mentioned_user_ids);
+      const dto = await feedService.reply(id, body, mentioned_user_ids);
+      setUpdates((previous) => appendReply(previous, mapFeedUpdateDto(dto)));
     },
     []
   );

@@ -100,7 +100,7 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFiles
 
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
-  pickMention: (option: MentionOption) => void;
+  pickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
   notify_target: DrawerComposerTarget | null;
@@ -278,12 +278,13 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   // ref, called by `CommentComposer`), since only the live editor instance
   // knows where the cursor actually is — this only tracks which ids the
   // in-progress draft has mentioned, for the eventual `postComment()` payload.
-  const pickMention = (option: MentionOption) => {
-    if (!mention_target) return;
+  const pickMention = (option: MentionOption, target?: DrawerComposerTarget) => {
+    const resolved_target = target ?? mention_target;
+    if (!resolved_target) return;
     const picked_ids = mentionOptionUserIds(option);
     setMentionIdsByTarget((current) => ({
       ...current,
-      [mention_target]: Array.from(new Set([...(current[mention_target] ?? []), ...picked_ids])),
+      [resolved_target]: Array.from(new Set([...(current[resolved_target] ?? []), ...picked_ids])),
     }));
     setMentionTarget(null);
   };

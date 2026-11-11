@@ -154,12 +154,22 @@ export type FeedActivityEntry = {
   time_label: string;
 };
 
-/** A single feed update rendered as a card in the list. */
+/**
+ * A single feed update. A top-level update is rendered as a card, with every
+ * reply to it inline under it in `replies` (monday.com's inbox layout). A
+ * reply uses the same shape, with an empty `replies`.
+ */
 export type FeedUpdate = {
   id: string;
+  /** The card this update shows in: its own id for a top-level update, its parent's for a reply. */
+  thread_id: string;
   actor: FeedActor;
   /** Relative date label, e.g. "2 days ago". */
   date_label: string;
+  /** Raw ISO time it was posted, for the full date tooltip. */
+  created_at: string;
+  /** ISO time of the last edit, absent when it was never edited. */
+  edited_at?: string;
   breadcrumb: FeedBreadcrumb;
   /** Raw comment body (sanitized HTML) — rendered via `RichTextContent`. */
   body: string;
@@ -198,6 +208,8 @@ export type FeedUpdate = {
   show_actions?: boolean;
   /** Shows the inline reply composer row. */
   show_composer?: boolean;
+  /** The thread's replies, oldest first, shown inline under the update. Always empty on a reply. */
+  replies: FeedUpdate[];
 };
 
 /** Tabs shown in the feed content header, in display order. */
