@@ -5,6 +5,7 @@ import PersonAvatar from "../PersonAvatar";
 import type { BoardPersonOption } from "../toolbar/types";
 import { getDeactivatedClass } from "@/lib/deactivated-user";
 import { LikeIcon } from "@/icons/drawer-icons";
+import { ChevronLeftIcon, ChevronRightIcon } from "@/icons/workspace-icons";
 import { formatRelativeTime } from "./commentMapping";
 import {
   ALL_TAB,
@@ -17,6 +18,7 @@ import {
   type ReactionTab,
   type ReactionTabKey,
 } from "./reactionPeople";
+import { useHorizontalOverflow } from "./useHorizontalOverflow";
 import "./reactions-people-card.scss";
 
 const CARD_WIDTH_PX = 304;
@@ -24,6 +26,8 @@ const CARD_WIDTH_PX = 304;
 const CARD_ROOM_PX = 340;
 const VIEWPORT_MARGIN_PX = 8;
 const TRIGGER_GAP_PX = 6;
+/** Room kept between a selected tab and the strip's edge, so the scroll arrows never cover it. */
+const TAB_EDGE_INSET_PX = 32;
 
 type ReactionsPeopleCardProps = {
   source: ReactionSource;
@@ -92,6 +96,8 @@ const ReactionsPeopleCard: React.FC<ReactionsPeopleCardProps> = ({ source, curre
   const id_prefix = useId();
   const tabId = (key: ReactionTabKey) => `${id_prefix}-tab-${tabs.findIndex((tab) => tab.key === key)}`;
   const tab_refs = useRef(new Map<ReactionTabKey, HTMLButtonElement>());
+  const tabs_ref = useRef<HTMLDivElement>(null);
+  const has_revealed_tab_ref = useRef(false);
   const [placement, setPlacement] = useState<Placement | null>(null);
   const [selected_tab, setSelectedTab] = useState<ReactionTabKey>(initial_tab);
 
@@ -100,6 +106,25 @@ const ReactionsPeopleCard: React.FC<ReactionsPeopleCardProps> = ({ source, curre
   // The selected emoji can disappear while the card is open (its last reaction was removed).
   const active_tab = tabs.some((tab) => tab.key === selected_tab) ? selected_tab : ALL_TAB;
   const visible_rows = filterRowsByTab(rows, active_tab);
+  const tabs_signature = tabs.map((tab) => tab.key).join("|");
+  const { can_scroll_start, can_scroll_end, scrollByStep, is_dragging } = useHorizontalOverflow(tabs_ref, tabs_signature);
+
+  // Many emoji do not fit in one row, keep the selected tab in view (it may be the hovered emoji, far to the right).
+  useEffect(() => {
+    if (!placement) return;
+    const strip = tabs_ref.current;
+    const tab = tab_refs.current.get(active_tab);
+    if (!strip || !tab) return;
+    const tab_start = tab.offsetLeft - strip.offsetLeft;
+    const tab_end = tab_start + tab.offsetWidth;
+    // The arrows sit on top of the strip's edges, so the tab has to clear them too.
+    const inset = strip.clientWidth > 0 ? TAB_EDGE_INSET_PX : 0;
+    // Opening straight on a far tab jumps there, switching tabs afterwards glides.
+    const behavior: ScrollBehavior = has_revealed_tab_ref.current ? "smooth" : "auto";
+    has_revealed_tab_ref.current = true;
+    if (tab_start - inset < strip.scrollLeft) strip.scrollTo({ left: Math.max(0, tab_start - inset), behavior });
+    else if (tab_end + inset > strip.scrollLeft + strip.clientWidth) strip.scrollTo({ left: tab_end + inset - strip.clientWidth, behavior });
+  }, [active_tab, placement]);
 
   useLayoutEffect(() => {
     const rect = anchor.getBoundingClientRect();
@@ -167,7 +192,24 @@ const ReactionsPeopleCard: React.FC<ReactionsPeopleCardProps> = ({ source, curre
         onEscape();
       }}
     >
-      <div className="reactions-card__tabs" role="tablist" aria-label="Filter by reaction" onKeyDown={handleTabKeyDown}>
+      <div
+        className="reactions-card__tabs-frame"
+        data-overflow-start={can_scroll_start || undefined}
+        data-overflow-end={can_scroll_end || undefined}
+        data-dragging={is_dragging || undefined}
+      >
+      {/* Mouse only shortcuts, keyboard users move through the tabs with the arrow keys. */}
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="reactions-card__tabs-arrow"
+        data-side="start"
+        onClick={() => scrollByStep(-1)}
+      >
+        <ChevronLeftIcon size={10} />
+      </button>
+      <div ref={tabs_ref} className="reactions-card__tabs" role="tablist" aria-label="Filter by reaction" onKeyDown={handleTabKeyDown}>
         {tabs.map((tab) => {
           const is_active = tab.key === active_tab;
           return (
@@ -192,6 +234,17 @@ const ReactionsPeopleCard: React.FC<ReactionsPeopleCardProps> = ({ source, curre
             </button>
           );
         })}
+      </div>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        className="reactions-card__tabs-arrow"
+        data-side="end"
+        onClick={() => scrollByStep(1)}
+      >
+        <ChevronRightIcon size={10} />
+      </button>
       </div>
 
       <ul className="reactions-card__list" role="tabpanel" aria-labelledby={tabId(active_tab)}>

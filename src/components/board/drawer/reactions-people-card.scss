@@ -100,17 +100,107 @@ $ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 
+// The strip scrolls sideways when the emoji do not fit. A soft fade and a
+// round arrow show up only on the side that has more tabs, so it never looks
+// cut off, and both go away once that edge is reached.
+$tabs-fade: 36px;
+$tabs-arrow-size: 24px;
+
+.reactions-card__tabs-frame {
+  position: relative;
+  flex: none;
+  border-bottom: 1px solid var(--rx-divider);
+}
+
 .reactions-card__tabs {
   display: flex;
-  flex: none;
   gap: 2px;
   padding: 6px 8px 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--rx-divider);
+  overscroll-behavior-x: contain;
   scrollbar-width: none;
 
   &::-webkit-scrollbar {
     display: none;
+  }
+
+  // An open hand says the strip can be dragged sideways, a closed one while it is.
+  .reactions-card__tabs-frame:is([data-overflow-start], [data-overflow-end]) & {
+    cursor: grab;
+  }
+
+  .reactions-card__tabs-frame[data-dragging] & {
+    cursor: grabbing;
+    user-select: none;
+
+    .reactions-card__tab {
+      cursor: grabbing;
+      pointer-events: none;
+    }
+  }
+
+  // Fade only the edges that hide something.
+  .reactions-card__tabs-frame[data-overflow-start] & {
+    mask-image: linear-gradient(to right, transparent, #000 $tabs-fade);
+  }
+
+  .reactions-card__tabs-frame[data-overflow-end] & {
+    mask-image: linear-gradient(to left, transparent, #000 $tabs-fade);
+  }
+
+  .reactions-card__tabs-frame[data-overflow-start][data-overflow-end] & {
+    mask-image: linear-gradient(to right, transparent, #000 $tabs-fade, #000 calc(100% - #{$tabs-fade}), transparent);
+  }
+}
+
+.reactions-card__tabs-arrow {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  display: inline-flex;
+  width: $tabs-arrow-size;
+  height: $tabs-arrow-size;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--rx-surface);
+  box-shadow:
+    0 1px 4px var(--rx-shadow),
+    0 0 0 1px var(--rx-outline);
+  color: var(--rx-text-secondary);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-40%) scale(0.85);
+  transition:
+    opacity 140ms ease,
+    transform 140ms $ease-out,
+    color 120ms ease,
+    background-color 120ms ease;
+
+  &[data-side="start"] {
+    left: 4px;
+  }
+
+  &[data-side="end"] {
+    right: 4px;
+  }
+
+  &:hover {
+    background: var(--rx-surface-raised);
+    color: var(--rx-text);
+  }
+
+  .reactions-card__tabs-frame[data-overflow-start] &[data-side="start"],
+  .reactions-card__tabs-frame[data-overflow-end] &[data-side="end"] {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-40%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reactions-card__tabs-arrow {
+    transition: opacity 140ms ease;
   }
 }
 
@@ -120,8 +210,8 @@ $ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   height: 36px;
   flex: none;
   align-items: center;
-  gap: 6px;
-  padding: 0 10px;
+  gap: 5px;
+  padding: 0 8px;
   border-radius: 6px 6px 0 0;
   color: var(--rx-text-secondary);
   font-size: 13px;
