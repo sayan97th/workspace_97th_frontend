@@ -25,6 +25,9 @@ const NotificationPersonFilter: React.FC<NotificationPersonFilterProps> = ({ opt
   const search_ref = useRef<HTMLInputElement>(null);
   const [is_open, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [active_index, setActiveIndex] = useState(0);
+  // Distance from the card's right edge to the notch, so it points at the trigger's middle.
+  const [arrow_right, setArrowRight] = useState(70);
 
   const selected_person = options.find((option) => option.id === selected_id) ?? null;
   const visible_options = useMemo(() => {
@@ -35,9 +38,28 @@ const NotificationPersonFilter: React.FC<NotificationPersonFilterProps> = ({ opt
   useEffect(() => {
     if (!is_open) return;
     setQuery("");
+    setActiveIndex(0);
+    if (trigger_ref.current) setArrowRight(Math.max(12, trigger_ref.current.offsetWidth / 2 - 6));
     const frame_id = requestAnimationFrame(() => search_ref.current?.focus());
     return () => cancelAnimationFrame(frame_id);
   }, [is_open]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [query]);
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (visible_options.length === 0) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setActiveIndex((previous) => (previous + step + visible_options.length) % visible_options.length);
+    } else if (event.key === "Enter") {
+      event.preventDefault();
+      const option = visible_options[active_index] ?? visible_options[0];
+      pickPerson(option.id);
+    }
+  };
 
   const pickPerson = (id: string) => {
     onSelect(id === selected_id ? null : id);
@@ -59,8 +81,11 @@ const NotificationPersonFilter: React.FC<NotificationPersonFilterProps> = ({ opt
         <ChevronDownIcon size={12} />
       </button>
 
-      <BoardPopover anchor_el={trigger_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={232}>
-        <div className="nc-person-menu">
+      <BoardPopover anchor_el={trigger_ref.current} is_open={is_open} onClose={() => setIsOpen(false)} width={232} unstyled>
+        <div
+          className="nc-person-menu"
+          style={{ "--nc-person-menu-arrow": `${arrow_right}px` } as React.CSSProperties}
+        >
           <label className="nc-person-menu__search">
             <span className="sr-only">Search people</span>
             <input
@@ -68,28 +93,32 @@ const NotificationPersonFilter: React.FC<NotificationPersonFilterProps> = ({ opt
               type="text"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && visible_options[0]) pickPerson(visible_options[0].id);
-              }}
+              onKeyDown={handleSearchKeyDown}
+              aria-controls="nc-person-menu-list"
+              aria-activedescendant={visible_options[active_index] ? `nc-person-option-${visible_options[active_index].id}` : undefined}
             />
-            <SearchIcon size={14} />
+            <SearchIcon size={16} />
           </label>
 
           <div className="nc-person-menu__label">Suggested people</div>
-          <div role="listbox" aria-label="Suggested people" className="nc-person-menu__list">
+          <div id="nc-person-menu-list" role="listbox" aria-label="Suggested people" className="nc-person-menu__list">
             {visible_options.length === 0 ? (
               <p className="nc-person-menu__empty">{options.length === 0 ? "No people yet" : "No people match"}</p>
             ) : (
-              visible_options.map((option) => {
+              visible_options.map((option, index) => {
                 const is_selected = option.id === selected_id;
+                const is_active = index === active_index;
                 return (
                   <button
                     key={option.id}
+                    id={`nc-person-option-${option.id}`}
                     type="button"
+                    tabIndex={-1}
+                    onMouseEnter={() => setActiveIndex(index)}
                     role="option"
                     aria-selected={is_selected}
                     onClick={() => pickPerson(option.id)}
-                    className={`nc-person-menu__option ${is_selected ? "is-selected" : ""}`}
+                    className={`nc-person-menu__option ${is_selected ? "is-selected" : ""} ${is_active ? "is-active" : ""}`}
                   >
                     <PersonAvatar
                       person={{

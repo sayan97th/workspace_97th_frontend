@@ -38,6 +38,10 @@ $tokens: (
   "like-soft": (#e5f1ff, rgba(87, 155, 252, 0.18)),
   "save": (#d17a00, #fdab3d),
   "save-soft": (#fff3e0, rgba(253, 171, 61, 0.18)),
+  // The "Filter by person" card.
+  "menu-bg": (#ffffff, #30324e),
+  "menu-shadow": (0 6px 20px rgba(0, 0, 0, 0.2), 0 6px 20px rgba(0, 0, 0, 0.5)),
+  "option-active": (#dcdfec, rgba(255, 255, 255, 0.1)),
 );
 
 @mixin token-set($index) {
@@ -256,20 +260,46 @@ html.dark {
   white-space: nowrap;
 }
 
+// The popover is `unstyled`, so the card draws its own chrome: white,
+// rounded, soft shadow and a small notch pointing at the trigger.
 .nc-person-menu {
-  padding: 16px 12px 12px;
+  position: relative;
+  margin-top: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--nc-menu-bg);
+  box-shadow: var(--nc-menu-shadow);
+  color: var(--nc-text);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    right: var(--nc-person-menu-arrow, 70px);
+    width: 12px;
+    height: 12px;
+    border-radius: 2px 0 0 0;
+    background: var(--nc-menu-bg);
+    transform: rotate(45deg);
+  }
 }
 
 .nc-person-menu__search {
   display: flex;
-  height: 36px;
+  height: 32px;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 8px 0 12px;
   border: 1px solid var(--nc-border-strong);
   border-radius: 4px;
+  background: var(--nc-menu-bg);
   color: var(--nc-text-secondary);
   cursor: text;
+  transition: border-color 0.15s ease;
+
+  &:hover {
+    border-color: var(--nc-text);
+  }
 
   &:focus-within {
     border-color: var(--nc-primary);
@@ -290,8 +320,9 @@ html.dark {
 }
 
 .nc-person-menu__label {
-  margin: 16px 0 6px;
+  margin: 20px 0 8px;
   font-size: 14px;
+  line-height: 20px;
   color: var(--nc-text-secondary);
 }
 
@@ -306,17 +337,18 @@ html.dark {
 .nc-person-menu__option {
   display: flex;
   width: 100%;
+  min-height: 40px;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
+  gap: 12px;
+  padding: 4px 8px;
   border-radius: 4px;
   text-align: left;
   font-size: 14px;
   color: var(--nc-text);
-  transition: background-color 0.15s ease;
+  transition: background-color 0.1s ease;
 
-  &:hover {
-    background: var(--nc-hover);
+  &.is-active {
+    background: var(--nc-option-active);
   }
 
   &.is-selected {
