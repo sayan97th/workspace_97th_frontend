@@ -278,12 +278,24 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     [patchUpdate]
   );
 
+  /**
+   * One click "Save for later": flips the card's bookmark at once, then keeps
+   * only the server's `is_bookmarked` so a slower reply never undoes other
+   * changes. Rolled back and rethrown when the request fails.
+   */
   const bookmarkUpdate = useCallback(
     async (id: string) => {
-      const dto = await feedService.toggleBookmark(id);
-      applyUpdate(dto);
+      const flip = (update: FeedUpdate) => ({ ...update, is_bookmarked: !update.is_bookmarked });
+      patchUpdate(id, flip);
+      try {
+        const dto = await feedService.toggleBookmark(id);
+        patchUpdate(id, (update) => ({ ...update, is_bookmarked: dto.is_bookmarked }));
+      } catch (error) {
+        patchUpdate(id, flip);
+        throw error;
+      }
     },
-    [applyUpdate]
+    [patchUpdate]
   );
 
   /**

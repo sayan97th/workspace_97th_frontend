@@ -96,7 +96,7 @@ const renderTabIcon = (tab: UpdateFeedTab) => {
 const EMPTY_TAB_MESSAGES: Record<string, { title: string; description: string }> = {
   all: { title: "Your update feed is empty", description: "Updates from the boards you are subscribed to will show up here." },
   mentioned: { title: "No mentions yet", description: "Updates where someone @mentions you will show up here." },
-  bookmarked: { title: "No bookmarks yet", description: "Use \"Bookmark this update to inbox\" in an update's menu to keep it here." },
+  bookmarked: { title: "No bookmarks yet", description: "Click the bookmark on an update to save it for later, it will wait for you here." },
   account: { title: "No updates yet", description: "Updates from every board in your account will show up here." },
 };
 
@@ -224,9 +224,27 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
       ),
     [replyToUpdate, toastError]
   );
+  /**
+   * One click "Save for later" (the bookmark on the card), confirmed by a
+   * toast whose Undo flips it straight back.
+   */
   const bookmarkCard = useCallback(
-    (id: string) => void bookmarkUpdate(id).catch(() => toastError("Couldn't update the bookmark. Please try again.")),
-    [bookmarkUpdate, toastError]
+    async (id: string) => {
+      const was_bookmarked = updates.find((update) => update.id === id)?.is_bookmarked ?? false;
+      try {
+        await bookmarkUpdate(id);
+      } catch {
+        toastError("Couldn't update the bookmark. Please try again.");
+        return;
+      }
+      toastSuccess(was_bookmarked ? "Removed from Bookmarked" : "Saved for later", {
+        description: was_bookmarked ? undefined : "Find it in the Bookmarked tab.",
+        action_text: "Undo",
+        onAction: () =>
+          void bookmarkUpdate(id).catch(() => toastError("Couldn't update the bookmark. Please try again.")),
+      });
+    },
+    [updates, bookmarkUpdate, toastSuccess, toastError]
   );
 
   /**
@@ -609,7 +627,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
                       current_user={current_user}
                       onLike={likeCard}
                       onReact={reactToCard}
-                      onBookmark={bookmarkCard}
+                      onBookmark={(id) => void bookmarkCard(id)}
                       onReply={replyToCard}
                       onToggleRead={(id, is_unread) => void toggleCardRead(id, is_unread)}
                       onFollow={setFollowing}

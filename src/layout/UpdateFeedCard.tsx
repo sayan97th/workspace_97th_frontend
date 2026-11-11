@@ -49,7 +49,7 @@ type UpdateFeedCardProps = {
   onLike?: (id: string) => void;
   /** Fired when an emoji is picked or a reaction pill is clicked, on the update or one of its replies. */
   onReact?: (id: string, emoji: string) => void;
-  /** Fired by the menu's "Bookmark this update to inbox". */
+  /** Fired by the one click bookmark in the header ("Save for later") and the menu's "Bookmark this update to inbox". */
   onBookmark?: (id: string) => void;
   /** Fired when a reply is submitted from the inline composer, with the ids of everyone it `@mentions`. */
   onReply?: (id: string, body: string, mentioned_user_ids: number[]) => void;
@@ -320,6 +320,19 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
                 data-active={is_following ? "true" : undefined}
               >
                 <BellIcon size={15} />
+              </button>
+            )}
+            {show_actions && onBookmark && (
+              <button
+                type="button"
+                onClick={() => onBookmark(id)}
+                aria-pressed={is_bookmarked}
+                aria-label={is_bookmarked ? "Remove from saved" : "Save for later"}
+                title={is_bookmarked ? "Saved in Bookmarked. Click to remove" : "Save for later"}
+                className="uf-card__tool uf-card__tool--bookmark"
+                data-active={is_bookmarked ? "true" : undefined}
+              >
+                <BookmarkIcon size={15} filled={is_bookmarked} />
               </button>
             )}
             {show_actions && (
