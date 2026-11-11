@@ -371,12 +371,19 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
 
     // Mirrors an external reset (e.g. the composer clearing after a
     // successful submit) into the live document, skipped while focused so
-    // a live keystroke can never be clobbered by a stale `value` prop.
+    // a live keystroke can never be clobbered by a stale `value` prop. An
+    // empty, focused box still takes a non empty value: that is a saved draft
+    // restored after the box auto focused, with nothing typed to overwrite.
     useEffect(() => {
       latest_value_ref.current = value;
-      if (!editor || editor.isFocused) return;
+      if (!editor) return;
+      const is_restoring_into_empty = editor.isEmpty && value.trim() !== "";
+      if (editor.isFocused && !is_restoring_into_empty) return;
       if (value === editor.getMarkdown()) return;
+      const was_focused = editor.isFocused;
       editor.commands.setContent(value || "", { contentType: "markdown", emitUpdate: false });
+      // A draft restored into the box being typed in leaves the caret after it.
+      if (was_focused) editor.commands.focus("end");
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [value, editor]);
 

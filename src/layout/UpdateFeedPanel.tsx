@@ -9,6 +9,7 @@ import { useInfiniteScroll } from "@/hooks/useInfiniteScroll";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { getUserInitials } from "@/lib/user";
 import UpdateFeedCard from "./UpdateFeedCard";
+import FeedDraftsList from "./FeedDraftsList";
 import { useFeedUpdates } from "@/hooks/useFeedUpdates";
 import {
   BookmarkIcon,
@@ -84,11 +85,20 @@ const GearIcon: React.FC<{ size?: number }> = ({ size = 18 }) => (
   </svg>
 );
 
+/** The pencil in front of "Drafts". */
+const DraftTabIcon: React.FC<{ size?: number }> = ({ size = 16 }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <path d="M10.6 2.6a1.6 1.6 0 0 1 2.3 2.3L6 11.8l-3 .8.8-3z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+    <path d="M9.4 3.8l2.3 2.3M8.5 13.5h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+  </svg>
+);
+
 /** Resolves a tab's leading glyph. */
 const renderTabIcon = (tab: UpdateFeedTab) => {
   if (tab.icon === "mention") return <MentionIcon size={15} />;
   if (tab.icon === "bookmark") return <BookmarkIcon size={15} />;
   if (tab.icon === "account") return <BriefcaseIcon size={16} />;
+  if (tab.icon === "draft") return <DraftTabIcon size={15} />;
   return null;
 };
 
@@ -133,6 +143,9 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   const help_trigger_ref = useRef<HTMLButtonElement>(null);
   const settings_trigger_ref = useRef<HTMLButtonElement>(null);
 
+  // "Drafts" lists the user's unsent updates (FeedDraftsList), not feed cards, so the feed itself keeps showing "All updates" data underneath.
+  const is_drafts_tab = active_tab === "drafts";
+
   const filters = useMemo<FeedFilters>(() => ({ ...default_feed_filters, unread_only: show_mode === "unread" }), [show_mode]);
 
   const {
@@ -159,7 +172,7 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
     showBoard,
     editUpdate,
     deleteUpdate,
-  } = useFeedUpdates({ tab: active_tab, board_id: active_board, filters });
+  } = useFeedUpdates({ tab: is_drafts_tab ? "all" : active_tab, board_id: active_board, filters });
 
   const current_user: BoardPersonOption = useMemo(
     () =>
@@ -536,6 +549,10 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
 
           <div ref={scroll_area_ref} className="uf-main__scroll">
             <div className="uf-main__inner">
+              {is_drafts_tab ? (
+                <FeedDraftsList board_filter={active_board} all_boards_id={feed_default_board_filter} onNavigate={onClose} />
+              ) : (
+              <>
               <div className="uf-toolbar" data-has-undo={last_closed ? "true" : undefined}>
                 <button
                   ref={show_trigger_ref}
@@ -642,6 +659,8 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
               {/* Sentinel: reaching it loads the next page. */}
               <div ref={sentinel_ref} aria-hidden="true" className="h-px" />
               {is_loading_more && <p className="uf-loading-more">Loading more...</p>}
+              </>
+              )}
             </div>
           </div>
         </section>

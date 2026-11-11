@@ -15,10 +15,11 @@ export type UpdateFeedTabId =
   | "account"
   | "following"
   | "pinned"
-  | "scheduled";
+  | "scheduled"
+  | "drafts";
 
 /** Optional leading glyph for a tab, resolved to an icon in the panel. */
-export type UpdateFeedTabIcon = "mention" | "bookmark" | "following" | "pin" | "account";
+export type UpdateFeedTabIcon = "mention" | "bookmark" | "following" | "pin" | "account" | "draft";
 
 /** A tab shown in the feed content header. */
 export type UpdateFeedTab = {
@@ -226,6 +227,7 @@ export const update_feed_tabs: UpdateFeedTab[] = [
   { id: "mentioned", label: "I was mentioned", icon: "mention" },
   { id: "bookmarked", label: "Bookmarked", icon: "bookmark" },
   { id: "account", label: "All account updates", icon: "account" },
+  { id: "drafts", label: "Drafts", icon: "draft" },
 ];
 
 /** What the "Show" picker above the cards offers: only unread threads, or every thread. */
@@ -245,6 +247,7 @@ export const feed_tab_help: { title: string; description: string }[] = [
   { title: "I was mentioned", description: "Only updates you were @mentioned in." },
   { title: "Bookmarked", description: "All updates that you bookmarked for later." },
   { title: "All account updates", description: "Updates from every board in your account, even if you are not subscribed." },
+  { title: "Drafts", description: "Updates and replies you started writing and have not sent yet." },
 ];
 
 /** Tab shown selected when the drawer first opens. */

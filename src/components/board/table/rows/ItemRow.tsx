@@ -8,6 +8,7 @@ import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import { getConvertBlockedReason } from "../menus/rowMenuRules";
 import TreeBar from "./TreeBar";
+import ItemDraftBadge from "./ItemDraftBadge";
 import { conditionalColorFill } from "../colorUtils";
 import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
@@ -323,6 +324,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
                 {item.comment_count > 99 ? "99+" : item.comment_count}
               </span>
             )}
+            <ItemDraftBadge item_id={item.id} />
           </button>
         </div>
 

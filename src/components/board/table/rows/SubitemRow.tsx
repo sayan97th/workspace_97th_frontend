@@ -7,6 +7,7 @@ import { SUB_ROW_HEIGHT_PX, subGridTemplate, subStickyOffsets } from "../layoutU
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
+import ItemDraftBadge from "./ItemDraftBadge";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import ItemNameLabel from "./ItemNameLabel";
@@ -234,6 +235,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
                 {sub.comment_count > 99 ? "99+" : sub.comment_count}
               </span>
             )}
+            <ItemDraftBadge item_id={sub.id} />
           </button>
         </div>
 

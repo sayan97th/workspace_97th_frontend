@@ -137,6 +137,7 @@ import {
 } from "./boardItemTree";
 import { useBoardViewTabs } from "@/hooks/useBoardViewTabs";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
+import { useBoardCommentDrafts } from "@/hooks/useCommentDrafts";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { useBoardFilterUrlState } from "@/hooks/useBoardFilterUrlState";
 import { buildPageTitle } from "@/lib/page-title";
@@ -2820,6 +2821,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   );
 
   const drawer = useBoardItemDrawer(drawer_config);
+  // The viewer's unsent update drafts on this board: restored by the drawers and marked on each row's chat bubble.
+  useBoardCommentDrafts(board_id);
 
   // ── Board-wide discussion drawer ("Board updates") ──
   const discussion_drawer = useBoardDiscussionDrawer({
@@ -2833,7 +2836,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   });
 
   // `/boards/{id}?update={comment_id}` (a copied link to a board update) opens the discussion drawer, which then scrolls to that update.
-  const discussion_update_param = search_params.get("update");
+  // `?discussion=open` (a board updates draft in the Update feed's Drafts tab) just opens it.
+  const discussion_update_param = search_params.get("update") ?? (search_params.get("discussion") ? "open" : null);
   const opened_discussion_param_ref = useRef<string | null>(null);
   useEffect(() => {
     if (!discussion_update_param || opened_discussion_param_ref.current === discussion_update_param) return;

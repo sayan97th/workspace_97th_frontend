@@ -13,6 +13,7 @@ import { flipLike, updateLikeTarget, withServerLikes } from "./likeToggle";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
 import { useCommentEditAttachments } from "./useCommentEditAttachments";
+import { useComposerDrafts } from "./useComposerDrafts";
 import type {
   BoardItemDrawerApi,
   BoardItemDrawerConfig,
@@ -133,6 +134,19 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const current_group_id = live_open_row && config.getRowGroupId ? config.getRowGroupId(live_open_row) : null;
   const is_top_level_row = live_open_row && config.isTopLevelRow ? config.isTopLevelRow(live_open_row) : true;
 
+  // Unsent update and reply text is kept as a draft per item, see `useComposerDrafts`.
+  const drafts = useComposerDrafts({
+    board_id: is_api_backed ? board_id : undefined,
+    item_id: open_row_id !== null ? Number(open_row_id) : null,
+    is_active: open_row !== null,
+    setComposerText,
+    setReplyTextByComment,
+    mention_ids_by_target,
+    setMentionIdsByTarget,
+    notified_ids_by_target,
+    setNotifiedIdsByTarget,
+  });
+
   const detectMention = (target: DrawerComposerTarget, value: string) => {
     // `value` is the composer's Markdown body — plain text, so the trigger
     // regex can run directly against it without stripping any markup first.
@@ -168,6 +182,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
     if (is_api_backed) {
       const item_id = Number(row_id);
+      // Whatever was left unsent on this item comes back into its boxes.
+      drafts.restoreDrafts(board_id, item_id);
       setCommentsLoading(true);
       boardCommentsService
         .listComments(board_id, item_id)
@@ -203,11 +219,13 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
   const onComposerTextChange = (value: string) => {
     setComposerText(value);
     detectMention("composer", value);
+    drafts.saveDraftText("composer", value);
   };
 
   const onReplyTextChange = (comment_id: string, value: string) => {
     setReplyTextByComment((current) => ({ ...current, [comment_id]: value }));
     detectMention(comment_id, value);
+    drafts.saveDraftText(comment_id, value);
   };
 
   // Text insertion itself happens in `RichTextComposer` (via its imperative
@@ -295,6 +313,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
           setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
           setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
           resetComposerExtras();
+          drafts.clearDraft("composer");
         })
         .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
       return;
@@ -421,6 +440,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
           setReplyTextByComment((current) => ({ ...current, [comment_id]: "" }));
           setMentionIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
           setNotifiedIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
+          drafts.clearDraft(comment_id);
         })
         .catch(() => setCommentsError("Couldn't post your reply. Please try again."));
       return;
@@ -898,6 +918,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     composer_text,
     composer_attachments,
     onComposerTextChange,
+    draft_context: drafts.draft_context,
     postComment,
     addComposerAttachments,
     removeComposerAttachment,

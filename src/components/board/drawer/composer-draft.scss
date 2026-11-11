@@ -1,0 +1,165 @@
+// "Draft saved" pill and Discard button in a comment composer's action row,
+// see ComposerDraftStatus.tsx. Colors come from the --rt-* tokens of
+// rich-text.css plus three draft tones defined here, with dark variants.
+
+:root {
+  --draft-saved-bg: rgba(0, 200, 117, 0.12);
+  --draft-saved-text: #037f4c;
+  --draft-saving-bg: rgba(103, 104, 121, 0.1);
+  --draft-saving-text: #676879;
+  --draft-offline-bg: rgba(253, 171, 61, 0.18);
+  --draft-offline-text: #b25e00;
+}
+
+html.dark {
+  --draft-saved-bg: rgba(0, 200, 117, 0.16);
+  --draft-saved-text: #4fdc9e;
+  --draft-saving-bg: rgba(255, 255, 255, 0.08);
+  --draft-saving-text: var(--color-shell-text-secondary);
+  --draft-offline-bg: rgba(253, 171, 61, 0.18);
+  --draft-offline-text: #ffc06b;
+}
+
+.composer-draft {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  animation: composer-draft-in 180ms ease-out;
+
+  &__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 22px;
+    min-width: 0;
+    padding: 0 9px 0 7px;
+    border-radius: 999px;
+    font-family: var(--rt-font);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    white-space: nowrap;
+    cursor: default;
+    transition: background-color 160ms ease, color 160ms ease;
+
+    &[data-tone="saved"] {
+      background: var(--draft-saved-bg);
+      color: var(--draft-saved-text);
+    }
+
+    &[data-tone="saving"] {
+      background: var(--draft-saving-bg);
+      color: var(--draft-saving-text);
+    }
+
+    &[data-tone="offline"] {
+      background: var(--draft-offline-bg);
+      color: var(--draft-offline-text);
+    }
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 13px;
+    height: 13px;
+    flex: none;
+  }
+
+  &__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: composer-draft-pulse 900ms ease-in-out infinite alternate;
+  }
+
+  &__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__time {
+    font-weight: 400;
+    opacity: 0.8;
+  }
+
+  &__discard {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    flex: none;
+    border-radius: 6px;
+    color: var(--rt-text-faint);
+    transition: background-color 120ms ease, color 120ms ease;
+
+    &:hover {
+      background: color-mix(in srgb, var(--rt-danger) 10%, transparent);
+      color: var(--rt-danger);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--rt-accent);
+      outline-offset: 1px;
+    }
+  }
+
+  &[data-compact="true"] &__pill {
+    height: 20px;
+    padding: 0 7px 0 6px;
+    font-size: 11.5px;
+  }
+
+  &[data-compact="true"] &__discard {
+    width: 24px;
+    height: 24px;
+  }
+}
+
+@keyframes composer-draft-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes composer-draft-pulse {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-draft,
+  .composer-draft__dot {
+    animation: none;
+  }
+}
+
+// The table's chat bubble: a small pencil badge when the item has an unsent draft.
+.item-draft-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fdab3d;
+  color: #ffffff;
+  box-shadow: 0 0 0 2px var(--color-boardtree-surface, #ffffff);
+  pointer-events: none;
+}

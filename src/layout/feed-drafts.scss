@@ -1,0 +1,170 @@
+// The Update feed's "Drafts" tab, see FeedDraftsList.tsx. Uses the
+// `--ufm-*` tokens of update-feed-modal.scss (light and dark).
+
+.feed-drafts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-right: 44px;
+}
+
+.feed-drafts__skeleton {
+  height: 120px;
+}
+
+.feed-draft {
+  display: flex;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid var(--ufm-border-strong);
+  border-left: 3px solid #fdab3d;
+  border-radius: 8px;
+  background: var(--ufm-surface);
+  color: var(--ufm-text);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+
+  &:hover {
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  &__icon {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(253, 171, 61, 0.18);
+    color: #c46f00;
+  }
+
+  &__body {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__crumbs {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--ufm-text-secondary);
+    font-size: 13px;
+  }
+
+  &__crumb {
+    overflow: hidden;
+    max-width: 260px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    & + &::before {
+      margin: 0 6px;
+      color: var(--ufm-text-faint);
+      content: "›";
+    }
+
+    &--strong {
+      color: var(--ufm-text);
+      font-weight: 600;
+    }
+  }
+
+  &__time {
+    flex: none;
+    color: var(--ufm-text-faint);
+    font-size: 12px;
+  }
+
+  &__kind {
+    align-self: flex-start;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--ufm-badge);
+    color: var(--ufm-text-secondary);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  &__preview {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--ufm-text);
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-line;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+
+    &:hover {
+      color: var(--ufm-primary);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+
+  &__open,
+  &__discard {
+    display: inline-flex;
+    height: 30px;
+    align-items: center;
+    padding: 0 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    transition: background-color 150ms ease, color 150ms ease;
+
+    &:focus-visible {
+      outline: 2px solid var(--ufm-primary);
+      outline-offset: 2px;
+    }
+  }
+
+  &__open {
+    background: var(--ufm-primary);
+    color: #ffffff;
+    font-weight: 500;
+
+    &:hover {
+      background: var(--ufm-primary-hover);
+    }
+  }
+
+  &__discard {
+    color: var(--ufm-text-secondary);
+
+    &:hover {
+      background: rgba(216, 58, 82, 0.1);
+      color: #d83a52;
+    }
+  }
+}
+
+@media (max-width: 860px) {
+  .feed-drafts {
+    margin-right: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed-draft {
+    transition: none;
+  }
+}

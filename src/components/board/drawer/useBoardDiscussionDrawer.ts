@@ -13,6 +13,8 @@ import { flipLike, updateLikeTarget, withServerLikes } from "./likeToggle";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
 import { useCommentEditAttachments } from "./useCommentEditAttachments";
+import { useComposerDrafts } from "./useComposerDrafts";
+import type { ComposerDraftContextValue } from "./ComposerDraftContext";
 import type {
   CommentCollaborationApi,
   DrawerAttachment,
@@ -90,6 +92,8 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFiles
   composer_text: string;
   composer_attachments: DrawerAttachment[];
   onComposerTextChange: (value: string) => void;
+  /** Where the update and reply boxes save their drafts, see `useComposerDrafts`. */
+  draft_context: ComposerDraftContextValue | null;
   postComment: () => void;
   addComposerAttachments: (files: File[]) => void;
   removeComposerAttachment: (attachment_id: string) => void;
@@ -195,6 +199,19 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const [pending_comment_ids, setPendingCommentIds] = useState<string[]>([]);
   const [fresh_comment_ids, setFreshCommentIds] = useState<string[]>([]);
 
+  // Unsent update and reply text is kept as a draft of the board discussion, see `useComposerDrafts`.
+  const drafts = useComposerDrafts({
+    board_id,
+    item_id: null,
+    is_active: is_open,
+    setComposerText,
+    setReplyTextByComment,
+    mention_ids_by_target,
+    setMentionIdsByTarget,
+    notified_ids_by_target,
+    setNotifiedIdsByTarget,
+  });
+
   useEffect(() => {
     let is_current = true;
     peopleService
@@ -238,6 +255,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     setPendingCommentIds([]);
     setFreshCommentIds([]);
     stopEditing();
+    // Whatever was left unsent in the board discussion comes back into its boxes.
+    drafts.restoreDrafts(board_id, null);
 
     boardMuteService
       .listMutedBoards()
@@ -267,11 +286,13 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
   const onComposerTextChange = (value: string) => {
     setComposerText(value);
     detectMention("composer", value);
+    drafts.saveDraftText("composer", value);
   };
 
   const onReplyTextChange = (comment_id: string, value: string) => {
     setReplyTextByComment((current) => ({ ...current, [comment_id]: value }));
     detectMention(comment_id, value);
+    drafts.saveDraftText(comment_id, value);
   };
 
   // Text insertion itself happens in `RichTextComposer` (via its imperative
@@ -339,6 +360,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
         setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
         setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
         resetComposerExtras();
+        drafts.clearDraft("composer");
       })
       .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
   };
@@ -397,6 +419,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
         setReplyTextByComment((current) => ({ ...current, [comment_id]: "" }));
         setMentionIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
         setNotifiedIdsByTarget((current) => ({ ...current, [comment_id]: [] }));
+        drafts.clearDraft(comment_id);
       })
       .catch(() => setCommentsError("Couldn't post your reply. Please try again."));
   };
@@ -728,6 +751,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     composer_text,
     composer_attachments,
     onComposerTextChange,
+    draft_context: drafts.draft_context,
     postComment,
     addComposerAttachments,
     removeComposerAttachment,

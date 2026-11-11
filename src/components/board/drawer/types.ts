@@ -1,3 +1,4 @@
+import type { ComposerDraftContextValue } from "./ComposerDraftContext";
 import type { ReactNode } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import type { MentionOption } from "./mentionOptions";
@@ -314,6 +315,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   composer_text: string;
   composer_attachments: DrawerAttachment[];
   onComposerTextChange: (value: string) => void;
+  /** Where the update and reply boxes save their drafts, null on a mock board (no drafts). */
+  draft_context: ComposerDraftContextValue | null;
   postComment: () => void;
   addComposerAttachments: (files: File[]) => void;
   removeComposerAttachment: (attachment_id: string) => void;
@@ -454,7 +457,7 @@ export type CommentFeedApi = Pick<
   | "cancelEditingComment"
   | "saveEditedComment"
 > &
-  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links">>;
+  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links" | "draft_context">>;
 
 /** What the "Files" tab needs: every attachment of the thread plus the dropzone's upload state, shared by both comment drawers. */
 export type DrawerFilesApi = Pick<

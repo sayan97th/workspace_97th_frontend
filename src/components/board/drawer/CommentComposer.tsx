@@ -6,7 +6,10 @@ import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons
 import { BellIcon, ClockIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import { useModKeyLabel } from "@/hooks/useModKeyLabel";
+import { useCommentDraft } from "@/hooks/useCommentDrafts";
 import CommentAttachmentChip from "./CommentAttachmentChip";
+import { useComposerDraftContext } from "./ComposerDraftContext";
+import ComposerDraftStatus from "./ComposerDraftStatus";
 import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
@@ -132,6 +135,14 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   // as the rest of its action row).
   const [toolbar_hidden, setToolbarHidden] = useState(false);
   const show_toolbar = !toolbar_hidden;
+
+  // The drawer saves this box's text as a draft while it is typed, see `useComposerDrafts`.
+  const draft_scope = useComposerDraftContext();
+  const draft = useCommentDraft(
+    draft_scope ? { board_id: draft_scope.board_id, item_id: draft_scope.item_id, parent_id: target === "composer" ? null : Number(target) } : null
+  );
+  // Only while the box still holds the text, so the pill never lingers next to an empty box.
+  const show_draft_status = draft_scope !== null && draft !== null && value.trim() !== "";
 
   // `#` menu: the editor reports the trigger at the caret, this owns the keyboard cursor.
   const [trigger, setTrigger] = useState<ComposerTrigger | null>(null);
@@ -378,8 +389,11 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                 )}
                 {onScheduleChange && <ComposerScheduleMenu value={schedule_at} onChange={onScheduleChange} icon_size={is_update ? 16 : 15} />}
               </div>
-              <div className="flex items-center gap-3">
-                <span className="rich-text-hint max-sm:!hidden">
+              <div className="flex min-w-0 items-center gap-3">
+                {show_draft_status && draft_scope && draft && (
+                  <ComposerDraftStatus draft={draft} compact={!is_update} onDiscard={() => draft_scope.discardDraft(target)} />
+                )}
+                <span className={`rich-text-hint max-sm:!hidden ${show_draft_status && !is_update ? "!hidden" : ""}`}>
                   <kbd>{mod_key_label}</kbd>+<kbd>Enter</kbd> to send
                 </span>
                 <button

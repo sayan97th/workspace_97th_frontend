@@ -5,6 +5,7 @@ import { PinIcon } from "@/icons/board-icons";
 import PersonAvatar from "../PersonAvatar";
 import { CommentCollaborationProvider } from "./CommentCollaborationContext";
 import CommentComposer from "./CommentComposer";
+import { ComposerDraftProvider } from "./ComposerDraftContext";
 import CommentFilterBar from "./CommentFilterBar";
 import { commentAuthors, countActiveCommentFilters, countResolvedComments, default_comment_filters, filterComments, sortComments, type CommentFilters, type CommentSortOrder } from "./commentFilters";
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
@@ -242,6 +243,7 @@ function UpdatesPanel({
   );
 
   return (
+    <ComposerDraftProvider value={drawer.draft_context}>
     <div className="board-drawer__panel">
       {!composer_scrolls_with_feed && composer_area}
 
@@ -309,6 +311,7 @@ function UpdatesPanel({
       </div>
       </CommentCollaborationProvider>
     </div>
+    </ComposerDraftProvider>
   );
 }
 
