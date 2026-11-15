@@ -306,6 +306,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
             </Tooltip>
             <BoardActivityLogDrawer
               board_id={board_id}
+              board_name={title}
               is_open={is_activity_log_open}
               onClose={() => setIsActivityLogOpen(false)}
             />

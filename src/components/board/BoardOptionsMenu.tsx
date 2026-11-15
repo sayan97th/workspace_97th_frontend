@@ -276,7 +276,7 @@ const BoardOptionsMenu: React.FC<BoardOptionsMenuProps> = ({
         />
       )}
 
-      <BoardActivityLogDrawer board_id={board_id} is_open={is_activity_log_open} onClose={() => setIsActivityLogOpen(false)} />
+      <BoardActivityLogDrawer board_id={board_id} board_name={board_label} is_open={is_activity_log_open} onClose={() => setIsActivityLogOpen(false)} />
 
       <BoardTrashModal board_id={board_id} is_open={is_trash_open} onClose={() => setIsTrashOpen(false)} onGroupsChanged={onGroupsRestored} />
 
