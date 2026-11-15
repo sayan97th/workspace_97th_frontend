@@ -41,10 +41,20 @@ export const boardOptionsService = {
     return response.data;
   },
 
-  /** GET /api/boards/{id}/activity-log/feed, the Activity log drawer's "Activity" tab, newest first. */
-  async getActivityFeed(board_id: number, filters: BoardActivityFilters, cursor: string | null = null): Promise<BoardActivityFeedPage> {
+  /**
+   * GET /api/boards/{id}/activity-log/feed, the Activity log drawer's "Activity" tab, newest first.
+   * A filtered page can come back short with a `next_cursor`: the API scans a bounded window per
+   * request on a long history, the caller asks again to keep going (see `ActivityLogActivityTab`).
+   */
+  async getActivityFeed(
+    board_id: number,
+    filters: BoardActivityFilters,
+    { cursor = null, with_facets = false }: { cursor?: string | null; with_facets?: boolean } = {}
+  ): Promise<BoardActivityFeedPage> {
     const query = buildActivityQuery(filters);
     if (cursor) query.set("cursor", cursor);
+    // The filter menus' choices are only computed when asked for, once per drawer opening.
+    if (with_facets) query.set("with_facets", "1");
     return apiClient.get<BoardActivityFeedPage>(`/api/boards/${board_id}/activity-log/feed?${query.toString()}`);
   },
 

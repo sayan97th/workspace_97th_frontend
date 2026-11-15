@@ -8,7 +8,7 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 import type { BoardActivityEntry, BoardActivityFacets, BoardActivityFilters } from "@/types/board-activity-log";
 import ActivityLogEntryRow from "./ActivityLogEntryRow";
 import { ActivityLogFilterPanel, ActivityLogPersonPanel, ActivityLogPopover } from "./ActivityLogFilterPanels";
-import { EVENT_TYPE_OPTIONS, PERIOD_OPTIONS, dayKeyOf, formatDayLabel } from "./activityLogFormat";
+import { EVENT_TYPE_OPTIONS, PERIOD_OPTIONS, dayKeyOf, formatDayLabel, formatShortDate } from "./activityLogFormat";
 
 export type ActivityLogActivityTabProps = {
   board_id: number;
@@ -28,7 +28,10 @@ export const EMPTY_FILTERS: BoardActivityFilters = {
 };
 
 const SEARCH_DEBOUNCE_MS = 300;
+/** Entries one load aims for, the API page size. */
 const PAGE_SIZE = 50;
+/** Requests one load may chain while a filtered search walks back through a long history. */
+const MAX_AUTO_REQUESTS = 25;
 
 /** How many "Filter log" choices are active, for the badge on the button. */
 const countFilterLog = (filters: BoardActivityFilters): number =>
@@ -59,6 +62,10 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
   const [next_cursor, setNextCursor] = useState<string | null>(null);
   const [is_loading, setIsLoading] = useState(true);
   const [is_loading_more, setIsLoadingMore] = useState(false);
+  /** How far back a filtered search looked so far, while it walks back through a long history. */
+  const [scanned_until, setScannedUntil] = useState<string | null>(null);
+  /** A search stopped after {@link MAX_AUTO_REQUESTS} requests without filling a page, only "Keep searching" continues it. */
+  const [is_search_paused, setIsSearchPaused] = useState(false);
   const [load_error, setLoadError] = useState<string | null>(null);
   const [undoing_key, setUndoingKey] = useState<string | null>(null);
   const [is_exporting, setIsExporting] = useState(false);
@@ -69,25 +76,72 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
   const person_button_ref = useRef<HTMLButtonElement>(null);
   const search_input_ref = useRef<HTMLInputElement>(null);
   const sentinel_ref = useRef<HTMLDivElement>(null);
+  const scroll_ref = useRef<HTMLDivElement>(null);
+  /** The filter menus' choices are asked for once per drawer opening, not on every filter change. */
+  const needs_facets_ref = useRef(true);
 
-  const loadFirstPage = useCallback(
-    async (active_filters: BoardActivityFilters, { quiet = false }: { quiet?: boolean } = {}) => {
+  /**
+   * Loads the log from `start_cursor` (null = from the top, replacing the list). On a long history
+   * a filtered request scans a bounded window and can come back short with a `next_cursor`, so this
+   * keeps asking, appending what each request finds right away, until a page worth of entries
+   * arrived, the history ended, or {@link MAX_AUTO_REQUESTS} requests ran (then the list offers
+   * "Keep searching"). Any newer load bumps `request_id_ref` and stops an older chain.
+   */
+  const fetchPages = useCallback(
+    async (active_filters: BoardActivityFilters, start_cursor: string | null, { quiet = false }: { quiet?: boolean } = {}) => {
       const request_id = ++request_id_ref.current;
-      if (!quiet) setIsLoading(true);
+      const is_replacing = start_cursor === null;
+      if (is_replacing && !quiet) setIsLoading(true);
+      if (!is_replacing) setIsLoadingMore(true);
       setLoadError(null);
+      setIsSearchPaused(false);
+
+      let cursor = start_cursor;
+      let found = 0;
+      let requests = 0;
       try {
-        const page = await boardOptionsService.getActivityFeed(board_id, active_filters);
-        if (request_id !== request_id_ref.current) return;
-        setEntries(page.data);
-        setNextCursor(page.meta.next_cursor);
-        if (page.meta.facets) setFacets(page.meta.facets);
+        do {
+          const page = await boardOptionsService.getActivityFeed(board_id, active_filters, { cursor, with_facets: needs_facets_ref.current });
+          if (request_id !== request_id_ref.current) return;
+          if (page.meta.facets) {
+            setFacets(page.meta.facets);
+            needs_facets_ref.current = false;
+          }
+          const replace_list = is_replacing && requests === 0;
+          setEntries((current) => {
+            if (replace_list) return page.data;
+            const known = new Set(current.map((entry) => entry.key));
+            return [...current, ...page.data.filter((entry) => !known.has(entry.key))];
+          });
+          found += page.data.length;
+          requests += 1;
+          cursor = page.meta.next_cursor;
+          setNextCursor(cursor);
+          setScannedUntil(page.meta.scanned_until);
+          // The first results show at once, the rest of the search runs as "Searching older activity".
+          if (is_replacing && requests === 1) {
+            setIsLoading(false);
+            if (cursor && found < PAGE_SIZE) setIsLoadingMore(true);
+          }
+        } while (cursor && found < PAGE_SIZE && requests < MAX_AUTO_REQUESTS);
+        setIsSearchPaused(cursor !== null && found < PAGE_SIZE);
       } catch (error) {
-        if (request_id === request_id_ref.current) setLoadError(getApiErrorMessage(error, "We couldn't load the activity log. Please try again."));
+        if (request_id !== request_id_ref.current) return;
+        if (is_replacing && requests === 0) setLoadError(getApiErrorMessage(error, "We couldn't load the activity log. Please try again."));
+        else toast.error(getApiErrorMessage(error, "We couldn't load older activity. Please try again."));
       } finally {
-        if (request_id === request_id_ref.current) setIsLoading(false);
+        if (request_id === request_id_ref.current) {
+          setIsLoading(false);
+          setIsLoadingMore(false);
+        }
       }
     },
-    [board_id]
+    [board_id, toast]
+  );
+
+  const loadFirstPage = useCallback(
+    (active_filters: BoardActivityFilters, options: { quiet?: boolean } = {}) => fetchPages(active_filters, null, options),
+    [fetchPages]
   );
 
   useEffect(() => {
@@ -101,35 +155,25 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
     return () => clearTimeout(timeout_id);
   }, [search_draft, filters.search]);
 
-  const loadMore = useCallback(async () => {
+  const loadMore = useCallback(() => {
     if (!next_cursor || is_loading_more || is_loading) return;
-    const request_id = request_id_ref.current;
-    setIsLoadingMore(true);
-    try {
-      const page = await boardOptionsService.getActivityFeed(board_id, filters, next_cursor);
-      if (request_id !== request_id_ref.current) return;
-      setEntries((current) => {
-        const known = new Set(current.map((entry) => entry.key));
-        return [...current, ...page.data.filter((entry) => !known.has(entry.key))];
-      });
-      setNextCursor(page.meta.next_cursor);
-    } catch (error) {
-      toast.error(getApiErrorMessage(error, "We couldn't load older activity. Please try again."));
-    } finally {
-      setIsLoadingMore(false);
-    }
-  }, [board_id, filters, next_cursor, is_loading, is_loading_more, toast]);
+    void fetchPages(filters, next_cursor);
+  }, [fetchPages, filters, next_cursor, is_loading, is_loading_more]);
 
-  // Endless scrolling: the next page loads as the end of the list comes into view.
+  // Endless scrolling: the next page loads as the end of the list comes within 400px of the
+  // drawer's own scroll area (the observer's root, so the margin is measured there).
   useEffect(() => {
     const sentinel = sentinel_ref.current;
-    if (!sentinel || !next_cursor || typeof IntersectionObserver === "undefined") return;
-    const observer = new IntersectionObserver((records) => {
-      if (records.some((record) => record.isIntersecting)) void loadMore();
-    }, { rootMargin: "240px" });
+    if (!sentinel || !next_cursor || is_search_paused || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (records) => {
+        if (records.some((record) => record.isIntersecting)) loadMore();
+      },
+      { root: scroll_ref.current, rootMargin: "400px 0px" }
+    );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [next_cursor, loadMore]);
+  }, [next_cursor, loadMore, is_search_paused]);
 
   const patchFilters = useCallback((patch: Partial<BoardActivityFilters>) => setFilters((current) => ({ ...current, ...patch })), []);
 
@@ -153,6 +197,14 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
       setUndoingKey(null);
     }
   };
+
+  // Rows are memoized, so they get callbacks that never change identity.
+  const undo_ref = useRef(handleUndo);
+  undo_ref.current = handleUndo;
+  const open_item_ref = useRef(onOpenItem);
+  open_item_ref.current = onOpenItem;
+  const onRowUndo = useCallback((entry: BoardActivityEntry) => void undo_ref.current(entry), []);
+  const onRowOpenItem = useCallback((item_id: number) => open_item_ref.current(item_id), []);
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -325,7 +377,7 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
         </div>
       )}
 
-      <div className="activity-log__scroll shell-scrollbar">
+      <div ref={scroll_ref} className="activity-log__scroll shell-scrollbar">
         {load_error && (
           <div role="alert" className="activity-log__error">
             {load_error}
@@ -350,7 +402,7 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
           </ul>
         )}
 
-        {!is_loading && !load_error && entries.length === 0 && (
+        {!is_loading && !load_error && entries.length === 0 && !next_cursor && (
           <div className="activity-log__empty">
             <span className="activity-log__empty-icon">
               <History size={24} />
@@ -380,18 +432,32 @@ const ActivityLogActivityTab: React.FC<ActivityLogActivityTabProps> = ({ board_i
                       {formatDayLabel(entry.created_at)}
                     </li>
                   )}
-                  <ActivityLogEntryRow entry={entry} is_undoing={undoing_key === entry.key} onUndo={handleUndo} onOpenItem={onOpenItem} />
+                  <ActivityLogEntryRow entry={entry} is_undoing={undoing_key === entry.key} onUndo={onRowUndo} onOpenItem={onRowOpenItem} />
                 </React.Fragment>
               );
             })}
           </ul>
         )}
 
-        {next_cursor && (
+        {next_cursor && !is_loading && (
           <div ref={sentinel_ref} className="activity-log__more">
-            <button type="button" className="activity-log__secondary-button" onClick={() => void loadMore()} disabled={is_loading_more}>
-              {is_loading_more ? "Loading..." : "Load older activity"}
-            </button>
+            {is_loading_more ? (
+              <p className="activity-log__searching" role="status">
+                <RefreshCw size={14} className="animate-spin" aria-hidden="true" />
+                {scanned_until ? `Searching older activity, back to ${formatShortDate(scanned_until)}` : "Loading older activity"}
+              </p>
+            ) : (
+              <>
+                {is_search_paused && scanned_until && (
+                  <p className="activity-log__searching">
+                    {entries.length === 0 ? "No matches" : "No more matches"} in the activity back to {formatShortDate(scanned_until)}.
+                  </p>
+                )}
+                <button type="button" className="activity-log__secondary-button" onClick={loadMore}>
+                  {is_search_paused ? "Keep searching" : "Load older activity"}
+                </button>
+              </>
+            )}
           </div>
         )}
         {!next_cursor && entries.length > 0 && !is_loading && <p className="activity-log__end">You reached the beginning of this log.</p>}

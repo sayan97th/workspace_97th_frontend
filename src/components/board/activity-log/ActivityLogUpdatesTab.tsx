@@ -21,8 +21,7 @@ export type ActivityLogUpdatesTabProps = {
 const ActivityLogUpdatesTab: React.FC<ActivityLogUpdatesTabProps> = ({ board_id, onOpenItem }) => {
   const [updates, setUpdates] = useState<BoardActivityUpdate[] | null>(null);
   const [page, setPage] = useState(1);
-  const [last_page, setLastPage] = useState(1);
-  const [total, setTotal] = useState(0);
+  const [has_more, setHasMore] = useState(false);
   const [is_loading, setIsLoading] = useState(false);
   const [load_error, setLoadError] = useState<string | null>(null);
   const request_id_ref = useRef(0);
@@ -37,8 +36,7 @@ const ActivityLogUpdatesTab: React.FC<ActivityLogUpdatesTabProps> = ({ board_id,
         if (request_id !== request_id_ref.current) return;
         setUpdates((current) => (next_page === 1 || !current ? response.data : [...current, ...response.data]));
         setPage(response.meta.current_page);
-        setLastPage(response.meta.last_page);
-        setTotal(response.meta.total);
+        setHasMore(response.meta.has_more);
       } catch (error) {
         if (request_id === request_id_ref.current) setLoadError(getApiErrorMessage(error, "We couldn't load the updates. Please try again."));
       } finally {
@@ -54,12 +52,6 @@ const ActivityLogUpdatesTab: React.FC<ActivityLogUpdatesTabProps> = ({ board_id,
 
   return (
     <div className="activity-log__tab-body">
-      {updates !== null && updates.length > 0 && (
-        <div className="activity-log__toolbar">
-          <span className="activity-log__toolbar-note">{total === 1 ? "1 update" : `${total} updates`} on this board</span>
-        </div>
-      )}
-
       <div className="activity-log__scroll shell-scrollbar">
         {load_error && (
           <div role="alert" className="activity-log__error">
@@ -128,7 +120,7 @@ const ActivityLogUpdatesTab: React.FC<ActivityLogUpdatesTabProps> = ({ board_id,
           </ul>
         )}
 
-        {updates !== null && page < last_page && (
+        {updates !== null && has_more && (
           <div className="activity-log__more">
             <button type="button" className="activity-log__secondary-button" onClick={() => void loadPage(page + 1)} disabled={is_loading}>
               {is_loading ? "Loading..." : "Load older updates"}

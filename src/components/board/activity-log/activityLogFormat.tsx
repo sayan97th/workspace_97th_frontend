@@ -42,6 +42,13 @@ export const formatFullDate = (iso: string): string => {
   return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
 };
 
+/** Short date for progress text, for example "Mar 3, 2026". */
+export const formatShortDate = (iso: string): string => {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
 /** Day heading of the log: "Today", "Yesterday" or "Monday, Nov 9". */
 export const formatDayLabel = (iso: string): string => {
   const date = new Date(iso);

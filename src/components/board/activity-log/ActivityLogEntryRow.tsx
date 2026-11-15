@@ -181,4 +181,5 @@ const ActivityLogEntryRow: React.FC<ActivityLogEntryRowProps> = ({ entry, is_und
   );
 };
 
-export default ActivityLogEntryRow;
+/** Memoized: appending a page or undoing one entry does not re-render the rows already shown. */
+export default React.memo(ActivityLogEntryRow);

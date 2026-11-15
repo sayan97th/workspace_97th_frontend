@@ -621,6 +621,11 @@
   transition: background-color 0.15s ease;
   animation: activity-log-row-in 0.24s var(--al-ease) both;
 
+  // Rows far outside the scroll area skip layout and paint, so a list grown to thousands of
+  // entries by endless scrolling stays smooth. The intrinsic size keeps the scrollbar steady.
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--al-row-height);
+
   &:hover {
     background: var(--al-sunken);
   }
@@ -891,8 +896,19 @@
 
 .activity-log__more {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
   padding: 16px 0 8px;
+}
+
+.activity-log__searching {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--al-text-secondary);
+  font-size: 13px;
+  text-align: center;
 }
 
 .activity-log__end,

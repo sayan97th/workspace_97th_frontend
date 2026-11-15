@@ -58,7 +58,12 @@ export type BoardActivityFacets = {
 
 export type BoardActivityFeedPage = {
   data: BoardActivityEntry[];
-  meta: { next_cursor: string | null; facets: BoardActivityFacets | null };
+  meta: {
+    next_cursor: string | null;
+    facets: BoardActivityFacets | null;
+    /** Set when a filtered page stopped at its scan window: how far back the search looked so far. */
+    scanned_until: string | null;
+  };
 };
 
 /** "Filter log" event types, see `BoardActivityFeed::BOARD_EVENT_TYPES` and `CELL_EVENT_TYPES`. */
@@ -116,5 +121,5 @@ export type BoardActivityUpdate = {
 
 export type BoardActivityUpdatesPage = {
   data: BoardActivityUpdate[];
-  meta: { current_page: number; last_page: number; total: number };
+  meta: { current_page: number; has_more: boolean };
 };
