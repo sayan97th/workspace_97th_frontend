@@ -14,6 +14,7 @@ import ColumnMoveAnimator from "./ColumnMoveAnimator";
 import { columnMoveKey, columnOrderKey } from "./columnMove";
 import { COLUMN_REVEAL_TIMEOUT_MS, findColumnCell, revealColumnCell, type ColumnRevealRequest } from "./revealColumn";
 import { findNode } from "./treeUtils";
+import { collectSelection, type BoardTableSelection } from "./selectionUtils";
 import CollapsedGroupSummaryRow from "./rows/CollapsedGroupSummaryRow";
 import LabelEditorModal from "./menus/LabelEditorModal";
 import TagManagerModal from "./menus/TagManagerModal";
@@ -170,16 +171,13 @@ export interface BoardTableProps {
   active_sort_column_id?: string | null;
   active_sort_direction?: "asc" | "desc" | null;
   /**
-   * Fired whenever the set of checked root-item ids changes, so a sibling
-   * `<SelectionActionBar />` (rendered by the caller, outside `BoardTable`'s
-   * own scroll container — see `BoardShell`'s `selectionBar` slot) knows how
-   * many rows are selected and which ids to act on. Deliberately reports
-   * only root-item ids: a subitem's group is denormalized from its parent
-   * (see the API's own `BoardColumn` doc comment), so a subitem moving to a
-   * different group on its own would desync that invariant — the selection
-   * bar's bulk actions stay scoped to whole root items/their subtrees.
+   * Fired whenever the checked rows change, so a sibling `<SelectionActionBar />`
+   * (rendered by the caller outside `BoardTable`'s own scroll container, see
+   * `BoardShell`'s `selectionBar` slot) knows what is selected. Items and
+   * subitems are never checked together (see `selectionUtils.ts`), so at most
+   * one of the two lists is non empty and the bar shows the actions of that level.
    */
-  onSelectionChange?: (selected_item_ids: string[]) => void;
+  onSelectionChange?: (selection: BoardTableSelection) => void;
   /**
    * Bumped (any new value) by the caller once a bulk action from the
    * selection bar resolves, to clear every checked row's local state. A
@@ -244,15 +242,14 @@ export default function BoardTable({
     setCellMenuTarget({ x: event.clientX, y: event.clientY, item_id, column_id });
   };
 
-  const selected_root_ids = useMemo(
-    () => state.groups.flatMap((g) => g.items.filter((it) => state.selected_map[it.id]).map((it) => it.id)),
-    [state.groups, state.selected_map]
-  );
+  const selection = useMemo(() => collectSelection(state.groups, state.selected_map), [state.groups, state.selected_map]);
+  const selection_key = `${selection.item_ids.join(",")}|${selection.subitem_ids.join(",")}`;
 
   useEffect(() => {
-    onSelectionChange?.(selected_root_ids);
+    onSelectionChange?.(selection);
+    // Keyed by the ids, not the object, so a re-render with the same rows checked doesn't notify again.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected_root_ids]);
+  }, [selection_key]);
 
   const clear_selection_signal_ref = useRef(clear_selection_signal);
   useEffect(() => {

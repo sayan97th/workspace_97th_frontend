@@ -55,6 +55,7 @@ import {
   updateNodeById,
   visibleRowSequence,
 } from "./treeUtils";
+import { applyRowToggle, keepLevel, toggleSubitemsOf } from "./selectionUtils";
 
 export type ColumnScope = "main" | "sub";
 /** The column setup dialogs `openConfigEditor` opens, see `BoardTableState.config_editor`. */
@@ -860,12 +861,29 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => ({ ...s, open_map: { ...s.open_map, [id]: !s.open_map[id] } }));
   }, []);
 
-  const toggleSelected = useCallback((id: string) => {
-    setState((s) => ({ ...s, selected_map: { ...s.selected_map, [id]: !s.selected_map[id] } }));
+  /** The row clicked last, the start of a Shift + click range (see `applyRowToggle`). */
+  const selection_anchor_ref = useRef<string | null>(null);
+
+  /**
+   * A row checkbox. Items and subitems are never checked together, and
+   * `is_range` (Shift + click) checks every row between the last clicked one
+   * and this one, see `selectionUtils.ts`.
+   */
+  const toggleSelected = useCallback((id: string, options?: { is_range?: boolean }) => {
+    const anchor_id = selection_anchor_ref.current;
+    selection_anchor_ref.current = id;
+    setState((s) => ({ ...s, selected_map: applyRowToggle(s.groups, s.selected_map, id, anchor_id, options?.is_range === true) }));
+  }, []);
+
+  /** The subitem header's checkbox: checks or clears every subitem of one item. */
+  const toggleSubitemSelection = useCallback((item_id: string) => {
+    selection_anchor_ref.current = null;
+    setState((s) => ({ ...s, selected_map: toggleSubitemsOf(s.groups, s.selected_map, item_id) }));
   }, []);
 
   /** Selection action bar's "×" — deselects every row without touching anything else. */
   const clearSelection = useCallback(() => {
+    selection_anchor_ref.current = null;
     setState((s) => ({ ...s, selected_map: {} }));
   }, []);
 
@@ -1704,11 +1722,9 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     setState((s) => {
       const group = findGroup(s.groups, key);
       if (!group) return s;
-      const next_selected = { ...s.selected_map };
-      group.items.forEach((it) => {
-        next_selected[it.id] = true;
-        it.subs.forEach((sub) => (next_selected[sub.id] = true));
-      });
+      // "Select all items" checks the items only, a selection never mixes items and subitems.
+      const next_selected = keepLevel(s.groups, s.selected_map, "item");
+      group.items.forEach((it) => (next_selected[it.id] = true));
       return { ...s, selected_map: next_selected, open_group_menu_key: null };
     });
   }, []);
@@ -1719,7 +1735,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       const group = findGroup(s.groups, key);
       if (!group || !group.items.length) return s;
       const is_all_selected = group.items.every((it) => s.selected_map[it.id]);
-      const next_selected = { ...s.selected_map };
+      const next_selected = keepLevel(s.groups, s.selected_map, "item");
       group.items.forEach((it) => {
         if (is_all_selected) delete next_selected[it.id];
         else next_selected[it.id] = true;
@@ -2665,6 +2681,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
     () => ({
       toggleItemOpen,
       toggleSelected,
+      toggleSubitemSelection,
       clearSelection,
       toggleGroupCollapsed,
       startEditName,
@@ -2830,7 +2847,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       redo,
     }),
     [
-      toggleItemOpen, toggleSelected, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
+      toggleItemOpen, toggleSelected, toggleSubitemSelection, clearSelection, toggleGroupCollapsed, startEditName, updateEditDraft, commitEditName, cancelEditName,
       startGroupRename, updateGroupDraft, commitGroupRename, cancelGroupRename, setCellValue, toggleArrayValue,
       clearCellValue, uploadCellFiles, addCellFileLink, addCellFileDoc, canEditCell, renameCellFile, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
@@ -2853,7 +2870,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
    * instead of silently slipping through a guest's read-only view.
    */
   const READ_ONLY_SAFE_ACTIONS = new Set<keyof typeof actions>([
-    "toggleItemOpen", "toggleSelected", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup", "toggleGroupSelection",
+    "toggleItemOpen", "toggleSelected", "toggleSubitemSelection", "clearSelection", "toggleGroupCollapsed", "selectAllInGroup", "toggleGroupSelection",
     "setActiveCell", "clearActiveCell", "moveActiveCell", "copyActiveCell",
     "openRowMenu", "closeRowMenu", "setHoverRow", "setHoverGroup", "setHoverHead",
     "openGroupMenu", "closeGroupMenu", "openColumnMenu", "closeColumnMenu",

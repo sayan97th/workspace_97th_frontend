@@ -136,7 +136,15 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         onDragEnd={actions.onDragEnd}
       >
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
-          <button type="button" onClick={() => actions.toggleSelected(sub.id)} className="flex items-center justify-center">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={is_selected}
+            aria-label={`Select subitem ${sub.name}`}
+            onMouseDown={(e) => { if (e.shiftKey) e.preventDefault(); }}
+            onClick={(e) => actions.toggleSelected(sub.id, { is_range: e.shiftKey })}
+            className="flex items-center justify-center"
+          >
             {is_selected ? (
               <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-boardtree-accent">
                 <svg viewBox="0 0 14 14" width="9" height="9"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" /></svg>

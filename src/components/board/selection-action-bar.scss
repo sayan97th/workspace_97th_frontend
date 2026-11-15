@@ -1,0 +1,306 @@
+// Floating batch actions bar of the board table (monday.com "Batch Actions").
+// Every color comes from the board tokens, so the bar follows light and dark mode.
+
+.selection-bar {
+  // monday.com tokens. Light values match the batch actions bar, the dark
+  // ones follow the board theme.
+  --sab-surface: #ffffff;
+  --sab-text: #323338;
+  --sab-text-muted: #676879;
+  --sab-divider: #d0d4e4;
+  --sab-hover: #dcdfec;
+  --sab-accent: #0073ea;
+  --sab-disabled: #c3c6d4;
+  --sab-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+
+  display: flex;
+  align-items: center;
+  height: 66px;
+  max-width: calc(100vw - 32px);
+  padding: 0 14px 0 28px;
+  border-radius: 8px;
+  background: var(--sab-surface);
+  color: var(--sab-text);
+  box-shadow: var(--sab-shadow);
+  font-family: var(--font-brand-sans, inherit);
+  -webkit-font-smoothing: antialiased;
+  animation: selection-bar-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+
+  .dark & {
+    --sab-surface: var(--color-boardtree-surface);
+    --sab-text: var(--color-boardtree-text);
+    --sab-text-muted: var(--color-boardtree-text-muted);
+    --sab-divider: var(--color-boardtree-border);
+    --sab-hover: var(--color-boardtree-hover);
+    --sab-disabled: rgba(255, 255, 255, 0.28);
+    --sab-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  }
+
+  // ── Count circle and "Items selected" ──
+  &__summary {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 16px;
+    margin-right: 48px;
+  }
+
+  &__count {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 7px;
+    border-radius: 12px;
+    background: var(--sab-accent);
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+
+    span {
+      display: inline-block;
+      animation: selection-bar-count 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+  }
+
+  &__title {
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  // ── Actions: icon over label ──
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
+
+  &__action {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 52px;
+    padding: 0 6px;
+    border-radius: 4px;
+    color: var(--sab-text);
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1;
+    white-space: nowrap;
+    transition: background-color 100ms ease;
+
+    svg {
+      flex: none;
+    }
+
+    &:hover:not(:disabled),
+    &[data-open="true"] {
+      background: var(--sab-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sab-accent);
+      outline-offset: -2px;
+    }
+
+    &:disabled {
+      color: var(--sab-disabled);
+      cursor: not-allowed;
+    }
+  }
+
+  &__divider {
+    flex: none;
+    width: 1px;
+    height: 30px;
+    margin: 0 12px 0 10px;
+    background: var(--sab-divider);
+  }
+
+  &__close {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    color: var(--sab-text);
+    transition: background-color 100ms ease;
+
+    &:hover {
+      background: var(--sab-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--sab-accent);
+      outline-offset: -2px;
+    }
+  }
+
+  // Small screens: icons only, the label stays as the button's accessible name.
+  @media (max-width: 760px) {
+    padding-left: 16px;
+
+    &__summary {
+      gap: 10px;
+      margin-right: 16px;
+    }
+
+    &__title {
+      font-size: 14px;
+    }
+
+    &__action {
+      min-width: 40px;
+
+      .selection-bar__label {
+        display: none;
+      }
+    }
+  }
+}
+
+// ── Target picker ("Move to", "Convert") opened from the bar ──
+.selection-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  color: var(--color-boardtree-text);
+
+  &__title {
+    padding: 4px 8px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-boardtree-text-muted);
+  }
+
+  &__search {
+    width: 100%;
+    height: 34px;
+    margin-bottom: 6px;
+    padding: 0 10px;
+    border: 1px solid var(--color-boardtree-border);
+    border-radius: 6px;
+    background: var(--color-boardtree-surface);
+    color: var(--color-boardtree-text);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 120ms ease;
+
+    &:focus {
+      border-color: #0073ea;
+    }
+  }
+
+  &__list {
+    max-height: 260px;
+    overflow-y: auto;
+  }
+
+  &__option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 34px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    text-align: left;
+    font-size: 14px;
+
+    &:hover,
+    &:focus-visible {
+      background: var(--color-boardtree-hover);
+      outline: none;
+    }
+  }
+
+  &__swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+  }
+
+  &__option-text {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  &__option-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__option-hint {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--color-boardtree-text-muted);
+  }
+
+  &__empty {
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-boardtree-text-muted);
+  }
+
+  &__note {
+    padding: 0 8px 10px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-boardtree-text-muted);
+  }
+
+  &__confirm {
+    align-self: flex-end;
+    height: 32px;
+    margin: 0 4px 2px;
+    padding: 0 14px;
+    border-radius: 6px;
+    background: #0073ea;
+    color: #fff;
+    font-size: 14px;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: #0060c2;
+    }
+  }
+}
+
+@keyframes selection-bar-count {
+  from {
+    opacity: 0.2;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

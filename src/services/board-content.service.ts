@@ -512,6 +512,25 @@ export const boardContentService = {
     await apiClient.delete(`/api/boards/${board_id}/items`, { item_ids });
   },
 
+  /**
+   * PATCH /api/boards/{board_id}/items/parent, selection action bar's "Convert"
+   * and a subitem selection's "Move to". `parent_id` places every row under
+   * that item, null turns subitems into items (in `group_id`, or in each
+   * parent's own table when omitted). Same response shape as {@link updateItemParent}.
+   */
+  async updateItemsParent(board_id: number, item_ids: number[], payload: UpdateBoardItemParentPayload): Promise<BoardItemDto[]> {
+    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/parent`, {
+      item_ids,
+      ...payload,
+    });
+    return response.items;
+  },
+
+  /** PATCH /api/boards/{board_id}/items/restore, the Undo of the selection action bar's "Archive" and "Delete". */
+  async restoreItems(board_id: number, item_ids: number[]): Promise<void> {
+    await apiClient.patch(`/api/boards/${board_id}/items/restore`, { item_ids });
+  },
+
   /** GET /api/boards/{board_id}/views, the board's tabs plus the viewer's own tab order, hidden tabs and default tab. */
   async getViews(board_id: number): Promise<BoardViewsIndexDto> {
     const response = await apiClient.get<{

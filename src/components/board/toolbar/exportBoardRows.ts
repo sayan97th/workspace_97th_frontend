@@ -3,12 +3,12 @@ import type { BoardToolbarApi } from "./types";
 
 export type BoardExportFormat = "xlsx" | "csv";
 
-type ExportTable = { headings: string[]; rows: string[][] };
+export type ExportTable = { headings: string[]; rows: string[][] };
 
 /** Spreadsheet programs run a cell starting with one of these as a formula, so such text is prefixed with a quote (CSV injection). */
 const FORMULA_TRIGGER_PATTERN = /^[=+\-@\t\r]/;
 
-const toSafeText = (text: string) => (FORMULA_TRIGGER_PATTERN.test(text) ? `'${text}` : text);
+export const toSafeText = (text: string) => (FORMULA_TRIGGER_PATTERN.test(text) ? `'${text}` : text);
 
 /**
  * Exactly what the board shows: the rows left by the current filters, in the
@@ -71,7 +71,11 @@ const toFileSlug = (name: string) =>
 
 /** Downloads the visible rows and columns as an Excel workbook or a CSV file named after the board and today's date. */
 export async function exportVisibleRows<TRow>(toolbar: BoardToolbarApi<TRow>, board_name: string, export_format: BoardExportFormat) {
-  const table = buildExportTable(toolbar);
+  await downloadExportTable(buildExportTable(toolbar), board_name, export_format);
+}
+
+/** Downloads a ready made table, e.g. the rows checked in the selection bar, named after the board and today's date. */
+export async function downloadExportTable(table: ExportTable, board_name: string, export_format: BoardExportFormat) {
   const file_name = `${toFileSlug(board_name)}_${format(new Date(), "yyyy-MM-dd")}.${export_format}`;
   const blob =
     export_format === "csv" ? new Blob([toCsv(table)], { type: "text/csv;charset=utf-8" }) : await toXlsx(table, board_name);

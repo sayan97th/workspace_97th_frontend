@@ -154,6 +154,8 @@ import AutomationActivityToasts, {
   type AutomationActivityEntry,
 } from "../board/automations/activity/AutomationActivityToasts";
 import { flashAutomationRows, placeAutomationRows } from "../board/automations/activity/automationRowPlacement";
+import { downloadExportTable, exportVisibleRows, toSafeText } from "@/components/board/toolbar/exportBoardRows";
+import type { SelectionLevel } from "@/components/board/table/selectionUtils";
 import { useBoardAutomationEffects } from "@/hooks/useBoardAutomationEffects";
 import type { IntegrationPage } from "../board/automations/center/centerNav";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
@@ -986,7 +988,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   const [editing_item_id, setEditingItemId] = useState<number | null>(null);
   // ── Selection action bar — see `handleBulkDuplicate`/`handleBulkMove`/
   // `handleBulkArchive`/`handleBulkDelete` below for the actions themselves. ──
-  const [selected_item_ids, setSelectedItemIds] = useState<number[]>([]);
+  // Items and subitems are never checked together (see `selectionUtils.ts`), so one level plus its ids describes the selection.
+  const [table_selection, setTableSelection] = useState<{ level: SelectionLevel; ids: number[] }>({ level: "item", ids: [] });
+  const selected_row_ids = table_selection.ids;
+  /** The rows "Delete" in the selection bar is asking about, kept while the confirmation dialog is open. */
+  const [bulk_delete_request, setBulkDeleteRequest] = useState<{ level: SelectionLevel; ids: number[] } | null>(null);
   /** The toolbar's "New item" chevron menu > "Import items" wizard. */
   const [is_toolbar_import_open, setIsToolbarImportOpen] = useState(false);
   // Group menu's "Export to Excel": the group the export dialog is scoped to, kept after closing so a running export still finishes.
@@ -1800,91 +1806,220 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     setEditingItemId(null);
   };
 
-  /** "Move to" target list for the selection action bar — every table (group) in the active tab. */
+  // ── Selection action bar (monday.com "Batch Actions"), bulk actions on the
+  // Table view's checked rows, either root items or subitems. ──
+
+  const selectionNoun = (level: SelectionLevel, count: number) =>
+    level === "subitem" ? (count === 1 ? "subitem" : "subitems") : count === 1 ? "item" : "items";
+
+  /** Every table (group) in the active tab, the "Move to" list of the item drawers. */
   const selection_move_targets = useMemo(() => groups.map((g) => ({ id: String(g.id), label: g.name })), [groups]);
 
-  // ── Selection action bar — bulk actions on the Table view's checked root
-  // items. Deliberately scoped to root items only (see `BoardTable`'s
-  // `onSelectionChange` doc comment): a subitem's `group_id` is denormalized
-  // from its parent, so moving/archiving/deleting it independently isn't a
-  // supported operation on its own. ──
-  const handleBulkDuplicate = async () => {
-    if (!selected_item_ids.length || is_bulk_action_busy) return;
+  /** "Move to" for an item selection: every table (group) in the active tab, with its color. */
+  const selection_group_targets = useMemo(
+    () => groups.map((group) => ({ id: String(group.id), label: group.name, color: group.accent_color })),
+    [groups]
+  );
+
+  /**
+   * "Move to" for a subitem selection and "Convert" for an item selection:
+   * every loaded root item in table order, minus the checked rows themselves.
+   */
+  const selection_parent_targets = useMemo(() => {
+    const selected = new Set(selected_row_ids);
+    const group_index = new Map(groups.map((group, index) => [group.id, index]));
+    const group_by_id = new Map(groups.map((group) => [group.id, group]));
+    return items
+      .filter((item) => item.parent_id === null && !selected.has(item.id) && group_index.has(item.group_id))
+      .sort((a, b) => (group_index.get(a.group_id) ?? 0) - (group_index.get(b.group_id) ?? 0) || a.position - b.position)
+      .map((item) => ({
+        id: String(item.id),
+        label: item.name,
+        color: group_by_id.get(item.group_id)?.accent_color,
+        hint: group_by_id.get(item.group_id)?.name,
+      }));
+  }, [items, groups, selected_row_ids]);
+
+  // The board only nests two levels deep, so an item that has subitems can't become a subitem.
+  const selection_convert_disabled_reason = useMemo(() => {
+    if (table_selection.level === "subitem") return null;
+    const has_subitems = selected_row_ids.some((id) => (findItemInTree(items, id)?.children.length ?? 0) > 0);
+    return has_subitems ? "Items with subitems can't become subitems. Move or delete their subitems first." : null;
+  }, [table_selection.level, selected_row_ids, items]);
+
+  /**
+   * Runs one bulk action on the current selection: blocks the bar while the
+   * request is in flight, clears the checked rows once it succeeds and reports
+   * a failure as a toast, leaving the table and the selection as they were.
+   */
+  const runBulkAction = async (action: (ids: number[], level: SelectionLevel) => Promise<void>, error_message: string) => {
+    if (!selected_row_ids.length || is_bulk_action_busy) return;
     setIsBulkActionBusy(true);
     try {
-      const duplicates = await boardContentService.duplicateItems(board_id, selected_item_ids);
-      setItems((current) => [...current, ...duplicates]);
+      await action(selected_row_ids, table_selection.level);
       setSelectionClearSignal((n) => n + 1);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, error_message));
     } finally {
       setIsBulkActionBusy(false);
     }
   };
 
-  const handleBulkMove = async (target_group_id: string) => {
-    if (!selected_item_ids.length || is_bulk_action_busy) return;
-    setIsBulkActionBusy(true);
+  /** Undo of "Archive" and "Delete": restores the rows, then reloads their root rows (a subitem's parent) from the server. */
+  const undoBulkRemoval = async (ids: number[], root_ids: number[], level: SelectionLevel) => {
     try {
-      const moved = await boardContentService.moveItems(board_id, selected_item_ids, Number(target_group_id));
+      await boardContentService.restoreItems(board_id, ids);
+      await reloadAutomationRows(root_ids);
+      toast.success(`${ids.length} ${selectionNoun(level, ids.length)} restored`);
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't restore the rows. Please try again."));
+    }
+  };
+
+  /** The root rows to reload when `ids` come back: the rows themselves for items, their parents for subitems. */
+  const rootIdsOf = (ids: number[], level: SelectionLevel) =>
+    level === "item"
+      ? ids
+      : Array.from(new Set(ids.map((id) => findItemInTree(items, id)?.parent_id).filter((id): id is number => id != null)));
+
+  const handleBulkDuplicate = () =>
+    runBulkAction(async (ids) => {
+      const duplicates = await boardContentService.duplicateItems(board_id, ids);
+      setItems((current) =>
+        duplicates.reduce(
+          (acc, duplicate) =>
+            duplicate.parent_id == null
+              ? [...acc, duplicate]
+              : mapItemInTree(acc, duplicate.parent_id, (parent) => ({
+                  ...parent,
+                  subitem_count: parent.subitem_count + 1,
+                  children: [...parent.children, duplicate],
+                })),
+          current
+        )
+      );
+    }, "Couldn't duplicate the selected rows. Please try again.");
+
+  /** "Move to": a table for items, another parent item for subitems. */
+  const handleBulkMove = (target_id: string) =>
+    runBulkAction(async (ids, level) => {
+      if (level === "subitem") {
+        const nodes = ids.map((id) => findItemInTree(items, id)).filter((node): node is BoardItemDto => !!node);
+        const updated = await boardContentService.updateItemsParent(board_id, ids, { parent_id: Number(target_id) });
+        const node_by_id = new Map(nodes.map((node) => [node.id, node]));
+        setItems((current) =>
+          updated.reduce((acc, row) => {
+            const node = node_by_id.get(row.id);
+            return node ? relocateItemInTree(acc, node, row) : acc;
+          }, current)
+        );
+        return;
+      }
+      const moved = await boardContentService.moveItems(board_id, ids, Number(target_id));
       const moved_by_id = new Map(moved.map((item) => [item.id, item]));
-      // Merges only the fields the move actually changed (`group_id`/`position`)
-      // rather than replacing the whole item — `bulkMove`'s response doesn't
-      // eager-load `childrenRecursive`, so a wholesale replace would wipe out
-      // any subitems already known locally (mirrors `handleRenameItem`'s own
-      // merge-not-replace, just above).
+      // Merges only the fields the move changed (`group_id`/`position`) rather
+      // than replacing the whole item, `bulkMove`'s response doesn't load
+      // `childrenRecursive`, so a wholesale replace would drop known subitems.
       setItems((current) =>
         current.map((item) => {
           const update = moved_by_id.get(item.id);
-          return update ? { ...item, group_id: update.group_id, position: update.position } : item;
+          return update ? { ...withGroupInTree(item, update.group_id), position: update.position } : item;
         })
       );
-      setSelectionClearSignal((n) => n + 1);
-    } finally {
-      setIsBulkActionBusy(false);
-    }
-  };
+    }, "Couldn't move the selected rows. Please try again.");
 
-  const handleBulkEditColumn = async (column_id: string, value: BoardItemValue) => {
-    if (!selected_item_ids.length || is_bulk_action_busy) return;
-    setIsBulkActionBusy(true);
-    try {
-      await boardContentService.bulkSetColumnValue(board_id, selected_item_ids, Number(column_id), value);
+  /** "Convert": subitems become items (`parent_id` null), items become subitems of `parent_id`. */
+  const handleBulkConvert = (parent_id: string | null) =>
+    runBulkAction(async (ids, level) => {
+      const nodes = ids.map((id) => findItemInTree(items, id)).filter((node): node is BoardItemDto => !!node);
+      const updated = await boardContentService.updateItemsParent(board_id, ids, { parent_id: parent_id === null ? null : Number(parent_id) });
+      const node_by_id = new Map(nodes.map((node) => [node.id, node]));
       setItems((current) =>
-        current.map((item) =>
-          selected_item_ids.includes(item.id) ? { ...item, values: { ...item.values, [column_id]: value } } : item
-        )
+        updated.reduce((acc, row) => {
+          const node = node_by_id.get(row.id);
+          return node ? relocateItemInTree(acc, node, row) : acc;
+        }, current)
       );
+      const target_noun = level === "subitem" ? selectionNoun("item", ids.length) : selectionNoun("subitem", ids.length);
+      toast.success(`${ids.length} ${selectionNoun(level, ids.length)} converted to ${target_noun}`);
+    }, "Couldn't convert the selected rows. Please try again.");
+
+  const handleBulkArchive = () =>
+    runBulkAction(async (ids, level) => {
+      const root_ids = rootIdsOf(ids, level);
+      await boardContentService.archiveItems(board_id, ids);
+      setItems((current) => ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
+      toast.showToast({
+        variant: "success",
+        title: `${ids.length} ${selectionNoun(level, ids.length)} archived`,
+        action_text: "Undo",
+        onAction: () => void undoBulkRemoval(ids, root_ids, level),
+      });
+    }, "Couldn't archive the selected rows. Please try again.");
+
+  /** "Delete" asks first, like monday.com, see the `ConfirmActionModal` rendered with the bar. */
+  const handleBulkDelete = () => {
+    if (!selected_row_ids.length || is_bulk_action_busy) return;
+    setBulkDeleteRequest({ level: table_selection.level, ids: selected_row_ids });
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    if (!bulk_delete_request) return;
+    const { ids, level } = bulk_delete_request;
+    const root_ids = rootIdsOf(ids, level);
+    setIsBulkActionBusy(true);
+    try {
+      // Rejects on failure, so the dialog stays open and shows the error inline.
+      await boardContentService.deleteItems(board_id, ids);
+      setItems((current) => ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
       setSelectionClearSignal((n) => n + 1);
+      setBulkDeleteRequest(null);
+      toast.showToast({
+        variant: "success",
+        title: `${ids.length} ${selectionNoun(level, ids.length)} deleted`,
+        description: "You can restore them from the board's trash.",
+        action_text: "Undo",
+        onAction: () => void undoBulkRemoval(ids, root_ids, level),
+      });
     } finally {
       setIsBulkActionBusy(false);
     }
   };
 
-  const handleBulkArchive = async () => {
-    if (!selected_item_ids.length || is_bulk_action_busy) return;
-    setIsBulkActionBusy(true);
-    try {
-      await boardContentService.archiveItems(board_id, selected_item_ids);
-      setItems((current) => selected_item_ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
-      setSelectionClearSignal((n) => n + 1);
-    } finally {
-      setIsBulkActionBusy(false);
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    if (!selected_item_ids.length || is_bulk_action_busy) return;
-    setIsBulkActionBusy(true);
-    try {
-      await boardContentService.deleteItems(board_id, selected_item_ids);
-      setItems((current) => selected_item_ids.reduce((acc, id) => removeItemFromTree(acc, id), current));
-      setSelectionClearSignal((n) => n + 1);
-    } finally {
-      setIsBulkActionBusy(false);
-    }
-  };
+  /** "Export": the checked rows to Excel. Items use the columns the board shows, subitems their own columns. */
+  const handleBulkExport = () =>
+    runBulkAction(async (ids, level) => {
+      const selected = new Set(ids);
+      const export_name = `${board_label} selection`;
+      if (level === "item") {
+        await exportVisibleRows(
+          { ...toolbar, groups: toolbar.groups.map((group) => ({ ...group, rows: group.rows.filter((row) => selected.has(row.id)) })).filter((group) => group.rows.length > 0) },
+          export_name,
+          "xlsx"
+        );
+        return;
+      }
+      const group_name_by_id = new Map(groups.map((group) => [group.id, group.name]));
+      const export_columns = subitem_columns.filter((column) => column.label.trim() !== "");
+      const rows = items.flatMap((parent) =>
+        (parent.children ?? [])
+          .filter((sub) => selected.has(sub.id))
+          .map((sub) => [
+            group_name_by_id.get(parent.group_id) ?? "",
+            toSafeText(parent.name),
+            toSafeText(sub.name),
+            ...export_columns.map((column) => toSafeText(getExportText(sub, String(column.id)) ?? "")),
+          ])
+      );
+      await downloadExportTable(
+        { headings: ["Group", item_column_label, "Subitem", ...export_columns.map((column) => column.label)], rows },
+        export_name,
+        "xlsx"
+      );
+    }, "Couldn't export the selected rows. Please try again.");
 
   const handleClearSelection = () => {
-    setSelectedItemIds([]);
+    setTableSelection({ level: "item", ids: [] });
     setSelectionClearSignal((n) => n + 1);
   };
 
@@ -4719,19 +4854,36 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       }
       selectionBar={
         active_view_type === "table" && node.can_edit ? (
+          <>
+          <ConfirmActionModal
+            is_open={bulk_delete_request !== null}
+            title={bulk_delete_request ? `Delete ${bulk_delete_request.ids.length} ${selectionNoun(bulk_delete_request.level, bulk_delete_request.ids.length)}?` : "Delete"}
+            description={
+              bulk_delete_request?.level === "item"
+                ? "The selected items and their subitems will be moved to the board's trash. You can undo this right after, or restore them from the trash later."
+                : "The selected subitems will be moved to the board's trash. You can undo this right after, or restore them from the trash later."
+            }
+            confirm_label="Delete"
+            variant="danger"
+            onClose={() => setBulkDeleteRequest(null)}
+            onConfirm={handleConfirmBulkDelete}
+          />
           <SelectionActionBar
-            selected_count={selected_item_ids.length}
-            groups={selection_move_targets}
-            columns={table_base_columns}
-            people={assignable_table_people}
+            level={table_selection.level}
+            selected_count={selected_row_ids.length}
+            group_targets={selection_group_targets}
+            parent_targets={selection_parent_targets}
+            convert_disabled_reason={selection_convert_disabled_reason}
             is_busy={is_bulk_action_busy}
-            onDuplicate={handleBulkDuplicate}
-            onMove={handleBulkMove}
-            onEditColumn={(column_id, value) => void handleBulkEditColumn(column_id, value as BoardItemValue)}
-            onArchive={handleBulkArchive}
+            onDuplicate={() => void handleBulkDuplicate()}
+            onExport={() => void handleBulkExport()}
+            onMove={(target_id) => void handleBulkMove(target_id)}
+            onConvert={(parent_id) => void handleBulkConvert(parent_id)}
+            onArchive={() => void handleBulkArchive()}
             onDelete={handleBulkDelete}
             onClose={handleClearSelection}
           />
+          </>
         ) : undefined
       }
     >
@@ -4772,7 +4924,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
           onRequestColumnSort={handleRequestColumnSort}
           active_sort_column_id={active_sort_column_id}
           active_sort_direction={active_sort_direction}
-          onSelectionChange={(ids) => setSelectedItemIds(ids.map(Number))}
+          onSelectionChange={({ item_ids, subitem_ids }) =>
+            setTableSelection(
+              subitem_ids.length > 0 ? { level: "subitem", ids: subitem_ids.map(Number) } : { level: "item", ids: item_ids.map(Number) }
+            )
+          }
           clear_selection_signal={selection_clear_signal}
           edit_item_request={new_item_edit_request}
         />

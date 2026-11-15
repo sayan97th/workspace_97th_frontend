@@ -1,163 +1,315 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import BoardPopover from "./toolbar/BoardPopover";
-import BulkEditColumnPopover, { BULK_EDITABLE_KINDS } from "./BulkEditColumnPopover";
-import type { CellValue, ColumnDef, PersonDef } from "./table/types";
-import { CloseIcon } from "@/icons/board-icons";
+import type { SelectionLevel } from "./table/selectionUtils";
+import "./selection-action-bar.scss";
 
-export type SelectionActionBarGroupOption = { id: string; label: string };
+/** One choice of a "Move to" or "Convert" menu: a table (for items) or a parent item (for subitems). */
+export type SelectionActionBarTarget = {
+  id: string;
+  label: string;
+  /** Group color shown as a small swatch. */
+  color?: string;
+  /** Second line, e.g. the table a parent item lives in. */
+  hint?: string;
+};
 
 export type SelectionActionBarProps = {
-  /** Count of currently-checked rows — the bar renders nothing once this drops to 0, so a caller can keep it mounted unconditionally. */
+  /** Whether the checked rows are items or subitems. They are never mixed, see `selectionUtils.ts`. */
+  level: SelectionLevel;
+  /** Count of checked rows. The bar renders nothing at 0, so a caller can keep it mounted. */
   selected_count: number;
-  /** Target tables for "Move to" — omitted or empty hides that button instead of showing an empty menu. */
-  groups: SelectionActionBarGroupOption[];
-  /** This tab's columns, for "Edit column" — restricted to `BULK_EDITABLE_KINDS`. Omitted or empty hides that button. */
-  columns?: ColumnDef[];
-  people?: PersonDef[];
-  /** Disables every action button while a bulk request is in flight, so a slow network can't queue up several overlapping mutations from repeated clicks. */
+  /** Tables an item selection can move to. */
+  group_targets: SelectionActionBarTarget[];
+  /** Items a subitem selection can move under, or an item selection can be converted under. */
+  parent_targets: SelectionActionBarTarget[];
+  /** Why "Convert" is unavailable for this selection, e.g. an item that has its own subitems. */
+  convert_disabled_reason?: string | null;
+  /** Disables every action while a request is in flight, so repeated clicks can't stack overlapping mutations. */
   is_busy?: boolean;
   onDuplicate: () => void;
-  onMove: (group_id: string) => void;
-  onEditColumn?: (column_id: string, value: CellValue) => void;
+  onExport?: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  /** `parent_id` null turns subitems into items, an id turns items into subitems of that item. */
+  onConvert: (parent_id: string | null) => void;
+  /** A table id for items, a parent item id for subitems. */
+  onMove: (target_id: string) => void;
   onClose: () => void;
 };
 
-const ACTION_BUTTON =
-  "flex items-center gap-1.5 whitespace-nowrap rounded-[7px] px-3 py-2 text-[13px] font-medium text-white/90 transition-colors hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40";
+type OpenMenu = "move" | "convert" | null;
+
+const SEARCH_THRESHOLD = 7;
 
 /**
- * The board grid's "selection action bar" — Monday's floating bulk-action pill,
- * shown by `BoardShell`'s `selectionBar` slot once one or more rows are
- * checked. Purely presentational: every action id/group/callback comes from
- * the caller (`TableBoardView`), which owns the real `items`/`groups` state
- * and knows how to persist each action through `board-content.service.ts`.
+ * The board table's floating batch actions bar (monday.com "Batch Actions"),
+ * shown by `BoardShell`'s `selectionBar` slot once rows are checked. Works for
+ * a selection of items or of subitems, each level with its own actions:
+ *
+ * - Items: Duplicate, Export, Archive, Delete, Convert (to subitems of
+ *   another item) and Move to (another table).
+ * - Subitems: Duplicate, Export, Archive, Delete, Convert (to items) and Move
+ *   to (another parent item).
+ *
+ * Purely presentational: the caller (`TableBoardView`) owns the rows and
+ * persists each action.
  */
 const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
+  level,
   selected_count,
-  groups,
-  columns = [],
-  people = [],
+  group_targets,
+  parent_targets,
+  convert_disabled_reason = null,
   is_busy = false,
   onDuplicate,
-  onMove,
-  onEditColumn,
+  onExport,
   onArchive,
   onDelete,
+  onConvert,
+  onMove,
   onClose,
 }) => {
-  const move_button_ref = useRef<HTMLButtonElement>(null);
-  const [is_move_open, setIsMoveOpen] = useState(false);
-  const edit_button_ref = useRef<HTMLButtonElement>(null);
-  const [is_edit_open, setIsEditOpen] = useState(false);
-  const editable_columns = columns.filter((c) => BULK_EDITABLE_KINDS.includes(c.kind));
+  const [open_menu, setOpenMenu] = useState<OpenMenu>(null);
+  const [move_anchor, setMoveAnchor] = useState<HTMLButtonElement | null>(null);
+  const [convert_anchor, setConvertAnchor] = useState<HTMLButtonElement | null>(null);
+
+  const is_subitem = level === "subitem";
+  const move_targets = is_subitem ? parent_targets : group_targets;
+  const noun = is_subitem ? (selected_count === 1 ? "Subitem" : "Subitems") : selected_count === 1 ? "Item" : "Items";
 
   if (selected_count === 0) return null;
 
+  const toggleMenu = (menu: Exclude<OpenMenu, null>) => setOpenMenu((current) => (current === menu ? null : menu));
+  const closeMenu = () => setOpenMenu(null);
+
   return (
-    <div className="flex items-center gap-1 rounded-[10px] bg-[#323338] px-2 py-1.5 shadow-2xl shadow-black/50">
-      <span className="px-2.5 text-[13px] font-semibold text-white">{selected_count} selected</span>
-      <div className="h-5 w-px flex-none bg-white/15" />
+    <div className="selection-bar" role="toolbar" aria-label={`${selected_count} ${noun.toLowerCase()} selected`}>
+      <div className="selection-bar__summary">
+        <span className="selection-bar__count" aria-hidden="true">
+          <span key={selected_count}>{selected_count}</span>
+        </span>
+        <span className="selection-bar__title">{noun} selected</span>
+      </div>
 
-      <button type="button" onClick={onDuplicate} disabled={is_busy} className={ACTION_BUTTON}>
-        <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3">
-          <rect x="4.5" y="4.5" width="8" height="8" rx="1.3" />
-          <path d="M1.5 9.3 V2.8 A1.3 1.3 0 0 1 2.8 1.5 H9.3" />
-        </svg>
-        Duplicate
-      </button>
+      <div className="selection-bar__actions">
+        <BarAction label="Duplicate" icon={<DuplicateGlyph />} onClick={onDuplicate} disabled={is_busy} />
+        {onExport && <BarAction label="Export" icon={<ExportGlyph />} onClick={onExport} disabled={is_busy} />}
+        <BarAction label="Archive" icon={<ArchiveGlyph />} onClick={onArchive} disabled={is_busy} />
+        <BarAction label="Delete" icon={<DeleteGlyph />} onClick={onDelete} disabled={is_busy} tone="danger" />
 
-      {groups.length > 0 && (
-        <>
-          <button
-            ref={move_button_ref}
-            type="button"
-            onClick={() => setIsMoveOpen((open) => !open)}
-            disabled={is_busy}
-            className={ACTION_BUTTON}
-          >
-            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M2 4 H8 M2 7 H10 M2 10 H6" />
-              <path d="M9.3 9 L12 6.8 L9.3 4.6" />
-            </svg>
-            Move to
-          </button>
-          <BoardPopover anchor_el={move_button_ref.current} is_open={is_move_open} onClose={() => setIsMoveOpen(false)} align="start" width={220}>
-            <div className="max-h-72 overflow-auto py-1.5">
-              {groups.map((group) => (
-                <button
-                  key={group.id}
-                  type="button"
-                  onClick={() => {
-                    setIsMoveOpen(false);
-                    onMove(group.id);
-                  }}
-                  className="flex w-full items-center truncate px-3.5 py-2 text-left text-[13px] text-boardtree-text hover:bg-boardtree-hover"
-                >
-                  {group.label}
-                </button>
-              ))}
+        <BarAction
+          ref={setConvertAnchor}
+          label="Convert"
+          icon={<ConvertGlyph />}
+          onClick={() => toggleMenu("convert")}
+          disabled={is_busy || !!convert_disabled_reason || (!is_subitem && parent_targets.length === 0)}
+          title={convert_disabled_reason ?? undefined}
+          is_open={open_menu === "convert"}
+        />
+        <BoardPopover anchor_el={convert_anchor} is_open={open_menu === "convert"} onClose={closeMenu} align="start" width={is_subitem ? 280 : 300}>
+          {is_subitem ? (
+            <div className="selection-menu">
+              <div className="selection-menu__title">Convert to {selected_count === 1 ? "item" : "items"}</div>
+              <p className="selection-menu__note">
+                {selected_count === 1 ? "This subitem becomes an item" : `These ${selected_count} subitems become items`} in the same table as their
+                parent. Values in subitem columns the table doesn&apos;t have are not kept.
+              </p>
+              <button
+                type="button"
+                className="selection-menu__confirm"
+                onClick={() => {
+                  closeMenu();
+                  onConvert(null);
+                }}
+              >
+                Convert
+              </button>
             </div>
-          </BoardPopover>
-        </>
-      )}
+          ) : (
+            <TargetMenu
+              title="Convert to subitem of"
+              placeholder="Search items"
+              empty_text="No other items on this board"
+              targets={parent_targets}
+              onPick={(target_id) => {
+                closeMenu();
+                onConvert(target_id);
+              }}
+            />
+          )}
+        </BoardPopover>
 
-      {onEditColumn && editable_columns.length > 0 && (
-        <>
-          <button
-            ref={edit_button_ref}
-            type="button"
-            onClick={() => setIsEditOpen((open) => !open)}
-            disabled={is_busy}
-            className={ACTION_BUTTON}
-          >
-            <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9.6 1.8 L12.2 4.4 L4.6 12 L1.6 12.4 L2 9.4 Z" />
-            </svg>
-            Edit column
-          </button>
-          <BulkEditColumnPopover
-            anchor_el={edit_button_ref.current}
-            is_open={is_edit_open}
-            columns={editable_columns}
-            people={people}
-            onSave={(column_id, value) => { setIsEditOpen(false); onEditColumn(column_id, value); }}
-            onClose={() => setIsEditOpen(false)}
-          />
-        </>
-      )}
+        {move_targets.length > 0 && (
+          <>
+            <BarAction
+              ref={setMoveAnchor}
+              label="Move to"
+              icon={<MoveGlyph />}
+              onClick={() => toggleMenu("move")}
+              disabled={is_busy}
+              is_open={open_menu === "move"}
+            />
+            <BoardPopover anchor_el={move_anchor} is_open={open_menu === "move"} onClose={closeMenu} align="start" width={280}>
+              <TargetMenu
+                title={is_subitem ? "Move to item" : "Move to group"}
+                placeholder={is_subitem ? "Search items" : "Search groups"}
+                empty_text="Nothing matches your search"
+                targets={move_targets}
+                onPick={(target_id) => {
+                  closeMenu();
+                  onMove(target_id);
+                }}
+              />
+            </BoardPopover>
+          </>
+        )}
+      </div>
 
-      <button type="button" onClick={onArchive} disabled={is_busy} className={ACTION_BUTTON}>
-        <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="1.5" y="2" width="11" height="2.6" rx="0.6" />
-          <path d="M2.4 4.6 V10.6 A1.3 1.3 0 0 0 3.7 11.9 H10.3 A1.3 1.3 0 0 0 11.6 10.6 V4.6" />
-          <path d="M5.6 7.3 H8.4" />
+      <div className="selection-bar__divider" />
+      <button type="button" onClick={onClose} aria-label="Clear selection" title="Clear selection" className="selection-bar__close">
+        <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d="M5.5 5.5 L14.5 14.5 M14.5 5.5 L5.5 14.5" />
         </svg>
-        Archive
-      </button>
-
-      <button type="button" onClick={onDelete} disabled={is_busy} className={`${ACTION_BUTTON} hover:bg-[#e2445c]/20 hover:text-[#ff8ba0]`}>
-        <svg viewBox="0 0 14 14" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M2.3 3.7 H11.7" />
-          <path d="M5 3.7 V2.4 A0.8 0.8 0 0 1 5.8 1.6 H8.2 A0.8 0.8 0 0 1 9 2.4 V3.7" />
-          <path d="M3.4 3.7 L4 11.3 A1 1 0 0 0 5 12.2 H9 A1 1 0 0 0 10 11.3 L10.6 3.7" />
-        </svg>
-        Delete
-      </button>
-
-      <div className="h-5 w-px flex-none bg-white/15" />
-      <button
-        type="button"
-        onClick={onClose}
-        title="Clear selection"
-        className="flex h-7 w-7 flex-none items-center justify-center rounded-[6px] text-white/70 transition-colors hover:bg-white/10 hover:text-white"
-      >
-        <CloseIcon size={12} />
       </button>
     </div>
   );
 };
+
+type BarActionProps = {
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  is_open?: boolean;
+  tone?: "danger";
+  title?: string;
+};
+
+const BarAction = React.forwardRef<HTMLButtonElement, BarActionProps>(function BarAction(
+  { label, icon, onClick, disabled = false, is_open, tone, title },
+  ref
+) {
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={label}
+      aria-haspopup={is_open === undefined ? undefined : "menu"}
+      aria-expanded={is_open}
+      data-open={is_open || undefined}
+      className={`selection-bar__action${tone === "danger" ? " selection-bar__action--danger" : ""}`}
+    >
+      {icon}
+      <span className="selection-bar__label">{label}</span>
+    </button>
+  );
+});
+
+type TargetMenuProps = {
+  title: string;
+  placeholder: string;
+  empty_text: string;
+  targets: SelectionActionBarTarget[];
+  onPick: (target_id: string) => void;
+};
+
+/** A titled pick one list, searchable once it gets long. */
+function TargetMenu({ title, placeholder, empty_text, targets, onPick }: TargetMenuProps) {
+  const [query, setQuery] = useState("");
+  const visible_targets = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return targets;
+    return targets.filter((target) => target.label.toLowerCase().includes(needle) || target.hint?.toLowerCase().includes(needle));
+  }, [targets, query]);
+
+  return (
+    <div className="selection-menu" role="menu" aria-label={title}>
+      <div className="selection-menu__title">{title}</div>
+      {targets.length > SEARCH_THRESHOLD && (
+        <input
+          autoFocus
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+          className="selection-menu__search"
+        />
+      )}
+      <div className="selection-menu__list">
+        {visible_targets.length === 0 ? (
+          <div className="selection-menu__empty">{empty_text}</div>
+        ) : (
+          visible_targets.map((target) => (
+            <button key={target.id} type="button" role="menuitem" onClick={() => onPick(target.id)} className="selection-menu__option">
+              {target.color && <span className="selection-menu__swatch" style={{ background: target.color }} />}
+              <span className="selection-menu__option-text">
+                <span className="selection-menu__option-label">{target.label}</span>
+                {target.hint && <span className="selection-menu__option-hint">{target.hint}</span>}
+              </span>
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Thin line glyphs, drawn on one grid so the row of actions reads as a set ──
+
+const Glyph: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <svg viewBox="0 0 20 20" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {children}
+  </svg>
+);
+
+const DuplicateGlyph = () => (
+  <Glyph>
+    <rect x="6.5" y="6.5" width="10" height="10" rx="1.8" />
+    <path d="M3.5 13 V5.3 A1.8 1.8 0 0 1 5.3 3.5 H13" />
+  </Glyph>
+);
+
+const ExportGlyph = () => (
+  <Glyph>
+    <path d="M10 12.5 V3.5" />
+    <path d="M6.5 7 L10 3.5 L13.5 7" />
+    <path d="M4 11.5 V15 A1.5 1.5 0 0 0 5.5 16.5 H14.5 A1.5 1.5 0 0 0 16 15 V11.5" />
+  </Glyph>
+);
+
+const ArchiveGlyph = () => (
+  <Glyph>
+    <rect x="3" y="3.5" width="14" height="3.5" rx="1" />
+    <path d="M4.3 7 V15 A1.5 1.5 0 0 0 5.8 16.5 H14.2 A1.5 1.5 0 0 0 15.7 15 V7" />
+    <path d="M8.2 10.3 H11.8" />
+  </Glyph>
+);
+
+const DeleteGlyph = () => (
+  <Glyph>
+    <path d="M3.5 5.5 H16.5" />
+    <path d="M7.5 5.5 V4 A1 1 0 0 1 8.5 3 H11.5 A1 1 0 0 1 12.5 4 V5.5" />
+    <path d="M5 5.5 L5.8 15.6 A1.5 1.5 0 0 0 7.3 17 H12.7 A1.5 1.5 0 0 0 14.2 15.6 L15 5.5" />
+    <path d="M8.5 9 V13.5 M11.5 9 V13.5" />
+  </Glyph>
+);
+
+const ConvertGlyph = () => (
+  <Glyph>
+    <path d="M4 4 V9.5 A2 2 0 0 0 6 11.5 H15" />
+    <path d="M12 8.5 L15 11.5 L12 14.5" />
+  </Glyph>
+);
+
+const MoveGlyph = () => (
+  <Glyph>
+    <path d="M3.5 10 H16" />
+    <path d="M11.5 5.5 L16 10 L11.5 14.5" />
+  </Glyph>
+);
 
 export default SelectionActionBar;

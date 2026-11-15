@@ -26,3 +26,4 @@ export type {
 } from "./types";
 export { buildInitialGroups } from "./mockData";
 export { TABLE_KIND_TO_ENGINE_KIND, presetConfigFor } from "./constants";
+export type { BoardTableSelection, SelectionLevel } from "./selectionUtils";

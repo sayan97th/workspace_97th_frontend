@@ -32,7 +32,9 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
   const picker_key = `pick:sub|${item.id}`;
   const sticky_offsets = subStickyOffsets(name_col_width);
   const HEADER_BG = "var(--color-boardtree-panel-alt)";
-  const progress_status_columns = statusColumnsOf(group.sub_base_columns.concat(group.sub_custom_columns)).map(({ id, title }) => ({ id, title }));
+  const selected_sub_count = item.subs.filter((sub) => state.selected_map[sub.id]).length;
+  const is_all_subs_selected = item.subs.length > 0 && selected_sub_count === item.subs.length;
+  const progress_status_columns =statusColumnsOf(group.sub_base_columns.concat(group.sub_custom_columns)).map(({ id, title }) => ({ id, title }));
 
   return (
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
@@ -40,7 +42,30 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
       <div className="w-[30px] flex-none" />
       <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
       <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-boardtree-border bg-boardtree-panel-alt" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
-        <div className="h-9 border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }} />
+        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
+          {item.subs.length > 0 && (
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={selected_sub_count === 0 ? false : is_all_subs_selected ? true : "mixed"}
+              aria-label={is_all_subs_selected ? "Clear subitem selection" : "Select all subitems"}
+              onClick={() => actions.toggleSubitemSelection(item.id)}
+              className="flex items-center justify-center"
+            >
+              {selected_sub_count > 0 ? (
+                <span className="flex h-4 w-4 items-center justify-center rounded-[4px] bg-boardtree-accent">
+                  {is_all_subs_selected ? (
+                    <svg viewBox="0 0 14 14" width="10" height="10"><path d="M2 7.4 L5.4 10.8 L12 3.4" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                  ) : (
+                    <svg viewBox="0 0 14 14" width="10" height="10"><path d="M3 7 H11" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" /></svg>
+                  )}
+                </span>
+              ) : (
+                <span className="h-4 w-4 rounded-[4px] border border-boardtree-control-border bg-boardtree-surface hover:border-boardtree-accent" />
+              )}
+            </button>
+          )}
+        </div>
 
         <ColumnHeaderCell
           scoped_key={sub_title_key}
