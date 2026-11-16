@@ -8,6 +8,7 @@ import ColumnPicker from "../menus/ColumnPicker";
 import TreeBar from "./TreeBar";
 import { statusColumnsOf } from "../progressTracking";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface SubitemHeaderRowProps {
   item: BoardTableItem;
@@ -25,6 +26,7 @@ interface SubitemHeaderRowProps {
 }
 
 export default function SubitemHeaderRow({ item, group, name_col_width, min_width, state, actions, onRequestColumnFilter, onRequestGroupByColumn, onRequestColumnPermissions, column_automation }: SubitemHeaderRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const scope_key_of = (column_id: string) => `sub|${item.id}|${column_id}`;
   const sub_title_key = `sub-title:${item.id}`;
   const sort_scope = `sub:${item.id}`;
@@ -42,7 +44,7 @@ export default function SubitemHeaderRow({ item, group, name_col_width, min_widt
       <div className="w-[30px] flex-none" />
       <div className="w-[5px] flex-none rounded-tl-[5px]" style={{ background: group.color, marginTop: 8 }} />
       <div className="mt-2 flex-1 rounded-tr-[10px] border border-l-0 border-b border-boardtree-border bg-boardtree-panel-alt" style={{ display: "grid", gridTemplateColumns: sub_tpl }}>
-        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
+        <div className="flex h-9 items-center justify-center border-r border-boardtree-grid" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 16, background: HEADER_BG }}>
           {item.subs.length > 0 && (
             <button
               type="button"

@@ -5,6 +5,7 @@ import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./use
 import type { ColumnAutomationShortcut, ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
 import { computeNameColWidth, fitNameColWidth, mainMinWidth } from "./layoutUtils";
+import { StickyColumnsContext } from "./stickyColumns";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PHONE_QUERY } from "@/lib/breakpoints";
 import { boardTreeFontClassName } from "../board-tree-font";
@@ -506,19 +507,9 @@ export default function BoardTable({
   const name_col_width = useMemo(() => {
     const all_names = state.groups.flatMap((g) => g.items.map((it) => it.name));
     const desktop_width = state.item_column_width ?? computeNameColWidth(all_names);
-    // Phones get a narrow frozen Item column so value columns fit beside it, see `fitNameColWidth`.
+    // Phones get a narrower Item column so value columns show next to it, see `fitNameColWidth`.
     return fitNameColWidth(desktop_width, is_phone);
   }, [state.groups, state.item_column_width, is_phone]);
-
-  /**
-   * Pinned value columns stay frozen on desktop only: on a phone every extra
-   * frozen column eats the little width left after the Item column, so the
-   * grid renders as if nothing was pinned (the saved pin count is untouched).
-   */
-  const grid_state = useMemo(
-    () => (is_phone && state.pinned_column_count > 0 ? { ...state, pinned_column_count: 0 } : state),
-    [state, is_phone]
-  );
 
   /**
    * The real column the status/label editor is currently open for (see
@@ -596,11 +587,15 @@ export default function BoardTable({
   const column_order_key = useMemo(() => columnOrderKey(state.groups), [state.groups]);
   const dragging_column_key = state.column_drag ? columnMoveKey(state.column_drag.scope, state.column_drag.column_id) : null;
 
+  // Phones turn the frozen columns off (checkbox, Item, comment icon, pinned columns), so the whole
+  // row scrolls sideways instead of a fixed Item column covering most of the screen. Larger screens
+  // keep them exactly as before. See `stickyColumns.ts`.
   const grid = (
+    <StickyColumnsContext.Provider value={!is_phone}>
     <ColumnMoveAnimator order_key={column_order_key} dragging_key={dragging_column_key}>
       {!embedded && <div className="h-[26px]" />}
       <SortableGroupList
-        state={grid_state}
+        state={state}
         actions={actions}
         renderGroup={(group, index, view_state, is_reordering) => (
           <GroupSection
@@ -640,6 +635,7 @@ export default function BoardTable({
         </button>
       )}
     </ColumnMoveAnimator>
+    </StickyColumnsContext.Provider>
   );
 
   const modals = (

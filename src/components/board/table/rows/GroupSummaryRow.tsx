@@ -6,6 +6,7 @@ import { NUMBER_AGGREGATION_LABELS, summaryForColumn } from "../summaryUtils";
 import { VoteRatingSummary } from "../cells/VoteRatingCells";
 import { ProgressTrackingSummary } from "../cells/ProgressTrackingCells";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface GroupSummaryRowProps {
   group: BoardTableGroup;
@@ -17,9 +18,10 @@ interface GroupSummaryRowProps {
 /** Sticky-free footer row shown at the bottom of every expanded group: a status distribution
  *  bar per status column and a running total per number column, mirroring Monday's board summary row. */
 export default function GroupSummaryRow({ group, name_col_width, min_width, state }: GroupSummaryRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const columns = group.base_columns.concat(group.custom_columns);
-  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const pinned_columns = is_sticky_columns ? group.base_columns.slice(0, state.pinned_column_count) : [];
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   // The leading cells under Item stay page colored, so the summary reads as a strip under the value columns only.
   const ROW_BG = "var(--color-boardtree-bg)";
@@ -28,9 +30,9 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
     <div className="flex items-stretch" style={{ minWidth: min_width }}>
       <div className="w-[5px] flex-none" />
       <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="h-9" style={{ position: "sticky", left: sticky_offsets[0], zIndex: 15, background: ROW_BG }} />
-        <div className="h-9" style={{ position: "sticky", left: sticky_offsets[1], zIndex: 15, background: ROW_BG }} />
-        <div className="h-9 border-r border-boardtree-grid" style={{ position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
+        <div className="h-9" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: ROW_BG }} />
+        <div className="h-9" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]), zIndex: 15, background: ROW_BG }} />
+        <div className="h-9 border-r border-boardtree-grid" style={{ ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: ROW_BG }} />
 
         {columns.map((col, col_index) => {
           const summary = summaryForColumn(group.items, col, state.status_defs, columns);

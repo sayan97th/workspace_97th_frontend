@@ -43,14 +43,13 @@ export function computeNameColWidth(names: string[]): number {
 
 /**
  * Item / Subitem column width on a phone. The desktop width (auto sized from
- * 280px, or the user's own resize) would freeze almost the whole 412px screen
- * together with the checkbox and comment cells, leaving no room for a single
- * value column. Phones cap it, like monday.com's mobile web, so values show
- * next to the name and the rest scroll in. Render only: the saved desktop
- * width is never overwritten.
+ * 280px, or the user's own resize) fills most of a 412px screen. Phones cap
+ * it so the next value columns show beside the name; nothing is frozen there
+ * (see `stickyColumns.ts`), so the rest scrolls in with the whole row.
+ * Render only: the saved desktop width is never overwritten.
  */
-export const PHONE_NAME_COL_WIDTH = 150;
-export const PHONE_SUB_NAME_COL_WIDTH = 130;
+export const PHONE_NAME_COL_WIDTH = 200;
+export const PHONE_SUB_NAME_COL_WIDTH = 170;
 
 export function fitNameColWidth(width: number, is_phone: boolean, phone_width: number = PHONE_NAME_COL_WIDTH): number {
   return is_phone ? Math.min(width, phone_width) : width;

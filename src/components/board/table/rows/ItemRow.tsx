@@ -19,6 +19,7 @@ import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import ItemNameLabel from "./ItemNameLabel";
 import { ITEM_NAME_MAX_LENGTH } from "../constants";
 import "./item-name-cell.scss";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 /** Wraps the (case-insensitive) first occurrence of `query` inside `text` in a `<mark>`, for the item-title span's Ctrl/Cmd+F active-match highlight. Returns `text` unchanged when there's no match. */
 interface ItemRowProps {
@@ -31,6 +32,7 @@ interface ItemRowProps {
 }
 
 export default function ItemRow({ item, group, name_col_width, min_width, state, actions }: ItemRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const is_open = !!state.open_map[item.id];
   const is_selected = !!state.selected_map[item.id];
   const is_editing = state.editing_id === item.id;
@@ -53,7 +55,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   // The Item column (checkbox + name + comment icon) always freezes; any
   // extra leading value columns freeze too once pinned from the toolbar's
   // "Choose columns to pin" control, see `mainStickyOffsets`'s own comment.
-  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const pinned_columns = is_sticky_columns ? group.base_columns.slice(0, state.pinned_column_count) : [];
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
 
   const move_targets: RowMenuTarget[] = state.groups.map((g) => ({ id: g.key, label: g.title, current: g.key === group.key, color: g.color }));
@@ -174,7 +176,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
       <TreeBar variant="thick" color={group.color} />
 
       <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>
           <button
             type="button"
             role="checkbox"
@@ -200,8 +202,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,
-            position: "sticky",
-            left: sticky_offsets[1],
+            ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]),
             zIndex: is_editing ? 16 : 15,
             // While editing, the whole cell reads as the field (white fill and a
             // full blue frame) instead of an input box nested inside it, like monday.com.
@@ -319,7 +320,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           )}
         </div>
 
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: row_bg }}>
           <ItemCommentsButton
             item_id={item.id}
             comment_count={item.comment_count}

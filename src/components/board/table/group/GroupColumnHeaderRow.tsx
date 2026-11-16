@@ -7,6 +7,7 @@ import ColumnPicker from "../menus/ColumnPicker";
 import ColumnHeaderCell from "./ColumnHeaderCell";
 import { statusColumnsOf } from "../progressTracking";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface GroupColumnHeaderRowProps {
   group: BoardTableGroup;
@@ -40,12 +41,13 @@ export default function GroupColumnHeaderRow({
   active_sort_column_id = null,
   active_sort_direction = null,
 }: GroupColumnHeaderRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const scope_key_of = (column_id: string) => `main|${group.key}|${column_id}`;
   const item_title_key = `item-title:${group.key}`;
   const sort_scope = `main:${group.key}`;
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const picker_key = `pick:main|${group.key}`;
-  const pinned_columns = group.base_columns.slice(0, state.pinned_column_count);
+  const pinned_columns = is_sticky_columns ? group.base_columns.slice(0, state.pinned_column_count) : [];
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   const HEADER_BG = "var(--color-boardtree-surface)";
   // "Header height" from the toolbar's "..." menu: taller rows let long titles wrap.
@@ -90,7 +92,7 @@ export default function GroupColumnHeaderRow({
       <div className="w-[5px] flex-none rounded-tl-[4px]" style={{ background: group.color }} />
 
       <div className="flex-1 border-y border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: header_px, position: "sticky", left: sticky_offsets[0], zIndex: 16, background: HEADER_BG }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: header_px, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 16, background: HEADER_BG }}>
           <button
             type="button"
             onClick={() => actions.toggleGroupSelection(group.key)}

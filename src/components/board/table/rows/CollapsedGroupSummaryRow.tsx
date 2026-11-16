@@ -11,6 +11,7 @@ import GroupHeaderLeft from "../group/GroupHeaderLeft";
 import GroupMenuButton from "../group/GroupMenuButton";
 import { groupDragHandleClassName, useGroupDragHandle } from "../group/groupDragHandle";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface CollapsedGroupSummaryRowProps {
   group: BoardTableGroup;
@@ -27,6 +28,7 @@ const ROW_HEIGHT = 58;
  *  distribution, number sum, timeline span) visible at a glance, mirroring Monday's own
  *  collapsed-group preview. */
 export default function CollapsedGroupSummaryRow({ group, name_col_width, min_width, state, actions }: CollapsedGroupSummaryRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const main_tpl = mainGridTemplate(name_col_width, group.base_columns, group.custom_columns);
   const columns = group.base_columns.concat(group.custom_columns);
   const is_hovered = state.hover_group_key === group.key;
@@ -66,7 +68,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
           <div
             {...drag_handle.listeners}
             className={`flex items-center pl-8 ${groupDragHandleClassName(drag_handle)}`}
-            style={{ gridColumn: "span 3", height: ROW_HEIGHT, position: "sticky", left: 0, zIndex: 15, background: "var(--color-boardtree-surface)" }}
+            style={{ gridColumn: "span 3", height: ROW_HEIGHT, ...stickyCellStyle(is_sticky_columns, 0), zIndex: 15, background: "var(--color-boardtree-surface)" }}
           >
             <GroupHeaderLeft group={group} state={state} actions={actions} show_menu_button={false} />
           </div>

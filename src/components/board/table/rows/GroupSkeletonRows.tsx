@@ -4,6 +4,7 @@ import type { ColumnDef } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
 import TreeBar from "./TreeBar";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface GroupSkeletonRowsProps {
   name_col_width: number;
@@ -26,11 +27,12 @@ interface GroupSkeletonRowsProps {
  * height and doesn't jump the scroll position once its rows actually render.
  */
 export default function GroupSkeletonRows({ name_col_width, min_width, base_columns, custom_columns, color, row_height, item_count, pinned_column_count = 0 }: GroupSkeletonRowsProps) {
+  const is_sticky_columns = useStickyColumns();
   const row_h = ROW_HEIGHT_PX[row_height];
   const main_tpl = mainGridTemplate(name_col_width, base_columns, custom_columns);
   const columns = base_columns.concat(custom_columns);
   const row_count = Math.min(6, Math.max(1, item_count ?? 3));
-  const pinned_columns = base_columns.slice(0, pinned_column_count);
+  const pinned_columns = is_sticky_columns ? base_columns.slice(0, pinned_column_count) : [];
   const sticky_offsets = mainStickyOffsets(name_col_width, pinned_columns);
   const ROW_BG = "var(--color-boardtree-surface)";
 
@@ -40,11 +42,11 @@ export default function GroupSkeletonRows({ name_col_width, min_width, base_colu
         <div key={row_index} className="relative flex items-stretch" style={{ minWidth: min_width }}>
           <TreeBar variant="thick" color={color} />
           <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-            <div className="border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: ROW_BG }} />
-            <div className="flex items-center border-r border-boardtree-grid px-3" style={{ height: row_h, position: "sticky", left: sticky_offsets[1], zIndex: 15, background: ROW_BG }}>
+            <div className="border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: ROW_BG }} />
+            <div className="flex items-center border-r border-boardtree-grid px-3" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]), zIndex: 15, background: ROW_BG }}>
               <div className="h-3.5 w-2/3 animate-pulse rounded bg-boardtree-hover" />
             </div>
-            <div className="border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: ROW_BG }} />
+            <div className="border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: ROW_BG }} />
             {columns.map((col, col_index) => {
               const is_pinned = col_index < pinned_columns.length;
               return (

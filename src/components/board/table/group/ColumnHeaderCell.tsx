@@ -10,6 +10,7 @@ import type { ColumnKind, ColumnSettingsPatch } from "../types";
 import { DEPENDENCY_MODE_OPTIONS } from "../menus/DependencySetupDialog";
 import { columnDragSide, setColumnDragImage } from "../columnMove";
 import type { ColumnDragSide } from "../useBoardTable";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 /** What a Dependency column's (i) says: its mode and the column it schedules. */
 function describeDependencySetup(column: ColumnMenuColumn): string {
@@ -106,6 +107,7 @@ export default function ColumnHeaderCell({
   onRequestFilter, onRequestGroupBy, onRequestPermissions, automation, is_restricted, onCollapseAll, onDuplicate, onDuplicateToBoard, onAddColumnRight, onChangeType, onFillEmptyCells, onDelete, className,
   is_draggable, move_key, onColumnDragStart, onColumnDragOver, onColumnDragEnd, sticky,
 }: ColumnHeaderCellProps) {
+  const is_sticky_columns = useStickyColumns();
   const show_sort_badge = is_hovered || is_menu_open || !!sort_dir;
   const title_input_ref = useRef<HTMLInputElement>(null);
   // Picking an emoji blurs the title input (the picker's grid is a portaled
@@ -127,7 +129,7 @@ export default function ColumnHeaderCell({
       className={`relative flex items-center justify-center gap-[3px] border-r border-boardtree-grid ${className || ""}`}
       style={{
         height,
-        ...(sticky ? { position: "sticky" as const, left: sticky.left, zIndex: 16, background: sticky.background } : {}),
+        ...(sticky ? { ...stickyCellStyle(is_sticky_columns, sticky.left), zIndex: 16, background: sticky.background } : {}),
       }}
     >
       {is_draggable && (

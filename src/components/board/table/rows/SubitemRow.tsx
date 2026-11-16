@@ -18,6 +18,7 @@ import { isValueInvalid } from "../validationUtils";
 import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
+import { stickyCellStyle, useStickyColumns } from "../stickyColumns";
 
 interface SubitemRowProps {
   sub: BoardTableNode;
@@ -30,6 +31,7 @@ interface SubitemRowProps {
 }
 
 export default function SubitemRow({ sub, item, group, name_col_width, min_width, state, actions }: SubitemRowProps) {
+  const is_sticky_columns = useStickyColumns();
   const is_selected = !!state.selected_map[sub.id];
   const is_editing = state.editing_id === sub.id;
   const is_hovered = state.hover_row_id === sub.id;
@@ -135,7 +137,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id); }}
         onDragEnd={actions.onDragEnd}
       >
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[0], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>
           <button
             type="button"
             role="checkbox"
@@ -160,8 +162,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,
-            position: "sticky",
-            left: sticky_offsets[1],
+            ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]),
             zIndex: is_editing ? 16 : 15,
             background: is_editing ? "var(--color-boardtree-surface)" : row_bg,
             outline: is_editing ? "1px solid var(--color-boardtree-accent)" : undefined,
@@ -231,7 +232,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
           )}
         </div>
 
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
+        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[2]), zIndex: 15, background: row_bg }}>
           <ItemCommentsButton
             item_id={sub.id}
             comment_count={sub.comment_count}
