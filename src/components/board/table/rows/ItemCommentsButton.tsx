@@ -17,6 +17,37 @@ interface ItemCommentsButtonProps {
 const formatCount = (count: number) => (count > 99 ? "99+" : String(count));
 
 /**
+ * Round speech bubble with its tail on the lower left, drawn on a 20 unit grid
+ * that renders 1:1 at 20px so the 1.5px stroke stays sharp. The bubble is a
+ * 7.5 radius circle centered at (10, 10); both ends of the arc sit on that
+ * circle, so the tail joins it without a kink.
+ */
+const BUBBLE_PATH = "M6.6 16.7 A7.5 7.5 0 1 0 3.3 13.4 L1.75 18.25 Z";
+
+/** The "start conversation" plus, centered on the bubble with even space on every side. */
+const PLUS_PATH = "M10 7v6M7 10h6";
+
+/** The row conversation icon. Rows without updates add a plus inside the bubble. */
+function ItemCommentsIcon({ show_plus }: { show_plus: boolean }) {
+  return (
+    <svg
+      className="item-comments-button__icon"
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      shapeRendering="geometricPrecision"
+      aria-hidden="true"
+    >
+      <path d={BUBBLE_PATH} />
+      {show_plus && <path d={PLUS_PATH} />}
+    </svg>
+  );
+}
+
+/**
  * The chat bubble in every table row's updates column, monday's conversation
  * icon. A gray count badge means the row has updates, a blue one means the
  * viewer is tagged (@) in at least one of them, so a mention is easy to spot
@@ -50,16 +81,7 @@ const ItemCommentsButton: React.FC<ItemCommentsButtonProps> = ({
       data-tone={tone}
       data-has-comments={has_comments ? "true" : "false"}
     >
-      <svg className="item-comments-button__icon" viewBox="0 0 18 18" aria-hidden="true">
-        <path
-          d="M2.2 8.1 a6.4 5.4 0 1 1 3.4 4.8 L2.4 13.9 l1 -3 a5.2 5.2 0 0 1 -1.2 -2.8 Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.3"
-          strokeLinejoin="round"
-        />
-        {!has_comments && <path d="M9 5.9 V10.1 M6.9 8 H11.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />}
-      </svg>
+      <ItemCommentsIcon show_plus={!has_comments} />
       {has_comments && (
         <span className="item-comments-button__count" aria-hidden="true">
           {formatCount(comment_count)}

@@ -85,10 +85,12 @@
   }
 }
 
+// 20px matches the icon's 20 unit viewBox, so every stroke lands on whole pixels.
 .item-comments-button__icon {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
+  overflow: visible;
   transition: color 120ms ease;
 }
 
