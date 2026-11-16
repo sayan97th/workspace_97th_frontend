@@ -10,7 +10,6 @@ import CommentAttachmentChip from "./CommentAttachmentChip";
 import { COMMENT_ATTACHMENT_ACCEPT } from "./drawerAttachments";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
-import PastedMentionsNotice from "./PastedMentionsNotice";
 import { usePastedMentions } from "./usePastedMentions";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "./RichTextComposer";
@@ -123,7 +122,6 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
   // Slack style tags from pasted text, kept as picks so they count only while `@Name` is still in the text.
   const pasted_mentions = usePastedMentions({
     markdown: value,
-    rich_text_ref,
     people: mentionable_people,
     onTag: (tagged) =>
       setMentionPicks((current) => [...current, ...tagged.map((person) => ({ name: person.name, user_ids: [person.id] }))]),
@@ -183,7 +181,6 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
 
   return (
     <div className="comment-edit-form mt-2">
-      <PastedMentionsNotice {...pasted_mentions.notice_props} />
       <div ref={editor_root_ref} className="rich-text-box">
         <RichTextComposer
           ref={rich_text_ref}

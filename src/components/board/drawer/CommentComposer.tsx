@@ -14,7 +14,6 @@ import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
-import PastedMentionsNotice from "./PastedMentionsNotice";
 import { usePastedMentions } from "./usePastedMentions";
 import type { MentionOption } from "./mentionOptions";
 import { useMentionPickerNavigation } from "./useMentionPickerNavigation";
@@ -203,7 +202,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   // Slack style tags from pasted text: each person is picked like a mention, and dropped again once their `@Name` is gone.
   const pasted_mentions = usePastedMentions({
     markdown: value,
-    rich_text_ref,
     people: mentionable_people,
     onTag: (people) => people.forEach((person) => onPickMention(person, target)),
     onDropped: (people) =>
@@ -313,7 +311,6 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
-        <PastedMentionsNotice {...pasted_mentions.notice_props} />
 
         {/* One bordered container: formatting toolbar, editor, then the action row, each separated by a hairline divider. */}
         <div ref={editor_root_ref} className="rich-text-box">

@@ -4,7 +4,6 @@ import PersonAvatar from "@/components/board/PersonAvatar";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import EmojiPalette from "@/components/board/drawer/EmojiPalette";
 import MentionPicker from "@/components/board/drawer/MentionPicker";
-import PastedMentionsNotice from "@/components/board/drawer/PastedMentionsNotice";
 import { usePastedMentions } from "@/components/board/drawer/usePastedMentions";
 import {
   buildMentionMatches,
@@ -182,7 +181,6 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   // Slack style tags from pasted text, kept as picks so they count only while `@Name` is still in the body.
   const pasted_mentions = usePastedMentions({
     markdown: value,
-    rich_text_ref,
     people,
     onTag: (tagged) =>
       setMentionPicks((current) => [...current, ...tagged.map((person) => ({ name: person.name, user_ids: [person.id] }))]),
@@ -220,7 +218,6 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
       {!hide_avatar && <PersonAvatar person={current_user} size={28} className="feed-composer__avatar" />}
 
       <div className="feed-composer__main">
-        <PastedMentionsNotice {...pasted_mentions.notice_props} />
         <div className="feed-composer__box" data-toolbar={is_toolbar_shown ? "true" : undefined}>
           <RichTextComposer
             ref={rich_text_ref}

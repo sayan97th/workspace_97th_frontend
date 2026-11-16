@@ -1,0 +1,161 @@
+// Popover under a pasted `@name` that did not become a mention
+// (`UnresolvedMentionPopover`), styled like the `@mention` picker card: white,
+// 8px radius, soft shadow, 22px avatars in picker style rows. Portaled to the
+// body by `FloatingSuggestion`, so it is fixed positioned here.
+//
+// Colors are `--unresolved-mention-*` custom properties generated from
+// `$tokens` for light and `html.dark`, so dark mode only swaps the tokens.
+
+@use "sass:list";
+
+$tokens: (
+  "surface": (#ffffff, #0f1c1c),
+  "text": (#323338, #e9eded),
+  "text-secondary": (#676879, #b7c0c1),
+  "hover": (#dcdfec, rgba(255, 255, 255, 0.08)),
+  "divider": (#e7e9ef, rgba(255, 255, 255, 0.12)),
+  "warn": (#b35c00, #ffb54d),
+  "primary": (#0073ea, #4d9cff),
+  "primary-hover": (#0060c2, #69a7ff),
+  "outline": (rgba(15, 15, 15, 0.05), rgba(255, 255, 255, 0.08)),
+  "shadow": (rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55)),
+);
+
+@mixin token-set($index) {
+  @each $name, $pair in $tokens {
+    --unresolved-mention-#{$name}: #{list.nth($pair, $index)};
+  }
+}
+
+.unresolved-mention {
+  @include token-set(1);
+
+  position: fixed;
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 16px);
+  overflow: auto;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--unresolved-mention-surface);
+  box-shadow:
+    0 6px 20px var(--unresolved-mention-shadow),
+    0 0 0 1px var(--unresolved-mention-outline);
+  color: var(--unresolved-mention-text);
+  font-family: var(--font-outfit);
+  animation: unresolved-mention-in 140ms ease-out;
+}
+
+html.dark .unresolved-mention {
+  @include token-set(2);
+}
+
+.unresolved-mention__message {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 2px 6px 6px;
+  color: var(--unresolved-mention-warn);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 18px;
+
+  &[data-kind="outside"] {
+    color: var(--unresolved-mention-text-secondary);
+  }
+}
+
+.unresolved-mention__people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.unresolved-mention__person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--unresolved-mention-text);
+  font-size: 13.5px;
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    background: var(--unresolved-mention-hover);
+    outline: none;
+  }
+}
+
+.unresolved-mention__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unresolved-mention__role {
+  overflow: hidden;
+  color: var(--unresolved-mention-text-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unresolved-mention__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--unresolved-mention-divider);
+}
+
+.unresolved-mention__link {
+  height: 26px;
+  padding: 0 6px;
+  border-radius: 4px;
+  color: var(--unresolved-mention-text-secondary);
+  font-size: 12.5px;
+
+  &:hover {
+    background: var(--unresolved-mention-hover);
+    color: var(--unresolved-mention-text);
+  }
+}
+
+.unresolved-mention__primary {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: var(--unresolved-mention-primary);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+
+  &:hover {
+    background: var(--unresolved-mention-primary-hover);
+  }
+}
+
+@keyframes unresolved-mention-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unresolved-mention {
+    animation: none;
+  }
+}

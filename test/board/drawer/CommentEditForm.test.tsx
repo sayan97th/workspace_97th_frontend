@@ -21,10 +21,6 @@ vi.mock("@/components/board/drawer/RichTextComposer", () => {
         editor_state.props?.onChange(editor_state.props.value.replace(/@\w*$/, `@${name} `));
         editor_state.props?.onMentionQueryChange?.(null);
       },
-      untagMention: () => {},
-      resolveUnresolvedMention: () => {},
-      dismissUnresolvedMention: () => {},
-      revealUnresolvedMention: () => {},
       startMention: () => {
         editor_state.props?.onChange(`${editor_state.props.value} @`);
         editor_state.props?.onMentionQueryChange?.("");

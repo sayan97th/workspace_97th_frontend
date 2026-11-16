@@ -1,6 +1,7 @@
 "use client";
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import TiptapImage from "@tiptap/extension-image";
@@ -15,13 +16,13 @@ import InsertLinkModal from "./InsertLinkModal";
 import { getPastedMarkdown } from "./markdown/markdownPaste";
 import { MentionHighlight } from "./mentionHighlight";
 import {
-  findMentionAtPositions,
   getUnresolvedMentions,
   PASTED_MENTIONS_META,
   PastedMentions,
   removeUnresolvedMentions,
   type UnresolvedMention,
 } from "./pastedMentions";
+import UnresolvedMentionPopover from "./UnresolvedMentionPopover";
 import { buildRichTextBlockExtensions } from "./richTextBlocks";
 import { RichTextSlashCommand } from "./richTextSlashCommand";
 import { buildRichTextSlashItems, type RichTextSlashContext, type RichTextSlashItem } from "./richTextSlashItems";
@@ -74,20 +75,6 @@ export type RichTextComposerRef = {
    * pickers open right under what is being typed instead of over it.
    */
   getTriggerAnchorRect: (trigger_char: "@" | "#") => DOMRect | null;
-  /**
-   * Turns every `@name` in the draft back into plain `name`, for removing a
-   * tag that pasted text added. The text stays, it just stops being a mention.
-   */
-  untagMention: (name: string) => void;
-  /** Replaces a flagged pasted `@name` with `@Full Name` of the picked person. The caller tags them. */
-  resolveUnresolvedMention: (id: string, person: BoardPersonOption) => void;
-  /**
-   * Stops flagging a pasted `@name`. With `remove_at`, its `@` goes too, so
-   * it reads as plain text in the posted update instead of looking like a mention.
-   */
-  dismissUnresolvedMention: (id: string, remove_at?: boolean) => void;
-  /** Selects a flagged pasted `@name` and scrolls it into view. */
-  revealUnresolvedMention: (id: string) => void;
   /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
   insertMarkdown: (markdown: string) => void;
   /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
@@ -154,8 +141,18 @@ export type RichTextComposerProps = {
   onPasteMentions?: (people: BoardPersonOption[]) => void;
   /** Workspace members left out of a private board: a pasted `@Name` of theirs is flagged "not on this board". */
   outside_people?: BoardPersonOption[];
-  /** The pasted `@names` that could not become mentions, every time that list changes. */
-  onUnresolvedMentionsChange?: (mentions: UnresolvedMention[]) => void;
+  /** Opens the board's invite dialog, offered for a pasted `@Name` of someone not on this private board. */
+  onInviteToBoard?: () => void;
+};
+
+/** A flagged pasted `@name` the caret sits in, with its place in the document, for the fix popover. */
+type ActiveFlag = UnresolvedMention & { from: number; to: number };
+
+/** The flagged pasted `@name` holding the caret, while the editor has focus. */
+const findActiveFlag = (current_editor: Editor): ActiveFlag | null => {
+  if (!current_editor.isFocused) return null;
+  const { from, to } = current_editor.state.selection;
+  return getUnresolvedMentions(current_editor.state).find((flag) => from >= flag.from && to <= flag.to) ?? null;
 };
 
 const NO_PEOPLE: BoardPersonOption[] = [];
@@ -177,6 +174,8 @@ const detectTrigger = (current_editor: Editor): ComposerTrigger | null => findTr
 const detectMentionQuery = (current_editor: Editor): string | null => {
   const { from, empty } = current_editor.state.selection;
   if (!empty) return null;
+  // Inside a flagged pasted `@name` its own fix popover is the menu, the people picker would cover it.
+  if (getUnresolvedMentions(current_editor.state).some((flag) => from >= flag.from && from <= flag.to)) return null;
   const text_before = current_editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
   const match = MENTION_QUERY_AT_CARET.exec(text_before);
   return match ? match[1] : null;
@@ -233,7 +232,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       mention_people = NO_PEOPLE,
       onPasteMentions,
       outside_people = NO_PEOPLE,
-      onUnresolvedMentionsChange,
+      onInviteToBoard,
     },
     ref
   ) => {
@@ -246,7 +245,20 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const mention_people_ref = useRef(mention_people);
     const paste_mentions_ref = useRef(onPasteMentions);
     const outside_people_ref = useRef(outside_people);
-    const unresolved_change_ref = useRef(onUnresolvedMentionsChange);
+    // The flagged pasted `@name` under the caret, and the one Escape hid until the caret leaves it.
+    const [active_flag, setActiveFlag] = useState<ActiveFlag | null>(null);
+    const [hidden_flag_id, setHiddenFlagId] = useState<string | null>(null);
+    const syncActiveFlag = (current_editor: Editor) => {
+      const next = findActiveFlag(current_editor);
+      setActiveFlag((current) =>
+        current?.id === next?.id && current?.from === next?.from && current?.to === next?.to ? current : next
+      );
+      if (!next) setHiddenFlagId(null);
+    };
+    const sync_active_flag_ref = useRef(syncActiveFlag);
+    sync_active_flag_ref.current = syncActiveFlag;
+    const active_flag_ref = useRef<ActiveFlag | null>(null);
+    active_flag_ref.current = active_flag && active_flag.id !== hidden_flag_id ? active_flag : null;
     // The latest `value` prop, read when the editor blurs, see `onBlur` below.
     const latest_value_ref = useRef(value);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
@@ -271,7 +283,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       mention_people_ref.current = mention_people;
       paste_mentions_ref.current = onPasteMentions;
       outside_people_ref.current = outside_people;
-      unresolved_change_ref.current = onUnresolvedMentionsChange;
       slash_items_ref.current = (query: string) => {
         ensureSavedRepliesLoaded();
         const features = {
@@ -315,7 +326,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           getPeople: () => (paste_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
           getOutsidePeople: () => (paste_mentions_ref.current ? outside_people_ref.current : NO_PEOPLE),
           onMentions: (people) => paste_mentions_ref.current?.(people),
-          onUnresolvedChange: (mentions) => unresolved_change_ref.current?.(mentions),
+          // The editor's own transactions already keep the fix popover in step, see `onTransaction`.
+          onUnresolvedChange: () => {},
         }),
         RichTextSlashCommand.configure({
           store: slash_store,
@@ -337,12 +349,15 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         trigger_change_ref.current?.(detectTrigger(current_editor));
         mention_query_change_ref.current?.(detectMentionQuery(current_editor));
       },
+      onTransaction: ({ editor: current_editor }) => sync_active_flag_ref.current(current_editor),
+      onFocus: ({ editor: current_editor }) => sync_active_flag_ref.current(current_editor),
       onSelectionUpdate: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(detectTrigger(current_editor));
         mention_query_change_ref.current?.(detectMentionQuery(current_editor));
       },
       onBlur: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(null);
+        setActiveFlag(null);
         // Sending with Cmd/Ctrl+Enter blurs through Tiptap's `blur()`, which only takes effect a frame later, so the
         // parent's reset to "" arrives while the editor still has focus and the sync effect skips it.
         // Applying a pending clear once the blur lands keeps the sent text from staying in the box.
@@ -366,6 +381,12 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === "k") {
             event.preventDefault();
             open_link_modal_ref.current();
+            return true;
+          }
+          // Escape closes the fix popover of a flagged pasted name first, it comes back once the caret leaves and returns.
+          if (event.key === "Escape" && active_flag_ref.current) {
+            event.preventDefault();
+            setHiddenFlagId(active_flag_ref.current.id);
             return true;
           }
           const handleEscape = escape_ref.current;
@@ -501,19 +522,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             })
             .run();
         },
-        untagMention: (name: string) => {
-          if (!editor) return;
-          const positions = findMentionAtPositions(editor.state.doc, name);
-          if (positions.length === 0) return;
-          editor
-            .chain()
-            .command(({ tr }) => {
-              // Last first, so each delete leaves the earlier positions where they were.
-              for (const position of [...positions].reverse()) tr.delete(position, position + 1);
-              return true;
-            })
-            .run();
-        },
         mentionAtEnd: (name: string) => {
           if (!editor) return;
           const text = editor.getText();
@@ -549,38 +557,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             // The position fell outside the document mid update, the picker keeps its last spot.
             return null;
           }
-        },
-        resolveUnresolvedMention: (id: string, person: BoardPersonOption) => {
-          if (!editor) return;
-          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
-          if (!flagged) return;
-          editor
-            .chain()
-            .command(({ tr, state }) => {
-              tr.replaceWith(flagged.from, flagged.to, state.schema.text(`@${person.name}`));
-              removeUnresolvedMentions(tr, [id]);
-              return true;
-            })
-            .run();
-        },
-        dismissUnresolvedMention: (id: string, remove_at = false) => {
-          if (!editor) return;
-          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
-          if (!flagged) return;
-          editor
-            .chain()
-            .command(({ tr }) => {
-              removeUnresolvedMentions(tr, [id]);
-              if (remove_at && flagged.text.startsWith("@")) tr.delete(flagged.from, flagged.from + 1);
-              return true;
-            })
-            .run();
-        },
-        revealUnresolvedMention: (id: string) => {
-          if (!editor) return;
-          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
-          if (!flagged) return;
-          editor.chain().focus().setTextSelection({ from: flagged.from, to: flagged.to }).scrollIntoView().run();
         },
         insertMarkdown: (markdown: string) => {
           editor?.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();
@@ -680,11 +656,59 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       />
     );
 
+    // Fixes offered by the popover under a flagged pasted `@name`.
+    const resolveFlag = (flag: ActiveFlag, person: BoardPersonOption) => {
+      editor
+        .chain()
+        .focus()
+        .command(({ tr, state }) => {
+          tr.replaceWith(flag.from, flag.to, state.schema.text(`@${person.name}`));
+          removeUnresolvedMentions(tr, [flag.id]);
+          // The caret lands right after the fixed mention, so the popover closes.
+          tr.setSelection(TextSelection.create(tr.doc, Math.min(tr.doc.content.size, flag.from + person.name.length + 1)));
+          tr.setStoredMarks([]);
+          return true;
+        })
+        .run();
+      paste_mentions_ref.current?.([person]);
+    };
+    const dismissFlag = (flag: ActiveFlag, remove_at: boolean) => {
+      editor
+        .chain()
+        .focus()
+        .command(({ tr }) => {
+          removeUnresolvedMentions(tr, [flag.id]);
+          if (remove_at && flag.text.startsWith("@")) tr.delete(flag.from, flag.from + 1);
+          return true;
+        })
+        .run();
+    };
+    const shown_flag = active_flag && active_flag.id !== hidden_flag_id ? active_flag : null;
+
     const overlays = (
       <>
         {link_modal}
         {image_input}
         <RichTextSlashMenu editor={editor} store={slash_store} />
+        {shown_flag && (
+          <UnresolvedMentionPopover
+            mention={shown_flag}
+            board_people={mention_people}
+            getAnchorRect={() => {
+              if (editor.isDestroyed) return null;
+              try {
+                const start = editor.view.coordsAtPos(shown_flag.from);
+                return new DOMRect(start.left, start.top, 0, start.bottom - start.top);
+              } catch {
+                return null;
+              }
+            }}
+            onResolve={(person) => resolveFlag(shown_flag, person)}
+            onSendAsText={() => dismissFlag(shown_flag, true)}
+            onIgnore={() => dismissFlag(shown_flag, false)}
+            onInviteClick={onInviteToBoard}
+          />
+        )}
       </>
     );
 

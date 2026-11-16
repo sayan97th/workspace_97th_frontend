@@ -353,6 +353,13 @@ export type PastedMentionsOptions = {
   onUnresolvedChange: (mentions: UnresolvedMention[]) => void;
 };
 
+/** Hover hint on a flagged pasted mention, the click opens the fix popover. */
+const UNRESOLVED_TITLES: Record<UnresolvedMentionIssue["kind"], string> = {
+  unknown: "Not found on this board. Click to fix",
+  ambiguous: "More than one person has this name. Click to choose",
+  outside: "Not on this private board. Click for options",
+};
+
 /** The CSS class of a flagged pasted mention in the editor, see `rich-text.css`. */
 export const UNRESOLVED_MENTION_CLASS = "rich-text-mention-unresolved";
 
@@ -409,6 +416,7 @@ export const PastedMentions = Extension.create<PastedMentionsOptions>({
                 Decoration.inline(mention.from, mention.to, {
                   class: UNRESOLVED_MENTION_CLASS,
                   "data-unresolved-kind": mention.issue.kind,
+                  title: UNRESOLVED_TITLES[mention.issue.kind],
                 })
               )
             );
