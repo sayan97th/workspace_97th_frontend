@@ -14,7 +14,14 @@ import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
 import { getPastedMarkdown } from "./markdown/markdownPaste";
 import { MentionHighlight } from "./mentionHighlight";
-import { findMentionAtPositions, PASTED_MENTIONS_META, PastedMentions } from "./pastedMentions";
+import {
+  findMentionAtPositions,
+  getUnresolvedMentions,
+  PASTED_MENTIONS_META,
+  PastedMentions,
+  removeUnresolvedMentions,
+  type UnresolvedMention,
+} from "./pastedMentions";
 import { buildRichTextBlockExtensions } from "./richTextBlocks";
 import { RichTextSlashCommand } from "./richTextSlashCommand";
 import { buildRichTextSlashItems, type RichTextSlashContext, type RichTextSlashItem } from "./richTextSlashItems";
@@ -72,6 +79,15 @@ export type RichTextComposerRef = {
    * tag that pasted text added. The text stays, it just stops being a mention.
    */
   untagMention: (name: string) => void;
+  /** Replaces a flagged pasted `@name` with `@Full Name` of the picked person. The caller tags them. */
+  resolveUnresolvedMention: (id: string, person: BoardPersonOption) => void;
+  /**
+   * Stops flagging a pasted `@name`. With `remove_at`, its `@` goes too, so
+   * it reads as plain text in the posted update instead of looking like a mention.
+   */
+  dismissUnresolvedMention: (id: string, remove_at?: boolean) => void;
+  /** Selects a flagged pasted `@name` and scrolls it into view. */
+  revealUnresolvedMention: (id: string) => void;
   /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
   insertMarkdown: (markdown: string) => void;
   /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
@@ -136,6 +152,10 @@ export type RichTextComposerProps = {
   mention_people?: BoardPersonOption[];
   /** Called with everyone a paste tagged, so the parent adds them to the draft's mentions. */
   onPasteMentions?: (people: BoardPersonOption[]) => void;
+  /** Workspace members left out of a private board: a pasted `@Name` of theirs is flagged "not on this board". */
+  outside_people?: BoardPersonOption[];
+  /** The pasted `@names` that could not become mentions, every time that list changes. */
+  onUnresolvedMentionsChange?: (mentions: UnresolvedMention[]) => void;
 };
 
 const NO_PEOPLE: BoardPersonOption[] = [];
@@ -212,6 +232,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onAttachFiles,
       mention_people = NO_PEOPLE,
       onPasteMentions,
+      outside_people = NO_PEOPLE,
+      onUnresolvedMentionsChange,
     },
     ref
   ) => {
@@ -223,6 +245,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const escape_ref = useRef(onEscape);
     const mention_people_ref = useRef(mention_people);
     const paste_mentions_ref = useRef(onPasteMentions);
+    const outside_people_ref = useRef(outside_people);
+    const unresolved_change_ref = useRef(onUnresolvedMentionsChange);
     // The latest `value` prop, read when the editor blurs, see `onBlur` below.
     const latest_value_ref = useRef(value);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
@@ -246,6 +270,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       escape_ref.current = onEscape;
       mention_people_ref.current = mention_people;
       paste_mentions_ref.current = onPasteMentions;
+      outside_people_ref.current = outside_people;
+      unresolved_change_ref.current = onUnresolvedMentionsChange;
       slash_items_ref.current = (query: string) => {
         ensureSavedRepliesLoaded();
         const features = {
@@ -287,7 +313,9 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         MentionHighlight,
         PastedMentions.configure({
           getPeople: () => (paste_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
+          getOutsidePeople: () => (paste_mentions_ref.current ? outside_people_ref.current : NO_PEOPLE),
           onMentions: (people) => paste_mentions_ref.current?.(people),
+          onUnresolvedChange: (mentions) => unresolved_change_ref.current?.(mentions),
         }),
         RichTextSlashCommand.configure({
           store: slash_store,
@@ -521,6 +549,38 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             // The position fell outside the document mid update, the picker keeps its last spot.
             return null;
           }
+        },
+        resolveUnresolvedMention: (id: string, person: BoardPersonOption) => {
+          if (!editor) return;
+          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
+          if (!flagged) return;
+          editor
+            .chain()
+            .command(({ tr, state }) => {
+              tr.replaceWith(flagged.from, flagged.to, state.schema.text(`@${person.name}`));
+              removeUnresolvedMentions(tr, [id]);
+              return true;
+            })
+            .run();
+        },
+        dismissUnresolvedMention: (id: string, remove_at = false) => {
+          if (!editor) return;
+          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
+          if (!flagged) return;
+          editor
+            .chain()
+            .command(({ tr }) => {
+              removeUnresolvedMentions(tr, [id]);
+              if (remove_at && flagged.text.startsWith("@")) tr.delete(flagged.from, flagged.from + 1);
+              return true;
+            })
+            .run();
+        },
+        revealUnresolvedMention: (id: string) => {
+          if (!editor) return;
+          const flagged = getUnresolvedMentions(editor.state).find((mention) => mention.id === id);
+          if (!flagged) return;
+          editor.chain().focus().setTextSelection({ from: flagged.from, to: flagged.to }).scrollIntoView().run();
         },
         insertMarkdown: (markdown: string) => {
           editor?.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();

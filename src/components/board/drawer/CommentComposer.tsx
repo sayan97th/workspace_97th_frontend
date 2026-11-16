@@ -201,17 +201,17 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const mention_navigation = useMentionPickerNavigation(own_mention_matches, handlePickMention);
 
   // Slack style tags from pasted text: each person is picked like a mention, and dropped again once their `@Name` is gone.
-  const pasted_mentions = usePastedMentions(value, (people) =>
-    onUnpickMention?.(
-      people.map((person) => person.id),
-      target
-    )
-  );
-  const can_tag_pasted = mentionable_people.length > 0;
-  const handlePasteMentions = (people: BoardPersonOption[]) => {
-    people.forEach((person) => onPickMention(person, target));
-    pasted_mentions.addPastedPeople(people);
-  };
+  const pasted_mentions = usePastedMentions({
+    markdown: value,
+    rich_text_ref,
+    people: mentionable_people,
+    onTag: (people) => people.forEach((person) => onPickMention(person, target)),
+    onDropped: (people) =>
+      onUnpickMention?.(
+        people.map((person) => person.id),
+        target
+      ),
+  });
   const show_mention_picker = mention_navigation.is_open;
 
   const handleTriggerChange = (next: ComposerTrigger | null) => {
@@ -313,11 +313,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
-        <PastedMentionsNotice
-          people={pasted_mentions.notice_people}
-          onUntag={(person) => rich_text_ref.current?.untagMention(person.name)}
-          onDismiss={pasted_mentions.dismissNotice}
-        />
+        <PastedMentionsNotice {...pasted_mentions.notice_props} />
 
         {/* One bordered container: formatting toolbar, editor, then the action row, each separated by a hairline divider. */}
         <div ref={editor_root_ref} className="rich-text-box">
@@ -336,8 +332,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             onTriggerChange={handleTriggerChange}
             onMentionQueryChange={onMentionQueryChange ? (query) => onMentionQueryChange(target, query) : undefined}
             onSuggestionKeyDown={handleSuggestionKeyDown}
-            mention_people={mentionable_people}
-            onPasteMentions={can_tag_pasted ? handlePasteMentions : undefined}
+            {...pasted_mentions.editor_props}
             can_mention
             can_link_items={reference_items.length > 0}
             onOpenEmojiPalette={() => onToggleEmojiPalette(target)}

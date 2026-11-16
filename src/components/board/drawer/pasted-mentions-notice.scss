@@ -25,6 +25,13 @@ $tokens: (
   "dismiss-text": (#0073ea, #69a7ff),
   "dismiss-hover": (rgba(0, 115, 234, 0.08), rgba(105, 167, 255, 0.14)),
   "shadow": (rgba(0, 115, 234, 0.1), rgba(0, 0, 0, 0.35)),
+  "warn": (#b35c00, #ffb54d),
+  "warn-bg": (#fff4e5, rgba(255, 166, 0, 0.12)),
+  "warn-border": (#ffd8a8, rgba(255, 181, 77, 0.32)),
+  "divider": (#d6e6fa, rgba(255, 255, 255, 0.1)),
+  "suggestion-hover": (#e6f0fd, rgba(77, 156, 255, 0.18)),
+  "primary": (#0073ea, #4d9cff),
+  "primary-hover": (#0060c2, #69a7ff),
 );
 
 @mixin token-set($index) {
@@ -161,6 +168,177 @@ html.dark .pasted-mentions {
     outline: 2px solid var(--pasted-mentions-badge-from);
     outline-offset: 1px;
   }
+}
+
+// ── Names that need a look ────────────────────────────────────────────────
+
+.pasted-mentions__issues-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pasted-mentions__chips + .pasted-mentions__issues-block {
+  padding-top: 8px;
+  border-top: 1px dashed var(--pasted-mentions-divider);
+}
+
+.pasted-mentions__subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--pasted-mentions-warn);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.pasted-mentions__issues {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pasted-mentions__issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--pasted-mentions-chip-bg);
+  animation: pasted-mentions-chip-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.pasted-mentions__token {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  padding: 1px 6px;
+  border: 1px dashed var(--pasted-mentions-warn-border);
+  border-radius: 4px;
+  background: var(--pasted-mentions-warn-bg);
+  color: var(--pasted-mentions-warn);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    border-style: solid;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pasted-mentions-warn);
+    outline-offset: 1px;
+  }
+}
+
+.pasted-mentions__issue[data-kind="outside"] .pasted-mentions__token {
+  border-color: var(--pasted-mentions-chip-border);
+  background: transparent;
+  color: var(--pasted-mentions-text-secondary);
+}
+
+.pasted-mentions__issue-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.pasted-mentions__issue-text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding-top: 1px;
+  color: var(--pasted-mentions-text-secondary);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+
+.pasted-mentions__issue-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pasted-mentions__suggestion {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 3px;
+  border: 1px solid var(--pasted-mentions-chip-border);
+  border-radius: 999px;
+  background: var(--pasted-mentions-chip-bg);
+  color: var(--pasted-mentions-chip-text);
+  font-size: 12.5px;
+  font-weight: 500;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease;
+
+  &:hover {
+    border-color: var(--pasted-mentions-primary);
+    background: var(--pasted-mentions-suggestion-hover);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--pasted-mentions-primary);
+    outline-offset: 1px;
+  }
+}
+
+.pasted-mentions__primary {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: var(--pasted-mentions-primary);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: var(--pasted-mentions-primary-hover);
+  }
+}
+
+.pasted-mentions__link {
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 4px;
+  color: var(--pasted-mentions-text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: var(--pasted-mentions-text);
+  }
+}
+
+.pasted-mentions__private {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  color: var(--pasted-mentions-text-secondary);
+  font-size: 11.5px;
+}
+
+// With names to fix, the card leans warm so it reads as "needs a look", not just "done".
+.pasted-mentions[data-has-issues="true"] .pasted-mentions__badge {
+  background: linear-gradient(135deg, #ffb020, #ff7a45);
 }
 
 // ── Dismiss ───────────────────────────────────────────────────────────────

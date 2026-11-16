@@ -767,6 +767,25 @@ html.dark {
 }
 
 /* `@Full Name` runs, live in the editor and in a posted body. */
+/* A pasted `@name` that matched nobody, several people, or someone not on this private board
+   (`PastedMentions`). Wins over the blue mention look a capitalized `@Name` would otherwise get. */
+.rich-text-mention-unresolved,
+.rich-text-mention.rich-text-mention-unresolved {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: rgba(255, 166, 0, 0.12);
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: underline dashed #e8930c;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+
+.rich-text-mention-unresolved[data-unresolved-kind="outside"] {
+  background: transparent;
+  text-decoration-color: #9699a6;
+}
+
 .rich-text-mention {
   padding: 0 2px;
   border-radius: 4px;

@@ -720,10 +720,24 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
 
   const info = buildBoardInfo(node, board_type, () => setIsChangeTypeOpen(true));
   // Pickers inside the board (People cells, @mentions, Notify) show the private board hint from this.
-  const board_privacy = useMemo<BoardPrivacy>(
-    () => ({ is_private_board: board_type === "private", onInviteClick: () => setIsInviteOpen(true) }),
-    [board_type]
-  );
+  const board_privacy = useMemo<BoardPrivacy>(() => {
+    const is_private_board = board_type === "private";
+    const board_member_ids = new Set(board_members.map((member) => member.id));
+    // Who a private board leaves out, so a pasted `@Name` of theirs reads "not on this board" in the composers.
+    const outside_people = is_private_board
+      ? workspace_members
+          .filter((member) => !board_member_ids.has(member.id))
+          .map((member, index) => ({
+            id: String(member.id),
+            name: member.full_name,
+            initials: getInitials(member.full_name),
+            avatar_seed: board_members.length + index,
+            avatar_url: member.profile_photo_url ?? undefined,
+            job_title: member.job_title?.trim() || undefined,
+          }))
+      : [];
+    return { is_private_board, onInviteClick: () => setIsInviteOpen(true), outside_people };
+  }, [board_type, board_members, workspace_members]);
 
   // While the board's content loads there is no active view yet, so the tab shows just the
   // board name. `TableBoardBody` takes over (board and view, or the open item) once mounted.

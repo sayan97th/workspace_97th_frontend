@@ -121,11 +121,13 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
   const can_mention = mentionable_people.length > 0;
 
   // Slack style tags from pasted text, kept as picks so they count only while `@Name` is still in the text.
-  const pasted_mentions = usePastedMentions(value);
-  const handlePasteMentions = (people: BoardPersonOption[]) => {
-    setMentionPicks((current) => [...current, ...people.map((person) => ({ name: person.name, user_ids: [person.id] }))]);
-    pasted_mentions.addPastedPeople(people);
-  };
+  const pasted_mentions = usePastedMentions({
+    markdown: value,
+    rich_text_ref,
+    people: mentionable_people,
+    onTag: (tagged) =>
+      setMentionPicks((current) => [...current, ...tagged.map((person) => ({ name: person.name, user_ids: [person.id] }))]),
+  });
 
   // Mirrors the hooks' save guard: an update may be only files, but never nothing at all.
   const can_save = value.trim().length > 0 || value.includes("![") || attachments.length > 0;
@@ -181,11 +183,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
 
   return (
     <div className="comment-edit-form mt-2">
-      <PastedMentionsNotice
-        people={pasted_mentions.notice_people}
-        onUntag={(person) => rich_text_ref.current?.untagMention(person.name)}
-        onDismiss={pasted_mentions.dismissNotice}
-      />
+      <PastedMentionsNotice {...pasted_mentions.notice_props} />
       <div ref={editor_root_ref} className="rich-text-box">
         <RichTextComposer
           ref={rich_text_ref}
@@ -201,8 +199,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
           onMentionQueryChange={can_mention ? setMentionQuery : undefined}
           onSuggestionKeyDown={mention_navigation.handleKeyDown}
           can_mention={can_mention}
-          mention_people={mentionable_people}
-          onPasteMentions={can_mention ? handlePasteMentions : undefined}
+          {...pasted_mentions.editor_props}
           autoFocus={autoFocus}
           onOpenEmojiPalette={toggleEmojiPalette}
           onAttachFiles={onAddFiles ? openFilePicker : undefined}
