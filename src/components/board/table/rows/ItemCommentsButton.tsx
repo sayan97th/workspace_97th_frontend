@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import ItemDraftBadge from "./ItemDraftBadge";
 import "./item-comments-button.scss";
 
@@ -63,6 +63,17 @@ const ItemCommentsButton: React.FC<ItemCommentsButtonProps> = ({
   const has_comments = comment_count > 0;
   const tone = has_comments && is_mentioned ? "mentioned" : "default";
 
+  // A count that goes up while the row is on screen (a live update from `useBoardCommentCounts`)
+  // pops the badge once. Tracked during render, React's "adjust state on prop change" pattern, and
+  // the new key remounts the badge so its animation plays again on every bump. A row mounting with
+  // a count, or a count going down, never animates.
+  const [last_count, setLastCount] = useState(comment_count);
+  const [bump_id, setBumpId] = useState(0);
+  if (comment_count !== last_count) {
+    setLastCount(comment_count);
+    if (comment_count > last_count) setBumpId((current) => current + 1);
+  }
+
   const label = !has_comments
     ? "Start conversation"
     : `Open updates, ${comment_count} ${comment_count === 1 ? "update" : "updates"}${is_mentioned ? ", you are mentioned" : ""}`;
@@ -83,7 +94,12 @@ const ItemCommentsButton: React.FC<ItemCommentsButtonProps> = ({
     >
       <ItemCommentsIcon show_plus={!has_comments} />
       {has_comments && (
-        <span className="item-comments-button__count" aria-hidden="true">
+        <span
+          key={bump_id}
+          className="item-comments-button__count"
+          data-bumped={bump_id > 0 ? "true" : undefined}
+          aria-hidden="true"
+        >
           {formatCount(comment_count)}
         </span>
       )}

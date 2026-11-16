@@ -4,6 +4,7 @@ import {
   insertAfterSibling,
   insertItemBelowInTree,
   mapItemInTree,
+  patchCommentCountsInTree,
   relocateItemInTree,
   removeItemFromTree,
   setColumnValuesInTree,
@@ -174,5 +175,29 @@ describe("setColumnValuesInTree", () => {
     const next = setColumnValuesInTree(tree, "7", { "2": "2026-11-05" });
     expect(next[2]).toBe(tree[2]);
     expect(next[0]).toBe(tree[0]);
+  });
+});
+
+describe("patchCommentCountsInTree", () => {
+  test("updates a root row and a nested subitem counter from the resolver", () => {
+    const tree = makeItemTree();
+    const next = patchCommentCountsInTree(tree, (item_id) =>
+      item_id === 2 || item_id === 12 ? { comment_count: 4, has_viewer_mention: item_id === 12 } : null
+    );
+    expect(findItemInTree(next, 2)?.comment_count).toBe(4);
+    expect(findItemInTree(next, 12)?.comment_count).toBe(4);
+    expect(findItemInTree(next, 12)?.has_viewer_mention).toBe(true);
+    expect(findItemInTree(tree, 2)?.comment_count).not.toBe(4);
+  });
+
+  test("keeps the identity of untouched rows and of the whole tree when nothing changed", () => {
+    const tree = makeItemTree();
+    const next = patchCommentCountsInTree(tree, (item_id) => (item_id === 2 ? { comment_count: 9, has_viewer_mention: false } : null));
+    expect(next[0]).toBe(tree[0]);
+    expect(next[2]).toBe(tree[2]);
+    expect(next[1]).not.toBe(tree[1]);
+
+    const same = patchCommentCountsInTree(next, (item_id) => (item_id === 2 ? { comment_count: 9, has_viewer_mention: false } : null));
+    expect(same).toBe(next);
   });
 });

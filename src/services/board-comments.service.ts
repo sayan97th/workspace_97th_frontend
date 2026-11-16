@@ -1,4 +1,6 @@
 import { apiClient } from "@/lib/api-client";
+import { publishItemCommentSummary } from "@/lib/item-comment-counts";
+import type { BoardCommentCountsSnapshot } from "@/types/board-comment-counts";
 import type { BoardItemCommentDto, CommentRevisionDto, CreateBoardItemCommentPayload, UpdateCommentPayload } from "@/types/board-comments";
 
 /**
@@ -30,10 +32,12 @@ export const boardCommentsService = {
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
     if (payload.scheduled_at) form_data.append("scheduled_at", payload.scheduled_at);
 
-    const response = await apiClient.postFormData<{ comment: BoardItemCommentDto }>(
+    const response = await apiClient.postFormData<{ comment: BoardItemCommentDto; item_comments?: unknown }>(
       `/api/boards/${board_id}/items/${item_id}/comments`,
       form_data
     );
+    // The row's updates counter on the board refreshes right away, see `useBoardCommentCounts`.
+    publishItemCommentSummary(board_id, response.item_comments);
     return response.comment;
   },
 
@@ -61,7 +65,8 @@ export const boardCommentsService = {
 
   /** DELETE /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
   async deleteComment(board_id: number, item_id: number, comment_id: number): Promise<void> {
-    await apiClient.delete(`/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`);
+    const response = await apiClient.delete<{ item_comments?: unknown }>(`/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`);
+    publishItemCommentSummary(board_id, response?.item_comments);
   },
 
   /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/like */
@@ -120,10 +125,17 @@ export const boardCommentsService = {
 
   /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/restore, the "Undo" of a delete. */
   async restoreComment(board_id: number, item_id: number, comment_id: number): Promise<BoardItemCommentDto> {
-    const response = await apiClient.post<{ comment: BoardItemCommentDto }>(
+    const response = await apiClient.post<{ comment: BoardItemCommentDto; item_comments?: unknown }>(
       `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/restore`
     );
+    publishItemCommentSummary(board_id, response.item_comments);
     return response.comment;
+  },
+
+  /** GET /api/boards/{board_id}/items/comment-counts, every row's updates counter at once, read to catch up after the socket was down. */
+  async getCommentCounts(board_id: number): Promise<BoardCommentCountsSnapshot> {
+    const response = await apiClient.get<{ data: BoardCommentCountsSnapshot }>(`/api/boards/${board_id}/items/comment-counts`);
+    return response.data;
   },
 
   /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/bookmark */

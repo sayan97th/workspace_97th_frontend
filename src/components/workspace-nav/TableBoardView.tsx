@@ -133,6 +133,7 @@ import {
   insertItemBelowInTree,
   mapItemInTree,
   relocateItemInTree,
+  patchCommentCountsInTree,
   removeItemFromTree,
   withGroupInTree,
 } from "./boardItemTree";
@@ -159,6 +160,7 @@ import { downloadExportTable, exportVisibleRows, toSafeText } from "@/components
 import type { SelectionLevel } from "@/components/board/table/selectionUtils";
 import { bulkTargetIds, diffListValue, flashBulkCells, isBulkEditableKind, isMergeEdit, mergeListValue } from "@/components/board/table/bulkCellEdit";
 import { useBoardAutomationEffects } from "@/hooks/useBoardAutomationEffects";
+import { useBoardCommentCounts } from "@/hooks/useBoardCommentCounts";
 import type { IntegrationPage } from "../board/automations/center/centerNav";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
 import { automationSource } from "../board/integrations/manage/manageFormat";
@@ -3266,6 +3268,14 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     if (effect.source === "self") automation_toasts.push(effect.runs, effect.item_ids);
     // The Automations dialog shows run counts and the last run, keep them current while it is open.
     if (is_automations_modal_open) refreshAutomations();
+  });
+
+  // ── Updates counter, live: a row's chat bubble count (and its blue "you are mentioned" tone)
+  // follows new, deleted and restored updates as they happen, from anyone, with no page refresh.
+  // Covers the Table rows, their subitems and the Kanban cards, which all read `items`. Opening the
+  // item drawer always reads the thread again, so the new update is there too. ──
+  useBoardCommentCounts(board_id, (resolve) => {
+    setItems((current) => patchCommentCountsInTree(current, resolve));
   });
 
   const handleUndoAutomationActivity = async (entry: AutomationActivityEntry) => {

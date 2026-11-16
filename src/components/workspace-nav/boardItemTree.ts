@@ -1,3 +1,4 @@
+import type { CommentCountResolver } from "@/types/board-comment-counts";
 import type { BoardItemDto } from "@/types/board-content";
 
 // Pure helpers over the Table view's `items` tree, kept out of `TableBoardView`
@@ -52,6 +53,26 @@ export const setColumnValuesInTree = (items: BoardItemDto[], column_id: string, 
       values: has_value ? { ...item.values, [column_id]: values_by_item_id[String(item.id)] as BoardItemDto["values"][string] } : item.values,
       children,
     };
+  });
+  return has_changed ? next : items;
+};
+
+/**
+ * Applies live updates counters (see `useBoardCommentCounts`) to every row the resolver answers
+ * for, subitems included. Rows whose counter did not change keep their identity, and so does the
+ * whole tree when nothing changed, so a socket event touching one row re-renders only that row.
+ */
+export const patchCommentCountsInTree = (items: BoardItemDto[], resolve: CommentCountResolver): BoardItemDto[] => {
+  let has_changed = false;
+  const next = items.map((item) => {
+    const patch = resolve(item.id);
+    const children = item.children.length ? patchCommentCountsInTree(item.children, resolve) : item.children;
+    const is_count_changed =
+      patch !== null &&
+      (patch.comment_count !== item.comment_count || patch.has_viewer_mention !== (item.has_viewer_mention ?? false));
+    if (!is_count_changed && children === item.children) return item;
+    has_changed = true;
+    return is_count_changed ? { ...item, ...patch, children } : { ...item, children };
   });
   return has_changed ? next : items;
 };

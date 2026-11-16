@@ -118,6 +118,12 @@
   transition: background-color 120ms ease;
 }
 
+// A new update arrived while the row was on screen: the badge pops once and a soft ring fades
+// out around it. Declared after the mention entrance so it wins when both apply.
+.item-comments-button .item-comments-button__count[data-bumped="true"] {
+  animation: item-comments-count-bump 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
 html.dark .item-comments-button {
   --ic-gray-badge: #5b6178;
 }
@@ -129,6 +135,26 @@ html.dark .item-comments-button {
 
   to {
     transform: scale(1);
+  }
+}
+
+@keyframes item-comments-count-bump {
+  0% {
+    transform: scale(0.6);
+    box-shadow:
+      0 0 0 1.5px var(--ic-ring),
+      0 0 0 0 color-mix(in srgb, var(--ic-badge-bg) 55%, transparent);
+  }
+
+  45% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 1.5px var(--ic-ring),
+      0 0 0 7px color-mix(in srgb, var(--ic-badge-bg) 0%, transparent);
   }
 }
 
