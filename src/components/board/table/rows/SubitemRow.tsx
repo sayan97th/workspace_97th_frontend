@@ -7,7 +7,7 @@ import { SUB_ROW_HEIGHT_PX, subGridTemplate, subStickyOffsets } from "../layoutU
 import CellRenderer from "../cells/CellRenderer";
 import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
-import ItemDraftBadge from "./ItemDraftBadge";
+import ItemCommentsButton from "./ItemCommentsButton";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import ItemNameLabel from "./ItemNameLabel";
@@ -232,19 +232,13 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, position: "sticky", left: sticky_offsets[2], zIndex: 15, background: row_bg }}>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); actions.openComments(sub.id); }}
-            className="relative flex h-[26px] w-[26px] items-center justify-center rounded-[5px] text-boardtree-text-faint hover:bg-boardtree-hover hover:text-boardtree-accent"
-          >
-            <svg viewBox="0 0 18 18" width="16" height="16"><path d="M2.2 8.1 a6.4 5.4 0 1 1 3.4 4.8 L2.4 13.9 l1 -3 a5.2 5.2 0 0 1 -1.2 -2.8 Z" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9 5.9 V10.1 M6.9 8 H11.1" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
-            {!!sub.comment_count && (
-              <span className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-boardtree-accent px-[3px] text-[9px] font-bold leading-none text-white">
-                {sub.comment_count > 99 ? "99+" : sub.comment_count}
-              </span>
-            )}
-            <ItemDraftBadge item_id={sub.id} />
-          </button>
+          <ItemCommentsButton
+            item_id={sub.id}
+            comment_count={sub.comment_count}
+            is_mentioned={sub.has_viewer_mention}
+            size="subitem"
+            onOpen={actions.openComments}
+          />
         </div>
 
         {group.sub_base_columns.concat(group.sub_custom_columns).map((col) => {

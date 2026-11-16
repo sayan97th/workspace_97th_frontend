@@ -508,6 +508,8 @@ export interface BoardTableNode {
   last_updated_at?: string | null;
   /** Total comments posted on this row (item or subitem) — drives the message-icon badge in `ItemRow`/`SubitemRow`. Undefined for the standalone mock demo, which has no backing comments drawer. */
   comment_count?: number;
+  /** The viewer is `@mentioned` in this row's updates, so its chat bubble and count badge turn blue instead of gray. */
+  has_viewer_mention?: boolean;
   /** Flags this individual row (item or subitem) as a priority row — the per-row counterpart of `BoardTableGroup.is_priority`, independent of any per-item Status/Priority column. Renders a star next to the row's name in `ItemRow`/`SubitemRow`. */
   is_priority?: boolean;
   /** Each Dependency cell's link settings, keyed by column id then predecessor id. A predecessor missing here has no settings saved yet (lag 0). */

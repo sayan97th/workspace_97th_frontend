@@ -238,6 +238,8 @@ export type BoardItemDto = {
   dependency_links?: Record<string, Record<string, DependencyLink>>;
   /** Total comments (including replies) on this item — powers the row chat icon. Only `getItems` returns a real count; other calls return 0. */
   comment_count: number;
+  /** Whether the viewer is `@mentioned` in one of those comments, which paints the row chat bubble blue instead of gray (monday's tagged state). Only `getItems` loads it; other calls return false. */
+  has_viewer_mention?: boolean;
   /** Total attachments across this item's comments — powers the Kanban card's attachment count. Only `getItems` returns a real count; other calls return 0. */
   attachment_count: number;
   /** Total subtask checklist lines — powers the Kanban card's "✓ done/total" badge. Only `getItems` returns a real count; other calls return 0. */

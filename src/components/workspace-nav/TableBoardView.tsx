@@ -3300,6 +3300,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     values: item.values,
     dependency_links: item.dependency_links,
     comment_count: item.comment_count,
+    has_viewer_mention: item.has_viewer_mention ?? false,
     is_priority: item.is_priority,
     recurrence: item.recurrence,
     created_by_id: item.created_by_id != null ? String(item.created_by_id) : null,

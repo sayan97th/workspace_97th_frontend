@@ -1,0 +1,140 @@
+// Row chat bubble in the table's updates column (ItemCommentsButton).
+// monday look: a gray outlined bubble with a gray count badge in its lower
+// right corner, both turning blue while the viewer is tagged (@) in the
+// row's conversation.
+
+.item-comments-button {
+  // Tones. Gray is monday's #676879, blue is the board accent (#0073ea in the monday palette).
+  --ic-gray: var(--color-boardtree-text-secondary, #676879);
+  --ic-gray-badge: #676879;
+  --ic-blue: var(--color-boardtree-accent, #0073ea);
+  --ic-blue-hover: var(--color-boardtree-accent-hover, #0060b9);
+  --ic-hover-bg: var(--color-boardtree-hover-strong, #dcdfec);
+  --ic-ring: var(--color-boardtree-surface, #ffffff);
+
+  --ic-tone: var(--ic-gray);
+  --ic-badge-bg: var(--ic-gray-badge);
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ic-tone);
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    background: var(--ic-hover-bg);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--ic-blue);
+    outline-offset: 1px;
+  }
+
+  // An empty row only shows the "start conversation" bubble, which reads blue on hover like monday.
+  &[data-has-comments="false"]:hover {
+    --ic-tone: var(--ic-blue);
+  }
+
+  &[data-tone="mentioned"] {
+    --ic-tone: var(--ic-blue);
+    --ic-badge-bg: var(--ic-blue);
+
+    &:hover {
+      --ic-tone: var(--ic-blue-hover);
+      --ic-badge-bg: var(--ic-blue-hover);
+    }
+
+    .item-comments-button__count {
+      animation: item-comments-mention-in 260ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+  }
+
+  &[data-size="subitem"] {
+    width: 26px;
+    height: 24px;
+
+    .item-comments-button__icon {
+      width: 18px;
+      height: 18px;
+    }
+
+    .item-comments-button__count {
+      right: 1px;
+      bottom: 1px;
+      min-width: 14px;
+      height: 14px;
+      font-size: 9px;
+    }
+  }
+
+  // The unsent draft pencil moves to the upper corner so it never covers the count.
+  .item-draft-badge {
+    top: 0;
+    right: 0;
+    bottom: auto;
+  }
+}
+
+.item-comments-button__icon {
+  display: block;
+  width: 22px;
+  height: 22px;
+  transition: color 120ms ease;
+}
+
+.item-comments-button__count {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ic-badge-bg);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  // A ring in the row color lifts the badge off the bubble outline, as on monday.
+  box-shadow: 0 0 0 1.5px var(--ic-ring);
+  pointer-events: none;
+  transition: background-color 120ms ease;
+}
+
+html.dark .item-comments-button {
+  --ic-gray-badge: #5b6178;
+}
+
+@keyframes item-comments-mention-in {
+  from {
+    transform: scale(0.6);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .item-comments-button,
+  .item-comments-button__icon,
+  .item-comments-button__count {
+    transition: none;
+    animation: none !important;
+  }
+}
