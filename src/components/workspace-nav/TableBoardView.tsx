@@ -199,6 +199,7 @@ import { BoardLoadingSpinner, CenteredMessage } from "@/app/(admin)/boards/_comp
 import ImportItemsModal from "@/components/board/import/ImportItemsModal";
 import ExportBoardModal from "@/components/board/export/ExportBoardModal";
 import { buildBoardPath } from "./helpers";
+import { BoardPrivacyProvider, type BoardPrivacy } from "@/components/board/privacy/BoardPrivacyContext";
 
 export type WorkspaceViewProps = {
   /** The navigation node whose view is being rendered, plus the workspace it belongs to. */
@@ -718,6 +719,11 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
   };
 
   const info = buildBoardInfo(node, board_type, () => setIsChangeTypeOpen(true));
+  // Pickers inside the board (People cells, @mentions, Notify) show the private board hint from this.
+  const board_privacy = useMemo<BoardPrivacy>(
+    () => ({ is_private_board: board_type === "private", onInviteClick: () => setIsInviteOpen(true) }),
+    [board_type]
+  );
 
   // While the board's content loads there is no active view yet, so the tab shows just the
   // board name. `TableBoardBody` takes over (board and view, or the open item) once mounted.
@@ -742,33 +748,35 @@ const TableBoardView: React.FC<WorkspaceViewProps> = ({
 
   return (
     <>
-      <TableBoardBody
-        key={node.id}
-        node={node}
-        breadcrumb={breadcrumb}
-        board_type={board_type}
-        info={info}
-        invite_count={access.length}
-        access={access}
-        onAccessChange={setAccess}
-        workspace_members={workspace_members}
-        board_members={board_members}
-        roster_members={display_roster_members}
-        onInviteClick={() => setIsInviteOpen(true)}
-        initial_tags={tags}
-        initial_columns={loaded.columns}
-        initial_groups={loaded.groups}
-        initial_items={loaded.items}
-        initial_loaded_group_ids={loaded.loaded_group_ids}
-        initial_views={loaded.views}
-        initial_active_view_id={active_view_id ?? null}
-        initial_personal_order={loaded.personal_order}
-        initial_hidden_view_ids={loaded.personal_hidden_view_ids}
-        initial_default_view_id={loaded.personal_default_view_id}
-        initial_personal_states={loaded.personal_states}
-        initial_collapsed_group_ids={loaded.collapsed_group_ids}
-        initial_open_item_id={initial_open_item_id ?? null}
-      />
+      <BoardPrivacyProvider value={board_privacy}>
+        <TableBoardBody
+          key={node.id}
+          node={node}
+          breadcrumb={breadcrumb}
+          board_type={board_type}
+          info={info}
+          invite_count={access.length}
+          access={access}
+          onAccessChange={setAccess}
+          workspace_members={workspace_members}
+          board_members={board_members}
+          roster_members={display_roster_members}
+          onInviteClick={() => setIsInviteOpen(true)}
+          initial_tags={tags}
+          initial_columns={loaded.columns}
+          initial_groups={loaded.groups}
+          initial_items={loaded.items}
+          initial_loaded_group_ids={loaded.loaded_group_ids}
+          initial_views={loaded.views}
+          initial_active_view_id={active_view_id ?? null}
+          initial_personal_order={loaded.personal_order}
+          initial_hidden_view_ids={loaded.personal_hidden_view_ids}
+          initial_default_view_id={loaded.personal_default_view_id}
+          initial_personal_states={loaded.personal_states}
+          initial_collapsed_group_ids={loaded.collapsed_group_ids}
+          initial_open_item_id={initial_open_item_id ?? null}
+        />
+      </BoardPrivacyProvider>
       <ChangeBoardTypeModal
         is_open={is_change_type_open}
         initial_board_type={board_type}

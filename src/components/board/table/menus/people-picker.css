@@ -329,3 +329,20 @@ html.dark .people-picker {
   flex: 1;
   min-width: 0;
 }
+
+/* A person assigned before the board went private: kept on the item, but they cannot open it and are never notified. */
+.people-picker__chip--no-access {
+  background: var(--people-picker-notice-off);
+  color: var(--people-picker-text-secondary);
+}
+
+.people-picker__chip-lock {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: #6c4ee0;
+}
+
+html.dark .people-picker__chip-lock {
+  color: #b3a4ff;
+}

@@ -1,0 +1,126 @@
+// Private board hint shown inside the People picker and the `@mention` picker.
+// A soft lavender card with a round lock badge, the same calm tone monday.com
+// uses for its private board lock, so it informs without looking like an error.
+// Every color is a token, dark mode only swaps the tokens.
+
+.private-board-notice {
+  --private-notice-surface: #f3f0ff;
+  --private-notice-border: #e1dafc;
+  --private-notice-badge: #ffffff;
+  --private-notice-accent: #6c4ee0;
+  --private-notice-title: #323338;
+  --private-notice-text: #676879;
+  --private-notice-action-hover: #e6e0ff;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--private-notice-border);
+  border-radius: 8px;
+  background: var(--private-notice-surface);
+  animation: private-board-notice-in 160ms ease-out;
+
+  &__icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--private-notice-badge);
+    box-shadow: 0 1px 2px rgba(108, 78, 224, 0.18);
+    color: var(--private-notice-accent);
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__title {
+    color: var(--private-notice-title);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+  }
+
+  &__message {
+    color: var(--private-notice-text);
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  &__action {
+    flex: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: var(--private-notice-accent);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+    transition: background-color 120ms ease;
+
+    &:hover {
+      background: var(--private-notice-action-hover);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--private-notice-accent);
+      outline-offset: 1px;
+    }
+  }
+
+  // One line caption under the `@mention` picker's list.
+  &--inline {
+    gap: 6px;
+    margin: 4px 0 0;
+    padding: 8px 12px;
+    border: 0;
+    border-top: 1px solid var(--private-notice-border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--private-notice-text);
+    font-size: 12px;
+    line-height: 16px;
+    animation: none;
+
+    svg {
+      flex: none;
+      color: var(--private-notice-accent);
+    }
+  }
+}
+
+html.dark .private-board-notice {
+  --private-notice-surface: rgba(140, 116, 255, 0.12);
+  --private-notice-border: rgba(140, 116, 255, 0.28);
+  --private-notice-badge: rgba(255, 255, 255, 0.08);
+  --private-notice-accent: #b3a4ff;
+  --private-notice-title: #e9eded;
+  --private-notice-text: #b7c0c1;
+  --private-notice-action-hover: rgba(140, 116, 255, 0.22);
+}
+
+@keyframes private-board-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .private-board-notice {
+    animation: none;
+  }
+}

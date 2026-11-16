@@ -8,6 +8,8 @@ import AvatarBadge from "./AvatarBadge";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { usePeopleSelection } from "../../usePeopleSelection";
 import { isAssignablePerson } from "@/lib/assignable-person";
+import { useBoardPrivacy } from "../../privacy/BoardPrivacyContext";
+import PrivateBoardNotice, { LockIcon } from "../../privacy/PrivateBoardNotice";
 import "./people-picker.css";
 
 /** Assigned people shown as chips before the rest fold into a "+ N" chip, like monday.com. */
@@ -88,6 +90,14 @@ export default function PeopleMenu({
   const [active_index, setActiveIndex] = useState(-1);
   const input_ref = useRef<HTMLInputElement>(null);
   const list_ref = useRef<HTMLDivElement>(null);
+  const { is_private_board, onInviteClick } = useBoardPrivacy();
+
+  // Someone assigned before the board went private keeps their chip, but cannot open the board and is never notified.
+  const hasNoAccess = (person: PersonDef): boolean => is_private_board && Boolean(person.is_outside_board) && !person.is_deactivated;
+  const getChipTitle = (person: PersonDef): string =>
+    hasNoAccess(person)
+      ? `${person.name} has no access to this private board and is not notified`
+      : getPersonTitle(person.name, person.is_deactivated);
 
   const people_by_id = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
 
@@ -188,8 +198,10 @@ export default function PeopleMenu({
               {visible_chips.map((person) => (
                 <span
                   key={person.id}
-                  className={`people-picker__chip ${getDeactivatedClass(person.is_deactivated)}`}
-                  title={getPersonTitle(person.name, person.is_deactivated)}
+                  className={`people-picker__chip ${getDeactivatedClass(person.is_deactivated)} ${
+                    hasNoAccess(person) ? "people-picker__chip--no-access" : ""
+                  }`}
+                  title={getChipTitle(person)}
                 >
                   <AvatarBadge
                     size={20}
@@ -200,6 +212,11 @@ export default function PeopleMenu({
                     avatar_url={person.avatar_url}
                   />
                   <span className="people-picker__chip-name">{person.name}</span>
+                  {hasNoAccess(person) && (
+                    <span className="people-picker__chip-lock" aria-label="No access">
+                      <LockIcon size={12} />
+                    </span>
+                  )}
                   <button
                     type="button"
                     className="people-picker__chip-remove"
@@ -253,6 +270,18 @@ export default function PeopleMenu({
             )}
           </div>
 
+          {is_private_board && (
+            <PrivateBoardNotice
+              onInviteClick={
+                onInviteClick
+                  ? () => {
+                      onClose();
+                      onInviteClick();
+                    }
+                  : undefined
+              }
+            />
+          )}
           <div className="people-picker__section-title">People on this board</div>
           <div ref={list_ref} id="people-picker-options" className="people-picker__list shell-scrollbar" role="listbox" aria-label="People">
             {options.map((person, index) => {

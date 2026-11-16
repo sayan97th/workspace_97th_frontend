@@ -4,6 +4,8 @@ import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import FloatingSuggestion from "../doc/editor/menus/FloatingSuggestion";
 import { isMentionGroup, mentionOptionLabel, type MentionGroupOption, type MentionOption } from "./mentionOptions";
+import { useBoardPrivacy } from "../privacy/BoardPrivacyContext";
+import PrivateBoardNotice from "../privacy/PrivateBoardNotice";
 import "./mention-picker.scss";
 
 export type MentionPickerProps<TOption extends MentionOption> = {
@@ -56,6 +58,7 @@ function MentionPicker<TOption extends MentionOption = BoardPersonOption>({
   people_title = "People on this board",
 }: MentionPickerProps<TOption>) {
   const list_ref = useRef<HTMLDivElement>(null);
+  const { is_private_board } = useBoardPrivacy();
 
   useEffect(() => {
     list_ref.current?.querySelector<HTMLElement>('[data-active="true"]')?.scrollIntoView({ block: "nearest" });
@@ -112,6 +115,7 @@ function MentionPicker<TOption extends MentionOption = BoardPersonOption>({
           )}
           {people.length === 0 && <div className="mention-picker__empty">No people found</div>}
         </div>
+        {is_private_board && <PrivateBoardNotice variant="inline" message="Private board. Only people on this board are notified." />}
       </div>
     </FloatingSuggestion>
   );
