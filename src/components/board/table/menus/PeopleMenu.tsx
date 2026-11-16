@@ -7,7 +7,7 @@ import PopoverPanel from "./PopoverPanel";
 import AvatarBadge from "./AvatarBadge";
 import ToggleSwitch from "../../toolbar/ToggleSwitch";
 import { usePeopleSelection } from "../../usePeopleSelection";
-import { isAssignablePerson } from "@/lib/assignable-person";
+import { getNoAccessTitle, hasNoBoardAccess, isAssignablePerson } from "@/lib/assignable-person";
 import { useBoardPrivacy } from "../../privacy/BoardPrivacyContext";
 import PrivateBoardNotice, { LockIcon } from "../../privacy/PrivateBoardNotice";
 import "./people-picker.css";
@@ -93,11 +93,9 @@ export default function PeopleMenu({
   const { is_private_board, onInviteClick } = useBoardPrivacy();
 
   // Someone assigned before the board went private keeps their chip, but cannot open the board and is never notified.
-  const hasNoAccess = (person: PersonDef): boolean => is_private_board && Boolean(person.is_outside_board) && !person.is_deactivated;
+  const hasNoAccess = (person: PersonDef): boolean => hasNoBoardAccess(person, is_private_board);
   const getChipTitle = (person: PersonDef): string =>
-    hasNoAccess(person)
-      ? `${person.name} has no access to this private board and is not notified`
-      : getPersonTitle(person.name, person.is_deactivated);
+    hasNoAccess(person) ? getNoAccessTitle(person.name) : getPersonTitle(person.name, person.is_deactivated);
 
   const people_by_id = useMemo(() => new Map(people.map((person) => [person.id, person])), [people]);
 

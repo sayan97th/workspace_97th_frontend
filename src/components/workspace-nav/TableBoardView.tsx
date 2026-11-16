@@ -1203,17 +1203,24 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     [columns_by_id, people_names_by_id]
   );
 
+  // People, Reporter (a People column that starts with the creator) and Creation log columns all
+  // pick from the same people, so the Person filter reads all three.
   const people_column_ids = useMemo(
-    () => item_columns.filter((c) => c.type === "people").map((c) => String(c.id)),
+    () => item_columns.filter((c) => c.type === "people" || c.type === "creation_log").map((c) => String(c.id)),
     [item_columns]
   );
   const getPersonIds = useCallback(
     (row: BoardItemDto): string[] =>
-      people_column_ids.flatMap((cid) => {
-        const value = row.values[cid];
-        return Array.isArray(value) ? value.map(String) : [];
-      }),
-    [people_column_ids]
+      Array.from(
+        new Set(
+          people_column_ids.flatMap((cid) => {
+            if (columns_by_id[cid]?.type === "creation_log") return row.created_by_id != null ? [String(row.created_by_id)] : [];
+            const value = row.values[cid];
+            return Array.isArray(value) ? value.map(String) : [];
+          })
+        )
+      ),
+    [people_column_ids, columns_by_id]
   );
 
   // Mention, Notify and Person filter options: only the people added to the board.

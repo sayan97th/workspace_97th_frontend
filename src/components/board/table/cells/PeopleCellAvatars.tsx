@@ -4,6 +4,9 @@ import type { PersonDef } from "../types";
 import { getPersonTitle } from "@/lib/deactivated-user";
 import AvatarBadge from "../menus/AvatarBadge";
 import { useCellTooltip } from "./CellTooltip";
+import { getNoAccessTitle, hasNoBoardAccess } from "@/lib/assignable-person";
+import { useBoardPrivacy } from "../../privacy/BoardPrivacyContext";
+import NoAccessBadge from "../../privacy/NoAccessBadge";
 
 /** People cell avatar stack, monday style: up to three 28px avatars, then a "+N" bubble. */
 const PEOPLE_CELL_MAX_AVATARS = 3;
@@ -20,14 +23,20 @@ interface PeopleCellAvatarsProps {
 
 /** One stacked avatar that shows the person's name in the shared dark cell tooltip on hover. */
 function PeopleCellAvatar({ person, person_id }: { person?: PersonDef; person_id: string }) {
-  const tooltip_text = person ? getPersonTitle(person.name, person.is_deactivated) : UNKNOWN_PERSON_NAME;
+  const { is_private_board } = useBoardPrivacy();
+  const has_no_access = hasNoBoardAccess(person, is_private_board);
+  const tooltip_text = person
+    ? has_no_access
+      ? getNoAccessTitle(person.name)
+      : getPersonTitle(person.name, person.is_deactivated)
+    : UNKNOWN_PERSON_NAME;
   const { anchor_props, tooltip } = useCellTooltip<HTMLSpanElement>(tooltip_text);
 
   return (
     <>
       <span
         {...anchor_props}
-        className="flex flex-none"
+        className="relative flex flex-none"
         style={{ marginLeft: -PEOPLE_CELL_OVERLAP }}
         aria-label={tooltip_text}
         data-person-id={person_id}
@@ -41,6 +50,7 @@ function PeopleCellAvatar({ person, person_id }: { person?: PersonDef; person_id
           avatar_url={person?.avatar_url}
           is_deactivated={person?.is_deactivated}
         />
+        {has_no_access && <NoAccessBadge />}
       </span>
       {tooltip}
     </>

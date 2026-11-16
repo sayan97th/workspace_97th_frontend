@@ -21,6 +21,9 @@ import { useCellTooltip } from "./CellTooltip";
 import DocCellModal from "../menus/DocCellModal";
 import { ColorPickerMenu, CountryMenu, HourMenu, WeekMenu } from "../menus/ValuePickers";
 import "./column-center-cells.css";
+import { getNoAccessTitle, hasNoBoardAccess } from "@/lib/assignable-person";
+import { useBoardPrivacy } from "../../privacy/BoardPrivacyContext";
+import NoAccessBadge from "../../privacy/NoAccessBadge";
 
 /** What every Column Center cell receives from `CellRenderer`. */
 export interface ColumnCenterCellProps {
@@ -298,7 +301,14 @@ const UNKNOWN_STAMP_PERSON = "Unknown user";
  * full date and time.
  */
 function PersonStamp({ person, stamp, empty_label }: { person: PersonDef | undefined; stamp: { label: string; full: string } | null; empty_label: string }) {
-  const person_name = person ? getPersonTitle(person.name, person.is_deactivated) : UNKNOWN_STAMP_PERSON;
+  // Same rule as the People and Reporter cells: on a private board, someone without access is flagged.
+  const { is_private_board } = useBoardPrivacy();
+  const has_no_access = hasNoBoardAccess(person, is_private_board);
+  const person_name = person
+    ? has_no_access
+      ? getNoAccessTitle(person.name)
+      : getPersonTitle(person.name, person.is_deactivated)
+    : UNKNOWN_STAMP_PERSON;
   const avatar_tooltip = useCellTooltip<HTMLSpanElement>(person_name);
   const date_tooltip = useCellTooltip<HTMLSpanElement>(stamp?.full ?? "");
 
@@ -312,6 +322,7 @@ function PersonStamp({ person, stamp, empty_label }: { person: PersonDef | undef
         ) : (
           <span className="center-cell__avatar-placeholder" aria-hidden="true" />
         )}
+        {has_no_access && <NoAccessBadge size={12} />}
       </span>
       {avatar_tooltip.tooltip}
       <span {...date_tooltip.anchor_props} className="center-cell__text" aria-label={stamp.full}>

@@ -43,6 +43,8 @@ const FILTER_KIND_BY_COLUMN_TYPE: Partial<Record<BoardColumnDto["type"], BoardFi
   tags: "option",
   people: "people",
   vote: "people",
+  // The item's creator, filtered by person like a People or Reporter column.
+  creation_log: "people",
   date: "date",
   timeline: "date",
   number: "number",
@@ -209,7 +211,19 @@ function buildColumnField(
       ];
     }
     case "people":
-      return [{ ...base, options: person_options, getOptionIds: (row) => getValueIds(column, row.values[column_id]) }];
+      return [
+        {
+          ...base,
+          // Only the people added to the board are offered, the same list the People and Reporter pickers show.
+          options: person_options,
+          getOptionIds: (row) =>
+            column.type === "creation_log"
+              ? row.created_by_id != null
+                ? [String(row.created_by_id)]
+                : []
+              : getValueIds(column, row.values[column_id]),
+        },
+      ];
     case "number":
       return [
         {

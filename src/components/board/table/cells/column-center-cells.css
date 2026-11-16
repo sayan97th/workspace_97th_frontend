@@ -156,6 +156,7 @@
 
 /* Creation log / Last updated avatar: the hover target for the person's name tooltip. */
 .center-cell__stamp-avatar {
+  position: relative;
   display: flex;
   flex: none;
   border-radius: 50%;

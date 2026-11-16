@@ -124,3 +124,27 @@ html.dark .private-board-notice {
     animation: none;
   }
 }
+
+// Lock pinned to the bottom right corner of an avatar, for people without access to a private board.
+.no-access-badge {
+  --no-access-badge-surface: #ffffff;
+  --no-access-badge-accent: #6c4ee0;
+
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--no-access-badge-surface);
+  box-shadow: 0 0 0 1px rgba(108, 78, 224, 0.35);
+  color: var(--no-access-badge-accent);
+  pointer-events: none;
+}
+
+html.dark .no-access-badge {
+  --no-access-badge-surface: #1b2a2a;
+  --no-access-badge-accent: #b3a4ff;
+}
