@@ -239,6 +239,9 @@ const plugin_key = new PluginKey<TrackedMention[]>("pastedMentions");
 /** The flagged pasted mentions in `state`, in document order. */
 export const getUnresolvedMentions = (state: EditorState): TrackedMention[] => plugin_key.getState(state) ?? [];
 
+/** True when `transaction` changed which pasted names are flagged, so other decorations can follow. */
+export const changesPastedFlags = (transaction: Transaction): boolean => transaction.getMeta(plugin_key) !== undefined;
+
 /** Marks the flagged mentions `ids` as handled, so they lose their underline and leave the notice. */
 export const removeUnresolvedMentions = (transaction: Transaction, ids: string[]): Transaction =>
   transaction.setMeta(plugin_key, { remove: ids } satisfies PluginMeta);

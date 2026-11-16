@@ -54,4 +54,21 @@ describe("MentionHighlight", () => {
     current.view.dispatch(refreshMentionHighlight(current.state.tr));
     expect(highlighted(current)).toEqual(["@Zorro Quinn"]);
   });
+
+  it("flags an @name nobody has in yellow, but not the one being typed at the caret", () => {
+    const current = new Editor({
+      element: document.createElement("div"),
+      extensions: [StarterKit, MentionHighlight.configure({ getNames: () => names })],
+      content: "<p>ask @Amanda McKay and @Kevn, cc @channel and me@x.com</p>",
+    });
+    editor = current;
+    const flagged = () =>
+      Array.from(current.view.dom.querySelectorAll(".rich-text-mention-unresolved")).map((element) => element.textContent);
+    expect(flagged()).toEqual(["@Amanda McKay", "@Kevn"]);
+
+    // The caret right after `@Kevn` means it is still being typed.
+    const end_of_kevn = current.state.doc.textContent.indexOf("@Kevn") + "@Kevn".length + 1;
+    current.commands.setTextSelection(end_of_kevn);
+    expect(flagged()).toEqual(["@Amanda McKay"]);
+  });
 });

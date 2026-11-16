@@ -1,8 +1,8 @@
 // `@mention` picker (`MentionPicker`), used by the comment composers and the
-// doc editor's "@" menu (`MentionMenu`), styled after the People column picker
-// (`people-picker.css`): a white card with an 8px radius and a soft shadow,
-// section captions ("Groups", "People on this board") and "Name (Job title)"
-// rows with a 28px photo. The card is portaled to the body and anchored under
+// doc editor's "@" menu (`MentionMenu`), laid out like monday.com's: a white
+// card with an 8px radius, a soft shadow and an arrow pointing at the typed
+// `@`, "People" and "Teams" captions and "Name (Job title)" rows with a round
+// 24px photo. The card is portaled to the body and anchored under
 // the typed `@` by `FloatingSuggestion`, so it is fixed positioned here.
 //
 // Colors are `--mention-picker-*` custom properties generated from `$tokens`
@@ -19,12 +19,12 @@ $tokens: (
   "text": (#323338, #e9eded),
   "text-secondary": (#676879, #b7c0c1),
   "text-faint": (#9699a6, #9aa4a5),
-  "hover": (#dcdfec, rgba(255, 255, 255, 0.08)),
-  "active": (#cce5ff, rgba(77, 156, 255, 0.24)),
+  "hover": (#f0f1f3, rgba(255, 255, 255, 0.06)),
+  "active": (#e6e9ef, rgba(255, 255, 255, 0.1)),
   "divider": (#e7e9ef, rgba(255, 255, 255, 0.12)),
   "badge-bg": (#cce5ff, rgba(77, 156, 255, 0.24)),
   "badge-text": (#0073ea, #69a7ff),
-  "outline": (rgba(15, 15, 15, 0.05), rgba(255, 255, 255, 0.08)),
+  "outline": (rgba(15, 15, 15, 0.1), rgba(255, 255, 255, 0.12)),
   "shadow": (rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.55)),
 );
 
@@ -36,8 +36,8 @@ $tokens: (
 
 $radius: 8px;
 $row-radius: 4px;
-$row-height: 40px;
-$avatar-size: 28px;
+$row-height: 34px;
+$avatar-size: 24px;
 $panel-padding: 8px;
 
 // ── Card ──────────────────────────────────────────────────────────────────
@@ -102,15 +102,16 @@ html.dark .mention-picker {
 // ── Sections ──────────────────────────────────────────────────────────────
 
 .mention-picker__section + .mention-picker__section {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--mention-picker-divider);
+  margin-top: 4px;
 }
 
+// monday.com's captions: "People", "Teams".
 .mention-picker__section-title {
-  padding: 4px 8px;
+  padding: 6px 8px 4px;
   color: var(--mention-picker-text-secondary);
   font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
 }
 
 .mention-picker__empty {
@@ -123,10 +124,10 @@ html.dark .mention-picker {
 .mention-picker__option {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   min-height: $row-height;
-  padding: 6px 8px;
+  padding: 4px 8px;
   border-radius: $row-radius;
   color: var(--mention-picker-text);
   text-align: left;
@@ -137,7 +138,7 @@ html.dark .mention-picker {
     background: var(--mention-picker-hover);
   }
 
-  // The keyboard cursor, the row Enter or Tab picks.
+  // The keyboard cursor, the row Enter or Tab picks: monday's soft gray.
   &[data-active="true"] {
     background: var(--mention-picker-active);
   }
@@ -152,35 +153,62 @@ html.dark .mention-picker {
   flex: none;
 }
 
-.mention-picker__badge {
+.mention-picker__group-icon {
   display: flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  width: $avatar-size;
-  height: $avatar-size;
-  border-radius: 999px;
-  background: var(--mention-picker-badge-bg);
-  color: var(--mention-picker-badge-text);
-  font-size: 13px;
-  font-weight: 700;
+  color: var(--mention-picker-text);
 }
 
+// "Name (Job title)" on one line, the title gray and cut with an ellipsis first.
 .mention-picker__text {
+  display: flex;
   flex: 1;
+  align-items: baseline;
+  gap: 4px;
   min-width: 0;
-}
-
-.mention-picker__label,
-.mention-picker__description {
-  display: block;
   overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 14px;
   white-space: nowrap;
 }
 
-.mention-picker__description {
+.mention-picker__label {
+  flex: none;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mention-picker__note {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
   color: var(--mention-picker-text-secondary);
-  font-size: 12px;
-  line-height: 16px;
+  text-overflow: ellipsis;
+}
+
+// ── Arrow ─────────────────────────────────────────────────────────────────
+
+// The nub pointing at the typed `@`, drawn by `FloatingSuggestion` next to the card.
+.mention-picker-arrow {
+  @include token-set(1);
+
+  position: fixed;
+  z-index: 1101;
+  width: 12px;
+  height: 12px;
+  background: var(--mention-picker-surface);
+  transform: rotate(45deg);
+  pointer-events: none;
+
+  &[data-side="top"] {
+    box-shadow: -1px -1px 0 0 var(--mention-picker-outline);
+  }
+
+  &[data-side="bottom"] {
+    box-shadow: 1px 1px 0 0 var(--mention-picker-outline);
+  }
+}
+
+html.dark .mention-picker-arrow {
+  @include token-set(2);
 }

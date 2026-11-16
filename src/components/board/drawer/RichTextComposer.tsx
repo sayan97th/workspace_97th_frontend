@@ -358,7 +358,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         // outside of fragment"). An empty toggle title gets its hint from CSS.
         Placeholder.configure({ placeholder }),
         SafeHistory,
-        MentionHighlight.configure({ getNames: () => getMentionNames() }),
         PastedMentions.configure({
           getPeople: () => (tag_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
           getOutsidePeople: () => (tag_mentions_ref.current ? outside_people_ref.current : NO_PEOPLE),
@@ -366,6 +365,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           // The editor's own transactions already keep the fix popover in step, see `onTransaction`.
           onUnresolvedChange: () => {},
         }),
+        // After `PastedMentions`, whose flagged names it reads to leave them their own underline.
+        MentionHighlight.configure({ getNames: () => getMentionNames() }),
         RichTextSlashCommand.configure({
           store: slash_store,
           getItems: (query) => slash_items_ref.current(query),
@@ -598,7 +599,13 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           const anchor_pos = match ? from - (match[0].length - match[0].indexOf(trigger_char)) : from;
           try {
             const coords = editor.view.coordsAtPos(anchor_pos);
-            return new DOMRect(coords.left, coords.top, 0, coords.bottom - coords.top);
+            // The trigger character's own width, so the picker's arrow points at its middle.
+            let width = 0;
+            if (match && anchor_pos < from) {
+              const after = editor.view.coordsAtPos(anchor_pos + 1);
+              if (after.top === coords.top && after.left > coords.left) width = after.left - coords.left;
+            }
+            return new DOMRect(coords.left, coords.top, width, coords.bottom - coords.top);
           } catch {
             // The position fell outside the document mid update, the picker keeps its last spot.
             return null;
@@ -718,6 +725,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         .run();
       tag_mentions_ref.current?.([person]);
     };
+    // "Send as plain text": the flag goes and so does the `@`, any other `@name` nobody has is flagged yellow anyway.
     const dismissFlag = (flag: ActiveFlag, remove_at: boolean) => {
       editor
         .chain()
@@ -751,7 +759,6 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
             }}
             onResolve={(person) => resolveFlag(shown_flag, person)}
             onSendAsText={() => dismissFlag(shown_flag, true)}
-            onIgnore={() => dismissFlag(shown_flag, false)}
             onInviteClick={onInviteToBoard}
           />
         )}

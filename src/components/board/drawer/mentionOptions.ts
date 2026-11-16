@@ -81,11 +81,12 @@ export const mentionOptionUserIds = (option: MentionOption): string[] =>
   isMentionGroup(option) ? option.member_ids : [option.id];
 
 /**
- * The options offered for an in-progress `@query`: the "Everyone" group first
- * (when the query is a prefix of its name and there is someone besides the
- * viewer to reach), then every team whose name contains the query, then every
- * person whose name contains the query, then those found only by their job
- * title. A team reaches only its members who are in `people` (so nobody
+ * The options offered for an in-progress `@query`, in monday.com's order:
+ * every person whose name contains the query, then those found only by their
+ * job title, then the "Everyone" group (when the query is a prefix of its
+ * name and there is someone besides the viewer to reach) and every team whose
+ * name contains the query, and last the people whose name is only a typo away
+ * (`@Ernsto`), see {@link suggestMentionPeople}. A team reaches only its members who are in `people` (so nobody
  * outside the board), never the viewer, and is left out when that leaves nobody. The backend caps a comment at 200 mentions, so
  * a group is left out of very large rosters rather than producing a request
  * that would be rejected.
@@ -110,7 +111,7 @@ export function buildMentionMatches(
         needle
       )
     : [];
-  const matching_people: MentionOption[] = [...name_matches, ...role_matches, ...suggestions];
+  const matching_people: MentionOption[] = [...name_matches, ...role_matches];
 
   const roster_ids = new Set(people.map((person) => person.id));
   const matching_teams: MentionGroupOption[] = teams
@@ -130,7 +131,8 @@ export function buildMentionMatches(
     audience.length <= max_group_size &&
     EVERYONE_MENTION_NAME.toLowerCase().startsWith(needle);
 
-  if (!offers_everyone) return [...matching_teams, ...matching_people];
+  // monday.com's order: people, then the groups, then the "Did you mean" typo matches.
+  if (!offers_everyone) return [...matching_people, ...matching_teams, ...suggestions];
 
   const everyone: MentionGroupOption = {
     id: "group:everyone",
@@ -139,7 +141,7 @@ export function buildMentionMatches(
     kind: "everyone",
     member_ids: audience.map((person) => person.id),
   };
-  return [everyone, ...matching_teams, ...matching_people];
+  return [...matching_people, everyone, ...matching_teams, ...suggestions];
 }
 
 /** Every name an `@mention` may use on a board: its people, its teams and "Everyone", for coloring exact mentions only. */

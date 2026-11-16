@@ -17,8 +17,6 @@ type UnresolvedMentionPopoverProps = {
   onResolve: (person: BoardPersonOption) => void;
   /** Drops the `@`, so the name is sent as plain text. */
   onSendAsText: () => void;
-  /** Leaves the text as it is and stops flagging it. */
-  onIgnore: () => void;
   /** Opens the board's invite dialog, for someone in the workspace who is not on this private board. */
   onInviteClick?: () => void;
 };
@@ -31,7 +29,7 @@ const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
  * The small card under a pasted `@name` that did not become a mention, opened
  * when the caret is in it (a click on the dashed underline), like a spell
  * checker: one line saying why, the people it may mean as picker rows, and
- * "Send as plain text" or "Ignore". Someone in the workspace who was not
+ * "Send as plain text". Someone in the workspace who was not
  * added to this private board gets "Invite to board" instead, the way Slack
  * offers to invite someone mentioned outside the channel.
  */
@@ -41,7 +39,6 @@ const UnresolvedMentionPopover: React.FC<UnresolvedMentionPopoverProps> = ({
   getAnchorRect,
   onResolve,
   onSendAsText,
-  onIgnore,
   onInviteClick,
 }) => {
   const { issue } = mention;
@@ -100,9 +97,6 @@ const UnresolvedMentionPopover: React.FC<UnresolvedMentionPopoverProps> = ({
         {extra_action}
         <button type="button" onClick={onSendAsText} className="unresolved-mention__link" title="Removes the @ so it reads as plain text">
           Send as plain text
-        </button>
-        <button type="button" onClick={onIgnore} className="unresolved-mention__link">
-          Ignore
         </button>
       </div>
     </FloatingSuggestion>

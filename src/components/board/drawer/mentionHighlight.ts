@@ -1,7 +1,7 @@
 import { Extension } from "@tiptap/core";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, type EditorState } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { changesPastedFlags, getUnresolvedMentions, UNRESOLVED_MENTION_CLASS } from "./pastedMentions";
 
 /**
  * Matches any `@Full Name` looking run. Only a fallback now, for read-only
@@ -65,12 +65,49 @@ const plugin_key = new PluginKey<DecorationSet>("mentionHighlight");
 export const refreshMentionHighlight = <T extends { setMeta: (key: PluginKey, value: unknown) => T }>(transaction: T): T =>
   transaction.setMeta(plugin_key, true);
 
-const buildMentionDecorations = (doc: ProseMirrorNode, names: readonly string[]): DecorationSet => {
+/**
+ * An `@name` that looks like a mention: a word right after the `@`, plus a
+ * capitalized second word (`@Amanda McKay`). Read in plain text, so the
+ * boundary before the `@` is checked separately.
+ */
+const MENTION_LIKE = /@([\p{L}\p{M}][\p{L}\p{M}\p{N}_'-]*)(?: (\p{Lu}[\p{L}\p{M}'-]*))?/gu;
+/** Slack's group handles, never flagged: there is no person behind them. */
+const SPECIAL_HANDLES = new Set(["channel", "here", "everyone"]);
+
+/** Hover hint on a typed `@name` nobody has. */
+const UNKNOWN_MENTION_TITLE = "No one on this board has this name, so nobody will be notified";
+
+const buildMentionDecorations = (state: EditorState, names: readonly string[]): DecorationSet => {
+  const { doc, selection } = state;
   const decorations: Decoration[] = [];
+  // Pasted names are flagged (and fixed) by `PastedMentions`, they keep their own underline.
+  // It is registered before this extension, so its state is already up to date here.
+  const pasted_flags = getUnresolvedMentions(state);
   doc.descendants((node, pos) => {
     if (!node.isText || !node.text) return;
-    for (const mention of findNamedMentions(node.text, names)) {
+    const named = findNamedMentions(node.text, names);
+    for (const mention of named) {
       decorations.push(Decoration.inline(pos + mention.start, pos + mention.end, { class: MENTION_HIGHLIGHT_CLASS }));
+    }
+    // Before the roster loads every name would look unknown, so nothing is flagged yet.
+    if (names.length === 0) return;
+    for (const match of node.text.matchAll(MENTION_LIKE)) {
+      const start = match.index ?? 0;
+      if (start > 0 && !BOUNDARY_BEFORE.test(node.text[start - 1])) continue;
+      if (SPECIAL_HANDLES.has(match[1].toLowerCase())) continue;
+      if (named.some((mention) => mention.start === start)) continue;
+      const from = pos + start;
+      const to = from + match[0].length;
+      // The name being typed at the caret is not judged yet, the `@` list is helping with it.
+      if (selection.empty && selection.from >= from && selection.from <= to) continue;
+      if (pasted_flags.some((flag) => flag.from < to && flag.to > from)) continue;
+      decorations.push(
+        Decoration.inline(from, to, {
+          class: UNRESOLVED_MENTION_CLASS,
+          "data-unresolved-kind": "unknown",
+          title: UNKNOWN_MENTION_TITLE,
+        })
+      );
     }
   });
   return DecorationSet.create(doc, decorations);
@@ -79,8 +116,9 @@ const buildMentionDecorations = (doc: ProseMirrorNode, names: readonly string[])
 /**
  * Tiptap extension that colors a mention blue in the composer, only when it
  * names someone exactly, which is also when the draft tags them (see
- * `RichTextComposer`). A misspelled or edited `@Name` goes back to plain
- * text. Drawn as ProseMirror view decorations rather than document marks, so
+ * `RichTextComposer`). Any other `@name` (a typo, someone not on the board)
+ * gets the dashed yellow underline once the caret leaves it, the same warning
+ * pasted names get, so it is clear nobody will be notified. Drawn as ProseMirror view decorations rather than document marks, so
  * it never touches the Markdown the composer submits.
  */
 export const MentionHighlight = Extension.create<MentionHighlightOptions>({
@@ -96,9 +134,12 @@ export const MentionHighlight = Extension.create<MentionHighlightOptions>({
       new Plugin<DecorationSet>({
         key: plugin_key,
         state: {
-          init: (_, { doc }) => buildMentionDecorations(doc, getNames()),
+          init: (_, state) => buildMentionDecorations(state, getNames()),
+          // The caret moving in or out of a name decides whether it is flagged, so selection changes count too.
           apply: (transaction, old_set, _old_state, new_state) =>
-            transaction.docChanged || transaction.getMeta(plugin_key) ? buildMentionDecorations(new_state.doc, getNames()) : old_set,
+            transaction.docChanged || transaction.selectionSet || transaction.getMeta(plugin_key) || changesPastedFlags(transaction)
+              ? buildMentionDecorations(new_state, getNames())
+              : old_set,
         },
         props: {
           decorations: (state) => plugin_key.getState(state),

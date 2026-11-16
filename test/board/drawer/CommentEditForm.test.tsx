@@ -90,7 +90,7 @@ describe("CommentEditForm mentions", () => {
 
     typeText(" @no");
 
-    const options = screen.getAllByRole("option").map((option) => option.querySelector(".mention-picker__label")?.textContent);
+    const options = screen.getAllByRole("option").map((option) => option.getAttribute("aria-label"));
     expect(options).toEqual(["Noa (Knowledge Base Writer)", "Noy"]);
   });
 
