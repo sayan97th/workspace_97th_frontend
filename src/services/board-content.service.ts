@@ -482,14 +482,23 @@ export const boardContentService = {
     await apiClient.patch(`/api/boards/${board_id}/items/${item_id}/board`, payload);
   },
 
-  /** PATCH /api/boards/{board_id}/items/values — selection action bar's "Edit column" bulk action. */
-  async bulkSetColumnValue(board_id: number, item_ids: number[], column_id: number, value: BoardItemValue): Promise<BoardItemDto[]> {
-    const response = await apiClient.patch<{ items: BoardItemDto[] }>(`/api/boards/${board_id}/items/values`, {
+  /**
+   * PATCH /api/boards/{board_id}/items/values, a cell changed on a row checked together with other rows
+   * lands on every checked row (monday.com). `{ value }` writes the same value to each one, `{ added, removed }`
+   * merges the entries into each row's own list (People, Dropdown, Tags, Connect boards).
+   */
+  async bulkSetColumnValue(
+    board_id: number,
+    item_ids: number[],
+    column_id: number,
+    change: { value: BoardItemValue } | { added: unknown[]; removed: unknown[] }
+  ): Promise<{ items: BoardItemDto[]; moved_items: BoardItemDto[] }> {
+    const response = await apiClient.patch<{ items: BoardItemDto[]; moved_items?: BoardItemDto[] }>(`/api/boards/${board_id}/items/values`, {
       item_ids,
       column_id,
-      value,
+      ...change,
     });
-    return response.items;
+    return { items: response.items, moved_items: response.moved_items ?? [] };
   },
 
   /**

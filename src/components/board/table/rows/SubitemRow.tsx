@@ -253,6 +253,8 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             <div
               key={col.id}
               data-column-move={columnMoveKey("sub", col.id)}
+              data-item-id={sub.id}
+              data-column-id={col.id}
               className="relative flex min-w-0 items-stretch border-r border-boardtree-grid"
               title={is_invalid ? "This column requires a valid value" : undefined}
               style={{

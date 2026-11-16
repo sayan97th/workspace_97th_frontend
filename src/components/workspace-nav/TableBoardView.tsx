@@ -156,6 +156,7 @@ import AutomationActivityToasts, {
 import { flashAutomationRows, placeAutomationRows } from "../board/automations/activity/automationRowPlacement";
 import { downloadExportTable, exportVisibleRows, toSafeText } from "@/components/board/toolbar/exportBoardRows";
 import type { SelectionLevel } from "@/components/board/table/selectionUtils";
+import { bulkTargetIds, diffListValue, flashBulkCells, isBulkEditableKind, isMergeEdit, mergeListValue } from "@/components/board/table/bulkCellEdit";
 import { useBoardAutomationEffects } from "@/hooks/useBoardAutomationEffects";
 import type { IntegrationPage } from "../board/automations/center/centerNav";
 import IntegrationsModal from "../board/integrations/IntegrationsModal";
@@ -223,6 +224,8 @@ const VIEWER_TIME_ZONE = (() => {
 })();
 /** Synthetic, non-hideable column (like {@link ITEM_COLUMN_ID}) showing each row's comment count — mirrors Client Hub's static "chat" column. */
 const CHAT_COLUMN_ID = "comments";
+/** How long typing or quick picks on checked rows wait before going to the server as one bulk write. */
+const BULK_EDIT_WRITE_DELAY_MS = 400;
 
 /** A multi-select cell's raw value, narrowed to the option/person ids it actually holds — `BoardItemValue`'s other array member, `BoardCellFile[]`, is only ever read by a `files` column's own file-list handling. */
 const asStringArray = (value: BoardItemValue): string[] => (Array.isArray(value) ? (value as string[]) : []);
@@ -2363,6 +2366,167 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     }
   };
 
+  // ── Bulk cell edit (monday.com): a cell changed on a row that is checked
+  // together with other rows lands on every checked row of the same level.
+  // List cells (People, Dropdown, Tags, Connect boards) add or remove the
+  // same entries on each row, keeping what every row already had. Others copy
+  // the value. See `bulkCellEdit.ts` for which columns take part. ──
+  // Read through refs: the table's memoized config keeps the handler of the render it was built in.
+  const bulk_selection_ref = useRef(table_selection);
+  bulk_selection_ref.current = table_selection;
+  const bulk_items_ref = useRef(items);
+  bulk_items_ref.current = items;
+  const bulk_columns_ref = useRef(columns_by_id);
+  bulk_columns_ref.current = columns_by_id;
+  /**
+   * One pending server write per column and set of rows. Typing (Text, Number) and quick People picks
+   * update the rows at once but reach the server as one request, built from where the edited cell
+   * started (`base_value`) and where it is now (`latest_value`).
+   */
+  const bulk_pending_ref = useRef(
+    new Map<string, { item_id: number; column_id: string; target_ids: number[]; is_merge: boolean; base_value: BoardItemValue; latest_value: BoardItemValue; timer: number }>()
+  );
+  /** The open "updated on N items" toast, so later picks on the same rows replace it and Undo restores the values from before the first one. */
+  const bulk_undo_ref = useRef<{ key: string; toast_id: string; previous_by_id: Map<number, BoardItemValue> } | null>(null);
+
+  const writeCellValues = (column_id: string, values_by_id: Map<number, BoardItemValue>) =>
+    setItems((current) =>
+      Array.from(values_by_id).reduce(
+        (acc, [id, value]) => mapItemInTree(acc, id, (row) => ({ ...row, values: { ...row.values, [column_id]: value } })),
+        current
+      )
+    );
+
+  const undoBulkCellEdit = async (pending_key: string, column_id: string, previous_by_id: Map<number, BoardItemValue>) => {
+    bulk_undo_ref.current = null;
+    // A change not sent yet is simply dropped, the rows go back to where they were.
+    const pending = bulk_pending_ref.current.get(pending_key);
+    if (pending) window.clearTimeout(pending.timer);
+    bulk_pending_ref.current.delete(pending_key);
+    writeCellValues(column_id, previous_by_id);
+    flashBulkCells(Array.from(previous_by_id.keys()), column_id);
+    try {
+      // Same queue as the bulk write, so a request still in flight lands before the restore.
+      const results = await queueCellWrite(`bulk:${pending_key}`, () =>
+        Promise.all(
+          Array.from(previous_by_id).map(([id, value]) => boardContentService.updateItemValuesWithMoves(board_id, id, { [column_id]: value }))
+        )
+      );
+      applyServerItems(results.flatMap((result) => [result.item, ...result.moved_items]));
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Couldn't undo the change. Please try again."));
+    }
+  };
+
+  const flushBulkCellEdit = (pending_key: string) => {
+    const pending = bulk_pending_ref.current.get(pending_key);
+    if (!pending) return;
+    bulk_pending_ref.current.delete(pending_key);
+    const { column_id, target_ids, is_merge, base_value, latest_value } = pending;
+    const change = is_merge ? diffListValue(base_value, latest_value) : { value: latest_value };
+    if ("added" in change && !change.added.length && !change.removed.length) return;
+
+    void queueCellWrite(`bulk:${pending_key}`, () => boardContentService.bulkSetColumnValue(board_id, target_ids, Number(column_id), change))
+      .then(({ items: saved_items, moved_items }) => {
+        // Only the links of the edited rows, their values stay as picked, a later pick may already be on its way.
+        setItems((current) =>
+          saved_items.reduce(
+            (acc, saved) => mapItemInTree(acc, saved.id, (row) => ({ ...row, dependency_links: saved.dependency_links ?? row.dependency_links })),
+            current
+          )
+        );
+        applyServerItems(moved_items);
+      })
+      .catch((error) => {
+        const undo = bulk_undo_ref.current;
+        if (undo?.key === pending_key) {
+          writeCellValues(column_id, undo.previous_by_id);
+          toast.dismissToast(undo.toast_id);
+          bulk_undo_ref.current = null;
+        }
+        toast.error(getApiErrorMessage(error, "Couldn't update the selected rows. Please try again."));
+      });
+  };
+
+  // Leaving the board with a change still waiting sends it right away.
+  useEffect(() => {
+    const pending_writes = bulk_pending_ref.current;
+    return () => {
+      for (const pending_key of Array.from(pending_writes.keys())) {
+        window.clearTimeout(pending_writes.get(pending_key)?.timer);
+        flushBulkCellEdit(pending_key);
+      }
+    };
+    // Unmount only, `flushBulkCellEdit` reads everything it needs from the pending entry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleTableCellValueChange = (node_id: string, column_id: string, raw_value: unknown) => {
+    const item_id = Number(node_id);
+    const value = (raw_value ?? null) as BoardItemValue;
+    const selection = bulk_selection_ref.current;
+    const column = bulk_columns_ref.current[column_id];
+    const target_ids =
+      column && isBulkEditableKind(column.type)
+        ? bulkTargetIds(item_id, selection.ids, is_assigned_only ? (id) => canEditTableNode(String(id)) : undefined)
+        : null;
+    if (!column || !target_ids) {
+      void handleUpdateCellValue(item_id, column_id, value);
+      return;
+    }
+
+    const rows_by_id = new Map(target_ids.map((id) => [id, findItemInTree(bulk_items_ref.current, id)]));
+    const previous_value = (rows_by_id.get(item_id)?.values[column_id] ?? null) as BoardItemValue;
+    const is_merge = isMergeEdit(column.type, previous_value, value);
+    const { added, removed } = is_merge ? diffListValue(previous_value, value) : { added: [], removed: [] };
+    if (is_merge && !added.length && !removed.length) return;
+
+    const previous_by_id = new Map(target_ids.map((id) => [id, (rows_by_id.get(id)?.values[column_id] ?? null) as BoardItemValue]));
+    const next_by_id = new Map(
+      target_ids.map((id) => [
+        id,
+        // The edited row keeps exactly what its picker sent, the others merge the same change into their own list.
+        is_merge && id !== item_id ? (mergeListValue(previous_by_id.get(id), added, removed) as BoardItemValue) : value,
+      ])
+    );
+    writeCellValues(column_id, next_by_id);
+    flashBulkCells(target_ids.filter((id) => id !== item_id), column_id);
+
+    // Coalesce the server write, see `bulk_pending_ref`.
+    const pending_key = `${column_id}|${[...target_ids].sort((a, b) => a - b).join(",")}`;
+    let pending = bulk_pending_ref.current.get(pending_key);
+    if (pending) window.clearTimeout(pending.timer);
+    // An edit on another checked row (or switching between list and value): send the pending one first, it was built from its own row.
+    if (pending && (pending.item_id !== item_id || pending.is_merge !== is_merge)) {
+      flushBulkCellEdit(pending_key);
+      pending = undefined;
+    }
+    bulk_pending_ref.current.set(pending_key, {
+      item_id,
+      column_id,
+      target_ids,
+      is_merge,
+      base_value: pending ? pending.base_value : previous_value,
+      latest_value: value,
+      timer: window.setTimeout(() => flushBulkCellEdit(pending_key), BULK_EDIT_WRITE_DELAY_MS),
+    });
+
+    // One toast per column and rows: later picks replace it, Undo goes back to before the first pick.
+    const level = selection.level;
+    const open_undo = bulk_undo_ref.current?.key === pending_key ? bulk_undo_ref.current : null;
+    if (open_undo) toast.dismissToast(open_undo.toast_id);
+    else if (bulk_undo_ref.current) toast.dismissToast(bulk_undo_ref.current.toast_id);
+    const undo_values = open_undo?.previous_by_id ?? previous_by_id;
+    const toast_id = toast.showToast({
+      variant: "success",
+      title: `${column.label} updated on ${target_ids.length} ${selectionNoun(level, target_ids.length)}`,
+      description: "The change was applied to every selected row.",
+      action_text: "Undo",
+      onAction: () => void undoBulkCellEdit(pending_key, column_id, undo_values),
+    });
+    bulk_undo_ref.current = { key: pending_key, toast_id, previous_by_id: undo_values };
+  };
+
   // ── Dependency cell's popover: saves the cell's links (predecessors, and
   // each one's type and lag). The server moves this item's date and every
   // item after it, and sends all of them back. ──
@@ -3724,8 +3888,8 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
         });
       },
       onRenameNode: (node_id, name) => void handleRenameItem(Number(node_id), name),
-      onCellValueChange: (node_id, column_id, value) =>
-        void handleUpdateCellValue(Number(node_id), column_id, (value ?? null) as BoardItemValue),
+      // A change on a checked row spreads to every checked row, see `handleTableCellValueChange`.
+      onCellValueChange: (node_id, column_id, value) => handleTableCellValueChange(node_id, column_id, value),
       onSetDependencyLinks: (node_id, column_id, links) => void handleSetDependencyLinks(Number(node_id), column_id, links),
       onAddColumnOption: (column_id, option) => handleAddColumnOption(column_id, option),
       // Dropdown cell's inline "Edit labels" mode (`DropdownMenu.tsx`) —

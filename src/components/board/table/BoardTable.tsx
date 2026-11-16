@@ -25,6 +25,7 @@ import FormulaEditorModal, { type FormulaPreviewRow } from "./menus/FormulaEdito
 import CellFilterContextMenu, { type CellFilterContextMenuTarget } from "./menus/CellFilterContextMenu";
 import "../monday-palette.css";
 import "./table-board.css";
+import "./bulk-cell-edit.scss";
 
 /** How many rows the Formula dialog collects to preview against, before it trims to what fits on screen. */
 const FORMULA_PREVIEW_SCAN_LIMIT = 20;
