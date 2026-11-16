@@ -4,6 +4,8 @@ import PersonAvatar from "@/components/board/PersonAvatar";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import EmojiPalette from "@/components/board/drawer/EmojiPalette";
 import MentionPicker from "@/components/board/drawer/MentionPicker";
+import PastedMentionsNotice from "@/components/board/drawer/PastedMentionsNotice";
+import { usePastedMentions } from "@/components/board/drawer/usePastedMentions";
 import {
   buildMentionMatches,
   mentionOptionUserIds,
@@ -177,6 +179,13 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
     []
   );
 
+  // Slack style tags from pasted text, kept as picks so they count only while `@Name` is still in the body.
+  const pasted_mentions = usePastedMentions(value);
+  const handlePasteMentions = (pasted_people: BoardPersonOption[]) => {
+    setMentionPicks((current) => [...current, ...pasted_people.map((person) => ({ name: person.name, user_ids: [person.id] }))]);
+    pasted_mentions.addPastedPeople(pasted_people);
+  };
+
   const mention_navigation = useMentionPickerNavigation(mention_matches, handlePickMention);
   const is_picker_open = mention_navigation.is_open;
 
@@ -209,6 +218,11 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
       {!hide_avatar && <PersonAvatar person={current_user} size={28} className="feed-composer__avatar" />}
 
       <div className="feed-composer__main">
+        <PastedMentionsNotice
+          people={pasted_mentions.notice_people}
+          onUntag={(person) => rich_text_ref.current?.untagMention(person.name)}
+          onDismiss={pasted_mentions.dismissNotice}
+        />
         <div className="feed-composer__box" data-toolbar={is_toolbar_shown ? "true" : undefined}>
           <RichTextComposer
             ref={rich_text_ref}
@@ -226,6 +240,8 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             onSubmitShortcut={is_picker_open ? undefined : submit}
             onSuggestionKeyDown={mention_navigation.handleKeyDown}
             can_mention
+            mention_people={people}
+            onPasteMentions={handlePasteMentions}
             onOpenEmojiPalette={() => setIsEmojiOpen(true)}
           />
         </div>

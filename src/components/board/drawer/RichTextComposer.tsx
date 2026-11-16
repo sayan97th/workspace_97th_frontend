@@ -14,11 +14,13 @@ import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
 import { getPastedMarkdown } from "./markdown/markdownPaste";
 import { MentionHighlight } from "./mentionHighlight";
+import { findMentionAtPositions, PASTED_MENTIONS_META, PastedMentions } from "./pastedMentions";
 import { buildRichTextBlockExtensions } from "./richTextBlocks";
 import { RichTextSlashCommand } from "./richTextSlashCommand";
 import { buildRichTextSlashItems, type RichTextSlashContext, type RichTextSlashItem } from "./richTextSlashItems";
 import RichTextSlashMenu from "./RichTextSlashMenu";
 import RichTextToolbar from "./RichTextToolbar";
+import type { BoardPersonOption } from "../toolbar/types";
 import "./rich-text.css";
 import "./markdown/rich-text-markdown.scss";
 
@@ -31,10 +33,14 @@ export type ComposerTrigger = { kind: "reference"; query: string };
 
 /** Matches a `#query` at the caret, only when it opens a word, so URL fragments never trigger it. */
 const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
-/** The `@partial` mention being typed right before the caret. */
-const MENTION_AT_CARET = /@(\w*)$/;
-/** Same, but only when the `@` opens a word, so typing an email address never opens the people picker. */
-const MENTION_QUERY_AT_CARET = /(?:^|\s)@(\w*)$/;
+/** The `@partial` mention being typed right before the caret, accented names included (`@José`). */
+const MENTION_AT_CARET = /@([\p{L}\p{M}\p{N}_]*)$/u;
+/**
+ * Same, but only when the `@` opens a word, so typing an email address never
+ * opens the people picker. Zero width spaces and opening brackets or quotes
+ * count as a word start too, text pasted from Slack often ends in one.
+ */
+const MENTION_QUERY_AT_CARET = /(?:^|[\s\u200B\u2060\uFEFF([{"'\u201C\u2018])@([\p{L}\p{M}\p{N}_]*)$/u;
 /** How far back from the caret the trigger regexes look. */
 const TRIGGER_LOOKBEHIND = 60;
 
@@ -61,6 +67,11 @@ export type RichTextComposerRef = {
    * pickers open right under what is being typed instead of over it.
    */
   getTriggerAnchorRect: (trigger_char: "@" | "#") => DOMRect | null;
+  /**
+   * Turns every `@name` in the draft back into plain `name`, for removing a
+   * tag that pasted text added. The text stays, it just stops being a mention.
+   */
+  untagMention: (name: string) => void;
   /** Inserts Markdown (a saved reply) at the cursor, as formatted content rather than literal text. */
   insertMarkdown: (markdown: string) => void;
   /** Adds Markdown as its own block after everything already typed, leaving the caret on a fresh line below it, for quoting a comment into a draft. */
@@ -117,7 +128,17 @@ export type RichTextComposerProps = {
   onOpenEmojiPalette?: () => void;
   /** Opens the parent's file attach dialog, the "/" menu's "File" row. Omit to leave the row out. */
   onAttachFiles?: () => void;
+  /**
+   * Who a pasted `@Name` can tag, the same roster the `@` picker offers. With
+   * `onPasteMentions`, pasting text that names one of them (copied from Slack,
+   * an email...) tags them the way Slack does, see `PastedMentions`.
+   */
+  mention_people?: BoardPersonOption[];
+  /** Called with everyone a paste tagged, so the parent adds them to the draft's mentions. */
+  onPasteMentions?: (people: BoardPersonOption[]) => void;
 };
+
+const NO_PEOPLE: BoardPersonOption[] = [];
 
 /** The text run from the caret back to the start of its `#` word, or null when the caret is not in one. */
 const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; text: string } | null => {
@@ -189,6 +210,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       can_link_items = false,
       onOpenEmojiPalette,
       onAttachFiles,
+      mention_people = NO_PEOPLE,
+      onPasteMentions,
     },
     ref
   ) => {
@@ -198,6 +221,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
     const submit_shortcut_ref = useRef(onSubmitShortcut);
     const escape_ref = useRef(onEscape);
+    const mention_people_ref = useRef(mention_people);
+    const paste_mentions_ref = useRef(onPasteMentions);
     // The latest `value` prop, read when the editor blurs, see `onBlur` below.
     const latest_value_ref = useRef(value);
     // Set once the editor exists, read by the Ctrl/Cmd+K handler the editor was created with.
@@ -219,6 +244,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       suggestion_key_down_ref.current = onSuggestionKeyDown;
       submit_shortcut_ref.current = onSubmitShortcut;
       escape_ref.current = onEscape;
+      mention_people_ref.current = mention_people;
+      paste_mentions_ref.current = onPasteMentions;
       slash_items_ref.current = (query: string) => {
         ensureSavedRepliesLoaded();
         const features = {
@@ -258,6 +285,10 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         Placeholder.configure({ placeholder }),
         SafeHistory,
         MentionHighlight,
+        PastedMentions.configure({
+          getPeople: () => (paste_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
+          onMentions: (people) => paste_mentions_ref.current?.(people),
+        }),
         RichTextSlashCommand.configure({
           store: slash_store,
           getItems: (query) => slash_items_ref.current(query),
@@ -371,7 +402,8 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           const markdown = getPastedMarkdown(event.clipboardData);
           if (markdown === null) return false;
           event.preventDefault();
-          editor.chain().focus().insertContent(markdown, { contentType: "markdown" }).run();
+          // Tagged, so `PastedMentions` reads `@Name` in it the same as in a regular paste.
+          editor.chain().focus().insertContent(markdown, { contentType: "markdown" }).setMeta(PASTED_MENTIONS_META, true).run();
           return true;
         },
         handleDrop: (_view, event) => {
@@ -427,12 +459,32 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           const { from } = editor.state.selection;
           const text_before = editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
           const match = MENTION_AT_CARET.exec(text_before);
-          if (match) {
-            const start = from - match[0].length;
-            editor.chain().focus().insertContentAt({ from: start, to: from }, `@${name} `).run();
-          } else {
-            editor.chain().focus().insertContent(`@${name} `).run();
-          }
+          const start = match ? from - match[0].length : from;
+          // A plain text node, so the mention never picks up the bold, link or code
+          // run it was typed next to (pasted Slack text), which would hide it from the
+          // highlighter and post it as a link. Typing after it starts plain too.
+          editor
+            .chain()
+            .focus()
+            .command(({ tr, state }) => {
+              tr.replaceWith(start, from, state.schema.text(`@${name} `));
+              tr.setStoredMarks([]);
+              return true;
+            })
+            .run();
+        },
+        untagMention: (name: string) => {
+          if (!editor) return;
+          const positions = findMentionAtPositions(editor.state.doc, name);
+          if (positions.length === 0) return;
+          editor
+            .chain()
+            .command(({ tr }) => {
+              // Last first, so each delete leaves the earlier positions where they were.
+              for (const position of [...positions].reverse()) tr.delete(position, position + 1);
+              return true;
+            })
+            .run();
         },
         mentionAtEnd: (name: string) => {
           if (!editor) return;

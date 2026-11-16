@@ -14,6 +14,8 @@ import ComposerScheduleMenu from "./ComposerScheduleMenu";
 import ComposerSuggestionMenu from "./ComposerSuggestionMenu";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
+import PastedMentionsNotice from "./PastedMentionsNotice";
+import { usePastedMentions } from "./usePastedMentions";
 import type { MentionOption } from "./mentionOptions";
 import { useMentionPickerNavigation } from "./useMentionPickerNavigation";
 import RichTextComposer, { type ComposerTrigger, type RichTextComposerRef } from "./RichTextComposer";
@@ -43,6 +45,13 @@ export type CommentComposerProps = {
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
   onPickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
+  /** Drops ids from this box's draft mentions, when a tag added from pasted text is removed. */
+  onUnpickMention?: (user_ids: string[], target: DrawerComposerTarget) => void;
+  /**
+   * The `@query` typed right before the caret ("" for a bare `@`), or null when
+   * the caret is not in one, which opens and closes the drawer's `@` picker.
+   */
+  onMentionQueryChange?: (target: DrawerComposerTarget, query: string | null) => void;
   /** All people who could be flagged via "Notify", same roster as `mention_matches` draws from, unfiltered. */
   mentionable_people?: BoardPersonOption[];
   notify_target?: DrawerComposerTarget | null;
@@ -89,6 +98,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   mention_target,
   mention_matches,
   onPickMention,
+  onUnpickMention,
+  onMentionQueryChange,
   mentionable_people = [],
   notify_target,
   onToggleNotifyPicker,
@@ -188,6 +199,19 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
     [mention_target, target, mention_matches]
   );
   const mention_navigation = useMentionPickerNavigation(own_mention_matches, handlePickMention);
+
+  // Slack style tags from pasted text: each person is picked like a mention, and dropped again once their `@Name` is gone.
+  const pasted_mentions = usePastedMentions(value, (people) =>
+    onUnpickMention?.(
+      people.map((person) => person.id),
+      target
+    )
+  );
+  const can_tag_pasted = mentionable_people.length > 0;
+  const handlePasteMentions = (people: BoardPersonOption[]) => {
+    people.forEach((person) => onPickMention(person, target));
+    pasted_mentions.addPastedPeople(people);
+  };
   const show_mention_picker = mention_navigation.is_open;
 
   const handleTriggerChange = (next: ComposerTrigger | null) => {
@@ -289,6 +313,12 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           </div>
         )}
 
+        <PastedMentionsNotice
+          people={pasted_mentions.notice_people}
+          onUntag={(person) => rich_text_ref.current?.untagMention(person.name)}
+          onDismiss={pasted_mentions.dismissNotice}
+        />
+
         {/* One bordered container: formatting toolbar, editor, then the action row, each separated by a hairline divider. */}
         <div ref={editor_root_ref} className="rich-text-box">
           <RichTextComposer
@@ -304,7 +334,10 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
             // row, and the Notify picker (click only) must not fire a submit mid-pick.
             onSubmitShortcut={show_mention_picker || show_notify_picker ? undefined : onSubmit}
             onTriggerChange={handleTriggerChange}
+            onMentionQueryChange={onMentionQueryChange ? (query) => onMentionQueryChange(target, query) : undefined}
             onSuggestionKeyDown={handleSuggestionKeyDown}
+            mention_people={mentionable_people}
+            onPasteMentions={can_tag_pasted ? handlePasteMentions : undefined}
             can_mention
             can_link_items={reference_items.length > 0}
             onOpenEmojiPalette={() => onToggleEmojiPalette(target)}

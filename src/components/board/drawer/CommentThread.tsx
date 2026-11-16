@@ -65,6 +65,8 @@ export type CommentThreadProps = {
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
   onPickMention: (option: MentionOption) => void;
+  onUnpickMention?: (user_ids: string[], target: DrawerComposerTarget) => void;
+  onMentionQueryChange?: (target: DrawerComposerTarget, query: string | null) => void;
   mentionable_people?: BoardPersonOption[];
   /** Account teams the edit form's `@mention` picker offers as groups. */
   mention_teams?: MentionTeam[];
@@ -340,6 +342,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   mention_target,
   mention_matches,
   onPickMention,
+  onUnpickMention,
+  onMentionQueryChange,
   mentionable_people,
   mention_teams,
   fresh_comment_ids = [],
@@ -690,6 +694,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
           mention_target={mention_target}
           mention_matches={mention_matches}
           onPickMention={onPickMention}
+          onUnpickMention={onUnpickMention}
+          onMentionQueryChange={onMentionQueryChange}
           mentionable_people={mentionable_people}
           notify_target={notify_target}
           onToggleNotifyPicker={onToggleNotifyPicker}

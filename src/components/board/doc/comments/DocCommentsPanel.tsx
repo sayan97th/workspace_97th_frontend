@@ -95,6 +95,8 @@ const DocCommentsPanel: React.FC<DocCommentsPanelProps> = ({ drawer }) => {
             mention_target={drawer.mention_target}
             mention_matches={drawer.mention_matches}
             onPickMention={drawer.pickMention}
+            onUnpickMention={drawer.unpickMention}
+            onMentionQueryChange={drawer.changeMentionQuery}
             mentionable_people={drawer.mentionable_people}
             notify_target={drawer.notify_target}
             onToggleNotifyPicker={drawer.toggleNotifyPicker}
@@ -168,6 +170,8 @@ const DocCommentsPanel: React.FC<DocCommentsPanelProps> = ({ drawer }) => {
                 mention_target={drawer.mention_target}
                 mention_matches={drawer.mention_matches}
                 onPickMention={drawer.pickMention}
+                onUnpickMention={drawer.unpickMention}
+                onMentionQueryChange={drawer.changeMentionQuery}
                 mentionable_people={drawer.mentionable_people}
                 mention_teams={drawer.mention_teams}
                 notify_target={drawer.notify_target}

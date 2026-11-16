@@ -357,6 +357,10 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   mention_teams: MentionTeam[];
   /** Records a picked `@mention` for the composer the picker is open in, or for `target` when given (a mention added by Reply under a reply). */
   pickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
+  /** Drops ids from `target`'s draft mentions, when a tag added from pasted text is removed. */
+  unpickMention: (user_ids: string[], target: DrawerComposerTarget) => void;
+  /** The `@query` at the caret of `target`'s box, or null when the caret is not in one. */
+  changeMentionQuery: (target: DrawerComposerTarget, query: string | null) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
   notify_target: DrawerComposerTarget | null;
@@ -433,6 +437,8 @@ export type CommentFeedApi = Pick<
   | "mention_matches"
   | "mention_teams"
   | "pickMention"
+  | "unpickMention"
+  | "changeMentionQuery"
   | "notify_target"
   | "toggleNotifyPicker"
   | "closeNotifyPicker"

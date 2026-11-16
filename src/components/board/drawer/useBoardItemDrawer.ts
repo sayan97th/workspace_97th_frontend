@@ -35,8 +35,6 @@ const ACTION_FEEDBACK_DISMISS_DELAY_MS = 3000;
 
 const createId = () => Math.random().toString(36).slice(2, 10);
 
-const MENTION_TRIGGER = /@([\w]*)$/;
-
 /** A rich text composer's Markdown body counts as empty when it's got no visible text and no inline image (`![alt](url)`). */
 const isRichTextEmpty = (markdown: string): boolean => markdown.trim().length === 0 && !markdown.includes("![");
 
@@ -147,16 +145,20 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setNotifiedIdsByTarget,
   });
 
-  const detectMention = (target: DrawerComposerTarget, value: string) => {
-    // `value` is the composer's Markdown body — plain text, so the trigger
-    // regex can run directly against it without stripping any markup first.
-    const match = MENTION_TRIGGER.exec(value);
-    if (match) {
+  /**
+   * The `@query` the editor found right before the caret of `target`'s box,
+   * or null when the caret is not in one. Read at the caret rather than from
+   * the end of the Markdown body, so the picker still opens after pasted
+   * text that left bold, link or code formatting around the caret (text
+   * copied from Slack) and when tagging in the middle of the draft.
+   */
+  const changeMentionQuery = (target: DrawerComposerTarget, query: string | null) => {
+    if (query !== null) {
       setMentionTarget(target);
-      setMentionQuery(match[1].toLowerCase());
-    } else if (mention_target === target) {
-      setMentionTarget(null);
+      setMentionQuery(query.toLowerCase());
+      return;
     }
+    setMentionTarget((current) => (current === target ? null : current));
   };
 
   const openRow = (row: TRow) => {
@@ -218,13 +220,11 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const onComposerTextChange = (value: string) => {
     setComposerText(value);
-    detectMention("composer", value);
     drafts.saveDraftText("composer", value);
   };
 
   const onReplyTextChange = (comment_id: string, value: string) => {
     setReplyTextByComment((current) => ({ ...current, [comment_id]: value }));
-    detectMention(comment_id, value);
     drafts.saveDraftText(comment_id, value);
   };
 
@@ -241,6 +241,15 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       [resolved_target]: Array.from(new Set([...(current[resolved_target] ?? []), ...picked_ids])),
     }));
     setMentionTarget(null);
+  };
+
+  /** Drops ids from `target`'s draft mentions, when a tag added from pasted text is removed again. */
+  const unpickMention = (user_ids: string[], target: DrawerComposerTarget) => {
+    setMentionIdsByTarget((current) => {
+      const existing = current[target] ?? [];
+      const remaining = existing.filter((id) => !user_ids.includes(id));
+      return remaining.length === existing.length ? current : { ...current, [target]: remaining };
+    });
   };
 
   const toggleNotifyPicker = (target: DrawerComposerTarget) =>
@@ -961,6 +970,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     mention_matches,
     mention_teams,
     pickMention,
+    unpickMention,
+    changeMentionQuery,
 
     notify_target,
     toggleNotifyPicker,
