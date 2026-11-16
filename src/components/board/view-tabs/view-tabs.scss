@@ -42,6 +42,9 @@
   --vt-warning-text: #9d5e00;
   --vt-unsaved: #fdab3d;
   --vt-primary-tab: #00c875;
+  --vt-filter-bg: #ede7ff;
+  --vt-filter-text: #5034b8;
+  --vt-filter-accent: #784bd1;
 }
 
 html.dark {
@@ -72,6 +75,9 @@ html.dark {
   --vt-success-text: #3ddc97;
   --vt-warning-bg: rgba(253, 171, 61, 0.14);
   --vt-warning-text: #ffc46b;
+  --vt-filter-bg: rgba(160, 120, 255, 0.16);
+  --vt-filter-text: #c9b4ff;
+  --vt-filter-accent: #a98bff;
 }
 
 // ── Shared pieces ────────────────────────────────────────────────────────────
@@ -126,6 +132,11 @@ html.dark {
   &[data-tone="warning"] {
     --vt-tone-bg: var(--vt-warning-bg);
     --vt-tone-text: var(--vt-warning-text);
+  }
+
+  &[data-tone="filter"] {
+    --vt-tone-bg: var(--vt-filter-bg);
+    --vt-tone-text: var(--vt-filter-text);
   }
 }
 
@@ -1198,4 +1209,225 @@ button.vt-tab-glyph {
   .action-menu__divider {
     margin: 6px 0;
   }
+}
+
+// ── Filter views ─────────────────────────────────────────────────────────────
+// A filter view shows another tab's items with its own filters. The hover card
+// names its source, and the toolbar pill opens a card that explains what is
+// shared with that tab and what is saved only to the view.
+
+.vt-source-caption {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: var(--vt-filter-bg);
+  color: var(--vt-filter-text);
+  font-size: 12px;
+  line-height: 20px;
+
+  strong {
+    font-weight: 600;
+  }
+}
+
+.vt-source-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  max-width: 260px;
+  margin-right: 8px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--vt-filter-accent) 35%, transparent);
+  border-radius: 14px;
+  background: var(--vt-filter-bg);
+  color: var(--vt-filter-text);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  transition: border-color 120ms ease, box-shadow 120ms ease, transform 120ms ease;
+
+  &:hover,
+  &[data-open="true"] {
+    border-color: var(--vt-filter-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--vt-filter-accent) 14%, transparent);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  @include vt-focus-ring;
+}
+
+.vt-source-pill-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-source-pill-of {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+.vt-source-pill-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--vt-unsaved);
+  box-shadow: 0 0 0 2px var(--vt-surface);
+}
+
+.vt-source-card {
+  overflow: hidden;
+  border: 1px solid var(--vt-card-border);
+  border-radius: 8px;
+  background: var(--vt-surface);
+  box-shadow: var(--vt-card-shadow);
+  color: var(--vt-text);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: view-tab-card-in 140ms ease-out;
+  }
+}
+
+.vt-source-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 10px;
+  background: linear-gradient(180deg, var(--vt-filter-bg), transparent);
+}
+
+.vt-source-card-tile {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--vt-filter-accent);
+  color: #ffffff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--vt-filter-accent) 35%, transparent);
+}
+
+.vt-source-card-title {
+  overflow: hidden;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vt-source-card-subtitle {
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+
+  strong {
+    color: var(--vt-text);
+    font-weight: 600;
+  }
+}
+
+.vt-source-card-intro {
+  margin: 0 16px 12px;
+  color: var(--vt-text-secondary);
+  font-size: 13px;
+  line-height: 19px;
+}
+
+.vt-source-card-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 16px 14px;
+
+  section {
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: var(--vt-surface-alt);
+  }
+
+  @media (max-width: 400px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.vt-source-card-heading {
+  margin-bottom: 6px;
+  color: var(--vt-text-faint);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  text-transform: uppercase;
+}
+
+.vt-source-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 18px;
+
+    svg {
+      flex: none;
+    }
+  }
+
+  li[data-kind="shared"] svg {
+    color: var(--vt-accent);
+  }
+
+  li[data-kind="own"] svg {
+    color: var(--vt-filter-accent);
+  }
+}
+
+.vt-source-card-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--vt-warning-bg);
+  color: var(--vt-warning-text);
+  font-size: 13px;
+  line-height: 18px;
+
+  .vt-source-pill-dot {
+    box-shadow: none;
+  }
+}
+
+.vt-source-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--vt-divider);
+}
+
+.vt-source-card-footnote {
+  padding-left: 4px;
+  color: var(--vt-text-faint);
+  font-size: 12px;
+  line-height: 16px;
 }

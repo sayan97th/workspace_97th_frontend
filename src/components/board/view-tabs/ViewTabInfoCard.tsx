@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { getBoardViewTypeOption } from "../boardViewTypes";
 import type { BoardViewTabItem } from "../BoardViewTabs";
+import { FilterIcon } from "@/icons/board-icons";
 import ViewCreatorAvatar from "./ViewCreatorAvatar";
 import { ViewTabIcon, isViewTabIconAccent } from "./ViewTabFace";
 
@@ -94,6 +95,14 @@ const ViewTabInfoCard: React.FC<ViewTabInfoCardProps> = ({ tab, anchor_el }) => 
           <p className="vt-card-subtitle">
             {type_option.label} view{tab.is_primary ? ", main view of this board" : ""}
           </p>
+          {tab.source_label && (
+            <p className="vt-source-caption">
+              <FilterIcon size={12} />
+              <span>
+                Filter view of <strong>{tab.source_label}</strong>
+              </span>
+            </p>
+          )}
         </div>
       </div>
 

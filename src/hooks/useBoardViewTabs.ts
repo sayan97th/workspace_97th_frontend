@@ -536,6 +536,7 @@ export function useBoardViewTabs(config: UseBoardViewTabsConfig): UseBoardViewTa
     is_locked: v.is_locked,
     is_primary: v.is_primary,
     view_type: v.view_type,
+    source_label: v.source_view_id ? (views.find((source) => source.id === v.source_view_id)?.label ?? null) : null,
     description: v.description,
     creator_name: v.creator?.full_name ?? null,
     creator_photo_url: v.creator?.profile_photo_url ?? null,

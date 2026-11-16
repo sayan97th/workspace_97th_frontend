@@ -334,6 +334,13 @@ export type BoardViewDto = {
   label: string;
   /** Which content the tab renders — see `BoardViewKind` (@/components/board/boardViewTypes). Set once at creation and immutable afterward. */
   view_type: BoardViewKind;
+  /**
+   * Set on a filter view: the tab whose items, groups and columns this tab
+   * shows (normally the Main table). Everything it shows is shared with that
+   * tab, only its filter/sort/display settings are its own. Null when the tab
+   * owns its data. Missing on responses from before filter views existed.
+   */
+  source_view_id?: number | null;
   /** Markdown source for a `doc`-type view (see `BoardDocView`) — null/unused for every other kind. */
   doc_content: string | null;
   /** Chart type/data source/grouping for a `chart`-type view (see `BoardChartView`) — null/unused for every other kind. */
@@ -599,6 +606,12 @@ export type SaveBoardViewPayload = {
   label?: string;
   /** Only meaningful on creation — the backend ignores it on update (a view's type is immutable). Defaults to `"table"` when omitted. */
   view_type?: BoardViewKind;
+  /**
+   * Only read on creation. Omitted, a Table/Gantt/Calendar tab becomes a filter
+   * view of the Main table; a view id links it to that view's data and null
+   * gives it its own, empty data.
+   */
+  source_view_id?: number | null;
   emoji?: string | null;
   description?: string | null;
   position?: number;

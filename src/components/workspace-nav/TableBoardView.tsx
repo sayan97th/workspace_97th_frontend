@@ -122,6 +122,7 @@ import {
 } from "@/icons/workspace-icons";
 import type { ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
 import { useAuth } from "@/context/AuthContext";
+import FilterViewSourceBadge from "@/components/board/view-tabs/FilterViewSourceBadge";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
@@ -1430,7 +1431,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     current_filter_state: view_tabs.current_filter_state,
   });
 
-  const handleAddView = (view_type?: BoardViewKind) => view_tabs.addView(view_type);
+  const handleAddView = async (view_type?: BoardViewKind) => {
+    const created = await view_tabs.addView(view_type);
+    const source_label = created.source_view_id ? view_tabs.views.find((view) => view.id === created.source_view_id)?.label : null;
+    if (source_label) toast.success(`"${created.label}" shows the items of ${source_label}. Filters you set here stay in this view.`);
+    return created;
+  };
   const handleRenameView = (id: number | string, label: string) => view_tabs.renameView(Number(id), label);
   const handlePinView = (id: number | string) => view_tabs.pinView(Number(id));
   const handleDuplicateView = (id: number | string) => view_tabs.duplicateView(Number(id));
@@ -2264,6 +2270,11 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       Filtered: {toolbar.visible_row_count} of {toolbar.total_row_count}
     </button>
   ) : undefined;
+
+  // A filter view shows its source tab's items (normally the Main table), see `FilterViewSourceBadge`.
+  const active_source_view = view_tabs.active_view?.source_view_id
+    ? (view_tabs.views.find((view) => view.id === view_tabs.active_view?.source_view_id) ?? null)
+    : null;
 
   // ── Toolbar panels' "Save to this view"/"Save as new view" ──
   const toolbar_view_actions: BoardToolbarViewActions = {
@@ -5043,6 +5054,18 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
             saved_filter_actions={saved_filter_actions}
             export_options={export_options}
             onSubmitFeedback={(message) => boardOptionsService.submitFeedback(message, board_id)}
+            trailing_slot={
+              active_source_view && view_tabs.active_view ? (
+                <FilterViewSourceBadge
+                  view_label={view_tabs.active_view.label}
+                  source_label={active_source_view.label}
+                  is_auto_saving={view_tabs.is_auto_saving_view}
+                  has_personal_changes={view_tabs.has_personal_state}
+                  onResetToView={view_tabs.resetToView}
+                  onOpenSource={() => view_tabs.selectView(active_source_view.id)}
+                />
+              ) : undefined
+            }
           />
         )
       }

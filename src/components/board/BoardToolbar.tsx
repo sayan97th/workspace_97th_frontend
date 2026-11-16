@@ -46,6 +46,8 @@ export type BoardToolbarProps<TRow> = {
   export_options?: BoardToolbarExportOptions;
   /** Wires the Group by panel's "Give feedback" link. Omit to hide it. */
   onSubmitFeedback?: (message: string) => Promise<void>;
+  /** Shown at the right end of the row, before the collapse button (e.g. a filter view's source pill). */
+  trailing_slot?: React.ReactNode;
 };
 
 /** Board toolbar: the accent "New item" split button plus the filter/sort/group controls. */
@@ -59,6 +61,7 @@ function BoardToolbar<TRow>({
   saved_filter_actions,
   export_options,
   onSubmitFeedback,
+  trailing_slot,
 }: BoardToolbarProps<TRow>) {
   const is_filter_open = toolbar.active_panel === "filter";
   const is_color_open = toolbar.active_panel === "color";
@@ -150,6 +153,8 @@ function BoardToolbar<TRow>({
         <OverflowControl toolbar={toolbar} export_options={export_options} view_actions={view_actions} />
 
         <div className="flex-1" />
+
+        {trailing_slot}
 
         <button
           type="button"

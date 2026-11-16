@@ -62,6 +62,8 @@ export type BoardViewTabItem = {
   is_primary?: boolean;
   /** Which kind of view the tab renders, used for its icon and hover card. */
   view_type?: BoardViewKind;
+  /** Set on a filter view: the label of the tab whose items it shows (normally "Main table"). */
+  source_label?: string | null;
   description?: string | null;
   creator_name?: string | null;
   creator_photo_url?: string | null;

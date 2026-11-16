@@ -184,6 +184,13 @@ const ManageViewsModal: React.FC<ManageViewsModalProps> = ({
               </button>
             </PortalTooltip>
             <span className="vt-view-row-type">{type_option.label}</span>
+            {tab.source_label && (
+              <PortalTooltip content={`Shows the items of ${tab.source_label}, with its own filters`}>
+                <span className="vt-chip" data-tone="filter">
+                  Filter view
+                </span>
+              </PortalTooltip>
+            )}
             {is_active && (
               <span className="vt-chip" data-tone="info">
                 Current view
