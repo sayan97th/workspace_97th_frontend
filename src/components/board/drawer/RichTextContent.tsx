@@ -16,6 +16,13 @@ export type RichTextContentProps = {
   className?: string;
   /** People that can be `@mentioned` here: hovering a mention that names one of them shows their profile card. */
   people?: HoverCardPerson[];
+  /**
+   * The names a mention may use here (the board's people, its teams and
+   * "Everyone"). When given, only an exact `@Name` of one of them is colored,
+   * so a misspelled `@Amandaa Carter` reads as plain text, the same rule the
+   * composer follows. Without it any `@Full Name` looking run is colored.
+   */
+  mention_names?: readonly string[];
 };
 
 const IMG_TAG_PATTERN = /<img[^>]*src="([^"]*)"[^>]*>/g;
@@ -33,9 +40,28 @@ const markItemReferences = (html: string): string =>
 /** How long a code block's copy button says "Copied". */
 const COPIED_RESET_MS = 1600;
 
-/** Wraps `@Full Name` runs in the highlighted span the plain-text renderer used to apply, now working over an HTML string instead of plain text. The name is kept in `data-mention` so a hover can find who it refers to. */
-const highlightMentions = (html: string): string =>
-  html.replace(MENTION_PATTERN, (mention) => `<span class="${MENTION_HIGHLIGHT_CLASS}" data-mention="${mention}">${mention}</span>`);
+const escapeRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** The same text as it appears in the rendered HTML, where `&`, `<`, `>`, quotes and apostrophes are entities. */
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+/**
+ * Wraps mentions in the highlighted span the plain-text renderer used to
+ * apply, over the rendered HTML string. With `names`, only an exact `@Name`
+ * of one of them (nothing glued after it); without, any `@Full Name` looking
+ * run. The name is kept in `data-mention` so a hover can find who it refers to.
+ */
+const highlightMentions = (html: string, names?: readonly string[]): string => {
+  const wrap = (mention: string) => `<span class="${MENTION_HIGHLIGHT_CLASS}" data-mention="${mention}">${mention}</span>`;
+  if (!names) return html.replace(MENTION_PATTERN, wrap);
+  const alternatives = [...new Set(names.filter((name) => name.trim() !== "").map(escapeHtml))]
+    .sort((first, second) => second.length - first.length)
+    .map(escapeRegExp);
+  if (alternatives.length === 0) return html;
+  const pattern = new RegExp(`(^|[\\s>(\\["'])(@(?:${alternatives.join("|")}))(?![\\p{L}\\p{M}\\p{N}_])`, "gu");
+  return html.replace(pattern, (_match, before: string, mention: string) => `${before}${wrap(mention)}`);
+};
 
 /** The person a rendered mention (`@Full Name`) refers to. The pattern only captures two words, so a longer name is matched by its prefix. */
 const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverCardPerson | undefined => {
@@ -64,7 +90,7 @@ const findMentionedPerson = (people: HoverCardPerson[], mention: string): HoverC
  * the flowing text and laid out as a grid instead of stacked full-width,
  * matching Monday's own update media gallery.
  */
-const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className, people }) => {
+const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className, people, mention_names }) => {
   const router = useRouter();
   const { target, show, hide, keepOpen, dismiss } = useHoverCardController();
   const container_ref = useRef<HTMLDivElement>(null);
@@ -78,9 +104,9 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
 
   const { text_html, gallery_urls } = useMemo(() => {
     const urls = Array.from(sanitized_html.matchAll(IMG_TAG_PATTERN)).map((match) => match[1]);
-    if (urls.length < 2) return { text_html: markItemReferences(highlightMentions(sanitized_html)), gallery_urls: [] as string[] };
-    return { text_html: markItemReferences(highlightMentions(sanitized_html.replace(IMG_TAG_PATTERN, ""))), gallery_urls: urls };
-  }, [sanitized_html]);
+    if (urls.length < 2) return { text_html: markItemReferences(highlightMentions(sanitized_html, mention_names)), gallery_urls: [] as string[] };
+    return { text_html: markItemReferences(highlightMentions(sanitized_html.replace(IMG_TAG_PATTERN, ""), mention_names)), gallery_urls: urls };
+  }, [sanitized_html, mention_names]);
 
   const handleMouseOver = (event: React.MouseEvent<HTMLDivElement>) => {
     if (!people?.length) return;

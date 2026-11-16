@@ -14,7 +14,8 @@ import { SafeHistory } from "../doc/editor/extensions/safe-history";
 import { createSuggestionStore } from "../doc/editor/suggestion-store";
 import InsertLinkModal from "./InsertLinkModal";
 import { getPastedMarkdown } from "./markdown/markdownPaste";
-import { MentionHighlight } from "./mentionHighlight";
+import { findNamedMentions, MentionHighlight, refreshMentionHighlight } from "./mentionHighlight";
+import { EVERYONE_MENTION_NAME } from "./mentionOptions";
 import {
   getUnresolvedMentions,
   PASTED_MENTIONS_META,
@@ -41,14 +42,19 @@ export type ComposerTrigger = { kind: "reference"; query: string };
 
 /** Matches a `#query` at the caret, only when it opens a word, so URL fragments never trigger it. */
 const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
-/** The `@partial` mention being typed right before the caret, accented names included (`@José`). */
-const MENTION_AT_CARET = /@([\p{L}\p{M}\p{N}_]*)$/u;
+/**
+ * The `@partial` mention being typed right before the caret, accented names
+ * included (`@José`), with an optional second word so a surname being typed
+ * (`@Amanda Car`, or a typo like `@Amanda Carterr`) keeps the picker open,
+ * the way Slack's mention list does.
+ */
+const MENTION_AT_CARET = /@((?:[\p{L}\p{M}\p{N}_]+(?: [\p{L}\p{M}\p{N}_]*)?)?)$/u;
 /**
  * Same, but only when the `@` opens a word, so typing an email address never
  * opens the people picker. Zero width spaces and opening brackets or quotes
  * count as a word start too, text pasted from Slack often ends in one.
  */
-const MENTION_QUERY_AT_CARET = /(?:^|[\s\u200B\u2060\uFEFF([{"'\u201C\u2018])@([\p{L}\p{M}\p{N}_]*)$/u;
+const MENTION_QUERY_AT_CARET = /(?:^|[\s\u200B\u2060\uFEFF([{"'\u201C\u2018])@((?:[\p{L}\p{M}\p{N}_]+(?: [\p{L}\p{M}\p{N}_]*)?)?)$/u;
 /** How far back from the caret the trigger regexes look. */
 const TRIGGER_LOOKBEHIND = 60;
 
@@ -132,13 +138,14 @@ export type RichTextComposerProps = {
   /** Opens the parent's file attach dialog, the "/" menu's "File" row. Omit to leave the row out. */
   onAttachFiles?: () => void;
   /**
-   * Who a pasted `@Name` can tag, the same roster the `@` picker offers. With
-   * `onPasteMentions`, pasting text that names one of them (copied from Slack,
-   * an email...) tags them the way Slack does, see `PastedMentions`.
+   * Who can be mentioned, the same roster the `@` picker offers. An exact
+   * `@Full Name` of one of them is a mention: it is colored blue and reported
+   * through `onTagMentions`, whether it was picked, pasted (Slack style, see
+   * `PastedMentions`) or typed out. Anything else after an `@` is plain text.
    */
   mention_people?: BoardPersonOption[];
-  /** Called with everyone a paste tagged, so the parent adds them to the draft's mentions. */
-  onPasteMentions?: (people: BoardPersonOption[]) => void;
+  /** Called with people whose exact `@Full Name` just appeared in the text, so the parent adds them to the draft's mentions. */
+  onTagMentions?: (people: BoardPersonOption[]) => void;
   /** Workspace members left out of a private board: a pasted `@Name` of theirs is flagged "not on this board". */
   outside_people?: BoardPersonOption[];
   /** Opens the board's invite dialog, offered for a pasted `@Name` of someone not on this private board. */
@@ -170,15 +177,22 @@ const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; t
 
 const detectTrigger = (current_editor: Editor): ComposerTrigger | null => findTriggerMatch(current_editor)?.trigger ?? null;
 
-/** The `@query` right before the caret, or null when the caret is not in one (or a range is selected). */
-const detectMentionQuery = (current_editor: Editor): string | null => {
+/**
+ * The `@query` right before the caret, or null when the caret is not in one
+ * (or a range is selected). Also null once the text is already the exact
+ * name of someone in `names`, a finished mention needs no list.
+ */
+const detectMentionQuery = (current_editor: Editor, names: readonly string[] = []): string | null => {
   const { from, empty } = current_editor.state.selection;
   if (!empty) return null;
   // Inside a flagged pasted `@name` its own fix popover is the menu, the people picker would cover it.
   if (getUnresolvedMentions(current_editor.state).some((flag) => from >= flag.from && from <= flag.to)) return null;
   const text_before = current_editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
   const match = MENTION_QUERY_AT_CARET.exec(text_before);
-  return match ? match[1] : null;
+  if (!match) return null;
+  const typed = `@${match[1]}`;
+  if (findNamedMentions(typed, names).some((mention) => mention.start === 0 && mention.end === typed.length)) return null;
+  return match[1];
 };
 
 /** Deletes the `#query` in front of the caret, leaving the caret where it started. */
@@ -205,9 +219,11 @@ const deleteTriggerText = (current_editor: Editor): void => {
  * calls {@link RichTextComposerRef.insertMentionText}/`insertText` here
  * rather than mutating the HTML string directly, since only the live editor
  * instance knows where the cursor actually is. The `MentionHighlight`
- * extension colors any `@Full Name` run blue as it's typed, independent of
- * that autocomplete flow, so a mention still highlights even when pasted or
- * typed out by hand instead of picked from `MentionPicker`.
+ * extension colors a mention blue only while it is the exact `@Full Name` of
+ * someone on the board (or a group picked from the list), which is also
+ * exactly when it tags them: picked, pasted or typed out by hand alike, it is
+ * reported through `onTagMentions`, and editing the name back into anything
+ * else (`@Amanda Carterss`) turns it into plain text that tags nobody.
  */
 const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
   (
@@ -230,7 +246,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onOpenEmojiPalette,
       onAttachFiles,
       mention_people = NO_PEOPLE,
-      onPasteMentions,
+      onTagMentions,
       outside_people = NO_PEOPLE,
       onInviteToBoard,
     },
@@ -243,7 +259,13 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
     const submit_shortcut_ref = useRef(onSubmitShortcut);
     const escape_ref = useRef(onEscape);
     const mention_people_ref = useRef(mention_people);
-    const paste_mentions_ref = useRef(onPasteMentions);
+    const tag_mentions_ref = useRef(onTagMentions);
+    // Group names picked from the `@` list (Everyone, a team), colored like a person once inserted.
+    const group_names_ref = useRef(new Set<string>([EVERYONE_MENTION_NAME]));
+    // Names the highlighter colors: the roster plus the groups picked so far.
+    const getMentionNames = () => [...mention_people_ref.current.map((person) => person.name), ...group_names_ref.current];
+    // People whose exact `@Full Name` was in the text after the last edit, so only new ones are reported.
+    const tagged_ids_ref = useRef(new Set<string>());
     const outside_people_ref = useRef(outside_people);
     // The flagged pasted `@name` under the caret, and the one Escape hid until the caret leaves it.
     const [active_flag, setActiveFlag] = useState<ActiveFlag | null>(null);
@@ -281,7 +303,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       submit_shortcut_ref.current = onSubmitShortcut;
       escape_ref.current = onEscape;
       mention_people_ref.current = mention_people;
-      paste_mentions_ref.current = onPasteMentions;
+      tag_mentions_ref.current = onTagMentions;
       outside_people_ref.current = outside_people;
       slash_items_ref.current = (query: string) => {
         ensureSavedRepliesLoaded();
@@ -307,6 +329,21 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       if (state.is_open) slash_store.setState({ items: slash_items_ref.current(state.query) });
     }, [saved_replies, slash_store]);
 
+    /** Reports everyone whose exact `@Full Name` appeared in the text since the last edit, typed out by hand included. */
+    const reportTypedMentions = (current_editor: Editor) => {
+      const people = mention_people_ref.current;
+      if (!tag_mentions_ref.current || people.length === 0) return;
+      const text = current_editor.state.doc.textBetween(0, current_editor.state.doc.content.size, "\n", "\n");
+      const present = new Map<string, BoardPersonOption>();
+      for (const mention of findNamedMentions(text, getMentionNames())) {
+        const person = people.find((candidate) => candidate.name === mention.name);
+        if (person) present.set(person.id, person);
+      }
+      const added = [...present.values()].filter((person) => !tagged_ids_ref.current.has(person.id));
+      tagged_ids_ref.current = new Set(present.keys());
+      if (added.length > 0) tag_mentions_ref.current(added);
+    };
+
     const editor = useEditor({
       extensions: [
         // StarterKit v3 already bundles `link`, so it's configured here instead of registering `Link` separately.
@@ -321,11 +358,11 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         // outside of fragment"). An empty toggle title gets its hint from CSS.
         Placeholder.configure({ placeholder }),
         SafeHistory,
-        MentionHighlight,
+        MentionHighlight.configure({ getNames: () => getMentionNames() }),
         PastedMentions.configure({
-          getPeople: () => (paste_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
-          getOutsidePeople: () => (paste_mentions_ref.current ? outside_people_ref.current : NO_PEOPLE),
-          onMentions: (people) => paste_mentions_ref.current?.(people),
+          getPeople: () => (tag_mentions_ref.current ? mention_people_ref.current : NO_PEOPLE),
+          getOutsidePeople: () => (tag_mentions_ref.current ? outside_people_ref.current : NO_PEOPLE),
+          onMentions: (people) => tag_mentions_ref.current?.(people),
           // The editor's own transactions already keep the fix popover in step, see `onTransaction`.
           onUnresolvedChange: () => {},
         }),
@@ -344,16 +381,17 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       immediatelyRender: false,
       autofocus: autoFocus ? "end" : false,
       onUpdate: ({ editor: current_editor }) => {
+        reportTypedMentions(current_editor);
         onChange(current_editor.getMarkdown());
         onPlainTextChange?.(current_editor.getText());
         trigger_change_ref.current?.(detectTrigger(current_editor));
-        mention_query_change_ref.current?.(detectMentionQuery(current_editor));
+        mention_query_change_ref.current?.(detectMentionQuery(current_editor, getMentionNames()));
       },
       onTransaction: ({ editor: current_editor }) => sync_active_flag_ref.current(current_editor),
       onFocus: ({ editor: current_editor }) => sync_active_flag_ref.current(current_editor),
       onSelectionUpdate: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(detectTrigger(current_editor));
-        mention_query_change_ref.current?.(detectMentionQuery(current_editor));
+        mention_query_change_ref.current?.(detectMentionQuery(current_editor, getMentionNames()));
       },
       onBlur: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(null);
@@ -465,6 +503,12 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       },
     });
 
+    // A roster that loads or changes after the text is in place (the feed loads it on focus) recolors the mentions.
+    useEffect(() => {
+      if (!editor || editor.isDestroyed) return;
+      editor.view.dispatch(refreshMentionHighlight(editor.state.tr));
+    }, [editor, mention_people]);
+
     const uploadAndInsert = async (file: File) => {
       try {
         const url = await inlineUploadService.uploadImage(file);
@@ -505,6 +549,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         },
         insertMentionText: (name: string) => {
           if (!editor) return;
+          if (!mention_people_ref.current.some((person) => person.name === name)) group_names_ref.current.add(name);
           const { from } = editor.state.selection;
           const text_before = editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
           const match = MENTION_AT_CARET.exec(text_before);
@@ -524,6 +569,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         },
         mentionAtEnd: (name: string) => {
           if (!editor) return;
+          if (!mention_people_ref.current.some((person) => person.name === name)) group_names_ref.current.add(name);
           const text = editor.getText();
           if (text.includes(`@${name}`)) {
             editor.commands.focus("end");
@@ -670,7 +716,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           return true;
         })
         .run();
-      paste_mentions_ref.current?.([person]);
+      tag_mentions_ref.current?.([person]);
     };
     const dismissFlag = (flag: ActiveFlag, remove_at: boolean) => {
       editor

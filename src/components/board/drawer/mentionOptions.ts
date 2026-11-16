@@ -1,4 +1,5 @@
 import type { BoardPersonOption } from "../toolbar/types";
+import { wordDistance } from "./fuzzyNames";
 
 /** A picker row that mentions several people at once: "Everyone", or one of the account teams. */
 export type MentionGroupOption = {
@@ -20,6 +21,49 @@ export type MentionTeam = {
 
 /** Anything the `@mention` picker can offer: one person, or a group of them. */
 export type MentionOption = BoardPersonOption | MentionGroupOption;
+
+/** A person offered only because their name is close to what was typed (a typo), shown under "Did you mean". */
+export type MentionSuggestion = BoardPersonOption & { is_suggestion: true };
+
+/** How many "Did you mean" rows the picker offers at most. */
+const MAX_MENTION_SUGGESTIONS = 5;
+
+export const isMentionSuggestion = (option: MentionOption): option is MentionSuggestion =>
+  "is_suggestion" in option && option.is_suggestion === true;
+
+/**
+ * People whose name is close to `needle` without containing it, best first:
+ * a misspelled first or last name (`ernsto`, `cartr`), or a full name with a
+ * typo in either word (`amanda carterr`). With two words, both must be close,
+ * the first to the first name and the second to another word of the name, so
+ * `@Kevin can` does not suggest Kevin Smith.
+ */
+export const suggestMentionPeople = (people: BoardPersonOption[], needle: string): MentionSuggestion[] => {
+  const tokens = needle.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > 2) return [];
+  const scored: { person: BoardPersonOption; score: number }[] = [];
+  for (const person of people) {
+    const words = person.name.toLowerCase().split(/\s+/).filter(Boolean);
+    if (words.length === 0) continue;
+    let score: number | null = null;
+    if (tokens.length === 1) {
+      words.forEach((word, index) => {
+        const distance = wordDistance(tokens[0], word);
+        // A first name match ranks above the same distance on a last name.
+        if (distance !== null) score = Math.min(score ?? Infinity, distance + (index > 0 ? 0.1 : 0));
+      });
+    } else {
+      const first = wordDistance(tokens[0], words[0]);
+      const rest = words.slice(1).map((word) => wordDistance(tokens[1], word)).filter((distance): distance is number => distance !== null);
+      if (first !== null && rest.length > 0) score = first + Math.min(...rest);
+    }
+    if (score !== null) scored.push({ person, score });
+  }
+  return scored
+    .sort((first, second) => first.score - second.score || first.person.name.localeCompare(second.person.name))
+    .slice(0, MAX_MENTION_SUGGESTIONS)
+    .map(({ person }) => ({ ...person, is_suggestion: true as const }));
+};
 
 export const EVERYONE_MENTION_NAME = "Everyone";
 
@@ -59,7 +103,14 @@ export function buildMentionMatches(
   const role_matches = needle
     ? people.filter((person) => !name_matches.includes(person) && person.job_title?.toLowerCase().includes(needle))
     : [];
-  const matching_people = [...name_matches, ...role_matches];
+  // Then names a typo away from what was typed, Slack style, so `@Ernsto` still finds Ernesto.
+  const suggestions = needle.trim()
+    ? suggestMentionPeople(
+        people.filter((person) => !name_matches.includes(person) && !role_matches.includes(person)),
+        needle
+      )
+    : [];
+  const matching_people: MentionOption[] = [...name_matches, ...role_matches, ...suggestions];
 
   const roster_ids = new Set(people.map((person) => person.id));
   const matching_teams: MentionGroupOption[] = teams
@@ -90,3 +141,10 @@ export function buildMentionMatches(
   };
   return [everyone, ...matching_teams, ...matching_people];
 }
+
+/** Every name an `@mention` may use on a board: its people, its teams and "Everyone", for coloring exact mentions only. */
+export const buildMentionNames = (people: readonly { name: string }[] = [], teams: readonly { name: string }[] = []): string[] => [
+  EVERYONE_MENTION_NAME,
+  ...teams.map((team) => team.name),
+  ...people.map((person) => person.name),
+];

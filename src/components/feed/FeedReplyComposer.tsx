@@ -4,6 +4,7 @@ import PersonAvatar from "@/components/board/PersonAvatar";
 import type { BoardPersonOption } from "@/components/board/toolbar/types";
 import EmojiPalette from "@/components/board/drawer/EmojiPalette";
 import MentionPicker from "@/components/board/drawer/MentionPicker";
+import { hasMentionText } from "@/components/board/drawer/pastedMentions";
 import { usePastedMentions } from "@/components/board/drawer/usePastedMentions";
 import {
   buildMentionMatches,
@@ -192,7 +193,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   /** Ids of everyone still `@mentioned` in the body: a pick whose text was edited away no longer notifies anyone. */
   const collectMentionedIds = (body: string): number[] => {
     const ids = mention_picks
-      .filter((pick) => body.includes(`@${pick.name}`))
+      .filter((pick) => hasMentionText(body, pick.name))
       .flatMap((pick) => pick.user_ids.map(Number));
     return Array.from(new Set(ids));
   };

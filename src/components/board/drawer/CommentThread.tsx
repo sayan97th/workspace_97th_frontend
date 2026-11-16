@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
@@ -18,7 +18,7 @@ import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EditedMarker from "./EditedMarker";
 import EmojiPalette from "./EmojiPalette";
-import type { MentionOption, MentionTeam } from "./mentionOptions";
+import { buildMentionNames, type MentionOption, type MentionTeam } from "./mentionOptions";
 import ReactionPill from "./ReactionPill";
 import LikeButton from "./LikeButton";
 import ReactionsSummary from "./ReactionsSummary";
@@ -215,6 +215,8 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   has_undo = false,
   onReplyTo,
 }) => {
+  // Only exact names of the board's people, teams and Everyone are colored as mentions.
+  const mention_names = useMemo(() => buildMentionNames(people, mention_teams), [people, mention_teams]);
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === reaction_palette_key;
   const has_reaction_row = reply.reactions.length > 0 || reply.like_count > 0;
@@ -308,7 +310,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
         />
       ) : (
         <ThreadReplyBody>
-          <RichTextContent html={reply.body} people={people} />
+          <RichTextContent html={reply.body} people={people} mention_names={mention_names} />
         </ThreadReplyBody>
       )}
     </ThreadReply>
@@ -360,6 +362,8 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   onLoadRevisions,
   reference_items,
 }) => {
+  // Only exact names of the board's people, teams and Everyone are colored as mentions.
+  const mention_names = useMemo(() => buildMentionNames(mentionable_people, mention_teams), [mentionable_people, mention_teams]);
   const reply_composer_ref = useRef<HTMLDivElement>(null);
   const react_trigger_ref = useRef<HTMLButtonElement>(null);
   const is_palette_open = reaction_palette_id === comment.id;
@@ -575,7 +579,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             existing_mention_ids={comment.mentioned_user_ids}
           />
         ) : (
-          <RichTextContent html={comment.body} people={mentionable_people} className="update-card__body" />
+          <RichTextContent html={comment.body} people={mentionable_people} mention_names={mention_names} className="update-card__body" />
         )}
 
         {/* While editing, the form lists the files instead, with a remove button each. */}

@@ -50,9 +50,9 @@ export function usePastedMentions({ markdown, people, onTag, onDropped }: UsePas
     callbacks_ref.current.onTag(tagged);
   };
 
-  const editor_props: Pick<RichTextComposerProps, "mention_people" | "onPasteMentions" | "outside_people" | "onInviteToBoard"> = {
+  const editor_props: Pick<RichTextComposerProps, "mention_people" | "onTagMentions" | "outside_people" | "onInviteToBoard"> = {
     mention_people: people,
-    onPasteMentions: people.length > 0 ? handlePasteMentions : undefined,
+    onTagMentions: people.length > 0 ? handlePasteMentions : undefined,
     outside_people: privacy.outside_people ?? NO_PEOPLE,
     onInviteToBoard: privacy.onInviteClick,
   };

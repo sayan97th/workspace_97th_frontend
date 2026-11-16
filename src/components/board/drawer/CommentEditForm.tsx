@@ -10,6 +10,7 @@ import CommentAttachmentChip from "./CommentAttachmentChip";
 import { COMMENT_ATTACHMENT_ACCEPT } from "./drawerAttachments";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
+import { hasMentionText } from "./pastedMentions";
 import { usePastedMentions } from "./usePastedMentions";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import RichTextComposer, { type RichTextComposerRef } from "./RichTextComposer";
@@ -140,7 +141,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
 
   /** Everyone picked while editing whose `@Name` is still in the text: a pick typed away again tags nobody. */
   const mentioned_ids = useMemo(() => {
-    const ids = mention_picks.filter((pick) => value.includes(`@${pick.name}`)).flatMap((pick) => pick.user_ids);
+    const ids = mention_picks.filter((pick) => hasMentionText(value, pick.name)).flatMap((pick) => pick.user_ids);
     return Array.from(new Set(ids));
   }, [mention_picks, value]);
 

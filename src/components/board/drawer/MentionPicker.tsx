@@ -3,7 +3,7 @@ import React, { useEffect, useRef } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import FloatingSuggestion from "../doc/editor/menus/FloatingSuggestion";
-import { isMentionGroup, mentionOptionLabel, type MentionGroupOption, type MentionOption } from "./mentionOptions";
+import { isMentionGroup, isMentionSuggestion, mentionOptionLabel, type MentionGroupOption, type MentionOption } from "./mentionOptions";
 import { useBoardPrivacy } from "../privacy/BoardPrivacyContext";
 import PrivateBoardNotice from "../privacy/PrivateBoardNotice";
 import "./mention-picker.scss";
@@ -43,7 +43,9 @@ const groupSubtitle = (group: MentionGroupOption): string =>
  * `@mention` autocomplete card shared by the update composer, every reply
  * box and the "Notify" button, styled after the People column picker: a white
  * card with "Groups" (Everyone and the account teams) and "People in this
- * account" sections, and "Name (Job title)" rows with a 28px photo. Portaled
+ * account" sections, and "Name (Job title)" rows with a 28px photo. People
+ * whose name is only a typo away from the query (`@Ernsto`) come last, under
+ * "Did you mean", like Slack's mention list. Portaled
  * and anchored under the typed `@`, so it never covers the text being typed.
  * The editor keeps focus and owns the keyboard (see `useMentionPickerNavigation`),
  * this only draws the rows and keeps the highlighted one in view.
@@ -65,7 +67,9 @@ function MentionPicker<TOption extends MentionOption = BoardPersonOption>({
   }, [active_index, people]);
 
   const groups = people.filter((option) => isMentionGroup(option));
-  const persons = people.filter((option) => !isMentionGroup(option));
+  const persons = people.filter((option) => !isMentionGroup(option) && !isMentionSuggestion(option));
+  // Names a typo away from what was typed (`@Ernsto`), listed last under their own caption.
+  const suggestions = people.filter((option) => isMentionSuggestion(option));
 
   const renderRow = (option: TOption) => {
     const index = people.indexOf(option);
@@ -111,6 +115,12 @@ function MentionPicker<TOption extends MentionOption = BoardPersonOption>({
             <div role="group" aria-label={people_title} className="mention-picker__section">
               <div className="mention-picker__section-title">{people_title}</div>
               {persons.map(renderRow)}
+            </div>
+          )}
+          {suggestions.length > 0 && (
+            <div role="group" aria-label="Did you mean" className="mention-picker__section">
+              <div className="mention-picker__section-title">{persons.length > 0 ? "Did you also mean" : "No exact match. Did you mean"}</div>
+              {suggestions.map(renderRow)}
             </div>
           )}
           {people.length === 0 && <div className="mention-picker__empty">No people found</div>}

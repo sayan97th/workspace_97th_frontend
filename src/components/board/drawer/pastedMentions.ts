@@ -3,6 +3,9 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { BoardPersonOption } from "../toolbar/types";
+import { allowedEdits, editDistance } from "./fuzzyNames";
+
+export { editDistance };
 
 /**
  * Slack style tagging for pasted text. Every `@Name` that text pasted into a
@@ -73,32 +76,6 @@ const MAX_SUGGESTIONS = 3;
 const normalizeSpaces = (text: string): string => text.replace(/[  ]/g, " ");
 
 const firstName = (name: string): string => name.trim().split(/\s+/)[0] ?? "";
-
-/**
- * Edit distance between two words, a swap of two neighbouring letters
- * counting as one edit, so `Jhon` is one edit away from `John`.
- */
-export const editDistance = (first: string, second: string): number => {
-  if (first === second) return 0;
-  if (!first.length) return second.length;
-  if (!second.length) return first.length;
-  const rows: number[][] = Array.from({ length: first.length + 1 }, (_, row) =>
-    Array.from({ length: second.length + 1 }, (_, column) => (row === 0 ? column : column === 0 ? row : 0))
-  );
-  for (let row = 1; row <= first.length; row += 1) {
-    for (let column = 1; column <= second.length; column += 1) {
-      const cost = first[row - 1] === second[column - 1] ? 0 : 1;
-      rows[row][column] = Math.min(rows[row - 1][column] + 1, rows[row][column - 1] + 1, rows[row - 1][column - 1] + cost);
-      if (row > 1 && column > 1 && first[row - 1] === second[column - 2] && first[row - 2] === second[column - 1]) {
-        rows[row][column] = Math.min(rows[row][column], rows[row - 2][column - 2] + 1);
-      }
-    }
-  }
-  return rows[first.length][second.length];
-};
-
-/** Most edits a typed name may be from a real one and still be offered, more for longer names. */
-const allowedEdits = (length: number): number => (length <= 4 ? 1 : length <= 8 ? 2 : 3);
 
 /**
  * The closest names to a word that matched nobody: a name it starts
