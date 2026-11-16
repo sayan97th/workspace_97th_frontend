@@ -111,6 +111,8 @@ export type UpdateCommentPayload = {
   attachments?: File[];
   /** Ids of the comment's own attachments the author took off. */
   removed_attachment_ids?: number[];
+  /** People `@mentioned` while editing. The API records and notifies only the ones not mentioned yet. */
+  mentioned_user_ids?: number[];
 };
 
 export type CreateBoardItemCommentPayload = {

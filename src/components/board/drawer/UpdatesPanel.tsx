@@ -139,6 +139,7 @@ function UpdatesPanel({
       mention_matches={drawer.mention_matches}
       onPickMention={drawer.pickMention}
       mentionable_people={drawer.mentionable_people}
+      mention_teams={drawer.mention_teams}
       fresh_comment_ids={drawer.fresh_comment_ids}
       notify_target={drawer.notify_target}
       onToggleNotifyPicker={drawer.toggleNotifyPicker}

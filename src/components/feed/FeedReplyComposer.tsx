@@ -6,7 +6,6 @@ import EmojiPalette from "@/components/board/drawer/EmojiPalette";
 import MentionPicker from "@/components/board/drawer/MentionPicker";
 import {
   buildMentionMatches,
-  MENTION_TRIGGER,
   mentionOptionUserIds,
   type MentionOption,
   type MentionTeam,
@@ -152,11 +151,8 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
     return () => cancelAnimationFrame(frame);
   }, [auto_focus]);
 
-  const handleChange = (next_value: string) => {
-    setValue(next_value);
-    const match = MENTION_TRIGGER.exec(next_value);
-    setMentionQuery(match ? match[1].toLowerCase() : null);
-  };
+  // The `@query` is read at the caret, so tagging someone works anywhere in the text, not only at its end (editing an update).
+  const handleMentionQueryChange = (query: string | null) => setMentionQuery(query === null ? null : query.toLowerCase());
 
   const handlePickMention = (option: MentionOption) => {
     rich_text_ref.current?.insertMentionText(option.name);
@@ -205,9 +201,7 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
   /** The Mention tool types "@" so the people picker opens, the same as typing it. */
   const startMention = () => {
     ensurePeopleLoaded();
-    rich_text_ref.current?.focus();
-    const needs_space = value.length > 0 && !/\s$/.test(value);
-    rich_text_ref.current?.insertText(needs_space ? " @" : "@");
+    rich_text_ref.current?.startMention();
   };
 
   return (
@@ -221,7 +215,8 @@ const FeedReplyComposer = forwardRef<FeedReplyComposerRef, FeedReplyComposerProp
             embedded
             show_toolbar={is_toolbar_shown}
             value={value}
-            onChange={handleChange}
+            onChange={setValue}
+            onMentionQueryChange={handleMentionQueryChange}
             onPlainTextChange={setPlainText}
             placeholder={placeholder}
             min_height_class="min-h-[64px]"

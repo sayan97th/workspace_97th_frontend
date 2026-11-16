@@ -563,10 +563,10 @@ export function useFeedUpdates({ tab, board_id, filters = default_feed_filters, 
     [loadBoards, loadUnreadCount, loadUpdates]
   );
 
-  /** "Edit update": saves the new body, the card shows it with its "Edited" mark. */
+  /** "Edit update": saves the new body (and who it newly `@mentions`), the card shows it with its "Edited" mark. */
   const editUpdate = useCallback(
-    async (id: string, body: string) => {
-      applyUpdate(await feedService.editUpdate(id, body));
+    async (id: string, body: string, mentioned_user_ids: number[] = []) => {
+      applyUpdate(await feedService.editUpdate(id, body, mentioned_user_ids));
     },
     [applyUpdate]
   );

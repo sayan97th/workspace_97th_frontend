@@ -1,0 +1,85 @@
+// Extras of the inline "edit this update" form (`CommentEditForm`) on top of
+// the shared Slack style box in `rich-text.css`: the "Saving notifies ..."
+// notice listing the people the edit `@mentions` for the first time.
+//
+// Colors come from the `--rt-*` tokens `rich-text.css` defines for light and
+// dark mode, so nothing here needs a dark override of its own.
+
+$notice-radius: 8px;
+$face-size: 20px;
+$face-overlap: -6px;
+$notice-enter-ms: 160ms;
+
+.comment-edit-form__notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border: 1px solid color-mix(in srgb, var(--rt-mention) 22%, transparent);
+  border-radius: $notice-radius;
+  background: var(--rt-mention-bg);
+  color: var(--rt-text-secondary);
+  font-family: var(--rt-font);
+  font-size: 13px;
+  line-height: 18px;
+  animation: comment-edit-form-notice-in $notice-enter-ms ease-out;
+
+  strong {
+    color: var(--rt-text);
+    font-weight: 500;
+  }
+}
+
+.comment-edit-form__notice-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: $face-size;
+  height: $face-size;
+  border-radius: 50%;
+  background: var(--rt-surface);
+  color: var(--rt-mention);
+}
+
+// Stacked like the drawer header's viewers, each face ringed in the notice color so the overlap reads cleanly.
+.comment-edit-form__notice-faces {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.comment-edit-form__notice-face {
+  box-shadow: 0 0 0 2px var(--rt-surface);
+  border-radius: 50%;
+
+  & + & {
+    margin-left: $face-overlap;
+  }
+}
+
+.comment-edit-form__notice-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes comment-edit-form-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-edit-form__notice {
+    animation: none;
+  }
+}

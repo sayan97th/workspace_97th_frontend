@@ -18,7 +18,7 @@ import CommentEditForm from "./CommentEditForm";
 import CommentOptionsMenu from "./CommentOptionsMenu";
 import EditedMarker from "./EditedMarker";
 import EmojiPalette from "./EmojiPalette";
-import type { MentionOption } from "./mentionOptions";
+import type { MentionOption, MentionTeam } from "./mentionOptions";
 import ReactionPill from "./ReactionPill";
 import LikeButton from "./LikeButton";
 import ReactionsSummary from "./ReactionsSummary";
@@ -49,7 +49,8 @@ export type CommentThreadProps = {
   onEditDraftChange: (value: string) => void;
   onStartEditing: (comment_id: string, reply_id?: string) => void;
   onCancelEditing: () => void;
-  onSaveEditing: () => void;
+  /** Saves the open edit with the people `@mentioned` while editing. */
+  onSaveEditing: (mentioned_user_ids?: string[]) => void;
   /** Files of the update being edited, shown in its edit form. Omit, with the two handlers, to edit text only. */
   edit_attachments?: DrawerAttachment[];
   onAddEditAttachments?: (files: File[]) => void;
@@ -65,6 +66,8 @@ export type CommentThreadProps = {
   mention_matches: MentionOption[];
   onPickMention: (option: MentionOption) => void;
   mentionable_people?: BoardPersonOption[];
+  /** Account teams the edit form's `@mention` picker offers as groups. */
+  mention_teams?: MentionTeam[];
   /** Ids of comments and replies that arrived live through the "N new updates" pill, badged "New". */
   fresh_comment_ids?: string[];
   notify_target?: DrawerComposerTarget | null;
@@ -163,8 +166,10 @@ type ReplyRowProps = {
   is_editing: boolean;
   edit_draft: string;
   onEditDraftChange: (value: string) => void;
-  onSaveEditing: () => void;
+  onSaveEditing: (mentioned_user_ids?: string[]) => void;
   onCancelEditing: () => void;
+  /** Who the edit form's `@mention` picker can offer, the same roster as the reply box. */
+  mention_teams?: MentionTeam[];
   reaction_palette_id: string | null;
   reaction_palette_key: string;
   onToggleReactionPalette: (id: string) => void;
@@ -195,6 +200,7 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
   onEditDraftChange,
   onSaveEditing,
   onCancelEditing,
+  mention_teams,
   reaction_palette_id,
   reaction_palette_key,
   onToggleReactionPalette,
@@ -287,7 +293,17 @@ const ReplyRow: React.FC<ReplyRowProps> = ({
       }
     >
       {is_editing ? (
-        <CommentEditForm value={edit_draft} onChange={onEditDraftChange} onSave={onSaveEditing} onCancel={onCancelEditing} autoFocus />
+        <CommentEditForm
+          value={edit_draft}
+          onChange={onEditDraftChange}
+          onSave={onSaveEditing}
+          onCancel={onCancelEditing}
+          autoFocus
+          mentionable_people={people}
+          mention_teams={mention_teams}
+          current_user_id={current_user.id}
+          existing_mention_ids={reply.mentioned_user_ids}
+        />
       ) : (
         <ThreadReplyBody>
           <RichTextContent html={reply.body} people={people} />
@@ -325,6 +341,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
   mention_matches,
   onPickMention,
   mentionable_people,
+  mention_teams,
   fresh_comment_ids = [],
   notify_target,
   onToggleNotifyPicker,
@@ -548,6 +565,10 @@ const CommentThread: React.FC<CommentThreadProps> = ({
             attachments={edit_attachments}
             onAddFiles={onAddEditAttachments}
             onRemoveAttachment={onRemoveEditAttachment}
+            mentionable_people={mentionable_people}
+            mention_teams={mention_teams}
+            current_user_id={current_user.id}
+            existing_mention_ids={comment.mentioned_user_ids}
           />
         ) : (
           <RichTextContent html={comment.body} people={mentionable_people} className="update-card__body" />
@@ -639,6 +660,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
               onEditDraftChange={onEditDraftChange}
               onSaveEditing={onSaveEditing}
               onCancelEditing={onCancelEditing}
+              mention_teams={mention_teams}
               reaction_palette_id={reaction_palette_id}
               reaction_palette_key={`${comment.id}:${reply.id}`}
               onToggleReactionPalette={onToggleReactionPalette}

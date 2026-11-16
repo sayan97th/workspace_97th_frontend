@@ -104,6 +104,8 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFiles
 
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
+  /** Account teams the `@mention` picker offers as groups, also used by the edit form's own picker. */
+  mention_teams: MentionTeam[];
   pickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
 
   /** Which composer's "Notify" people-picker is currently open — separate from `mention_target`, since Notify never touches the body text. */
@@ -142,7 +144,8 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFiles
   removeEditAttachment: (attachment_id: string) => void;
   startEditingComment: (comment_id: string, reply_id?: string) => void;
   cancelEditingComment: () => void;
-  saveEditedComment: () => void;
+  /** Saves the open edit. `mentioned_user_ids` are the people `@mentioned` while editing, the API notifies the ones the update did not mention yet. */
+  saveEditedComment: (mentioned_user_ids?: string[]) => void;
 };
 
 /**
@@ -532,14 +535,21 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
    * of a comment or reply. `attachments` is only given for a top-level
    * comment, replies carry no files.
    */
-  const applyCommentEdit = (comment_id: string, reply_id: string | undefined, body: string, attachments?: DrawerAttachment[]) =>
+  const applyCommentEdit = (
+    comment_id: string,
+    reply_id: string | undefined,
+    body: string,
+    attachments?: DrawerAttachment[],
+    mentioned_user_ids?: string[]
+  ) =>
     setComments((current) =>
       current.map((comment) => {
         if (comment.id !== comment_id) return comment;
-        if (!reply_id) return { ...comment, body, is_edited: true, ...(attachments ? { attachments } : {}) };
+        const mentions = mentioned_user_ids ? { mentioned_user_ids } : {};
+        if (!reply_id) return { ...comment, body, is_edited: true, ...mentions, ...(attachments ? { attachments } : {}) };
         return {
           ...comment,
-          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true } : reply)),
+          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true, ...mentions } : reply)),
         };
       })
     );
@@ -557,7 +567,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
   const cancelEditingComment = () => stopEditing();
 
-  const saveEditedComment = () => {
+  const saveEditedComment = (mentioned_user_ids: string[] = []) => {
     if (!editing_target) return;
     const { comment_id, reply_id } = editing_target;
     const body = edit_draft.trim();
@@ -579,10 +589,16 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     stopEditing();
 
     boardDiscussionService
-      .updateComment(board_id, Number(reply_id ?? comment_id), { body, attachments: new_files, removed_attachment_ids })
+      .updateComment(board_id, Number(reply_id ?? comment_id), {
+        body,
+        attachments: new_files,
+        removed_attachment_ids,
+        mentioned_user_ids: mentioned_user_ids.map(Number),
+      })
       .then((dto) => {
-        // The server's copy carries the real ids and download links of the files just added.
-        if (!reply_id) applyCommentEdit(comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+        // The server's copy carries the real ids and download links of the files just added, and everyone the body mentions now.
+        const attachments = reply_id ? undefined : dto.attachments.map(mapAttachmentDto);
+        applyCommentEdit(comment_id, reply_id, dto.body, attachments, dto.mentioned_user_ids.map(String));
       })
       .catch((error) => {
         setComments(previous_comments);
@@ -769,6 +785,7 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
 
     mention_target,
     mention_matches,
+    mention_teams,
     pickMention,
 
     notify_target,

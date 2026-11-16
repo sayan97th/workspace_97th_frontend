@@ -155,9 +155,9 @@ export const feedService = {
     await apiClient.delete(`/api/feed/hidden-boards/${board_id}`);
   },
 
-  /** PATCH /api/feed/updates/{id}, "Edit update" (author only). */
-  async editUpdate(id: string, body: string): Promise<FeedUpdateDto> {
-    const response = await apiClient.patch<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}`, { body });
+  /** PATCH /api/feed/updates/{id}, "Edit update" (author only). `mentioned_user_ids` are the people tagged while editing, the API notifies the new ones. */
+  async editUpdate(id: string, body: string, mentioned_user_ids: number[] = []): Promise<FeedUpdateDto> {
+    const response = await apiClient.patch<{ data: FeedUpdateDto }>(`/api/feed/updates/${id}`, { body, mentioned_user_ids });
     return response.data;
   },
 

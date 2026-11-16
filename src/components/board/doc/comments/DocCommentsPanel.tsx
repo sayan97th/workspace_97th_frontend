@@ -169,6 +169,7 @@ const DocCommentsPanel: React.FC<DocCommentsPanelProps> = ({ drawer }) => {
                 mention_matches={drawer.mention_matches}
                 onPickMention={drawer.pickMention}
                 mentionable_people={drawer.mentionable_people}
+                mention_teams={drawer.mention_teams}
                 notify_target={drawer.notify_target}
                 onToggleNotifyPicker={drawer.toggleNotifyPicker}
                 onCloseNotifyPicker={drawer.closeNotifyPicker}

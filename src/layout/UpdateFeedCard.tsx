@@ -58,7 +58,7 @@ type UpdateFeedCardProps = {
   /** Fired by the bell: subscribes to (or leaves) the update's item, or its board for a board update. */
   onFollow?: (type: "board" | "item", id: number, following: boolean) => void;
   /** Fired by the menu's "Edit update" once the new body is saved. */
-  onEdit?: (id: string, body: string) => Promise<void>;
+  onEdit?: (id: string, body: string, mentioned_user_ids: number[]) => Promise<void>;
   /** Fired by the menu's "Delete update for everyone". */
   onDelete?: (id: string) => void;
   /** Fired when the breadcrumb opens the item, so the inbox can close. */
@@ -203,8 +203,8 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
     else onFollow?.("board", Number(board_id), !is_following_board);
   };
 
-  const saveEdit = async (next_body: string) => {
-    await onEdit?.(id, next_body);
+  const saveEdit = async (next_body: string, mentioned_user_ids: number[]) => {
+    await onEdit?.(id, next_body, mentioned_user_ids);
     setIsEditing(false);
   };
 
@@ -369,7 +369,7 @@ const UpdateFeedCard: React.FC<UpdateFeedCardProps> = ({
               current_user={current_user}
               loadPeople={() => loadFeedBoardPeople(board_id)}
               loadTeams={() => loadFeedBoardTeams(board_id)}
-              onSubmit={(next_body) => void saveEdit(next_body)}
+              onSubmit={(next_body, mentioned_user_ids) => void saveEdit(next_body, mentioned_user_ids)}
               onCancel={() => setIsEditing(false)}
               initial_value={body}
               submit_label="Save"

@@ -54,6 +54,7 @@ export const boardDiscussionService = {
     form_data.append("body", payload.body);
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
     (payload.removed_attachment_ids ?? []).forEach((attachment_id) => form_data.append("removed_attachment_ids[]", String(attachment_id)));
+    (payload.mentioned_user_ids ?? []).forEach((user_id) => form_data.append("mentioned_user_ids[]", String(user_id)));
 
     const response = await apiClient.postFormData<{ comment: BoardDiscussionCommentDto }>(
       `/api/boards/${board_id}/comments/${comment_id}`,

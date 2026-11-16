@@ -1,7 +1,7 @@
 import type { ComposerDraftContextValue } from "./ComposerDraftContext";
 import type { ReactNode } from "react";
 import type { BoardPersonOption } from "../toolbar/types";
-import type { MentionOption } from "./mentionOptions";
+import type { MentionOption, MentionTeam } from "./mentionOptions";
 
 /** One person who reacted with an emoji, for the "who reacted" popover. */
 export type DrawerReactor = BoardPersonOption & {
@@ -353,6 +353,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
 
   mention_target: DrawerComposerTarget | null;
   mention_matches: MentionOption[];
+  /** Account teams the `@mention` picker offers as groups, also used by the edit form's own picker. */
+  mention_teams: MentionTeam[];
   /** Records a picked `@mention` for the composer the picker is open in, or for `target` when given (a mention added by Reply under a reply). */
   pickMention: (option: MentionOption, target?: DrawerComposerTarget) => void;
 
@@ -396,7 +398,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   /** Opens the inline editor for a top-level comment, or (when `reply_id` is given) a reply — seeds {@link edit_draft} from its current body. Author-only — also enforced server-side. */
   startEditingComment: (comment_id: string, reply_id?: string) => void;
   cancelEditingComment: () => void;
-  saveEditedComment: () => void;
+  /** Saves the open edit. `mentioned_user_ids` are the people `@mentioned` while editing, the API notifies the ones the update did not mention yet. */
+  saveEditedComment: (mentioned_user_ids?: string[]) => void;
 };
 
 /**
@@ -428,6 +431,7 @@ export type CommentFeedApi = Pick<
   | "postReply"
   | "mention_target"
   | "mention_matches"
+  | "mention_teams"
   | "pickMention"
   | "notify_target"
   | "toggleNotifyPicker"

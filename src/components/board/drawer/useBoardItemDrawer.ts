@@ -583,14 +583,22 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
    * of a comment or reply. `attachments` is only given for a top-level
    * comment, replies carry no files.
    */
-  const applyCommentEdit = (row_id: string, comment_id: string, reply_id: string | undefined, body: string, attachments?: DrawerAttachment[]) =>
+  const applyCommentEdit = (
+    row_id: string,
+    comment_id: string,
+    reply_id: string | undefined,
+    body: string,
+    attachments?: DrawerAttachment[],
+    mentioned_user_ids?: string[]
+  ) =>
     updateComments(row_id, (comments) =>
       comments.map((comment) => {
         if (comment.id !== comment_id) return comment;
-        if (!reply_id) return { ...comment, body, is_edited: true, ...(attachments ? { attachments } : {}) };
+        const mentions = mentioned_user_ids ? { mentioned_user_ids } : {};
+        if (!reply_id) return { ...comment, body, is_edited: true, ...mentions, ...(attachments ? { attachments } : {}) };
         return {
           ...comment,
-          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true } : reply)),
+          replies: comment.replies.map((reply) => (reply.id === reply_id ? { ...reply, body, is_edited: true, ...mentions } : reply)),
         };
       })
     );
@@ -609,7 +617,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const cancelEditingComment = () => stopEditing();
 
-  const saveEditedComment = () => {
+  const saveEditedComment = (mentioned_user_ids: string[] = []) => {
     if (!open_row_id || !editing_target) return;
     const row_id = open_row_id;
     const { comment_id, reply_id } = editing_target;
@@ -634,10 +642,16 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     if (!is_api_backed) return;
     const item_id = Number(row_id);
     boardCommentsService
-      .updateComment(board_id, item_id, Number(reply_id ?? comment_id), { body, attachments: new_files, removed_attachment_ids })
+      .updateComment(board_id, item_id, Number(reply_id ?? comment_id), {
+        body,
+        attachments: new_files,
+        removed_attachment_ids,
+        mentioned_user_ids: mentioned_user_ids.map(Number),
+      })
       .then((dto) => {
-        // The server's copy carries the real ids and download links of the files just added.
-        if (!reply_id) applyCommentEdit(row_id, comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+        // The server's copy carries the real ids and download links of the files just added, and everyone the body mentions now.
+        const attachments = reply_id ? undefined : dto.attachments.map(mapAttachmentDto);
+        applyCommentEdit(row_id, comment_id, reply_id, dto.body, attachments, dto.mentioned_user_ids.map(String));
       })
       .catch((error) => {
         setCommentsByRow((current) => ({ ...current, [row_id]: previous_comments }));
@@ -945,6 +959,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
     mention_target,
     mention_matches,
+    mention_teams,
     pickMention,
 
     notify_target,

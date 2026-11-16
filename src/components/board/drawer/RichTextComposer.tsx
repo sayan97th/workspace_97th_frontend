@@ -33,6 +33,8 @@ export type ComposerTrigger = { kind: "reference"; query: string };
 const REFERENCE_TRIGGER = /(?:^|\s)#([^\s#]*)$/;
 /** The `@partial` mention being typed right before the caret. */
 const MENTION_AT_CARET = /@(\w*)$/;
+/** Same, but only when the `@` opens a word, so typing an email address never opens the people picker. */
+const MENTION_QUERY_AT_CARET = /(?:^|\s)@(\w*)$/;
 /** How far back from the caret the trigger regexes look. */
 const TRIGGER_LOOKBEHIND = 60;
 
@@ -47,6 +49,12 @@ export type RichTextComposerRef = {
    * mentions them.
    */
   mentionAtEnd: (name: string) => void;
+  /**
+   * Types an `@` at the caret, with a space in front when it would otherwise
+   * stick to a word, so the people picker opens just as if it was typed. Does
+   * nothing but focus when the caret already sits in an `@query`.
+   */
+  startMention: () => void;
   /**
    * Screen rectangle of the `@` (or `#`) that opens the word in front of the
    * caret, or of the caret itself when there is none, so the mention and item
@@ -84,6 +92,13 @@ export type RichTextComposerProps = {
   /** Fired as the caret moves or the text changes, with the `/command` or `#item` being typed there, or null when there is none. */
   onTriggerChange?: (trigger: ComposerTrigger | null) => void;
   /**
+   * Fired as the caret moves or the text changes, with the `@query` typed right
+   * before the caret ("" for a bare `@`), or null when the caret is not in one.
+   * Unlike matching the end of the Markdown body, this also works in the middle
+   * of the text, which is where the caret usually is while editing an update.
+   */
+  onMentionQueryChange?: (query: string | null) => void;
+  /**
    * Offered every key press first, so a suggestion menu can claim the arrows,
    * Enter, Tab and Escape while it is open. Return true when the key was
    * handled, and the editor then ignores it.
@@ -116,6 +131,15 @@ const findTriggerMatch = (current_editor: Editor): { trigger: ComposerTrigger; t
 };
 
 const detectTrigger = (current_editor: Editor): ComposerTrigger | null => findTriggerMatch(current_editor)?.trigger ?? null;
+
+/** The `@query` right before the caret, or null when the caret is not in one (or a range is selected). */
+const detectMentionQuery = (current_editor: Editor): string | null => {
+  const { from, empty } = current_editor.state.selection;
+  if (!empty) return null;
+  const text_before = current_editor.state.doc.textBetween(Math.max(0, from - TRIGGER_LOOKBEHIND), from, "\n", "\n");
+  const match = MENTION_QUERY_AT_CARET.exec(text_before);
+  return match ? match[1] : null;
+};
 
 /** Deletes the `#query` in front of the caret, leaving the caret where it started. */
 const deleteTriggerText = (current_editor: Editor): void => {
@@ -156,6 +180,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
       onSubmitShortcut,
       onEscape,
       onTriggerChange,
+      onMentionQueryChange,
       onSuggestionKeyDown,
       autoFocus,
       embedded = false,
@@ -169,6 +194,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
   ) => {
     // Read through refs, so the editor (created once) always calls the parent's latest callbacks.
     const trigger_change_ref = useRef(onTriggerChange);
+    const mention_query_change_ref = useRef(onMentionQueryChange);
     const suggestion_key_down_ref = useRef(onSuggestionKeyDown);
     const submit_shortcut_ref = useRef(onSubmitShortcut);
     const escape_ref = useRef(onEscape);
@@ -189,6 +215,7 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
 
     useEffect(() => {
       trigger_change_ref.current = onTriggerChange;
+      mention_query_change_ref.current = onMentionQueryChange;
       suggestion_key_down_ref.current = onSuggestionKeyDown;
       submit_shortcut_ref.current = onSubmitShortcut;
       escape_ref.current = onEscape;
@@ -249,9 +276,11 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
         onChange(current_editor.getMarkdown());
         onPlainTextChange?.(current_editor.getText());
         trigger_change_ref.current?.(detectTrigger(current_editor));
+        mention_query_change_ref.current?.(detectMentionQuery(current_editor));
       },
       onSelectionUpdate: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(detectTrigger(current_editor));
+        mention_query_change_ref.current?.(detectMentionQuery(current_editor));
       },
       onBlur: ({ editor: current_editor }) => {
         trigger_change_ref.current?.(null);
@@ -414,6 +443,17 @@ const RichTextComposer = forwardRef<RichTextComposerRef, RichTextComposerProps>(
           }
           const separator = text.length > 0 && !/\s$/.test(text) ? " " : "";
           editor.chain().focus("end").insertContent(`${separator}@${name} `).run();
+        },
+        startMention: () => {
+          if (!editor) return;
+          if (detectMentionQuery(editor) !== null) {
+            editor.commands.focus();
+            return;
+          }
+          const { from } = editor.state.selection;
+          const char_before = editor.state.doc.textBetween(Math.max(0, from - 1), from, "\n", "\n");
+          const needs_space = char_before !== "" && !/\s/.test(char_before);
+          editor.chain().focus().insertContent(needs_space ? " @" : "@").run();
         },
         getTriggerAnchorRect: (trigger_char: "@" | "#") => {
           if (!editor || editor.isDestroyed) return null;

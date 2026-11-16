@@ -297,9 +297,9 @@ const UpdateFeedPanel: React.FC<UpdateFeedPanelProps> = ({ is_open, onClose }) =
   }, [last_closed, is_undoing, toastError]);
 
   const editCard = useCallback(
-    async (id: string, body: string) => {
+    async (id: string, body: string, mentioned_user_ids: number[]) => {
       try {
-        await editUpdate(id, body);
+        await editUpdate(id, body, mentioned_user_ids);
       } catch (error) {
         toastError(getApiErrorMessage(error, "Couldn't save your changes. Please try again."));
         throw error;
