@@ -443,7 +443,7 @@ const AppSidebar: React.FC = () => {
   return (
     <>
       <div
-        className={`fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] max-w-[100vw] flex-none bg-sidebar-rail transition-transform duration-300 ease-in-out lg:relative lg:top-0 lg:h-full lg:translate-x-0 ${
+        className={`app-sidebar fixed bottom-0 left-0 top-[52px] z-50 flex h-[calc(100vh-52px)] max-w-[100vw] flex-none bg-sidebar-rail transition-transform duration-300 ease-in-out lg:relative lg:top-0 lg:h-full lg:translate-x-0 ${
           isMobileOpen ? "translate-x-0" : "-translate-x-full"
         } ${boardTreeFontClassName}`}
       >

@@ -8,6 +8,7 @@ import {
   SIDEBAR_WIDTH_STORAGE_KEY,
   clampSidebarWidth,
 } from "@/layout/sidebarConstants";
+import { TABLET_MAX_WIDTH } from "@/lib/breakpoints";
 import type { SidebarPreferences, SidebarSectionPreference } from "@/types/auth";
 
 type SidebarContextType = {
@@ -20,6 +21,8 @@ type SidebarContextType = {
   sidebar_width: number;
   toggleSidebar: () => void;
   toggleMobileSidebar: () => void;
+  /** Hides the off canvas sidebar (phones and tablets), used after a navigation from inside it. */
+  closeMobileSidebar: () => void;
   setIsHovered: (isHovered: boolean) => void;
   setActiveItem: (id: string, label: string) => void;
   /** Local-only width preview fired on every pointer move of a resize drag, see `SidebarResizeHandle`. */
@@ -94,7 +97,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 768;
+      const mobile = window.innerWidth <= TABLET_MAX_WIDTH;
       setIsMobile(mobile);
       if (!mobile) {
         setIsMobileOpen(false);
@@ -117,6 +120,10 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   const toggleMobileSidebar = () => {
     setIsMobileOpen((prev) => !prev);
   };
+
+  const closeMobileSidebar = useCallback(() => {
+    setIsMobileOpen(false);
+  }, []);
 
   const setActiveItem = (id: string, label: string) => {
     setActiveItemState({ id, label });
@@ -175,6 +182,7 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
         sidebar_width,
         toggleSidebar,
         toggleMobileSidebar,
+        closeMobileSidebar,
         setIsHovered,
         setActiveItem,
         previewSidebarWidth,

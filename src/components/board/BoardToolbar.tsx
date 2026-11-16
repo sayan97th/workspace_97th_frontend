@@ -104,7 +104,7 @@ function BoardToolbar<TRow>({
 
   return (
     <div>
-      <div ref={toolbar_row_ref} className="relative flex items-center gap-1">
+      <div ref={toolbar_row_ref} className="board-toolbar__row relative flex items-center gap-1">
         <div
           ref={new_item_menu_anchor_ref}
           className="mr-3 flex h-8 flex-none items-stretch overflow-hidden rounded-[4px] bg-boardtree-accent text-white"
@@ -152,7 +152,7 @@ function BoardToolbar<TRow>({
         <GroupByControl toolbar={toolbar} view_actions={view_actions} onSubmitFeedback={onSubmitFeedback} />
         <OverflowControl toolbar={toolbar} export_options={export_options} view_actions={view_actions} />
 
-        <div className="flex-1" />
+        <div className="board-toolbar__spacer flex-1" />
 
         {trailing_slot}
 

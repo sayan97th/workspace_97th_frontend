@@ -1,0 +1,47 @@
+@use "breakpoints" as *;
+
+// Board views other than the table: Calendar, Gantt and Kanban.
+
+@include phone {
+  // ── Calendar and Gantt headers ─────────────────────────────────────────
+  // "Today", the arrows, the month label and the Month/Week switcher wrap
+  // onto a second line instead of running off the card.
+  .board-calendar__header,
+  .board-gantt__header {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+
+  .board-calendar__header-start,
+  .board-calendar__header-end,
+  .board-gantt__header-start,
+  .board-gantt__header-end {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .board-calendar__title,
+  .board-gantt__title {
+    max-width: 100%;
+    font-size: 16px;
+  }
+
+  // ── Kanban ──────────────────────────────────────────────────────────────
+  // One lane per screen, with a peek of the next one, snapping into place
+  // like monday.com's mobile Kanban.
+  .board-kanban__scroller {
+    gap: 10px;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 2px;
+
+    // Snapping would fight a card being dragged towards the edge.
+    &[data-dragging] {
+      scroll-snap-type: none;
+    }
+  }
+
+  .kanban-lane {
+    width: min(var(--kanban-lane-width, 296px), calc(100vw - 56px));
+    scroll-snap-align: start;
+  }
+}

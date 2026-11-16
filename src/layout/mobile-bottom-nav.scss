@@ -1,0 +1,134 @@
+@use "../styles/responsive/breakpoints" as *;
+
+// Phone tab bar (`MobileBottomNav`). Same surface as the app rail it stands in
+// for, with monday's blue for the selected tab: a soft pill behind the icon,
+// the icon and label in the accent color. Every color is a theme token, so
+// it repaints with Light / Dark / System.
+
+.mobile-bottom-nav {
+  display: none;
+}
+
+@include phone {
+  .mobile-bottom-nav {
+    position: fixed;
+    inset: auto 0 0;
+    // Above the sidebar drawer (z 50) and its backdrop, under drawers and dialogs (z 200 and up).
+    z-index: 60;
+    display: block;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid var(--color-sidebar-border);
+    background: color-mix(in srgb, var(--color-sidebar-rail) 92%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px);
+    box-shadow: 0 -6px 18px rgb(15 23 42 / 0.06);
+  }
+}
+
+.mobile-bottom-nav__list {
+  display: grid;
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
+  height: $mobile-nav-height;
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+}
+
+.mobile-bottom-nav__item {
+  display: flex;
+  min-width: 0;
+}
+
+.mobile-bottom-nav__tab {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 6px 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--color-sidebar-text-secondary);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 160ms ease;
+
+  &:focus-visible {
+    outline: none;
+
+    .mobile-bottom-nav__icon {
+      box-shadow: 0 0 0 2px var(--color-sidebar-focus);
+    }
+  }
+
+  &:active .mobile-bottom-nav__icon {
+    transform: scale(0.92);
+  }
+
+  &[data-active] {
+    color: var(--color-sidebar-focus);
+
+    .mobile-bottom-nav__icon {
+      background: var(--color-sidebar-active);
+    }
+
+    .mobile-bottom-nav__label {
+      font-weight: 600;
+      color: var(--color-sidebar-text);
+    }
+  }
+}
+
+// The pill behind the icon that lights up on the selected tab.
+.mobile-bottom-nav__icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  transition:
+    background-color 200ms ease,
+    transform 120ms ease;
+}
+
+.mobile-bottom-nav__label {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mobile-bottom-nav__badge {
+  position: absolute;
+  top: -1px;
+  left: calc(50% + 4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border: 2px solid var(--color-sidebar-rail);
+  border-radius: 999px;
+  background: var(--color-brand-500);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-bottom-nav__tab,
+  .mobile-bottom-nav__icon {
+    transition: none;
+  }
+}

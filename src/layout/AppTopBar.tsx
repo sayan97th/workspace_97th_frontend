@@ -12,6 +12,7 @@ import AccountMenu from "./AccountMenu";
 import { HOME_PATH, isSidebarlessPath } from "./sidebar-routes";
 import { onShellPanelOpen } from "./shell-events";
 import HelpMenu from "./HelpMenu";
+import MobileBottomNav from "./MobileBottomNav";
 import GlobalSearch from "./GlobalSearch";
 import SearchEverythingHost from "@/components/search-everything/SearchEverythingHost";
 import RequestAccessModal, {
@@ -48,7 +49,7 @@ import {
  */
 const AppTopBar: React.FC = () => {
   const router = useRouter();
-  const { toggleMobileSidebar } = useSidebar();
+  const { toggleMobileSidebar, closeMobileSidebar } = useSidebar();
   const is_sidebarless = isSidebarlessPath(usePathname());
   const { user } = useAuth();
   const { branding } = useBranding();
@@ -181,7 +182,7 @@ const AppTopBar: React.FC = () => {
 
   return (
     <>
-    <header className="relative z-[60] flex h-[52px] flex-none items-center gap-3.5 bg-sidebar-rail px-3.5 text-shell-text lg:pl-0">
+    <header className="app-top-bar relative z-[60] flex h-[52px] flex-none items-center gap-3.5 bg-sidebar-rail px-3.5 text-shell-text lg:pl-0">
       {/* Left cluster */}
       <div className="flex flex-none items-center gap-2.5 lg:gap-0.5">
         {/* Pages without the workspace sidebar have nothing to toggle. */}
@@ -247,7 +248,7 @@ const AppTopBar: React.FC = () => {
         <button
           type="button"
           onClick={toggleNotifications}
-          className={`${icon_button_class} ${is_notifications_open ? "bg-shell-hover-strong" : ""}`}
+          className={`${icon_button_class} max-md:hidden ${is_notifications_open ? "bg-shell-hover-strong" : ""}`}
           aria-label="Notifications"
           aria-haspopup="dialog"
           aria-expanded={is_notifications_open}
@@ -261,7 +262,7 @@ const AppTopBar: React.FC = () => {
         <button
           type="button"
           onClick={toggleFeed}
-          className={`${icon_button_class} ${is_feed_open ? "bg-shell-hover-strong" : ""}`}
+          className={`${icon_button_class} max-md:hidden ${is_feed_open ? "bg-shell-hover-strong" : ""}`}
           aria-label="Update feed"
           aria-haspopup="dialog"
           aria-expanded={is_feed_open}
@@ -355,6 +356,24 @@ const AppTopBar: React.FC = () => {
       />
 
       <UpdateFeedPanel is_open={is_feed_open} onClose={closeFeed} />
+
+      {/* Phones only, see `mobile-bottom-nav.scss`. Opening a panel from it also folds the sidebar drawer away. */}
+      <MobileBottomNav
+        unread_notifications={unread_count}
+        unread_updates={feed_unread_count}
+        is_notifications_open={is_notifications_open}
+        is_feed_open={is_feed_open}
+        onOpenNotifications={() => {
+          closeMobileSidebar();
+          setIsFeedOpen(false);
+          toggleNotifications();
+        }}
+        onOpenFeed={() => {
+          closeMobileSidebar();
+          setIsNotificationsOpen(false);
+          toggleFeed();
+        }}
+      />
 
       <TrashModal is_open={is_trash_open} onClose={closeTrash} initial_tab={trash_initial_tab} />
 

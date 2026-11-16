@@ -1,0 +1,45 @@
+@use "breakpoints" as *;
+
+// App shell: top bar, off canvas sidebar and the scrolling page.
+//
+// These rules are unlayered, so they win over Tailwind utilities (which live
+// in `@layer utilities`) without `!important`. Keep every rule inside a media
+// query so desktop is never touched.
+
+:root {
+  --mobile-nav-height: 0px;
+  --mobile-nav-space: 0px;
+}
+
+@include phone {
+  :root {
+    --mobile-nav-height: #{$mobile-nav-height};
+    // Room the bottom tab bar takes, including the gesture bar inset.
+    --mobile-nav-space: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom, 0px));
+  }
+
+  // `100vh` on Android Chrome counts the collapsing URL bar, which hid the
+  // bottom of every page. `dvh` follows the real visible height.
+  .app-shell {
+    height: 100dvh;
+    padding-bottom: var(--mobile-nav-space);
+  }
+
+  .app-top-bar {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  // The drawer stops above the tab bar so its last rows stay reachable.
+  .app-sidebar {
+    bottom: var(--mobile-nav-space);
+    height: auto;
+  }
+}
+
+@include tablet-down {
+  // Pages under the off canvas sidebar: a card edge only makes sense next to it.
+  .app-shell__main {
+    border-top-left-radius: 0;
+  }
+}

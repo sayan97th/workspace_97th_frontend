@@ -4,7 +4,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useBoardTable, type ColumnScope, type UseBoardTableConfig } from "./useBoardTable";
 import type { ColumnAutomationShortcut, ColumnDef, ColumnKind } from "./types";
 import { STATUS_PALETTE } from "./constants";
-import { computeNameColWidth, mainMinWidth } from "./layoutUtils";
+import { computeNameColWidth, fitNameColWidth, mainMinWidth } from "./layoutUtils";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { PHONE_QUERY } from "@/lib/breakpoints";
 import { boardTreeFontClassName } from "../board-tree-font";
 import TableHeader from "./toolbar/TableHeader";
 import TableToolbar from "./toolbar/TableToolbar";
@@ -500,11 +502,23 @@ export default function BoardTable({
    * resize handle (or a real board loads with one already persisted) — until
    * then this still auto-sizes from the longest item name, exactly as before.
    */
+  const is_phone = useMediaQuery(PHONE_QUERY);
   const name_col_width = useMemo(() => {
-    if (state.item_column_width != null) return state.item_column_width;
     const all_names = state.groups.flatMap((g) => g.items.map((it) => it.name));
-    return computeNameColWidth(all_names);
-  }, [state.groups, state.item_column_width]);
+    const desktop_width = state.item_column_width ?? computeNameColWidth(all_names);
+    // Phones get a narrow frozen Item column so value columns fit beside it, see `fitNameColWidth`.
+    return fitNameColWidth(desktop_width, is_phone);
+  }, [state.groups, state.item_column_width, is_phone]);
+
+  /**
+   * Pinned value columns stay frozen on desktop only: on a phone every extra
+   * frozen column eats the little width left after the Item column, so the
+   * grid renders as if nothing was pinned (the saved pin count is untouched).
+   */
+  const grid_state = useMemo(
+    () => (is_phone && state.pinned_column_count > 0 ? { ...state, pinned_column_count: 0 } : state),
+    [state, is_phone]
+  );
 
   /**
    * The real column the status/label editor is currently open for (see
@@ -586,7 +600,7 @@ export default function BoardTable({
     <ColumnMoveAnimator order_key={column_order_key} dragging_key={dragging_column_key}>
       {!embedded && <div className="h-[26px]" />}
       <SortableGroupList
-        state={state}
+        state={grid_state}
         actions={actions}
         renderGroup={(group, index, view_state, is_reordering) => (
           <GroupSection
@@ -759,7 +773,7 @@ export default function BoardTable({
             checkbox columns, leaving a gap once horizontal scroll sticks them. */}
         <div className="table-board-scroll h-full overflow-auto pb-[60px]">
           {/* See the `embedded` branch above for why this needs `isolate`. */}
-          <div ref={table_root_ref} className="isolate px-7" onContextMenu={handleGridContextMenu}>{grid}</div>
+          <div ref={table_root_ref} className="table-board-grid isolate px-7" onContextMenu={handleGridContextMenu}>{grid}</div>
         </div>
       </div>
 

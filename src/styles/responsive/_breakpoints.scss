@@ -1,0 +1,47 @@
+// Breakpoints for the responsive layer. Same numbers as `src/lib/breakpoints.ts`
+// (TypeScript) and Tailwind's `md` / `lg` screens, keep the three in sync.
+$phone-max-width: 767px;
+$tablet-max-width: 1023px;
+
+// Height of the phone tab bar (`MobileBottomNav`) without the safe area inset.
+$mobile-nav-height: 60px;
+
+// Side gutter on phones, wide enough for a thumb, narrow enough to keep content.
+$phone-gutter: 12px;
+
+@mixin phone {
+  @media (max-width: $phone-max-width) {
+    @content;
+  }
+}
+
+@mixin tablet-down {
+  @media (max-width: $tablet-max-width) {
+    @content;
+  }
+}
+
+// A finger instead of a mouse, whatever the screen size (tablets included).
+@mixin touch {
+  @media (hover: none) and (pointer: coarse) {
+    @content;
+  }
+}
+
+// Horizontal strip that scrolls sideways with a finger, without a visible scrollbar.
+@mixin swipe-strip {
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+// Fades the right edge so a cut off strip reads as "there is more, swipe".
+@mixin fade-right-edge($fade-width: 28px) {
+  mask-image: linear-gradient(to right, #000 calc(100% - #{$fade-width}), transparent);
+}

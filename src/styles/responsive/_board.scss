@@ -1,0 +1,74 @@
+@use "breakpoints" as *;
+
+// Board shell (title row, view tabs, toolbar, body) shared by every board
+// view, plus the table grid. The Item column width itself is capped in
+// TypeScript (`fitNameColWidth` in `board/table/layoutUtils.ts`) because the
+// grid template and the sticky offsets are computed from it.
+
+@include phone {
+  .board-shell__head,
+  .board-shell__toolbar {
+    padding-inline: $phone-gutter;
+  }
+
+  .board-shell__head {
+    padding-top: 10px;
+  }
+
+  .board-shell__toolbar {
+    padding-block: 8px;
+  }
+
+  // Less gutter around the grid means more room for value columns.
+  .board-shell__body {
+    padding-inline: 8px;
+  }
+
+  .board-shell__scroll {
+    // The tab bar already adds room under the page, keep just a little air.
+    padding-bottom: 32px;
+  }
+
+  .board-shell__selection {
+    bottom: 12px;
+    padding-inline: 8px;
+  }
+
+  .board-header {
+    gap: 4px;
+  }
+
+  // Standalone table page (not inside BoardShell).
+  .table-board-grid {
+    padding-inline: 8px;
+  }
+}
+
+// From tablet width down the toolbar no longer fits on one line. Rather than
+// squeezing labels onto two lines or cutting them off at Filter, it becomes a
+// swipeable strip (New item, Search, Person, Filter, Sort, Hide, Group by, ...).
+@include tablet-down {
+  .board-toolbar__row {
+    @include swipe-strip;
+    @include fade-right-edge;
+    white-space: nowrap;
+
+    > * {
+      flex-shrink: 0;
+    }
+  }
+
+  // The spacer would push "Collapse all groups" past the strip's end.
+  .board-toolbar__spacer {
+    display: none;
+  }
+}
+
+@include phone {
+  // On phones the strip bleeds to the screen edges so it scrolls under the gutter.
+  .board-toolbar__row {
+    margin-inline: -$phone-gutter;
+    padding-inline: $phone-gutter;
+    scroll-padding-inline: $phone-gutter;
+  }
+}

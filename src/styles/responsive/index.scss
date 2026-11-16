@@ -1,0 +1,21 @@
+// Responsive layer: phone and tablet adjustments for the whole app.
+//
+// Imported once from `src/app/layout.tsx`. Desktop styles stay in each
+// component's own stylesheet; this layer only adds media query overrides, so
+// it can be read (and removed) in one place. Every partial hooks onto stable
+// semantic class names (`app-shell`, `board-shell__*`, `board-toolbar__row`,
+// ...) instead of Tailwind utilities.
+//
+//   _breakpoints  shared numbers and mixins (phone, tablet-down, touch)
+//   _shell        top bar, off canvas sidebar, page height
+//   _board        board title, tabs, toolbar, table gutters
+//   _views        Calendar, Gantt and Kanban
+//   _overlays     drawers, modals, menus and touch targets
+//
+// The phone tab bar has its own stylesheet next to its component
+// (`src/layout/mobile-bottom-nav.scss`).
+
+@use "shell";
+@use "board";
+@use "views";
+@use "overlays";

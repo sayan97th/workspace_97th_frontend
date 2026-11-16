@@ -154,7 +154,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
   );
 
   return (
-    <div className="flex min-h-10 items-center gap-2">
+    <div className="board-header flex min-h-10 items-center gap-2">
       <h1 className="flex min-w-0 font-heading text-board-title text-shell-text">
         <button
           ref={info_button_ref}
@@ -337,7 +337,7 @@ const BoardHeader: React.FC<BoardHeaderProps> = ({
           ref={options_button_ref}
           type="button"
           onClick={() => options_menu && setIsOptionsOpen((open) => !open)}
-          className={`${icon_button_class} ml-1 hidden sm:flex ${is_options_open ? "bg-shell-hover" : ""}`}
+          className={`${icon_button_class} ml-1 flex ${is_options_open ? "bg-shell-hover" : ""}`}
           aria-label="More board actions"
           aria-expanded={is_options_open}
         >

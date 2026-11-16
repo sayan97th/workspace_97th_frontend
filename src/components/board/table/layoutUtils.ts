@@ -41,6 +41,21 @@ export function computeNameColWidth(names: string[]): number {
   return Math.min(420, Math.max(280, Math.round(longest * 7.2) + 96));
 }
 
+/**
+ * Item / Subitem column width on a phone. The desktop width (auto sized from
+ * 280px, or the user's own resize) would freeze almost the whole 412px screen
+ * together with the checkbox and comment cells, leaving no room for a single
+ * value column. Phones cap it, like monday.com's mobile web, so values show
+ * next to the name and the rest scroll in. Render only: the saved desktop
+ * width is never overwritten.
+ */
+export const PHONE_NAME_COL_WIDTH = 150;
+export const PHONE_SUB_NAME_COL_WIDTH = 130;
+
+export function fitNameColWidth(width: number, is_phone: boolean, phone_width: number = PHONE_NAME_COL_WIDTH): number {
+  return is_phone ? Math.min(width, phone_width) : width;
+}
+
 export function computeSubNameColWidth(names: string[]): number {
   const longest = names.reduce((a, n) => Math.max(a, (n || "").length), 0);
   return Math.min(340, Math.max(150, Math.round(longest * 6.9) + 53));

@@ -3,7 +3,9 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
-import { computeSubNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
+import { PHONE_SUB_NAME_COL_WIDTH, computeSubNameColWidth, fitNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { PHONE_QUERY } from "@/lib/breakpoints";
 import { applySort } from "../sortUtils";
 import ItemRow from "../rows/ItemRow";
 import SubitemHeaderRow from "../rows/SubitemHeaderRow";
@@ -62,7 +64,8 @@ export default function GroupSection({
   is_reordering = false,
 }: GroupSectionProps) {
   const is_collapsed = !!state.collapsed_groups[group.key];
-  const min_width = mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
+  const is_phone = useMediaQuery(PHONE_QUERY);
+  const min_width =mainMinWidth(name_col_width, group.base_columns, group.custom_columns);
   const sorted_items = applySort(group.items, state.sort, `main:${group.key}`, group.base_columns.concat(group.custom_columns));
   const is_items_loaded = group.is_items_loaded !== false;
 
@@ -176,7 +179,11 @@ export default function GroupSection({
                 // until then this still auto-sizes per item from its own longest subitem
                 // name, exactly as before (see `BoardTable`'s `name_col_width` for the
                 // Item column's identical fallback).
-                const sub_name_col_width = state.sub_column_width ?? computeSubNameColWidth(item.subs.map((s) => s.name));
+                const sub_name_col_width = fitNameColWidth(
+                  state.sub_column_width ?? computeSubNameColWidth(item.subs.map((s) => s.name)),
+                  is_phone,
+                  PHONE_SUB_NAME_COL_WIDTH
+                );
                 const sub_min_width = subMinWidth(min_width, sub_name_col_width, group.sub_base_columns, group.sub_custom_columns);
                 const sorted_subs = applySort(item.subs, state.sort, `sub:${item.id}`, group.sub_base_columns.concat(group.sub_custom_columns));
 

@@ -21,7 +21,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isAuthenticated, isLoading } = useAuth();
-  const { isExpanded } = useSidebar();
+  const { isExpanded, closeMobileSidebar } = useSidebar();
   const router = useRouter();
   const pathname = usePathname();
   const is_embedded = useIsEmbedded();
@@ -32,6 +32,11 @@ export default function AdminLayout({
       router.replace(`/signin?callbackUrl=${encodeURIComponent(pathname)}`);
     }
   }, [isLoading, isAuthenticated, pathname, router]);
+
+  // On phones and tablets the sidebar is an overlay drawer: once a link inside it opens a page, get it out of the way.
+  useEffect(() => {
+    closeMobileSidebar();
+  }, [pathname, closeMobileSidebar]);
 
   // Track the last workspace page so Administration's "Back to workspace" returns to it.
   useEffect(() => {
@@ -64,7 +69,7 @@ export default function AdminLayout({
     <BrandingProvider>
     <WorkspaceProvider>
       <ToastProvider>
-        <div className="flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
+        <div className="app-shell flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
           <AppTopBar />
           <ImpersonationBanner />
           <OrganizationAnnouncementBanner />
@@ -79,7 +84,7 @@ export default function AdminLayout({
                 and the corner rounds once the panel is collapsed. Account wide settings pages (Administration,
                 Organization) have no workspace sidebar and take the full width. */}
             <main
-              className={`shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto bg-shell-bg ${
+              className={`app-shell__main shell-scrollbar h-full min-w-0 flex-1 overflow-y-auto bg-shell-bg ${
                 is_sidebarless
                   ? ""
                   : `border-t border-sidebar-edge lg:border-l ${isExpanded ? "" : "lg:rounded-tl-2xl"}`

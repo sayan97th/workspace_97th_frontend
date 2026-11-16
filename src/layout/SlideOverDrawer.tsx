@@ -62,7 +62,7 @@ const SlideOverDrawer: React.FC<SlideOverDrawerProps> = ({
         aria-modal="true"
         aria-label={aria_label}
         style={{ width: `min(${width}px, 100vw)` }}
-        className={`shell-scrollbar absolute right-0 top-0 flex h-screen overflow-hidden border-l border-shell-border bg-shell-panel text-shell-text transition-transform duration-300 ease-out ${
+        className={`slide-over-drawer shell-scrollbar absolute right-0 top-0 flex h-screen overflow-hidden border-l border-shell-border bg-shell-panel text-shell-text transition-transform duration-300 ease-out ${
           orientation === "horizontal" ? "flex-row" : "flex-col"
         } ${
           is_open

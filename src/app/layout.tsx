@@ -1,7 +1,9 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope, Roboto_Mono } from 'next/font/google';
 import './globals.css';
 import "flatpickr/dist/flatpickr.css";
+// Phone and tablet layer, loaded after every component stylesheet it adjusts. See `src/styles/responsive/index.scss`.
+import "@/styles/responsive/index.scss";
 import { SidebarProvider } from '@/context/SidebarContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -16,6 +18,15 @@ export const metadata: Metadata = {
     default: APP_NAME,
     template: `%s | ${APP_NAME}`,
   },
+};
+
+// Phones lay the page out at device width. `viewport-fit=cover` lets the
+// bottom tab bar (`MobileBottomNav`) pad itself with `env(safe-area-inset-*)`
+// instead of leaving a dead strip above the gesture bar. Pinch zoom stays on.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 // Brand typeface, the same Manrope 97thfloor.com uses. It is a variable font

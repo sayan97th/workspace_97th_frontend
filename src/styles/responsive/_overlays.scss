@@ -1,0 +1,43 @@
+@use "breakpoints" as *;
+
+// Drawers, modals and floating menus on small screens. Most dialogs size
+// themselves with `min(<width>px, 100vw)` already; these rules are the safety
+// net for the ones with a fixed pixel width.
+
+@include phone {
+  // Notifications and Update feed drawers: full visible height (not the
+  // URL bar inclusive `100vh`) and the full width of the phone.
+  .slide-over-drawer {
+    height: 100dvh;
+    border-left: 0;
+  }
+
+  // Shared `Modal` (`components/ui/modal`): keep a small margin on every side.
+  .modal > :last-child:not(.fixed) {
+    max-width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+    overflow-y: auto;
+    border-radius: 16px;
+  }
+
+  // Any dialog: never wider than the screen.
+  [role="dialog"] {
+    max-width: 100vw;
+  }
+
+  // Menus and pickers that portal to <body>: keep them on screen.
+  [role="menu"],
+  [role="listbox"] {
+    max-width: calc(100vw - 16px);
+  }
+}
+
+@include touch {
+  // Comfortable tap targets on items inside menus (Material recommends 48px,
+  // 40px keeps monday's dense look while being easy to hit).
+  [role="menu"] [role="menuitem"],
+  [role="menu"] [role="menuitemradio"],
+  [role="menu"] [role="menuitemcheckbox"] {
+    min-height: 40px;
+  }
+}

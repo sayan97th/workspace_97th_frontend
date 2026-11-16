@@ -35,17 +35,17 @@ export type BoardShellProps = {
  * scrollable body region. Reused by every board view (Client Hub and beyond).
  */
 const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectionBar, children, is_header_collapsed = false, fill_body = false }) => (
-  <div className="relative flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
+  <div className="board-shell relative flex h-full min-w-0 flex-col overflow-hidden bg-shell-bg text-shell-text">
     {/* `board-chrome-theme` repaints the title row, tabs and toolbar with the monday palette (see `monday-palette.css`). */}
     <div className="board-chrome-theme flex-none">
-      <div className={is_header_collapsed ? "px-6 pt-2" : "px-6 pt-4"}>
+      <div className={`board-shell__head ${is_header_collapsed ? "px-6 pt-2" : "px-6 pt-4"}`}>
         {!is_header_collapsed && <BoardHeader {...header} />}
         <div className={is_header_collapsed ? undefined : "mt-2"}>
           <BoardViewTabs {...tabs} />
         </div>
       </div>
 
-      {(toolbar || !fill_body) && <div className="px-6 py-3">{toolbar}</div>}
+      {(toolbar || !fill_body) && <div className="board-shell__toolbar px-6 py-3">{toolbar}</div>}
     </div>
 
     {/*
@@ -61,13 +61,13 @@ const BoardShell: React.FC<BoardShellProps> = ({ header, tabs, toolbar, selectio
     {fill_body ? (
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     ) : (
-      <div className="shell-scrollbar min-h-0 flex-1 overflow-auto pb-20">
-        <div className="px-6 pt-0.5">{children}</div>
+      <div className="board-shell__scroll shell-scrollbar min-h-0 flex-1 overflow-auto pb-20">
+        <div className="board-shell__body px-6 pt-0.5">{children}</div>
       </div>
     )}
 
     {selectionBar && (
-      <div className="pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-6">
+      <div className="board-shell__selection pointer-events-none absolute inset-x-0 bottom-6 z-40 flex justify-center px-6">
         <div className="pointer-events-auto">{selectionBar}</div>
       </div>
     )}
