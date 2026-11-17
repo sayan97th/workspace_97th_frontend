@@ -6,7 +6,7 @@ import { AttachIcon, FormatToggleIcon, ReactSmileyIcon } from "@/icons/drawer-ic
 import { BellIcon, MentionIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import { useModKeyLabel } from "@/hooks/useModKeyLabel";
-import CommentAttachmentChip from "./CommentAttachmentChip";
+import ComposerAttachmentTray from "./media/ComposerAttachmentTray";
 import { COMMENT_ATTACHMENT_ACCEPT } from "./drawerAttachments";
 import EmojiPalette from "./EmojiPalette";
 import MentionPicker from "./MentionPicker";
@@ -318,13 +318,7 @@ const CommentEditForm: React.FC<CommentEditFormProps> = ({
         />
       )}
 
-      {attachments.length > 0 && onRemoveAttachment && (
-        <div className="mt-2.5 flex flex-wrap gap-2">
-          {attachments.map((attachment) => (
-            <CommentAttachmentChip key={attachment.id} attachment={attachment} onRemove={onRemoveAttachment} />
-          ))}
-        </div>
-      )}
+      {onRemoveAttachment && <ComposerAttachmentTray attachments={attachments} onRemove={onRemoveAttachment} />}
     </div>
   );
 };

@@ -1,0 +1,158 @@
+// Theme for `VideoPlayer` (media-chrome). Every control reads the
+// `--media-*` custom properties, so the whole look lives here: a dark,
+// rounded frame, a soft gradient under the control bar, the brand color on
+// the progress bar and a large round play button in the middle, close to
+// Loom's and monday's own players.
+
+$player-radius: 12px;
+
+.video-player {
+  --media-primary-color: #ffffff;
+  --media-secondary-color: transparent;
+  --media-icon-color: #ffffff;
+  --media-control-background: transparent;
+  --media-control-hover-background: rgba(255, 255, 255, 0.14);
+  --media-control-padding: 6px;
+  --media-control-height: 22px;
+  --media-button-icon-width: 20px;
+  --media-button-icon-height: 20px;
+  --media-font-family: var(--font-outfit, inherit);
+  --media-font-size: 12.5px;
+  --media-font-weight: 600;
+  --media-text-color: #ffffff;
+  --media-range-bar-color: var(--color-brand-500, #0073ea);
+  --media-range-track-background: rgba(255, 255, 255, 0.28);
+  --media-range-track-height: 4px;
+  --media-range-track-border-radius: 999px;
+  --media-range-thumb-background: #ffffff;
+  --media-range-thumb-width: 13px;
+  --media-range-thumb-height: 13px;
+  --media-range-thumb-box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  --media-range-padding: 6px;
+  --media-time-range-buffered-color: rgba(255, 255, 255, 0.42);
+  --media-preview-time-background: rgba(15, 17, 23, 0.86);
+  --media-preview-time-border-radius: 6px;
+  --media-loading-indicator-icon-height: 44px;
+  --media-tooltip-background: rgba(15, 17, 23, 0.92);
+  --media-tooltip-border-radius: 6px;
+  --media-menu-background: rgba(15, 17, 23, 0.94);
+  --media-menu-border-radius: 10px;
+
+  position: relative;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: $player-radius;
+  background: #0f1117;
+  box-shadow: 0 0 0 1px rgba(15, 17, 23, 0.08);
+  isolation: isolate;
+  container-type: inline-size;
+
+  video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #0f1117;
+  }
+
+  // Inline cards stay 16:9 but never taller than a comfortable read inside the drawer.
+  &--inline {
+    aspect-ratio: 16 / 9;
+    max-height: 380px;
+  }
+
+  &--theater {
+    width: min(100%, 1280px);
+    max-height: calc(100vh - 160px);
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+  }
+
+  // Full screen drops the frame so the video uses the whole display.
+  &:fullscreen {
+    border-radius: 0;
+    max-height: none;
+  }
+}
+
+.video-player__bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 26px 8px 6px;
+  background: linear-gradient(to top, rgba(10, 11, 16, 0.78), rgba(10, 11, 16, 0));
+}
+
+.video-player__button {
+  border-radius: 8px;
+  transition: background-color 120ms ease;
+}
+
+.video-player__range {
+  flex: 1;
+  min-width: 60px;
+}
+
+.video-player__time {
+  padding-inline: 6px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.video-player__volume {
+  width: 72px;
+}
+
+.video-player__rate {
+  min-width: 42px;
+  font-weight: 700;
+}
+
+// Big round play button in the middle while paused, it fades away once playback starts.
+.video-player__big-play {
+  --media-control-background: rgba(15, 17, 23, 0.55);
+  --media-control-hover-background: var(--color-brand-500, #0073ea);
+  --media-button-icon-width: 30px;
+  --media-button-icon-height: 30px;
+  --media-control-padding: 18px;
+
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.32);
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease,
+    opacity 160ms ease;
+
+  &:hover {
+    transform: scale(1.06);
+  }
+}
+
+.video-player[mediapaused] .video-player__big-play {
+  opacity: 1;
+}
+
+.video-player:not([mediapaused]) .video-player__big-play {
+  opacity: 0;
+  pointer-events: none;
+}
+
+// Narrow drawers: volume slider and Picture in Picture go first.
+@container (max-width: 420px) {
+  .video-player__volume,
+  .video-player__pip {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .video-player__volume,
+  .video-player__pip {
+    display: none;
+  }
+}

@@ -1,11 +1,15 @@
 "use client";
-import React, { useEffect, useId, useMemo, useRef } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import DOMPurify from "dompurify";
 import { PersonCardPopover, useHoverCardController, type HoverCardPerson } from "@/components/people/PersonHoverCard";
 import { MENTION_HIGHLIGHT_CLASS, MENTION_PATTERN } from "./mentionHighlight";
 import { CODE_COPIED_LABEL, CODE_COPY_LABEL, renderRichTextMarkdown } from "./markdown/renderRichTextMarkdown";
 import { renderMermaidDiagrams } from "./markdown/renderMermaidDiagrams";
+import { useCommentMedia } from "./media/CommentMediaContext";
+import { toViewerFile } from "./media/threadMedia";
+import type { CellFile } from "../table/types";
 import "katex/dist/katex.min.css";
 import "./rich-text.css";
 import "./markdown/rich-text-markdown.scss";
@@ -26,6 +30,9 @@ export type RichTextContentProps = {
 };
 
 const IMG_TAG_PATTERN = /<img[^>]*src="([^"]*)"[^>]*>/g;
+
+// PhotoSwipe only downloads the first time an image in a body is opened outside an update thread.
+const FileImageViewer = dynamic(() => import("../table/menus/FileImageViewer"), { ssr: false });
 
 /** A link to another item of a board, as the composer's `#` picker writes it: `/boards/{board_id}/pulses/{item_id}`. */
 const ITEM_REFERENCE_LINK_PATTERN = /<a href="(\/boards\/\d+\/pulses\/\d+)"/g;
@@ -94,6 +101,9 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
   const router = useRouter();
   const { target, show, hide, keepOpen, dismiss } = useHoverCardController();
   const container_ref = useRef<HTMLDivElement>(null);
+  // Inside an update thread images open the thread's shared lightbox, anywhere else (a doc, the feed) this body's own.
+  const thread_media = useCommentMedia();
+  const [local_viewer, setLocalViewer] = useState<{ files: CellFile[]; index: number } | null>(null);
   const footnote_prefix = `rt${useId()}`;
   const parsed_html = useMemo(() => renderRichTextMarkdown(body, footnote_prefix), [body, footnote_prefix]);
 
@@ -151,10 +161,30 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
     window.setTimeout(() => target_el.removeAttribute("data-rt-flash"), COPIED_RESET_MS);
   };
 
+  /** Opens an image of this body full screen, swiping through the rest of the thread's (or this body's) images. */
+  const openImage = (image_el: HTMLImageElement) => {
+    const url = image_el.getAttribute("src") ?? image_el.src;
+    if (thread_media) {
+      thread_media.openImage(url, image_el.alt || undefined);
+      return;
+    }
+    const body_images = Array.from(container_ref.current?.querySelectorAll<HTMLImageElement>("img") ?? []);
+    const files = body_images.map((image, index) =>
+      toViewerFile({ key: `${index}-${image.src}`, url: image.getAttribute("src") ?? image.src, file_name: image.alt || "Image" })
+    );
+    setLocalViewer({ files, index: Math.max(0, body_images.indexOf(image_el)) });
+  };
+
   // An item reference opens through the router (a plain modified click still opens a new tab).
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.defaultPrevented || event.button !== 0) return;
     const event_target = event.target as HTMLElement;
+    const image_el = event_target.closest<HTMLImageElement>("img");
+    if (image_el && !image_el.closest("a") && !image_el.closest(".rt-mermaid, .katex")) {
+      event.preventDefault();
+      openImage(image_el);
+      return;
+    }
     const copy_button = event_target.closest<HTMLButtonElement>("button[data-rt-copy]");
     if (copy_button) {
       event.preventDefault();
@@ -191,6 +221,7 @@ const RichTextContent: React.FC<RichTextContentProps> = ({ html: body, className
         </div>
       )}
       <PersonCardPopover target={target} onEnter={keepOpen} onLeave={hide} onDismiss={dismiss} />
+      {local_viewer && <FileImageViewer images={local_viewer.files} index={local_viewer.index} onClose={() => setLocalViewer(null)} />}
     </div>
   );
 };

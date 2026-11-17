@@ -787,7 +787,17 @@ $blocks: "p, ul, ol, dl, blockquote, pre, table, details, figure, h1, h2, h3, h4
     height: 140px;
     margin: 0;
     object-fit: cover;
+    transition: filter 160ms ease;
+
+    &:hover {
+      filter: brightness(0.94);
+    }
   }
+}
+
+// Every image of a posted body opens the lightbox (see `RichTextContent`), the cursor says so.
+#{$content} img:not(.katex img) {
+  cursor: zoom-in;
 }
 
 // The copy button stays visible where there's no hover to reveal it.

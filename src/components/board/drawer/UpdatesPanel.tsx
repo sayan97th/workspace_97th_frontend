@@ -11,6 +11,9 @@ import { commentAuthors, countActiveCommentFilters, countResolvedComments, defau
 import CommentPresenceIndicator from "./CommentPresenceIndicator";
 import CommentThread from "./CommentThread";
 import ScheduledCommentsPanel from "./ScheduledCommentsPanel";
+import { CommentMediaProvider } from "./media/CommentMediaContext";
+import { UpdatesMediaStrip } from "./media/UpdatesMediaGallery";
+import { collectThreadMedia } from "./media/threadMedia";
 import type { CommentFeedApi, DrawerActivityEntry, DrawerComment } from "./types";
 import { useCommentSortOrder } from "./useCommentSortOrder";
 import type { CommentPresenceUser } from "./useCommentPresence";
@@ -73,6 +76,8 @@ function UpdatesPanel({
     [drawer.comments, filters, drawer.current_user.id]
   );
   const authors = useMemo(() => commentAuthors(drawer.comments), [drawer.comments]);
+  // Every image and video of the thread, so the lightbox swipes through all of them and the gallery lists them.
+  const thread_media = useMemo(() => collectThreadMedia(drawer.comments), [drawer.comments]);
   const resolved_count = useMemo(() => countResolvedComments(drawer.comments), [drawer.comments]);
   // The viewer's sort choice is remembered in this browser, per kind of thread.
   const { sort_order, setSortOrder } = useCommentSortOrder(sort_storage_key, default_sort_order);
@@ -213,6 +218,7 @@ function UpdatesPanel({
         attachments={drawer.composer_attachments}
         onAddFiles={drawer.addComposerAttachments}
         onRemoveAttachment={drawer.removeComposerAttachment}
+        upload_progress={drawer.composer_upload_progress ?? null}
         reference_items={drawer.reference_items_with_links}
         schedule_at={collaboration.composer_schedule_at}
         onScheduleChange={is_api_backed ? collaboration.setComposerScheduleAt : undefined}
@@ -249,6 +255,7 @@ function UpdatesPanel({
 
   return (
     <ComposerDraftProvider value={drawer.draft_context}>
+    <CommentMediaProvider items={thread_media}>
     <div className="board-drawer__panel">
       {!composer_scrolls_with_feed && composer_area}
 
@@ -284,6 +291,8 @@ function UpdatesPanel({
           <div className="board-drawer__status-text">No updates match these filters.</div>
         )}
 
+        {!is_filtering && <UpdatesMediaStrip />}
+
         {pinned_comments.length > 0 && (
           <div className="mb-2">
             <div className="board-drawer__section-label">
@@ -316,6 +325,7 @@ function UpdatesPanel({
       </div>
       </CommentCollaborationProvider>
     </div>
+    </CommentMediaProvider>
     </ComposerDraftProvider>
   );
 }

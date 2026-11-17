@@ -10,7 +10,7 @@ import type { AnchoredMenuItem } from "@/components/ui/dropdown/AnchoredMenu";
 import { PinIcon } from "@/icons/board-icons";
 import { QuoteIcon, ReactSmileyIcon, ReplyIcon, SeenIcon, ViewsIcon } from "@/icons/drawer-icons";
 import { BookmarkIcon, LinkIcon } from "@/icons/workspace-icons";
-import CommentAttachmentChip from "./CommentAttachmentChip";
+import CommentMediaAttachments from "./media/CommentMediaAttachments";
 import { useCommentCollaborationContext } from "./CommentCollaborationContext";
 import { markdownToPlainText } from "./commentFilters";
 import CommentComposer from "./CommentComposer";
@@ -583,13 +583,7 @@ const CommentThread: React.FC<CommentThreadProps> = ({
         )}
 
         {/* While editing, the form lists the files instead, with a remove button each. */}
-        {!is_editing_comment && comment.attachments.length > 0 && (
-          <div className="update-card__attachments">
-            {comment.attachments.map((attachment) => (
-              <CommentAttachmentChip key={attachment.id} attachment={attachment} />
-            ))}
-          </div>
-        )}
+        {!is_editing_comment && comment.attachments.length > 0 && <CommentMediaAttachments attachments={comment.attachments} comment={comment} />}
 
         <ReactionsRow
           entry={comment}

@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { classifyAttachment } from "./drawerAttachments";
+import { createDraftAttachment, releaseDraftAttachment } from "./drawerAttachments";
 import type { DrawerAttachment } from "./types";
 
 type EditAttachmentDraft = { attachment: DrawerAttachment; file: File };
@@ -20,6 +20,9 @@ export type CommentEditAttachments = {
   remove: (attachment_id: string) => void;
   reset: () => void;
 };
+
+/** Long enough for an edited update's upload to finish and swap the previews for the uploaded files. */
+const DRAFT_PREVIEW_RELEASE_DELAY_MS = 120_000;
 
 const createDraftId = () => `draft-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -53,20 +56,25 @@ export function useCommentEditAttachments(): CommentEditAttachments {
       },
       add: (files) => {
         if (files.length === 0) return;
-        const additions = files.map((file) => ({
-          attachment: { id: createDraftId(), file_name: file.name, ...classifyAttachment(file.name) },
-          file,
-        }));
+        const additions = files.map((file) => ({ attachment: createDraftAttachment(createDraftId(), file), file }));
         setDrafts((current) => [...current, ...additions]);
       },
       remove: (attachment_id) => {
         setKeptAttachments((current) => current.filter((attachment) => attachment.id !== attachment_id));
-        setDrafts((current) => current.filter((draft) => draft.attachment.id !== attachment_id));
+        setDrafts((current) => {
+          current.filter((draft) => draft.attachment.id === attachment_id).forEach((draft) => releaseDraftAttachment(draft.attachment));
+          return current.filter((draft) => draft.attachment.id !== attachment_id);
+        });
       },
       reset: () => {
         setOriginalAttachments([]);
         setKeptAttachments([]);
-        setDrafts([]);
+        setDrafts((current) => {
+          // Save shows the edited update optimistically with these previews until the server answers, so they are freed a bit later.
+          const released = current.map((draft) => draft.attachment);
+          if (released.length > 0) window.setTimeout(() => released.forEach(releaseDraftAttachment), DRAFT_PREVIEW_RELEASE_DELAY_MS);
+          return [];
+        });
       },
     };
   }, [original_attachments, kept_attachments, drafts]);

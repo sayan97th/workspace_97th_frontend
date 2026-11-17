@@ -1,0 +1,1005 @@
+// Loom style recorder: setup dialog, floating control bar, camera bubble,
+// countdown, Picture in Picture window and the review dialog. Colors come
+// from the drawer's `--bd-*` tokens (light and dark mode) with the record
+// red kept constant, it is the universal "you are being recorded" signal.
+
+$record-red: #e2445c;
+$record-red-hover: #c9354c;
+$pill-dark: rgba(22, 24, 33, 0.94);
+$ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+@keyframes screen-recorder-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba($record-red, 0.55);
+  }
+  60% {
+    box-shadow: 0 0 0 6px rgba($record-red, 0);
+  }
+}
+
+@keyframes screen-recorder-count {
+  0% {
+    opacity: 0;
+    transform: scale(1.6);
+  }
+  25% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes screen-recorder-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes screen-recorder-dock-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+// Live camera, mirrored like a selfie view.
+.screen-recorder__camera-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  background: #1b1d26;
+}
+
+// Microphone meter: five rounded bars scaled by `--level` (0 to 1), written per frame by JS.
+.screen-recorder__meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 18px;
+  flex: none;
+}
+
+.screen-recorder__meter-bar {
+  --level: 0;
+
+  width: 3px;
+  height: 100%;
+  border-radius: 999px;
+  background: #00c875;
+  transform: scaleY(calc(0.18 + var(--level) * 0.82));
+  transform-origin: center;
+  transition: transform 60ms linear;
+}
+
+// ---------------------------------------------------------------------------
+// Setup dialog
+// ---------------------------------------------------------------------------
+
+.screen-recorder-setup {
+  width: 480px;
+  padding: 22px 22px 18px;
+}
+
+.screen-recorder-setup__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.screen-recorder-setup__badge {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba($record-red, 0.1);
+}
+
+.screen-recorder-setup__badge-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: $record-red;
+  box-shadow: 0 0 0 4px rgba($record-red, 0.18);
+}
+
+.screen-recorder-setup__title,
+.screen-recorder-review__title {
+  margin: 0;
+  font-family: var(--font-heading, inherit);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bd-text);
+}
+
+.screen-recorder-setup__subtitle,
+.screen-recorder-review__subtitle {
+  margin: 3px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--bd-text-secondary);
+}
+
+.screen-recorder-setup__close {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -6px 0 auto;
+  border-radius: 8px;
+  color: var(--bd-text-secondary);
+  transition: background-color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--bd-hover);
+    color: var(--bd-text);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+  }
+}
+
+.screen-recorder-setup__modes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.screen-recorder-setup__mode {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--bd-border);
+  border-radius: 12px;
+  text-align: left;
+  background: var(--bd-surface);
+  transition:
+    border-color 140ms ease,
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--bd-border-strong);
+    background: var(--bd-surface-alt);
+  }
+
+  &[data-active] {
+    border-color: var(--bd-accent);
+    background: var(--bd-accent-soft);
+    box-shadow: 0 0 0 3px var(--bd-focus-ring);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--bd-accent);
+    outline-offset: 2px;
+  }
+}
+
+.screen-recorder-setup__mode-icon {
+  display: flex;
+  margin-bottom: 6px;
+  color: var(--bd-text-secondary);
+
+  [data-active] & {
+    color: var(--bd-accent);
+  }
+}
+
+.screen-recorder-setup__mode-label {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bd-text);
+}
+
+.screen-recorder-setup__mode-caption {
+  font-size: 11.5px;
+  color: var(--bd-text-faint);
+}
+
+// Preview stage: a dark "screen" with the camera bubble, or the 16:9 camera.
+.screen-recorder-setup__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 210px;
+  margin-bottom: 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: radial-gradient(120% 140% at 0% 0%, #2a2f45 0%, #161821 70%);
+}
+
+.screen-recorder-setup__stage-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+
+  &--behind {
+    position: absolute;
+    inset: 0;
+    justify-content: center;
+  }
+}
+
+// A sketch of a window behind the bubble, hints that the screen goes there.
+.screen-recorder-setup__fake-window {
+  width: 74%;
+  height: 72%;
+  border-radius: 10px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.1)) 14px 14px / 34% 8px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06)) 14px 34px / 70% 6px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06)) 14px 48px / 58% 6px no-repeat,
+    rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.screen-recorder-setup__preview {
+  position: relative;
+  overflow: hidden;
+  background: #1b1d26;
+
+  &--screen_camera {
+    position: absolute;
+    bottom: 16px;
+    left: 18px;
+    width: 112px;
+    height: 112px;
+    border-radius: 999px;
+    box-shadow:
+      0 0 0 3px rgba(255, 255, 255, 0.9),
+      0 10px 28px rgba(0, 0, 0, 0.45);
+  }
+
+  &--camera {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.screen-recorder-setup__preview-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.screen-recorder-setup__devices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.screen-recorder-setup__device {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--bd-border);
+  border-radius: 10px;
+  background: var(--bd-surface);
+}
+
+.screen-recorder-setup__device-icon {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--bd-text-secondary);
+  background: var(--bd-surface-alt);
+}
+
+.screen-recorder-setup__device-toggle {
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover:not(:disabled) {
+    background: var(--bd-hover-strong);
+  }
+
+  &[data-off] {
+    color: $record-red;
+    background: rgba($record-red, 0.1);
+  }
+}
+
+.screen-recorder-setup__select {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--bd-text);
+  background: transparent;
+  text-overflow: ellipsis;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.screen-recorder-setup__muted {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--bd-text-faint);
+}
+
+.screen-recorder-setup__tip {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--bd-text-secondary);
+  background: var(--bd-surface-alt);
+}
+
+.screen-recorder-setup__error {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--bd-danger);
+  background: var(--bd-danger-soft);
+}
+
+.screen-recorder-setup__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.screen-recorder-setup__limit {
+  font-size: 12px;
+  color: var(--bd-text-faint);
+}
+
+.screen-recorder-setup__start {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: $record-red;
+  box-shadow: 0 6px 16px rgba($record-red, 0.32);
+  transition:
+    background-color 140ms ease,
+    transform 140ms ease;
+
+  &:hover:not(:disabled) {
+    background: $record-red-hover;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 0.75;
+  }
+}
+
+.screen-recorder-setup__start-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+// ---------------------------------------------------------------------------
+// Controls (floating bar and Picture in Picture)
+// ---------------------------------------------------------------------------
+
+.screen-recorder__bar-dock {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 99995;
+  transform: translateX(-50%);
+  animation: screen-recorder-dock-in 220ms $ease-out;
+}
+
+.screen-recorder__controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffffff;
+  font-family: var(--font-outfit, inherit);
+
+  &--bar {
+    height: 52px;
+    padding: 0 8px 0 16px;
+    border-radius: 999px;
+    background: $pill-dark;
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.32),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    backdrop-filter: blur(12px);
+  }
+
+  &--pip {
+    justify-content: center;
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 10px;
+  }
+}
+
+.screen-recorder__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding-right: 6px;
+}
+
+.screen-recorder__status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: $record-red;
+  animation: screen-recorder-pulse 1.6s ease-out infinite;
+
+  [data-state="paused"] & {
+    background: #fdab3d;
+    animation: none;
+  }
+
+  [data-state="countdown"] &,
+  [data-state="processing"] & {
+    background: rgba(255, 255, 255, 0.6);
+    animation: none;
+  }
+}
+
+.screen-recorder__time {
+  min-width: 44px;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.screen-recorder__limit {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1b1d26;
+  background: #fdab3d;
+  white-space: nowrap;
+}
+
+.screen-recorder__controls-meter {
+  margin: 0 4px;
+}
+
+.screen-recorder__controls-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 6px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.screen-recorder__icon-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.88);
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+
+  &:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.14);
+  }
+
+  &--danger:hover {
+    color: #ff8a9b;
+    background: rgba($record-red, 0.18);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.7);
+    outline-offset: 1px;
+  }
+}
+
+.screen-recorder__finish {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  margin-left: 4px;
+  padding: 0 15px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: $record-red;
+  transition: background-color 120ms ease;
+
+  &:hover {
+    background: $record-red-hover;
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: 2px;
+  }
+}
+
+.screen-recorder__controls-question {
+  padding: 0 8px 0 2px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.screen-recorder__pill-button {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  &--danger {
+    background: $record-red;
+
+    &:hover {
+      background: $record-red-hover;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Camera bubble, camera stage and countdown (inside the page)
+// ---------------------------------------------------------------------------
+
+.screen-recorder__bubble {
+  position: fixed;
+  z-index: 99994;
+  overflow: hidden;
+  border-radius: 999px;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.95),
+    0 18px 44px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    width 200ms $ease-out,
+    height 200ms $ease-out;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &:hover .screen-recorder__bubble-size {
+    opacity: 1;
+  }
+}
+
+.screen-recorder__bubble-size {
+  position: absolute;
+  top: 14%;
+  right: 14%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: rgba(15, 17, 23, 0.7);
+  opacity: 0;
+  transition: opacity 140ms ease;
+
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
+.screen-recorder__stage {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 99993;
+  width: min(720px, calc(100vw - 48px));
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 18px;
+  transform: translate(-50%, calc(-50% - 36px));
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 30px 80px rgba(0, 0, 0, 0.5);
+}
+
+.screen-recorder__countdown {
+  position: fixed;
+  inset: 0;
+  z-index: 99996;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(9, 10, 14, 0.38);
+  pointer-events: none;
+}
+
+.screen-recorder__countdown-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 148px;
+  height: 148px;
+  border-radius: 999px;
+  font-family: var(--font-heading, inherit);
+  font-size: 76px;
+  font-weight: 800;
+  color: #ffffff;
+  background: rgba($record-red, 0.92);
+  box-shadow: 0 20px 60px rgba($record-red, 0.45);
+  animation: screen-recorder-count 1s $ease-out both;
+}
+
+// ---------------------------------------------------------------------------
+// Picture in Picture window
+// ---------------------------------------------------------------------------
+
+.screen-recorder-pip-body {
+  margin: 0;
+  overflow: hidden;
+  background: #161821;
+}
+
+.screen-recorder__pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  height: 100vh;
+  background: #161821;
+
+  &--camera {
+    justify-content: space-between;
+    padding-top: 14px;
+  }
+
+  .screen-recorder__controls--pip {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+}
+
+.screen-recorder__pip-bubble {
+  position: relative;
+  width: min(220px, 80vw);
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 999px;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.92);
+}
+
+.screen-recorder__pip-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+  font-weight: 800;
+  color: #ffffff;
+  background: rgba($record-red, 0.55);
+}
+
+// ---------------------------------------------------------------------------
+// Review dialog
+// ---------------------------------------------------------------------------
+
+.screen-recorder-review {
+  width: 720px;
+  padding: 22px;
+}
+
+.screen-recorder-review__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.screen-recorder-review__player {
+  margin-bottom: 16px;
+
+  .video-player--inline {
+    max-height: 420px;
+  }
+}
+
+.screen-recorder-review__processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  background: #161821;
+}
+
+.screen-recorder-review__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #ffffff;
+  border-radius: 999px;
+  animation: screen-recorder-spin 0.8s linear infinite;
+}
+
+.screen-recorder-review__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.screen-recorder-review__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--bd-text-secondary);
+}
+
+.screen-recorder-review__input {
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--bd-border-strong);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bd-text);
+  background: var(--bd-surface);
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+
+  &:focus {
+    border-color: var(--bd-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--bd-focus-ring);
+  }
+}
+
+.screen-recorder-review__meta {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bd-text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.screen-recorder-review__progress {
+  position: relative;
+  height: 28px;
+  margin-top: 14px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bd-surface-alt);
+
+  span {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--bd-accent-soft);
+    transition: width 200ms linear;
+  }
+
+  em {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 12px;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 700;
+    color: var(--bd-accent);
+  }
+}
+
+.screen-recorder-review__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.screen-recorder-review__secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.screen-recorder-review__ghost,
+.screen-recorder-review__danger,
+.screen-recorder-review__primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 120ms ease;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.screen-recorder-review__ghost {
+  color: var(--bd-text-secondary);
+
+  &:hover:not(:disabled) {
+    color: var(--bd-text);
+    background: var(--bd-hover);
+  }
+}
+
+.screen-recorder-review__danger {
+  color: #ffffff;
+  background: var(--bd-danger);
+
+  &:hover {
+    background: $record-red-hover;
+  }
+}
+
+.screen-recorder-review__primary {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font-weight: 700;
+  color: var(--bd-accent-text);
+  background: var(--bd-accent);
+  box-shadow: 0 6px 16px var(--bd-focus-ring);
+
+  &:hover:not(:disabled) {
+    background: var(--bd-accent-hover);
+  }
+}
+
+.screen-recorder-review__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 8px 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bd-danger);
+  background: var(--bd-danger-soft);
+
+  span {
+    flex: 1;
+    min-width: 200px;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Small screens
+// ---------------------------------------------------------------------------
+
+@media (max-width: 560px) {
+  .screen-recorder-setup,
+  .screen-recorder-review {
+    width: 100%;
+    padding: 18px 16px 16px;
+  }
+
+  .screen-recorder-setup__modes {
+    grid-template-columns: 1fr;
+  }
+
+  .screen-recorder-setup__mode {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .screen-recorder-setup__mode-icon {
+    margin-bottom: 0;
+  }
+
+  .screen-recorder-setup__mode-caption {
+    margin-left: auto;
+  }
+
+  .screen-recorder__bar-dock {
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .screen-recorder__controls--bar {
+    padding-left: 12px;
+  }
+
+  .screen-recorder__controls-meter {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-recorder__status-dot,
+  .screen-recorder__countdown-number,
+  .screen-recorder__bar-dock {
+    animation: none;
+  }
+}

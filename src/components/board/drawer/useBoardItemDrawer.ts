@@ -8,7 +8,7 @@ import { boardItemAttachmentsService } from "@/services/board-item-attachments.s
 import { peopleService } from "@/services/people.service";
 import type { BoardPersonOption } from "../toolbar/types";
 import { mapAttachmentDto, mapCommentDtoToDrawerComment, mapCommentDtoToDrawerReply, mapItemAttachmentDto, mapReactionDto, mapRevisionDto, mapSeenByDto } from "./commentMapping";
-import { classifyAttachment } from "./drawerAttachments";
+import { attachmentRejectionReason, classifyAttachment, createDraftAttachment, releaseDraftAttachment } from "./drawerAttachments";
 import { flipLike, updateLikeTarget, withServerLikes } from "./likeToggle";
 import { buildMentionMatches, mentionOptionUserIds, type MentionOption, type MentionTeam } from "./mentionOptions";
 import { useCommentCollaboration } from "./useCommentCollaboration";
@@ -90,6 +90,13 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const [composer_text, setComposerText] = useState("");
   const [composer_attachment_drafts, setComposerAttachmentDrafts] = useState<ComposerAttachmentDraft[]>([]);
+  const [composer_upload_progress, setComposerUploadProgress] = useState<number | null>(null);
+  /** Empties the composer's file tray, freeing the local previews of its images and videos. */
+  const clearComposerAttachments = () =>
+    setComposerAttachmentDrafts((current) => {
+      current.forEach((draft) => releaseDraftAttachment(draft.attachment));
+      return [];
+    });
   const [reply_text_by_comment, setReplyTextByComment] = useState<Record<string, string>>({});
   /** Ids of people picked via `@mention` for the in-progress composer/reply draft, keyed the same way as `DrawerComposerTarget`. */
   const [mention_ids_by_target, setMentionIdsByTarget] = useState<Record<string, string[]>>({});
@@ -167,7 +174,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     setOpenRow(row);
     setActiveTab("updates");
     setComposerText("");
-    setComposerAttachmentDrafts([]);
+    clearComposerAttachments();
     setMentionTarget(null);
     setNotifyTarget(null);
     setEmojiPaletteTarget(null);
@@ -297,6 +304,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     if (!open_row_id) return;
     const body = composer_text.trim();
     if (isRichTextEmpty(body) && composer_attachment_drafts.length === 0) return;
+    // One upload at a time, a second click while a recording uploads must not post it twice.
+    if (composer_upload_progress !== null) return;
 
     if (is_api_backed) {
       const item_id = Number(open_row_id);
@@ -305,26 +314,33 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       const files = composer_attachment_drafts.map((draft) => draft.file);
       const { composer_schedule_at } = collaboration;
       setCommentsError(null);
+      if (files.length > 0) setComposerUploadProgress(0);
       boardCommentsService
-        .postComment(board_id, item_id, {
-          body,
-          mentioned_user_ids,
-          notified_user_ids,
-          attachments: files,
-          scheduled_at: composer_schedule_at ?? undefined,
-        })
+        .postComment(
+          board_id,
+          item_id,
+          {
+            body,
+            mentioned_user_ids,
+            notified_user_ids,
+            attachments: files,
+            scheduled_at: composer_schedule_at ?? undefined,
+          },
+          ({ loaded, total }) => setComposerUploadProgress(total > 0 ? Math.min(loaded / total, 1) : 0)
+        )
         .then((dto) => {
           // A scheduled update waits in its own list until it goes out, it is not part of the thread yet.
           if (dto.scheduled_at) addScheduledComment(dto);
           else updateComments(open_row_id, (comments) => [mapCommentDtoToDrawerComment(dto), ...comments]);
           setComposerText("");
-          setComposerAttachmentDrafts([]);
+          clearComposerAttachments();
           setMentionIdsByTarget((current) => ({ ...current, composer: [] }));
           setNotifiedIdsByTarget((current) => ({ ...current, composer: [] }));
           resetComposerExtras();
           drafts.clearDraft("composer");
         })
-        .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")));
+        .catch((error) => setCommentsError(getApiErrorMessage(error, "Couldn't post your update. Please try again.")))
+        .finally(() => setComposerUploadProgress(null));
       return;
     }
 
@@ -417,15 +433,20 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
   const addComposerAttachments = (files: File[]) => {
     if (files.length === 0) return;
-    const additions: ComposerAttachmentDraft[] = files.map((file) => ({
-      attachment: { id: createId(), file_name: file.name, ...classifyAttachment(file.name) },
-      file,
-    }));
+    // Unsupported or oversized files are reported right away instead of failing the whole upload later.
+    const rejection = files.map(attachmentRejectionReason).find((reason) => reason !== null);
+    if (rejection) setCommentsError(rejection);
+    const accepted = files.filter((file) => attachmentRejectionReason(file) === null);
+    if (accepted.length === 0) return;
+    const additions: ComposerAttachmentDraft[] = accepted.map((file) => ({ attachment: createDraftAttachment(createId(), file), file }));
     setComposerAttachmentDrafts((current) => [...current, ...additions]);
   };
 
   const removeComposerAttachment = (attachment_id: string) =>
-    setComposerAttachmentDrafts((current) => current.filter((draft) => draft.attachment.id !== attachment_id));
+    setComposerAttachmentDrafts((current) => {
+      current.filter((draft) => draft.attachment.id === attachment_id).forEach((draft) => releaseDraftAttachment(draft.attachment));
+      return current.filter((draft) => draft.attachment.id !== attachment_id);
+    });
 
   const postReply = (comment_id: string) => {
     if (!open_row_id) return;
@@ -940,6 +961,7 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
 
     composer_text,
     composer_attachments,
+    composer_upload_progress,
     onComposerTextChange,
     draft_context: drafts.draft_context,
     postComment,

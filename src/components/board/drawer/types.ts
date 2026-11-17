@@ -26,13 +26,22 @@ export type DrawerReaction = {
   reactors?: DrawerReactor[];
 };
 
-export type DrawerAttachmentTag = "PDF" | "DOC" | "XLS" | "IMG" | "PPT" | "FILE";
+export type DrawerAttachmentTag = "PDF" | "DOC" | "XLS" | "IMG" | "VID" | "PPT" | "FILE";
+
+/** How an attachment renders inside an update: an image tile (opens the gallery), an inline video player, or a plain file chip. */
+export type DrawerAttachmentMediaKind = "image" | "video" | "file";
 
 export type DrawerAttachment = {
   id: string;
   file_name: string;
   tag: DrawerAttachmentTag;
   tag_color: string;
+  /** Absent on older mock data, treat as "file". */
+  media_kind?: DrawerAttachmentMediaKind;
+  mime_type?: string;
+  size_bytes?: number;
+  /** Local `blob:` URL of a composer draft image or video, shown before it is uploaded. */
+  preview_url?: string;
   /** Present once the attachment is actually uploaded (real boards); absent for a composer's not-yet-posted draft. */
   download_url?: string;
   /** True for attachments uploaded directly onto the item — the only kind with a backend delete route today. Comment attachments are removed by deleting the comment itself. */
@@ -318,6 +327,8 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   /** Where the update and reply boxes save their drafts, null on a mock board (no drafts). */
   draft_context: ComposerDraftContextValue | null;
   postComment: () => void;
+  /** 0 to 1 while an update with files is uploading (screen recordings can be large), null otherwise. Posting is blocked meanwhile. */
+  composer_upload_progress?: number | null;
   addComposerAttachments: (files: File[]) => void;
   removeComposerAttachment: (attachment_id: string) => void;
   /** Posts one or more files straight away as a bodiless comment — the "attach a file to this card" affordance, independent of whatever text is (or isn't) sitting in the composer. */
@@ -467,7 +478,7 @@ export type CommentFeedApi = Pick<
   | "cancelEditingComment"
   | "saveEditedComment"
 > &
-  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links" | "draft_context">>;
+  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links" | "draft_context" | "composer_upload_progress">>;
 
 /** What the "Files" tab needs: every attachment of the thread plus the dropzone's upload state, shared by both comment drawers. */
 export type DrawerFilesApi = Pick<

@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type UploadProgress } from "@/lib/api-client";
 import type { CommentRevisionDto, UpdateCommentPayload } from "@/types/board-comments";
 import type { BoardDiscussionCommentDto, CreateBoardDiscussionCommentPayload } from "@/types/board-discussion";
 
@@ -21,7 +21,8 @@ export const boardDiscussionService = {
   /** POST /api/boards/{board_id}/comments — multipart, body + mentions + files in one request. */
   async postComment(
     board_id: number,
-    payload: CreateBoardDiscussionCommentPayload
+    payload: CreateBoardDiscussionCommentPayload,
+    onUploadProgress?: (progress: UploadProgress) => void
   ): Promise<BoardDiscussionCommentDto> {
     const form_data = new FormData();
     form_data.append("body", payload.body);
@@ -31,10 +32,12 @@ export const boardDiscussionService = {
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
     if (payload.scheduled_at) form_data.append("scheduled_at", payload.scheduled_at);
 
-    const response = await apiClient.postFormData<{ comment: BoardDiscussionCommentDto }>(
-      `/api/boards/${board_id}/comments`,
-      form_data
-    );
+    // Files (a screen recording can weigh hundreds of MB) go through the XHR uploader so the composer can show progress.
+    const endpoint = `/api/boards/${board_id}/comments`;
+    const response =
+      onUploadProgress && (payload.attachments?.length ?? 0) > 0
+        ? await apiClient.postFormDataWithProgress<{ comment: BoardDiscussionCommentDto }>(endpoint, form_data, onUploadProgress)
+        : await apiClient.postFormData<{ comment: BoardDiscussionCommentDto }>(endpoint, form_data);
     return response.comment;
   },
 

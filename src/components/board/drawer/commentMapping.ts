@@ -74,6 +74,8 @@ export const mapAttachmentDto = (dto: BoardItemCommentAttachmentDto): DrawerAtta
   id: String(dto.id),
   file_name: dto.file_name,
   download_url: dto.download_url,
+  mime_type: dto.mime_type,
+  size_bytes: dto.size_bytes,
   ...classifyAttachment(dto.file_name),
 });
 

@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/api-client";
+import { apiClient, type UploadProgress } from "@/lib/api-client";
 import { publishItemCommentSummary } from "@/lib/item-comment-counts";
 import type { BoardCommentCountsSnapshot } from "@/types/board-comment-counts";
 import type { BoardItemCommentDto, CommentRevisionDto, CreateBoardItemCommentPayload, UpdateCommentPayload } from "@/types/board-comments";
@@ -22,7 +22,8 @@ export const boardCommentsService = {
   async postComment(
     board_id: number,
     item_id: number,
-    payload: CreateBoardItemCommentPayload
+    payload: CreateBoardItemCommentPayload,
+    onUploadProgress?: (progress: UploadProgress) => void
   ): Promise<BoardItemCommentDto> {
     const form_data = new FormData();
     form_data.append("body", payload.body);
@@ -32,10 +33,12 @@ export const boardCommentsService = {
     (payload.attachments ?? []).forEach((file) => form_data.append("attachments[]", file));
     if (payload.scheduled_at) form_data.append("scheduled_at", payload.scheduled_at);
 
-    const response = await apiClient.postFormData<{ comment: BoardItemCommentDto; item_comments?: unknown }>(
-      `/api/boards/${board_id}/items/${item_id}/comments`,
-      form_data
-    );
+    // Files (a screen recording can weigh hundreds of MB) go through the XHR uploader so the composer can show progress.
+    const endpoint = `/api/boards/${board_id}/items/${item_id}/comments`;
+    const response =
+      onUploadProgress && (payload.attachments?.length ?? 0) > 0
+        ? await apiClient.postFormDataWithProgress<{ comment: BoardItemCommentDto; item_comments?: unknown }>(endpoint, form_data, onUploadProgress)
+        : await apiClient.postFormData<{ comment: BoardItemCommentDto; item_comments?: unknown }>(endpoint, form_data);
     // The row's updates counter on the board refreshes right away, see `useBoardCommentCounts`.
     publishItemCommentSummary(board_id, response.item_comments);
     return response.comment;

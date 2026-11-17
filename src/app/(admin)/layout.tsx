@@ -11,6 +11,7 @@ import Backdrop from "@/layout/Backdrop";
 import ImpersonationBanner from "@/components/admin/impersonation/ImpersonationBanner";
 import OrganizationAnnouncementBanner from "@/components/organization/OrganizationAnnouncementBanner";
 import { ToastProvider } from "@/components/ui/toast/ToastProvider";
+import { ScreenRecorderProvider } from "@/components/recorder/ScreenRecorderProvider";
 import { useIsEmbedded } from "@/hooks/useIsEmbedded";
 import { usePathname, useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -58,7 +59,9 @@ export default function AdminLayout({
       <BrandingProvider>
         <WorkspaceProvider>
           <ToastProvider>
-            <main className="shell-scrollbar h-screen w-full overflow-y-auto bg-shell-bg">{children}</main>
+            <ScreenRecorderProvider>
+              <main className="shell-scrollbar h-screen w-full overflow-y-auto bg-shell-bg">{children}</main>
+            </ScreenRecorderProvider>
           </ToastProvider>
         </WorkspaceProvider>
       </BrandingProvider>
@@ -69,6 +72,7 @@ export default function AdminLayout({
     <BrandingProvider>
     <WorkspaceProvider>
       <ToastProvider>
+        <ScreenRecorderProvider>
         <div className="app-shell flex h-screen w-full flex-col overflow-hidden bg-shell-bg">
           <AppTopBar />
           <ImpersonationBanner />
@@ -94,6 +98,7 @@ export default function AdminLayout({
             </main>
           </div>
         </div>
+        </ScreenRecorderProvider>
       </ToastProvider>
     </WorkspaceProvider>
     </BrandingProvider>

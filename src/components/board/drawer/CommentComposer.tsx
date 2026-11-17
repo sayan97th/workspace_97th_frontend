@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
+import { Video } from "lucide-react";
 import type { BoardPersonOption } from "../toolbar/types";
 import PersonAvatar from "../PersonAvatar";
 import { AttachIcon, FormatToggleIcon, ReactSmileyIcon, SendIcon } from "@/icons/drawer-icons";
@@ -7,7 +8,10 @@ import { BellIcon, ClockIcon } from "@/icons/workspace-icons";
 import { useEmojiShortcut } from "@/hooks/useEmojiShortcut";
 import { useModKeyLabel } from "@/hooks/useModKeyLabel";
 import { useCommentDraft } from "@/hooks/useCommentDrafts";
-import CommentAttachmentChip from "./CommentAttachmentChip";
+import { useRecordingTarget, useScreenRecorder } from "@/components/recorder/ScreenRecorderProvider";
+import { COMMENT_ATTACHMENT_ACCEPT } from "./drawerAttachments";
+import ComposerAttachmentTray from "./media/ComposerAttachmentTray";
+import { buildRecordingRequest, recordingTargetKey } from "./media/recordingTarget";
 import { useComposerDraftContext } from "./ComposerDraftContext";
 import ComposerDraftStatus from "./ComposerDraftStatus";
 import ComposerScheduleMenu from "./ComposerScheduleMenu";
@@ -66,6 +70,8 @@ export type CommentComposerProps = {
   attachments?: DrawerAttachment[];
   onAddFiles?: (files: File[]) => void;
   onRemoveAttachment?: (attachment_id: string) => void;
+  /** 0 to 1 while the update and its files upload, null otherwise. Sending is blocked meanwhile. */
+  upload_progress?: number | null;
   /** Items typing `#` can link to. Omit to switch the `#` picker off. */
   reference_items?: DrawerReferenceItem[];
   /** ISO time the update will be sent at. Passing `onScheduleChange` switches the "Schedule send" button on. */
@@ -113,6 +119,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   attachments = [],
   onAddFiles,
   onRemoveAttachment,
+  upload_progress = null,
   reference_items = [],
   schedule_at = null,
   onScheduleChange,
@@ -136,6 +143,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   // in `useBoardItemDrawer`'s `postComment`), so the send button shouldn't
   // disable itself in that case.
   const has_draft = value.trim().length > 0 || value.includes("![") || attachments.length > 0;
+  const is_uploading = upload_progress !== null;
   const show_notify_picker = notify_target === target;
   const show_emoji_palette = emoji_palette_target === target;
   const can_notify = Boolean(onToggleNotifyPicker && onPickNotifyPerson);
@@ -151,6 +159,15 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
   const draft = useCommentDraft(
     draft_scope ? { board_id: draft_scope.board_id, item_id: draft_scope.item_id, parent_id: target === "composer" ? null : Number(target) } : null
   );
+  // Loom style "Record" button: the app wide recorder hands the finished video back to this box's file tray.
+  const recorder = useScreenRecorder();
+  const fallback_target_id = useId();
+  const can_record = is_update && Boolean(onAddFiles) && Boolean(recorder?.is_supported);
+  const recording_target_key = recordingTargetKey(draft_scope, fallback_target_id);
+  useRecordingTarget(can_record ? recording_target_key : null, (file) => onAddFiles?.([file]));
+  const is_recording_here = Boolean(recorder?.is_busy) && recorder?.active_target_key === recording_target_key;
+  const is_recording_elsewhere = Boolean(recorder?.is_busy) && !is_recording_here;
+
   // Only while the box still holds the text, so the pill never lingers next to an empty box.
   const show_draft_status = draft_scope !== null && draft !== null && value.trim() !== "";
 
@@ -361,10 +378,25 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                     >
                       <AttachIcon />
                     </button>
+                    {can_record && (
+                      <button
+                        type="button"
+                        onClick={() => recorder?.requestRecording(buildRecordingRequest(draft_scope, recording_target_key))}
+                        disabled={recorder?.is_busy}
+                        aria-label="Record a video"
+                        title={is_recording_here ? "Recording in progress" : is_recording_elsewhere ? "Another recording is in progress" : "Record your screen or camera"}
+                        data-active={is_recording_here ? "true" : undefined}
+                        className="rich-text-tool rich-text-tool--record"
+                      >
+                        <Video size={17} />
+                        <span className="rich-text-tool__record-dot" aria-hidden="true" />
+                      </button>
+                    )}
                     <input
                       ref={file_input_ref}
                       type="file"
                       multiple
+                      accept={COMMENT_ATTACHMENT_ACCEPT}
                       className="hidden"
                       onChange={(event) => {
                         onAddFiles(Array.from(event.target.files ?? []));
@@ -424,7 +456,7 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
                 <button
                   type="button"
                   onClick={onSubmit}
-                  disabled={!has_draft}
+                  disabled={!has_draft || is_uploading}
                   aria-label={effective_submit_label}
                   aria-keyshortcuts="Meta+Enter Control+Enter"
                   title={`${effective_submit_label} (${mod_key_label} + Enter)`}
@@ -465,12 +497,8 @@ const CommentComposer: React.FC<CommentComposerProps> = ({
           />
         )}
 
-        {is_update && attachments.length > 0 && onRemoveAttachment && (
-          <div className="mt-2.5 flex flex-wrap gap-2">
-            {attachments.map((attachment) => (
-              <CommentAttachmentChip key={attachment.id} attachment={attachment} onRemove={onRemoveAttachment} />
-            ))}
-          </div>
+        {is_update && onRemoveAttachment && (
+          <ComposerAttachmentTray attachments={attachments} onRemove={onRemoveAttachment} upload_progress={upload_progress} />
         )}
       </div>
     </div>
