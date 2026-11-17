@@ -118,7 +118,7 @@ export const GanttSettingsPanel: React.FC<GanttSettingsPanelProps> = ({
       <div className="board-gantt-panel__heading">
         <span>Gantt settings</span>
       </div>
-      {is_read_only && <p className="board-gantt-panel__hint">You can't change the settings of this view.</p>}
+      {is_read_only && <p className="board-gantt-panel__hint">You can&apos;t change the settings of this view.</p>}
 
       <section className="board-gantt-panel__section">
         <h3 className="board-gantt-panel__section-title">Show items by</h3>

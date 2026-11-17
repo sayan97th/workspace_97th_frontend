@@ -74,7 +74,7 @@ function MirrorBody({ column, sibling_columns, actions, onClose }: { column: Col
   }, [linked_board_id]);
 
   if (connect_columns.length === 0) {
-    return <div className="text-[12.5px] text-boardtree-text-faint">Add a "Connect boards" column to this table first, then come back here to mirror one of its linked columns.</div>;
+    return <div className="text-[12.5px] text-boardtree-text-faint">Add a &quot;Connect boards&quot; column to this table first, then come back here to mirror one of its linked columns.</div>;
   }
 
   return (

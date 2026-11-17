@@ -27,7 +27,7 @@ const PingTesterCard: React.FC<PingTesterCardProps> = ({ pings, is_connected, on
         <div>
           <h3 className="text-sm font-semibold text-shell-text">Round-trip ping test</h3>
           <p className="mt-0.5 text-xs text-shell-text-secondary">
-            Sends an HTTP request that triggers a Reverb broadcast, then waits for it to arrive back over this browser's socket.
+            Sends an HTTP request that triggers a Reverb broadcast, then waits for it to arrive back over this browser&apos;s socket.
           </p>
         </div>
         <button
@@ -42,7 +42,7 @@ const PingTesterCard: React.FC<PingTesterCardProps> = ({ pings, is_connected, on
 
       {!is_connected && (
         <div className="rounded-lg border border-warning-500/30 bg-warning-50 px-3 py-2 text-xs text-warning-600">
-          The websocket client isn't connected yet, a ping can still be sent but its pong will not arrive until the connection is up.
+          The websocket client isn&apos;t connected yet, a ping can still be sent but its pong will not arrive until the connection is up.
         </div>
       )}
 

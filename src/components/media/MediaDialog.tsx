@@ -23,9 +23,11 @@ export type MediaDialogProps = {
  */
 export default function MediaDialog({ is_open, onClose, aria_label, tone = "light", panel_class_name, can_dismiss = true, children }: MediaDialogProps) {
   const panel_ref = useRef<HTMLDivElement>(null);
-  const handleClose = useEffectEvent(() => {
+  const closeIfAllowed = () => {
     if (can_dismiss) onClose();
-  });
+  };
+  // Escape listener reads the latest can_dismiss/onClose without re-subscribing.
+  const handleClose = useEffectEvent(closeIfAllowed);
 
   useEffect(() => {
     if (!is_open) return;
@@ -58,7 +60,7 @@ export default function MediaDialog({ is_open, onClose, aria_label, tone = "ligh
   if (!is_open || typeof document === "undefined") return null;
 
   return createPortal(
-    <div className={`media-dialog media-dialog--${tone}`} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && handleClose()}>
+    <div className={`media-dialog media-dialog--${tone}`} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeIfAllowed()}>
       <div ref={panel_ref} role="dialog" aria-modal="true" aria-label={aria_label} tabIndex={-1} className={`media-dialog__panel ${panel_class_name ?? ""}`}>
         {children}
       </div>

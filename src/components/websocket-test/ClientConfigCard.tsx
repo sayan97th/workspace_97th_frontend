@@ -51,7 +51,7 @@ const ClientConfigCard: React.FC<ClientConfigCardProps> = ({ status }) => {
 
       {status && (
         <p className="text-[11px] text-shell-text-faint">
-          Mismatched rows above are highlighted in red, they usually mean the frontend's NEXT_PUBLIC_REVERB_* env vars are out of sync with the API's.
+          Mismatched rows above are highlighted in red, they usually mean the frontend&apos;s NEXT_PUBLIC_REVERB_* env vars are out of sync with the API&apos;s.
         </p>
       )}
     </div>

@@ -290,13 +290,13 @@ function AutomationCenter(props: AutomationsModalProps) {
     openBuilder({ ...draftFromDefinition(definition, context), name: template.name, description: template.description ?? "" }, null, notice);
   };
 
-  const useRecipe = (recipe: AutomationRecipe) => openBuilder(draftFromDefinition(recipe.build(context), context));
+  const applyRecipe = (recipe: AutomationRecipe) => openBuilder(draftFromDefinition(recipe.build(context), context));
 
   // Gmail, Outlook and Google Calendar recipes open their connect and fill flow, the builder when none fits.
   const startConnectedRecipe = (recipe: AutomationRecipe) => {
     const connected = connectedRecipeFor(recipe);
     if (connected) setConnectedRecipe(connected);
-    else useRecipe(recipe);
+    else applyRecipe(recipe);
   };
 
   const deleteAccountTemplate = async (template_id: number) => {
@@ -329,10 +329,10 @@ function AutomationCenter(props: AutomationsModalProps) {
       );
     } else if (page.page === "email") {
       integration_content = (
-        <EmailAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("email")} onBack={back} onUseRecipe={useRecipe} />
+        <EmailAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("email")} onBack={back} onUseRecipe={applyRecipe} />
       );
     } else if (page.page === "slack") {
-      integration_content = <SlackAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("slack")} onBack={back} onUse={setSlackRecipe} onUseRecipe={useRecipe} />;
+      integration_content = <SlackAppPage search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor("slack")} onBack={back} onUse={setSlackRecipe} onUseRecipe={applyRecipe} />;
     } else {
       integration_content = <ConnectedAppPage app={page.page} search={search_text} event={event} onClearEvent={clearEvent} overview={overview.appFor(page.page)} onBack={back} onUse={startConnectedRecipe} />;
     }
@@ -418,7 +418,7 @@ function AutomationCenter(props: AutomationsModalProps) {
                 account_templates={account_templates}
                 is_loading_account={is_loading_account}
                 can_manage_account_templates={is_account_admin}
-                onUseRecipe={useRecipe}
+                onUseRecipe={applyRecipe}
                 onUseSaved={(template) => openBuilder({ ...draftFromDefinition(template.definition, context), name: template.name, description: template.description ?? "" })}
                 onUseAccount={applyAccountTemplate}
                 onDeleteSaved={deleteTemplate}

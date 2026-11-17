@@ -77,7 +77,7 @@ const ServerStatusCard: React.FC<ServerStatusCardProps> = ({ status, is_loading,
 
           {!status.is_reverb_driver && (
             <p className="text-xs text-error-600">
-              The server's BROADCAST_CONNECTION is not set to "reverb", events are not being sent over the socket at all.
+              The server&apos;s BROADCAST_CONNECTION is not set to &quot;reverb&quot;, events are not being sent over the socket at all.
             </p>
           )}
         </>

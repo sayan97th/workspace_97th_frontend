@@ -128,7 +128,7 @@ export const CalendarSettingsPanel: React.FC<CalendarSettingsPanelProps> = ({
       <div className="board-calendar-panel__heading">
         <span>Calendar settings</span>
       </div>
-      {is_read_only && <p className="board-calendar-panel__hint">You can't change the settings of this view.</p>}
+      {is_read_only && <p className="board-calendar-panel__hint">You can&apos;t change the settings of this view.</p>}
 
       <section className="board-calendar-panel__section">
         <h3 className="board-calendar-panel__section-title">Show items by</h3>
