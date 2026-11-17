@@ -1,7 +1,7 @@
 import type { ExternalService } from "@/types/external-account";
 import { AUTOMATION_RECIPES, type AutomationRecipe } from "../builder/automationTemplates";
 
-/** The clickable words of a Gmail, Outlook or Google Calendar recipe sentence, each opens its own picker. */
+/** The clickable words of a Gmail or Google Calendar recipe sentence, each opens its own picker. */
 export type ConnectedRecipeSlot = "event" | "calendar" | "email_filter" | "group" | "trigger_column" | "trigger_value" | "email_message" | "email_recipient";
 
 export type ConnectedRecipePart = { text: string } | { slot: ConnectedRecipeSlot; placeholder: string };
@@ -51,11 +51,10 @@ const SENTENCES: Record<ConnectedRecipeKind, ConnectedRecipePart[]> = {
 const KIND_BY_RECIPE: Record<string, ConnectedRecipeKind> = {
   google_calendar_item_sync: "calendar_sync",
   gmail_email_create_item: "email_to_item",
-  outlook_email_create_item: "email_to_item",
   gmail_status_send_email: "status_send_email",
 };
 
-/** The connect and fill flow of a gallery recipe that uses Gmail, Outlook or Google Calendar, null for every other recipe. */
+/** The connect and fill flow of a gallery recipe that uses Gmail or Google Calendar, null for every other recipe. */
 export function connectedRecipeFor(recipe: AutomationRecipe): ConnectedRecipe | null {
   const kind = KIND_BY_RECIPE[recipe.id];
   if (!recipe.connected_app || !kind) return null;

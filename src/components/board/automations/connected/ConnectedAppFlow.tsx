@@ -29,7 +29,7 @@ export type ConnectedAppFlowProps = {
 type Step = "account" | "editor";
 
 /**
- * monday.com's integration flow for Gmail, Outlook and Google Calendar, drawn over the whole
+ * monday.com's integration flow for Gmail and Google Calendar, drawn over the whole
  * dialog in the app's colour like the Slack one: pick or connect the account, then fill the recipe
  * sentence and create the automation.
  */

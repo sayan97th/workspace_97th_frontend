@@ -30,7 +30,7 @@ export type ExternalAccountsApi = {
 const AWAIT_PROVIDER_TIMEOUT_MS = 10 * 60 * 1000;
 
 /**
- * The signed in user's own accounts for one service (Gmail, Outlook or Google Calendar), the
+ * The signed in user's own accounts for one service (Gmail or Google Calendar), the
  * "Connect your Gmail account" step of the Automations center. Connecting opens the provider in a
  * new tab, which finishes on `/integrations/accounts/complete` and broadcasts the new account id.
  */

@@ -1,6 +1,6 @@
 import type { ExternalAuthorizationMessage } from "@/types/external-account";
 
-/** BroadcastChannel the completion tab uses to tell every open tab how a Gmail, Outlook or Google Calendar connection went. */
+/** BroadcastChannel the completion tab uses to tell every open tab how a Gmail or Google Calendar connection went. */
 export const EXTERNAL_AUTHORIZATION_CHANNEL = "external_account_authorization";
 
 /**

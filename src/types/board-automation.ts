@@ -185,7 +185,7 @@ export type BoardAutomationTriggerConfig = {
   keywords?: string[] | null;
   /** `update_keyword` only: replies count too. */
   include_replies?: boolean;
-  /** `email_received` only: the member's own Gmail or Outlook account whose inbox is read. */
+  /** `email_received` only: the member's own Gmail account whose inbox is read. */
   external_account_id?: number | null;
   /** `email_received` only: the inbox address, kept so the sentence can name it. */
   external_account_email?: string | null;
@@ -276,7 +276,7 @@ export type BoardAutomationActionParams = {
   slack_team_id?: string | null;
   /** `slack_notify_channel` only: the owner's own Slack account the post goes through, set by the Slack recipes. */
   slack_connection_id?: number | null;
-  /** `send_email`: sends from this connected Gmail or Outlook account instead of the app. `google_calendar_sync`: the Google account. */
+  /** `send_email`: sends from this connected Gmail account instead of the app. `google_calendar_sync`: the Google account. */
   external_account_id?: number | null;
   /** The address of `external_account_id`, kept so the sentence can name it. */
   external_account_email?: string | null;

@@ -67,7 +67,6 @@ const CURATED_ACTIONS: ButtonActionEntry[] = [
   { id: "stop_time_tracking", label: "Stop time tracking", section: "Date and time", picker_id: "time_tracking", params: { mode: "stop" }, icon: lucide(TimerOff) },
 
   { id: "gmail_send_email", label: "Send email", section: "Featured", picker_id: "send_email", icon: <ExternalAppLogo app="gmail" size={16} /> },
-  { id: "outlook_send_email", label: "Send email", section: "Featured", picker_id: "send_email", icon: <ExternalAppLogo app="outlook" size={16} /> },
   { id: "slack_notify_channel", label: "Notify in channel", section: "Featured", picker_id: "slack_notify_channel", icon: <SlackLogo size={16} /> },
   { id: "slack_notify_person", label: "Notify users", section: "Featured", picker_id: "slack_notify_person", icon: <SlackLogo size={16} /> },
 

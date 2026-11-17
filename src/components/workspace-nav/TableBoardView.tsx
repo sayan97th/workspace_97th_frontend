@@ -997,7 +997,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
   // Set by a column header's "Automate", the builder opens with a trigger for that column.
   const [automation_column_id, setAutomationColumnId] = useState<string | null>(null);
   // ── Integrations ("Integrate" header button), its own dialog for the automations that use email,
-  // Slack, Gmail, Outlook or Google Calendar. OAuth round trips leave the app, so the API sends the
+  // Slack, Gmail or Google Calendar. OAuth round trips leave the app, so the API sends the
   // browser back to `integrations_return_path`, and the `integrate` param reopens it on Connections. ──
   const [is_integrations_modal_open, setIsIntegrationsModalOpen] = useState(false);
   const [integrations_page, setIntegrationsPage] = useState<IntegrationPage>("overview");

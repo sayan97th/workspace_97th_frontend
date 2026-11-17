@@ -20,18 +20,6 @@ function GmailMark({ size }: { size: number }) {
   );
 }
 
-/** Outlook's blue envelope with the white "O" tile. */
-function OutlookMark({ size }: { size: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
-      <rect x="17" y="9" width="27" height="30" rx="3" fill="#0f6cbd" />
-      <path d="M17 20 L30.5 28 L44 20 V36 a3 3 0 0 1 -3 3 H20 a3 3 0 0 1 -3 -3 Z" fill="#28a8ea" />
-      <rect x="4" y="13" width="22" height="22" rx="3" fill="#0a4f9c" />
-      <ellipse cx="15" cy="24" rx="5.6" ry="6.6" fill="none" stroke="#ffffff" strokeWidth="3" />
-    </svg>
-  );
-}
-
 /** Google Calendar's page with the blue "31". */
 function GoogleCalendarMark({ size }: { size: number }) {
   return (
@@ -44,11 +32,11 @@ function GoogleCalendarMark({ size }: { size: number }) {
   );
 }
 
-/** The mark of a Gmail, Outlook or Google Calendar integration, decorative. */
+/** The mark of a Gmail or Google Calendar integration, decorative. */
 export default function ExternalAppLogo({ app, size = 20, className = "" }: ExternalAppLogoProps) {
   return (
     <span className={`inline-flex flex-none items-center justify-center ${className}`}>
-      {app === "gmail" ? <GmailMark size={size} /> : app === "outlook" ? <OutlookMark size={size} /> : <GoogleCalendarMark size={size} />}
+      {app === "gmail" ? <GmailMark size={size} /> : <GoogleCalendarMark size={size} />}
     </span>
   );
 }

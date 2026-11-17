@@ -442,7 +442,7 @@ export function draftProblems(draft: AutomationDraft, context: AutomationBuilder
     if ((trigger.type === "column_changed" || trigger.type === "subitem_column_changed") && match?.operator === "between" && (match.values ?? []).filter((value) => value !== "").length !== 2) {
       problems.push("Enter both ends of the range the column must reach.");
     }
-    if (trigger.type === "email_received" && !draft.trigger_config.external_account_id) problems.push("Choose the Gmail or Outlook account whose inbox the automation reads.");
+    if (trigger.type === "email_received" && !draft.trigger_config.external_account_id) problems.push("Choose the Gmail account whose inbox the automation reads.");
     if (trigger.type === "update_keyword" && !(draft.trigger_config.keywords ?? []).some((keyword) => keyword.trim() !== "")) problems.push("Type at least one word the update must contain.");
     if (QUIET_TRIGGERS.includes(trigger.type)) {
       const amount = draft.trigger_config.amount ?? 0;

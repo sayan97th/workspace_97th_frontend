@@ -5,6 +5,7 @@ import ExternalAppLogo from "@/components/integrations/ExternalAppLogo";
 import { useAccountBranding } from "@/hooks/useAccountBranding";
 import type { ExternalAccountsApi } from "@/hooks/useExternalAccounts";
 import { EXTERNAL_APPS, INTEGRATION_APPS_SETUP_PATH, PROVIDER_LABELS } from "@/lib/externalApps";
+import GoogleCalendarConnect from "./GoogleCalendarConnect";
 
 export type ConnectedAccountStepProps = {
   accounts_api: ExternalAccountsApi;
@@ -67,11 +68,17 @@ function ConnectionIllustration({ accounts_api }: { accounts_api: ExternalAccoun
 }
 
 /**
- * The account half of a Gmail, Outlook or Google Calendar recipe, the same screen as Slack's.
+ * The account half of a Gmail or Google Calendar recipe, the same screen as Slack's.
  * Without an account it is "Connect your Gmail account", Connect opens the provider's consent page
- * in a new tab. With accounts it lets the member pick the one this automation uses.
+ * in a new tab. With accounts it lets the member pick the one this automation uses. Google
+ * Calendar has its own screen, see {@link GoogleCalendarConnect}.
  */
-export default function ConnectedAccountStep({ accounts_api, selected_id, onSelect, onContinue, can_manage, return_path }: ConnectedAccountStepProps) {
+export default function ConnectedAccountStep(props: ConnectedAccountStepProps) {
+  if (props.accounts_api.service === "google_calendar") return <GoogleCalendarConnect {...props} />;
+  return <MailAccountStep {...props} />;
+}
+
+function MailAccountStep({ accounts_api, selected_id, onSelect, onContinue, can_manage, return_path }: ConnectedAccountStepProps) {
   const { accounts, is_configured, can_connect, is_loading, is_awaiting_provider, service } = accounts_api;
   const app = EXTERNAL_APPS[service];
   const provider_label = PROVIDER_LABELS[app.provider];

@@ -15,7 +15,7 @@ export function FieldChip({ field, onInsert }: { field: SlackMessageField; onIns
 /** Space kept between a popover and the edge of the flow it opens in. */
 const EDGE_GAP_PX = 16;
 
-/** One clickable word of an integration recipe sentence (Slack, Gmail, Outlook, Google Calendar), its picker opens in a white popover right under it. */
+/** One clickable word of an integration recipe sentence (Slack, Gmail, Google Calendar), its picker opens in a white popover right under it. */
 export function SentenceToken({ label, is_set, is_optional = false, aria_label, width = 280, onOpen, children }: { label: string; is_set: boolean; is_optional?: boolean; aria_label: string; width?: number; onOpen?: () => void; children: (close: () => void) => React.ReactNode }) {
   const [is_open, setIsOpen] = useState(false);
   const ref = useOutsideClick<HTMLSpanElement>(is_open, () => setIsOpen(false));

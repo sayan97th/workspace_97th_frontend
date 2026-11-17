@@ -84,7 +84,7 @@ function SetupStep({ number, state, title, description, action, children, is_las
  * Integrations dialog > Connections. Email is built in, so it only offers shortcuts.
  * Slack takes two steps: an administrator connects the workspace once in Administration >
  * Integrations > Slack, then every member links their own Slack account through
- * {@link SlackConnectAccountDialog}. Gmail, Outlook and Google Calendar list the member's own accounts.
+ * {@link SlackConnectAccountDialog}. Gmail and Google Calendar list the member's own accounts.
  */
 export default function ConnectionsView({ slack, return_path, onBrowseTemplates, can_manage_apps = false, onChanged }: ConnectionsViewProps) {
   const [is_connect_dialog_open, setIsConnectDialogOpen] = useState(false);
@@ -228,7 +228,7 @@ export default function ConnectionsView({ slack, return_path, onBrowseTemplates,
       </div>
 
       <h3 className="mb-1 mt-7 font-outfit text-section-title text-boardtree-text">Your email and calendar accounts</h3>
-      <p className="mb-3 text-[12.5px] text-boardtree-text-muted">Used by the Gmail, Outlook and Google Calendar integrations, only you can see and use them.</p>
+      <p className="mb-3 text-[12.5px] text-boardtree-text-muted">Used by the Gmail and Google Calendar integrations, only you can see and use them.</p>
       <div className="flex flex-col gap-3">
         {EXTERNAL_APP_ORDER.map((service) => (
           <ExternalAccountsCard

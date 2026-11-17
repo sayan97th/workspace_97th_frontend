@@ -10,15 +10,8 @@ export type ExternalAppMeta = {
   tagline: string;
 };
 
-/** Every Gmail, Outlook and Google Calendar integration, in the order the sidebar lists them. */
+/** Every Gmail and Google Calendar integration, in the order the sidebar lists them. */
 export const EXTERNAL_APPS: Record<ExternalService, ExternalAppMeta> = {
-  outlook: {
-    id: "outlook",
-    label: "Outlook",
-    provider: "microsoft",
-    brand_color: "#0f4a8a",
-    tagline: "Turn emails into items and send emails from your own Outlook account when something changes on the board.",
-  },
   gmail: {
     id: "gmail",
     label: "Gmail",
@@ -35,9 +28,9 @@ export const EXTERNAL_APPS: Record<ExternalService, ExternalAppMeta> = {
   },
 };
 
-export const EXTERNAL_APP_ORDER: ExternalService[] = ["outlook", "gmail", "google_calendar"];
+export const EXTERNAL_APP_ORDER: ExternalService[] = ["gmail", "google_calendar"];
 
 export const PROVIDER_LABELS: Record<ExternalProvider, string> = { google: "Google", microsoft: "Microsoft" };
 
-/** Where an administrator saves the Google and Microsoft apps. */
+/** Where an administrator may save a dedicated Google app. */
 export const INTEGRATION_APPS_SETUP_PATH = "/administration?section=integrations";

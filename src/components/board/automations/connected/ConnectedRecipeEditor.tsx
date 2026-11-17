@@ -70,7 +70,7 @@ function TemplateBox({ label, value, fields, rows, max_length, onChange }: { lab
 }
 
 /**
- * Fills one Gmail, Outlook or Google Calendar recipe, the same screen as the Slack one: every bold
+ * Fills one Gmail or Google Calendar recipe, the same screen as the Slack one: every bold
  * word is clicked to choose it, and Create stays disabled until each required word is chosen.
  */
 export default function ConnectedRecipeEditor({ connected, columns, groups, people, account, is_saving, save_error, onChangeAccount, onCreate }: ConnectedRecipeEditorProps) {

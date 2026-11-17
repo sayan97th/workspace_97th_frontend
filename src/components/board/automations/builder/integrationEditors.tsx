@@ -57,10 +57,9 @@ function AccountSection({ api, selected_id, onPick }: { api: ExternalAccountsApi
   );
 }
 
-/** The Gmail and Outlook accounts an "email is received" trigger or "send an email" action can use. */
+/** The Gmail accounts an "email is received" trigger or "send an email" action can use. */
 export function MailAccountPicker({ selected_id, onPick, with_app_mailer = false }: { selected_id: number | null; onPick: (account: PickedAccount | null) => void; with_app_mailer?: boolean }) {
   const gmail = useExternalAccounts("gmail");
-  const outlook = useExternalAccounts("outlook");
 
   return (
     <div role="listbox" aria-label="Email account" className="max-h-[320px] overflow-y-auto">
@@ -76,7 +75,6 @@ export function MailAccountPicker({ selected_id, onPick, with_app_mailer = false
         </button>
       )}
       <AccountSection api={gmail} selected_id={selected_id} onPick={onPick} />
-      <AccountSection api={outlook} selected_id={selected_id} onPick={onPick} />
     </div>
   );
 }

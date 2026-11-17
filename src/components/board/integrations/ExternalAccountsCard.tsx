@@ -22,7 +22,7 @@ export type ExternalAccountsCardProps = {
 };
 
 /**
- * Integrations > Connections, one Gmail, Outlook or Google Calendar card: the signed in user's own
+ * Integrations > Connections, one Gmail or Google Calendar card: the signed in user's own
  * accounts for the service with how many automations use each, connect another and disconnect.
  */
 export default function ExternalAccountsCard({ service, return_path, can_manage_apps, onChanged, onBrowseTemplates }: ExternalAccountsCardProps) {

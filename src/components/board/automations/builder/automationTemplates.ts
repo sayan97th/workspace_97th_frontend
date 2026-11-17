@@ -32,7 +32,7 @@ export type AutomationRecipe = {
   apps: RecipeApp[];
   requires: RecipeColumnNeed[];
   /**
-   * Set for the recipes that read or send through the member's own Gmail, Outlook or Google
+   * Set for the recipes that read or send through the member's own Gmail or Google
    * Calendar account. "Use template" then opens that app's connect and fill flow instead of the
    * builder, like monday.com's integration recipes.
    */
@@ -49,7 +49,6 @@ export const RECIPE_APP_LABELS: Record<RecipeApp, string> = {
   form: "Forms",
   team: "Teams",
   gmail: "Gmail",
-  outlook: "Outlook",
   google_calendar: "Google Calendar",
 };
 
@@ -214,16 +213,6 @@ export const AUTOMATION_RECIPES: AutomationRecipe[] = [
     apps: [],
     requires: [],
     build: () => define("recurring", null, [{ type: "create_item", params: { item_name: "Weekly task {date}" } }], { trigger_config: weekly() }),
-  },
-  {
-    id: "outlook_email_create_item",
-    categories: ["recommended", "sync", "communication"],
-    title: "When an **email** is received, create an item in **group**",
-    apps: ["outlook"],
-    requires: [],
-    connected_app: "outlook",
-    flows_in: true,
-    build: () => define("email_received", null, emailToItemActions()),
   },
   {
     id: "gmail_status_send_email",

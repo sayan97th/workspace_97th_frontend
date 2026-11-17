@@ -49,7 +49,7 @@ const LUCIDE_APP_ICONS: Partial<Record<RecipeApp, React.ReactNode>> = {
 
 /** One outside app of the chain: its logo and, for the integrations, its name in grey. */
 function AppBadge({ app }: { app: RecipeApp }) {
-  const is_integration = app === "gmail" || app === "outlook" || app === "google_calendar";
+  const is_integration = app === "gmail" || app === "google_calendar";
   return (
     <span className="flex items-center gap-1.5" title={RECIPE_APP_LABELS[app]}>
       <HexBadge>{is_integration ? <ExternalAppLogo app={app} size={15} /> : <span className="text-boardtree-text-secondary">{LUCIDE_APP_ICONS[app]}</span>}</HexBadge>

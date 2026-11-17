@@ -63,7 +63,7 @@ function TemplateCard({ name, sentence, footer, onUse, onDelete, is_deleting }: 
  * The Automations dialog's Create tab: built-in recipes of the sidebar category, the templates
  * published for the whole account, the board's saved templates, and a way to start from a blank
  * sentence. Picking a card opens the builder with the sentence prefilled. Recipes that need an
- * integration (email, Slack, Gmail, Outlook, Google Calendar) live in the Integrations dialog.
+ * integration (email, Slack, Gmail, Google Calendar) live in the Integrations dialog.
  */
 export default function TemplateGallery(props: TemplateGalleryProps) {
   const { context, category, search, saved_templates, is_loading_saved, account_templates, is_loading_account, can_manage_account_templates, onUseRecipe, onUseSaved, onUseAccount, onDeleteSaved, onDeleteAccount, onCustom } = props;

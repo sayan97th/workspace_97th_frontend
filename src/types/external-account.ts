@@ -1,7 +1,10 @@
-/** An outside app a member connects their own account to, mirrors the API's `ExternalService` enum. */
-export type ExternalService = "gmail" | "google_calendar" | "outlook";
+/**
+ * An outside app a member connects their own account to, mirrors the enabled cases of the API's
+ * `ExternalService` enum. Outlook is switched off in the API until the client asks for it.
+ */
+export type ExternalService = "gmail" | "google_calendar";
 
-/** Who the member signs in with: Google for Gmail and Google Calendar, Microsoft for Outlook. */
+/** Who the member signs in with. Microsoft only shows up on accounts connected before Outlook was switched off. */
 export type ExternalProvider = "google" | "microsoft";
 
 /**
@@ -22,7 +25,7 @@ export type ExternalAccountDto = {
 
 export type ExternalAccountsResponse = {
   data: ExternalAccountDto[];
-  /** Whether an administrator set up the provider's app. */
+  /** Whether the provider's app is ready, saved by an administrator or the "Sign in with Google" app. */
   is_configured: boolean;
   can_connect: boolean;
 };
@@ -48,6 +51,10 @@ export type IntegrationAppDto = {
   label: string;
   services: { id: ExternalService; label: string }[];
   is_configured: boolean;
+  /** `saved` by an administrator, `sign_in` when the "Sign in with Google" app is used, null when there is none. */
+  source: "saved" | "sign_in" | null;
+  /** Whether removing the saved app falls back to the "Sign in with Google" app. */
+  can_use_sign_in_app: boolean;
   client_id: string | null;
   client_secret_hint: string | null;
   tenant_id: string | null;

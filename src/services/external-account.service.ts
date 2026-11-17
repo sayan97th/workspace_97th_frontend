@@ -10,7 +10,7 @@ import type {
 } from "@/types/external-account";
 
 /**
- * Talks to the API's Gmail, Outlook and Google Calendar endpoints. Connecting works like Slack:
+ * Talks to the API's Gmail and Google Calendar endpoints. Connecting works like Slack:
  * ask the API for the consent URL, open it in a new tab, and the API's public callback finishes
  * on `/integrations/accounts/complete`, which reports back to this tab.
  */

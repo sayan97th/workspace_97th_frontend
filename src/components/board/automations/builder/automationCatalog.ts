@@ -93,7 +93,7 @@ export const TRIGGERS: TriggerDef[] = [
   { type: "status_stuck", label: "status stays the same for a while", section: "Status and columns", column_kinds: ["status", "label"] },
   { type: "item_stale", label: "item is not updated for a while", section: "Dates and time" },
   { type: "item_created_or_updated", label: "item is created or updated", section: "Items and updates" },
-  { type: "email_received", label: "email is received (Gmail or Outlook)", section: "Integrations" },
+  { type: "email_received", label: "email is received (Gmail)", section: "Integrations" },
 ];
 
 export const TRIGGER_BY_TYPE = Object.fromEntries(TRIGGERS.map((trigger) => [trigger.type, trigger])) as Record<BoardAutomationTriggerType, TriggerDef>;

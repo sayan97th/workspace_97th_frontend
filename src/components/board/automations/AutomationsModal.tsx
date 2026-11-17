@@ -56,8 +56,8 @@ export type AutomationsModalProps = {
   return_path: string;
   /**
    * `board` (the default) is the Automate button's Automations dialog: automations that stay inside
-   * the app. `integrations` is the Integrate button's Integrations dialog: email, Slack, Gmail,
-   * Outlook and Google Calendar. Each one only lists, builds and counts its own automations.
+   * the app. `integrations` is the Integrate button's Integrations dialog: email, Slack, Gmail
+   * and Google Calendar. Each one only lists, builds and counts its own automations.
    */
   variant?: BoardAutomationSource;
   /** Integrations dialog only: the page it opens on, e.g. Connections after an OAuth round trip. */
@@ -292,7 +292,7 @@ function AutomationCenter(props: AutomationsModalProps) {
 
   const applyRecipe = (recipe: AutomationRecipe) => openBuilder(draftFromDefinition(recipe.build(context), context));
 
-  // Gmail, Outlook and Google Calendar recipes open their connect and fill flow, the builder when none fits.
+  // Gmail and Google Calendar recipes open their connect and fill flow, the builder when none fits.
   const startConnectedRecipe = (recipe: AutomationRecipe) => {
     const connected = connectedRecipeFor(recipe);
     if (connected) setConnectedRecipe(connected);

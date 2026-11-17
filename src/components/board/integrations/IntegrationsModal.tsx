@@ -6,7 +6,7 @@ export type IntegrationsModalProps = Omit<AutomationsModalProps, "variant" | "cr
 
 /**
  * The board header's "Integrate" button, modelled on monday.com's integration center. Create lists
- * every outside app (Email, Slack, Gmail, Outlook, Google Calendar) with its templates and the
+ * every outside app (Email, Slack, Gmail, Google Calendar) with its templates and the
  * connection setup, Manage lists the automations that use them with their run history and usage.
  * It runs on the Automations dialog's engine, so the sentence builder and Manage behave the same,
  * only scoped to integrations.

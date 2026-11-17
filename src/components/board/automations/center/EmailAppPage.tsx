@@ -44,7 +44,7 @@ export default function EmailAppPage({ search, event = null, onClearEvent = () =
             app="email"
             overview={overview}
             tagline="Email the right people when an item is created, a status changes or a date arrives."
-            hint="Sent by your account's mail service, so there is nothing to connect. To send from your own inbox, use a Gmail or Outlook recipe."
+            hint="Sent by your account's mail service, so there is nothing to connect. To send from your own inbox, use a Gmail recipe."
           />
         </div>
 

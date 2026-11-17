@@ -105,7 +105,7 @@ export default function IntegrationsOverview({ overview, search, has_automations
       <div className="integration-callout">
         <div>
           <strong>Connections</strong>
-          Set up the Slack workspace, link your own Slack account and manage the Gmail, Outlook and Google Calendar accounts your automations use.
+          Set up the Slack workspace, link your own Slack account and manage the Gmail and Google Calendar accounts your automations use.
         </div>
         <button type="button" onClick={onOpenConnections} className="h-8 flex-none rounded-[6px] border border-boardtree-border px-3.5 text-[13px] text-boardtree-text hover:bg-boardtree-hover">
           Open Connections

@@ -88,12 +88,12 @@ describe("Recommended category", () => {
       "When an email is received, create an item in group",
       "When date arrives and only if status is something notify someone",
       "Every time period create an item",
-      "When an email is received, create an item in group",
       "When status changes to something, send an email to someone",
       "Every time period duplicate group",
     ]);
     expect(recipe("gmail_email_create_item").connected_app).toBe("gmail");
-    expect(recipe("outlook_email_create_item").connected_app).toBe("outlook");
+    // Outlook is switched off until the client asks for it.
+    expect(AUTOMATION_RECIPES.some((entry) => entry.id === "outlook_email_create_item")).toBe(false);
     expect(recipe("google_calendar_item_sync").connected_app).toBe("google_calendar");
   });
 
@@ -144,7 +144,7 @@ describe("Recommended category", () => {
     const labelsOf = (name: string) => within(screen.getByRole("group", { name })).getAllByRole("button").map(navLabel);
     expect(labelsOf("Integrations")).toEqual(["All integrations"]);
     expect(labelsOf("Communication")).toEqual(["Email", "Slack"]);
-    expect(labelsOf("Email")).toEqual(["Gmail", "Outlook"]);
+    expect(labelsOf("Email")).toEqual(["Gmail"]);
     expect(labelsOf("Calendar")).toEqual(["Google Calendar"]);
     expect(labelsOf("Setup")).toEqual(["Connections"]);
 

@@ -89,7 +89,7 @@ export const isIntegrationRecipe = (recipe: AutomationRecipe): boolean => RECIPE
 
 /**
  * The built-in builder recipes of an app that are not one of its own guided recipes: Email and
- * Slack sentences such as a weekly email. Gmail, Outlook and Google Calendar recipes already are
+ * Slack sentences such as a weekly email. Gmail and Google Calendar recipes already are
  * their guided recipes, so they have none.
  */
 export const builderRecipesForApp = (app: "email" | "slack"): AutomationRecipe[] => AUTOMATION_RECIPES.filter((recipe) => !recipe.connected_app && RECIPE_APPS.get(recipe.id) === app);
@@ -190,7 +190,6 @@ export const INTEGRATION_APPS: IntegrationAppMeta[] = [
     brand_color: "#4a154b",
   }),
   externalApp("gmail"),
-  externalApp("outlook"),
   externalApp("google_calendar"),
 ];
 

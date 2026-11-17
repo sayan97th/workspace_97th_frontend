@@ -10,12 +10,12 @@ import type { ExternalAuthorizationMessage, ExternalService } from "@/types/exte
 /** Short pause so the person sees the result before the tab closes. */
 const CLOSE_DELAY_MS = 1200;
 
-const readService = (value: string | null): ExternalService | null => (value === "gmail" || value === "outlook" || value === "google_calendar" ? value : null);
+const readService = (value: string | null): ExternalService | null => (value === "gmail" || value === "google_calendar" ? value : null);
 
 const readNumber = (value: string | null): number | null => (value !== null && /^\d+$/.test(value) ? Number(value) : null);
 
 /**
- * The last step of a Gmail, Outlook or Google Calendar connection opened in a new tab: tells the
+ * The last step of a Gmail or Google Calendar connection opened in a new tab: tells the
  * tab that started it how it went, then closes itself, like the Slack completion page. When the
  * browser does not allow closing it, it stays open with the result and a way back.
  */
