@@ -148,9 +148,11 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
       {is_busy && (
         <>
           <RecorderSetupDialog engine={engine} />
-          {/* The bar stays out of sight while the controls are hidden, or while the floating window already carries them. */}
+          {/* The bar at the bottom of the page, unless the controls are hidden or live in the floating window (when it opened). */}
           {is_live &&
-            (engine.phase === "countdown" || engine.phase === "processing" || (engine.is_controls_visible && !engine.pip_window)) && (
+            (engine.phase === "countdown" ||
+              engine.phase === "processing" ||
+              (engine.is_controls_visible && !(engine.pip_window && engine.controls_location === "floating"))) && (
               <InPageControlBar {...control_props} />
             )}
           {engine.phase === "countdown" && <CountdownOverlay countdown={engine.countdown} />}
@@ -163,7 +165,7 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
               pip_window={engine.pip_window}
               camera_stream={engine.camera_stream}
               show_camera={engine.mode === "screen_camera"}
-              show_controls={engine.is_controls_visible || engine.phase === "countdown"}
+              show_controls={engine.controls_location === "floating" && (engine.is_controls_visible || engine.phase === "countdown")}
             />
           )}
           <RecordingReviewDialog

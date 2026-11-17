@@ -874,92 +874,71 @@ $setup-pad: 24px;
 }
 
 // ---------------------------------------------------------------------------
-// "Hide the controls" switch and the shortcut list
+// Where the controls show (bottom bar, floating window, hidden) and the shortcut list
 // ---------------------------------------------------------------------------
 
-.screen-recorder-switch {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--bd-border);
+.screen-recorder-controls-location {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
   border-radius: 12px;
-  background: var(--bd-surface);
-  cursor: pointer;
-
-  &:hover {
-    border-color: var(--bd-border-strong);
-  }
+  background: var(--bd-surface-sunken);
 }
 
-.screen-recorder-switch__text {
+.screen-recorder-controls-location__option {
   display: flex;
-  flex: 1;
   flex-direction: column;
-  min-width: 0;
-}
-
-.screen-recorder-switch__label {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--bd-text);
-}
-
-.screen-recorder-switch__hint {
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 54px;
+  padding: 7px 6px;
+  border-radius: 9px;
   font-size: 12px;
-  color: var(--bd-text-faint);
-}
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--bd-text-secondary);
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
 
-// The real checkbox sits on top of the track, invisible, so it keeps native focus and keyboard behavior.
-.screen-recorder-switch__input {
-  position: absolute;
-  right: 12px;
-  width: 38px;
-  height: 22px;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.screen-recorder-switch__track {
-  position: relative;
-  flex: none;
-  width: 38px;
-  height: 22px;
-  border-radius: 999px;
-  background: var(--bd-border-strong);
-  transition: background-color 160ms ease;
-  pointer-events: none;
-
-  &::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    background: #ffffff;
-    box-shadow: 0 1px 3px rgba(15, 17, 23, 0.3);
-    transition: transform 180ms $ease-out;
+  &:hover:not(:disabled):not([data-active]) {
+    color: var(--bd-text);
+    background: var(--bd-hover);
   }
 
-  .screen-recorder-switch__input:checked + & {
-    background: var(--bd-accent);
+  &[data-active] {
+    color: var(--bd-text);
+    background: var(--bd-surface);
+    box-shadow:
+      0 1px 3px rgba(15, 17, 23, 0.1),
+      0 0 0 1px var(--bd-border);
 
-    &::after {
-      transform: translateX(16px);
+    svg {
+      color: var(--bd-accent);
     }
   }
 
-  .screen-recorder-switch__input:focus-visible + & {
-    box-shadow: 0 0 0 3px var(--bd-focus-ring);
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
   }
 
-  .screen-recorder-switch__input:disabled + & {
-    opacity: 0.5;
+  &:focus-visible {
+    outline: 2px solid var(--bd-accent);
+    outline-offset: 1px;
   }
+}
+
+.screen-recorder-controls-location__hint {
+  min-height: 2.9em;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--bd-text-faint);
 }
 
 .screen-recorder-shortcuts {

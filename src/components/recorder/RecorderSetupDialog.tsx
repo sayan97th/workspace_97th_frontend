@@ -1,18 +1,24 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { AppWindow, Camera, Info, Mic, MicOff, MonitorPlay, MonitorSmartphone, Video, X } from "lucide-react";
+import { AppWindow, Camera, EyeOff, Info, Mic, MicOff, MonitorPlay, MonitorSmartphone, PanelBottom, PictureInPicture2, Video, X } from "lucide-react";
 import MediaDialog from "@/components/media/MediaDialog";
 import { LiveCameraView, MicrophoneLevelMeter } from "./RecorderMediaViews";
 import RecorderPermissionNotice from "./RecorderPermissionNotice";
 import RecorderSelect, { type RecorderSelectOption } from "./RecorderSelect";
 import type { RecorderEngine } from "./useRecorderEngine";
-import { RECORDING_QUALITY_PRESETS, formatMinutes, getDocumentPictureInPicture, maxRecordingMs, type RecordingMode } from "./recorderUtils";
+import { RECORDING_QUALITY_PRESETS, formatMinutes, getDocumentPictureInPicture, maxRecordingMs, type ControlsLocation, type RecordingMode } from "./recorderUtils";
 import { detectBrowser, isDeviceBlocked, isMacOS, shortcutLabel, type RecorderBrowser } from "./recorderPlatform";
 
 const MODES: { id: RecordingMode; label: string; short_label: string; hint: string; icon: React.ReactNode; needs_screen: boolean }[] = [
   { id: "screen", label: "Screen", short_label: "Screen", hint: "Your screen and voice", icon: <AppWindow size={17} />, needs_screen: true },
   { id: "screen_camera", label: "Screen and camera", short_label: "Screen + cam", hint: "Your face in a bubble", icon: <MonitorPlay size={17} />, needs_screen: true },
   { id: "camera", label: "Camera only", short_label: "Camera", hint: "Talk to your team", icon: <Video size={17} />, needs_screen: false },
+];
+
+const CONTROLS_LOCATIONS: { id: ControlsLocation; label: string; hint: string; icon: React.ReactNode }[] = [
+  { id: "page", label: "Bottom bar", hint: "A bar at the bottom of this page with pause, start over and finish.", icon: <PanelBottom size={16} /> },
+  { id: "floating", label: "Floating window", hint: "A small window that stays on top of every app, handy when you record other windows.", icon: <PictureInPicture2 size={16} /> },
+  { id: "hidden", label: "Hidden", hint: "Nothing on screen, so the controls never show in the video. Use the shortcuts below.", icon: <EyeOff size={16} /> },
 ];
 
 /** Picker value for "record without a microphone". */
@@ -234,21 +240,31 @@ export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps
 
           <div className="screen-recorder-setup__group">
             <h3 className="screen-recorder-setup__group-title">While recording</h3>
-            <label className="screen-recorder-switch">
-              <span className="screen-recorder-switch__text">
-                <span className="screen-recorder-switch__label">Hide the controls</span>
-                <span className="screen-recorder-switch__hint">Keep them out of the video, use the shortcuts below.</span>
-              </span>
-              <input
-                type="checkbox"
-                role="switch"
-                checked={engine.hide_controls}
-                onChange={(event) => engine.setHideControls(event.target.checked)}
-                disabled={is_starting}
-                className="screen-recorder-switch__input"
-              />
-              <span className="screen-recorder-switch__track" aria-hidden="true" />
-            </label>
+            <div className="screen-recorder-controls-location" role="radiogroup" aria-label="Where the controls show">
+              {CONTROLS_LOCATIONS.map((location) => {
+                const is_active = engine.controls_location === location.id;
+                const is_unavailable = location.id === "floating" && !platform.has_floating_bubble;
+                return (
+                  <button
+                    key={location.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={is_active}
+                    data-active={is_active || undefined}
+                    disabled={is_starting || is_unavailable}
+                    title={is_unavailable ? "Needs Chrome or Edge on a computer" : location.hint}
+                    className="screen-recorder-controls-location__option"
+                    onClick={() => engine.setControlsLocation(location.id)}
+                  >
+                    {location.icon}
+                    <span>{location.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="screen-recorder-controls-location__hint">
+              {CONTROLS_LOCATIONS.find((location) => location.id === engine.controls_location)?.hint}
+            </p>
             <dl className="screen-recorder-shortcuts">
               <div>
                 <dt>Pause</dt>

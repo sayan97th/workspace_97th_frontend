@@ -119,20 +119,34 @@ export function storeQuality(quality: RecordingQuality) {
   }
 }
 
-const HIDE_CONTROLS_STORAGE_KEY = "screen-recorder.hide-controls";
+/**
+ * Where the recording controls show while recording:
+ * - "page": a bar at the bottom of the page (the default);
+ * - "floating": an always on top browser window (Chrome and Edge), usable from any app;
+ * - "hidden": nowhere, so they never appear in the video (keyboard shortcuts instead).
+ */
+export type ControlsLocation = "page" | "floating" | "hidden";
 
-/** Whether the person chose to keep the recording controls out of sight (and out of the video). */
-export function readStoredHideControls(): boolean {
+export const DEFAULT_CONTROLS_LOCATION: ControlsLocation = "page";
+
+const CONTROLS_LOCATION_STORAGE_KEY = "screen-recorder.controls-location";
+/** Earlier versions only had a hide switch, its "on" maps to "hidden". */
+const LEGACY_HIDE_CONTROLS_STORAGE_KEY = "screen-recorder.hide-controls";
+
+export function readStoredControlsLocation(): ControlsLocation {
   try {
-    return window.localStorage.getItem(HIDE_CONTROLS_STORAGE_KEY) === "1";
+    const stored = window.localStorage.getItem(CONTROLS_LOCATION_STORAGE_KEY);
+    if (stored === "page" || stored === "floating" || stored === "hidden") return stored;
+    return window.localStorage.getItem(LEGACY_HIDE_CONTROLS_STORAGE_KEY) === "1" ? "hidden" : DEFAULT_CONTROLS_LOCATION;
   } catch {
-    return false;
+    return DEFAULT_CONTROLS_LOCATION;
   }
 }
 
-export function storeHideControls(hide_controls: boolean) {
+export function storeControlsLocation(location: ControlsLocation) {
   try {
-    window.localStorage.setItem(HIDE_CONTROLS_STORAGE_KEY, hide_controls ? "1" : "0");
+    window.localStorage.setItem(CONTROLS_LOCATION_STORAGE_KEY, location);
+    window.localStorage.removeItem(LEGACY_HIDE_CONTROLS_STORAGE_KEY);
   } catch {
     // Private mode or blocked storage, the choice just isn't remembered.
   }

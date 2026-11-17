@@ -11,10 +11,12 @@ import {
   displayMediaOptions,
   maxRecordingMs,
   qualityPreset,
-  readStoredHideControls,
+  DEFAULT_CONTROLS_LOCATION,
+  readStoredControlsLocation,
   readStoredQuality,
-  storeHideControls,
+  storeControlsLocation,
   storeQuality,
+  type ControlsLocation,
   toRecorderDevices,
   defaultRecordingTitle,
   describeMediaError,
@@ -52,9 +54,9 @@ export type RecorderEngine = {
   retryAccess: () => void;
   /** Records without the blocked device: screen only instead of the camera, or a silent video instead of the microphone. */
   continueWithout: (kind: "camera" | "microphone") => void;
-  /** Remembered choice: keep the controls hidden while recording, so they never appear in the video. */
-  hide_controls: boolean;
-  setHideControls: (hide_controls: boolean) => void;
+  /** Remembered choice of where the controls show while recording, the bottom of the page by default. */
+  controls_location: ControlsLocation;
+  setControlsLocation: (location: ControlsLocation) => void;
   /** Whether the floating controls show right now, toggled by their hide button or the keyboard. */
   is_controls_visible: boolean;
   toggleControls: () => void;
@@ -122,7 +124,7 @@ export function useRecorderEngine(): RecorderEngine {
   const [screen_access, setScreenAccess] = useState<ScreenAccess>("idle");
   /** Bumped by "Try again" (or when the browser reports the permission was granted) to request the devices once more. */
   const [access_attempt, setAccessAttempt] = useState(0);
-  const [hide_controls, setHideControlsState] = useState(false);
+  const [controls_location, setControlsLocationState] = useState<ControlsLocation>(DEFAULT_CONTROLS_LOCATION);
   const [is_controls_visible, setControlsVisible] = useState(true);
   const [is_microphone_on, setMicrophoneOn] = useState(true);
   const [camera_id, setCameraId] = useState("");
@@ -171,12 +173,12 @@ export function useRecorderEngine(): RecorderEngine {
   useEffect(() => {
     setCanRecordScreen(isScreenCaptureSupported());
     setQualityState(readStoredQuality());
-    setHideControlsState(readStoredHideControls());
+    setControlsLocationState(readStoredControlsLocation());
   }, []);
 
-  const setHideControls = useCallback((next_hide_controls: boolean) => {
-    setHideControlsState(next_hide_controls);
-    storeHideControls(next_hide_controls);
+  const setControlsLocation = useCallback((location: ControlsLocation) => {
+    setControlsLocationState(location);
+    storeControlsLocation(location);
   }, []);
 
   const setQuality = useCallback((next_quality: RecordingQuality) => {
@@ -477,16 +479,18 @@ export function useRecorderEngine(): RecorderEngine {
     setScreenAccess("idle");
     setPhase("starting");
     const current_mode = mode;
-    setControlsVisible(!hide_controls);
+    setControlsVisible(controls_location !== "hidden");
+    // Without Document Picture in Picture (Safari, Firefox) "floating" falls back to the bar at the bottom.
+    const has_floating_controls = controls_location === "floating";
 
     // The floating window has to open on this click: the browser only allows it during a user gesture.
     // It carries the camera bubble, plus the controls unless the person chose to keep them out of the video
     // (screen only with hidden controls then needs no floating window at all).
     let pip: Window | null = null;
     const document_pip = getDocumentPictureInPicture();
-    const wants_pip = current_mode === "screen_camera" || (current_mode === "screen" && !hide_controls);
+    const wants_pip = current_mode === "screen_camera" || (current_mode === "screen" && has_floating_controls);
     if (wants_pip && document_pip && !skip_pip_ref.current) {
-      const size = current_mode === "screen_camera" ? (hide_controls ? { width: 240, height: 240 } : { width: 264, height: 340 }) : { width: 340, height: 84 };
+      const size = current_mode === "screen_camera" ? (has_floating_controls ? { width: 264, height: 340 } : { width: 240, height: 240 }) : { width: 340, height: 84 };
       try {
         pip = await document_pip.requestWindow(size);
         copyStylesInto(pip);
@@ -646,8 +650,8 @@ export function useRecorderEngine(): RecorderEngine {
     screen_access,
     retryAccess,
     continueWithout,
-    hide_controls,
-    setHideControls,
+    controls_location,
+    setControlsLocation,
     is_controls_visible,
     toggleControls: () => setControlsVisible((visible) => !visible),
     is_microphone_on,
