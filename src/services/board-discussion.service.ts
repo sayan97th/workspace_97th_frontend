@@ -41,6 +41,30 @@ export const boardDiscussionService = {
     return response.comment;
   },
 
+  /** DELETE /api/boards/{board_id}/comments/{comment_id}/attachments/{attachment_id}, takes one file off a posted board update. */
+  async deleteAttachment(board_id: number, comment_id: number, attachment_id: number): Promise<BoardDiscussionCommentDto> {
+    const response = await apiClient.delete<{ comment: BoardDiscussionCommentDto }>(`/api/boards/${board_id}/comments/${comment_id}/attachments/${attachment_id}`);
+    return response.comment;
+  },
+
+  /** POST /api/boards/{board_id}/comments/{comment_id}/attachments/{attachment_id}/replace, swaps one file of a posted board update. */
+  async replaceAttachment(
+    board_id: number,
+    comment_id: number,
+    attachment_id: number,
+    file: File,
+    onUploadProgress?: (progress: UploadProgress) => void
+  ): Promise<BoardDiscussionCommentDto> {
+    const form_data = new FormData();
+    form_data.append("file", file);
+    const response = await apiClient.postFormDataWithProgress<{ comment: BoardDiscussionCommentDto }>(
+      `/api/boards/${board_id}/comments/${comment_id}/attachments/${attachment_id}/replace`,
+      form_data,
+      onUploadProgress
+    );
+    return response.comment;
+  },
+
   /** GET /api/boards/{board_id}/comments/{comment_id}/revisions, earlier bodies of an edited update, newest edit first. */
   async listRevisions(board_id: number, comment_id: number): Promise<CommentRevisionDto[]> {
     const response = await apiClient.get<{ data: CommentRevisionDto[] }>(

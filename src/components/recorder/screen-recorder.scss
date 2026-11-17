@@ -231,7 +231,7 @@ $ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 210px;
+  height: 184px;
   margin-bottom: 14px;
   overflow: hidden;
   border-radius: 14px;
@@ -308,65 +308,302 @@ $ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   gap: 8px;
 }
 
-.screen-recorder-setup__device {
+// Small resolution tag in the corner of the preview stage.
+.screen-recorder-setup__stage-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(6px);
+}
+
+// ---------------------------------------------------------------------------
+// Device picker (RecorderSelect)
+// ---------------------------------------------------------------------------
+
+.recorder-select {
+  position: relative;
+}
+
+.recorder-select__trigger {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
-  padding: 4px 12px 4px 4px;
+  width: 100%;
+  min-height: 52px;
+  padding: 6px 12px 6px 6px;
   border: 1px solid var(--bd-border);
-  border-radius: 10px;
+  border-radius: 12px;
+  text-align: left;
   background: var(--bd-surface);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+
+  &:hover:not(:disabled) {
+    border-color: var(--bd-border-strong);
+    background: var(--bd-surface-alt);
+  }
+
+  &:focus-visible,
+  .recorder-select[data-open] & {
+    border-color: var(--bd-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--bd-focus-ring);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
 }
 
-.screen-recorder-setup__device-icon {
+.recorder-select__icon {
   display: flex;
   flex: none;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   color: var(--bd-text-secondary);
   background: var(--bd-surface-alt);
-}
-
-.screen-recorder-setup__device-toggle {
   transition:
-    background-color 120ms ease,
-    color 120ms ease;
+    color 140ms ease,
+    background-color 140ms ease;
 
-  &:hover:not(:disabled) {
-    background: var(--bd-hover-strong);
-  }
-
-  &[data-off] {
-    color: $record-red;
-    background: rgba($record-red, 0.1);
+  .recorder-select[data-open] & {
+    color: var(--bd-accent);
+    background: var(--bd-accent-soft);
   }
 }
 
-.screen-recorder-setup__select {
+.recorder-select__value {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
-  height: 32px;
-  border: 0;
-  font-size: 13px;
-  font-weight: 500;
+}
+
+.recorder-select__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bd-text-faint);
+}
+
+.recorder-select__label {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--bd-text);
-  background: transparent;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-select__chevron {
+  flex: none;
+  color: var(--bd-text-faint);
+  transition: transform 180ms $ease-out;
+
+  .recorder-select[data-open] & {
+    transform: rotate(180deg);
+    color: var(--bd-accent);
+  }
+}
+
+.recorder-select__muted-pill {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: $record-red;
+  background: rgba($record-red, 0.1);
+}
+
+@keyframes recorder-select-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+// The floating list, portaled to `<body>` above the dialog.
+.recorder-select__menu {
+  position: fixed;
+  z-index: 99999;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--bd-border);
+  border-radius: 12px;
+  background: var(--bd-surface, #ffffff);
+  box-shadow:
+    0 18px 48px rgba(15, 17, 23, 0.18),
+    0 2px 6px rgba(15, 17, 23, 0.06);
+  animation: recorder-select-in 140ms $ease-out;
+  transform-origin: top center;
+
+  &[data-placement="above"] {
+    transform-origin: bottom center;
+  }
+}
+
+.recorder-select__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 7px 10px;
+  border-radius: 8px;
   cursor: pointer;
+  transition: background-color 90ms ease;
+
+  &[data-active] {
+    background: var(--bd-hover);
+  }
+
+  &[aria-selected="true"] {
+    background: var(--bd-accent-soft);
+
+    .recorder-select__option-label {
+      color: var(--bd-accent);
+    }
+  }
+}
+
+.recorder-select__option-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recorder-select__option-label {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--bd-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recorder-select__option-caption {
+  font-size: 11.5px;
+  color: var(--bd-text-faint);
+}
+
+.recorder-select__check {
+  flex: none;
+  color: var(--bd-accent);
+}
+
+// ---------------------------------------------------------------------------
+// Video quality
+// ---------------------------------------------------------------------------
+
+.screen-recorder-quality {
+  min-width: 0;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.screen-recorder-quality__legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--bd-text-faint);
+}
+
+.screen-recorder-quality__options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bd-surface-sunken);
+}
+
+.screen-recorder-quality__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 8px 6px;
+  border-radius: 9px;
+  color: var(--bd-text-secondary);
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease,
+    color 140ms ease;
+
+  &:hover:not(:disabled):not([data-active]) {
+    background: var(--bd-hover);
+  }
+
+  &[data-active] {
+    color: var(--bd-text);
+    background: var(--bd-surface);
+    box-shadow:
+      0 1px 3px rgba(15, 17, 23, 0.1),
+      0 0 0 1px var(--bd-border);
+  }
 
   &:focus-visible {
-    outline: none;
+    outline: 2px solid var(--bd-accent);
+    outline-offset: 1px;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
   }
 }
 
-.screen-recorder-setup__muted {
-  flex: 1;
-  font-size: 12.5px;
-  color: var(--bd-text-faint);
+.screen-recorder-quality__resolution {
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+
+  [data-active] > & {
+    color: var(--bd-accent);
+  }
+}
+
+.screen-recorder-quality__name {
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.screen-recorder-quality__flag {
+  position: absolute;
+  top: -8px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  background: #00c875;
 }
 
 .screen-recorder-setup__tip {
@@ -518,6 +755,16 @@ $ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   color: #1b1d26;
   background: #fdab3d;
   white-space: nowrap;
+}
+
+.screen-recorder__quality-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .screen-recorder__controls-meter {

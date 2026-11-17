@@ -24,36 +24,116 @@ export type RecordingResult = {
   duration_ms: number;
 };
 
-/**
- * Loom's free plan caps at 5 minutes, ours allows a longer walkthrough. At the
- * bitrates below 20 minutes stays around 400 MB, under the API's 500 MB video
- * limit (`App\Rules\CommentAttachmentFile::MAX_VIDEO_KILOBYTES`).
- */
-export const MAX_RECORDING_MS = 20 * 60 * 1000;
-
-/** Video bitrates in bits per second: crisp 1080p text for screens, less for a talking head. */
-export const SCREEN_VIDEO_BITS_PER_SECOND = 2_500_000;
-export const CAMERA_VIDEO_BITS_PER_SECOND = 2_000_000;
-
 export const COUNTDOWN_SECONDS = 3;
 
-/** Screen capture: 1080p at 30 fps is plenty for UI walkthroughs and keeps files small. */
-export const DISPLAY_MEDIA_OPTIONS: DisplayMediaStreamOptions & Record<string, unknown> = {
-  video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 } },
-  // Tab or system audio when the picker offers it, mixed with the microphone.
-  audio: true,
-  // Chromium hints: let the user pick this tab too, and switch tabs while recording.
-  selfBrowserSurface: "include",
-  surfaceSwitching: "include",
-  systemAudio: "include",
-  monitorTypeSurfaces: "include",
+/** The default every time the recorder opens: the screen with the microphone, what the team records most. */
+export const DEFAULT_RECORDING_MODE: RecordingMode = "screen";
+
+export type RecordingQuality = "720p" | "1080p" | "1440p";
+
+export type RecordingQualityPreset = {
+  id: RecordingQuality;
+  label: string;
+  caption: string;
+  width: number;
+  height: number;
+  /** Target video bitrate for screen captures, text heavy, so it gets the most. */
+  screen_bits_per_second: number;
+  /** Target video bitrate for the camera only mode. */
+  camera_bits_per_second: number;
 };
 
-export const CAMERA_CONSTRAINTS: MediaTrackConstraints = {
-  width: { ideal: 1280 },
-  height: { ideal: 720 },
-  frameRate: { ideal: 30 },
-};
+export const RECORDING_QUALITY_PRESETS: RecordingQualityPreset[] = [
+  { id: "720p", label: "Standard", caption: "Smaller files, quick to upload", width: 1280, height: 720, screen_bits_per_second: 2_500_000, camera_bits_per_second: 1_500_000 },
+  { id: "1080p", label: "Full HD", caption: "Sharp text, recommended", width: 1920, height: 1080, screen_bits_per_second: 5_000_000, camera_bits_per_second: 2_500_000 },
+  { id: "1440p", label: "Quad HD", caption: "Every detail, larger files", width: 2560, height: 1440, screen_bits_per_second: 8_000_000, camera_bits_per_second: 4_000_000 },
+];
+
+export const DEFAULT_RECORDING_QUALITY: RecordingQuality = "1080p";
+
+export function qualityPreset(quality: RecordingQuality): RecordingQualityPreset {
+  return RECORDING_QUALITY_PRESETS.find((preset) => preset.id === quality) ?? RECORDING_QUALITY_PRESETS[1];
+}
+
+const AUDIO_BITS_PER_SECOND = 128_000;
+export const RECORDING_AUDIO_BITS_PER_SECOND = AUDIO_BITS_PER_SECOND;
+
+/** Mirrors the API's video limit (`App\Rules\CommentAttachmentFile::MAX_VIDEO_KILOBYTES`). */
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
+/** Container overhead and bitrate peaks eat into the limit, aim below it. */
+const VIDEO_SIZE_HEADROOM = 0.9;
+/** Even at the lightest quality a single video stays a walkthrough, not a meeting recording. */
+const ABSOLUTE_MAX_RECORDING_MS = 30 * 60 * 1000;
+
+/**
+ * How long a video can run at this quality and still fit the upload limit:
+ * about 24 minutes at 720p, 12 at 1080p and 7 at 1440p. Higher quality
+ * spends more bits per second, so the clock is shorter.
+ */
+export function maxRecordingMs(quality: RecordingQuality, mode: RecordingMode): number {
+  const preset = qualityPreset(quality);
+  const video_bits = mode === "camera" ? preset.camera_bits_per_second : preset.screen_bits_per_second;
+  const seconds = (MAX_VIDEO_BYTES * VIDEO_SIZE_HEADROOM * 8) / (video_bits + AUDIO_BITS_PER_SECOND);
+  return Math.min(ABSOLUTE_MAX_RECORDING_MS, Math.floor(seconds / 60) * 60 * 1000);
+}
+
+/** Screen capture constraints for a quality: the resolution is a ceiling, a smaller screen records at its own size. */
+export function displayMediaOptions(quality: RecordingQuality): DisplayMediaStreamOptions & Record<string, unknown> {
+  const preset = qualityPreset(quality);
+  return {
+    video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: preset.width, max: preset.width }, height: { ideal: preset.height, max: preset.height } },
+    // Tab or system audio when the picker offers it, mixed with the microphone.
+    audio: true,
+    // Chromium hints: let the user pick this tab too, and switch tabs while recording.
+    selfBrowserSurface: "include",
+    surfaceSwitching: "include",
+    systemAudio: "include",
+    monitorTypeSurfaces: "include",
+  };
+}
+
+/** Camera constraints for a quality, cameras top out at 1080p. */
+export function cameraConstraints(quality: RecordingQuality): MediaTrackConstraints {
+  const preset = qualityPreset(quality);
+  return { width: { ideal: Math.min(preset.width, 1920) }, height: { ideal: Math.min(preset.height, 1080) }, frameRate: { ideal: 30 } };
+}
+
+const QUALITY_STORAGE_KEY = "screen-recorder.quality";
+
+/** The quality picked last time in this browser. */
+export function readStoredQuality(): RecordingQuality {
+  try {
+    const stored = window.localStorage.getItem(QUALITY_STORAGE_KEY);
+    return RECORDING_QUALITY_PRESETS.some((preset) => preset.id === stored) ? (stored as RecordingQuality) : DEFAULT_RECORDING_QUALITY;
+  } catch {
+    return DEFAULT_RECORDING_QUALITY;
+  }
+}
+
+export function storeQuality(quality: RecordingQuality) {
+  try {
+    window.localStorage.setItem(QUALITY_STORAGE_KEY, quality);
+  } catch {
+    // Private mode or blocked storage, the choice just isn't remembered.
+  }
+}
+
+/** A camera or microphone the pickers list. */
+export type RecorderDevice = { id: string; label: string };
+
+/**
+ * Turns `enumerateDevices()` into a clean list: Chrome adds "default" and
+ * "communications" aliases of real devices (they would show twice), and
+ * labels often end in a USB id like "(046d:0892)".
+ */
+export function toRecorderDevices(devices: MediaDeviceInfo[], kind: MediaDeviceKind, fallback_label: string): RecorderDevice[] {
+  return devices
+    .filter((device) => device.kind === kind && device.deviceId && device.deviceId !== "default" && device.deviceId !== "communications")
+    .map((device, index) => ({
+      id: device.deviceId,
+      label: device.label.replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, "").trim() || `${fallback_label} ${index + 1}`,
+    }));
+}
 
 export const MICROPHONE_CONSTRAINTS: MediaTrackConstraints = {
   echoCancellation: true,
@@ -137,6 +217,12 @@ export function formatRecordingTime(milliseconds: number): string {
 export function recordingExtension(mime_type: string): string {
   if (mime_type.startsWith("video/mp4")) return "mp4";
   return "webm";
+}
+
+/** "12 minutes", "1 minute". */
+export function formatMinutes(milliseconds: number): string {
+  const minutes = Math.max(1, Math.round(milliseconds / 60000));
+  return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
 }
 
 /** "Recording 2026-11-17 at 10.42" (dots, a colon is not allowed in Windows file names). */

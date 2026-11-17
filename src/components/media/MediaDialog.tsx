@@ -39,7 +39,8 @@ export default function MediaDialog({ is_open, onClose, aria_label, tone = "ligh
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       // A video in full screen and the PhotoSwipe lightbox handle their own Escape first.
-      if (document.fullscreenElement || document.querySelector(".pswp")) return;
+      // So do the popovers opened from inside a dialog (a device picker list), marked with `data-escape-layer`.
+      if (document.fullscreenElement || document.querySelector(".pswp, [data-escape-layer]")) return;
       // With dialogs stacked (gallery, then a video on top), only the topmost one closes.
       const open_dialogs = document.querySelectorAll(".media-dialog");
       if (open_dialogs[open_dialogs.length - 1] !== panel_ref.current?.parentElement) return;

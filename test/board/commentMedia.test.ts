@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { attachmentRejectionReason, classifyAttachment, formatAttachmentSize } from "@/components/board/drawer/drawerAttachments";
-import { collectThreadMedia, extractBodyImageUrls } from "@/components/board/drawer/media/threadMedia";
+import { attachmentToMediaItem } from "@/components/board/drawer/media/threadMedia";
 import type { DrawerComment } from "@/components/board/drawer/types";
-import { defaultRecordingTitle, formatRecordingTime, recordingFileName } from "@/components/recorder/recorderUtils";
+import { defaultRecordingTitle, formatRecordingTime, maxRecordingMs, recordingFileName, toRecorderDevices } from "@/components/recorder/recorderUtils";
 
 const fileOfSize = (name: string, size_bytes: number) => {
   const file = new File(["x"], name);
@@ -54,31 +54,44 @@ describe("attachmentRejectionReason", () => {
   });
 });
 
-describe("collectThreadMedia", () => {
-  it("lists attachments and pasted images oldest first, without duplicates", () => {
-    const older = comment({
-      id: "1",
-      posted_at_iso: "2026-11-16T10:00:00Z",
-      body: "Look ![shot](https://cdn.example.com/a.png)",
-      attachments: [{ id: "9", file_name: "demo.webm", tag: "VID", tag_color: "#e2445c", media_kind: "video", download_url: "https://cdn.example.com/demo.webm" }],
-    });
-    const newer = comment({
-      id: "2",
-      body: "Same one again ![shot](https://cdn.example.com/a.png)",
-      attachments: [{ id: "10", file_name: "notes.pdf", tag: "PDF", tag_color: "#e0524a", media_kind: "file", download_url: "https://cdn.example.com/notes.pdf" }],
-    });
+describe("attachmentToMediaItem", () => {
+  it("turns posted images and videos into slides with the author, and skips other files", () => {
+    const video = { id: "9", file_name: "demo.webm", tag: "VID" as const, tag_color: "#e2445c", media_kind: "video" as const, download_url: "https://cdn.example.com/demo.webm" };
+    const pdf = { id: "10", file_name: "notes.pdf", tag: "PDF" as const, tag_color: "#e0524a", media_kind: "file" as const, download_url: "https://cdn.example.com/notes.pdf" };
+    const owner = comment({ id: "1", attachments: [video, pdf] });
 
-    const items = collectThreadMedia([newer, older]);
-    expect(items.map((item) => [item.kind, item.url])).toEqual([
-      ["video", "https://cdn.example.com/demo.webm"],
-      ["image", "https://cdn.example.com/a.png"],
-    ]);
-    expect(items[0].author?.name).toBe("Ana Diaz");
+    expect(attachmentToMediaItem(video, owner)).toMatchObject({ kind: "video", url: "https://cdn.example.com/demo.webm", comment_id: "1", author: { name: "Ana Diaz" } });
+    expect(attachmentToMediaItem(pdf, owner)).toBeNull();
   });
 
-  it("reads image URLs from Markdown and HTML bodies", () => {
-    expect(extractBodyImageUrls('![a](https://x.test/1.png) <img src="https://x.test/2.jpg">')).toEqual(["https://x.test/1.png", "https://x.test/2.jpg"]);
-    expect(extractBodyImageUrls("![bad](javascript:alert(1))")).toEqual([]);
+  it("uses the local preview of a file that is not uploaded yet", () => {
+    const draft = { id: "d1", file_name: "shot.png", tag: "IMG" as const, tag_color: "#a358df", media_kind: "image" as const, preview_url: "blob:local/1" };
+    expect(attachmentToMediaItem(draft)?.url).toBe("blob:local/1");
+  });
+});
+
+describe("recording quality", () => {
+  it("gives higher qualities a shorter time limit so the video fits the 500 MB upload limit", () => {
+    const minutes = (ms: number) => ms / 60000;
+    expect(minutes(maxRecordingMs("720p", "screen"))).toBe(23);
+    expect(minutes(maxRecordingMs("1080p", "screen"))).toBe(12);
+    expect(minutes(maxRecordingMs("1440p", "screen"))).toBe(7);
+    expect(maxRecordingMs("1080p", "camera")).toBeGreaterThan(maxRecordingMs("1080p", "screen"));
+  });
+});
+
+describe("toRecorderDevices", () => {
+  it("drops the browser's default and communications aliases and USB ids", () => {
+    const device = (deviceId: string, label: string) => ({ deviceId, label, kind: "audioinput", groupId: "g", toJSON: () => ({}) }) as MediaDeviceInfo;
+    const devices = toRecorderDevices(
+      [device("default", "Default - Headset"), device("communications", "Communications - Headset"), device("abc", "C920 PRO HD Webcam Analog Stereo (046d:0892)"), device("def", "")],
+      "audioinput",
+      "Microphone"
+    );
+    expect(devices).toEqual([
+      { id: "abc", label: "C920 PRO HD Webcam Analog Stereo" },
+      { id: "def", label: "Microphone 2" },
+    ]);
   });
 });
 

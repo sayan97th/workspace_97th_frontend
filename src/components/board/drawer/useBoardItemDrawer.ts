@@ -633,6 +633,57 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
       })
     );
 
+  const toProgress = (onProgress?: (progress: number) => void) => ({ loaded, total }: { loaded: number; total: number }) =>
+    onProgress?.(total > 0 ? Math.min(loaded / total, 1) : 0);
+
+  /** Takes one file off a posted update, see `BoardItemCommentController::destroyAttachment`. */
+  const deleteCommentAttachment = async (comment_id: string, attachment_id: string): Promise<void> => {
+    if (!open_row_id) return;
+    const row_id = open_row_id;
+    const comment = (comments_by_row[row_id] ?? []).find((entry) => entry.id === comment_id);
+    if (!comment) return;
+
+    if (!is_api_backed) {
+      applyCommentEdit(row_id, comment_id, undefined, comment.body, comment.attachments.filter((attachment) => attachment.id !== attachment_id));
+      return;
+    }
+    setCommentsError(null);
+    try {
+      const dto = await boardCommentsService.deleteAttachment(board_id, Number(row_id), Number(comment_id), Number(attachment_id));
+      applyCommentEdit(row_id, comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+    } catch (error) {
+      setCommentsError(getApiErrorMessage(error, "Couldn't remove that file. Please try again."));
+      throw error;
+    }
+  };
+
+  /** Swaps one file of a posted update for a new one, see `BoardItemCommentController::replaceAttachment`. */
+  const replaceCommentAttachment = async (comment_id: string, attachment_id: string, file: File, onProgress?: (progress: number) => void): Promise<void> => {
+    if (!open_row_id) return;
+    const rejection = attachmentRejectionReason(file);
+    if (rejection) {
+      setCommentsError(rejection);
+      throw new Error(rejection);
+    }
+    const row_id = open_row_id;
+    const comment = (comments_by_row[row_id] ?? []).find((entry) => entry.id === comment_id);
+    if (!comment) return;
+
+    if (!is_api_backed) {
+      const replacement = createDraftAttachment(attachment_id, file);
+      applyCommentEdit(row_id, comment_id, undefined, comment.body, comment.attachments.map((attachment) => (attachment.id === attachment_id ? replacement : attachment)));
+      return;
+    }
+    setCommentsError(null);
+    try {
+      const dto = await boardCommentsService.replaceAttachment(board_id, Number(row_id), Number(comment_id), Number(attachment_id), file, toProgress(onProgress));
+      applyCommentEdit(row_id, comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+    } catch (error) {
+      setCommentsError(getApiErrorMessage(error, "Couldn't replace that file. Please try again."));
+      throw error;
+    }
+  };
+
   const startEditingComment = (comment_id: string, reply_id?: string) => {
     if (!open_row_id) return;
     const comment = (comments_by_row[open_row_id] ?? []).find((c) => c.id === comment_id);
@@ -1016,6 +1067,8 @@ export function useBoardItemDrawer<TRow>(config: BoardItemDrawerConfig<TRow>): B
     toggleSeen,
     togglePin,
     deleteComment,
+    deleteCommentAttachment,
+    replaceCommentAttachment,
 
     editing_key,
     edit_draft,

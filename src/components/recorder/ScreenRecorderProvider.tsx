@@ -17,6 +17,8 @@ export type RecordingRequest = {
    * while recording). Omitted where there is nothing to post to (mock boards).
    */
   postFallback?: (file: File, onProgress: (progress: number) => void) => Promise<void>;
+  /** Text of the review's main button when the video goes through `postFallback`, "Post as update" by default (e.g. "Replace video"). */
+  submit_label?: string;
 };
 
 type ScreenRecorderContextValue = {
@@ -93,6 +95,8 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
     elapsed_ms: engine.elapsed_ms,
     countdown: engine.countdown,
     microphone_stream: engine.microphone_stream,
+    max_recording_ms: engine.max_recording_ms,
+    quality_label: engine.quality,
     onPause: engine.pause,
     onResume: engine.resume,
     onFinish: engine.finish,
@@ -121,6 +125,7 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
             engine={engine}
             can_attach={can_attach}
             can_post={Boolean(post_fallback)}
+            submit_label={request?.submit_label}
             onAttach={(file) => request && targets_ref.current.get(request.target_key)?.(file)}
             onPost={(file, onProgress) => (post_fallback ? post_fallback(file, onProgress) : Promise.reject(new Error("No update to post to")))}
           />

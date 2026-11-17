@@ -398,6 +398,10 @@ export type BoardItemDrawerApi<TRow> = BoardItemDrawerConfig<TRow> & {
   togglePin: (comment_id: string) => void;
   /** Deletes a top-level comment, or (when `reply_id` is given) just that reply. Author-only — also enforced server-side. */
   deleteComment: (comment_id: string, reply_id?: string) => void;
+  /** Takes one posted file (a video, an image) off an update. Resolves once saved, rejects (with `comments_error` set) when it fails. */
+  deleteCommentAttachment?: (comment_id: string, attachment_id: string) => Promise<void>;
+  /** Swaps one posted file of an update for a new one, e.g. a video recorded again. `onProgress` hears the upload, 0 to 1. */
+  replaceCommentAttachment?: (comment_id: string, attachment_id: string, file: File, onProgress?: (progress: number) => void) => Promise<void>;
 
   /** `comment.id` while editing a top-level comment, `"commentId:replyId"` while editing a reply (mirrors `reaction_palette_key`) — null when nothing is being edited. */
   editing_key: string | null;
@@ -478,7 +482,7 @@ export type CommentFeedApi = Pick<
   | "cancelEditingComment"
   | "saveEditedComment"
 > &
-  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links" | "draft_context" | "composer_upload_progress">>;
+  Partial<Pick<BoardItemDrawerApi<unknown>, "board_id" | "activity_log" | "reference_items_with_links" | "draft_context" | "composer_upload_progress" | "deleteCommentAttachment" | "replaceCommentAttachment">>;
 
 /** What the "Files" tab needs: every attachment of the thread plus the dropzone's upload state, shared by both comment drawers. */
 export type DrawerFilesApi = Pick<

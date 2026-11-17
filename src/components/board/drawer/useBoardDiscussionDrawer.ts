@@ -137,6 +137,10 @@ export type BoardDiscussionDrawerApi = BoardDiscussionDrawerConfig & DrawerFiles
   togglePin: (comment_id: string) => void;
   /** Deletes a top-level comment, or (when `reply_id` is given) just that reply. Author-only — also enforced server-side. */
   deleteComment: (comment_id: string, reply_id?: string) => void;
+  /** Takes one posted file (a video, an image) off an update. Resolves once saved, rejects (with `comments_error` set) when it fails. */
+  deleteCommentAttachment?: (comment_id: string, attachment_id: string) => Promise<void>;
+  /** Swaps one posted file of an update for a new one, e.g. a video recorded again. `onProgress` hears the upload, 0 to 1. */
+  replaceCommentAttachment?: (comment_id: string, attachment_id: string, file: File, onProgress?: (progress: number) => void) => Promise<void>;
 
   /** `comment.id` while editing a top-level comment, `"commentId:replyId"` while editing a reply — null when nothing is being edited. */
   editing_key: string | null;
@@ -589,6 +593,37 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
       })
     );
 
+  /** Takes one file off a posted board update, see `BoardCommentController::destroyAttachment`. */
+  const deleteCommentAttachment = async (comment_id: string, attachment_id: string): Promise<void> => {
+    setCommentsError(null);
+    try {
+      const dto = await boardDiscussionService.deleteAttachment(board_id, Number(comment_id), Number(attachment_id));
+      applyCommentEdit(comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+    } catch (error) {
+      setCommentsError(getApiErrorMessage(error, "Couldn't remove that file. Please try again."));
+      throw error;
+    }
+  };
+
+  /** Swaps one file of a posted board update for a new one, see `BoardCommentController::replaceAttachment`. */
+  const replaceCommentAttachment = async (comment_id: string, attachment_id: string, file: File, onProgress?: (progress: number) => void): Promise<void> => {
+    const rejection = attachmentRejectionReason(file);
+    if (rejection) {
+      setCommentsError(rejection);
+      throw new Error(rejection);
+    }
+    setCommentsError(null);
+    try {
+      const dto = await boardDiscussionService.replaceAttachment(board_id, Number(comment_id), Number(attachment_id), file, ({ loaded, total }) =>
+        onProgress?.(total > 0 ? Math.min(loaded / total, 1) : 0)
+      );
+      applyCommentEdit(comment_id, undefined, dto.body, dto.attachments.map(mapAttachmentDto));
+    } catch (error) {
+      setCommentsError(getApiErrorMessage(error, "Couldn't replace that file. Please try again."));
+      throw error;
+    }
+  };
+
   const startEditingComment = (comment_id: string, reply_id?: string) => {
     const comment = comments.find((c) => c.id === comment_id);
     const target = reply_id ? comment?.replies.find((reply) => reply.id === reply_id) : comment;
@@ -847,6 +882,8 @@ export function useBoardDiscussionDrawer(config: BoardDiscussionDrawerConfig): B
     toggleSeen,
     togglePin,
     deleteComment,
+    deleteCommentAttachment,
+    replaceCommentAttachment,
 
     editing_key,
     edit_draft,

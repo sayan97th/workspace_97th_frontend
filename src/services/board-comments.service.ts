@@ -66,6 +66,33 @@ export const boardCommentsService = {
     return response.comment;
   },
 
+  /** DELETE /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/attachments/{attachment_id}, takes one file off a posted update (its stored file is deleted too). */
+  async deleteAttachment(board_id: number, item_id: number, comment_id: number, attachment_id: number): Promise<BoardItemCommentDto> {
+    const response = await apiClient.delete<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/attachments/${attachment_id}`
+    );
+    return response.comment;
+  },
+
+  /** POST /api/boards/{board_id}/items/{item_id}/comments/{comment_id}/attachments/{attachment_id}/replace, swaps one file of a posted update, with upload progress. */
+  async replaceAttachment(
+    board_id: number,
+    item_id: number,
+    comment_id: number,
+    attachment_id: number,
+    file: File,
+    onUploadProgress?: (progress: UploadProgress) => void
+  ): Promise<BoardItemCommentDto> {
+    const form_data = new FormData();
+    form_data.append("file", file);
+    const response = await apiClient.postFormDataWithProgress<{ comment: BoardItemCommentDto }>(
+      `/api/boards/${board_id}/items/${item_id}/comments/${comment_id}/attachments/${attachment_id}/replace`,
+      form_data,
+      onUploadProgress
+    );
+    return response.comment;
+  },
+
   /** DELETE /api/boards/{board_id}/items/{item_id}/comments/{comment_id} */
   async deleteComment(board_id: number, item_id: number, comment_id: number): Promise<void> {
     const response = await apiClient.delete<{ item_comments?: unknown }>(`/api/boards/${board_id}/items/${item_id}/comments/${comment_id}`);

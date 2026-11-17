@@ -15,6 +15,8 @@ export type RecordingReviewDialogProps = {
   can_post: boolean;
   onAttach: (file: File) => void;
   onPost: (file: File, onProgress: (progress: number) => void) => Promise<void>;
+  /** Main button text for `onPost`, "Post as update" by default. */
+  submit_label?: string;
 };
 
 /**
@@ -23,7 +25,7 @@ export type RecordingReviewDialogProps = {
  * Like Loom, nothing is uploaded until the user decides, and it can't be
  * dismissed by accident: closing asks before throwing the video away.
  */
-export default function RecordingReviewDialog({ engine, can_attach, can_post, onAttach, onPost }: RecordingReviewDialogProps) {
+export default function RecordingReviewDialog({ engine, can_attach, can_post, onAttach, onPost, submit_label = "Post as update" }: RecordingReviewDialogProps) {
   const result = engine.result;
   const is_open = engine.phase === "processing" || engine.phase === "review";
   const [title, setTitle] = useState("");
@@ -180,7 +182,7 @@ export default function RecordingReviewDialog({ engine, can_attach, can_post, on
                 ) : can_post ? (
                   <button type="button" className="screen-recorder-review__primary" onClick={() => void post()} disabled={is_posting}>
                     <Send size={15} />
-                    {is_posting ? "Posting" : "Post as update"}
+                    {is_posting ? "Uploading" : submit_label}
                   </button>
                 ) : null}
               </>

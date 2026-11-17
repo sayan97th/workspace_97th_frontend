@@ -3,26 +3,28 @@ import React from "react";
 import { AppWindow, Camera, Mic, MicOff, MonitorPlay, MonitorSmartphone, Video, X } from "lucide-react";
 import MediaDialog from "@/components/media/MediaDialog";
 import { LiveCameraView, MicrophoneLevelMeter } from "./RecorderMediaViews";
+import RecorderSelect, { type RecorderSelectOption } from "./RecorderSelect";
 import type { RecorderEngine } from "./useRecorderEngine";
-import { MAX_RECORDING_MS, getDocumentPictureInPicture, type RecordingMode } from "./recorderUtils";
+import { RECORDING_QUALITY_PRESETS, formatMinutes, getDocumentPictureInPicture, maxRecordingMs, type RecordingMode, type RecordingQuality } from "./recorderUtils";
 
 const MODES: { id: RecordingMode; label: string; caption: string; icon: React.ReactNode; needs_screen: boolean }[] = [
+  { id: "screen", label: "Screen", caption: "Your screen and voice", icon: <AppWindow size={20} />, needs_screen: true },
   { id: "screen_camera", label: "Screen and camera", caption: "Your face in a bubble", icon: <MonitorPlay size={20} />, needs_screen: true },
-  { id: "screen", label: "Screen only", caption: "Just what you show", icon: <AppWindow size={20} />, needs_screen: true },
   { id: "camera", label: "Camera only", caption: "Talk to your team", icon: <Video size={20} />, needs_screen: false },
 ];
 
-/** A device's label, or a numbered fallback before the browser reveals labels. */
-const deviceLabel = (device: MediaDeviceInfo, index: number, kind: string) => device.label || `${kind} ${index + 1}`;
+/** Picker value for "record without a microphone". */
+const MICROPHONE_OFF = "__off__";
 
 export type RecorderSetupDialogProps = {
   engine: RecorderEngine;
 };
 
 /**
- * First step of the recorder, Loom's "new video" panel: choose what to record,
- * check the camera and the microphone with a live preview and level meter,
- * then start. The browser asks which screen, window or tab to share next.
+ * First step of the recorder, Loom's "new video" panel: choose what to record
+ * (the screen with the microphone by default), the camera and microphone with
+ * a live preview and level meter, and the video quality, then start. The
+ * browser asks which screen, window or tab to share next.
  */
 export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps) {
   const is_open = engine.phase === "setup" || engine.phase === "starting";
@@ -30,13 +32,32 @@ export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps
   const uses_camera = engine.mode !== "screen";
   const has_floating_bubble = getDocumentPictureInPicture() !== null;
 
+  const camera_options: RecorderSelectOption[] = [
+    { value: "", label: "Default camera", caption: "The one your system uses" },
+    ...engine.devices.cameras.map((device) => ({ value: device.id, label: device.label })),
+  ];
+  const microphone_options: RecorderSelectOption[] = [
+    { value: "", label: "Default microphone", caption: "The one your system uses" },
+    ...engine.devices.microphones.map((device) => ({ value: device.id, label: device.label })),
+    { value: MICROPHONE_OFF, label: "No microphone", caption: "Record without your voice" },
+  ];
+
+  const changeMicrophone = (value: string) => {
+    if (value === MICROPHONE_OFF) {
+      engine.setMicrophoneOn(false);
+      return;
+    }
+    engine.setMicrophoneOn(true);
+    engine.setMicrophoneId(value);
+  };
+
   const tip =
     engine.mode === "screen_camera"
       ? has_floating_bubble
         ? "Share your entire screen to keep the camera bubble in the video. It floats above every window while you record."
         : "Your browser keeps the camera bubble inside this page. Share this tab, or your entire screen, to include it in the video."
       : engine.mode === "screen"
-        ? "You can share your entire screen, a single window or one browser tab. Tick Share audio to include its sound."
+        ? "Next, pick your entire screen, a window or a single tab. Tick Share audio in that step to include its sound."
         : "Look at the camera and talk to your team, the video is added to this update when you finish.";
 
   return (
@@ -47,7 +68,7 @@ export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps
         </span>
         <div className="min-w-0">
           <h2 className="screen-recorder-setup__title">Record a video</h2>
-          <p className="screen-recorder-setup__subtitle">Show what you mean. Record your screen and camera, then share it in this update.</p>
+          <p className="screen-recorder-setup__subtitle">Show what you mean. Record your screen and voice, then share it in this update.</p>
         </div>
         <button type="button" className="screen-recorder-setup__close" onClick={engine.cancel} aria-label="Close recorder" disabled={is_starting}>
           <X size={18} />
@@ -102,66 +123,48 @@ export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps
             </div>
           </>
         )}
+        <span className="screen-recorder-setup__stage-badge">{engine.quality}</span>
       </div>
 
       <div className="screen-recorder-setup__devices">
         {uses_camera && (
-          <label className="screen-recorder-setup__device">
-            <span className="screen-recorder-setup__device-icon">
-              <Camera size={16} />
-            </span>
-            <select
-              value={engine.camera_id}
-              onChange={(event) => engine.setCameraId(event.target.value)}
-              disabled={is_starting}
-              aria-label="Camera"
-              className="screen-recorder-setup__select"
-            >
-              <option value="">Default camera</option>
-              {engine.devices.cameras.map((device, index) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {deviceLabel(device, index, "Camera")}
-                </option>
-              ))}
-            </select>
-          </label>
+          <RecorderSelect label="Camera" icon={<Camera size={16} />} value={engine.camera_id} options={camera_options} onChange={engine.setCameraId} disabled={is_starting} />
         )}
-        <div className="screen-recorder-setup__device">
-          <button
-            type="button"
-            className="screen-recorder-setup__device-icon screen-recorder-setup__device-toggle"
-            onClick={() => engine.setMicrophoneOn(!engine.is_microphone_on)}
-            aria-pressed={engine.is_microphone_on}
-            aria-label={engine.is_microphone_on ? "Turn the microphone off" : "Turn the microphone on"}
-            title={engine.is_microphone_on ? "Microphone on" : "Microphone off"}
-            data-off={!engine.is_microphone_on || undefined}
-            disabled={is_starting}
-          >
-            {engine.is_microphone_on ? <Mic size={16} /> : <MicOff size={16} />}
-          </button>
-          {engine.is_microphone_on ? (
-            <>
-              <select
-                value={engine.microphone_id}
-                onChange={(event) => engine.setMicrophoneId(event.target.value)}
-                disabled={is_starting}
-                aria-label="Microphone"
-                className="screen-recorder-setup__select"
-              >
-                <option value="">Default microphone</option>
-                {engine.devices.microphones.map((device, index) => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {deviceLabel(device, index, "Microphone")}
-                  </option>
-                ))}
-              </select>
-              <MicrophoneLevelMeter stream={engine.microphone_stream} />
-            </>
-          ) : (
-            <span className="screen-recorder-setup__muted">No microphone, the video will be silent</span>
-          )}
-        </div>
+        <RecorderSelect
+          label="Microphone"
+          icon={engine.is_microphone_on ? <Mic size={16} /> : <MicOff size={16} />}
+          value={engine.is_microphone_on ? engine.microphone_id : MICROPHONE_OFF}
+          options={microphone_options}
+          onChange={changeMicrophone}
+          disabled={is_starting}
+          trailing={engine.is_microphone_on ? <MicrophoneLevelMeter stream={engine.microphone_stream} /> : <span className="recorder-select__muted-pill">Muted</span>}
+        />
       </div>
+
+      <fieldset className="screen-recorder-quality" disabled={is_starting}>
+        <legend className="screen-recorder-quality__legend">Video quality</legend>
+        <div className="screen-recorder-quality__options" role="radiogroup" aria-label="Video quality">
+          {RECORDING_QUALITY_PRESETS.map((preset) => {
+            const is_active = engine.quality === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                role="radio"
+                aria-checked={is_active}
+                data-active={is_active || undefined}
+                className="screen-recorder-quality__option"
+                onClick={() => engine.setQuality(preset.id as RecordingQuality)}
+                title={`${preset.caption}. Up to ${formatMinutes(maxRecordingMs(preset.id, engine.mode))} per video.`}
+              >
+                <span className="screen-recorder-quality__resolution">{preset.id}</span>
+                <span className="screen-recorder-quality__name">{preset.label}</span>
+                {preset.id === "1080p" && <span className="screen-recorder-quality__flag">Recommended</span>}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <p className="screen-recorder-setup__tip">{tip}</p>
 
@@ -172,7 +175,9 @@ export default function RecorderSetupDialog({ engine }: RecorderSetupDialogProps
       )}
 
       <footer className="screen-recorder-setup__footer">
-        <span className="screen-recorder-setup__limit">Up to {Math.round(MAX_RECORDING_MS / 60000)} minutes per video</span>
+        <span className="screen-recorder-setup__limit">
+          Up to {formatMinutes(engine.max_recording_ms)} at {engine.quality}
+        </span>
         <button type="button" className="screen-recorder-setup__start" onClick={() => void engine.start()} disabled={is_starting}>
           <span className="screen-recorder-setup__start-dot" aria-hidden="true" />
           {is_starting ? (engine.mode === "camera" ? "Starting" : "Choose what to share") : "Start recording"}

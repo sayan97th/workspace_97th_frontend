@@ -2,13 +2,17 @@
 import React, { useState } from "react";
 import { Pause, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 import { MicrophoneLevelMeter } from "./RecorderMediaViews";
-import { MAX_RECORDING_MS, formatRecordingTime, type RecorderPhase } from "./recorderUtils";
+import { formatRecordingTime, type RecorderPhase } from "./recorderUtils";
 
 export type RecorderControlsProps = {
   phase: RecorderPhase;
   elapsed_ms: number;
   countdown: number;
   microphone_stream: MediaStream | null;
+  /** Longest take at the chosen quality, the timer warns in its last minute. */
+  max_recording_ms: number;
+  /** "1080p", shown as a small badge next to the timer. */
+  quality_label?: string;
   onPause: () => void;
   onResume: () => void;
   onFinish: () => void;
@@ -32,6 +36,8 @@ export default function RecorderControls({
   elapsed_ms,
   countdown,
   microphone_stream,
+  max_recording_ms,
+  quality_label,
   onPause,
   onResume,
   onFinish,
@@ -43,7 +49,7 @@ export default function RecorderControls({
   const is_paused = phase === "paused";
   const is_countdown = phase === "countdown";
   const is_processing = phase === "processing";
-  const remaining_ms = MAX_RECORDING_MS - elapsed_ms;
+  const remaining_ms = max_recording_ms - elapsed_ms;
   const is_near_limit = remaining_ms <= LIMIT_WARNING_MS;
 
   if (is_confirming_delete) {
@@ -77,6 +83,7 @@ export default function RecorderControls({
         {!is_countdown && !is_processing && is_near_limit && (
           <span className="screen-recorder__limit">{formatRecordingTime(remaining_ms)} left</span>
         )}
+        {quality_label && !is_near_limit && <span className="screen-recorder__quality-badge">{quality_label}</span>}
       </span>
 
       {!is_countdown && !is_processing && <MicrophoneLevelMeter stream={microphone_stream} className="screen-recorder__controls-meter" />}

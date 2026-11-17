@@ -1,14 +1,19 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  CAMERA_CONSTRAINTS,
-  CAMERA_VIDEO_BITS_PER_SECOND,
   COUNTDOWN_SECONDS,
-  DISPLAY_MEDIA_OPTIONS,
-  MAX_RECORDING_MS,
+  DEFAULT_RECORDING_MODE,
+  DEFAULT_RECORDING_QUALITY,
   MICROPHONE_CONSTRAINTS,
-  SCREEN_VIDEO_BITS_PER_SECOND,
+  RECORDING_AUDIO_BITS_PER_SECOND,
+  cameraConstraints,
   copyStylesInto,
+  displayMediaOptions,
+  maxRecordingMs,
+  qualityPreset,
+  readStoredQuality,
+  storeQuality,
+  toRecorderDevices,
   defaultRecordingTitle,
   describeMediaError,
   getDocumentPictureInPicture,
@@ -17,17 +22,24 @@ import {
   pickRecordingMimeType,
   recordingFileName,
   stopStreams,
+  type RecorderDevice,
   type RecorderPhase,
+  type RecordingQuality,
   type RecordingMode,
   type RecordingResult,
 } from "./recorderUtils";
 
-export type RecorderDevices = { cameras: MediaDeviceInfo[]; microphones: MediaDeviceInfo[] };
+export type RecorderDevices = { cameras: RecorderDevice[]; microphones: RecorderDevice[] };
 
 export type RecorderEngine = {
   phase: RecorderPhase;
   mode: RecordingMode;
   setMode: (mode: RecordingMode) => void;
+  /** Resolution and bitrate of the next recording, remembered in this browser. */
+  quality: RecordingQuality;
+  setQuality: (quality: RecordingQuality) => void;
+  /** Longest take at the current quality and mode, so the file fits the upload limit. */
+  max_recording_ms: number;
   is_microphone_on: boolean;
   setMicrophoneOn: (is_on: boolean) => void;
   camera_id: string;
@@ -85,7 +97,8 @@ const now = () => performance.now();
  */
 export function useRecorderEngine(): RecorderEngine {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
-  const [mode, setMode] = useState<RecordingMode>("screen_camera");
+  const [mode, setMode] = useState<RecordingMode>(DEFAULT_RECORDING_MODE);
+  const [quality, setQualityState] = useState<RecordingQuality>(DEFAULT_RECORDING_QUALITY);
   const [is_microphone_on, setMicrophoneOn] = useState(true);
   const [camera_id, setCameraId] = useState("");
   const [microphone_id, setMicrophoneId] = useState("");
@@ -118,15 +131,26 @@ export function useRecorderEngine(): RecorderEngine {
   const microphone_stream_ref = useRef<MediaStream | null>(null);
   const pip_window_ref = useRef<Window | null>(null);
   const mode_ref = useRef(mode);
+  const quality_ref = useRef(quality);
+  const max_recording_ms = maxRecordingMs(quality, mode);
+  const max_recording_ms_ref = useRef(max_recording_ms);
   useEffect(() => {
     camera_stream_ref.current = camera_stream;
     microphone_stream_ref.current = microphone_stream;
     pip_window_ref.current = pip_window;
     mode_ref.current = mode;
+    quality_ref.current = quality;
+    max_recording_ms_ref.current = max_recording_ms;
   });
 
   useEffect(() => {
     setCanRecordScreen(isScreenCaptureSupported());
+    setQualityState(readStoredQuality());
+  }, []);
+
+  const setQuality = useCallback((next_quality: RecordingQuality) => {
+    setQualityState(next_quality);
+    storeQuality(next_quality);
   }, []);
 
   const is_capturing_phase = phase === "setup" || phase === "starting" || phase === "countdown" || phase === "recording" || phase === "paused";
@@ -137,8 +161,8 @@ export function useRecorderEngine(): RecorderEngine {
     if (!navigator.mediaDevices?.enumerateDevices) return;
     const all_devices = await navigator.mediaDevices.enumerateDevices().catch(() => [] as MediaDeviceInfo[]);
     setDevices({
-      cameras: all_devices.filter((device) => device.kind === "videoinput" && device.deviceId),
-      microphones: all_devices.filter((device) => device.kind === "audioinput" && device.deviceId),
+      cameras: toRecorderDevices(all_devices, "videoinput", "Camera"),
+      microphones: toRecorderDevices(all_devices, "audioinput", "Microphone"),
     });
   }, []);
 
@@ -148,9 +172,11 @@ export function useRecorderEngine(): RecorderEngine {
     let is_cancelled = false;
     let opened: MediaStream | null = null;
     navigator.mediaDevices
-      .getUserMedia({ video: { ...CAMERA_CONSTRAINTS, ...(camera_id ? { deviceId: { exact: camera_id } } : {}) }, audio: false })
+      .getUserMedia({ video: { ...cameraConstraints(quality_ref.current), ...(camera_id ? { deviceId: { exact: camera_id } } : {}) }, audio: false })
       .then((stream) => {
         if (is_cancelled) return stopStreams(stream);
+        // A face on camera is motion, the encoder favors smooth frames over crisp edges.
+        stream.getVideoTracks().forEach((track) => (track.contentHint = "motion"));
         opened = stream;
         setCameraStream(stream);
         void refreshDevices();
@@ -161,7 +187,8 @@ export function useRecorderEngine(): RecorderEngine {
       stopStreams(opened);
       setCameraStream(null);
     };
-  }, [needs_camera, camera_id, refreshDevices]);
+    // The camera reopens at the new resolution when the quality changes in the setup.
+  }, [needs_camera, camera_id, quality, refreshDevices]);
 
   // Microphone: same lifetime as the camera.
   useEffect(() => {
@@ -288,8 +315,9 @@ export function useRecorderEngine(): RecorderEngine {
     try {
       recorder = new MediaRecorder(stream, {
         ...(mime_type ? { mimeType: mime_type } : {}),
-        videoBitsPerSecond: mode_ref.current === "camera" ? CAMERA_VIDEO_BITS_PER_SECOND : SCREEN_VIDEO_BITS_PER_SECOND,
-        audioBitsPerSecond: 128_000,
+        videoBitsPerSecond:
+          mode_ref.current === "camera" ? qualityPreset(quality_ref.current).camera_bits_per_second : qualityPreset(quality_ref.current).screen_bits_per_second,
+        audioBitsPerSecond: RECORDING_AUDIO_BITS_PER_SECOND,
       });
     } catch (recorder_error) {
       releaseCapture();
@@ -313,7 +341,7 @@ export function useRecorderEngine(): RecorderEngine {
     tick_ref.current = window.setInterval(() => {
       const elapsed = currentElapsed();
       setElapsedMs(elapsed);
-      if (elapsed >= MAX_RECORDING_MS) stopRecorder("keep");
+      if (elapsed >= max_recording_ms_ref.current) stopRecorder("keep");
     }, TICK_MS);
   };
 
@@ -351,10 +379,14 @@ export function useRecorderEngine(): RecorderEngine {
     recorder.stop();
   }
 
+  // Every new recording starts on the screen with the microphone, whatever was picked last time.
   const openSetup = useCallback(() => {
+    if (phase !== "idle") return;
     setError(null);
-    setPhase((current) => (current === "idle" ? "setup" : current));
-  }, []);
+    setMode(DEFAULT_RECORDING_MODE);
+    setMicrophoneOn(true);
+    setPhase("setup");
+  }, [phase]);
 
   const start = async () => {
     setError(null);
@@ -375,7 +407,9 @@ export function useRecorderEngine(): RecorderEngine {
 
     if (current_mode !== "camera") {
       try {
-        const display_stream = await navigator.mediaDevices.getDisplayMedia(DISPLAY_MEDIA_OPTIONS);
+        const display_stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions(quality));
+        // Screens are mostly text and UI: "detail" tells the encoder to keep edges crisp rather than motion smooth.
+        display_stream.getVideoTracks().forEach((track) => (track.contentHint = "detail"));
         display_stream_ref.current = display_stream;
         // "Stop sharing" in the browser's own bar ends the recording like the Finish button.
         display_stream.getVideoTracks()[0]?.addEventListener("ended", () => {
@@ -507,6 +541,9 @@ export function useRecorderEngine(): RecorderEngine {
       setError(null);
       setMode(next_mode);
     },
+    quality,
+    setQuality,
+    max_recording_ms,
     is_microphone_on,
     setMicrophoneOn,
     camera_id,
