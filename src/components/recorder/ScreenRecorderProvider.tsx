@@ -4,7 +4,8 @@ import { CountdownOverlay, InPageCameraBubble, InPageControlBar, PictureInPictur
 import RecorderSetupDialog from "./RecorderSetupDialog";
 import RecordingReviewDialog from "./RecordingReviewDialog";
 import { useRecorderEngine } from "./useRecorderEngine";
-import { isRecordingSupported } from "./recorderUtils";
+import { formatRecordingTime, isRecordingSupported } from "./recorderUtils";
+import { matchRecorderShortcut } from "./recorderPlatform";
 import "./screen-recorder.scss";
 
 /** Where a finished recording should go. */
@@ -102,7 +103,41 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
     onFinish: engine.finish,
     onRestart: engine.restart,
     onCancel: engine.cancel,
+    onHideControls: engine.toggleControls,
   };
+
+  // Keyboard shortcuts while recording, heard in the page and in the floating window alike.
+  const { phase, pause, resume, finish, toggleControls, pip_window } = engine;
+  useEffect(() => {
+    if (phase !== "countdown" && phase !== "recording" && phase !== "paused") return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const shortcut = matchRecorderShortcut(event);
+      if (!shortcut) return;
+      event.preventDefault();
+      if (shortcut === "toggle_controls") toggleControls();
+      else if (shortcut === "finish") finish();
+      else if (phase === "recording") pause();
+      else if (phase === "paused") resume();
+    };
+    const targets: Window[] = [window, ...(pip_window ? [pip_window] : [])];
+    targets.forEach((target) => target.addEventListener("keydown", handleKeyDown, true));
+    return () => targets.forEach((target) => target.removeEventListener("keydown", handleKeyDown, true));
+  }, [phase, pause, resume, finish, toggleControls, pip_window]);
+
+  // The browser tab shows that a recording is running, useful while the controls are hidden.
+  const is_capturing = phase === "recording" || phase === "paused";
+  const tab_time = formatRecordingTime(engine.elapsed_ms);
+  const original_title_ref = useRef<string | null>(null);
+  useEffect(() => {
+    if (!is_capturing) return;
+    if (original_title_ref.current === null) original_title_ref.current = document.title;
+    document.title = `${phase === "paused" ? "❚❚" : "●"} ${tab_time} Recording | ${original_title_ref.current}`;
+  }, [is_capturing, phase, tab_time]);
+  useEffect(() => {
+    if (is_capturing || original_title_ref.current === null) return;
+    document.title = original_title_ref.current;
+    original_title_ref.current = null;
+  }, [is_capturing]);
 
   const can_attach = request !== null && registered_keys.has(request.target_key);
   const post_fallback = request?.postFallback;
@@ -113,13 +148,23 @@ export function ScreenRecorderProvider({ children }: { children: React.ReactNode
       {is_busy && (
         <>
           <RecorderSetupDialog engine={engine} />
-          {is_live && <InPageControlBar {...control_props} />}
+          {/* The bar stays out of sight while the controls are hidden, or while the floating window already carries them. */}
+          {is_live &&
+            (engine.phase === "countdown" || engine.phase === "processing" || (engine.is_controls_visible && !engine.pip_window)) && (
+              <InPageControlBar {...control_props} />
+            )}
           {engine.phase === "countdown" && <CountdownOverlay countdown={engine.countdown} />}
           {show_bubble && (engine.mode === "camera" || !engine.pip_window) && (
             <InPageCameraBubble stream={engine.camera_stream} variant={engine.mode === "camera" ? "stage" : "bubble"} />
           )}
           {engine.pip_window && is_live && (
-            <PictureInPicturePanel {...control_props} pip_window={engine.pip_window} camera_stream={engine.camera_stream} show_camera={engine.mode === "screen_camera"} />
+            <PictureInPicturePanel
+              {...control_props}
+              pip_window={engine.pip_window}
+              camera_stream={engine.camera_stream}
+              show_camera={engine.mode === "screen_camera"}
+              show_controls={engine.is_controls_visible || engine.phase === "countdown"}
+            />
           )}
           <RecordingReviewDialog
             engine={engine}

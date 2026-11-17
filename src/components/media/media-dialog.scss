@@ -75,3 +75,10 @@
     animation: none;
   }
 }
+
+// Phones: the dialog nearly fills the screen, leave just a hint of backdrop.
+@media (max-width: 560px) {
+  .media-dialog {
+    padding: 8px;
+  }
+}

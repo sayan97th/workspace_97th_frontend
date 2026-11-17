@@ -1,8 +1,9 @@
 "use client";
 import React, { useState } from "react";
-import { Pause, Play, RotateCcw, Square, Trash2 } from "lucide-react";
+import { EyeOff, Pause, Play, RotateCcw, Square, Trash2 } from "lucide-react";
 import { MicrophoneLevelMeter } from "./RecorderMediaViews";
 import { formatRecordingTime, type RecorderPhase } from "./recorderUtils";
+import { shortcutLabel } from "./recorderPlatform";
 
 export type RecorderControlsProps = {
   phase: RecorderPhase;
@@ -18,6 +19,8 @@ export type RecorderControlsProps = {
   onFinish: () => void;
   onRestart: () => void;
   onCancel: () => void;
+  /** Hides the controls so they stay out of the video, the shortcut brings them back. */
+  onHideControls?: () => void;
   /** "bar" floats over the page, "pip" fills the floating window. */
   layout?: "bar" | "pip";
 };
@@ -43,6 +46,7 @@ export default function RecorderControls({
   onFinish,
   onRestart,
   onCancel,
+  onHideControls,
   layout = "bar",
 }: RecorderControlsProps) {
   const [is_confirming_delete, setConfirmingDelete] = useState(false);
@@ -98,7 +102,8 @@ export default function RecorderControls({
               className="screen-recorder__icon-button"
               onClick={is_paused ? onResume : onPause}
               aria-label={is_paused ? "Resume recording" : "Pause recording"}
-              title={is_paused ? "Resume" : "Pause"}
+              aria-keyshortcuts="Alt+Shift+P"
+              title={`${is_paused ? "Resume" : "Pause"} (${shortcutLabel("toggle_pause")})`}
             >
               {is_paused ? <Play size={17} /> : <Pause size={17} />}
             </button>
@@ -116,9 +121,28 @@ export default function RecorderControls({
             <Trash2 size={16} />
           </button>
           {!is_countdown && (
-            <button type="button" className="screen-recorder__finish" onClick={onFinish} aria-label="Finish recording" title="Finish">
+            <button
+              type="button"
+              className="screen-recorder__finish"
+              onClick={onFinish}
+              aria-label="Finish recording"
+              aria-keyshortcuts="Alt+Shift+S"
+              title={`Finish (${shortcutLabel("finish")})`}
+            >
               <Square size={12} fill="currentColor" strokeWidth={0} />
               <span>Finish</span>
+            </button>
+          )}
+          {onHideControls && !is_countdown && (
+            <button
+              type="button"
+              className="screen-recorder__icon-button screen-recorder__icon-button--subtle"
+              onClick={onHideControls}
+              aria-label="Hide the controls"
+              aria-keyshortcuts="Alt+Shift+H"
+              title={`Hide so they stay out of the video. ${shortcutLabel("toggle_controls")} shows them again`}
+            >
+              <EyeOff size={16} />
             </button>
           )}
         </>

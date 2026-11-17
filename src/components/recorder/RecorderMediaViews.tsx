@@ -36,6 +36,8 @@ export function MicrophoneLevelMeter({ stream, className }: { stream: MediaStrea
     if (!AudioContextClass) return;
 
     const context = new AudioContextClass();
+    // Safari starts it suspended outside a click, the meter would stay flat.
+    void context.resume().catch(() => {});
     const analyser = context.createAnalyser();
     analyser.fftSize = 512;
     context.createMediaStreamSource(stream).connect(analyser);

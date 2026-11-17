@@ -119,18 +119,19 @@ export function PictureInPicturePanel({
   pip_window,
   camera_stream,
   show_camera,
+  show_controls,
   countdown,
   ...control_props
-}: RecorderControlsProps & { pip_window: Window; camera_stream: MediaStream | null; show_camera: boolean }) {
+}: RecorderControlsProps & { pip_window: Window; camera_stream: MediaStream | null; show_camera: boolean; show_controls: boolean }) {
   return createPortal(
-    <div className={`screen-recorder__pip ${show_camera ? "screen-recorder__pip--camera" : ""}`}>
+    <div className={`screen-recorder__pip ${show_camera ? "screen-recorder__pip--camera" : ""} ${show_controls ? "" : "screen-recorder__pip--bubble-only"}`}>
       {show_camera && (
         <div className="screen-recorder__pip-bubble">
           <LiveCameraView stream={camera_stream} />
           {control_props.phase === "countdown" && <span className="screen-recorder__pip-countdown">{countdown}</span>}
         </div>
       )}
-      <RecorderControls {...control_props} countdown={countdown} layout="pip" />
+      {show_controls && <RecorderControls {...control_props} countdown={countdown} layout="pip" />}
     </div>,
     pip_window.document.body
   );

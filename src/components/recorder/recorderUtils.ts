@@ -78,12 +78,13 @@ export function maxRecordingMs(quality: RecordingQuality, mode: RecordingMode): 
 }
 
 /** Screen capture constraints for a quality: the resolution is a ceiling, a smaller screen records at its own size. */
-export function displayMediaOptions(quality: RecordingQuality): DisplayMediaStreamOptions & Record<string, unknown> {
+export function displayMediaOptions(quality: RecordingQuality, with_audio = true): DisplayMediaStreamOptions & Record<string, unknown> {
   const preset = qualityPreset(quality);
   return {
     video: { frameRate: { ideal: 30, max: 30 }, width: { ideal: preset.width, max: preset.width }, height: { ideal: preset.height, max: preset.height } },
-    // Tab or system audio when the picker offers it, mixed with the microphone.
-    audio: true,
+    // Tab or system audio when the picker offers it, mixed with the microphone. Safari never shares
+    // screen sound, so it is not asked there (the microphone still records).
+    audio: with_audio,
     // Chromium hints: let the user pick this tab too, and switch tabs while recording.
     selfBrowserSurface: "include",
     surfaceSwitching: "include",
@@ -113,6 +114,25 @@ export function readStoredQuality(): RecordingQuality {
 export function storeQuality(quality: RecordingQuality) {
   try {
     window.localStorage.setItem(QUALITY_STORAGE_KEY, quality);
+  } catch {
+    // Private mode or blocked storage, the choice just isn't remembered.
+  }
+}
+
+const HIDE_CONTROLS_STORAGE_KEY = "screen-recorder.hide-controls";
+
+/** Whether the person chose to keep the recording controls out of sight (and out of the video). */
+export function readStoredHideControls(): boolean {
+  try {
+    return window.localStorage.getItem(HIDE_CONTROLS_STORAGE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function storeHideControls(hide_controls: boolean) {
+  try {
+    window.localStorage.setItem(HIDE_CONTROLS_STORAGE_KEY, hide_controls ? "1" : "0");
   } catch {
     // Private mode or blocked storage, the choice just isn't remembered.
   }

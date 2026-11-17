@@ -11,7 +11,9 @@ import {
   displayMediaOptions,
   maxRecordingMs,
   qualityPreset,
+  readStoredHideControls,
   readStoredQuality,
+  storeHideControls,
   storeQuality,
   toRecorderDevices,
   defaultRecordingTitle,
@@ -28,6 +30,7 @@ import {
   type RecordingMode,
   type RecordingResult,
 } from "./recorderUtils";
+import { accessFromError, detectBrowser, type DeviceAccess, type ScreenAccess } from "./recorderPlatform";
 
 export type RecorderDevices = { cameras: RecorderDevice[]; microphones: RecorderDevice[] };
 
@@ -40,6 +43,21 @@ export type RecorderEngine = {
   setQuality: (quality: RecordingQuality) => void;
   /** Longest take at the current quality and mode, so the file fits the upload limit. */
   max_recording_ms: number;
+  /** Whether the camera and the microphone can be used, for the permission notice. */
+  camera_access: DeviceAccess;
+  microphone_access: DeviceAccess;
+  /** "system_denied" when macOS (or another OS) does not let the browser record the screen. */
+  screen_access: ScreenAccess;
+  /** Asks the browser for the blocked camera or microphone again. */
+  retryAccess: () => void;
+  /** Records without the blocked device: screen only instead of the camera, or a silent video instead of the microphone. */
+  continueWithout: (kind: "camera" | "microphone") => void;
+  /** Remembered choice: keep the controls hidden while recording, so they never appear in the video. */
+  hide_controls: boolean;
+  setHideControls: (hide_controls: boolean) => void;
+  /** Whether the floating controls show right now, toggled by their hide button or the keyboard. */
+  is_controls_visible: boolean;
+  toggleControls: () => void;
   is_microphone_on: boolean;
   setMicrophoneOn: (is_on: boolean) => void;
   camera_id: string;
@@ -99,6 +117,13 @@ export function useRecorderEngine(): RecorderEngine {
   const [phase, setPhase] = useState<RecorderPhase>("idle");
   const [mode, setMode] = useState<RecordingMode>(DEFAULT_RECORDING_MODE);
   const [quality, setQualityState] = useState<RecordingQuality>(DEFAULT_RECORDING_QUALITY);
+  const [camera_access, setCameraAccess] = useState<DeviceAccess>("idle");
+  const [microphone_access, setMicrophoneAccess] = useState<DeviceAccess>("idle");
+  const [screen_access, setScreenAccess] = useState<ScreenAccess>("idle");
+  /** Bumped by "Try again" (or when the browser reports the permission was granted) to request the devices once more. */
+  const [access_attempt, setAccessAttempt] = useState(0);
+  const [hide_controls, setHideControlsState] = useState(false);
+  const [is_controls_visible, setControlsVisible] = useState(true);
   const [is_microphone_on, setMicrophoneOn] = useState(true);
   const [camera_id, setCameraId] = useState("");
   const [microphone_id, setMicrophoneId] = useState("");
@@ -146,6 +171,12 @@ export function useRecorderEngine(): RecorderEngine {
   useEffect(() => {
     setCanRecordScreen(isScreenCaptureSupported());
     setQualityState(readStoredQuality());
+    setHideControlsState(readStoredHideControls());
+  }, []);
+
+  const setHideControls = useCallback((next_hide_controls: boolean) => {
+    setHideControlsState(next_hide_controls);
+    storeHideControls(next_hide_controls);
   }, []);
 
   const setQuality = useCallback((next_quality: RecordingQuality) => {
@@ -171,6 +202,7 @@ export function useRecorderEngine(): RecorderEngine {
     if (!needs_camera) return;
     let is_cancelled = false;
     let opened: MediaStream | null = null;
+    setCameraAccess("pending");
     navigator.mediaDevices
       .getUserMedia({ video: { ...cameraConstraints(quality_ref.current), ...(camera_id ? { deviceId: { exact: camera_id } } : {}) }, audio: false })
       .then((stream) => {
@@ -179,37 +211,85 @@ export function useRecorderEngine(): RecorderEngine {
         stream.getVideoTracks().forEach((track) => (track.contentHint = "motion"));
         opened = stream;
         setCameraStream(stream);
+        setCameraAccess("granted");
         void refreshDevices();
       })
-      .catch((camera_error) => !is_cancelled && setError(describeMediaError(camera_error)));
+      .catch((camera_error) => !is_cancelled && setCameraAccess(accessFromError(camera_error)));
     return () => {
       is_cancelled = true;
       stopStreams(opened);
       setCameraStream(null);
     };
     // The camera reopens at the new resolution when the quality changes in the setup.
-  }, [needs_camera, camera_id, quality, refreshDevices]);
+  }, [needs_camera, camera_id, quality, access_attempt, refreshDevices]);
 
   // Microphone: same lifetime as the camera.
   useEffect(() => {
     if (!needs_microphone) return;
     let is_cancelled = false;
     let opened: MediaStream | null = null;
+    setMicrophoneAccess("pending");
     navigator.mediaDevices
       .getUserMedia({ audio: { ...MICROPHONE_CONSTRAINTS, ...(microphone_id ? { deviceId: { exact: microphone_id } } : {}) }, video: false })
       .then((stream) => {
         if (is_cancelled) return stopStreams(stream);
         opened = stream;
         setMicrophoneStream(stream);
+        setMicrophoneAccess("granted");
         void refreshDevices();
       })
-      .catch((microphone_error) => !is_cancelled && setError(describeMediaError(microphone_error)));
+      .catch((microphone_error) => !is_cancelled && setMicrophoneAccess(accessFromError(microphone_error)));
     return () => {
       is_cancelled = true;
       stopStreams(opened);
       setMicrophoneStream(null);
     };
-  }, [needs_microphone, microphone_id, refreshDevices]);
+  }, [needs_microphone, microphone_id, access_attempt, refreshDevices]);
+
+  // When the person unblocks the camera or microphone from the address bar, the setup recovers on its own.
+  useEffect(() => {
+    if (phase !== "setup" || !navigator.permissions?.query) return;
+    const statuses: PermissionStatus[] = [];
+    let is_cancelled = false;
+    (["camera", "microphone"] as const).forEach((name) => {
+      navigator.permissions
+        .query({ name: name as PermissionName })
+        .then((status) => {
+          if (is_cancelled) return;
+          statuses.push(status);
+          status.onchange = () => {
+            if (status.state === "granted") setAccessAttempt((attempt) => attempt + 1);
+          };
+        })
+        .catch(() => {
+          // Firefox and older Safari can't query these names, Try again still works there.
+        });
+    });
+    return () => {
+      is_cancelled = true;
+      statuses.forEach((status) => (status.onchange = null));
+    };
+  }, [phase]);
+
+  const retryAccess = useCallback(() => {
+    setError(null);
+    setScreenAccess("idle");
+    setAccessAttempt((attempt) => attempt + 1);
+  }, []);
+
+  const continueWithout = useCallback(
+    (kind: "camera" | "microphone") => {
+      setError(null);
+      if (kind === "microphone") {
+        setMicrophoneOn(false);
+        setMicrophoneAccess("idle");
+        return;
+      }
+      setCameraAccess("idle");
+      if (can_record_screen) setMode("screen");
+    },
+    [can_record_screen]
+  );
 
   const clearTimers = () => {
     if (tick_ref.current !== null) window.clearInterval(tick_ref.current);
@@ -245,6 +325,8 @@ export function useRecorderEngine(): RecorderEngine {
     if (sources.length === 0) return [];
     if (sources.length === 1) return [sources[0].getAudioTracks()[0]];
     const context = new AudioContext();
+    // Safari (and Chrome after a long idle) start an audio context suspended outside a click, which would mute the mix.
+    void context.resume().catch(() => {});
     const destination = context.createMediaStreamDestination();
     sources.forEach((stream) => context.createMediaStreamSource(new MediaStream(stream.getAudioTracks())).connect(destination));
     mixer_ref.current = context;
@@ -383,22 +465,30 @@ export function useRecorderEngine(): RecorderEngine {
   const openSetup = useCallback(() => {
     if (phase !== "idle") return;
     setError(null);
-    setMode(DEFAULT_RECORDING_MODE);
+    setScreenAccess("idle");
+    // Phones and tablets can't share their screen, they start on the camera.
+    setMode(can_record_screen ? DEFAULT_RECORDING_MODE : "camera");
     setMicrophoneOn(true);
     setPhase("setup");
-  }, [phase]);
+  }, [phase, can_record_screen]);
 
   const start = async () => {
     setError(null);
+    setScreenAccess("idle");
     setPhase("starting");
     const current_mode = mode;
+    setControlsVisible(!hide_controls);
 
-    // The floating camera window has to open on this click: the browser only allows it during a user gesture.
+    // The floating window has to open on this click: the browser only allows it during a user gesture.
+    // It carries the camera bubble, plus the controls unless the person chose to keep them out of the video
+    // (screen only with hidden controls then needs no floating window at all).
     let pip: Window | null = null;
     const document_pip = getDocumentPictureInPicture();
-    if (current_mode !== "camera" && document_pip && !skip_pip_ref.current) {
+    const wants_pip = current_mode === "screen_camera" || (current_mode === "screen" && !hide_controls);
+    if (wants_pip && document_pip && !skip_pip_ref.current) {
+      const size = current_mode === "screen_camera" ? (hide_controls ? { width: 240, height: 240 } : { width: 264, height: 340 }) : { width: 340, height: 84 };
       try {
-        pip = await document_pip.requestWindow(current_mode === "screen_camera" ? { width: 264, height: 340 } : { width: 340, height: 84 });
+        pip = await document_pip.requestWindow(size);
         copyStylesInto(pip);
       } catch {
         pip = null;
@@ -407,7 +497,7 @@ export function useRecorderEngine(): RecorderEngine {
 
     if (current_mode !== "camera") {
       try {
-        const display_stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions(quality));
+        const display_stream = await navigator.mediaDevices.getDisplayMedia(displayMediaOptions(quality, detectBrowser() !== "safari"));
         // Screens are mostly text and UI: "detail" tells the encoder to keep edges crisp rather than motion smooth.
         display_stream.getVideoTracks().forEach((track) => (track.contentHint = "detail"));
         display_stream_ref.current = display_stream;
@@ -422,12 +512,18 @@ export function useRecorderEngine(): RecorderEngine {
       } catch (display_error) {
         pip?.close();
         if (display_error instanceof DOMException && display_error.name === "InvalidStateError") skip_pip_ref.current = true;
+        // macOS blocks screen recording for the whole browser until it is allowed in System Settings.
+        if (accessFromError(display_error) === "system_denied") {
+          setScreenAccess("system_denied");
+          setPhase("setup");
+          return;
+        }
         setError(isPickerDismissed(display_error) ? "Screen sharing was cancelled. Press Start recording to pick a screen, window or tab." : describeMediaError(display_error));
         setPhase("setup");
         return;
       }
     } else if (!camera_stream_ref.current) {
-      setError("Your camera is not ready yet. Allow camera access and try again.");
+      setError("Your camera is not ready yet. Allow camera access, or switch to recording your screen.");
       setPhase("setup");
       return;
     }
@@ -539,11 +635,21 @@ export function useRecorderEngine(): RecorderEngine {
     mode,
     setMode: (next_mode) => {
       setError(null);
+      setScreenAccess("idle");
       setMode(next_mode);
     },
     quality,
     setQuality,
     max_recording_ms,
+    camera_access,
+    microphone_access,
+    screen_access,
+    retryAccess,
+    continueWithout,
+    hide_controls,
+    setHideControls,
+    is_controls_visible,
+    toggleControls: () => setControlsVisible((visible) => !visible),
     is_microphone_on,
     setMicrophoneOn,
     camera_id,
