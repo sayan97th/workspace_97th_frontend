@@ -31,6 +31,9 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.production
+.env.staging
+.env.testing
 
 # vercel
 .vercel
@@ -46,3 +49,6 @@ CLAUDE.md
 
 # Agent AI Shots
 /shots
+
+# deploy packages (scripts/deploy)
+/deploy/

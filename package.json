@@ -18,10 +18,14 @@
     "pm2:delete": "pm2 delete workspace-97th-frontend",
     "pm2:logs": "pm2 logs workspace-97th-frontend",
     "pm2:status": "pm2 status",
-    "deploy:setup": "bash deploy/release.sh setup",
-    "deploy:production": "bash deploy/release.sh production",
-    "deploy:testing": "bash deploy/release.sh testing",
-    "deploy:rollback": "bash deploy/release.sh rollback"
+    "deploy:production": "bash scripts/deploy/deploy.sh production",
+    "deploy:testing": "bash scripts/deploy/deploy.sh testing",
+    "deploy:build:production": "bash scripts/deploy/build-package.sh production",
+    "deploy:build:testing": "bash scripts/deploy/build-package.sh testing",
+    "deploy:upload:production": "bash scripts/deploy/upload-package.sh production",
+    "deploy:upload:testing": "bash scripts/deploy/upload-package.sh testing",
+    "deploy:list": "ssh workspace-97th 'bash /var/www/workspace97th-releases/deploy/activate-release.sh production --list'",
+    "deploy:rollback": "ssh workspace-97th 'bash /var/www/workspace97th-releases/deploy/activate-release.sh production --rollback'"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

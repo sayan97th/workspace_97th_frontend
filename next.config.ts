@@ -1,7 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Self contained server in .next/standalone, packaged by scripts/deploy.
+  // The server has too little memory to build, so releases are built locally.
+  output: "standalone",
+  // Trace from this folder even if a lockfile exists in a parent folder,
+  // so server.js always lands at .next/standalone/server.js.
+  outputFileTracingRoot: process.cwd(),
   experimental: {
     agentUpgrade: "security",
   },
