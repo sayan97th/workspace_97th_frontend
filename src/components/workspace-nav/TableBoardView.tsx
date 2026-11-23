@@ -127,6 +127,7 @@ import { useToast } from "@/components/ui/toast/ToastProvider";
 import ConfirmActionModal from "@/components/ui/modal/ConfirmActionModal";
 import ColumnPermissionsModal from "@/components/board/ColumnPermissionsModal";
 import {
+  applyGroupOrder,
   copyColumnValuesInTree,
   setColumnValuesInTree,
   findItemInTree,
@@ -3572,34 +3573,60 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
 
   // ── Drag-and-drop row reordering — persists the Table view's own row/subitem
   // drag-and-drop (`useBoardTable`'s `onDragEnd`) to `board_items.position` via
-  // the reorder endpoint. `items` is physically reordered (not just its
-  // `position` fields patched) so the new order survives an unrelated re-render
-  // — every derived list feeding the Table view (`toolbar.groups` → `table_groups`)
-  // renders rows in `items`' own array order, not sorted by `position`. On
-  // failure the previous `items` snapshot is restored, which — through that
-  // same derivation chain — resyncs `useBoardTable`'s local order back too. ──
+  // the reorder endpoint, including a row dropped into another table (its
+  // `group_id` and its subitems' change too, server side). `items` is physically
+  // reordered (not just its `position` fields patched) so the new order survives
+  // an unrelated re-render — every derived list feeding the Table view
+  // (`toolbar.groups` → `table_groups`) renders rows in `items`' own array
+  // order, not sorted by `position`. On failure the previous `items` snapshot is
+  // restored, which — through that same derivation chain — resyncs
+  // `useBoardTable`'s local order back too, and a toast says so. ──
   const handleReorderTableItems = (payload: TableReorderPayload) => {
     const previous_items = items;
+    const rollback = (error: unknown) => {
+      setItems(previous_items);
+      toast.error(getApiErrorMessage(error, "Couldn't move the item. Please try again."));
+    };
+
+    if (payload.scope === "group") {
+      // Dropped on a table whose rows aren't loaded yet: it goes to the end of it. The table
+      // already shows the row gone, so a failure hands it a fresh copy of `items` to resync from.
+      handleDrawerMoveItemToGroup(payload.moved_id, payload.group_key).catch((error: unknown) => {
+        setItems((current) => current.slice());
+        toast.error(getApiErrorMessage(error, "Couldn't move the item. Please try again."));
+      });
+      return;
+    }
+
     const ordered_ids = payload.ordered_ids.map(Number);
 
     if (payload.scope === "root") {
       const group_id = Number(payload.group_key);
+      const moved_item_id = Number(payload.moved_id);
+      const source_group_id = payload.source_group_key ? Number(payload.source_group_key) : null;
+      const source_ordered_ids = (payload.source_ordered_ids ?? []).map(Number);
+
       setItems((current) => {
-        const by_id = new Map(current.map((item) => [item.id, item]));
-        const reordered = ordered_ids.map((id) => by_id.get(id)).filter((item): item is BoardItemDto => Boolean(item));
-        let cursor = 0;
-        return current.map((item) =>
-          item.group_id === group_id && ordered_ids.includes(item.id) ? { ...reordered[cursor++], position: cursor - 1 } : item
-        );
+        let next = current;
+        // A row from another table takes its new group (its subitems too) and joins
+        // the end of the array, `applyGroupOrder` below then slots it into place.
+        if (source_group_id !== null) {
+          const moved = next.find((item) => item.id === moved_item_id);
+          if (moved) next = [...next.filter((item) => item.id !== moved_item_id), withGroupInTree(moved, group_id)];
+        }
+        next = applyGroupOrder(next, group_id, ordered_ids);
+        return source_group_id !== null ? applyGroupOrder(next, source_group_id, source_ordered_ids) : next;
       });
       void boardContentService
         .reorderItems(board_id, {
           scope: "root",
-          moved_item_id: Number(payload.moved_id),
+          moved_item_id,
           target_group_id: group_id,
           target_ordered_ids: ordered_ids,
+          // The backend wants both or neither, and at least one id: an emptied table has nothing to resequence.
+          ...(source_group_id !== null && source_ordered_ids.length > 0 ? { source_group_id, source_ordered_ids } : {}),
         })
-        .catch(() => setItems(previous_items));
+        .catch(rollback);
     } else {
       const parent_id = Number(payload.parent_id);
       setItems((current) =>
@@ -3614,7 +3641,7 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
       );
       void boardContentService
         .reorderItems(board_id, { scope: "subitem", target_parent_id: parent_id, target_ordered_ids: ordered_ids })
-        .catch(() => setItems(previous_items));
+        .catch(rollback);
     }
   };
 

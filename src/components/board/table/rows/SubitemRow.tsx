@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem, BoardTableNode } from "../types";
 import { SUB_ROW_HEIGHT_PX, subGridTemplate, subStickyOffsets } from "../layoutUtils";
@@ -9,6 +9,8 @@ import RowMenu, { type RowMenuTarget } from "../menus/RowMenu";
 import TreeBar from "./TreeBar";
 import ItemCommentsButton from "./ItemCommentsButton";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
+import { startRowDrag } from "../rowDragImage";
+import { rowDragPlacement } from "../rowDragUtils";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import ItemNameLabel from "./ItemNameLabel";
 import { ITEM_NAME_MAX_LENGTH } from "../constants";
@@ -69,7 +71,10 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   return (
     <div
       className="relative flex items-stretch"
-      style={{ minWidth: min_width }}
+      data-row-flip-key={sub.id}
+      data-row-node-id={sub.id}
+      data-row-dragging={is_dragging ? "true" : undefined}
+      style={{ minWidth: min_width, "--row-group-color": group.color } as CSSProperties}
       onMouseEnter={() => actions.setHoverRow(sub.id)}
       onMouseLeave={() => actions.setHoverRow(null)}
     >
@@ -122,7 +127,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
       <div
         ref={grid_ref}
         className="flex-1 border-r border-b border-boardtree-grid"
-        style={{ display: "grid", gridTemplateColumns: sub_tpl, background: row_bg, opacity: is_dragging ? 0.45 : 1 }}
+        style={{ display: "grid", gridTemplateColumns: sub_tpl, background: row_bg }}
         // See `ItemRow`: no row drag while a text field in it is being edited.
         draggable={!state.read_only && !is_editing && !is_text_entry_focused}
         {...lock_handlers}
@@ -132,10 +137,11 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             e.preventDefault();
             return;
           }
+          startRowDrag(e, { node_id: sub.id, name: sub.name, color: group.color, meta: item.name });
           actions.onDragStart(sub.id, item.id);
         }}
-        onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id); }}
-        onDragEnd={actions.onDragEnd}
+        // Finished by `useRowDragSession`, see `ItemRow`.
+        onDragOver={(e) => { e.preventDefault(); actions.onDragOver(sub.id, item.id, rowDragPlacement(e)); }}
       >
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>
           <button

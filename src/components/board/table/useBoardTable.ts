@@ -27,6 +27,10 @@ import type {
   LinkedItemRef,
   PersonDef,
   ReorderPayload,
+  RowDragOutcome,
+  RowDropEdge,
+  RowDropLanding,
+  RowDropPlacement,
   SortState,
   StatusDef,
   TagDef,
@@ -55,6 +59,7 @@ import {
   updateNodeById,
   visibleRowSequence,
 } from "./treeUtils";
+import { canPreviewRowInGroup, itemGroupKey, placeItemAtGroupEdge, placeItemOverRow, reorderTowardPointer } from "./rowDragUtils";
 import { applyRowToggle, keepLevel, toggleSubitemsOf } from "./selectionUtils";
 
 export type ColumnScope = "main" | "sub";
@@ -569,6 +574,8 @@ export interface BoardTableState {
   /** The connected item whose card is open (from a Connect boards chip, the picker or a Mirror), or null. */
   linked_item: LinkedItemRef | null;
   drag: DragState | null;
+  /** The row the last row drag dropped somewhere new, see `RowDropLanding`. */
+  last_row_drop: RowDropLanding | null;
   /** In-flight column-header drag — see `ColumnDragState`'s own doc comment. */
   column_drag: ColumnDragState | null;
   sort: SortState | null;
@@ -676,6 +683,7 @@ function initialState(config: UseBoardTableConfig): BoardTableState {
     connect_options: {},
     linked_item: null,
     drag: null,
+    last_row_drop: null,
     column_drag: null,
     sort: null,
     copied_row_id: null,
@@ -1520,60 +1528,135 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
 
   const onDragStart = useCallback((node_id: string, parent_id: string) => {
     setState((s) => {
+      const origin_group_key = parent_id === "ROOT" ? itemGroupKey(s.groups, node_id) : null;
       const origin_order =
         parent_id === "ROOT"
-          ? (s.groups.find((g) => g.items.some((it) => it.id === node_id))?.items.map((it) => it.id) ?? [])
+          ? (s.groups.find((g) => g.key === origin_group_key)?.items.map((it) => it.id) ?? [])
           : (findItem(s.groups, parent_id)?.subs.map((sub) => sub.id) ?? []);
-      return { ...s, drag: { node_id, parent_id, origin_order } };
+      return {
+        ...s,
+        drag: { node_id, parent_id, origin_order, origin_group_key, origin_groups: s.groups, target_group_key: null },
+      };
     });
   }, []);
 
-  const onDragOver = useCallback((over_id: string, over_parent_id: string) => {
+  /**
+   * A row dragged over another row. Subitems reorder under their own parent.
+   * A root item reorders inside its table, or, hovering a row of another
+   * table, moves into it right away (above or below the hovered row, see
+   * `placeItemOverRow`) so the board always shows where it will land.
+   */
+  const onDragOver = useCallback((over_id: string, over_parent_id: string, placement: RowDropPlacement = "before") => {
     setState((s) => {
       const drag = s.drag;
       if (!drag || drag.parent_id !== over_parent_id || drag.node_id === over_id) return s;
       if (over_parent_id === "ROOT") {
-        const group = s.groups.find((g) => g.items.some((it) => it.id === drag.node_id));
-        if (!group) return s;
-        return { ...s, groups: s.groups.map((g) => (g.key !== group.key ? g : { ...g, items: reorderWithinList(g.items, drag.node_id, over_id) })) };
+        const groups = placeItemOverRow(s.groups, drag.node_id, over_id, placement);
+        if (groups === s.groups && drag.target_group_key === null) return s;
+        return { ...s, groups, drag: drag.target_group_key === null ? drag : { ...drag, target_group_key: null } };
       }
+      const parent = findItem(s.groups, over_parent_id);
+      if (!parent) return s;
+      const subs = reorderTowardPointer(parent.subs, drag.node_id, over_id, placement);
+      if (subs === parent.subs) return s;
       return {
         ...s,
         groups: s.groups.map((g) => ({
           ...g,
-          items: g.items.map((it) => (it.id !== over_parent_id ? it : { ...it, subs: reorderWithinList(it.subs, drag.node_id, over_id) })),
+          items: g.items.map((it) => (it.id !== over_parent_id ? it : { ...it, subs })),
         })),
       };
     });
   }, []);
 
   /**
-   * Compares the dragged list's final order against the snapshot `onDragStart`
-   * captured and, when a drop actually moved something, reports it through
-   * `onReorderItems` — computed from `state_ref` (mirrors `commitEditName`'s
-   * read-before-`setState` pattern) since the comparison needs the drag's
-   * list *before* `setState` below clears it.
+   * A root row dragged over a table's header (`"start"`) or footer (`"end"`).
+   * An open table takes the row right away, at its top or bottom. A collapsed
+   * table, or one whose rows haven't loaded yet, can't show it, so it becomes
+   * the drag's `target_group_key` instead and the move happens on drop.
    */
-  const onDragEnd = useCallback(() => {
+  const onDragOverGroup = useCallback((group_key: string, edge: RowDropEdge) => {
+    setState((s) => {
+      const drag = s.drag;
+      if (!drag || drag.parent_id !== "ROOT") return s;
+      const group = findGroup(s.groups, group_key);
+      if (!group) return s;
+      if (!canPreviewRowInGroup(group, s.collapsed_groups)) {
+        if (drag.target_group_key === group_key) return s;
+        // Hovering the collapsed table the row already sits in leaves it where it is.
+        const target_group_key = itemGroupKey(s.groups, drag.node_id) === group_key ? null : group_key;
+        if (target_group_key === drag.target_group_key) return s;
+        return { ...s, drag: { ...drag, target_group_key } };
+      }
+      const groups = placeItemAtGroupEdge(s.groups, drag.node_id, group_key, edge);
+      if (groups === s.groups && drag.target_group_key === null) return s;
+      return { ...s, groups, drag: { ...drag, target_group_key: null } };
+    });
+  }, []);
+
+  /**
+   * Ends a row drag. A cancelled one (Escape, or released outside the board)
+   * puts the tree back the way it was at pickup. A drop compares the dragged
+   * list's final order with the snapshot `onDragStart` took and, when
+   * something actually moved, reports it through `onReorderItems`, including
+   * the table the row left on a cross-table move. Reads `state_ref` (mirrors
+   * `commitEditName`'s read-before-`setState` pattern) since the comparison
+   * needs the drag before `setState` below clears it.
+   */
+  const onDragEnd = useCallback((outcome: RowDragOutcome = "drop") => {
     const drag = state_ref.current.drag;
-    if (drag) {
-      const is_root = drag.parent_id === "ROOT";
-      const owning_group = is_root ? state_ref.current.groups.find((g) => g.items.some((it) => it.id === drag.node_id)) : undefined;
-      const final_order = is_root
-        ? (owning_group?.items.map((it) => it.id) ?? [])
-        : (findItem(state_ref.current.groups, drag.parent_id)?.subs.map((sub) => sub.id) ?? []);
+    if (!drag) return;
+
+    if (outcome === "cancel") {
+      setState((s) => (s.drag ? { ...s, groups: s.drag.origin_groups, drag: null } : s));
+      return;
+    }
+
+    const live_groups = state_ref.current.groups;
+    let groups = live_groups;
+    let payload: ReorderPayload | null = null;
+
+    if (drag.parent_id !== "ROOT") {
+      const final_order = findItem(groups, drag.parent_id)?.subs.map((sub) => sub.id) ?? [];
       const changed =
         final_order.length > 0 &&
         (final_order.length !== drag.origin_order.length || final_order.some((id, index) => id !== drag.origin_order[index]));
+      if (changed) payload = { scope: "subitem", moved_id: drag.node_id, parent_id: drag.parent_id, ordered_ids: final_order };
+    } else {
+      const target_group = drag.target_group_key ? findGroup(groups, drag.target_group_key) : null;
+      const current_group_key = itemGroupKey(groups, drag.node_id);
 
-      if (changed) {
-        const payload: ReorderPayload = is_root
-          ? { scope: "root", moved_id: drag.node_id, group_key: owning_group!.key, ordered_ids: final_order }
-          : { scope: "subitem", moved_id: drag.node_id, parent_id: drag.parent_id, ordered_ids: final_order };
-        config_ref.current.onReorderItems?.(payload);
+      if (target_group && current_group_key && target_group.key !== current_group_key && target_group.is_items_loaded === false) {
+        // No rows to order against yet: the row goes to the end of that table, server side.
+        groups = placeItemAtGroupEdge(groups, drag.node_id, target_group.key, "end");
+        payload = { scope: "group", moved_id: drag.node_id, group_key: target_group.key, source_group_key: current_group_key };
+      } else {
+        // Dropped while a collapsed table was lit up: the row goes to its top.
+        if (target_group) groups = placeItemAtGroupEdge(groups, drag.node_id, target_group.key, "start");
+        const owning_group = groups.find((g) => g.items.some((it) => it.id === drag.node_id));
+        const final_order = owning_group?.items.map((it) => it.id) ?? [];
+        const is_cross_group = !!owning_group && owning_group.key !== drag.origin_group_key;
+        const changed =
+          is_cross_group ||
+          (final_order.length > 0 &&
+            (final_order.length !== drag.origin_order.length || final_order.some((id, index) => id !== drag.origin_order[index])));
+
+        if (owning_group && changed) {
+          const source_group = is_cross_group && drag.origin_group_key ? findGroup(groups, drag.origin_group_key) : null;
+          payload = {
+            scope: "root",
+            moved_id: drag.node_id,
+            group_key: owning_group.key,
+            ordered_ids: final_order,
+            ...(source_group ? { source_group_key: source_group.key, source_ordered_ids: source_group.items.map((it) => it.id) } : {}),
+          };
+        }
       }
     }
-    setState((s) => ({ ...s, drag: null }));
+
+    if (payload) config_ref.current.onReorderItems?.(payload);
+    const landing: RowDropLanding | null = payload ? { node_id: drag.node_id } : null;
+    setState((s) => ({ ...s, groups: groups === live_groups ? s.groups : groups, drag: null, last_row_drop: landing ?? s.last_row_drop }));
   }, []);
 
   // ---- group menu / structural group ops -----------------------------------
@@ -2731,6 +2814,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       setHoverHead,
       onDragStart,
       onDragOver,
+      onDragOverGroup,
       onDragEnd,
       openGroupMenu,
       closeGroupMenu,
@@ -2852,7 +2936,7 @@ export function useBoardTable(config: UseBoardTableConfig = {}) {
       clearCellValue, uploadCellFiles, addCellFileLink, addCellFileDoc, canEditCell, renameCellFile, deleteCellFile, setActiveCell, clearActiveCell, moveActiveCell, copyActiveCell, pasteIntoActiveCell,
       startFillDrag, updateFillDragHover, commitFillDrag, cancelFillDrag,
       openRowMenu, closeRowMenu, addItem, addSubitem, deleteNode, createBelow, duplicateNode, toggleNodePriority, setItemRecurrence, clearItemRecurrence, moveItemToGroup,
-      moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragEnd,
+      moveSubToItem, archiveNode, convertSubToItem, convertItemToSub, setHoverRow, setHoverGroup, setHoverHead, onDragStart, onDragOver, onDragOverGroup, onDragEnd,
       openGroupMenu, closeGroupMenu, addGroup, duplicateGroup, moveGroupByKey, moveGroupToIndex, setGroupColor, togglePriority, removeGroup, archiveGroup, selectAllInGroup, toggleGroupSelection,
       expandAllGroups, setAllSubsOpen, openColumnMenu, closeColumnMenu, openPicker, closePicker, setPickerQuery, addColumn,
       renameColumn, renameItemTitle, startColumnRename, updateColumnDraft, commitColumnRename, cancelColumnRename, deleteColumn, duplicateColumn, duplicateColumnToBoard, changeColumnKind, fillEmptyCells, updateColumnSettings, resizeColumnPreview, resizeItemColumnPreview, commitItemColumnResize, resizeSubColumnPreview, commitSubColumnResize, onColumnDragStart, onColumnDragOver, onColumnDragEnd, collapseAllGroups, setSort, openCellMenu, closeCellMenu, openOwnerMenu,

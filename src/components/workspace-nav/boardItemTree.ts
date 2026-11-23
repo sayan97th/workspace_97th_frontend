@@ -107,6 +107,26 @@ export const withGroupInTree = (item: BoardItemDto, group_id: number): BoardItem
   children: item.children.map((child) => withGroupInTree(child, group_id)),
 });
 
+/**
+ * Puts the root rows of `group_id` named in `ordered_ids` into that order,
+ * with `position` 0..n-1. Each table renders its rows in array order, so the
+ * rows are rearranged among the array slots they already hold, every other
+ * row stays exactly where it is.
+ */
+export const applyGroupOrder = (items: BoardItemDto[], group_id: number, ordered_ids: number[]): BoardItemDto[] => {
+  if (ordered_ids.length === 0) return items;
+  const wanted = new Set(ordered_ids);
+  const by_id = new Map(items.map((item) => [item.id, item]));
+  const reordered = ordered_ids.map((id) => by_id.get(id)).filter((item): item is BoardItemDto => Boolean(item));
+  let cursor = 0;
+  return items.map((item) => {
+    if (item.group_id !== group_id || !wanted.has(item.id) || cursor >= reordered.length) return item;
+    const next = { ...reordered[cursor], position: cursor };
+    cursor += 1;
+    return next;
+  });
+};
+
 
 /**
  * Places `created` (the row the server just made with `after_item_id`) right

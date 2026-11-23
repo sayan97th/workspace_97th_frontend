@@ -1,0 +1,248 @@
+// Row drag and drop look for the table board, inside one table and across
+// tables, driven by `RowMoveAnimator`, `useRowDragSession` and `GroupSection`.
+//
+//   data-row-flip-key="<key>"        a block that slides when rows move (see RowMoveAnimator)
+//   data-row-flip-phase="invert|play" set on that block while it slides
+//   data-row-dragging                 the dragged row's own slot, wherever it is right now
+//   data-row-landed                   the row that was just dropped, for a moment
+//   data-row-drop-target="live|deferred" a table the row is moving into
+//
+// Rows and tables carry their group color as `--row-group-color`, so the
+// dragged row's slot takes the color of the table it's hovering.
+
+$slide-duration: 200ms;
+// Ease out quart: rows start moving at once and glide to rest with no
+// rebound. Short enough that a row has settled before the pointer can
+// reach the next one, so slides don't pile up into a wobble.
+$slide-easing: cubic-bezier(0.25, 1, 0.5, 1);
+$landing-duration: 950ms;
+$fallback-color: var(--color-boardtree-accent);
+
+@mixin row-overlay {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.row-move-root {
+  // A plain wrapper for measuring, it must not add a box to the layout.
+  display: contents;
+
+  --row-move-duration: #{$slide-duration};
+  --row-move-easing: #{$slide-easing};
+
+  [data-row-flip-phase="invert"] {
+    transition: none;
+  }
+
+  [data-row-flip-phase="play"] {
+    // No `will-change` here: toggling it on every swap promoted and dropped
+    // compositor layers, which made the row text shimmer mid drag.
+    transition: transform var(--row-move-duration) var(--row-move-easing);
+  }
+
+  // The dragged row's slot: its content ghosts through a tinted, dashed lane
+  // in the color of the table it sits in, so the eye reads where it will drop.
+  [data-row-dragging] {
+    &::after {
+      @include row-overlay;
+      border: 1.5px dashed color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 75%, transparent);
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 11%, var(--color-boardtree-surface));
+      opacity: 0.86;
+      transition:
+        background-color 180ms ease-out,
+        border-color 180ms ease-out;
+      animation: row-slot-in 160ms ease-out;
+    }
+  }
+
+  [data-row-landed] {
+    &::after {
+      @include row-overlay;
+      border-radius: 4px;
+      animation: row-landed $landing-duration ease-out forwards;
+    }
+  }
+}
+
+// A table the dragged row is moving into: a soft wash and ring in its color
+// around the whole table, below its gap to the previous one.
+.board-group-section {
+  position: relative;
+
+  &[data-row-drop-target] {
+    &::before {
+      content: "";
+      position: absolute;
+      top: calc(var(--row-drop-gap, 0px) - 6px);
+      right: -6px;
+      bottom: -6px;
+      left: -12px;
+      z-index: 0;
+      border-radius: 12px;
+      background: color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 6%, transparent);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 42%, transparent);
+      pointer-events: none;
+      animation: row-drop-target-in 180ms ease-out;
+    }
+  }
+
+  // A collapsed or not yet loaded table can't show the row inside it, a pill
+  // tells the user that letting go moves the row there.
+  &[data-row-drop-target="deferred"]::after {
+    content: attr(data-row-drop-label);
+    position: absolute;
+    top: calc(var(--row-drop-gap, 0px) + 50%);
+    right: 18px;
+    z-index: 45;
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--row-group-color, #{$fallback-color});
+    box-shadow: 0 4px 12px rgba(30, 34, 55, 0.18);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateY(-50%);
+    animation: row-drop-pill-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1.3);
+  }
+}
+
+// Drag image built by `startRowDrag`. The padding keeps the shadow and the
+// tilt inside the snapshot the browser takes, which would otherwise clip them.
+.row-drag-card {
+  position: fixed;
+  top: -1000px;
+  left: -1000px;
+  padding: 12px 18px 18px 12px;
+  pointer-events: none;
+
+  &__body {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 220px;
+    max-width: 340px;
+    height: 40px;
+    padding-right: 14px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 45%, transparent);
+    border-radius: 8px;
+    background: var(--color-boardtree-surface);
+    box-shadow:
+      0 12px 28px rgba(30, 34, 55, 0.2),
+      0 2px 6px rgba(30, 34, 55, 0.12);
+    transform: rotate(-1.5deg);
+  }
+
+  &__bar {
+    align-self: stretch;
+    width: 6px;
+    flex: none;
+    background: var(--row-group-color, #{$fallback-color});
+  }
+
+  &__grip {
+    display: inline-flex;
+    flex: none;
+    color: var(--color-boardtree-text-muted);
+    fill: currentColor;
+  }
+
+  &__label {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    color: var(--color-boardtree-text);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    flex: none;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 14%, transparent);
+    color: var(--color-boardtree-text-secondary);
+    font-size: 11.5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+}
+
+// Text selection and hover affordances are noise while a row travels.
+body.is-dragging-row {
+  user-select: none;
+}
+
+@keyframes row-slot-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.86;
+  }
+}
+
+@keyframes row-landed {
+  0% {
+    background: color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 26%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 80%, transparent);
+  }
+  55% {
+    background: color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 12%, transparent);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--row-group-color, #{$fallback-color}) 35%, transparent);
+  }
+  100% {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px transparent;
+  }
+}
+
+@keyframes row-drop-target-in {
+  from {
+    opacity: 0;
+    transform: scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes row-drop-pill-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-move-root {
+    --row-move-duration: 0ms;
+
+    [data-row-dragging]::after,
+    [data-row-landed]::after {
+      animation: none;
+    }
+  }
+
+  .board-group-section[data-row-drop-target]::before,
+  .board-group-section[data-row-drop-target="deferred"]::after {
+    animation: none;
+  }
+}

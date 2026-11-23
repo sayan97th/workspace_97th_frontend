@@ -1,8 +1,9 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
-import type { BoardTableGroup, ColumnAutomationShortcut } from "../types";
+import type { BoardTableGroup, ColumnAutomationShortcut, RowDropEdge } from "../types";
+import { canPreviewRowInGroup, itemGroupKey } from "../rowDragUtils";
 import { PHONE_SUB_NAME_COL_WIDTH, computeSubNameColWidth, fitNameColWidth, mainMinWidth, subMinWidth } from "../layoutUtils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { PHONE_QUERY } from "@/lib/breakpoints";
@@ -18,6 +19,18 @@ import GroupSkeletonRows from "../rows/GroupSkeletonRows";
 import TreeBar from "../rows/TreeBar";
 import GroupHeaderBar from "./GroupHeaderBar";
 import GroupColumnHeaderRow from "./GroupColumnHeaderRow";
+
+/**
+ * Whether a sticky header strip is pinned (its table scrolled up under it)
+ * rather than sitting at its natural place at the top of the table.
+ * The section's own top, past its gap, is where the header rests when not
+ * stuck; the column header row rests one header bar (40px) below that.
+ */
+function isStuckHeader(header: Element, section: HTMLElement, section_gap: number): boolean {
+  const natural_top = section.getBoundingClientRect().top + section_gap;
+  const resting_offset = header.hasAttribute("data-group-anchor") ? 0 : 40;
+  return header.getBoundingClientRect().top - (natural_top + resting_offset) > 2;
+}
 
 /**
  * How many of a loaded table's rows get mounted into the DOM per reveal —
@@ -126,6 +139,38 @@ export default function GroupSection({
     return () => observer.disconnect();
   }, [is_items_loaded, has_more_rows, visible_count]);
 
+  // Row drag and drop across tables, see `useBoardTable`'s `onDragOverGroup`.
+  // Rows handle their own hover. Here the header strips (`data-row-drop-edge="start"`)
+  // and the footer (`"end"`) of an open table take the row to its top or bottom,
+  // and anywhere on a collapsed or not yet loaded table marks it as the drop target.
+  const drag = state.drag;
+  const is_root_drag = !!drag && drag.parent_id === "ROOT";
+  const can_preview_row = canPreviewRowInGroup(group, state.collapsed_groups);
+  const handleRowDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!is_root_drag) return;
+    if (!can_preview_row) {
+      actions.onDragOverGroup(group.key, "start");
+      return;
+    }
+    const edge_el = (event.target as Element).closest?.("[data-row-drop-edge]");
+    if (!edge_el || !event.currentTarget.contains(edge_el)) return;
+    // A header pinned at the top while its rows scroll under it isn't the table's top:
+    // passing over it must not throw the row to the start of the list.
+    if (edge_el.getAttribute("data-row-drop-edge") === "start" && isStuckHeader(edge_el, event.currentTarget, section_gap)) return;
+    actions.onDragOverGroup(group.key, edge_el.getAttribute("data-row-drop-edge") as RowDropEdge);
+  };
+
+  // "live": the dragged row already shows inside this table, coming from another one.
+  // "deferred": this collapsed/unloaded table is where the row goes on drop.
+  const row_drop_target = !is_root_drag
+    ? undefined
+    : drag.target_group_key === group.key
+      ? "deferred"
+      : !drag.target_group_key && drag.origin_group_key !== group.key && itemGroupKey(state.groups, drag.node_id) === group.key
+        ? "live"
+        : undefined;
+  const section_gap = group_index === 0 || is_reordering ? 0 : is_collapsed ? 10 : 30;
+
   return (
     // `paddingTop`, not `marginTop`. A sticky child (`GroupHeaderBar`) can only stay pinned
     // to `top: 0` while some part of ITS OWN containing block (this very div) is still on
@@ -135,7 +180,14 @@ export default function GroupSection({
     // and the raw page background flashes through for the width of that gap. Padding is part
     // of the box itself, so the same spacing here keeps the handoff between one group's
     // sticky header and the next completely contiguous while looking identical at rest.
-    <div ref={section_ref} style={{ paddingTop: group_index === 0 || is_reordering ? 0 : is_collapsed ? 10 : 30 }}>
+    <div
+      ref={section_ref}
+      className="board-group-section"
+      data-row-drop-target={row_drop_target}
+      data-row-drop-label={row_drop_target === "deferred" ? `Drop to move to ${group.title}` : undefined}
+      style={{ paddingTop: section_gap, "--row-drop-gap": `${section_gap}px`, "--row-group-color": group.color } as CSSProperties}
+      onDragOver={handleRowDragOver}
+    >
       {is_collapsed ? (
         <CollapsedGroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
       ) : (
@@ -160,6 +212,7 @@ export default function GroupSection({
           />
 
           {!is_items_loaded ? (
+            <div data-row-flip-key={`skeleton:${group.key}`}>
             <GroupSkeletonRows
               name_col_width={name_col_width}
               min_width={min_width}
@@ -170,6 +223,7 @@ export default function GroupSection({
               item_count={group.item_count}
               pinned_column_count={state.pinned_column_count}
             />
+            </div>
           ) : (
             <>
               {sorted_items.slice(0, visible_count).map((item) => {
@@ -188,7 +242,8 @@ export default function GroupSection({
                 const sorted_subs = applySort(item.subs, state.sort, `sub:${item.id}`, group.sub_base_columns.concat(group.sub_custom_columns));
 
                 return (
-                  <Fragment key={item.id}>
+                  // One block per item with its open subitems, so they slide together (see `RowMoveAnimator`).
+                  <div key={item.id} data-row-flip-key={item.id}>
                     <ItemRow item={item} group={group} name_col_width={name_col_width} min_width={min_width} state={state} actions={actions} />
 
                     {is_open && item.subs.length > 0 && (
@@ -216,7 +271,7 @@ export default function GroupSection({
                         </div>
                       </>
                     )}
-                  </Fragment>
+                  </div>
                 );
               })}
 
@@ -235,11 +290,14 @@ export default function GroupSection({
                 </div>
               )}
 
-              {!state.read_only && state.can_create_items && (
-                <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
-              )}
+              {/* The footer takes a dragged row to the bottom of this table, unless some rows aren't mounted yet (it would land out of sight). */}
+              <div data-row-flip-key={`tail:${group.key}`} data-row-drop-edge={has_more_rows ? undefined : "end"}>
+                {!state.read_only && state.can_create_items && (
+                  <AddItemRow min_width={min_width} color={group.color} onAdd={() => actions.addItem(group.key)} />
+                )}
 
-              <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
+                <GroupSummaryRow group={group} name_col_width={name_col_width} min_width={min_width} state={state} />
+              </div>
             </>
           )}
         </div>

@@ -14,6 +14,8 @@ import TableToolbar from "./toolbar/TableToolbar";
 import GroupSection from "./group/GroupSection";
 import SortableGroupList from "./group/SortableGroupList";
 import ColumnMoveAnimator from "./ColumnMoveAnimator";
+import RowMoveAnimator from "./RowMoveAnimator";
+import { useRowDragSession } from "./useRowDragSession";
 import { columnMoveKey, columnOrderKey } from "./columnMove";
 import { COLUMN_REVEAL_TIMEOUT_MS, findColumnCell, revealColumnCell, type ColumnRevealRequest } from "./revealColumn";
 import { findNode } from "./treeUtils";
@@ -585,6 +587,11 @@ export default function BoardTable({
   }, [state.groups, state.config_editor?.kind, config_editor_column]);
 
   const column_order_key = useMemo(() => columnOrderKey(state.groups), [state.groups]);
+  // Row drag and drop, inside a table and across tables: the window side of the
+  // drag (drop, cancel, auto scroll) and the slide/landing animations.
+  const row_move_root_ref = useRef<HTMLDivElement>(null);
+  const is_row_dragging = !!state.drag;
+  useRowDragSession(row_move_root_ref, is_row_dragging, actions.onDragEnd);
   const dragging_column_key = state.column_drag ? columnMoveKey(state.column_drag.scope, state.column_drag.column_id) : null;
 
   // Phones turn the frozen columns off (checkbox, Item, comment icon, pinned columns), so the whole
@@ -593,6 +600,7 @@ export default function BoardTable({
   const grid = (
     <StickyColumnsContext.Provider value={!is_phone}>
     <ColumnMoveAnimator order_key={column_order_key} dragging_key={dragging_column_key}>
+    <RowMoveAnimator groups={state.groups} is_dragging={is_row_dragging} landing={state.last_row_drop} root_ref={row_move_root_ref}>
       {!embedded && <div className="h-[26px]" />}
       <SortableGroupList
         state={state}
@@ -627,6 +635,7 @@ export default function BoardTable({
       {!state.read_only && state.can_edit_structure && state.can_create_items && (
         <button
           type="button"
+          data-row-flip-key="add-group"
           onClick={(e) => { e.stopPropagation(); actions.addGroup(); }}
           className="mt-4 flex items-center gap-2 rounded-[6px] px-2 py-2 text-[13.5px] font-medium text-boardtree-text-muted hover:bg-boardtree-hover hover:text-boardtree-accent"
         >
@@ -634,6 +643,7 @@ export default function BoardTable({
           Add new group
         </button>
       )}
+    </RowMoveAnimator>
     </ColumnMoveAnimator>
     </StickyColumnsContext.Provider>
   );

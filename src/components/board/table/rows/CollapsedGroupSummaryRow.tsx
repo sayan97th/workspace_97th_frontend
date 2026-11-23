@@ -39,6 +39,7 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
   return (
     <div
       data-group-anchor
+      data-row-flip-key={`collapsed:${group.key}`}
       className="relative"
       style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : "auto" }}
       onMouseEnter={() => actions.setHoverGroup(group.key)}

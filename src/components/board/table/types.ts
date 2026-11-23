@@ -586,6 +586,30 @@ export interface DragState {
    * only persists one) when the drop actually changed something.
    */
   origin_order: string[];
+  /** The group a root item was picked up from, null for a subitem drag. Compared at drop time to tell a cross-table move apart. */
+  origin_group_key: string | null;
+  /** The whole tree as it was at pickup, restored when the drag is cancelled (Escape, or released outside the board). */
+  origin_groups: BoardTableGroup[];
+  /**
+   * A table the row can't be shown inside while hovering it, because it's
+   * collapsed or its rows haven't loaded yet. The row stays where it was and
+   * this table lights up instead, the move happens on drop (to its top).
+   */
+  target_group_key: string | null;
+}
+
+/** Which half of a hovered row the pointer is over during a row drag, decides where a row coming from another table lands. */
+export type RowDropPlacement = "before" | "after";
+
+/** Which edge of a table a row drag is hovering: its header (top) or its footer (bottom). */
+export type RowDropEdge = "start" | "end";
+
+/** How a row drag finished: dropped inside the board, or cancelled (Escape, or released outside it). */
+export type RowDragOutcome = "drop" | "cancel";
+
+/** The row that was just dropped somewhere new, read by `RowMoveAnimator` to play the landing flash. A fresh object per drop. */
+export interface RowDropLanding {
+  node_id: string;
 }
 
 /** Which list of rows got reordered — a table's own root items, or one item's subitems. */
@@ -595,13 +619,27 @@ export type ReorderScope = "root" | "subitem";
  * Reported by `onDragEnd` once a drag has actually changed a list's order,
  * for a real board to persist server-side (see `UseBoardTableConfig.onReorderItems`).
  * `ordered_ids` is that list's full id order after the drop, in display order
- * top-to-bottom — root items never change group through drag-and-drop (each
- * row only ever reorders within its own group's list), so `group_key`/
- * `parent_id` name the *same* list `moved_id` already belonged to.
+ * top-to-bottom.
+ *
+ * - `"root"`: `group_key` is the table `moved_id` ended up in. When the row
+ *   came from another table, `source_group_key`/`source_ordered_ids` name
+ *   that table and its remaining order (`source_ordered_ids` is empty when
+ *   the row was its only item).
+ * - `"subitem"`: subitems only ever reorder under their own parent.
+ * - `"group"`: the row was dropped on a table whose rows aren't loaded yet,
+ *   so there is no order to report, it goes to the end of `group_key`.
  */
 export type ReorderPayload =
-  | { scope: "root"; moved_id: string; group_key: string; ordered_ids: string[] }
-  | { scope: "subitem"; moved_id: string; parent_id: string; ordered_ids: string[] };
+  | {
+      scope: "root";
+      moved_id: string;
+      group_key: string;
+      ordered_ids: string[];
+      source_group_key?: string;
+      source_ordered_ids?: string[];
+    }
+  | { scope: "subitem"; moved_id: string; parent_id: string; ordered_ids: string[] }
+  | { scope: "group"; moved_id: string; group_key: string; source_group_key: string };
 
 /** The single cell currently focused for Excel-style keyboard navigation/copy-paste — see `useBoardTable`'s `moveActiveCell`/`copyActiveCell`/`pasteIntoActiveCell`. */
 export interface ActiveCell {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import type { BoardTableActions, BoardTableState } from "../useBoardTable";
 import type { BoardTableGroup, BoardTableItem } from "../types";
 import { ROW_HEIGHT_PX, mainGridTemplate, mainStickyOffsets } from "../layoutUtils";
@@ -15,6 +15,8 @@ import EmojiInsertButton from "../../EmojiInsertButton";
 import { highlightSearchMatches } from "../searchHighlight";
 import { columnMoveKey } from "../columnMove";
 import { useTextEntryDragLock } from "./useTextEntryDragLock";
+import { startRowDrag } from "../rowDragImage";
+import { rowDragPlacement } from "../rowDragUtils";
 import ExpandingCellEditor from "../cells/ExpandingCellEditor";
 import ItemNameLabel from "./ItemNameLabel";
 import { ITEM_NAME_MAX_LENGTH } from "../constants";
@@ -100,13 +102,15 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
     <div
       ref={row_ref}
       className="relative flex items-stretch"
+      data-row-node-id={item.id}
+      data-row-dragging={is_dragging ? "true" : undefined}
       style={{
         minWidth: min_width,
         background: row_bg,
-        opacity: is_dragging ? 0.45 : 1,
         outline: is_active_match ? "2px solid #fdab3d" : undefined,
         outlineOffset: is_active_match ? "-2px" : undefined,
-      }}
+        "--row-group-color": group.color,
+      } as CSSProperties}
       // Not draggable while the name or any text field in the row is being
       // edited, so mouse drags select text instead of moving the item.
       draggable={!state.read_only && !is_editing && !is_text_entry_focused}
@@ -120,10 +124,21 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
           e.preventDefault();
           return;
         }
+        startRowDrag(e, {
+          node_id: item.id,
+          name: item.name,
+          color: group.color,
+          meta: has_subs ? `${item.subs.length} ${item.subs.length === 1 ? "subitem" : "subitems"}` : undefined,
+        });
         actions.onDragStart(item.id, "ROOT");
       }}
-      onDragOver={(e) => { e.preventDefault(); actions.onDragOver(item.id, "ROOT"); }}
-      onDragEnd={actions.onDragEnd}
+      // Which half of this row the pointer is over (on its real position, not mid slide, see
+      // `rowDragPlacement`) decides when the dragged row takes its slot.
+      // The drag itself is finished by `useRowDragSession`, since this row may remount in another table mid drag.
+      onDragOver={(e) => {
+        e.preventDefault();
+        actions.onDragOver(item.id, "ROOT", rowDragPlacement(e));
+      }}
       onMouseEnter={() => actions.setHoverRow(item.id)}
       onMouseLeave={() => actions.setHoverRow(null)}
     >

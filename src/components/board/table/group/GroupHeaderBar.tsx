@@ -20,6 +20,9 @@ export default function GroupHeaderBar({ group, min_width, state, actions }: Gro
   return (
     <div
       data-group-anchor
+      // A row dragged over the header moves to the top of this table, see `GroupSection`.
+      data-row-drop-edge="start"
+      data-row-flip-key={`head:${group.key}`}
       {...drag_handle.listeners}
       className={`sticky top-0 z-[60] flex h-10 items-end bg-boardtree-bg pb-2 ${groupDragHandleClassName(drag_handle)}`}
       style={{ minWidth: min_width, zIndex: is_menu_open ? 200 : 60 }}
