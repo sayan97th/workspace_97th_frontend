@@ -12,8 +12,10 @@ export type HomeBannerFraming = {
   /** 1 fills the banner, up to 3 zooms in around the focal point. */
   zoom: number;
   text_tone: HomeBannerTextTone;
-  /** Shade over the image behind the greeting, 0 to 80 percent. */
+  /** Strength of the gradient over the image behind the greeting, 0 to 80 percent. */
   overlay_opacity: number;
+  /** Gradient color as #rrggbb, null for the automatic one that matches the text color. */
+  overlay_color: string | null;
 };
 
 /** `HomeBannerResource` from the Laravel API. */

@@ -4,7 +4,7 @@ import { GalleryHorizontalEnd, ImagePlus, SlidersHorizontal } from "lucide-react
 import { useAuth } from "@/context/AuthContext";
 import HomeBannerEditor from "@/components/home-banner/HomeBannerEditor";
 import BannerFrame from "@/components/home-banner/BannerFrame";
-import { BANNER_DESIGN_TIPS, BANNER_SPECS } from "@/components/home-banner/BannerDropZone";
+import { BANNER_SPECS } from "@/components/home-banner/BannerDropZone";
 import { formatFileSize } from "@/components/home-banner/prepareBannerImage";
 import { framingOf } from "@/components/home-banner/bannerFraming";
 import { useHomeBanner } from "@/components/home-banner/useHomeBanner";
@@ -46,65 +46,46 @@ const HomeBannerCard: React.FC<HomeBannerCardProps> = ({ company_name, is_read_o
       id="home_banner"
       icon={GalleryHorizontalEnd}
       title="Home banner"
-      description={`The image behind the welcome greeting on Home, for everyone at ${company_name}. People who choose their own banner keep seeing theirs.`}
+      description={`Shown on everyone's Home, unless they pick their own.`}
     >
       <div ref={preview_ref} className="organization-home-banner-preview">
         {banner ? (
           <BannerFrame device="desktop" image={banner} framing={framingOf(banner)} greeting={greeting} max_width={preview_width} />
         ) : (
-          <div className="organization-home-banner-empty">
+          <button
+            type="button"
+            className="organization-home-banner-empty"
+            onClick={() => setIsEditorOpen(true)}
+            disabled={is_read_only || !is_loaded}
+            aria-label="Upload banner"
+          >
             <ImagePlus className="h-6 w-6" aria-hidden="true" />
-            <p className="text-[14px] font-semibold text-shell-text">{is_loaded ? "Using the default design" : "Loading banner..."}</p>
-            <p className="max-w-[360px] text-[13px] leading-5 text-shell-text-secondary">
-              Upload a brand image or photo and everyone sees it on Home the next time they open it.
-            </p>
-          </div>
+            <span className="text-[14px] font-semibold text-shell-text">{is_loaded ? "No banner yet" : "Loading..."}</span>
+          </button>
         )}
       </div>
 
       {banner ? (
         <p className="mt-2.5 text-[12.5px] text-shell-text-faint">
-          {banner.original_name ?? "Banner image"} · {formatFileSize(banner.stored_size)} · {banner.width} x {banner.height} px
-          {banner.updated_by ? ` · Last changed by ${banner.updated_by.full_name}` : ""}
+          {banner.original_name ?? "Banner"} · {formatFileSize(banner.stored_size)}
+          {banner.updated_by ? ` · by ${banner.updated_by.full_name}` : ""}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-3">
         <button type="button" className="admin-button admin-button-primary" onClick={() => setIsEditorOpen(true)} disabled={is_read_only || !is_loaded}>
           {banner ? <SlidersHorizontal className="h-4 w-4" aria-hidden="true" /> : <ImagePlus className="h-4 w-4" aria-hidden="true" />}
-          {banner ? "Customize banner" : "Upload banner"}
+          {banner ? "Edit banner" : "Upload banner"}
         </button>
-      </div>
-
-      <div className="mt-5 grid gap-4 border-t border-shell-border pt-4 md:grid-cols-2">
-        <div>
-          <h4 className="mb-2 text-[13px] font-semibold text-shell-text">Image specs for designers</h4>
-          <dl className="grid gap-1.5">
-            {BANNER_SPECS.map((spec) => (
-              <div key={spec.label} className="flex justify-between gap-3 text-[13px]">
-                <dt className="text-shell-text-secondary">{spec.label}</dt>
-                <dd className="text-right font-medium text-shell-text">{spec.value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-        <div>
-          <h4 className="mb-2 text-[13px] font-semibold text-shell-text">Design tips</h4>
-          <ul className="list-disc space-y-1 pl-4 text-[13px] leading-5 text-shell-text-secondary">
-            {BANNER_DESIGN_TIPS.map((tip) => (
-              <li key={tip}>{tip}</li>
-            ))}
-          </ul>
-        </div>
+        <span className="text-[12.5px] text-shell-text-faint">{BANNER_SPECS.join(" · ")}</span>
       </div>
 
       {is_editor_open && state ? (
         <HomeBannerEditor
           onClose={() => setIsEditorOpen(false)}
-          initial_scope="organization"
+          scope="organization"
           state={state}
           onSaved={applyState}
-          allow_scope_switch={false}
           greeting={greeting}
           company_name={company_name}
         />

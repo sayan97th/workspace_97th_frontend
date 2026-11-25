@@ -53,7 +53,7 @@ const BannerFrame: React.FC<BannerFrameProps> = ({
 }) => {
   const size = deviceSize(device);
   const scale = Math.min(1, max_width / size.width, max_height / size.height);
-  const tone = resolveTextTone(framing.text_tone, image.luminance, framing.overlay_opacity);
+  const tone = resolveTextTone(framing.text_tone, image.luminance, framing.overlay_opacity, framing.overlay_color);
   const is_interactive = Boolean(onFramingChange);
   const frame_ref = useRef<HTMLDivElement>(null);
   const drag_ref = useRef<{ pointer_id: number; x: number; y: number; framing: HomeBannerFraming } | null>(null);
@@ -144,7 +144,7 @@ const BannerFrame: React.FC<BannerFrameProps> = ({
         {show_guides || is_dragging ? (
           <div className="home-banner-guides" aria-hidden="true">
             <span className="home-banner-guide-text-zone">
-              <span className="home-banner-guide-label">Greeting area</span>
+              <span className="home-banner-guide-label">Text area</span>
             </span>
             <span className="home-banner-guide-line" style={{ left: "33.333%" }} data-axis="x" />
             <span className="home-banner-guide-line" style={{ left: "66.666%" }} data-axis="x" />

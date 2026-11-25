@@ -79,6 +79,9 @@
 }
 
 .organization-home-banner-empty {
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 160ms ease;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -91,6 +94,15 @@
   color: var(--admin-text-secondary);
   text-align: center;
   background: linear-gradient(115deg, color-mix(in srgb, var(--color-brand-500) 10%, #ffffff) 0%, #ffffff 48%, var(--color-surface-subtle) 100%);
+}
+
+.organization-home-banner-empty:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--color-brand-500) 55%, var(--admin-divider));
+  color: var(--color-brand-500);
+}
+
+.organization-home-banner-empty:disabled {
+  cursor: default;
 }
 
 html.dark .organization-home-banner-empty {

@@ -8,7 +8,18 @@ export const DEFAULT_BANNER_FRAMING: HomeBannerFraming = {
   zoom: 1,
   text_tone: "auto",
   overlay_opacity: 35,
+  overlay_color: null,
 };
+
+/** Gradient colors offered in the editor, from the 97 Style Guide 2026. */
+export const BANNER_GRADIENT_PRESETS: { color: string; label: string }[] = [
+  { color: "#0a1717", label: "Ink" },
+  { color: "#2b3c40", label: "Slate" },
+  { color: "#e53e2e", label: "Red" },
+  { color: "#d55b08", label: "Sunset" },
+  { color: "#ecaa17", label: "Gold" },
+  { color: "#fafaf5", label: "Cream" },
+];
 
 export const MIN_BANNER_ZOOM = 1;
 export const MAX_BANNER_ZOOM = 3;
@@ -32,6 +43,7 @@ export const framingOf = (banner: HomeBannerDto): HomeBannerFraming => ({
   zoom: banner.zoom,
   text_tone: banner.text_tone,
   overlay_opacity: banner.overlay_opacity,
+  overlay_color: banner.overlay_color ?? null,
 });
 
 export const isSameFraming = (first: HomeBannerFraming, second: HomeBannerFraming): boolean =>
@@ -39,24 +51,49 @@ export const isSameFraming = (first: HomeBannerFraming, second: HomeBannerFramin
   Math.abs(first.focal_y - second.focal_y) < 0.01 &&
   Math.abs(first.zoom - second.zoom) < 0.001 &&
   first.text_tone === second.text_tone &&
-  first.overlay_opacity === second.overlay_opacity;
+  first.overlay_opacity === second.overlay_opacity &&
+  (first.overlay_color ?? null) === (second.overlay_color ?? null);
+
+const hexToRgb = (hex: string): [number, number, number] | null => {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
+  return match ? [parseInt(match[1], 16), parseInt(match[2], 16), parseInt(match[3], 16)] : null;
+};
+
+/** Relative brightness (0 to 1) of a #rrggbb color. */
+const colorLuminance = (hex: string): number => {
+  const rgb = hexToRgb(hex);
+  return rgb ? (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255 : 0;
+};
 
 /**
- * The color the greeting is written in. With `auto`, light images get dark text, but a strong
- * shade darkens the image first, so it is taken into account.
+ * The color the greeting is written in. With `auto`, it looks at how bright the image is once
+ * the gradient is laid over it: a strong dark gradient makes any photo fit light text.
  */
-export const resolveTextTone = (text_tone: HomeBannerTextTone, luminance: number, overlay_opacity: number): ResolvedTextTone => {
+export const resolveTextTone = (
+  text_tone: HomeBannerTextTone,
+  luminance: number,
+  overlay_opacity: number,
+  overlay_color: string | null = null
+): ResolvedTextTone => {
   if (text_tone !== "auto") return text_tone;
-  const shaded_luminance = luminance * (1 - overlay_opacity / 100);
+  const strength = overlay_opacity / 100;
+  const shaded_luminance = overlay_color
+    ? luminance * (1 - strength) + colorLuminance(overlay_color) * strength
+    : luminance * (1 - strength);
   return shaded_luminance > LIGHT_IMAGE_LUMINANCE ? "dark" : "light";
 };
 
-/** The shade sits under the text: dark behind light text, light behind dark text. */
-export const scrimStyle = (tone: ResolvedTextTone, overlay_opacity: number): React.CSSProperties =>
-  ({
-    "--banner-scrim-rgb": SCRIM_RGB[tone],
+/**
+ * The gradient sits under the text, strongest on the left. Its color is the one picked in the
+ * editor, or by default dark behind light text and light behind dark text.
+ */
+export const scrimStyle = (tone: ResolvedTextTone, overlay_opacity: number, overlay_color: string | null = null): React.CSSProperties => {
+  const custom_rgb = overlay_color ? hexToRgb(overlay_color) : null;
+  return {
+    "--banner-scrim-rgb": custom_rgb ? custom_rgb.join(", ") : SCRIM_RGB[tone],
     "--banner-scrim-alpha": String(Math.min(MAX_BANNER_OVERLAY, Math.max(0, overlay_opacity)) / 100),
-  }) as React.CSSProperties;
+  } as React.CSSProperties;
+};
 
 /**
  * Places the image like `object-fit: cover`, centered on the focal point and zoomed around it.

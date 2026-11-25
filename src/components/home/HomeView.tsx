@@ -80,10 +80,9 @@ const HomeView: React.FC = () => {
         {is_banner_editor_open && (
           <HomeBannerEditor
             onClose={() => setIsBannerEditorOpen(false)}
-            initial_scope="personal"
+            scope="personal"
             state={home_banner.state ?? { personal: null, organization: null, can_manage_organization: false }}
             onSaved={home_banner.applyState}
-            allow_scope_switch={Boolean(home_banner.state?.can_manage_organization)}
             greeting={{ user, today, recap }}
             company_name={branding.company_name}
           />

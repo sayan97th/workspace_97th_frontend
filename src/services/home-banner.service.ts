@@ -30,6 +30,8 @@ export const homeBannerService = {
     form_data.append("zoom", String(framing.zoom));
     form_data.append("text_tone", framing.text_tone);
     form_data.append("overlay_opacity", String(framing.overlay_opacity));
+    // An empty value reaches Laravel as null, the automatic color.
+    form_data.append("overlay_color", framing.overlay_color ?? "");
     return apiClient.postFormDataWithProgress<HomeBannerResponse>(scopeEndpoint(scope), form_data, onProgress);
   },
 

@@ -98,7 +98,7 @@ type HomeHeroProps = HomeHeroGreetingProps & {
  * organization banner or the built in gradient with the floating board illustration.
  */
 const HomeHero: React.FC<HomeHeroProps> = ({ user, today, recap, banner, onCustomize }) => {
-  const tone = banner ? resolveTextTone(banner.text_tone, banner.luminance, banner.overlay_opacity) : null;
+  const tone = banner ? resolveTextTone(banner.text_tone, banner.luminance, banner.overlay_opacity, banner.overlay_color) : null;
 
   return (
     <section

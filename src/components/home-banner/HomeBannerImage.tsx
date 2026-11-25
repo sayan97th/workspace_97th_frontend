@@ -13,7 +13,7 @@ export type BannerImageSource = {
 
 type HomeBannerImageProps = {
   source: BannerImageSource;
-  framing: Pick<HomeBannerFraming, "focal_x" | "focal_y" | "zoom" | "overlay_opacity">;
+  framing: Pick<HomeBannerFraming, "focal_x" | "focal_y" | "zoom" | "overlay_opacity"> & { overlay_color?: string | null };
   tone: ResolvedTextTone;
   /** The Home hero is the largest thing above the fold, so its image downloads first. */
   is_priority?: boolean;
@@ -79,7 +79,7 @@ const HomeBannerImage: React.FC<HomeBannerImageProps> = ({
         className="home-banner-photo"
         style={bannerImageStyle(framing)}
       />
-      <div className="home-banner-scrim" style={scrimStyle(tone, framing.overlay_opacity)} />
+      <div className="home-banner-scrim" style={scrimStyle(tone, framing.overlay_opacity, framing.overlay_color ?? null)} />
     </div>
   );
 };
