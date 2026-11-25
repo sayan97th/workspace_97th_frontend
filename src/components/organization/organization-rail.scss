@@ -1,0 +1,41 @@
+// Right column of Administration > Organization, which holds the Live preview
+// (`OrganizationLivePreview.tsx`). It sticks to the top of the Administration scroll area and never
+// grows past it: the view measures the room left inside that area's padding into
+// `--organization-rail-height`, and the column scrolls on its own on very short screens, so
+// nothing is cut off.
+// Sticky offsets count from the scroll area's padding edge, not from its visible top.
+
+// The rail reaches this far past its column so the card shadows are not clipped by its overflow.
+$shadow_room: 8px;
+// Tailwind's `xl`, where the page grid gets its second column.
+$rail_breakpoint: 1280px;
+
+.organization-rail {
+  position: sticky;
+  top: -$shadow_room;
+  display: none;
+  flex-direction: column;
+  max-height: calc(var(--organization-rail-height, 80dvh) + #{2 * $shadow_room});
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: -$shadow_room;
+  padding: $shadow_room;
+  scrollbar-width: thin;
+  scrollbar-color: var(--admin-divider) transparent;
+  // Scroll shadows: the card colored covers travel with the content and hide the fades at either end,
+  // so a fade only shows on an edge with more to scroll.
+  background:
+    linear-gradient(var(--admin-card-bg) 30%, transparent) top / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--admin-card-bg) 70%) bottom / 100% 24px no-repeat local,
+    linear-gradient(rgba(0, 0, 0, 0.07), transparent) top / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, rgba(0, 0, 0, 0.07)) bottom / 100% 10px no-repeat scroll;
+
+  > * {
+    flex: none;
+  }
+
+  @media (min-width: $rail_breakpoint) {
+    display: flex;
+  }
+}

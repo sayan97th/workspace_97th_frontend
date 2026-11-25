@@ -5,7 +5,7 @@
  * This file only adds what is specific to the Organization cards.
  */
 
-/* Every card, the "On this page" list and the live preview are borderless boxes on the soft drop shadow. */
+/* Every card and the live preview are borderless boxes on the soft drop shadow. */
 .organization-panel {
   border-radius: 12px;
   background: var(--admin-card-bg);
@@ -16,31 +16,9 @@
   border-bottom: 1px solid var(--admin-divider);
 }
 
-/* Cards stop a little below the top of the scroll area when jumped to from "On this page". */
+/* Cards stop a little below the top of the scroll area when opened from a deep link. */
 .organization-settings [data-organization-section] {
   scroll-margin-top: 16px;
-}
-
-/* "On this page" rows, selected like the Administration rail. */
-.organization-toc-link {
-  display: block;
-  padding: 6px 10px;
-  border-radius: 4px;
-  color: var(--admin-text-secondary);
-  font-size: 14px;
-  line-height: 20px;
-  transition: background-color 120ms ease;
-}
-
-.organization-toc-link:hover {
-  background: var(--admin-hover);
-  color: var(--admin-text);
-}
-
-.organization-toc-link[aria-current="location"] {
-  background: var(--admin-selected);
-  color: var(--admin-text);
-  font-weight: 500;
 }
 
 /* "Unsaved changes" next to Discard and Save in the page header. */

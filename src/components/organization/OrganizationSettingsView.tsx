@@ -16,18 +16,10 @@ import SignInPageCard from "./sections/SignInPageCard";
 import AnnouncementCard from "./sections/AnnouncementCard";
 import HomeBannerCard from "./sections/HomeBannerCard";
 import "./organization-settings.css";
+import "./organization-rail.scss";
 
-/** The cards of the page in order, also the "On this page" links. */
-const PAGE_SECTIONS = [
-  { id: "profile", label: "Company profile" },
-  { id: "logo", label: "Logo and favicon" },
-  { id: "colors", label: "Brand color" },
-  { id: "home_banner", label: "Home banner" },
-  { id: "contact", label: "Contact and support" },
-  { id: "social", label: "Social profiles" },
-  { id: "sign_in", label: "Sign in page" },
-  { id: "announcement", label: "Announcement banner" },
-];
+/** Card ids that deep links such as `?section=organization#contact` may target. */
+const SECTION_IDS = ["profile", "logo", "colors", "home_banner", "contact", "social", "sign_in", "announcement"];
 
 const UNSAVED_CHANGES_MESSAGE = "You have unsaved organization changes. Leave without saving them?";
 
@@ -48,8 +40,8 @@ const OrganizationSettingsView: React.FC = () => {
   const { hasAnyRole } = useAuth();
   const settings = useOrganizationSettings();
   const { draft, organization, is_dirty } = settings;
-  const [active_section_id, setActiveSectionId] = useState(PAGE_SECTIONS[0].id);
   const root_ref = useRef<HTMLDivElement>(null);
+  const [rail_height, setRailHeight] = useState<number | null>(null);
   const is_ready = Boolean(draft && organization);
   const is_read_only = !settings.can_edit || !hasAnyRole(...ORGANIZATION_EDITOR_ROLES);
   const has_unsaved_changes = is_ready && !is_read_only && is_dirty;
@@ -61,29 +53,23 @@ const OrganizationSettingsView: React.FC = () => {
   useEffect(() => {
     if (!is_ready) return;
     const section_id = window.location.hash.slice(1);
-    if (PAGE_SECTIONS.some((section) => section.id === section_id)) {
+    if (SECTION_IDS.includes(section_id)) {
       window.requestAnimationFrame(() => scrollToSection(section_id));
     }
   }, [is_ready]);
 
-  // Highlights the card currently in view in the "On this page" list. The cards scroll inside the
-  // Administration card, not the window, so that scroll area is the observer's root.
+  // The preview sticks inside the Administration scroll area, so its column is capped to the room
+  // left within that area's padding and scrolls on its own instead of running past the bottom edge.
   useEffect(() => {
     if (!is_ready) return;
-    const scroll_root = root_ref.current?.closest<HTMLElement>(".admin-page-content") ?? null;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible_entry = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((first, second) => first.boundingClientRect.top - second.boundingClientRect.top)[0];
-        if (visible_entry) setActiveSectionId(visible_entry.target.id);
-      },
-      { root: scroll_root, rootMargin: "-10% 0px -70% 0px" }
-    );
-    PAGE_SECTIONS.forEach(({ id }) => {
-      const section_el = document.getElementById(id);
-      if (section_el) observer.observe(section_el);
-    });
+    const scroll_root = root_ref.current?.closest<HTMLElement>(".admin-page-content");
+    if (!scroll_root) return;
+    const measureRail = () => {
+      const padding_top = parseFloat(getComputedStyle(scroll_root).paddingTop) || 0;
+      setRailHeight(scroll_root.clientHeight - padding_top * 2);
+    };
+    const observer = new ResizeObserver(measureRail);
+    observer.observe(scroll_root);
     return () => observer.disconnect();
   }, [is_ready]);
 
@@ -172,29 +158,10 @@ const OrganizationSettingsView: React.FC = () => {
           <AnnouncementCard {...section_props} />
         </fieldset>
 
-        <aside className="hidden flex-col gap-5 xl:sticky xl:top-0 xl:flex">
-          <nav aria-label="On this page" className="organization-panel p-2">
-            <div className="px-2.5 pb-1 pt-1.5 text-[12px] font-semibold uppercase tracking-[0.06em] text-shell-text-faint">
-              On this page
-            </div>
-            {PAGE_SECTIONS.map((section) => (
-              <a
-                key={section.id}
-                href={`#${section.id}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  setActiveSectionId(section.id);
-                  // Keeps `?section=organization` and only swaps the hash, so a refresh lands on the same card.
-                  window.history.replaceState(window.history.state, "", `#${section.id}`);
-                  scrollToSection(section.id);
-                }}
-                aria-current={active_section_id === section.id ? "location" : undefined}
-                className="organization-toc-link"
-              >
-                {section.label}
-              </a>
-            ))}
-          </nav>
+        <aside
+          className="organization-rail"
+          style={rail_height ? ({ "--organization-rail-height": `${rail_height}px` } as React.CSSProperties) : undefined}
+        >
           <OrganizationLivePreview organization={organization} draft={draft} />
         </aside>
       </div>

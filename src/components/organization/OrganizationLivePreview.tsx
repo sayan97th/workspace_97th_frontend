@@ -35,9 +35,11 @@ const OrganizationLivePreview: React.FC<{ organization: OrganizationDto; draft: 
   const logo_url = preview_theme === "dark" ? organization.logo_dark_url ?? organization.logo_url : organization.logo_url;
 
   return (
-    <div className="organization-panel p-4">
+    <section className="organization-panel p-4" aria-labelledby="organization-preview-title">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="text-[13.5px] font-semibold text-shell-text">Live preview</div>
+        <h4 id="organization-preview-title" className="text-[14px] font-semibold text-shell-text">
+          Live preview
+        </h4>
         <div className="flex rounded-md bg-shell-panel-alt p-0.5" role="radiogroup" aria-label="Preview theme">
           {(["light", "dark"] as PreviewTheme[]).map((theme) => (
             <button
@@ -100,18 +102,18 @@ const OrganizationLivePreview: React.FC<{ organization: OrganizationDto; draft: 
         ) : null}
 
         {/* Rail and page */}
-        <div className="flex h-[150px]">
+        <div className="flex h-[140px]">
           <div className="flex w-9 flex-none flex-col items-center gap-2 pt-2.5">
             <span className="h-4 w-4 rounded bg-brand-100" />
             <span className="h-4 w-4 rounded" style={{ backgroundColor: colors.line }} />
             <span className="h-4 w-4 rounded" style={{ backgroundColor: colors.line }} />
           </div>
-          <div className="flex-1 rounded-tl-lg p-3" style={{ backgroundColor: colors.page, borderLeft: `1px solid ${colors.line}`, borderTop: `1px solid ${colors.line}` }}>
-            <div className="mb-0.5" style={{ color: colors.muted }}>
+          <div className="min-w-0 flex-1 rounded-tl-lg p-2.5" style={{ backgroundColor: colors.page, borderLeft: `1px solid ${colors.line}`, borderTop: `1px solid ${colors.line}` }}>
+            <div className="mb-0.5 truncate" style={{ color: colors.muted }}>
               {draft.company_tagline.trim() || today_label}
             </div>
-            <div className="mb-2.5 text-[14px] font-semibold">Good morning</div>
-            <div className="mb-2.5 flex gap-1.5">
+            <div className="mb-2 text-[13px] font-semibold">Good morning</div>
+            <div className="mb-2 flex gap-1.5">
               <span className="rounded bg-brand-500 px-2 py-1 font-semibold text-white">New item</span>
               <span className="rounded border border-brand-500 px-2 py-1 font-semibold text-brand-500">Invite</span>
             </div>
@@ -123,10 +125,8 @@ const OrganizationLivePreview: React.FC<{ organization: OrganizationDto; draft: 
         </div>
       </div>
 
-      <p className="mt-2.5 text-[12px] leading-relaxed text-shell-text-muted">
-        Unsaved changes show here first. Logos and the favicon update as soon as they upload.
-      </p>
-    </div>
+      <p className="mt-2.5 text-[12px] leading-[18px] text-shell-text-muted">Shows unsaved changes.</p>
+    </section>
   );
 };
 
