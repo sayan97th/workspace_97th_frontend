@@ -116,3 +116,42 @@ export const glyphColorOn = (hex: string): string => {
   const contrast_with_dark = (luminance + 0.05) / (relativeLuminance(DARK_GLYPH) + 0.05);
   return contrast_with_dark > contrast_with_white ? DARK_GLYPH : "#ffffff";
 };
+
+/** A color as hue (0 to 360), saturation and value (0 to 1), the axes of the custom color picker. */
+export type Hsv = { hue: number; saturation: number; value: number };
+
+export const hexToHsv = (hex: string): Hsv => {
+  const [red, green, blue] = hexToRgb(hex).map((channel) => channel / 255);
+  const max = Math.max(red, green, blue);
+  const delta = max - Math.min(red, green, blue);
+  let hue = 0;
+  if (delta !== 0) {
+    if (max === red) hue = ((green - blue) / delta) % 6;
+    else if (max === green) hue = (blue - red) / delta + 2;
+    else hue = (red - green) / delta + 4;
+  }
+  return { hue: (hue * 60 + 360) % 360, saturation: max === 0 ? 0 : delta / max, value: max };
+};
+
+export const hsvToHex = ({ hue, saturation, value }: Hsv): string => {
+  const chroma = value * saturation;
+  const segment = (hue % 360) / 60;
+  const second = chroma * (1 - Math.abs((segment % 2) - 1));
+  const [red, green, blue] =
+    segment < 1 ? [chroma, second, 0]
+    : segment < 2 ? [second, chroma, 0]
+    : segment < 3 ? [0, chroma, second]
+    : segment < 4 ? [0, second, chroma]
+    : segment < 5 ? [second, 0, chroma]
+    : [chroma, 0, second];
+  const offset = value - chroma;
+  return rgbToHex([(red + offset) * 255, (green + offset) * 255, (blue + offset) * 255]);
+};
+
+/** A typed hex ("#FDAB3D", "fdab3d", "#fa3") as lowercase `#rrggbb`, or null when it is not a color. */
+export const parseHexInput = (input: string): string | null => {
+  const digits = input.trim().replace(/^#/, "").toLowerCase();
+  if (/^[0-9a-f]{6}$/.test(digits)) return `#${digits}`;
+  if (/^[0-9a-f]{3}$/.test(digits)) return `#${digits.split("").map((digit) => digit + digit).join("")}`;
+  return null;
+};

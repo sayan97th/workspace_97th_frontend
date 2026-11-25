@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import {
   formatHour,
-  isHexColor,
   isoWeekNumber,
   listCountries,
   parseIsoDay,
@@ -11,7 +10,6 @@ import {
   toIsoDay,
 } from "../columnValueFormats";
 import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
-import { PALETTE } from "@/lib/color-palette";
 import PopoverPanel from "./PopoverPanel";
 import "./value-picker.css";
 
@@ -347,11 +345,8 @@ export function HourMenu({ value, onPick, onClear, onClose, is_24_hour, onFormat
   );
 }
 
-/** The Color picker cell's picker: Tonk's palette, a hex field and the system color dialog. */
+/** The Color picker cell's picker: Tonk's palette, recent custom colors and the Custom color view (any hex). */
 export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePickerProps) {
-  const [draft, setDraft] = useState(value ?? "");
-  const normalized_draft = draft.startsWith("#") ? draft : `#${draft}`;
-
   const pick = (color: string) => {
     onPick(color.toLowerCase());
     onClose();
@@ -362,34 +357,6 @@ export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePicker
       <div className="value-picker" onKeyDown={(event) => event.key === "Escape" && onClose()}>
         <div className="value-picker__title">Choose a color</div>
         <ColorSwatchGrid value={value} onSelect={pick} aria_label="Colors" className="value-picker__swatches" />
-        <form
-          className="value-picker__color-row"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (isHexColor(normalized_draft)) pick(normalized_draft);
-          }}
-        >
-          <input
-            type="color"
-            aria-label="Custom color"
-            value={isHexColor(normalized_draft) ? normalized_draft : value ?? PALETTE.blue}
-            onChange={(event) => setDraft(event.target.value)}
-            className="value-picker__native-color"
-          />
-          <label className="value-picker__field flex-1">
-            <input
-              value={draft}
-              onChange={(event) => setDraft(event.target.value.trim())}
-              placeholder={PALETTE.blue}
-              aria-label="Hex color"
-              maxLength={7}
-              className="value-picker__input"
-            />
-          </label>
-          <button type="submit" className="value-picker__primary" disabled={!isHexColor(normalized_draft)}>
-            Set
-          </button>
-        </form>
         {value && (
           <div className="value-picker__footer">
             <button

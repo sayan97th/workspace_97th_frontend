@@ -54,6 +54,14 @@ export const PlusIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
   </svg>
 );
 
+/** Pipette, for "pick a color from the screen". */
+export const EyedropperIcon: React.FC<IconProps> = ({ className, size = 16 }) => (
+  <svg className={className} width={size} height={size} viewBox="0 0 16 16" fill="none">
+    <path d="M10.2 2.6a1.9 1.9 0 0 1 2.7 2.7L11.4 6.8l.6.6a.8.8 0 0 1-1.1 1.1L7.5 5.1a.8.8 0 0 1 1.1-1.1l.6.6z" fill="currentColor" />
+    <path d="M8.6 6.2 3.9 10.9a1.6 1.6 0 0 0-.4.8l-.4 1.6a.4.4 0 0 0 .5.5l1.6-.4c.3-.1.6-.2.8-.4L10.7 8.3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const ChevronRightIcon: React.FC<IconProps> = ({ className, size = 11 }) => (
   <svg className={className} width={size} height={size} viewBox="0 0 12 12" fill="none">
     <path d="M4.5 3 L7.5 6 L4.5 9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />

@@ -353,24 +353,6 @@ html.dark .value-picker {
   --color-swatch-grid-focus: var(--value-picker-focus);
 }
 
-.value-picker__color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.value-picker__native-color {
-  flex: none;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--value-picker-field-border);
-  border-radius: 4px;
-  background: transparent;
-  cursor: pointer;
-}
-
 /* Hour picker */
 
 .value-picker__segmented {

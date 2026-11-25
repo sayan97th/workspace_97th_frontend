@@ -7,6 +7,9 @@ import {
   PALETTE_TINT_COLORS,
   findPaletteSwatch,
   glyphColorOn,
+  hexToHsv,
+  hsvToHex,
+  parseHexInput,
   paletteColorAt,
   tintColor,
 } from "@/lib/color-palette";
@@ -49,5 +52,21 @@ describe("color palette", () => {
     expect(glyphColorOn(PALETTE.sand)).not.toBe("#ffffff");
     expect(glyphColorOn(PALETTE.charcoal)).toBe("#ffffff");
     expect(glyphColorOn(PALETTE.crimson)).toBe("#ffffff");
+  });
+});
+
+describe("custom color helpers", () => {
+  it("round trips hex through HSV", () => {
+    for (const hex of ["#fdab3d", "#2b3c40", "#ffffff", "#000000", PALETTE.teal]) {
+      expect(hsvToHex(hexToHsv(hex))).toBe(hex);
+    }
+    expect(hexToHsv("#ff0000")).toEqual({ hue: 0, saturation: 1, value: 1 });
+  });
+
+  it("reads typed hex in its usual spellings", () => {
+    expect(parseHexInput("FDAB3D")).toBe("#fdab3d");
+    expect(parseHexInput(" #fa3 ")).toBe("#ffaa33");
+    expect(parseHexInput("#12345")).toBeNull();
+    expect(parseHexInput("orange")).toBeNull();
   });
 });

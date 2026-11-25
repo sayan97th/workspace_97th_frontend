@@ -32,10 +32,16 @@ $swatch-gaps: (
   --color-swatch-size: 26px;
   --color-swatch-gap: 8px;
 
+  // Fixed to the palette's own width, so the custom view swaps in without the card jumping.
+  --color-swatch-grid-width: calc(
+    var(--color-swatch-grid-columns, 6) * var(--color-swatch-size) + (var(--color-swatch-grid-columns, 6) - 1) *
+      var(--color-swatch-gap)
+  );
+
   display: flex;
   flex-direction: column;
   gap: 10px;
-  width: max-content;
+  width: var(--color-swatch-grid-width);
   font-family: var(--font-brand-sans, inherit);
 
   @each $size, $value in $swatch-sizes {
@@ -104,15 +110,101 @@ $swatch-gaps: (
     }
   }
 
-  &__caption {
+  &__groups {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__recent {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__label {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #{$text-muted};
+  }
+
+  &__footer {
     display: flex;
     align-items: center;
-    gap: 6px;
-    min-height: 18px;
+    gap: 8px;
+    min-height: 24px;
     padding-top: 8px;
     border-top: 1px solid var(--color-boardtree-border-soft, #eceef5);
+  }
+
+  &__caption {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
     font-size: 12px;
     line-height: 18px;
+  }
+
+  // "Custom color": a rainbow ring around a plus, filled with the current color when it is custom.
+  &__custom {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    margin-left: auto;
+    padding: 2px;
+    border: 0;
+    border-radius: 50%;
+    background: conic-gradient(from 180deg, #e53e2e, #e29703, #60943f, #0499b1, #2783c5, #9a7ab6, #e697b2, #e53e2e);
+    cursor: pointer;
+    transition:
+      transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 140ms ease-out;
+
+    &:hover:not(:disabled) {
+      transform: rotate(45deg) scale(1.08);
+    }
+
+    &[data-active="true"] {
+      box-shadow:
+        0 0 0 2px #{$surface},
+        0 0 0 4px #{$ring};
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow:
+        0 0 0 2px #{$surface},
+        0 0 0 4px #{$focus};
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+  }
+
+  &__custom-core {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: #{$surface};
+    color: #{$text};
+
+    svg {
+      transition: transform 140ms ease-out;
+    }
+  }
+
+  &__custom:hover:not(:disabled) &__custom-core svg {
+    // Cancels the ring's turn, so the plus stays upright.
+    transform: rotate(-45deg);
   }
 
   &__caption-dot {
@@ -124,6 +216,9 @@ $swatch-gaps: (
   }
 
   &__caption-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-weight: 600;
     color: #{$text};
 
@@ -134,7 +229,6 @@ $swatch-gaps: (
   }
 
   &__caption-hex {
-    margin-left: auto;
     font-family: var(--font-mono-accent, ui-monospace, monospace);
     font-size: 11px;
     letter-spacing: 0.04em;
@@ -142,6 +236,8 @@ $swatch-gaps: (
   }
 
   @media (prefers-reduced-motion: reduce) {
+    &__custom,
+    &__custom-core svg,
     &__swatch {
       transition: none;
 
@@ -183,5 +279,241 @@ html.dark .color-swatch-popover {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+// "Custom color" view (`CustomColorPanel`), same width as the palette it replaces.
+.color-custom-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: color-custom-panel-in 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 24px;
+  }
+
+  &__back,
+  &__icon-button {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #{$text-muted};
+    cursor: pointer;
+    transition:
+      background-color 100ms ease,
+      color 100ms ease;
+
+    &:hover {
+      background: var(--color-boardtree-hover, #f1f3f9);
+      color: #{$text};
+    }
+
+    &:focus-visible {
+      outline: 2px solid #{$focus};
+      outline-offset: 1px;
+    }
+  }
+
+  &__icon-button {
+    margin-left: auto;
+  }
+
+  &__title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #{$text};
+  }
+
+  // Saturation left to right, brightness bottom to top, over the chosen hue.
+  &__area {
+    position: relative;
+    height: calc(var(--color-swatch-grid-width) * 0.62);
+    border-radius: 10px;
+    background:
+      linear-gradient(to top, #000000, transparent),
+      linear-gradient(to right, #ffffff, transparent),
+      var(--color-custom-hue);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    cursor: crosshair;
+    touch-action: none;
+  }
+
+  &__hue {
+    position: relative;
+    height: 12px;
+    margin: 0 6px;
+    border-radius: 999px;
+    background: linear-gradient(
+      to right,
+      #ff0000 0%,
+      #ffff00 16.66%,
+      #00ff00 33.33%,
+      #00ffff 50%,
+      #0000ff 66.66%,
+      #ff00ff 83.33%,
+      #ff0000 100%
+    );
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    cursor: ew-resize;
+    touch-action: none;
+  }
+
+  &__area,
+  &__hue {
+    &:focus-visible {
+      outline: 2px solid #{$focus};
+      outline-offset: 2px;
+    }
+  }
+
+  &__thumb {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    box-shadow:
+      0 0 0 2px #ffffff,
+      0 1px 4px 2px rgba(0, 0, 0, 0.28);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+
+    &--hue {
+      top: 50%;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // Current color on the left, new color on the right.
+  &__preview {
+    display: flex;
+    flex: none;
+    overflow: hidden;
+    width: 32px;
+    height: 28px;
+    border-radius: 7px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+
+    span {
+      flex: 1;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--color-boardtree-border, #e3e6ef);
+    border-radius: 7px;
+    background: #{$surface};
+    font-family: var(--font-mono-accent, ui-monospace, monospace);
+    font-size: 12px;
+    color: #{$text-muted};
+    transition:
+      border-color 100ms ease,
+      box-shadow 100ms ease;
+
+    &:focus-within {
+      border-color: #{$focus};
+      box-shadow: 0 0 0 3px color-mix(in srgb, #{$focus} 18%, transparent);
+    }
+
+    &[data-invalid="true"] {
+      border-color: #e53e2e;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      padding: 0;
+      border: 0;
+      outline: none;
+      background: transparent;
+      font: inherit;
+      letter-spacing: 0.06em;
+      color: #{$text};
+    }
+  }
+
+  // Painted with the color being applied, so the button itself previews it.
+  &__apply {
+    flex: none;
+    height: 28px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 7px;
+    background: var(--color-custom-apply, #{$ring});
+    color: var(--color-custom-apply-text, #{$surface});
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    transition:
+      filter 100ms ease,
+      transform 100ms ease;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.06);
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #{$focus};
+      outline-offset: 2px;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.45;
+    }
+  }
+}
+
+@keyframes color-custom-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+// The small grid (162px) needs a narrower preview to fit the hex field and Apply.
+.color-swatch-grid--sm .color-custom-panel {
+  &__preview {
+    width: 24px;
+  }
+
+  &__apply {
+    padding: 0 8px;
   }
 }

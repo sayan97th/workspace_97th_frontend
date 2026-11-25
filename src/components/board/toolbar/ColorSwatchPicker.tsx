@@ -73,9 +73,13 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
     };
 
     updatePosition();
+    // The card changes height when the grid swaps to its Custom color view.
+    const resize_observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updatePosition);
+    if (grid_ref.current) resize_observer?.observe(grid_ref.current);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
     return () => {
+      resize_observer?.disconnect();
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
