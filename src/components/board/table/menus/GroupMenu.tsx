@@ -1,8 +1,8 @@
 "use client";
 
 import ActionMenu, { type ActionMenuItem, type ActionMenuSection } from "@/components/ui/dropdown/ActionMenu";
-import { ArchiveIcon, ArrowRightIcon, CheckIcon, DeleteIcon, DuplicateIcon, MoveDownIcon, MoveUpIcon, StarIcon } from "@/icons/workspace-icons";
-import { GROUP_PALETTE } from "../constants";
+import { ArchiveIcon, ArrowRightIcon, DeleteIcon, DuplicateIcon, MoveDownIcon, MoveUpIcon, StarIcon } from "@/icons/workspace-icons";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 import { AppsPuzzleIcon, AutomationBoltIcon, IntegrationPlugIcon } from "./row-menu-icons";
 import {
   AddGroupIcon,
@@ -52,7 +52,8 @@ interface GroupMenuProps {
 }
 
 const MENU_WIDTH = 264;
-const SUBMENU_WIDTH = 216;
+/** Fits the 6 column palette grid plus the panel padding. */
+const SUBMENU_WIDTH = 222;
 const ICON_SIZE = 16;
 
 type ColorPaletteProps = {
@@ -60,29 +61,9 @@ type ColorPaletteProps = {
   onPick: (color: string) => void;
 };
 
-/** The "Change group color" flyout: monday's swatch grid, the current color marked with a check. */
+/** The "Change group color" flyout: Tonk's palette, the current color marked with a check. */
 const ColorPalette = ({ current_color, onPick }: ColorPaletteProps) => (
-  <div role="radiogroup" aria-label="Group color" className="group-menu-palette">
-    {GROUP_PALETTE.map((color) => {
-      const is_current = color.toLowerCase() === current_color.toLowerCase();
-      return (
-        <button
-          key={color}
-          type="button"
-          role="radio"
-          aria-checked={is_current}
-          aria-label={`Set group color to ${color}`}
-          title={color}
-          data-current={is_current || undefined}
-          onClick={() => onPick(color)}
-          className="group-menu-palette__swatch"
-          style={{ background: color }}
-        >
-          {is_current && <CheckIcon size={12} />}
-        </button>
-      );
-    })}
-  </div>
+  <ColorSwatchGrid value={current_color} onSelect={onPick} aria_label="Group color" className="group-menu-palette" />
 );
 
 /**

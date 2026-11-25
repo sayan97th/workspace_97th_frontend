@@ -6,7 +6,7 @@ import { DeleteIcon } from "@/icons/workspace-icons";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { boardTreeFontClassName } from "../../board-tree-font";
 import type { StatusDef } from "../types";
-import { STATUS_PALETTE } from "../constants";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 import OptionLabelInput from "./OptionLabelInput";
 import "./label-editor-modal.css";
 
@@ -83,18 +83,13 @@ export default function LabelEditorModal({ title, defs, onRename, onColor, onDel
                 />
               </Tooltip>
               {color_picker_id === def.id && (
-                <div className="label-editor__palette" role="group" aria-label="Label colors">
-                  {STATUS_PALETTE.map((color) => (
-                    <button
-                      type="button"
-                      key={color}
-                      onClick={() => { onColor(def.id, color); setColorPickerId(null); }}
-                      aria-label={`Use color ${color}`}
-                      aria-pressed={color === def.color}
-                      className="label-editor__palette-color"
-                      style={{ background: color }}
-                    />
-                  ))}
+                <div className="label-editor__palette">
+                  <ColorSwatchGrid
+                    value={def.color}
+                    aria_label={`Color of ${def.label || "label"}`}
+                    auto_focus
+                    onSelect={(color) => { onColor(def.id, color); setColorPickerId(null); }}
+                  />
                 </div>
               )}
               <OptionLabelInput

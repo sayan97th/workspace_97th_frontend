@@ -1,3 +1,4 @@
+import { PALETTE_CYCLE } from "@/lib/color-palette";
 import type { BoardColumnSwatch } from "./types";
 
 /**
@@ -412,16 +413,5 @@ export const COLUMN_TYPE_SECTIONS: { id: ColumnTypeSection; label: string }[] = 
   { id: "super_useful", label: "Super useful" },
 ];
 
-/** Default palette for auto-colouring newly created status/dropdown options, cycled by index. */
-export const COLUMN_OPTION_PALETTE = [
-  "#00c875",
-  "#fdab3d",
-  "#e2445c",
-  "#0086c0",
-  "#a25ddc",
-  "#ff642e",
-  "#579bfc",
-  "#9cd326",
-  "#ff158a",
-  "#7f5347",
-];
+/** Default palette for auto-colouring newly created status/dropdown options, cycled by index (Tonk's palette). */
+export const COLUMN_OPTION_PALETTE = PALETTE_CYCLE;

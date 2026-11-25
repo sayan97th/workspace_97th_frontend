@@ -236,23 +236,13 @@ html.dark .column-menu {
   cursor: not-allowed;
 }
 
-.column-menu__swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+/* Button color (ColorSwatchGrid), on the menu's own surface. */
+.color-swatch-grid.column-menu__swatches {
+  --color-swatch-grid-surface: var(--action-menu-surface);
+  --color-swatch-grid-ring: var(--action-menu-text);
+  --color-swatch-grid-focus: var(--action-menu-focus);
+
   padding: 2px 8px 6px;
-}
-
-.column-menu__swatch {
-  width: 24px;
-  height: 24px;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 2px var(--action-menu-surface);
-}
-
-.column-menu__swatch[aria-checked="true"] {
-  border-color: var(--action-menu-text);
 }
 
 .column-menu__radio {

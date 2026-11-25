@@ -346,27 +346,11 @@ html.dark .value-picker {
 
 /* Color picker */
 
-.value-picker__swatches {
-  display: grid;
-  grid-template-columns: repeat(8, 24px);
-  gap: 8px;
-  padding: 4px 2px;
-}
-
-.value-picker__swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
-  transition: transform 70ms ease-in;
-}
-
-.value-picker__swatch:hover {
-  transform: scale(1.12);
-}
-
-.value-picker__swatch[aria-checked="true"] {
-  box-shadow: 0 0 0 2px var(--value-picker-surface), 0 0 0 4px var(--value-picker-focus);
+/* Tonk's palette (ColorSwatchGrid), on the picker's own surface. */
+.color-swatch-grid.value-picker__swatches {
+  --color-swatch-grid-surface: var(--value-picker-surface);
+  --color-swatch-grid-ring: var(--value-picker-text);
+  --color-swatch-grid-focus: var(--value-picker-focus);
 }
 
 .value-picker__color-row {

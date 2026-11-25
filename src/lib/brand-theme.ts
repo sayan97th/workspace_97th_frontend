@@ -34,20 +34,20 @@ const BRAND_SCALE_STEPS: Record<string, number> = {
   "950": -0.9,
 };
 
-type Rgb = [number, number, number];
+export type Rgb = [number, number, number];
 
 export const isHexColor = (value: string | null | undefined): value is string =>
   typeof value === "string" && HEX_COLOR_PATTERN.test(value);
 
-const hexToRgb = (hex: string): Rgb => {
+export const hexToRgb = (hex: string): Rgb => {
   const value = parseInt(hex.slice(1), 16);
   return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
 };
 
-const rgbToHex = (rgb: Rgb): string =>
+export const rgbToHex = (rgb: Rgb): string =>
   `#${rgb.map((channel) => Math.round(channel).toString(16).padStart(2, "0")).join("")}`;
 
-const mixRgb = (from: Rgb, to: Rgb, amount: number): Rgb =>
+export const mixRgb = (from: Rgb, to: Rgb, amount: number): Rgb =>
   [0, 1, 2].map((index) => from[index] + (to[index] - from[index]) * amount) as Rgb;
 
 /** Every `--color-brand-*` custom property for the given hex. */
@@ -62,7 +62,7 @@ export const buildBrandPalette = (hex: string): Record<string, string> => {
 };
 
 /** WCAG relative luminance of a hex color. */
-const relativeLuminance = (hex: string): number => {
+export const relativeLuminance = (hex: string): number => {
   const [red, green, blue] = hexToRgb(hex).map((channel) => {
     const value = channel / 255;
     return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;

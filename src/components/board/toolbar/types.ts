@@ -1,4 +1,5 @@
 import type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardHeaderHeight, BoardRowHeight } from "../types";
+import { PALETTE_COLORS, PALETTE_CYCLE, PALETTE_TINT_COLORS, tintColor } from "@/lib/color-palette";
 
 export type { BoardColumnSwatch };
 
@@ -286,34 +287,17 @@ export const BOARD_CONDITIONAL_COLOR_SCOPES: { id: BoardConditionalColorScope; l
   { id: "cell", label: "Cell" },
 ];
 
-/** Monday-style swatch grid offered by the conditional-coloring color picker. */
-export const BOARD_CONDITIONAL_COLOR_PALETTE: string[] = [
-  "#7f5347", "#037f4c", "#00c875", "#9cd326", "#cab641", "#e2a200",
-  "#b25e03", "#a25ddc", "#784bd1", "#5559df", "#0086c0", "#579bfc",
-  "#66ccff", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d",
-  "#ffcb00", "#333333", "#808080", "#c4c4c4", "#66cccc", "#4eccc6",
-  "#bb3354", "#401694", "#0f5d97", "#225091", "#175a63", "#563e3e",
-];
+/** Tonk's palette, for surfaces that still read a plain color list (feed and notification board dots). */
+export const BOARD_CONDITIONAL_COLOR_PALETTE: string[] = PALETTE_COLORS;
 
 /**
- * monday's Conditional coloring palette: soft tones that keep cell text readable, 5 per row in the picker.
- * Older rules may still hold a color from {@link BOARD_CONDITIONAL_COLOR_PALETTE}, which keeps rendering as saved.
+ * Conditional coloring's palette: soft tints of Tonk's palette that keep cell text readable.
+ * Older rules may still hold a color from the previous palette, which keeps rendering as saved.
  */
-export const BOARD_CONDITIONAL_COLORING_PALETTE: string[] = [
-  "#80bea4", "#7fe2b9", "#cce891", "#e3d99f", "#ffe47f",
-  "#fed49d", "#ffd5d5", "#ffb9b9", "#efa0ac", "#ff89c3",
-  "#ffabe0", "#fccff8", "#baa4e7", "#bd9cc3", "#9f8ac8",
-  "#a9abee", "#8fa6c7", "#aaccfd", "#7fc1de", "#a5e4e1",
-  "#b1e4ff", "#b2cfdd", "#cbd5dd", "#e0e0e0", "#bebebe",
-  "#989898", "#bea8a2", "#ebb9d6", "#d5c9bb", "#ddbfb6",
-  "#94baf2", "#8aabb0", "#ddd3fc", "#d3def4", "#cdcbdb",
-  "#aa9e9e",
-];
+export const BOARD_CONDITIONAL_COLORING_PALETTE: string[] = PALETTE_TINT_COLORS;
 
 /** Colors a new Conditional coloring rule starts with, in order, so neighbouring rules are easy to tell apart. */
-export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = [
-  "#8fa6c7", "#baa4e7", "#7fe2b9", "#ffe47f", "#ffb9b9", "#7fc1de", "#fed49d", "#ff89c3",
-];
+export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = PALETTE_CYCLE.map((hex) => tintColor(hex));
 
 /** Conditional coloring's "All done labels" value: matches any Status label that reads as done. */
 export const BOARD_CONDITIONAL_COLOR_DONE_VALUE = "__done__";

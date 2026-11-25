@@ -9,6 +9,8 @@ import { CheckIcon } from "@/icons/workspace-icons";
 import { evenWeights, type ProgressStatusColumn } from "../progressTracking";
 import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
+import { PALETTE } from "@/lib/color-palette";
 
 /*
  * The small forms the column menu's Settings flyout opens to the side. Each one
@@ -343,7 +345,8 @@ export function DateFormatSettingsPanel({ kind, date_display, onChange }: DateFo
   );
 }
 
-const BUTTON_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#323338", "#ff7575", "#037f4c"];
+/** A new Button column starts blue, like the API default. */
+const DEFAULT_BUTTON_COLOR = PALETTE.blue;
 
 interface ButtonSettingsPanelProps {
   button?: { label: string; color: string };
@@ -354,7 +357,7 @@ interface ButtonSettingsPanelProps {
 /** A Button column's label and color. */
 export function ButtonSettingsPanel({ button, fallback_label, onSave }: ButtonSettingsPanelProps) {
   const [label, setLabel] = useState(button?.label ?? fallback_label);
-  const [color, setColor] = useState(button?.color ?? BUTTON_COLORS[0]);
+  const [color, setColor] = useState(button?.color ?? DEFAULT_BUTTON_COLOR);
 
   return (
     <div className="action-menu column-menu__form w-[240px]">
@@ -363,21 +366,7 @@ export function ButtonSettingsPanel({ button, fallback_label, onSave }: ButtonSe
         <input value={label} maxLength={40} onChange={(event) => setLabel(event.target.value)} className="column-menu__input" />
       </label>
       <div className="column-menu__label">Color</div>
-      <div role="radiogroup" aria-label="Button color" className="column-menu__swatches">
-        {BUTTON_COLORS.map((swatch) => (
-          <button
-            key={swatch}
-            type="button"
-            role="radio"
-            aria-checked={color === swatch}
-            aria-label={swatch}
-            title={swatch}
-            onClick={() => setColor(swatch)}
-            className="column-menu__swatch"
-            style={{ background: swatch }}
-          />
-        ))}
-      </div>
+      <ColorSwatchGrid value={color} onSelect={setColor} size="sm" aria_label="Button color" className="column-menu__swatches" />
       <button type="button" disabled={!label.trim()} onClick={() => onSave({ label: label.trim(), color })} className="column-menu__primary">
         Save button
       </button>

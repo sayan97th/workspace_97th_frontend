@@ -8,6 +8,7 @@ import { buildPublicFormUrl } from "@/services/board-form.service";
 import type { BoardFormColumn, BoardFormQuestionConfig } from "@/types/board-forms";
 import FormQuestionField from "./FormQuestionField";
 import useBoardForm from "./useBoardForm";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 
 export type BoardFormViewProps = {
   board_id: number;
@@ -16,8 +17,6 @@ export type BoardFormViewProps = {
   can_edit: boolean;
 };
 
-/** The accent colors the builder offers, monday.com's form theme palette. */
-const ACCENT_COLORS = ["#6161ff", "#00c875", "#fdab3d", "#e2445c", "#579bfc", "#a25ddc", "#333333"];
 
 const FIELD_LABEL = "mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.04em] text-shell-text-muted";
 const TEXT_INPUT =
@@ -175,20 +174,14 @@ const BoardFormView: React.FC<BoardFormViewProps> = ({ board_id, view_id, can_ed
             </div>
             <div>
               <span className={FIELD_LABEL}>Accent color</span>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {ACCENT_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    disabled={!can_edit}
-                    onClick={() => form.updateConfig({ accent_color: color })}
-                    aria-label={`Use ${color} as the accent color`}
-                    aria-pressed={config.accent_color === color}
-                    className="h-5 w-5 rounded-full transition-transform hover:scale-110 disabled:cursor-default"
-                    style={{ background: color, boxShadow: config.accent_color === color ? `0 0 0 2px var(--color-shell-panel), 0 0 0 3.5px ${color}` : undefined }}
-                  />
-                ))}
-              </div>
+              <ColorSwatchGrid
+                value={config.accent_color}
+                onSelect={(color) => form.updateConfig({ accent_color: color })}
+                disabled={!can_edit}
+                size="sm"
+                aria_label="Accent color"
+                className="pt-1 [--color-swatch-grid-surface:var(--color-shell-panel)] [--color-swatch-grid-ring:var(--color-shell-text)]"
+              />
             </div>
           </div>
 

@@ -1,0 +1,187 @@
+// Tonk's palette grid (`ColorSwatchGrid`), shared by every color choice in the app.
+// The grid draws no card: hosts give it a surface. Hosts retune it by setting these
+// custom properties on the grid or any ancestor (they are read with fallbacks, never
+// declared here, so an override always wins whatever its cascade layer):
+//   --color-swatch-grid-surface   host background, drawn between swatch and ring
+//   --color-swatch-grid-ring      selection ring
+//   --color-swatch-grid-focus     keyboard focus ring
+//   --color-swatch-grid-text      caption name
+//   --color-swatch-grid-text-muted caption hex
+
+@use "sass:map";
+
+$swatch-sizes: (
+  sm: 22px,
+  md: 26px,
+  lg: 30px,
+);
+
+$surface: var(--color-swatch-grid-surface, var(--color-boardtree-surface, #ffffff));
+$ring: var(--color-swatch-grid-ring, var(--color-boardtree-text, #1e2237));
+$focus: var(--color-swatch-grid-focus, #2783c5);
+$text: var(--color-swatch-grid-text, var(--color-boardtree-text, #1e2237));
+$text-muted: var(--color-swatch-grid-text-muted, var(--color-boardtree-text-muted, #6b7189));
+
+$swatch-gaps: (
+  sm: 6px,
+  md: 8px,
+  lg: 8px,
+);
+
+.color-swatch-grid {
+  --color-swatch-size: 26px;
+  --color-swatch-gap: 8px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: max-content;
+  font-family: var(--font-brand-sans, inherit);
+
+  @each $size, $value in $swatch-sizes {
+    &--#{$size} {
+      --color-swatch-size: #{$value};
+      --color-swatch-gap: #{map.get($swatch-gaps, $size)};
+    }
+  }
+
+  &__swatches {
+    display: grid;
+    grid-template-columns: repeat(var(--color-swatch-grid-columns, 6), var(--color-swatch-size));
+    gap: var(--color-swatch-gap);
+  }
+
+  &__swatch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--color-swatch-size);
+    height: var(--color-swatch-size);
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--color-swatch-size) * 0.28);
+    background: var(--color-swatch);
+    color: var(--color-swatch-glyph);
+    // A hairline keeps light swatches (Aqua, Sand) visible on white.
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+    transition:
+      transform 120ms cubic-bezier(0.2, 0.8, 0.2, 1),
+      box-shadow 120ms ease-out;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px) scale(1.08);
+      box-shadow:
+        inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+        0 4px 10px color-mix(in srgb, var(--color-swatch) 45%, transparent);
+    }
+
+    &:active:not(:disabled) {
+      transform: scale(0.96);
+    }
+
+    &[aria-checked="true"] {
+      box-shadow:
+        0 0 0 2px #{$surface},
+        0 0 0 4px #{$ring};
+    }
+
+    &:focus-visible {
+      outline: none;
+      box-shadow:
+        0 0 0 2px #{$surface},
+        0 0 0 4px #{$focus};
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+
+    svg {
+      pointer-events: none;
+    }
+  }
+
+  &__caption {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 18px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-boardtree-border-soft, #eceef5);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  &__caption-dot {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+  }
+
+  &__caption-name {
+    font-weight: 600;
+    color: #{$text};
+
+    &--muted {
+      font-weight: 500;
+      color: #{$text-muted};
+    }
+  }
+
+  &__caption-hex {
+    margin-left: auto;
+    font-family: var(--font-mono-accent, ui-monospace, monospace);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: #{$text-muted};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &__swatch {
+      transition: none;
+
+      &:hover:not(:disabled),
+      &:active:not(:disabled) {
+        transform: none;
+      }
+    }
+  }
+}
+
+// Floating card used by `ColorSwatchPicker`, portaled to `document.body`.
+.color-swatch-popover {
+  position: fixed;
+  z-index: 1001;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--color-boardtree-surface, #ffffff);
+  box-shadow:
+    0 12px 32px rgba(17, 24, 39, 0.16),
+    0 2px 6px rgba(17, 24, 39, 0.08);
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: color-swatch-popover-in 140ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+html.dark .color-swatch-popover {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+@keyframes color-swatch-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

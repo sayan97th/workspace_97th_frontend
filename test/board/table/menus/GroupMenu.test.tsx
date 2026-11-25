@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import GroupMenu from "@/components/board/table/menus/GroupMenu";
-import { GROUP_PALETTE } from "@/components/board/table/constants";
+import { PALETTE, PALETTE_SWATCHES } from "@/lib/color-palette";
 
 type Props = React.ComponentProps<typeof GroupMenu>;
 
@@ -37,7 +37,7 @@ const renderMenu = (overrides: Partial<Props> = {}) => {
       are_all_collapsed={false}
       is_first={false}
       is_last={false}
-      current_color={GROUP_PALETTE[0]}
+      current_color={PALETTE.blue}
       is_priority={false}
       {...handlers}
       {...overrides}
@@ -121,28 +121,28 @@ describe("Group menu rows", () => {
 });
 
 describe("Change group color", () => {
-  const swatches = () => screen.queryAllByRole("radio", { name: /^Set group color to / });
+  const swatches = () => screen.queryAllByRole("radio", { name: /, #[0-9a-f]{6}$/ });
 
   test("hovering the row opens the palette", async () => {
     renderMenu();
     expect(swatches()).toHaveLength(0);
     await userEvent.hover(row("Change group color"));
-    expect(swatches()).toHaveLength(GROUP_PALETTE.length);
+    expect(swatches()).toHaveLength(PALETTE_SWATCHES.length);
   });
 
   test("picking a swatch reports that color and closes the menu", async () => {
     const handlers = renderMenu();
     await userEvent.hover(row("Change group color"));
-    await userEvent.click(screen.getByRole("radio", { name: "Set group color to #e04455" }));
-    expect(handlers.onChangeColor).toHaveBeenCalledExactlyOnceWith("#e04455");
+    await userEvent.click(screen.getByRole("radio", { name: `Red, ${PALETTE.red}` }));
+    expect(handlers.onChangeColor).toHaveBeenCalledExactlyOnceWith(PALETTE.red);
     expect(handlers.onClose).toHaveBeenCalledOnce();
   });
 
   test("the current color is checked", async () => {
-    renderMenu({ current_color: "#e04455" });
+    renderMenu({ current_color: PALETTE.moss.toUpperCase() });
     await userEvent.hover(row("Change group color"));
-    expect(screen.getByRole("radio", { name: "Set group color to #e04455" })).toHaveAttribute("aria-checked", "true");
-    expect(screen.getByRole("radio", { name: "Set group color to #4f6bed" })).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: `Moss, ${PALETTE.moss}` })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: `Blue, ${PALETTE.blue}` })).toHaveAttribute("aria-checked", "false");
   });
 
   test("hovering another row closes the palette", async () => {

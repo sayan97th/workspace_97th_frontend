@@ -6,7 +6,7 @@ import { DeleteIcon } from "@/icons/workspace-icons";
 import Tooltip from "@/components/ui/tooltip/Tooltip";
 import { boardTreeFontClassName } from "../../board-tree-font";
 import type { TagDef } from "../types";
-import { STATUS_PALETTE } from "../constants";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 import { formatTagLabel, tagSearchKey } from "../tagLabels";
 import OptionLabelInput from "./OptionLabelInput";
 import "./label-editor-modal.css";
@@ -118,21 +118,16 @@ export default function TagManagerModal({ tag_defs, onColor, onRename, onDelete,
                   />
                 </Tooltip>
                 {color_picker_id === tag.id && (
-                  <div className="label-editor__palette" role="group" aria-label="Tag colors">
-                    {STATUS_PALETTE.map((color) => (
-                      <button
-                        type="button"
-                        key={color}
-                        onClick={() => {
-                          onColor(tag.id, color);
-                          setColorPickerId(null);
-                        }}
-                        aria-label={`Use color ${color}`}
-                        aria-pressed={color === tag.color}
-                        className="label-editor__palette-color"
-                        style={{ background: color }}
-                      />
-                    ))}
+                  <div className="label-editor__palette">
+                    <ColorSwatchGrid
+                      value={tag.color}
+                      aria_label={`Color of ${tag.label}`}
+                      auto_focus
+                      onSelect={(color) => {
+                        onColor(tag.id, color);
+                        setColorPickerId(null);
+                      }}
+                    />
                   </div>
                 )}
                 <OptionLabelInput

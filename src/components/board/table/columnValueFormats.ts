@@ -292,13 +292,6 @@ export function formatWeekRange(value: string): string {
 
 export const isHexColor = (value: unknown): value is string => typeof value === "string" && /^#[0-9a-fA-F]{6}$/.test(value);
 
-/** monday.com's color picker palette, row by row. */
-export const COLOR_PICKER_PALETTE = [
-  "#00c875", "#9cd326", "#cab641", "#ffcb00", "#784bd1", "#a25ddc", "#0086c0", "#579bfc",
-  "#66ccff", "#bb3354", "#e2445c", "#ff158a", "#ff5ac4", "#ff642e", "#fdab3d", "#7f5347",
-  "#c4c4c4", "#808080", "#333333", "#037f4c", "#225091", "#175a63", "#ffadad", "#ffffff",
-];
-
 /** A Doc cell's title, empty for an empty cell. */
 export function docCellTitle(value: unknown): string {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return "";

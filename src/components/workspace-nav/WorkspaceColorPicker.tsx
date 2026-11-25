@@ -1,6 +1,8 @@
 "use client";
 import React from "react";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 import { workspace_create_color_palette } from "@/data/workspace-create-data";
+import { isSameColor } from "@/lib/color-palette";
 
 export type WorkspaceColorPickerProps = {
   value: string;
@@ -9,60 +11,44 @@ export type WorkspaceColorPickerProps = {
   label?: string;
 };
 
-const SWATCH_SIZE = 26;
+const CUSTOM_SWATCH_SIZE = 22;
 
 /**
- * Badge color swatch grid shared by the "Add new workspace" dialog
+ * Badge color picker shared by the "Add new workspace" dialog
  * ({@link CreateWorkspaceModal}) and any future "Change appearance" surface,
  * mirroring {@link WorkspacePrivacyPicker}'s `{ value, onChange, label }`
- * shape. The last swatch is a native `<input type="color">` trigger (styled
- * as a conic-gradient wheel) so a user isn't limited to the curated palette.
+ * shape. Offers Tonk's palette through {@link ColorSwatchGrid}, plus a native
+ * `<input type="color">` (styled as a conic-gradient wheel) so a user isn't
+ * limited to the curated palette.
  */
 const WorkspaceColorPicker: React.FC<WorkspaceColorPickerProps> = ({
   value,
   onChange,
   label = "Workspace color",
 }) => {
-  const is_custom_color = !workspace_create_color_palette.some(
-    (hex) => hex.toLowerCase() === value.toLowerCase()
-  );
+  const is_custom_color = !workspace_create_color_palette.some((hex) => isSameColor(hex, value));
 
   return (
     <div>
       {label && <div className="mb-[9px] text-[12.5px] font-semibold text-gray-400">{label}</div>}
-      <div className="flex flex-wrap items-center gap-[9px]">
-        {workspace_create_color_palette.map((hex) => {
-          const is_selected = hex.toLowerCase() === value.toLowerCase();
-          return (
-            <button
-              key={hex}
-              type="button"
-              aria-label={`Color ${hex}`}
-              aria-pressed={is_selected}
-              onClick={() => onChange(hex)}
-              className="rounded-full transition-transform hover:scale-105"
-              style={{
-                width: SWATCH_SIZE,
-                height: SWATCH_SIZE,
-                background: hex,
-                boxShadow: is_selected
-                  ? "0 0 0 2px var(--color-shell-panel), 0 0 0 4px #2B76E5"
-                  : "0 0 0 1px rgba(255,255,255,0.12)",
-              }}
-            />
-          );
-        })}
-
+      <ColorSwatchGrid
+        value={value}
+        onSelect={onChange}
+        aria_label={label || "Workspace color"}
+        className="[--color-swatch-grid-surface:var(--color-shell-panel)] [--color-swatch-grid-ring:var(--color-shell-text)] [--color-swatch-grid-text:var(--color-shell-text)] [--color-swatch-grid-text-muted:var(--color-shell-text-muted)]"
+      />
+      <label
+        className="mt-2.5 inline-flex cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-[12.5px] font-medium text-shell-text-muted transition-colors hover:bg-shell-hover-strong hover:text-shell-text"
+      >
         <span
-          className="relative rounded-full transition-transform hover:scale-105"
+          className="relative flex-none rounded-full"
           style={{
-            width: SWATCH_SIZE,
-            height: SWATCH_SIZE,
-            background:
-              "conic-gradient(from 90deg, #E53E2E, #E9A23B, #2FB56B, #2B7FE0, #8A63D2, #DB4C86, #E53E2E)",
+            width: CUSTOM_SWATCH_SIZE,
+            height: CUSTOM_SWATCH_SIZE,
+            background: "conic-gradient(from 90deg, #e53e2e, #e29703, #60943f, #0499b1, #2783c5, #9a7ab6, #e697b2, #e53e2e)",
             boxShadow: is_custom_color
-              ? "0 0 0 2px var(--color-shell-panel), 0 0 0 4px #2B76E5"
-              : "0 0 0 1px rgba(255,255,255,0.12)",
+              ? "0 0 0 2px var(--color-shell-panel), 0 0 0 4px var(--color-shell-text)"
+              : undefined,
           }}
         >
           <input
@@ -73,7 +59,8 @@ const WorkspaceColorPicker: React.FC<WorkspaceColorPickerProps> = ({
             className="absolute inset-0 h-full w-full cursor-pointer rounded-full opacity-0"
           />
         </span>
-      </div>
+        Custom color
+      </label>
     </div>
   );
 };

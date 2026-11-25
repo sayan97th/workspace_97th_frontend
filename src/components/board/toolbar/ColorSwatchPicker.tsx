@@ -1,7 +1,8 @@
 "use client";
 import React, { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { BOARD_CONDITIONAL_COLOR_PALETTE } from "./types";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
+import { PALETTE_SWATCHES, type PaletteSwatch } from "@/lib/color-palette";
 
 export type ColorSwatchPickerProps = {
   color: string;
@@ -12,29 +13,26 @@ export type ColorSwatchPickerProps = {
   trigger_class_name?: string;
   /** Glyph drawn on top of the trigger's color, e.g. a paint bucket. */
   icon?: React.ReactNode;
-  /** Colors offered in the grid. Defaults to {@link BOARD_CONDITIONAL_COLOR_PALETTE}. */
-  palette?: string[];
-  /**
-   * "panel" draws the grid with the monday toolbar panel look (5 columns of 24px swatches, see
-   * `toolbar-panel.css`), used by Conditional coloring. "default" keeps the original 6 column grid.
-   */
-  appearance?: "default" | "panel";
+  /** Swatches offered in the grid. Defaults to Tonk's palette, {@link PALETTE_SWATCHES}. */
+  swatches?: readonly PaletteSwatch[];
+  /** Accessible name of the grid, e.g. "Label color". */
+  aria_label?: string;
 };
 
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
-const GRID_WIDTH = { default: 222, panel: 184 } as const;
 
 /**
- * Small square swatch button that opens a 6-column color grid. The grid
- * portals to `document.body` (fixed-positioned off the button's own
- * bounding rect) rather than rendering as an absolutely-positioned child —
- * a plain absolute child gets clipped whenever this picker sits inside a
- * scrolling/overflow-hidden ancestor, as {@link "../cells/EditLabelsPanel"}'s
- * scrollable label list does. Tags its root with `data-board-menu-flyout` so
- * a parent `BoardPopover` doesn't treat a click inside the grid as "outside"
- * and dismiss itself (same convention as `MenuFlyout`). Used by Conditional
- * coloring's per-rule color picker and Edit Labels' per-label recolor swatch.
+ * Small square swatch button that opens Tonk's palette ({@link ColorSwatchGrid})
+ * in a floating card. The card portals to `document.body` (fixed-positioned off
+ * the button's own bounding rect) rather than rendering as an absolutely
+ * positioned child, since a plain absolute child gets clipped whenever this
+ * picker sits inside a scrolling/overflow-hidden ancestor, as
+ * {@link "../cells/EditLabelsPanel"}'s scrollable label list does. Tags its root
+ * with `data-board-menu-flyout` so a parent `BoardPopover` doesn't treat a click
+ * inside the grid as "outside" and dismiss itself (same convention as
+ * `MenuFlyout`). Used by Edit Labels (Status, Label, Dropdown) and Conditional
+ * coloring.
  */
 const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
   color,
@@ -42,10 +40,9 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
   size = 30,
   trigger_class_name,
   icon,
-  palette = BOARD_CONDITIONAL_COLOR_PALETTE,
-  appearance = "default",
+  swatches = PALETTE_SWATCHES,
+  aria_label = "Colors",
 }) => {
-  const grid_width = GRID_WIDTH[appearance];
   const [is_open, setIsOpen] = useState(false);
   const button_ref = useRef<HTMLButtonElement>(null);
   const grid_ref = useRef<HTMLDivElement>(null);
@@ -61,6 +58,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
       const anchor_rect = button_ref.current?.getBoundingClientRect();
       if (!anchor_rect) return;
       const grid_height = grid_ref.current?.offsetHeight ?? 0;
+      const grid_width = grid_ref.current?.offsetWidth ?? 0;
 
       let top = anchor_rect.bottom + ANCHOR_GAP;
       if (top + grid_height > window.innerHeight - VIEWPORT_MARGIN) {
@@ -81,7 +79,7 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
       window.removeEventListener("resize", updatePosition);
       window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [is_open, grid_width]);
+  }, [is_open]);
 
   useLayoutEffect(() => {
     if (!is_open) return;
@@ -135,44 +133,24 @@ const ColorSwatchPicker: React.FC<ColorSwatchPickerProps> = ({
           <div
             ref={grid_ref}
             data-board-menu-flyout
-            role="listbox"
-            aria-label="Colors"
-            className={
-              appearance === "panel"
-                ? "toolbar-color-grid"
-                : "fixed z-[1001] grid grid-cols-6 gap-2 rounded-xl border border-boardtree-border bg-boardtree-surface p-3 shadow-2xl shadow-black/50"
-            }
+            className="color-swatch-popover"
             style={{
-              width: grid_width,
               top: position?.top ?? -9999,
               left: position?.left ?? -9999,
               visibility: position ? "visible" : "hidden",
             }}
           >
-            {palette.map((hex) => {
-              const is_selected = hex.toLowerCase() === color.toLowerCase();
-              return (
-                <button
-                  key={hex}
-                  type="button"
-                  role="option"
-                  aria-selected={is_selected}
-                  aria-label={`Color ${hex}`}
-                  onClick={() => {
-                    onSelect(hex);
-                    setIsOpen(false);
-                  }}
-                  className={appearance === "panel" ? "toolbar-color-grid__swatch" : "h-[26px] w-[26px] rounded-md"}
-                  style={{
-                    background: hex,
-                    boxShadow:
-                      appearance === "panel" || !is_selected
-                        ? undefined
-                        : "0 0 0 2px var(--color-boardtree-surface), 0 0 0 4px var(--color-boardtree-text)",
-                  }}
-                />
-              );
-            })}
+            <ColorSwatchGrid
+              value={color}
+              swatches={swatches}
+              aria_label={aria_label}
+              auto_focus
+              onSelect={(hex) => {
+                onSelect(hex);
+                setIsOpen(false);
+                button_ref.current?.focus();
+              }}
+            />
           </div>,
           document.body
         )}

@@ -175,38 +175,25 @@ html.dark .label-editor__card {
   border-color: var(--label-editor-focus);
 }
 
+/* Hosts the shared ColorSwatchGrid (Tonk's palette). */
 .label-editor__palette {
   position: absolute;
   top: 38px;
   left: 0;
   z-index: 10;
-  display: grid;
-  grid-template-columns: repeat(6, 22px);
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 12px;
   background: var(--label-editor-surface);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.16), 0 2px 6px rgba(17, 24, 39, 0.08);
+}
+
+.label-editor__palette .color-swatch-grid {
+  --color-swatch-grid-surface: var(--label-editor-surface);
 }
 
 html.dark .label-editor__palette {
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
-}
-
-.label-editor__palette-color {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  transition: transform 100ms ease;
-}
-
-.label-editor__palette-color:hover {
-  transform: scale(1.12);
-}
-
-.label-editor__palette-color[aria-pressed="true"] {
-  box-shadow: 0 0 0 2px var(--label-editor-surface), 0 0 0 4px var(--label-editor-ring);
 }
 
 .label-editor__add {
@@ -254,7 +241,6 @@ html.dark .label-editor__palette {
 }
 
 .label-editor__swatch:focus-visible,
-.label-editor__palette-color:focus-visible,
 .label-editor__icon-button:focus-visible,
 .label-editor__add:focus-visible,
 .label-editor__done:focus-visible {

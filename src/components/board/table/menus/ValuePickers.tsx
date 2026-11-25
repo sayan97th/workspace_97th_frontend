@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import {
-  COLOR_PICKER_PALETTE,
   formatHour,
   isHexColor,
   isoWeekNumber,
@@ -11,6 +10,8 @@ import {
   startOfIsoWeek,
   toIsoDay,
 } from "../columnValueFormats";
+import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
+import { PALETTE } from "@/lib/color-palette";
 import PopoverPanel from "./PopoverPanel";
 import "./value-picker.css";
 
@@ -346,7 +347,7 @@ export function HourMenu({ value, onPick, onClear, onClose, is_24_hour, onFormat
   );
 }
 
-/** The Color picker cell's picker: monday's palette, a hex field and the system color dialog. */
+/** The Color picker cell's picker: Tonk's palette, a hex field and the system color dialog. */
 export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePickerProps) {
   const [draft, setDraft] = useState(value ?? "");
   const normalized_draft = draft.startsWith("#") ? draft : `#${draft}`;
@@ -360,21 +361,7 @@ export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePicker
     <PopoverPanel unstyled onClose={onClose} className={PANEL_CLASS}>
       <div className="value-picker" onKeyDown={(event) => event.key === "Escape" && onClose()}>
         <div className="value-picker__title">Choose a color</div>
-        <div className="value-picker__swatches" role="radiogroup" aria-label="Colors">
-          {COLOR_PICKER_PALETTE.map((color) => (
-            <button
-              key={color}
-              type="button"
-              role="radio"
-              aria-checked={value?.toLowerCase() === color}
-              aria-label={color}
-              title={color}
-              onClick={() => pick(color)}
-              className="value-picker__swatch"
-              style={{ background: color }}
-            />
-          ))}
-        </div>
+        <ColorSwatchGrid value={value} onSelect={pick} aria_label="Colors" className="value-picker__swatches" />
         <form
           className="value-picker__color-row"
           onSubmit={(event) => {
@@ -385,7 +372,7 @@ export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePicker
           <input
             type="color"
             aria-label="Custom color"
-            value={isHexColor(normalized_draft) ? normalized_draft : value ?? "#579bfc"}
+            value={isHexColor(normalized_draft) ? normalized_draft : value ?? PALETTE.blue}
             onChange={(event) => setDraft(event.target.value)}
             className="value-picker__native-color"
           />
@@ -393,7 +380,7 @@ export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePicker
             <input
               value={draft}
               onChange={(event) => setDraft(event.target.value.trim())}
-              placeholder="#579bfc"
+              placeholder={PALETTE.blue}
               aria-label="Hex color"
               maxLength={7}
               className="value-picker__input"

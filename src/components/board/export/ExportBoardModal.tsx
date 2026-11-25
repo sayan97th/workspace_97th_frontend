@@ -6,6 +6,7 @@ import { useBoardExportProgress } from "@/hooks/useBoardExportProgress";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { boardExportService } from "@/services/board-export.service";
 import type { BoardExportJobDto, BoardExportLayout, BoardExportSummary } from "@/types/board-export";
+import { PALETTE } from "@/lib/color-palette";
 import "./export-board-modal.scss";
 
 export type ExportBoardModalProps = {
@@ -617,7 +618,7 @@ const FlatPreview: React.FC = () => (
       <g key={y}>
         <rect x="12" y={y} width="36" height="7" rx="2" className="bx-sheet__line" />
         <rect x="52" y={y} width="58" height="7" rx="2" className="bx-sheet__cell" />
-        <rect x="114" y={y} width="40" height="7" rx="2" fill={["#00c875", "#fdab3d", "#e2445c", "#00c875", "#579bfc", "#fdab3d", "#00c875"][index]} />
+        <rect x="114" y={y} width="40" height="7" rx="2" fill={[PALETTE.green, PALETTE.amber, PALETTE.red, PALETTE.green, PALETTE.blue, PALETTE.amber, PALETTE.green][index]} />
         <rect x="158" y={y} width="50" height="7" rx="2" className="bx-sheet__cell" />
       </g>
     ))}

@@ -1,15 +1,19 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { PALETTE } from "@/lib/color-palette";
 import { boardContentService } from "@/services/board-content.service";
 import { personalService } from "@/services/personal.service";
 import type { CreateMyWorkItemPayload, CreateMyWorkItemResponseDto, MyWorkItemDto, MyWorkResponseDto, MyWorkStatus } from "@/types/personal";
 
 const DONE_LABELS = ["done", "complete", "completed", "finished", "closed"];
 
+/** "Done" greens: Tonk's palette green, plus monday's green still saved on older labels. */
+const DONE_COLORS = [PALETTE.green, "#00c875"];
+
 /** Mirrors `MyWorkService::isDoneStatus()` on the API, so a status change moves the row right away. */
 const isDoneStatus = (status: MyWorkStatus | null): boolean =>
-  !!status && (DONE_LABELS.includes(status.label.trim().toLowerCase()) || status.color.toLowerCase() === "#00c875");
+  !!status && (DONE_LABELS.includes(status.label.trim().toLowerCase()) || DONE_COLORS.includes(status.color.toLowerCase()));
 
 export type UseMyWorkResult = {
   data: MyWorkResponseDto | null;

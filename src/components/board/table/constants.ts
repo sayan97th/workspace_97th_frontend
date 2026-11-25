@@ -1,55 +1,55 @@
 import type { ColumnKind, PersonDef, StatusDef, TagDef } from "./types";
 import type { BoardColumnKind } from "../columnTypes";
 import type { ColumnGlyphId } from "./menus/ColumnTypeIcon";
+import { PALETTE, PALETTE_CYCLE } from "@/lib/color-palette";
 
-export const GROUP_PALETTE = [
-  "#4f6bed", "#2f9e78", "#a25ddc", "#e2b203", "#0086c0", "#e04455",
-  "#12c46b", "#fdab3d", "#f453b0", "#1a7fa8", "#7b52c9", "#f2662a",
-  "#0f8f7e", "#c9a227", "#2074d4", "#b03060", "#3faf5a", "#8a6248",
-  "#5a3fc0", "#d4763a", "#12724a", "#c94f8f", "#3a8fc9", "#6b7189",
-];
+/** Colors new groups cycle through (Tonk's palette, most distinct hues first). Group color is picked with `ColorSwatchGrid`. */
+export const GROUP_PALETTE = PALETTE_CYCLE;
 
-export const STATUS_PALETTE = [
-  "#2074d4", "#1071c4", "#3a8fc9", "#7b3f98", "#7b52c9", "#12c46b",
-  "#12724a", "#2f9e78", "#f2a53c", "#f2662a", "#e04455", "#f453b0",
-  "#8a6248", "#3a3a3a", "#9dd6f2", "#6b7189", "#e2b203", "#c9ccd4",
-];
+/** Colors new Status, Label and Tag options cycle through. */
+export const STATUS_PALETTE = PALETTE_CYCLE;
 
-export const LABEL_PALETTE = ["#2074d4", "#7b52c9", "#12c46b", "#f2a53c", "#e04455", "#f453b0", "#12724a", "#3a8fc9"];
+export const LABEL_PALETTE = PALETTE_CYCLE;
 
-export const TAG_PALETTE = ["#2074d4", "#9aa0b6", "#e8b23a", "#e04455", "#a24ec9", "#12724a", "#f2662a", "#3a8fc9"];
+export const TAG_PALETTE = PALETTE_CYCLE;
+
+/** Neutral of an empty Status cell. System color, never offered in the picker. */
+export const EMPTY_STATUS_COLOR = "#c9ccd4";
+
+/** Neutral of an empty Label cell. System color, never offered in the picker. */
+export const EMPTY_LABEL_COLOR = "#9aa0b6";
 
 export const DEFAULT_STATUS_DEFS: StatusDef[] = [
-  { id: "sd-empty", label: "", color: "#c9ccd4", fixed: true },
-  { id: "sd-ready", label: "Ready to start", color: "#2074d4" },
-  { id: "sd-backlog", label: "Backlog", color: "#7b3f98" },
-  { id: "sd-hold", label: "HOLD", color: "#f2662a" },
-  { id: "sd-pending", label: "Pending", color: "#1f5b9e" },
-  { id: "sd-next-sprint", label: "Next Sprint", color: "#f453b0" },
-  { id: "sd-reference", label: "Reference", color: "#3a3a3a" },
-  { id: "sd-working", label: "Working on it", color: "#f2a53c" },
-  { id: "sd-review", label: "Waiting for review", color: "#9dd6f2" },
-  { id: "sd-stuck", label: "Stuck", color: "#e04455" },
-  { id: "sd-deploy", label: "Pending Deploy", color: "#8a6248" },
-  { id: "sd-inprod", label: "In Prod", color: "#12724a" },
-  { id: "sd-done", label: "Done", color: "#12c46b" },
-  { id: "sd-testing", label: "Testing", color: "#1071c4" },
+  { id: "sd-empty", label: "", color: EMPTY_STATUS_COLOR, fixed: true },
+  { id: "sd-ready", label: "Ready to start", color: PALETTE.blue },
+  { id: "sd-backlog", label: "Backlog", color: PALETTE.plum },
+  { id: "sd-hold", label: "HOLD", color: PALETTE.orange },
+  { id: "sd-pending", label: "Pending", color: PALETTE.deep_teal },
+  { id: "sd-next-sprint", label: "Next Sprint", color: PALETTE.rose },
+  { id: "sd-reference", label: "Reference", color: PALETTE.charcoal },
+  { id: "sd-working", label: "Working on it", color: PALETTE.amber },
+  { id: "sd-review", label: "Waiting for review", color: PALETTE.aqua },
+  { id: "sd-stuck", label: "Stuck", color: PALETTE.red },
+  { id: "sd-deploy", label: "Pending Deploy", color: PALETTE.rust },
+  { id: "sd-inprod", label: "In Prod", color: PALETTE.moss },
+  { id: "sd-done", label: "Done", color: PALETTE.green },
+  { id: "sd-testing", label: "Testing", color: PALETTE.teal },
 ];
 
 export const DEFAULT_LABEL_DEFS: StatusDef[] = [
-  { id: "lb-empty", label: "", color: "#9aa0b6", fixed: true },
-  { id: "lb-low", label: "Low", color: "#5b6180" },
-  { id: "lb-medium", label: "Medium", color: "#8a6d1f" },
-  { id: "lb-high", label: "High", color: "#5b3fbd" },
-  { id: "lb-critical", label: "Critical", color: "#b02f43" },
+  { id: "lb-empty", label: "", color: EMPTY_LABEL_COLOR, fixed: true },
+  { id: "lb-low", label: "Low", color: PALETTE.slate },
+  { id: "lb-medium", label: "Medium", color: PALETTE.amber },
+  { id: "lb-high", label: "High", color: PALETTE.plum },
+  { id: "lb-critical", label: "Critical", color: PALETTE.crimson },
 ];
 
 export const DEFAULT_TAG_DEFS: TagDef[] = [
-  { id: "tg-seo", label: "#seo", color: "#2074d4" },
-  { id: "tg-content", label: "#content", color: "#9aa0b6" },
-  { id: "tg-ppc", label: "#ppc", color: "#e8b23a" },
-  { id: "tg-newcontent", label: "#newcontent", color: "#e04455" },
-  { id: "tg-seooptimizations", label: "#seooptimizations", color: "#a24ec9" },
+  { id: "tg-seo", label: "#seo", color: PALETTE.blue },
+  { id: "tg-content", label: "#content", color: PALETTE.slate },
+  { id: "tg-ppc", label: "#ppc", color: PALETTE.amber },
+  { id: "tg-newcontent", label: "#newcontent", color: PALETTE.red },
+  { id: "tg-seooptimizations", label: "#seooptimizations", color: PALETTE.plum },
 ];
 
 export const PEOPLE: PersonDef[] = [
@@ -61,7 +61,7 @@ export const PEOPLE: PersonDef[] = [
   { id: "TP", initials: "TP", name: "Tom Palmer", color: "#3a8fc9" },
 ];
 
-export const DROPDOWN_OPTION_COLORS = ["#579bfc", "#00c875", "#fdab3d", "#e2445c", "#a25ddc", "#66ccff", "#037f4c", "#ff7575"];
+export const DROPDOWN_OPTION_COLORS = PALETTE_CYCLE;
 
 export const DEFAULT_DROPDOWN_OPTIONS = ["Design", "Engineering", "Marketing", "Legal"];
 
@@ -91,12 +91,12 @@ export interface ColumnTypeDef {
   preset_auto_assign_creator?: boolean;
 }
 
-/** monday.com's Priority labels, most urgent first. */
+/** monday.com's Priority labels, most urgent first, in Tonk's palette (mirrored by the API import). */
 export const PRIORITY_PRESET_OPTIONS = [
-  { label: "Critical", color: "#333333" },
-  { label: "High", color: "#401694" },
-  { label: "Medium", color: "#5559df" },
-  { label: "Low", color: "#579bfc" },
+  { label: "Critical", color: PALETTE.charcoal },
+  { label: "High", color: PALETTE.plum },
+  { label: "Medium", color: PALETTE.lavender },
+  { label: "Low", color: PALETTE.blue },
 ];
 
 /** Every column type a board can hold, in the gallery's display order (row by row, two per row). */
