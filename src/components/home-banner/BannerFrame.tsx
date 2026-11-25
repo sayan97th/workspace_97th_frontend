@@ -9,9 +9,12 @@ import "./home-banner.css";
 
 export type BannerDeviceId = "desktop" | "tablet" | "phone";
 
-/** The hero's real size on each screen, so previews show exactly what people will see. */
+/**
+ * The hero's real size on each screen, so previews show exactly what people will see. Desktop is
+ * a laptop with the sidebar open, the most common case (the hero grows up to 1216px).
+ */
 export const BANNER_DEVICES: { id: BannerDeviceId; label: string; width: number; height: number }[] = [
-  { id: "desktop", label: "Desktop", width: 1216, height: 200 },
+  { id: "desktop", label: "Desktop", width: 984, height: 200 },
   { id: "tablet", label: "Tablet", width: 704, height: 200 },
   { id: "phone", label: "Phone", width: 343, height: 240 },
 ];
@@ -142,15 +145,26 @@ const BannerFrame: React.FC<BannerFrameProps> = ({
         </section>
 
         {show_guides || is_dragging ? (
-          <div className="home-banner-guides" aria-hidden="true">
-            <span className="home-banner-guide-text-zone">
-              <span className="home-banner-guide-label">Text area</span>
-            </span>
+          // Dragging alone shows only the thirds, the Guides button adds the text area and the focal point.
+          <div className="home-banner-guides" data-mode={show_guides ? "full" : "drag"} aria-hidden="true">
+            {show_guides ? (
+              <span className="home-banner-guide-text-zone">
+                <span className="home-banner-guide-label">Text</span>
+              </span>
+            ) : null}
             <span className="home-banner-guide-line" style={{ left: "33.333%" }} data-axis="x" />
             <span className="home-banner-guide-line" style={{ left: "66.666%" }} data-axis="x" />
             <span className="home-banner-guide-line" style={{ top: "33.333%" }} data-axis="y" />
             <span className="home-banner-guide-line" style={{ top: "66.666%" }} data-axis="y" />
-            <span className="home-banner-focal" style={{ left: `${framing.focal_x}%`, top: `${framing.focal_y}%` }} />
+            {show_guides ? (
+              <span
+                className="home-banner-focal"
+                style={{
+                  left: `clamp(14px, ${framing.focal_x}%, calc(100% - 14px))`,
+                  top: `clamp(14px, ${framing.focal_y}%, calc(100% - 14px))`,
+                }}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Grid3x3, ImagePlus, Monitor, RefreshCw, Smartphone, Tablet, Trash2, X } from "lucide-react";
+import { Crop, Grid3x3, ImagePlus, Monitor, RefreshCw, Smartphone, Tablet, Trash2, X } from "lucide-react";
 import { useToast } from "@/components/ui/toast/ToastProvider";
 import { apiErrorMessage } from "@/services/profile-preferences.service";
 import { homeBannerService } from "@/services/home-banner.service";
@@ -9,7 +9,9 @@ import type { HomeHeroGreetingProps } from "@/components/home/HomeHero";
 import type { HomeBannerDto, HomeBannerFraming, HomeBannerScope, HomeBannerState } from "@/types/home-banner";
 import BannerFrame, { BANNER_DEVICES, type BannerDeviceId, type BannerPreviewImage } from "./BannerFrame";
 import BannerControls from "./BannerControls";
+import BannerCropper from "./BannerCropper";
 import BannerDropZone from "./BannerDropZone";
+import BannerRemoveConfirm from "./BannerRemoveConfirm";
 import { DEFAULT_BANNER_FRAMING, framingOf, isSameFraming, resolveTextTone } from "./bannerFraming";
 import {
   BANNER_ACCEPT_ATTRIBUTE,
@@ -52,11 +54,11 @@ const previewImageOf = (image: DraftImage): BannerPreviewImage =>
 
 const DEVICE_ICONS: Record<BannerDeviceId, React.ElementType> = { desktop: Monitor, tablet: Tablet, phone: Smartphone };
 
-/** Largest on screen height of the preview, keeps the tall phone frame in check. */
-const STAGE_MAX_HEIGHT = 280;
+/** Tallest the preview may get on screen, keeps the phone frame from towering over the dialog. */
+const PREVIEW_MAX_HEIGHT = 260;
 
-/** Room around the frame inside the stage. */
-const STAGE_PADDING = 48;
+/** Crop mode shows the whole image, so it gets a little more height. */
+const CROPPER_MAX_HEIGHT = 320;
 
 export type HomeBannerEditorProps = {
   onClose: () => void;
@@ -81,13 +83,17 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
   const dialog_ref = useRef<HTMLDivElement>(null);
   const file_input_ref = useRef<HTMLInputElement>(null);
   const saved_banner = scope === "organization" ? state.organization : state.personal;
+  // What Home shows once this banner is gone: a person falls back to the organization banner, the organization to the default design.
+  const fallback_banner = scope === "personal" ? state.organization : null;
   const [draft, setDraft] = useState<BannerDraft>(() => draftFromSaved(saved_banner));
   const [active_device, setActiveDevice] = useState<BannerDeviceId>("desktop");
   const [stage_width, setStageWidth] = useState(640);
   const [show_guides, setShowGuides] = useState(false);
+  const [is_cropping, setIsCropping] = useState(false);
   const [is_drag_over, setIsDragOver] = useState(false);
   const [is_processing, setIsProcessing] = useState(false);
   const [is_saving, setIsSaving] = useState(false);
+  const [is_removing, setIsRemoving] = useState(false);
   const [upload_progress, setUploadProgress] = useState<number | null>(null);
   const [is_confirming_remove, setIsConfirmingRemove] = useState(false);
   const [error_message, setErrorMessage] = useState<string | null>(null);
@@ -170,12 +176,17 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
+        // Esc backs out of the removal confirmation first, a second Esc closes the editor.
+        if (is_confirming_remove) {
+          if (!is_removing) setIsConfirmingRemove(false);
+          return;
+        }
         requestClose();
       }
     };
     const handlePaste = (event: ClipboardEvent) => {
       const image_file = Array.from(event.clipboardData?.files ?? []).find((file) => file.type.startsWith("image/"));
-      if (image_file && !is_busy) {
+      if (image_file && !is_busy && !is_confirming_remove) {
         event.preventDefault();
         void handleFile(image_file);
       }
@@ -186,7 +197,7 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
       document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("paste", handlePaste);
     };
-  }, [requestClose, handleFile, is_busy]);
+  }, [requestClose, handleFile, is_busy, is_confirming_remove, is_removing]);
 
   const finishWrite = (next_state: HomeBannerState) => {
     onSaved(next_state);
@@ -222,17 +233,31 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
     }
   };
 
+  /** An image picked but not saved yet goes away at once, the saved banner (or the empty state) comes back. */
+  const discardNewImage = () => {
+    setDraft((current) => {
+      if (current.image?.kind === "new") releasePreparedImage(current.image.prepared);
+      return draftFromSaved(saved_banner);
+    });
+    setErrorMessage(null);
+  };
+
   const remove = async () => {
     setIsSaving(true);
+    setIsRemoving(true);
     setErrorMessage(null);
     try {
       finishWrite(await homeBannerService.removeBanner(scope));
       setIsConfirmingRemove(false);
-      toast.success("Banner removed");
+      toast.success("Banner removed", {
+        description: fallback_banner ? `Showing the ${company_name} banner again.` : "Showing the default design again.",
+      });
     } catch (error) {
+      setIsConfirmingRemove(false);
       setErrorMessage(apiErrorMessage(error, "Could not remove. Try again."));
     } finally {
       setIsSaving(false);
+      setIsRemoving(false);
     }
   };
 
@@ -298,16 +323,28 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
                     if (file && !is_busy) void handleFile(file);
                   }}
                 >
-                  <BannerFrame
-                    device={active_device}
-                    image={preview_image}
-                    framing={draft.framing}
-                    greeting={greeting}
-                    max_width={stage_width - STAGE_PADDING}
-                    max_height={STAGE_MAX_HEIGHT}
-                    show_guides={show_guides}
-                    onFramingChange={updateFraming}
-                  />
+                  {is_cropping ? (
+                    <BannerCropper
+                      device={active_device}
+                      image={preview_image}
+                      framing={draft.framing}
+                      max_width={stage_width}
+                      max_height={CROPPER_MAX_HEIGHT}
+                      onFramingChange={updateFraming}
+                    />
+                  ) : (
+                    <BannerFrame
+                      key={active_device}
+                      device={active_device}
+                      image={preview_image}
+                      framing={draft.framing}
+                      greeting={greeting}
+                      max_width={stage_width}
+                      max_height={PREVIEW_MAX_HEIGHT}
+                      show_guides={show_guides}
+                      onFramingChange={updateFraming}
+                    />
+                  )}
                   {is_drag_over || is_processing ? (
                     <div className="hb-stage-drop" aria-hidden="true">
                       {is_processing ? "Optimizing..." : "Drop to replace"}
@@ -338,13 +375,25 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
                     <button
                       type="button"
                       className="hb-tool-button"
-                      aria-pressed={show_guides}
-                      onClick={() => setShowGuides((current) => !current)}
-                      title="Show guides"
-                      aria-label="Show guides"
+                      aria-pressed={is_cropping}
+                      onClick={() => setIsCropping((current) => !current)}
+                      title={is_cropping ? "Back to preview" : "Crop and move the image"}
                     >
-                      <Grid3x3 className="h-4 w-4" aria-hidden="true" />
+                      <Crop className="h-4 w-4" aria-hidden="true" />
+                      <span>{is_cropping ? "Done" : "Crop"}</span>
                     </button>
+                    {is_cropping ? null : (
+                      <button
+                        type="button"
+                        className="hb-tool-button"
+                        aria-pressed={show_guides}
+                        onClick={() => setShowGuides((current) => !current)}
+                        title="Show guides"
+                        aria-label="Show guides"
+                      >
+                        <Grid3x3 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="hb-tool-button"
@@ -355,9 +404,21 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
                       <RefreshCw className="h-4 w-4" aria-hidden="true" />
                       <span>Replace</span>
                     </button>
+                    {is_new_image || saved_banner ? (
+                      <button
+                        type="button"
+                        className="hb-tool-button"
+                        data-variant="danger"
+                        onClick={() => (is_new_image ? discardNewImage() : setIsConfirmingRemove(true))}
+                        disabled={is_busy}
+                        title={is_new_image ? "Discard this image" : "Remove banner"}
+                        aria-label={is_new_image ? "Discard this image" : "Remove banner"}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
-
                 {file_summary ? (
                   <p className="hb-file">
                     <span className="hb-file-name" title={file_summary.name}>
@@ -411,26 +472,7 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
         </div>
 
         <footer className="hb-footer">
-          <div className="flex min-w-0 flex-1 items-center">
-            {saved_banner ? (
-              is_confirming_remove ? (
-                <div className="hb-confirm" role="group" aria-label="Confirm removal">
-                  <span>Remove banner?</span>
-                  <button type="button" className="hb-button" data-variant="danger" onClick={() => void remove()} disabled={is_saving}>
-                    Remove
-                  </button>
-                  <button type="button" className="hb-button" data-variant="ghost" onClick={() => setIsConfirmingRemove(false)} disabled={is_saving}>
-                    Keep
-                  </button>
-                </div>
-              ) : (
-                <button type="button" className="hb-button" data-variant="ghost-danger" onClick={() => setIsConfirmingRemove(true)} disabled={is_busy}>
-                  <Trash2 className="h-4 w-4" aria-hidden="true" />
-                  Remove
-                </button>
-              )
-            ) : null}
-          </div>
+          <div className="flex-1" />
           <button type="button" className="hb-button" data-variant="secondary" onClick={requestClose} disabled={is_saving}>
             Cancel
           </button>
@@ -445,6 +487,18 @@ const HomeBannerEditor: React.FC<HomeBannerEditorProps> = ({ onClose, scope, sta
             {save_label}
           </button>
         </footer>
+
+        {is_confirming_remove && saved_banner ? (
+          <BannerRemoveConfirm
+            current={{ image: previewImageOf({ kind: "saved", banner: saved_banner }), framing: framingOf(saved_banner) }}
+            fallback={fallback_banner}
+            fallback_label={fallback_banner ? company_name : "Default"}
+            title={scope === "organization" ? "Remove it for everyone?" : "Remove your banner?"}
+            is_removing={is_removing}
+            onCancel={() => setIsConfirmingRemove(false)}
+            onConfirm={() => void remove()}
+          />
+        ) : null}
       </div>
     </div>,
     document.body
