@@ -82,7 +82,7 @@ export const ADMINISTRATION_NAV: AdministrationNavNode[] = [
         id: "organization",
         label: "Organization",
         description:
-          "Brand the whole workspace with your company's identity: the logo in the top left corner, colors, favicon, contact details, the sign in page and announcements.",
+          "Brand the whole workspace with your company's identity: the logo in the top left corner, colors, favicon, the Home banner, contact details, the sign in page and announcements.",
       },
       {
         id: "profile_fields",

@@ -3,6 +3,10 @@ import React, { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { useWorkspaces } from "@/context/WorkspaceContext";
+import { useBranding } from "@/context/BrandingContext";
+import HomeBannerEditor from "@/components/home-banner/HomeBannerEditor";
+import { effectiveBanner } from "@/components/home-banner/bannerFraming";
+import { useHomeBanner } from "@/components/home-banner/useHomeBanner";
 import { openShellPanel } from "@/layout/shell-events";
 import HomeHero from "./HomeHero";
 import HomeMyWork from "./HomeMyWork";
@@ -31,6 +35,9 @@ const HomeView: React.FC = () => {
   const { isCollapsed, toggleSection, expandSection } = useCollapsedSections();
   const [picked_tab, setPickedTab] = useState<HomeWorkTab | null>(null);
   const [is_showing_all_boards, setIsShowingAllBoards] = useState(false);
+  const [is_banner_editor_open, setIsBannerEditorOpen] = useState(false);
+  const home_banner = useHomeBanner();
+  const { branding } = useBranding();
   const my_work_ref = useRef<HTMLDivElement>(null);
 
   const today = useMemo(() => new Date(), []);
@@ -63,7 +70,24 @@ const HomeView: React.FC = () => {
   return (
     <div className="home-theme">
       <div className="home-page">
-        <HomeHero user={user} today={today} recap={recap} />
+        <HomeHero
+          user={user}
+          today={today}
+          recap={recap}
+          banner={effectiveBanner(home_banner.state)}
+          onCustomize={() => setIsBannerEditorOpen(true)}
+        />
+        {is_banner_editor_open && (
+          <HomeBannerEditor
+            onClose={() => setIsBannerEditorOpen(false)}
+            initial_scope="personal"
+            state={home_banner.state ?? { personal: null, organization: null, can_manage_organization: false }}
+            onSaved={home_banner.applyState}
+            allow_scope_switch={Boolean(home_banner.state?.can_manage_organization)}
+            greeting={{ user, today, recap }}
+            company_name={branding.company_name}
+          />
+        )}
         <HomeStatTiles counts={work_counts} unread={unread_count} onSelectTab={showWorkTab} onOpenInbox={openInbox} />
 
         <div className="home-grid">

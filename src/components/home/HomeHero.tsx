@@ -1,19 +1,11 @@
 import React from "react";
-import Link from "next/link";
+import { ImagePlus } from "lucide-react";
 import UserAvatar from "@/components/common/UserAvatar";
-import { CalendarViewIcon } from "@/icons/board-icons";
-import { BellIcon, InviteIcon, SearchIcon } from "@/icons/workspace-icons";
-import { useShortcutLabel } from "@/hooks/useShortcutLabel";
-import { openShellPanel } from "@/layout/shell-events";
+import HomeBannerImage from "@/components/home-banner/HomeBannerImage";
+import { resolveTextTone } from "@/components/home-banner/bannerFraming";
 import type { User } from "@/types/auth";
+import type { HomeBannerDto } from "@/types/home-banner";
 import { greetingFor } from "./homeSummary";
-
-type HomeHeroProps = {
-  user: User | null;
-  today: Date;
-  /** One line recap of the day, null while My work and the inbox load. */
-  recap: string | null;
-};
 
 /** The monday group colors the illustration's board rows use. */
 const ART_GROUPS = [
@@ -61,34 +53,70 @@ const HeroArt: React.FC = () => (
   </svg>
 );
 
-/** The welcome card: date, greeting, the day's recap and quick actions into the top bar's panels. */
-const HomeHero: React.FC<HomeHeroProps> = ({ user, today, recap }) => {
-  const shortcut_label = useShortcutLabel();
+export type HomeHeroGreetingProps = {
+  user: User | null;
+  today: Date;
+  /** One line recap of the day, null while My work and the inbox load. */
+  recap: string | null;
+};
+
+/** Avatar, date, greeting and the day's recap. Also drawn inside the banner editor's previews. */
+export const HomeHeroGreeting: React.FC<HomeHeroGreetingProps & { title_id?: string }> = ({ user, today, recap, title_id }) => {
   const first_name = user?.first_name?.trim();
 
   return (
-    <section className="home-hero home-rise" aria-labelledby="home-hero-title">
-      <HeroArt />
-      <div className="home-hero-content">
-        <div className="flex items-center gap-4">
-          {user && (
-            <span className="hidden flex-none rounded-full ring-4 ring-[var(--home-surface)] sm:block">
-              <UserAvatar user={user} size={56} font_size={20} />
-            </span>
-          )}
-          <div className="min-w-0">
-            <p className="home-hero-date">{today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
-            <h1 id="home-hero-title" className="home-hero-title font-heading">
-              {greetingFor(today)}
-              {first_name ? `, ${first_name}` : ""}!
-            </h1>
-          </div>
+    <div className="home-hero-content">
+      <div className="flex items-center gap-4">
+        {user && (
+          <span className="home-hero-avatar hidden flex-none rounded-full sm:block">
+            <UserAvatar user={user} size={56} font_size={20} />
+          </span>
+        )}
+        <div className="min-w-0">
+          <p className="home-hero-date">{today.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</p>
+          <h1 id={title_id} className="home-hero-title font-heading">
+            {greetingFor(today)}
+            {first_name ? `, ${first_name}` : ""}!
+          </h1>
         </div>
-        <p className="home-hero-recap" aria-live="polite">
-          {recap ?? "Getting your day ready..."}
-        </p>
-
       </div>
+      <p className="home-hero-recap" aria-live={title_id ? "polite" : undefined}>
+        {recap ?? "Getting your day ready..."}
+      </p>
+    </div>
+  );
+};
+
+type HomeHeroProps = HomeHeroGreetingProps & {
+  /** The banner image this person sees (their own, else the organization one), null for the gradient. */
+  banner: HomeBannerDto | null;
+  onCustomize: () => void;
+};
+
+/**
+ * The welcome card: date, greeting and the day's recap, over the person's banner image, the
+ * organization banner or the built in gradient with the floating board illustration.
+ */
+const HomeHero: React.FC<HomeHeroProps> = ({ user, today, recap, banner, onCustomize }) => {
+  const tone = banner ? resolveTextTone(banner.text_tone, banner.luminance, banner.overlay_opacity) : null;
+
+  return (
+    <section
+      className="home-hero home-rise"
+      data-has-image={banner ? true : undefined}
+      data-tone={tone ?? undefined}
+      aria-labelledby="home-hero-title"
+    >
+      {banner ? (
+        <HomeBannerImage source={banner} framing={banner} tone={tone ?? "light"} is_priority />
+      ) : (
+        <HeroArt />
+      )}
+      <HomeHeroGreeting user={user} today={today} recap={recap} title_id="home-hero-title" />
+      <button type="button" className="home-hero-customize" onClick={onCustomize} aria-label="Customize your Home banner">
+        <ImagePlus className="h-4 w-4" aria-hidden="true" />
+        <span className="home-hero-customize-label">Customize</span>
+      </button>
     </section>
   );
 };

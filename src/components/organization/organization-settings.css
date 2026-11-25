@@ -72,3 +72,27 @@
   background-size: 14px 14px;
   background-position: 0 0, 0 7px, 7px -7px, -7px 0;
 }
+
+/* Home banner card: the desktop preview of the organization banner, or the empty state. */
+.organization-home-banner-preview {
+  width: 100%;
+}
+
+.organization-home-banner-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 150px;
+  padding: 20px;
+  border: 2px dashed var(--admin-divider);
+  border-radius: 16px;
+  color: var(--admin-text-secondary);
+  text-align: center;
+  background: linear-gradient(115deg, color-mix(in srgb, var(--color-brand-500) 10%, #ffffff) 0%, #ffffff 48%, var(--color-surface-subtle) 100%);
+}
+
+html.dark .organization-home-banner-empty {
+  background: rgba(255, 255, 255, 0.03);
+}

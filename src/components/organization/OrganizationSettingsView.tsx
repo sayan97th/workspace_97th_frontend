@@ -14,6 +14,7 @@ import ContactSupportCard from "./sections/ContactSupportCard";
 import SocialProfilesCard from "./sections/SocialProfilesCard";
 import SignInPageCard from "./sections/SignInPageCard";
 import AnnouncementCard from "./sections/AnnouncementCard";
+import HomeBannerCard from "./sections/HomeBannerCard";
 import "./organization-settings.css";
 
 /** The cards of the page in order, also the "On this page" links. */
@@ -21,6 +22,7 @@ const PAGE_SECTIONS = [
   { id: "profile", label: "Company profile" },
   { id: "logo", label: "Logo and favicon" },
   { id: "colors", label: "Brand color" },
+  { id: "home_banner", label: "Home banner" },
   { id: "contact", label: "Contact and support" },
   { id: "social", label: "Social profiles" },
   { id: "sign_in", label: "Sign in page" },
@@ -163,6 +165,7 @@ const OrganizationSettingsView: React.FC = () => {
             onRemove={(asset) => void settings.removeAsset(asset)}
           />
           <BrandColorCard {...section_props} />
+          <HomeBannerCard company_name={draft.company_name.trim() || organization.company_name} is_read_only={is_read_only} />
           <ContactSupportCard {...section_props} />
           <SocialProfilesCard {...section_props} setSocialLink={settings.setSocialLink} />
           <SignInPageCard {...section_props} />
