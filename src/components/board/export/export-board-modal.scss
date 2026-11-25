@@ -10,7 +10,7 @@
 
 :root {
   --bx-surface: #ffffff;
-  --bx-surface-alt: #f6f7fb;
+  --bx-surface-alt: var(--color-surface-subtle);
   --bx-text: #323338;
   --bx-text-secondary: #676879;
   --bx-text-faint: #9699a6;

@@ -33,7 +33,7 @@
   --dependency-setup-art-arrow: #323338;
   --dependency-setup-art-hand: #ffffff;
   --dependency-setup-art-shadow: drop-shadow(0 4px 12px rgba(41, 47, 76, 0.18));
-  --dependency-setup-info-bg: #f5f6f8;
+  --dependency-setup-info-bg: var(--color-surface-sunken);
   --dependency-setup-error: #d83a52;
   --dependency-setup-shadow: 0 15px 50px rgba(0, 0, 0, 0.3);
 

@@ -11,7 +11,7 @@
  */
 
 .home-theme {
-  --home-bg: #f6f7fb;
+  --home-bg: var(--color-surface-page);
   --home-surface: #ffffff;
   --home-text: #323338;
   --home-text-secondary: #676879;
@@ -24,7 +24,7 @@
   --home-accent-soft: #cce5ff;
   --home-brand: var(--color-brand-500);
   --home-brand-hover: var(--color-brand-600);
-  --home-thumb-bg: #f5f6f8;
+  --home-thumb-bg: var(--color-surface-sunken);
   --home-thumb-row: #e6e9ef;
   --home-thumb-cell: #ffffff;
   --home-empty: #c4c4c4;

@@ -9,7 +9,7 @@
  */
 
 :root {
-  --admin-page-bg: #eceff8;
+  --admin-page-bg: var(--color-surface-page);
   --admin-card-bg: #ffffff;
   --admin-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
   --admin-text: #323338;
@@ -79,7 +79,7 @@ html:not(.dark) .administration-theme {
   --color-shell-bg: #ffffff;
   --color-shell-surface: #ffffff;
   --color-shell-panel: #ffffff;
-  --color-shell-panel-alt: #f6f7fb;
+  --color-shell-panel-alt: var(--color-surface-subtle);
   --color-shell-border: #e7e9ef;
   --color-shell-border-strong: #d0d4e4;
   --color-shell-hover: #f5f6f8;

@@ -6,7 +6,7 @@
   --cni-surface: #ffffff;
   --cni-text: #323338;
   --cni-text-secondary: #676879;
-  --cni-value-bg: #f5f6f8;
+  --cni-value-bg: var(--color-surface-sunken);
   --cni-value-hover: #ecedf5;
   --cni-empty-status: #c4c4c4;
   --cni-divider: #e7e9ef;

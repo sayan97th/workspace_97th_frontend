@@ -19,7 +19,7 @@ html:not(.dark) .automation-center {
   /* The page behind the tables and their sticky group headers, kept equal to the app shell so no band shows. */
   --color-boardtree-bg: var(--color-shell-bg);
   --color-boardtree-surface: #ffffff;
-  --color-boardtree-panel-alt: #f6f7fb;
+  --color-boardtree-panel-alt: var(--color-surface-subtle);
   --color-boardtree-border: #d0d4e4;
   --color-boardtree-border-soft: #e7e9ef;
   --color-boardtree-hover: #f5f6f8;

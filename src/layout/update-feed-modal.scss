@@ -14,7 +14,7 @@
 // Each token as (light, dark).
 $tokens: (
   "surface": (#ffffff, var(--color-shell-panel)),
-  "pane": (#f6f7fb, var(--color-shell-bg)),
+  "pane": (var(--color-surface-page), var(--color-shell-bg)),
   "border": (#e6e9ef, var(--color-shell-border)),
   "border-strong": (#d0d4e4, var(--color-shell-border-strong)),
   "text": (#323338, var(--color-shell-text)),

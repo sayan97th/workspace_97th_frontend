@@ -10,7 +10,7 @@ html:not(.dark) .workspace-manage-theme {
   --color-shell-bg: #ffffff;
   --color-shell-surface: #ffffff;
   --color-shell-panel: #ffffff;
-  --color-shell-panel-alt: #f6f7fb;
+  --color-shell-panel-alt: var(--color-surface-subtle);
   --color-shell-border: #d0d4e4;
   --color-shell-border-strong: #c3c6d4;
   --color-shell-hover: #f5f6f8;

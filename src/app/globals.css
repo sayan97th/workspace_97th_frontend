@@ -46,7 +46,7 @@
   --color-gray-500: #546264;
   --color-gray-600: #2b3c40;
   --color-gray-700: #0a1717;
-  --color-gray-800: #050d0d;
+  --color-gray-800: #050c0c;
   --color-gray-900: #000000;
   --color-gray-950: #000000;
   --color-gray-dark: #0a1717;
@@ -103,6 +103,16 @@
     0px 2px 4px 0px rgba(16, 24, 40, 0.05),
     0px 12px 28px -6px rgba(16, 24, 40, 0.14);
 
+  /* Brand neutral backgrounds (97 Style Guide 2026, "Primary: Neutrals").
+     The `gray-*` scale above is the brand Neutral scale (gray-50 = Neutral 50 ...).
+     - page:    the canvas boxes float on (Neutral 100, #F0F0EF).
+     - subtle:  large alternate panels inside a box, like footers (Neutral 50, #FAFAF5).
+     - sunken:  small wells inside a box, like code, fields and chips (Neutral 100). */
+  --color-surface-page: var(--color-gray-100);
+  --color-surface-subtle: var(--color-gray-50);
+  --color-surface-sunken: var(--color-gray-100);
+  --color-surface-page-over: color-mix(in srgb, var(--color-gray-200) 40%, var(--color-gray-100));
+
   /* Workspace shell chrome (top bar, sidebar, account menu). Light values are
      the defaults here; `.dark` below overrides them so every `bg-shell-*`,
      `text-shell-*` and `border-shell-*` utility repaints automatically when
@@ -124,7 +134,7 @@
 
   /* Two level sidebar (monday.com look): the app rail and top bar share
      `sidebar-rail`, the workspace panel is a white card on top of it. */
-  --color-sidebar-rail: #f6f7fb;
+  --color-sidebar-rail: var(--color-surface-page);
   --color-sidebar-panel: #ffffff;
   --color-sidebar-border: #e7e8ef;
   /* Visible edge that splits the sidebar panel card from the page card (monday's layout border). */
@@ -145,9 +155,9 @@
      to the board table (see `BoardTable.tsx`'s root wrapper), not applied
      app-wide. `.dark` below defines a hand-tuned dark counterpart that keeps
      the same hue relationships. */
-  --color-boardtree-bg: #f4f6fb;
+  --color-boardtree-bg: var(--color-surface-subtle);
   --color-boardtree-surface: #ffffff;
-  --color-boardtree-panel-alt: #f7f8fc;
+  --color-boardtree-panel-alt: var(--color-surface-subtle);
   --color-boardtree-border: #e3e6ef;
   --color-boardtree-border-soft: #eceef5;
   --color-boardtree-hover: #f1f3f9;
@@ -255,7 +265,7 @@
   --color-shell-text-faint: #7e8889;
   --color-shell-scrollbar-thumb: rgba(255, 255, 255, 0.12);
 
-  --color-sidebar-rail: #061010;
+  --color-sidebar-rail: var(--color-gray-800);
   --color-sidebar-panel: #0a1717;
   --color-sidebar-border: rgba(255, 255, 255, 0.07);
   --color-sidebar-edge: rgba(255, 255, 255, 0.14);

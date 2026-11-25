@@ -17,7 +17,7 @@
   --rt-text-faint: #9699a6;
   --rt-placeholder: #9699a6;
   --rt-surface: #ffffff;
-  --rt-surface-alt: #f6f7fb;
+  --rt-surface-alt: var(--color-surface-subtle);
   --rt-border: #d0d4e4;
   --rt-border-soft: #e7e9ef;
   --rt-border-hover: #676879;
@@ -34,12 +34,12 @@
   --rt-mention-bg: rgba(0, 115, 234, 0.1);
   --rt-mention-bg-hover: rgba(0, 115, 234, 0.18);
   --rt-code: #d83a52;
-  --rt-code-bg: #f6f7fb;
+  --rt-code-bg: var(--color-surface-sunken);
   --rt-quote-bar: #c3c6d4;
   --rt-danger: #d83a52;
   --rt-disabled-bg: #ecedf5;
   --rt-disabled-text: #9699a6;
-  --rt-kbd-bg: #f6f7fb;
+  --rt-kbd-bg: var(--color-surface-sunken);
   --rt-overlay: rgba(41, 47, 76, 0.7);
   --rt-shadow-menu: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(15, 15, 15, 0.05);
   --rt-shadow-dialog: 0 24px 64px -12px rgba(15, 23, 42, 0.35), 0 8px 24px -8px rgba(15, 23, 42, 0.2);

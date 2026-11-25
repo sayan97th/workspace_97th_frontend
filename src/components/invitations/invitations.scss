@@ -11,7 +11,7 @@
  */
 
 :root {
-  --inv-page-bg: #eceff8;
+  --inv-page-bg: var(--color-surface-page);
   --inv-card-bg: #ffffff;
   --inv-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
   --inv-text: #323338;
@@ -21,7 +21,7 @@
   --inv-divider: #e7e9ef;
   --inv-hover: #dcdfec;
   --inv-row-hover: #f5f6f8;
-  --inv-subtle-bg: #f6f7fb;
+  --inv-subtle-bg: var(--color-surface-subtle);
   --inv-input-bg: #ffffff;
   --inv-primary: var(--color-brand-500);
   --inv-primary-hover: var(--color-brand-600);

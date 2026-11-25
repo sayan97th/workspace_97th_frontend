@@ -662,7 +662,7 @@
 .doc-theme.doc-presentation[data-theme="light"] {
   --doc-surface: #ffffff;
   --doc-page: #ffffff;
-  --doc-panel-alt: #f6f7fb;
+  --doc-panel-alt: var(--color-surface-subtle);
   --doc-text: #323338;
   --doc-text-secondary: #676879;
   --doc-text-faint: #9699a6;
@@ -673,7 +673,7 @@
   --doc-selected: #cce5ff;
   --doc-accent: #0073ea;
   --doc-accent-soft: rgba(0, 115, 234, 0.12);
-  --doc-code-bg: #f6f7fb;
+  --doc-code-bg: var(--color-surface-sunken);
   --doc-inline-code: #d83a52;
   --doc-callout-gray: #f1f1ef;
   --doc-callout-blue: #e7f3fe;

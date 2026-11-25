@@ -23,7 +23,7 @@
   --people-picker-chip: #cce5ff;
   --people-picker-chip-hover: #aed4fc;
   --people-picker-notice: #cce5ff;
-  --people-picker-notice-off: #f5f6f8;
+  --people-picker-notice-off: var(--color-surface-sunken);
   --people-picker-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 
   display: flex;

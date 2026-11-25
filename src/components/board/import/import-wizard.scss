@@ -10,7 +10,7 @@
 
 :root {
   --iw-surface: #ffffff;
-  --iw-surface-alt: #f6f7fb;
+  --iw-surface-alt: var(--color-surface-subtle);
   --iw-text: #323338;
   --iw-text-secondary: #676879;
   --iw-text-faint: #9699a6;

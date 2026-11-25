@@ -14,7 +14,7 @@
   --row-menu-accent-text: #ffffff;
   --row-menu-field-border: #c3c6d4;
   --row-menu-field-bg: #ffffff;
-  --row-menu-segment-bg: #f5f6f8;
+  --row-menu-segment-bg: var(--color-surface-sunken);
   --row-menu-segment-active: #cce5ff;
   --row-menu-segment-active-text: #0060b9;
   --row-menu-danger-hover: rgba(216, 58, 82, 0.1);

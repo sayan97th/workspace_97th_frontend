@@ -15,7 +15,7 @@ $ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
   --gs-field-bg-focus: #ffffff;
   --gs-field-border: transparent;
   --gs-surface: #ffffff;
-  --gs-surface-muted: #f6f7fb;
+  --gs-surface-muted: var(--color-surface-subtle);
   --gs-text: #323338;
   --gs-text-secondary: #676879;
   --gs-text-faint: #9699a6;

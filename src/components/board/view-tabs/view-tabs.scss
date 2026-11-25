@@ -12,7 +12,7 @@
 
 :root {
   --vt-surface: #ffffff;
-  --vt-surface-alt: #f6f7fb;
+  --vt-surface-alt: var(--color-surface-subtle);
   --vt-text: #323338;
   --vt-text-secondary: #676879;
   --vt-text-faint: #9699a6;

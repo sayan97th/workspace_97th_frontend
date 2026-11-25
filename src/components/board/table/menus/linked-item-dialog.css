@@ -22,7 +22,7 @@
   --linked-item-surface: #ffffff;
   --linked-item-text: #323338;
   --linked-item-text-secondary: #676879;
-  --linked-item-box: #f5f6f8;
+  --linked-item-box: var(--color-surface-sunken);
   --linked-item-box-hover: #ecedf5;
   --linked-item-link: #1f76c2;
   --linked-item-hover: #dcdfec;

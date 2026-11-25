@@ -18,7 +18,7 @@
 
 .search-everything {
   --se-surface: #ffffff;
-  --se-surface-muted: #f6f7fb;
+  --se-surface-muted: var(--color-surface-subtle);
   --se-text: #323338;
   --se-text-secondary: #676879;
   --se-text-faint: #9699a6;

@@ -9,8 +9,8 @@
  */
 .board-kanban,
 .board-kanban-overlay {
-  --kanban-lane-bg: #f6f7fb;
-  --kanban-lane-bg-over: #eef0f6;
+  --kanban-lane-bg: var(--color-surface-page);
+  --kanban-lane-bg-over: var(--color-surface-page-over);
   --kanban-card-bg: #ffffff;
   --kanban-card-border: #e6e9ef;
   --kanban-card-border-hover: #c3c6d4;

@@ -14,7 +14,7 @@
 
 // Each token as (light, dark).
 $tokens: (
-  "bubble": (#f5f6f8, color-mix(in srgb, var(--color-shell-text) 6%, var(--color-shell-panel))),
+  "bubble": (var(--color-surface-sunken), color-mix(in srgb, var(--color-shell-text) 6%, var(--color-shell-panel))),
   "bubble-hover": (#eef0f4, color-mix(in srgb, var(--color-shell-text) 9%, var(--color-shell-panel))),
   "bubble-unread": (#eef5ff, color-mix(in srgb, #69a7ff 13%, var(--color-shell-panel))),
   "unread-ring": (rgba(0, 115, 234, 0.22), rgba(105, 167, 255, 0.32)),

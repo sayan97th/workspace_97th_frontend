@@ -9,7 +9,7 @@
 .doc-theme {
   --doc-surface: #ffffff;
   --doc-page: #ffffff;
-  --doc-panel-alt: #f6f7fb;
+  --doc-panel-alt: var(--color-surface-subtle);
   --doc-text: #323338;
   --doc-text-secondary: #676879;
   --doc-text-faint: #9699a6;
@@ -23,7 +23,7 @@
   --doc-accent-hover: #0060b9;
   --doc-accent-soft: rgba(0, 115, 234, 0.12);
   --doc-danger: #d83a52;
-  --doc-code-bg: #f6f7fb;
+  --doc-code-bg: var(--color-surface-sunken);
   --doc-inline-code: #d83a52;
   --doc-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(15, 15, 15, 0.05);
   --doc-overlay: rgba(41, 47, 76, 0.7);

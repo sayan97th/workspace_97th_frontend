@@ -27,7 +27,7 @@
   --mw-scrollbar-thumb: rgba(50, 51, 56, 0.25);
   --mw-calendar-border: #d0d4e4;
   --mw-calendar-hover: #f0f0f0;
-  --mw-field: #f5f6f8;
+  --mw-field: var(--color-surface-sunken);
   --mw-field-hover: #e6e9ef;
   --mw-overlay: rgba(41, 47, 76, 0.7);
 

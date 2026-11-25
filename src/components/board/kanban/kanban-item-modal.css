@@ -11,8 +11,8 @@
 .kanban-item-modal {
   --kim-backdrop: rgba(41, 47, 76, 0.55);
   --kim-surface: #ffffff;
-  --kim-surface-alt: #f6f7fb;
-  --kim-value-bg: #f5f6f8;
+  --kim-surface-alt: var(--color-surface-subtle);
+  --kim-value-bg: var(--color-surface-sunken);
   --kim-value-hover: #ebedf3;
   --kim-border: #e7e9ef;
   --kim-border-strong: #d0d4e4;

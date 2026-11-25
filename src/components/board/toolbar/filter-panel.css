@@ -12,7 +12,7 @@
  */
 .filter-panel {
   --filter-panel-surface: #ffffff;
-  --filter-panel-surface-alt: #f6f7fb;
+  --filter-panel-surface-alt: var(--color-surface-subtle);
   --filter-panel-text: #323338;
   --filter-panel-text-secondary: #676879;
   --filter-panel-text-faint: #9699a6;
@@ -21,7 +21,7 @@
   --filter-panel-border-hover: #323338;
   --filter-panel-divider: #e7e9ef;
   --filter-panel-hover: #dcdfec;
-  --filter-panel-chip: #f5f6f8;
+  --filter-panel-chip: var(--color-surface-sunken);
   --filter-panel-chip-hover: #e6e9ef;
   --filter-panel-selected: #cce5ff;
   --filter-panel-selected-hover: #aed4fc;

@@ -12,8 +12,8 @@
 :root {
   --bd-font: var(--font-outfit);
   --bd-surface: #ffffff;
-  --bd-surface-alt: #f6f7fb;
-  --bd-surface-sunken: #f5f6f8;
+  --bd-surface-alt: var(--color-surface-subtle);
+  --bd-surface-sunken: var(--color-surface-sunken);
   --bd-card: #ffffff;
   --bd-border: #e7e9ef;
   --bd-border-strong: #d0d4e4;

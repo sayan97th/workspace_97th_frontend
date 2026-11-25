@@ -10,7 +10,7 @@ import type { OrganizationFormValues } from "./organization-form";
 type PreviewTheme = "light" | "dark";
 
 const PREVIEW_COLORS: Record<PreviewTheme, { chrome: string; page: string; text: string; muted: string; line: string; tab: string }> = {
-  light: { chrome: "#f6f7fb", page: "#ffffff", text: "#323338", muted: "#9699a6", line: "#e7e9ef", tab: "#ffffff" },
+  light: { chrome: "#f0f0ef", page: "#ffffff", text: "#323338", muted: "#9699a6", line: "#e7e9ef", tab: "#ffffff" },
   dark: { chrome: "#181b34", page: "#20233f", text: "#e6e7ee", muted: "#8b8ea8", line: "rgba(255,255,255,0.08)", tab: "#2b2f52" },
 };
 

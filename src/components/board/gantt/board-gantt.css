@@ -67,7 +67,7 @@ html.dark .board-gantt-dependency-picker {
   --gantt-collapse-bg: var(--color-shell-hover);
   --gantt-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   --gantt-card-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --gantt-tooltip-bg: #f5f6f8;
+  --gantt-tooltip-bg: var(--color-surface-sunken);
   --gantt-tooltip-text: #323338;
 }
 

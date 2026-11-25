@@ -15,7 +15,7 @@
 // Each token as (light, dark).
 $tokens: (
   "surface": (#ffffff, #142222),
-  "surface-raised": (#f6f7fb, #1b2c2c),
+  "surface-raised": (var(--color-surface-subtle), #1b2c2c),
   "text": (#323338, #e9eded),
   "text-secondary": (#676879, #b7c0c1),
   "text-faint": (#9699a6, #8e999a),

@@ -55,7 +55,7 @@ const buildPrintStyles = (font_stack: string) => `
   img { max-width: 100%; height: auto; border-radius: 4px; }
   img[data-align="center"] { display: block; margin: 0 auto; }
   img[data-align="right"] { display: block; margin-left: auto; }
-  pre { background: #f6f7fb; padding: 14px; border-radius: 6px; white-space: pre-wrap; }
+  pre { background: #f0f0ef; padding: 14px; border-radius: 6px; white-space: pre-wrap; }
   code { font-family: ui-monospace, monospace; font-size: 0.9em; }
   blockquote { border-left: 3px solid #323338; margin: 0; padding-left: 14px; }
   table { border-collapse: collapse; width: 100%; }

@@ -10,7 +10,7 @@
  */
 
 :root {
-  --profile-page-bg: #eceff8;
+  --profile-page-bg: var(--color-surface-page);
   --profile-card-bg: #ffffff;
   --profile-card-shadow: 0 4px 8px rgba(0, 0, 0, 0.06);
   --profile-text: #323338;
@@ -20,7 +20,7 @@
   --profile-divider: #e7e9ef;
   --profile-hover: #dcdfec;
   --profile-row-hover: #f5f6f8;
-  --profile-subtle-bg: #f6f7fb;
+  --profile-subtle-bg: var(--color-surface-subtle);
   --profile-selected: #cce5ff;
   --profile-selected-text: #0060b9;
   --profile-accent: #0073ea;
