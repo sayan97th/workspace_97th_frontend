@@ -739,21 +739,28 @@ html.dark {
 .update-card {
   margin-top: 16px;
   overflow: hidden;
-  border: 1px solid var(--bd-card-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--bd-card);
+  box-shadow: var(--shadow-box);
   font-family: var(--bd-font);
-  transition:
-    box-shadow 150ms ease,
-    border-color 150ms ease;
+  transition: box-shadow 150ms ease;
 }
 
 .update-card:hover {
-  box-shadow: var(--bd-card-shadow-hover);
+  box-shadow: var(--shadow-box-hover);
 }
 
+/* Pinned threads keep their accent as an inset ring, so the card stays outline free. */
 .update-card[data-pinned] {
-  border-color: var(--bd-warning-strong);
+  box-shadow:
+    inset 0 0 0 1px var(--bd-warning-strong),
+    var(--shadow-box);
+}
+
+.update-card[data-pinned]:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--bd-warning-strong),
+    var(--shadow-box-hover);
 }
 
 .update-card[data-highlighted] {
@@ -1240,9 +1247,9 @@ html.dark {
 
 .drawer-info-box {
   overflow: hidden;
-  border: 1px solid var(--bd-card-border);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--bd-card);
+  box-shadow: var(--shadow-box);
 }
 
 .drawer-info-box__title {

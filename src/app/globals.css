@@ -93,6 +93,16 @@
     0px 8px 8px -4px rgba(10, 23, 23, 0.03);
   --shadow-focus-ring: 0px 0px 0px 4px rgba(229, 62, 46, 0.12);
 
+  /* Borderless "box" elevation. Cards, panels and tiles that sit on the page
+     background drop their 1px outline and float on this soft shadow instead
+     (`shadow-box` / `shadow-box-hover` utilities, or the variables in CSS). */
+  --shadow-box:
+    0px 1px 2px 0px rgba(16, 24, 40, 0.04),
+    0px 4px 12px -2px rgba(16, 24, 40, 0.08);
+  --shadow-box-hover:
+    0px 2px 4px 0px rgba(16, 24, 40, 0.05),
+    0px 12px 28px -6px rgba(16, 24, 40, 0.14);
+
   /* Workspace shell chrome (top bar, sidebar, account menu). Light values are
      the defaults here; `.dark` below overrides them so every `bg-shell-*`,
      `text-shell-*` and `border-shell-*` utility repaints automatically when
@@ -224,6 +234,13 @@
 
 /* Dark values for the shell chrome tokens declared in @theme above. */
 .dark {
+  /* Shadows read weaker on dark surfaces, so the box elevation is deeper here. */
+  --shadow-box:
+    0px 1px 2px 0px rgba(0, 0, 0, 0.32),
+    0px 4px 14px -2px rgba(0, 0, 0, 0.38);
+  --shadow-box-hover:
+    0px 2px 4px 0px rgba(0, 0, 0, 0.36),
+    0px 14px 30px -6px rgba(0, 0, 0, 0.55);
   --color-shell-bg: #0a1717;
   --color-shell-surface: #0a1717;
   --color-shell-panel: #0f1c1c;

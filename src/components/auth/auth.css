@@ -121,7 +121,6 @@
 /* ── Card ────────────────────────────────────────────────────────────────── */
 
 .auth-card {
-  border: 1px solid var(--auth-border);
   border-radius: 20px;
   background: var(--auth-surface);
   box-shadow: var(--auth-card-shadow);

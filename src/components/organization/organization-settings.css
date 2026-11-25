@@ -5,11 +5,11 @@
  * This file only adds what is specific to the Organization cards.
  */
 
-/* Every card, the "On this page" list and the live preview share the Administration list frame. */
+/* Every card, the "On this page" list and the live preview are borderless boxes on the soft drop shadow. */
 .organization-panel {
-  border: 1px solid var(--admin-list-border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--admin-card-bg);
+  box-shadow: var(--shadow-box);
 }
 
 .organization-panel-header {

@@ -26,7 +26,7 @@
   --kanban-danger: #d83a52;
   --kanban-today: #00854d;
   --kanban-composer-border: #c3c6d4;
-  --kanban-shadow-rest: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --kanban-shadow-rest: var(--shadow-box);
   --kanban-shadow-hover: 0 8px 18px -6px rgba(15, 23, 42, 0.16), 0 2px 4px rgba(15, 23, 42, 0.05);
   --kanban-shadow-lift: 0 26px 44px -10px rgba(15, 23, 42, 0.3), 0 8px 16px -4px rgba(15, 23, 42, 0.12);
   --kanban-card-radius: 10px;
@@ -52,7 +52,7 @@
   --kanban-danger: #ff6b81;
   --kanban-today: #2fd18a;
   --kanban-composer-border: var(--color-shell-border-strong);
-  --kanban-shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --kanban-shadow-rest: var(--shadow-box);
   --kanban-shadow-hover: 0 10px 22px -8px rgba(0, 0, 0, 0.6);
   --kanban-shadow-lift: 0 28px 48px -10px rgba(0, 0, 0, 0.7);
 }
@@ -317,7 +317,7 @@
 .kanban-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--kanban-card-border);
+  border: 1px solid transparent;
   border-radius: var(--kanban-card-radius);
   background: var(--kanban-card-bg);
   box-shadow: var(--kanban-shadow-rest);
@@ -339,7 +339,6 @@
 }
 
 .kanban-card-slot:not([data-dragging]) .kanban-card:hover {
-  border-color: var(--kanban-card-border-hover);
   box-shadow: var(--kanban-shadow-hover);
   transform: translateY(-2px);
 }
