@@ -175,7 +175,7 @@ html.dark .label-editor__card {
   border-color: var(--label-editor-focus);
 }
 
-/* Hosts the shared ColorSwatchGrid (Tonk's palette). */
+/* Hosts the shared ColorSwatchGrid (the app palette). */
 .label-editor__palette {
   position: absolute;
   top: 38px;

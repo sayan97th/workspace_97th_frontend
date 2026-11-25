@@ -139,9 +139,9 @@ describe("Change group color", () => {
   });
 
   test("the current color is checked", async () => {
-    renderMenu({ current_color: PALETTE.moss.toUpperCase() });
+    renderMenu({ current_color: PALETTE.forest.toUpperCase() });
     await userEvent.hover(row("Change group color"));
-    expect(screen.getByRole("radio", { name: `Moss, ${PALETTE.moss}` })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: `Forest, ${PALETTE.forest}` })).toHaveAttribute("aria-checked", "true");
     expect(screen.getByRole("radio", { name: `Blue, ${PALETTE.blue}` })).toHaveAttribute("aria-checked", "false");
   });
 

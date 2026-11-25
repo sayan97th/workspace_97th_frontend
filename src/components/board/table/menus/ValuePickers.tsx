@@ -345,7 +345,7 @@ export function HourMenu({ value, onPick, onClear, onClose, is_24_hour, onFormat
   );
 }
 
-/** The Color picker cell's picker: Tonk's palette, recent custom colors and the Custom color view (any hex). */
+/** The Color picker cell's picker: the app palette, recent custom colors and the Custom color view (any hex). */
 export function ColorPickerMenu({ value, onPick, onClear, onClose }: ValuePickerProps) {
   const pick = (color: string) => {
     onPick(color.toLowerCase());

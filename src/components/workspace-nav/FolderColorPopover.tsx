@@ -4,7 +4,7 @@ import BoardPopover from "@/components/board/toolbar/BoardPopover";
 import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
 import { PALETTE_COLORS } from "@/lib/color-palette";
 
-/** Folder colors: Tonk's palette, the same one every color picker offers. */
+/** Folder colors: the app palette, the same one every color picker offers. */
 export const FOLDER_COLOR_PALETTE = PALETTE_COLORS;
 
 export type FolderColorPopoverProps = {

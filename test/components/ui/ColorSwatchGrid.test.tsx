@@ -16,10 +16,10 @@ describe("ColorSwatchGrid", () => {
   });
 
   test("checks the current color, ignoring case", () => {
-    render(<ColorSwatchGrid value={PALETTE.teal.toUpperCase()} onSelect={vi.fn()} />);
-    expect(swatch("Teal", PALETTE.teal)).toHaveAttribute("aria-checked", "true");
+    render(<ColorSwatchGrid value={PALETTE.sky.toUpperCase()} onSelect={vi.fn()} />);
+    expect(swatch("Sky", PALETTE.sky)).toHaveAttribute("aria-checked", "true");
     expect(swatch("Red", PALETTE.red)).toHaveAttribute("aria-checked", "false");
-    expect(screen.getByText("Teal")).toBeInTheDocument();
+    expect(screen.getByText("Sky")).toBeInTheDocument();
   });
 
   test("names a color outside the palette as Custom", () => {
@@ -36,17 +36,17 @@ describe("ColorSwatchGrid", () => {
   });
 
   test("has one tab stop and arrow keys move across rows", async () => {
-    render(<ColorSwatchGrid value={PALETTE.red} onSelect={vi.fn()} />);
+    render(<ColorSwatchGrid value={PALETTE.blue} onSelect={vi.fn()} />);
     const tab_stops = screen.getAllByRole("radio").filter((element) => element.tabIndex === 0);
-    expect(tab_stops).toEqual([swatch("Red", PALETTE.red)]);
+    expect(tab_stops).toEqual([swatch("Blue", PALETTE.blue)]);
 
-    swatch("Red", PALETTE.red).focus();
+    swatch("Blue", PALETTE.blue).focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(swatch("Crimson", PALETTE.crimson)).toHaveFocus();
+    expect(swatch("Ocean", PALETTE.ocean)).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(swatch("Sage", PALETTE.sage)).toHaveFocus();
+    expect(swatch("Jade", PALETTE.jade)).toHaveFocus();
     await userEvent.keyboard("{End}");
-    expect(swatch("Charcoal", PALETTE.charcoal)).toHaveFocus();
+    expect(swatch("Silver", PALETTE.silver)).toHaveFocus();
   });
 
   test("a disabled grid ignores clicks", async () => {

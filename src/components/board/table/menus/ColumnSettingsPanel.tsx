@@ -10,7 +10,6 @@ import { evenWeights, type ProgressStatusColumn } from "../progressTracking";
 import { RATING_ICON_LABELS, RATING_MAX_LIMIT, RatingGlyph } from "../cells/VoteRatingCells";
 import { NUMBER_AGGREGATION_LABELS, type NumberAggregation } from "../summaryUtils";
 import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
-import { PALETTE } from "@/lib/color-palette";
 
 /*
  * The small forms the column menu's Settings flyout opens to the side. Each one
@@ -345,8 +344,8 @@ export function DateFormatSettingsPanel({ kind, date_display, onChange }: DateFo
   );
 }
 
-/** A new Button column starts blue, like the API default. */
-const DEFAULT_BUTTON_COLOR = PALETTE.blue;
+/** A new Button column starts blue, the API default (`BoardColumnController::defaultConfigFor`). */
+const DEFAULT_BUTTON_COLOR = "#579bfc";
 
 interface ButtonSettingsPanelProps {
   button?: { label: string; color: string };

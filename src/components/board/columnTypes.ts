@@ -413,5 +413,5 @@ export const COLUMN_TYPE_SECTIONS: { id: ColumnTypeSection; label: string }[] = 
   { id: "super_useful", label: "Super useful" },
 ];
 
-/** Default palette for auto-colouring newly created status/dropdown options, cycled by index (Tonk's palette). */
+/** Default palette for auto-colouring newly created status/dropdown options, cycled by index (the app palette). */
 export const COLUMN_OPTION_PALETTE = PALETTE_CYCLE;

@@ -346,7 +346,7 @@ html.dark .value-picker {
 
 /* Color picker */
 
-/* Tonk's palette (ColorSwatchGrid), on the picker's own surface. */
+/* The app palette (ColorSwatchGrid), on the picker's own surface. */
 .color-swatch-grid.value-picker__swatches {
   --color-swatch-grid-surface: var(--value-picker-surface);
   --color-swatch-grid-ring: var(--value-picker-text);

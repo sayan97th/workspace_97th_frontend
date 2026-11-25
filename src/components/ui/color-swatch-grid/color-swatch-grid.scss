@@ -1,4 +1,4 @@
-// Tonk's palette grid (`ColorSwatchGrid`), shared by every color choice in the app.
+// The app palette grid (`ColorSwatchGrid`), shared by every color choice in the app.
 // The grid draws no card: hosts give it a surface. Hosts retune it by setting these
 // custom properties on the grid or any ancestor (they are read with fallbacks, never
 // declared here, so an override always wins whatever its cascade layer):

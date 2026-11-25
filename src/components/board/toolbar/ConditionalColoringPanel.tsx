@@ -21,7 +21,7 @@ import {
   type BoardToolbarViewActions,
 } from "./types";
 import ColorSwatchPicker from "./ColorSwatchPicker";
-import { PALETTE_TINT_SWATCHES } from "@/lib/color-palette";
+import { SOFT_SWATCHES } from "@/lib/color-palette";
 import ColumnSwatchBadge from "./ColumnSwatchBadge";
 import FilterOptionPicker from "./FilterOptionPicker";
 import { BOARD_FILTER_BLANK_OPTION_ID } from "./filterEngine";
@@ -173,7 +173,7 @@ function ColorRuleRow<TRow>({ toolbar, rule, onUpdate, onRemove }: ColorRuleRowP
         <ColorSwatchPicker
           color={rule.color}
           size={24}
-          swatches={PALETTE_TINT_SWATCHES}
+          swatches={SOFT_SWATCHES}
           aria_label="Rule color"
           trigger_class_name="toolbar-panel__color-swatch"
           icon={<ColorFillIcon size={13} />}

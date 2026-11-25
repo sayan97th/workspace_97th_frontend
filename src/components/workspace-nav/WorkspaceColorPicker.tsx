@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import ColorSwatchGrid from "@/components/ui/color-swatch-grid/ColorSwatchGrid";
+import { WORKSPACE_SWATCHES } from "@/lib/color-palette";
 
 export type WorkspaceColorPickerProps = {
   value: string;
@@ -13,8 +14,8 @@ export type WorkspaceColorPickerProps = {
  * Badge color picker shared by the "Add new workspace" dialog
  * ({@link CreateWorkspaceModal}) and the "Edit workspace" dialog, mirroring
  * {@link WorkspacePrivacyPicker}'s `{ value, onChange, label }` shape. Offers
- * Tonk's palette through {@link ColorSwatchGrid}, whose Custom color view takes
- * any other hex.
+ * the workspace badge colors through {@link ColorSwatchGrid}, whose Custom color
+ * view takes any other hex.
  */
 const WorkspaceColorPicker: React.FC<WorkspaceColorPickerProps> = ({
   value,
@@ -26,6 +27,7 @@ const WorkspaceColorPicker: React.FC<WorkspaceColorPickerProps> = ({
     <ColorSwatchGrid
       value={value}
       onSelect={onChange}
+      swatches={WORKSPACE_SWATCHES}
       aria_label={label || "Workspace color"}
       className="[--color-swatch-grid-surface:var(--color-shell-panel)] [--color-swatch-grid-ring:var(--color-shell-text)] [--color-swatch-grid-text:var(--color-shell-text)] [--color-swatch-grid-text-muted:var(--color-shell-text-muted)]"
     />

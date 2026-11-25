@@ -1,9 +1,9 @@
 import type { ColumnKind, PersonDef, StatusDef, TagDef } from "./types";
 import type { BoardColumnKind } from "../columnTypes";
 import type { ColumnGlyphId } from "./menus/ColumnTypeIcon";
-import { PALETTE, PALETTE_CYCLE } from "@/lib/color-palette";
+import { PALETTE_CYCLE } from "@/lib/color-palette";
 
-/** Colors new groups cycle through (Tonk's palette, most distinct hues first). Group color is picked with `ColorSwatchGrid`. */
+/** Colors new groups cycle through (the app palette, most distinct hues first). Group color is picked with `ColorSwatchGrid`. */
 export const GROUP_PALETTE = PALETTE_CYCLE;
 
 /** Colors new Status, Label and Tag options cycle through. */
@@ -21,35 +21,35 @@ export const EMPTY_LABEL_COLOR = "#9aa0b6";
 
 export const DEFAULT_STATUS_DEFS: StatusDef[] = [
   { id: "sd-empty", label: "", color: EMPTY_STATUS_COLOR, fixed: true },
-  { id: "sd-ready", label: "Ready to start", color: PALETTE.blue },
-  { id: "sd-backlog", label: "Backlog", color: PALETTE.plum },
-  { id: "sd-hold", label: "HOLD", color: PALETTE.orange },
-  { id: "sd-pending", label: "Pending", color: PALETTE.deep_teal },
-  { id: "sd-next-sprint", label: "Next Sprint", color: PALETTE.rose },
-  { id: "sd-reference", label: "Reference", color: PALETTE.charcoal },
-  { id: "sd-working", label: "Working on it", color: PALETTE.amber },
-  { id: "sd-review", label: "Waiting for review", color: PALETTE.aqua },
-  { id: "sd-stuck", label: "Stuck", color: PALETTE.red },
-  { id: "sd-deploy", label: "Pending Deploy", color: PALETTE.rust },
-  { id: "sd-inprod", label: "In Prod", color: PALETTE.moss },
-  { id: "sd-done", label: "Done", color: PALETTE.green },
-  { id: "sd-testing", label: "Testing", color: PALETTE.teal },
+  { id: "sd-ready", label: "Ready to start", color: "#2074d4" },
+  { id: "sd-backlog", label: "Backlog", color: "#7b3f98" },
+  { id: "sd-hold", label: "HOLD", color: "#f2662a" },
+  { id: "sd-pending", label: "Pending", color: "#1f5b9e" },
+  { id: "sd-next-sprint", label: "Next Sprint", color: "#f453b0" },
+  { id: "sd-reference", label: "Reference", color: "#3a3a3a" },
+  { id: "sd-working", label: "Working on it", color: "#f2a53c" },
+  { id: "sd-review", label: "Waiting for review", color: "#9dd6f2" },
+  { id: "sd-stuck", label: "Stuck", color: "#e04455" },
+  { id: "sd-deploy", label: "Pending Deploy", color: "#8a6248" },
+  { id: "sd-inprod", label: "In Prod", color: "#12724a" },
+  { id: "sd-done", label: "Done", color: "#12c46b" },
+  { id: "sd-testing", label: "Testing", color: "#1071c4" },
 ];
 
 export const DEFAULT_LABEL_DEFS: StatusDef[] = [
   { id: "lb-empty", label: "", color: EMPTY_LABEL_COLOR, fixed: true },
-  { id: "lb-low", label: "Low", color: PALETTE.slate },
-  { id: "lb-medium", label: "Medium", color: PALETTE.amber },
-  { id: "lb-high", label: "High", color: PALETTE.plum },
-  { id: "lb-critical", label: "Critical", color: PALETTE.crimson },
+  { id: "lb-low", label: "Low", color: "#5b6180" },
+  { id: "lb-medium", label: "Medium", color: "#8a6d1f" },
+  { id: "lb-high", label: "High", color: "#5b3fbd" },
+  { id: "lb-critical", label: "Critical", color: "#b02f43" },
 ];
 
 export const DEFAULT_TAG_DEFS: TagDef[] = [
-  { id: "tg-seo", label: "#seo", color: PALETTE.blue },
-  { id: "tg-content", label: "#content", color: PALETTE.slate },
-  { id: "tg-ppc", label: "#ppc", color: PALETTE.amber },
-  { id: "tg-newcontent", label: "#newcontent", color: PALETTE.red },
-  { id: "tg-seooptimizations", label: "#seooptimizations", color: PALETTE.plum },
+  { id: "tg-seo", label: "#seo", color: "#2074d4" },
+  { id: "tg-content", label: "#content", color: "#9aa0b6" },
+  { id: "tg-ppc", label: "#ppc", color: "#e8b23a" },
+  { id: "tg-newcontent", label: "#newcontent", color: "#e04455" },
+  { id: "tg-seooptimizations", label: "#seooptimizations", color: "#a24ec9" },
 ];
 
 export const PEOPLE: PersonDef[] = [
@@ -91,12 +91,12 @@ export interface ColumnTypeDef {
   preset_auto_assign_creator?: boolean;
 }
 
-/** monday.com's Priority labels, most urgent first, in Tonk's palette (mirrored by the API import). */
+/** monday.com's Priority labels, most urgent first. */
 export const PRIORITY_PRESET_OPTIONS = [
-  { label: "Critical", color: PALETTE.charcoal },
-  { label: "High", color: PALETTE.plum },
-  { label: "Medium", color: PALETTE.lavender },
-  { label: "Low", color: PALETTE.blue },
+  { label: "Critical", color: "#333333" },
+  { label: "High", color: "#401694" },
+  { label: "Medium", color: "#5559df" },
+  { label: "Low", color: "#579bfc" },
 ];
 
 /** Every column type a board can hold, in the gallery's display order (row by row, two per row). */

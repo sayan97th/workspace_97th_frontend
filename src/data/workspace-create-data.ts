@@ -6,16 +6,16 @@
  * once created, until the user overrides it with an explicit color pick
  * and/or an uploaded avatar image.
  */
-import { PALETTE_COLORS } from "@/lib/color-palette";
+import { WORKSPACE_SWATCHES } from "@/lib/color-palette";
 
 export type WorkspacePrivacy = "open" | "closed";
 
 /**
- * Badge color choices (Tonk's palette) offered by {@link WorkspaceColorPicker} and the
+ * Badge color choices offered by {@link WorkspaceColorPicker} and the
  * deterministic name -> color fallback below. A user can still enter any
  * other hex value via the picker's custom color swatch.
  */
-export const workspace_create_color_palette = PALETTE_COLORS;
+export const workspace_create_color_palette = WORKSPACE_SWATCHES.map((swatch) => swatch.hex);
 
 /** Badge color shown while the name field is empty. */
 export const workspace_create_empty_color = "#6E7B7D";

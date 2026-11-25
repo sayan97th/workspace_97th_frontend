@@ -24,7 +24,7 @@ export type ColorSwatchGridProps = {
   /** The record's current color; marked with a check when it is in the palette. */
   value: string | null | undefined;
   onSelect: (hex: string) => void;
-  /** Swatches offered. Defaults to Tonk's palette, {@link PALETTE_SWATCHES}. */
+  /** Swatches offered. Defaults to the app palette, {@link PALETTE_SWATCHES}. */
   swatches?: readonly PaletteSwatch[];
   /** Swatches per row. Defaults to 6, the palette's own layout. */
   columns?: number;
@@ -44,7 +44,7 @@ export type ColorSwatchGridProps = {
 
 /**
  * The palette swatch grid every color choice in the app is made with: rounded
- * squares in Tonk's 6 by 3 layout, a check on the current color, and a caption
+ * squares in the palette's 6 by 3 layout, a check on the current color, and a caption
  * naming the hovered color. Keyboard friendly as a radio group: one tab stop,
  * arrow keys move across rows and columns, Enter or Space picks.
  *

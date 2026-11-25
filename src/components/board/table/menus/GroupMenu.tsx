@@ -61,7 +61,7 @@ type ColorPaletteProps = {
   onPick: (color: string) => void;
 };
 
-/** The "Change group color" flyout: Tonk's palette, the current color marked with a check. */
+/** The "Change group color" flyout: the app palette, the current color marked with a check. */
 const ColorPalette = ({ current_color, onPick }: ColorPaletteProps) => (
   <ColorSwatchGrid value={current_color} onSelect={onPick} aria_label="Group color" className="group-menu-palette" />
 );

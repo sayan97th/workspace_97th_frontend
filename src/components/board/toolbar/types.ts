@@ -1,5 +1,5 @@
 import type { BoardColumn, BoardColumnSwatch, BoardGroup, BoardHeaderHeight, BoardRowHeight } from "../types";
-import { PALETTE_COLORS, PALETTE_CYCLE, PALETTE_TINT_COLORS, tintColor } from "@/lib/color-palette";
+import { PALETTE_COLORS, SOFT_COLORS } from "@/lib/color-palette";
 
 export type { BoardColumnSwatch };
 
@@ -287,17 +287,16 @@ export const BOARD_CONDITIONAL_COLOR_SCOPES: { id: BoardConditionalColorScope; l
   { id: "cell", label: "Cell" },
 ];
 
-/** Tonk's palette, for surfaces that still read a plain color list (feed and notification board dots). */
+/** The app palette, for surfaces that still read a plain color list (feed and notification board dots). */
 export const BOARD_CONDITIONAL_COLOR_PALETTE: string[] = PALETTE_COLORS;
 
-/**
- * Conditional coloring's palette: soft tints of Tonk's palette that keep cell text readable.
- * Older rules may still hold a color from the previous palette, which keeps rendering as saved.
- */
-export const BOARD_CONDITIONAL_COLORING_PALETTE: string[] = PALETTE_TINT_COLORS;
+/** monday's Conditional coloring palette: soft tones that keep cell text readable. */
+export const BOARD_CONDITIONAL_COLORING_PALETTE: string[] = SOFT_COLORS;
 
 /** Colors a new Conditional coloring rule starts with, in order, so neighbouring rules are easy to tell apart. */
-export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = PALETTE_CYCLE.map((hex) => tintColor(hex));
+export const BOARD_CONDITIONAL_COLORING_DEFAULTS: string[] = [
+  "#8fa6c7", "#baa4e7", "#7fe2b9", "#ffe47f", "#ffb9b9", "#7fc1de", "#fed49d", "#ff89c3",
+];
 
 /** Conditional coloring's "All done labels" value: matches any Status label that reads as done. */
 export const BOARD_CONDITIONAL_COLOR_DONE_VALUE = "__done__";

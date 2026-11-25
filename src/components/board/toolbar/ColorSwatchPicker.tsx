@@ -13,7 +13,7 @@ export type ColorSwatchPickerProps = {
   trigger_class_name?: string;
   /** Glyph drawn on top of the trigger's color, e.g. a paint bucket. */
   icon?: React.ReactNode;
-  /** Swatches offered in the grid. Defaults to Tonk's palette, {@link PALETTE_SWATCHES}. */
+  /** Swatches offered in the grid. Defaults to the app palette, {@link PALETTE_SWATCHES}. */
   swatches?: readonly PaletteSwatch[];
   /** Accessible name of the grid, e.g. "Label color". */
   aria_label?: string;
@@ -23,7 +23,7 @@ const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 6;
 
 /**
- * Small square swatch button that opens Tonk's palette ({@link ColorSwatchGrid})
+ * Small square swatch button that opens the app palette ({@link ColorSwatchGrid})
  * in a floating card. The card portals to `document.body` (fixed-positioned off
  * the button's own bounding rect) rather than rendering as an absolutely
  * positioned child, since a plain absolute child gets clipped whenever this
