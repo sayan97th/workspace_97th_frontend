@@ -95,7 +95,10 @@ echo "    NEXT_PUBLIC_REVERB_HOST=${NEXT_PUBLIC_REVERB_HOST:-}"
 if [ "${SKIP_INSTALL:-0}" != "1" ]; then
   pnpm install --frozen-lockfile
 fi
-rm -rf .next/standalone
+# Always a clean build: the Turbopack build cache (.next/cache/turbopack) has
+# shipped stale CSS before (globals.css changes missing from the package).
+# The dev server cache lives in .next/dev and is kept.
+rm -rf .next/cache .next/standalone .next/static .next/server
 pnpm build
 
 [ -f .next/standalone/server.js ] || fail ".next/standalone/server.js not found. Is output: \"standalone\" set in next.config.ts?"
