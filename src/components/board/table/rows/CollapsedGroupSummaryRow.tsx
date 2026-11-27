@@ -62,8 +62,8 @@ export default function CollapsedGroupSummaryRow({ group, name_col_width, min_wi
         />
       </div>
 
-      <div className="flex items-stretch overflow-hidden rounded-[8px] border border-boardtree-border bg-boardtree-surface">
-        <div className="w-[5px] flex-none" style={{ background: group.color }} />
+      <div className="flex items-stretch overflow-hidden border-y border-boardtree-grid bg-boardtree-surface">
+        <div className="w-[5px] flex-none" />
 
         <div className="flex-1" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
           <div

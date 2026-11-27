@@ -747,7 +747,7 @@ export default function BoardTable({
 
   if (embedded) {
     return (
-      <div className={`board-table-theme ${boardTreeFontClassName}`}>
+      <div className={`table-board-view board-table-theme ${boardTreeFontClassName}`}>
         {/*
           `isolate` gives the grid its own stacking context. `GroupHeaderBar`/
           `GroupColumnHeaderRow` deliberately spike their z-index up to 200
@@ -768,7 +768,7 @@ export default function BoardTable({
   }
 
   return (
-    <div className={`table-board-root board-table-theme flex h-screen flex-col overflow-hidden bg-boardtree-bg text-boardtree-text ${boardTreeFontClassName}`}>
+    <div className={`table-board-view table-board-root board-table-theme flex h-screen flex-col overflow-hidden bg-boardtree-bg text-boardtree-text ${boardTreeFontClassName}`}>
       <TableHeader board_title={board_title} />
       <TableToolbar summary_text={summary_text} onNewItem={() => state.groups[0] && actions.addItem(state.groups[0].key)} />
 

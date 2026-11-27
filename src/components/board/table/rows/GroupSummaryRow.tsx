@@ -43,7 +43,6 @@ export default function GroupSummaryRow({ group, name_col_width, min_width, stat
               data-column-move={columnMoveKey("main", col.id)}
               className="flex h-9 min-w-0 flex-col items-center justify-center border-r border-boardtree-grid bg-boardtree-surface px-2"
               style={{
-                borderTop: "1px solid var(--color-boardtree-grid)",
                 borderBottom: "1px solid var(--color-boardtree-grid)",
                 position: is_pinned ? "sticky" : undefined,
                 left: is_pinned ? sticky_offsets[3 + col_index] : undefined,

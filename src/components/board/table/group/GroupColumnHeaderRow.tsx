@@ -88,8 +88,8 @@ export default function GroupColumnHeaderRow({
     !!state.editing_column?.scoped_key?.startsWith(group_prefix);
 
   return (
-    <div data-row-drop-edge="start" data-row-flip-key={`cols:${group.key}`} className="sticky top-10 z-[70] flex items-stretch rounded-t-[8px] bg-boardtree-surface " style={{ minWidth: min_width, zIndex: has_open_overlay ? 200 : 70 }}>
-      <div className="w-[5px] flex-none rounded-tl-[4px]" style={{ background: group.color }} />
+    <div data-row-drop-edge="start" data-row-flip-key={`cols:${group.key}`} className="sticky top-10 z-[70] flex items-stretch bg-boardtree-surface" style={{ minWidth: min_width, zIndex: has_open_overlay ? 200 : 70 }}>
+      <div className="w-[5px] flex-none" />
 
       <div className="flex-1 border-y border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: header_px, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 16, background: HEADER_BG }}>

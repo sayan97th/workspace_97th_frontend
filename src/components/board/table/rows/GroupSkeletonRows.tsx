@@ -40,7 +40,7 @@ export default function GroupSkeletonRows({ name_col_width, min_width, base_colu
     <div aria-hidden="true">
       {Array.from({ length: row_count }).map((_, row_index) => (
         <div key={row_index} className="relative flex items-stretch" style={{ minWidth: min_width }}>
-          <TreeBar variant="thick" color={color} />
+          <div className="w-[5px] flex-none" />
           <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
             <div className="border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: ROW_BG }} />
             <div className="flex items-center border-r border-boardtree-grid px-3" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]), zIndex: 15, background: ROW_BG }}>

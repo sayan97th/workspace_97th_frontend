@@ -188,7 +188,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
         </div>
       )}
 
-      <TreeBar variant="thick" color={group.color} />
+      <TreeBar variant="gutter" color={group.color} is_active={is_hovered || is_selected} />
 
       <div className="flex-1 border-b border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
         <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: row_h, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 15, background: row_bg }}>

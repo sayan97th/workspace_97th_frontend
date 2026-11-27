@@ -27,6 +27,16 @@
 .table-board-scroll::-webkit-scrollbar-thumb:hover {
   background: var(--color-boardtree-text-faint);
 }
+/* "+ Add item" footer, quiet until pointed at, then it takes the group color. */
+.add-item-row__button {
+  transition: color 120ms ease-out;
+}
+
+.add-item-row__button:hover,
+.add-item-row__button:focus-visible {
+  color: var(--add-item-color, var(--color-boardtree-accent));
+}
+
 /*
  * Reordering tables by dragging a group header (see `SortableGroupList`).
  * `--group-color` is set per group on the sortable wrapper and the drag preview.

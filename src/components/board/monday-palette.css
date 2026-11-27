@@ -38,7 +38,8 @@ html:not(.dark) .automation-center {
   --color-boardtree-track: #e6e9ef;
   --color-boardtree-ring: rgba(50, 51, 56, 0.55);
   --color-boardtree-scrollbar-thumb: rgba(50, 51, 56, 0.2);
-  --color-boardtree-grid: #d0d4e4;
+  /* Un-contained tables: soft brand neutral lines instead of monday's blue gray grid. */
+  --color-boardtree-grid: color-mix(in srgb, var(--color-gray-200) 55%, #ffffff);
   --color-boardtree-control-border: #c3c6d4;
   --color-boardtree-empty: #c4c4c4;
   --color-boardtree-timeline-rest: #333333;
@@ -58,4 +59,14 @@ html:not(.dark) .board-chrome-theme {
   --color-shell-hover-strong: #c3c6d4;
   --color-shell-border: #e7e9ef;
   --color-shell-border-strong: #c3c6d4;
+}
+
+/*
+ * Un-contained tables (client request 2026-11-26): the Table view sits on
+ * the same white as its rows, so groups read as open lists instead of boxed
+ * cards on a tinted page. Scoped with `:has()` so Kanban, Calendar and the
+ * other views keep the Neutral 50 page their cards float on.
+ */
+html:not(.dark) .board-shell:has(.table-board-view) {
+  --color-shell-bg: #ffffff;
 }
