@@ -699,22 +699,30 @@ html.dark .home-hero-customize:hover {
 
 .home-tabs {
   display: flex;
+  align-items: center;
   gap: 4px;
   overflow-x: auto;
   margin-bottom: 8px;
+  padding: 6px 2px 8px;
   border-bottom: 1px solid var(--home-border-soft);
 }
 
+/* Each tab is a pill. The border is always there (transparent when idle) so
+   selecting a tab never shifts its neighbours. */
 .home-tab {
-  position: relative;
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px 10px;
-  border-radius: 6px 6px 0 0;
+  padding: 4px 10px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
   color: var(--home-text-secondary);
   font-size: 14px;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .home-tab:hover {
@@ -723,19 +731,18 @@ html.dark .home-hero-customize:hover {
 }
 
 .home-tab[aria-selected="true"] {
+  border-color: var(--home-tab-color);
+  background: color-mix(in srgb, var(--home-tab-color) 8%, transparent);
   color: var(--home-text);
   font-weight: 500;
 }
 
-.home-tab[aria-selected="true"]::after {
-  content: "";
-  position: absolute;
-  right: 8px;
-  bottom: -1px;
-  left: 8px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--home-tab-color);
+.home-tab[aria-selected="true"]:hover {
+  background: color-mix(in srgb, var(--home-tab-color) 14%, transparent);
+}
+
+.home-tab[aria-selected="true"] .home-count {
+  background: color-mix(in srgb, var(--home-tab-color) 18%, transparent);
 }
 
 .home-tab-dot {
