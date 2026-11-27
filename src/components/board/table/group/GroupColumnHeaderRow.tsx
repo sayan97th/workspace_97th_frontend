@@ -92,7 +92,7 @@ export default function GroupColumnHeaderRow({
       <div className="w-[5px] flex-none" />
 
       <div className="flex-1 border-y border-boardtree-grid" style={{ display: "grid", gridTemplateColumns: main_tpl }}>
-        <div className="flex items-center justify-center border-r border-boardtree-grid" style={{ height: header_px, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 16, background: HEADER_BG }}>
+        <div className="flex items-center justify-center" style={{ height: header_px, ...stickyCellStyle(is_sticky_columns, sticky_offsets[0]), zIndex: 16, background: HEADER_BG }}>
           <button
             type="button"
             onClick={() => actions.toggleGroupSelection(group.key)}
