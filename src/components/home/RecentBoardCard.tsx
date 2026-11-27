@@ -6,54 +6,26 @@ import WorkspaceMonogram from "@/components/personal/WorkspaceMonogram";
 import { StarIcon } from "@/icons/workspace-icons";
 import type { RecentBoardDto, RecentBoardPreview } from "@/types/personal";
 import { relativeTime } from "./homeSummary";
+import ViewPreview from "./view-preview/ViewPreview";
 
-/** Rows the thumbnail has room for, shared between the groups it draws. */
-const THUMB_ROW_BUDGET = 6;
+const plural = (count: number, word: string): string => `${count.toLocaleString("en-US")} ${count === 1 ? word : `${word}s`}`;
 
-/** Drawn when a board has no groups yet, so the card never looks broken. */
-const PLACEHOLDER_GROUPS = [
-  { id: -1, color: "#579bfc", rows: 2, is_placeholder: true },
-  { id: -2, color: "#a25ddc", rows: 1, is_placeholder: true },
-];
-
-/**
- * Turns the board's groups into thumbnail blocks: every group gets at least
- * one row, the rest of the budget follows each group's item count.
- */
-const thumbnailGroups = (preview: RecentBoardPreview | null) => {
-  const groups = preview?.groups ?? [];
-  if (groups.length === 0) return PLACEHOLDER_GROUPS;
-
-  const visible_groups = groups.slice(0, 3);
-  let rows_left = THUMB_ROW_BUDGET - visible_groups.length;
-  return visible_groups.map((group) => {
-    const extra_rows = Math.min(rows_left, Math.max(0, Math.min(group.item_count, 3) - 1));
-    rows_left -= extra_rows;
-    return { id: group.id, color: group.color || "#c4c4c4", rows: 1 + extra_rows, is_placeholder: group.item_count === 0 };
-  });
-};
-
-/** A mini board drawn from the board's real groups, colors and item counts. */
-const BoardThumbnail: React.FC<{ preview: RecentBoardPreview | null }> = ({ preview }) => (
-  <div className="home-board-thumb" aria-hidden="true">
-    {thumbnailGroups(preview).map((group) => (
-      <div key={group.id} className="flex flex-col gap-[3px]" style={{ "--home-thumb-color": group.color } as React.CSSProperties}>
-        <span className="home-thumb-group-title w-[38%]" />
-        {Array.from({ length: group.rows }, (_, index) => (
-          <span key={index} className="home-thumb-row" data-placeholder={group.is_placeholder}>
-            <span />
-            <span />
-            <span />
-          </span>
-        ))}
-      </div>
-    ))}
-  </div>
-);
-
-const itemCountLabel = (preview: RecentBoardPreview | null): string | null => {
+/** The size of what the card previews, in the unit that fits its kind. */
+const sizeLabel = (preview: RecentBoardPreview | null): string | null => {
   if (!preview) return null;
-  return `${preview.item_count} ${preview.item_count === 1 ? "item" : "items"}`;
+  switch (preview.kind) {
+    case "doc":
+    case "doc_page":
+      return plural(preview.doc?.word_count ?? 0, "word");
+    case "workspace":
+      return plural(preview.workspace?.board_count ?? 0, "board");
+    case "form":
+      return plural(preview.form?.question_count ?? 0, "question");
+    case "file_gallery":
+      return plural(preview.files?.file_count ?? 0, "file");
+    default:
+      return plural(preview.item_count, "item");
+  }
 };
 
 type RecentBoardCardProps = {
@@ -61,14 +33,14 @@ type RecentBoardCardProps = {
   onToggleFavorite: (board: RecentBoardDto) => void;
 };
 
-/** One "Recently visited" board: a live thumbnail, its name, workspace and when it was opened. */
+/** One "Recently visited" board: a live preview of its last opened tab, its name, workspace and when it was opened. */
 const RecentBoardCard: React.FC<RecentBoardCardProps> = ({ board, onToggleFavorite }) => {
-  const item_count_label = itemCountLabel(board.preview);
+  const size_label = sizeLabel(board.preview);
 
   return (
     <li className="home-board-card">
       <Link href={buildBoardPath(board.id)} className="flex flex-1 flex-col outline-none" title={board.label}>
-        <BoardThumbnail preview={board.preview} />
+        <ViewPreview preview={board.preview} board_label={board.label} workspace={board.workspace} />
         <span className="home-board-meta">
           <span className="home-board-name">
             <NavItemIcon source={{ ...board, type: "leaf" }} size={16} className="text-[var(--home-text-secondary)]" />
@@ -79,8 +51,8 @@ const RecentBoardCard: React.FC<RecentBoardCardProps> = ({ board, onToggleFavori
             <span className="truncate">{board.workspace?.name ?? "Workspace"}</span>
           </span>
           <span className="home-board-sub text-[var(--home-text-faint)]">
-            {item_count_label && <span className="flex-none">{item_count_label}</span>}
-            {item_count_label && <span aria-hidden="true">·</span>}
+            {size_label && <span className="flex-none">{size_label}</span>}
+            {size_label && <span aria-hidden="true">·</span>}
             <span className="truncate">Visited {relativeTime(board.visited_at)}</span>
           </span>
         </span>

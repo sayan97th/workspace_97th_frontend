@@ -1471,6 +1471,12 @@ const TableBoardBody: React.FC<TableBoardBodyProps> = ({
     };
   }, [board_id, view_tabs.active_view_id]);
 
+  // Remembers the open tab, so this board's "Recently visited" card on Home previews it.
+  useEffect(() => {
+    if (view_tabs.active_view_id == null) return;
+    boardContentService.recordViewVisit(board_id, view_tabs.active_view_id).catch(() => {});
+  }, [board_id, view_tabs.active_view_id]);
+
   useEffect(() => {
     let cancelled = false;
     boardOptionsService

@@ -560,6 +560,11 @@ export const boardContentService = {
     };
   },
 
+  /** PUT /api/boards/{board_id}/views/{view_id}/visit, remembers the open tab so the Home card can preview it. */
+  async recordViewVisit(board_id: number, view_id: number): Promise<void> {
+    await apiClient.put(`/api/boards/${board_id}/views/${view_id}/visit`, {});
+  },
+
   /** PUT /api/boards/{board_id}/views/{view_id}/personal-state, remembers the viewer's unsaved toolbar changes to a view. */
   async savePersonalViewState(board_id: number, view_id: number, payload: BoardViewPersonalStateDto): Promise<BoardViewPersonalStateDto> {
     const response = await apiClient.put<{ personal_state: BoardViewPersonalStateDto }>(
