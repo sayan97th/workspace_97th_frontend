@@ -1,0 +1,179 @@
+// In place cell editor, see `ExpandingCellEditor.tsx`. Position and size are
+// written by the component, this file only owns the look.
+//
+// The frame is the cell itself: same rect, same 1px accent frame the cell
+// gets while editing, and the text keeps the resting label's position. It
+// stays flat while the text fits, and only lifts off the table (soft shadow)
+// once it grows over the neighbouring cells, like Google Sheets.
+
+$ease-out: cubic-bezier(0.2, 0.9, 0.3, 1);
+$accent: var(--color-boardtree-accent);
+$surface: var(--color-boardtree-surface);
+$halo: color-mix(in srgb, var(--color-boardtree-accent) 16%, transparent);
+$lift:
+  0 10px 28px rgb(15 23 42 / 0.14),
+  0 2px 6px rgb(15 23 42 / 0.08);
+
+.expanding-cell-editor {
+  position: fixed;
+  z-index: 900; // Above sticky table chrome, below popovers (z 1000) such as the emoji palette.
+  box-sizing: border-box;
+  // See through: on the cell's own row the leading controls (expand arrow) keep showing.
+  // The textarea and the lead fill paint the surface, and only they take clicks.
+  background: transparent;
+  pointer-events: none;
+  border-radius: 2px;
+  box-shadow: 0 0 0 3px $halo;
+  transition: box-shadow 180ms ease;
+  animation: expanding-cell-editor-open 160ms $ease-out;
+
+  // The frame line, a top layer so it stays above the textarea and the
+  // positioned lead fill (an `outline` would paint under the latter).
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid $accent;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  &[data-expanded="true"] {
+    box-shadow:
+      0 0 0 3px $halo,
+      $lift;
+  }
+}
+
+@keyframes expanding-cell-editor-open {
+  from {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.expanding-cell-editor__lead-fill {
+  position: absolute;
+  left: 0;
+  background: $surface;
+  border-bottom-left-radius: 2px;
+  pointer-events: auto;
+}
+
+.expanding-cell-editor__field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  padding: 8px 12px; // Overwritten by the component to match the resting label.
+  border-radius: 2px;
+  background: $surface;
+  color: var(--color-boardtree-text);
+  caret-color: $accent;
+  font-family: inherit;
+  font-size: var(--text-board-cell, 14px);
+  line-height: var(--text-board-cell--line-height, 20px);
+  font-weight: var(--text-board-cell--font-weight, 400);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  resize: none;
+  outline: none;
+  overflow-y: hidden;
+  pointer-events: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-boardtree-grid, rgb(0 0 0 / 0.2)) transparent;
+
+  &::placeholder {
+    color: var(--color-boardtree-text-faint);
+  }
+
+  &::selection {
+    background: color-mix(in srgb, var(--color-boardtree-accent) 24%, transparent);
+  }
+}
+
+// One line twin used to read the natural width of the longest line.
+.expanding-cell-editor__measure {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: auto;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre;
+}
+
+.expanding-cell-editor__trailing {
+  position: absolute;
+  top: 8px; // Overwritten by the component to sit level with the first line.
+  right: 6px;
+  display: flex;
+  height: 20px;
+  align-items: center;
+  pointer-events: auto;
+}
+
+// Characters left, a small tab hanging under the frame's bottom right corner,
+// with a thin bar that fills toward the cap. Shown only near the cap.
+.expanding-cell-editor__counter {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  border-radius: 0 0 6px 6px;
+  padding: 2px 8px;
+  background: $surface;
+  box-shadow: 0 0 0 1px $accent;
+  color: var(--color-boardtree-text-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 14px;
+  white-space: nowrap;
+  user-select: none;
+  animation: expanding-cell-editor-counter-in 160ms $ease-out;
+
+  &-bar {
+    position: relative;
+    width: 28px;
+    height: 3px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-boardtree-text-faint) 25%, transparent);
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--counter-fill, 0%);
+      border-radius: inherit;
+      background: #fdab3d;
+      transition: width 120ms ease;
+    }
+  }
+
+  &--full {
+    color: #e2445c;
+
+    .expanding-cell-editor__counter-bar::after {
+      background: #e2445c;
+    }
+  }
+}
+
+@keyframes expanding-cell-editor-counter-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .expanding-cell-editor,
+  .expanding-cell-editor__counter {
+    animation: none;
+    transition: none;
+  }
+}

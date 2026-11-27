@@ -68,6 +68,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
   const name_input_ref = useRef<HTMLTextAreaElement>(null);
   const name_box_ref = useRef<HTMLDivElement>(null);
+  const name_cell_ref = useRef<HTMLDivElement>(null);
   // Picking an emoji blurs the name input (the picker's grid is a portaled
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the edit out from under it.
@@ -213,17 +214,16 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
 
         {/* The whole name cell is the drag handle, like monday.com, see `item-name-cell.scss`. */}
         <div
+          ref={name_cell_ref}
           className="item-name-cell flex items-center gap-0.5 pl-1 pr-1.5"
           data-draggable={!state.read_only && !is_editing}
           style={{
             height: row_h,
             ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]),
             zIndex: is_editing ? 16 : 15,
-            // While editing, the whole cell reads as the field (white fill and a
-            // full blue frame) instead of an input box nested inside it, like monday.com.
+            // While editing, the whole cell reads as the field, like monday.com: white fill here,
+            // and `ExpandingCellEditor` draws the blue frame on the cell's own rect.
             background: is_editing ? "var(--color-boardtree-surface)" : row_bg,
-            outline: is_editing ? "1px solid var(--color-boardtree-accent)" : undefined,
-            outlineOffset: is_editing ? "-1px" : undefined,
           }}
         >
           {/* The expand arrow only shows for items with subitems (or on hover, to add the first one), like monday.com. */}
@@ -238,7 +238,7 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             <svg className="item-expand-toggle__icon" viewBox="0 0 12 12" width="11" height="11"><path d="M4.5 3 L8 6 L4.5 9" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" /></svg>
           </button>
           {/* `data-filter-cell` feeds the table's right-click "Filter by this value" menu (see `BoardTable`). */}
-          {/* While renaming, `ExpandingCellEditor` opens over this box and grows to show the whole name, like Google Sheets. */}
+          {/* While renaming, `ExpandingCellEditor` turns the whole cell into the field, with the text starting at this box, and grows to show the whole name, like Google Sheets. */}
           <div ref={name_box_ref} className="flex min-w-0 flex-1 items-center self-stretch" data-filter-cell="true" data-item-id={item.id} data-column-id="__name">
             <ItemNameLabel
               name={item.name}
@@ -257,7 +257,9 @@ export default function ItemRow({ item, group, name_col_width, min_width, state,
             </ItemNameLabel>
             {is_editing && (
               <ExpandingCellEditor
-                anchor_ref={name_box_ref}
+                anchor_ref={name_cell_ref}
+                text_start_ref={name_box_ref}
+                text_padding_x={6}
                 textarea_ref={name_input_ref}
                 value={state.edit_draft}
                 onChange={actions.updateEditDraft}

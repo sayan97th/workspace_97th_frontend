@@ -50,6 +50,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
   const menu_btn_ref = useRef<HTMLButtonElement>(null);
   const name_input_ref = useRef<HTMLTextAreaElement>(null);
   const name_box_ref = useRef<HTMLDivElement>(null);
+  const name_cell_ref = useRef<HTMLDivElement>(null);
   // Picking an emoji blurs the name input (the picker's grid is a portaled
   // element outside it), which would otherwise reach `onBlur` before the
   // pick's own text update lands and commit the edit out from under it.
@@ -164,6 +165,7 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
         </div>
 
         <div
+          ref={name_cell_ref}
           className="item-name-cell flex items-center gap-1.5 border-r border-boardtree-grid pl-2 pr-1.5"
           data-draggable={!state.read_only && !is_editing}
           style={{
@@ -171,11 +173,9 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             ...stickyCellStyle(is_sticky_columns, sticky_offsets[1]),
             zIndex: is_editing ? 16 : 15,
             background: is_editing ? "var(--color-boardtree-surface)" : row_bg,
-            outline: is_editing ? "1px solid var(--color-boardtree-accent)" : undefined,
-            outlineOffset: is_editing ? "-1px" : undefined,
           }}
         >
-          {/* See `ItemRow`: renaming opens `ExpandingCellEditor` over this box, which grows to show the whole name. */}
+          {/* See `ItemRow`: renaming turns the whole cell into `ExpandingCellEditor`, with the text starting at this box. */}
           <div ref={name_box_ref} className="flex min-w-0 flex-1 items-center self-stretch">
             <ItemNameLabel
               name={sub.name}
@@ -186,7 +186,9 @@ export default function SubitemRow({ sub, item, group, name_col_width, min_width
             </ItemNameLabel>
             {is_editing && (
               <ExpandingCellEditor
-                anchor_ref={name_box_ref}
+                anchor_ref={name_cell_ref}
+                text_start_ref={name_box_ref}
+                text_padding_x={6}
                 textarea_ref={name_input_ref}
                 value={state.edit_draft}
                 onChange={actions.updateEditDraft}

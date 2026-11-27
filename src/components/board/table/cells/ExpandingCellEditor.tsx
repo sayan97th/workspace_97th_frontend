@@ -1,15 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type CSSProperties, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
-import "./expanding-cell-editor.css";
+import "./expanding-cell-editor.scss";
 
 /** Gap (px) the editor keeps from every viewport edge. */
 const VIEWPORT_MARGIN_PX = 8;
+/** Smallest top and bottom text padding (px), reached once the text is taller than the cell. */
+const MIN_PADDING_Y_PX = 8;
+/** Room kept on the right for the `trailing` button. */
+const TRAILING_SPACE_PX = 24;
+/** Height of the length counter tab that hangs under the frame. */
+const COUNTER_TAB_PX = 20;
 
 export interface ExpandingCellEditorProps {
   /** The cell the editor opens over. Its rect is the editor's minimum size and its top left corner. */
   anchor_ref: RefObject<HTMLElement | null>;
+  /**
+   * Where the text column starts inside the cell (the name box after the expand arrow). The space before it
+   * stays see through on the cell's own row, so leading controls keep showing, and wrapped lines align under
+   * the first one. Defaults to the cell's left edge.
+   */
+  text_start_ref?: RefObject<HTMLElement | null>;
+  /** Horizontal text padding (px), matching the resting label so the text does not move when the editor opens. */
+  text_padding_x?: number;
   value: string;
   onChange: (next_value: string) => void;
   /** Enter, Tab, or a click outside the editor. */
@@ -45,8 +59,8 @@ export interface ExpandingCellEditorProps {
 /**
  * Google Sheets style in place editor for long text in a table cell.
  *
- * It opens exactly over the cell, so a short value looks like it is edited in
- * place. As the value grows the editor first widens to the right over the
+ * It opens exactly on the cell's rect with the text where the resting label
+ * was, so a short value looks like the cell itself became editable. As the value grows the editor first widens to the right over the
  * neighbouring cells (one line, like Sheets) until `max_width` or the window
  * edge, then wraps and grows down until `max_height`, after which it scrolls.
  * It is portaled to `document.body` with fixed positioning so the table's
@@ -55,6 +69,8 @@ export interface ExpandingCellEditorProps {
  */
 export default function ExpandingCellEditor({
   anchor_ref,
+  text_start_ref,
+  text_padding_x = 12,
   value,
   onChange,
   onCommit,
@@ -74,7 +90,10 @@ export default function ExpandingCellEditor({
   const frame_ref = useRef<HTMLDivElement>(null);
   const own_textarea_ref = useRef<HTMLTextAreaElement>(null);
   const measure_ref = useRef<HTMLSpanElement>(null);
-  const footer_ref = useRef<HTMLDivElement>(null);
+  const lead_fill_ref = useRef<HTMLSpanElement>(null);
+  const trailing_ref = useRef<HTMLSpanElement>(null);
+  const has_trailing = !!trailing;
+  const is_counter_shown = max_length !== undefined && value.length >= max_length * 0.8;
   // Enter/Escape already settled the edit, so the blur that follows the unmount must not commit again.
   const is_settled_ref = useRef(false);
 
@@ -86,7 +105,14 @@ export default function ExpandingCellEditor({
     [textarea_ref]
   );
 
-  /** Sizes and places the editor from the cell's current rect and the text's natural width. Writes styles directly so typing never re-renders twice. */
+  /**
+   * Sizes and places the editor from the cell's current rect and the text's natural width. Writes styles
+   * directly so typing never re-renders twice.
+   *
+   * The frame sits exactly on the cell and the text keeps the resting label's position (same left inset,
+   * vertically centered while it fits), so opening the editor reads as the cell turning editable rather than
+   * a box landing on top. Only when the text needs more room does the frame grow, right first and then down.
+   */
   const layout = useCallback(() => {
     const anchor_el = anchor_ref.current;
     const frame_el = frame_ref.current;
@@ -97,10 +123,18 @@ export default function ExpandingCellEditor({
     const rect = anchor_el.getBoundingClientRect();
     const viewport_width = window.innerWidth;
     const viewport_height = window.innerHeight;
+    const text_start_rect = text_start_ref?.current?.getBoundingClientRect();
+    const lead_width = text_start_rect ? Math.max(0, Math.round(text_start_rect.left - rect.left)) : 0;
+    const padding_right = text_padding_x + (has_trailing ? TRAILING_SPACE_PX : 0);
+
+    for (const el of [textarea_el, measure_el]) {
+      el.style.paddingLeft = `${text_padding_x}px`;
+      el.style.paddingRight = `${padding_right}px`;
+    }
 
     // Natural width of the longest line, measured with the textarea's own font and padding.
-    measure_el.textContent = `${textarea_el.value || placeholder || ""}​`;
-    const natural_width = Math.ceil(measure_el.getBoundingClientRect().width) + 2;
+    measure_el.textContent = `${textarea_el.value || placeholder || ""}\u200b`;
+    const natural_width = lead_width + Math.ceil(measure_el.getBoundingClientRect().width) + 2;
 
     const room_right = viewport_width - VIEWPORT_MARGIN_PX - Math.max(rect.left, VIEWPORT_MARGIN_PX);
     const width_limit = Math.max(rect.width, Math.min(max_width, room_right));
@@ -112,23 +146,54 @@ export default function ExpandingCellEditor({
 
     frame_el.style.width = `${width}px`;
     frame_el.style.left = `${left}px`;
+    textarea_el.style.marginLeft = `${lead_width}px`;
+    textarea_el.style.width = `${width - lead_width}px`;
 
-    // Height follows the wrapped content, measured after the width is applied. The length counter, when shown, sits under it.
-    const footer_height = footer_ref.current?.offsetHeight ?? 0;
+    // Text height without padding, read after the width is applied.
+    textarea_el.style.paddingTop = "0px";
+    textarea_el.style.paddingBottom = "0px";
     textarea_el.style.height = "auto";
-    const height_limit = Math.max(rect.height, Math.min(max_height, viewport_height - VIEWPORT_MARGIN_PX * 2 - footer_height));
-    const content_height = textarea_el.scrollHeight;
+    const text_height = textarea_el.scrollHeight;
+
+    // Centered in the cell while it fits, like the resting label. The padding meets the minimum exactly when
+    // the text outgrows the cell, so the first line never jumps as the editor starts growing down.
+    const padding_y = Math.max(MIN_PADDING_Y_PX, Math.floor((rect.height - text_height) / 2));
+    textarea_el.style.paddingTop = `${padding_y}px`;
+    textarea_el.style.paddingBottom = `${padding_y}px`;
+
+    const counter_space = is_counter_shown ? COUNTER_TAB_PX : 0;
+    const height_limit = Math.max(rect.height, Math.min(max_height, viewport_height - VIEWPORT_MARGIN_PX * 2 - counter_space));
+    const content_height = text_height + padding_y * 2;
     const height = Math.min(Math.max(content_height, rect.height), height_limit);
     textarea_el.style.height = `${height}px`;
     textarea_el.style.overflowY = content_height > height_limit ? "auto" : "hidden";
+    frame_el.style.height = `${height}px`;
+
+    // Under the cell's own row the leading strip is filled, so rows below never show through a grown editor.
+    const lead_fill_el = lead_fill_ref.current;
+    if (lead_fill_el) {
+      lead_fill_el.style.top = `${rect.height}px`;
+      lead_fill_el.style.width = `${lead_width}px`;
+      lead_fill_el.style.height = `${Math.max(0, height - rect.height)}px`;
+    }
+
+    // The emoji button stays level with the first line.
+    const trailing_el = trailing_ref.current;
+    if (trailing_el) {
+      const line_height = parseFloat(getComputedStyle(textarea_el).lineHeight) || 20;
+      trailing_el.style.top = `${padding_y + (line_height - trailing_el.offsetHeight) / 2}px`;
+    }
+
+    const is_expanded = width > rect.width + 1 || height > rect.height + 1;
+    frame_el.dataset.expanded = is_expanded ? "true" : "false";
 
     // Grows down from the cell, and shifts up only when the window bottom would cut it off.
-    const total_height = height + footer_height;
+    const total_height = height + counter_space;
     let top = rect.top;
     if (top + total_height > viewport_height - VIEWPORT_MARGIN_PX) top = viewport_height - VIEWPORT_MARGIN_PX - total_height;
     top = Math.max(VIEWPORT_MARGIN_PX, top);
     frame_el.style.top = `${top}px`;
-  }, [anchor_ref, max_height, max_width, placeholder]);
+  }, [anchor_ref, text_start_ref, text_padding_x, has_trailing, is_counter_shown, max_height, max_width, placeholder]);
 
   // Focus on open, with the caret at the end (Sheets) or the whole value selected (a fresh row).
   useLayoutEffect(() => {
@@ -158,13 +223,14 @@ export default function ExpandingCellEditor({
     const anchor_el = anchor_ref.current;
     const resize_observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleLayout) : null;
     if (anchor_el) resize_observer?.observe(anchor_el);
+    if (text_start_ref?.current) resize_observer?.observe(text_start_ref.current);
     return () => {
       cancelAnimationFrame(frame_id);
       window.removeEventListener("scroll", scheduleLayout, true);
       window.removeEventListener("resize", scheduleLayout);
       resize_observer?.disconnect();
     };
-  }, [anchor_ref, layout]);
+  }, [anchor_ref, text_start_ref, layout]);
 
   /**
    * Inserts the line break in the DOM first, so the caret moves with it right away and keys typed right after
@@ -216,7 +282,8 @@ export default function ExpandingCellEditor({
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div ref={frame_ref} className="expanding-cell-editor" data-expanding-cell-editor="true">
+    <div ref={frame_ref} className="expanding-cell-editor" data-expanded="false" data-expanding-cell-editor="true">
+      <span ref={lead_fill_ref} aria-hidden className="expanding-cell-editor__lead-fill" />
       <textarea
         ref={setTextareaRef}
         value={value}
@@ -228,21 +295,24 @@ export default function ExpandingCellEditor({
         onChange={(event) => onChange(allow_line_breaks ? event.target.value : event.target.value.replace(/\r?\n/g, " "))}
         onKeyDown={handleKeyDown}
         onBlur={handleBlur}
-        className={`expanding-cell-editor__field ${trailing ? "expanding-cell-editor__field--with-trailing" : ""} ${text_class_name}`}
+        className={`expanding-cell-editor__field ${text_class_name}`}
       />
       {/* Off screen twin of the textarea, used to read the text's one line width. */}
-      <span
-        ref={measure_ref}
-        aria-hidden
-        className={`expanding-cell-editor__field expanding-cell-editor__measure ${trailing ? "expanding-cell-editor__field--with-trailing" : ""}`}
-      />
-      {trailing && <span className="expanding-cell-editor__trailing">{trailing}</span>}
-      {/* Only near the cap, so a user whose typing stops at the limit can see why. */}
-      {max_length !== undefined && value.length >= max_length * 0.8 && (
-        <div ref={footer_ref} className="expanding-cell-editor__footer" aria-live="polite">
-          <span className={`expanding-cell-editor__counter ${value.length >= max_length ? "expanding-cell-editor__counter--full" : ""}`}>
-            {value.length}/{max_length}
-          </span>
+      <span ref={measure_ref} aria-hidden className="expanding-cell-editor__field expanding-cell-editor__measure" />
+      {trailing && (
+        <span ref={trailing_ref} className="expanding-cell-editor__trailing">
+          {trailing}
+        </span>
+      )}
+      {/* Hangs under the frame only near the cap, so the text never shifts and a user whose typing stops can see why. */}
+      {is_counter_shown && max_length !== undefined && (
+        <div
+          className={`expanding-cell-editor__counter ${value.length >= max_length ? "expanding-cell-editor__counter--full" : ""}`}
+          style={{ "--counter-fill": `${Math.min(100, (value.length / max_length) * 100)}%` } as CSSProperties}
+          aria-live="polite"
+        >
+          <span className="expanding-cell-editor__counter-bar" aria-hidden />
+          {max_length - value.length === 0 ? "Limit reached" : `${max_length - value.length} left`}
         </div>
       )}
     </div>,
